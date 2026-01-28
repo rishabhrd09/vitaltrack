@@ -230,10 +230,11 @@ jobs:
       
       - name: Deploy to Railway
         if: steps.check-token.outputs.has_token == 'true'
-        uses: railwayapp/deploy-action@v1
+        uses: bervProject/railway-deploy@3f324ef6e60b29c991f8c44dc29323eb91834246
         with:
           railway_token: ${{ secrets.RAILWAY_TOKEN }}
           service: vitaltrack-api
+          detach: true
       
       - name: Deployment summary
         if: steps.check-token.outputs.has_token == 'true'
