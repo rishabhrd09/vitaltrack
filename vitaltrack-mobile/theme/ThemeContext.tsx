@@ -70,6 +70,23 @@ export const lightColors = {
 
     white: '#FFFFFF',
     transparent: 'transparent',
+
+    // ============================================================================
+    // ALIAS PROPERTIES (Required by auth screens & ThemeContext)
+    // These map old property names to new ones for backward compatibility
+    // ============================================================================
+    background: '#FAF9F7',     // Alias for bgPrimary
+    text: '#1C1917',           // Alias for textPrimary
+    primary: '#4F8EE6',        // Alias for accentBlue
+    success: '#4A9668',        // Alias for statusGreen
+    error: '#B85450',          // Alias for statusRed
+    warning: '#B8860B',        // Alias for statusOrange
+    info: '#4F8EE6',           // Alias for accentBlue
+    border: '#E8E5E0',         // Alias for borderPrimary
+    surface: '#FFFFFF',        // Alias for bgCard
+    card: '#FFFFFF',           // Alias for bgCard
+    muted: '#57534E',          // Alias for textSecondary
+    accent: '#4F8EE6',         // Alias for accentBlue
 };
 
 type ThemeColors = typeof darkColors;
