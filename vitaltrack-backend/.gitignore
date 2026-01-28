@@ -68,3 +68,10 @@ alembic/versions/*.pyc
 *.pem
 *.key
 google-service-account.json
+
+# Ignore ALL markdown files by default
+*.md
+
+# Exceptions (Files we WANT in the repo)
+!README.md
+!VITALTRACK_BEGINNER_QUICKSTART.md

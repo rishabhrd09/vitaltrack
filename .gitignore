@@ -98,6 +98,7 @@ secrets/
 # Exceptions (Files we WANT in the repo)
 !README.md
 !VITALTRACK_QUICKSTART.md
+!VITALTRACK_DEFINITIVE_GUIDE.md
 
 # ============================================
 # OS Generated

@@ -49,9 +49,9 @@ jobs:
       
       - name: Run tests
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/test_db
-          JWT_SECRET_KEY: test-secret-key-for-ci-testing-minimum-32-chars
-          JWT_REFRESH_SECRET_KEY: test-refresh-secret-key-for-ci-testing-32chars
+          # IMPORTANT: Must use +asyncpg driver for async SQLAlchemy
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
+          SECRET_KEY: test-secret-key-for-ci-testing-minimum-32-chars-long
           ENVIRONMENT: testing
         run: |
           cd vitaltrack-backend
