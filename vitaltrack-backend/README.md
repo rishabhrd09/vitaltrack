@@ -1,214 +1,224 @@
 # VitalTrack Backend
 
-Production-ready FastAPI backend for VitalTrack medical inventory management.
+**Phase 3 Complete** | FastAPI + PostgreSQL | Production-Ready
 
-## Features
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)](https://fastapi.tiangolo.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)](https://www.postgresql.org)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python)](https://www.python.org)
 
-- 🔐 **JWT Authentication** - Secure access with token refresh rotation
-- 🗄️ **Async PostgreSQL** - High-performance database with SQLAlchemy 2.0
-- 📱 **Offline-First Sync** - Full sync support for mobile app
-- 🔒 **Security First** - Argon2 password hashing, input validation, CORS
-- 📊 **RESTful API** - Clean, documented endpoints
-- 🐳 **Docker Ready** - Production-ready containerization
+---
 
-## Tech Stack
-
-- **Framework**: FastAPI 0.115+
-- **Database**: PostgreSQL 16 + SQLAlchemy 2.0 (async)
-- **Authentication**: JWT (python-jose) + Argon2
-- **Migrations**: Alembic
-- **Validation**: Pydantic 2.0
-- **Server**: Uvicorn / Gunicorn
-
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
+- Docker Desktop installed and running
 
-- Python 3.11+
-- PostgreSQL 15+
-- Docker (optional)
-
-### Local Development
+### Start Backend (2 minutes)
 
 ```bash
-# Clone and navigate to backend
 cd vitaltrack-backend
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# or: venv\Scripts\activate  # Windows
+# Start containers
+docker-compose up -d --build
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy environment variables
-cp .env.example .env
-# Edit .env with your database credentials
-
-# Run database migrations
-alembic upgrade head
-
-# Start development server
-uvicorn app.main:app --reload --port 8000
+# Wait 15 seconds, then verify
+docker-compose ps
 ```
 
-### Docker Development
-
-```bash
-# Start all services (API + PostgreSQL)
-docker-compose up -d
-
-# View logs
-docker-compose logs -f api
-
-# Run migrations
-docker-compose exec api alembic upgrade head
-
-# Stop services
-docker-compose down
+**Expected output:**
+```
+NAME              STATUS          PORTS
+vitaltrack-api    Up (healthy)    0.0.0.0:8000->8000/tcp
+vitaltrack-db     Up (healthy)    0.0.0.0:5432->5432/tcp
 ```
 
-## API Documentation
+### Verify API
+- **Swagger Docs**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
 
-Once running, visit:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **OpenAPI JSON**: http://localhost:8000/openapi.json
+---
 
-## API Endpoints
+## 📖 Documentation
 
-### Authentication
+| Document | Description |
+|----------|-------------|
+| [API_TESTING_GUIDE.md](./API_TESTING_GUIDE.md) | Complete API testing guide with examples |
+| [DOCKER_GUIDE.md](./DOCKER_GUIDE.md) | Docker concepts and commands explained |
+
+---
+
+## 🔧 Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| Framework | FastAPI 0.115 |
+| Database | PostgreSQL 16 |
+| ORM | SQLAlchemy 2.0 (async) |
+| Auth | JWT + Argon2 |
+| Migrations | Alembic |
+| Server | Uvicorn |
+
+---
+
+## 📂 Project Structure
+
+```
+vitaltrack-backend/
+├── app/
+│   ├── api/v1/           # API routes (auth, categories, items, orders, sync)
+│   ├── core/             # Config, database, security
+│   ├── models/           # SQLAlchemy models
+│   ├── schemas/          # Pydantic schemas
+│   └── main.py           # FastAPI application
+├── alembic/              # Database migrations
+├── Dockerfile            # Production dockerfile
+├── docker-compose.yml    # Docker services
+└── requirements.txt      # Python dependencies
+```
+
+---
+
+## 🔐 API Endpoints (34 Total)
+
+### Authentication (11 endpoints)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/v1/auth/register` | Register new user |
-| POST | `/api/v1/auth/login` | Login with email/username |
-| POST | `/api/v1/auth/refresh` | Refresh access token |
-| POST | `/api/v1/auth/logout` | Logout and revoke token |
-| GET | `/api/v1/auth/me` | Get current user profile |
-| PATCH | `/api/v1/auth/me` | Update user profile |
+| POST | `/api/v1/auth/login` | Login |
+| POST | `/api/v1/auth/refresh` | Refresh tokens |
+| POST | `/api/v1/auth/logout` | Logout |
+| GET | `/api/v1/auth/me` | Get profile |
+| PATCH | `/api/v1/auth/me` | Update profile |
 | POST | `/api/v1/auth/change-password` | Change password |
-| GET | `/api/v1/auth/verify-email/{token}` | Verify email address |
-| POST | `/api/v1/auth/resend-verification` | Resend verification email |
+| GET | `/api/v1/auth/verify-email/{token}` | Verify email |
+| POST | `/api/v1/auth/resend-verification` | Resend verification |
 | POST | `/api/v1/auth/forgot-password` | Request password reset |
-| POST | `/api/v1/auth/reset-password` | Reset password with token |
+| POST | `/api/v1/auth/reset-password` | Reset password |
 
-### Categories
+### Categories (6 endpoints)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/categories` | List all categories |
-| POST | `/api/v1/categories` | Create category |
-| GET | `/api/v1/categories/{id}` | Get category |
-| PUT | `/api/v1/categories/{id}` | Update category |
-| DELETE | `/api/v1/categories/{id}` | Delete category |
+| GET | `/api/v1/categories` | List all |
+| GET | `/api/v1/categories/with-counts` | List with item counts |
+| POST | `/api/v1/categories` | Create |
+| GET | `/api/v1/categories/{id}` | Get one |
+| PUT | `/api/v1/categories/{id}` | Update |
+| DELETE | `/api/v1/categories/{id}` | Delete |
 
-### Items
+### Items (8 endpoints)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/items` | List items (with filters) |
-| POST | `/api/v1/items` | Create item |
-| GET | `/api/v1/items/{id}` | Get item |
-| PUT | `/api/v1/items/{id}` | Update item |
+| GET | `/api/v1/items` | List with filters |
+| GET | `/api/v1/items/stats` | Dashboard statistics |
+| GET | `/api/v1/items/needs-attention` | Low/out of stock |
+| POST | `/api/v1/items` | Create |
+| GET | `/api/v1/items/{id}` | Get one |
+| PUT | `/api/v1/items/{id}` | Update |
 | PATCH | `/api/v1/items/{id}/stock` | Update stock only |
-| DELETE | `/api/v1/items/{id}` | Delete item |
+| DELETE | `/api/v1/items/{id}` | Delete |
 
-### Orders
+### Orders (6 endpoints)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/v1/orders` | List orders |
-| POST | `/api/v1/orders` | Create order |
-| GET | `/api/v1/orders/{id}` | Get order |
+| POST | `/api/v1/orders` | Create |
+| GET | `/api/v1/orders/{id}` | Get one |
 | PATCH | `/api/v1/orders/{id}/status` | Update status |
 | POST | `/api/v1/orders/{id}/apply` | Apply to stock |
-| DELETE | `/api/v1/orders/{id}` | Delete order |
+| DELETE | `/api/v1/orders/{id}` | Delete |
 
-### Sync
+### Sync (3 endpoints)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/v1/sync/push` | Push local changes |
 | POST | `/api/v1/sync/pull` | Pull server changes |
-| POST | `/api/v1/sync/full` | Full sync (push + pull) |
+| POST | `/api/v1/sync/full` | Full bidirectional sync |
 
-## Project Structure
+---
 
-```
-vitaltrack-backend/
-├── alembic/                 # Database migrations
-│   ├── versions/            # Migration files
-│   └── env.py               # Migration config
-├── app/
-│   ├── api/
-│   │   ├── deps.py          # Dependencies
-│   │   └── v1/              # API v1 routes
-│   │       ├── auth.py
-│   │       ├── categories.py
-│   │       ├── items.py
-│   │       ├── orders.py
-│   │       └── sync.py
-│   ├── core/
-│   │   ├── config.py        # Settings
-│   │   ├── database.py      # DB setup
-│   │   └── security.py      # Auth helpers
-│   ├── models/              # SQLAlchemy models
-│   ├── schemas/             # Pydantic schemas
-│   └── main.py              # FastAPI app
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-└── .env.example
-```
-
-## Database Migrations
+## 🐳 Docker Commands
 
 ```bash
-# Create new migration
-alembic revision --autogenerate -m "description"
+# Start services
+docker-compose up -d --build
+
+# View logs
+docker-compose logs -f api
+
+# Stop services
+docker-compose down
+
+# Reset database (deletes all data)
+docker-compose down -v
+docker-compose up -d --build
+```
+
+---
+
+## 🔧 Local Development (Without Docker)
+
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your database credentials
 
 # Run migrations
 alembic upgrade head
 
-# Rollback one migration
-alembic downgrade -1
-
-# View migration history
-alembic history
+# Start server
+uvicorn app.main:app --reload --port 8000
 ```
 
-## Testing
+---
+
+## 🚢 Deployment
+
+### Railway
+```bash
+railway login
+railway init
+railway add      # Select PostgreSQL
+railway up
+```
+
+### Render
+1. Create Web Service from repo
+2. Add PostgreSQL database
+3. Build: `pip install -r requirements.txt`
+4. Start: `gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker`
+
+---
+
+## 🔑 Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | Required |
+| `SECRET_KEY` | JWT signing key (64 chars) | Required |
+| `ENVIRONMENT` | `development` or `production` | development |
+| `DEBUG` | Enable debug mode | false |
+| `CORS_ORIGINS` | Allowed origins (comma-separated) | * |
+
+---
+
+## 🧪 Testing
 
 ```bash
 # Run tests
 pytest
 
-# Run with coverage
+# With coverage
 pytest --cov=app --cov-report=html
 ```
 
-## Deployment
+---
 
-### Railway
-
-1. Connect GitHub repository
-2. Add PostgreSQL plugin
-3. Set environment variables
-4. Deploy automatically on push
-
-### Render
-
-1. Create Web Service from repo
-2. Add PostgreSQL database
-3. Set environment variables
-4. Build command: `pip install -r requirements.txt`
-5. Start command: `gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker`
-
-## Security Notes
-
-- Always use HTTPS in production
-- Rotate `SECRET_KEY` periodically
-- Use strong database passwords
-- Enable rate limiting for production
-- Review CORS origins before deployment
-
-## License
-
-MIT License - See LICENSE file
+**VitalTrack Backend v1.0.0** | Phase 3 Complete ✅

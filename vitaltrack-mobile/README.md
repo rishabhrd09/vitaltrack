@@ -1,35 +1,16 @@
-# 🏥 VitalTrack Mobile - Home ICU Inventory
+# VitalTrack Mobile
 
-**Phase 2 | React Native + Expo | Backend Integration Ready**
+**Phase 3 Complete** | React Native + Expo | Production-Ready
 
-VitalTrack is a professional mobile application for managing Home ICU inventory. Track medical equipment, monitor stock levels, and generate purchase orders.
-
----
-
-## ✨ Features
-
-### Phase 1 (Local Storage)
-- 📊 **Dashboard** - Real-time inventory overview
-- 📦 **Inventory Management** - Categories & items CRUD
-- ⚠️ **Stock Alerts** - Low stock & out of stock warnings
-- 🔴 **Critical Equipment** - Special tracking for life-support items
-- 📋 **Purchase Orders** - Generate & track orders
-- 📄 **PDF Export** - Professional order sheets
-- 🌙 **Dark Mode** - Medical-grade interface
-
-### Phase 2 (NEW) ✨
-- 🔐 **Login/Register** - Email or username authentication
-- 🔑 **Password Reset** - Forgot password flow
-- 📧 **Email Verification** - Account verification
-- 🔄 **Token Management** - Secure JWT with auto-refresh
-- ☁️ **Backend Sync** - Connect to VitalTrack API
+[![Expo](https://img.shields.io/badge/Expo-SDK%2054-000020?logo=expo)](https://expo.dev)
+[![React Native](https://img.shields.io/badge/React%20Native-0.81-61DAFB?logo=react)](https://reactnative.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript)](https://www.typescriptlang.org)
 
 ---
 
-## 🚀 Quick Start (TESTED ✅)
+## 🚀 Quick Start
 
 ### Prerequisites
-
 | Requirement | Version |
 |-------------|---------|
 | Node.js | 18+ |
@@ -39,17 +20,16 @@ VitalTrack is a professional mobile application for managing Home ICU inventory.
 ### Installation
 
 ```bash
-# 1. Navigate to project
-cd vitaltrack-mobile-main
+cd vitaltrack-mobile
 
-# 2. Install dependencies (IMPORTANT: use --legacy-peer-deps)
+# Install dependencies (REQUIRED flag for React 19)
 npm install --legacy-peer-deps
 
-# 3. Start development server
+# Start development server
 npx expo start --clear
 ```
 
-> ⚠️ **IMPORTANT:** You MUST use `--legacy-peer-deps` flag. Regular `npm install` will fail due to React 19 peer dependency conflicts.
+> ⚠️ **IMPORTANT:** Always use `--legacy-peer-deps` flag. Regular `npm install` will fail due to React 19 peer dependency conflicts.
 
 ### Run on Device
 
@@ -59,26 +39,68 @@ npx expo start --clear
 
 ---
 
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 📊 **Dashboard** | Real-time inventory overview with stats |
+| 📦 **Inventory** | Categories & items with search/filter |
+| ⚠️ **Stock Alerts** | Low stock & out of stock warnings |
+| 🔴 **Critical Items** | Special tracking for life-support equipment |
+| 📋 **Orders** | Create & track restock orders |
+| 📄 **PDF Export** | Professional order sheets |
+| 🔐 **Authentication** | Login, register, password reset |
+| ☁️ **Cloud Sync** | Backend integration with offline support |
+| 🌙 **Dark Mode** | Medical-grade dark interface |
+
+---
+
+## 📂 Project Structure
+
+```
+vitaltrack-mobile/
+├── app/                    # Screens (Expo Router)
+│   ├── (auth)/             # Auth screens
+│   │   ├── login.tsx       # Login
+│   │   ├── register.tsx    # Registration
+│   │   ├── forgot-password.tsx
+│   │   └── reset-password.tsx
+│   ├── (tabs)/             # Main app tabs
+│   │   ├── index.tsx       # Dashboard
+│   │   ├── inventory.tsx   # Item list
+│   │   └── orders.tsx      # Order list
+│   ├── item/[id].tsx       # Item form
+│   └── order/create.tsx    # Create order
+├── components/             # Reusable components
+├── services/               # API layer
+│   ├── api.ts              # HTTP client with JWT
+│   └── auth.ts             # Auth service
+├── store/                  # State management
+│   ├── useAppStore.ts      # App state (Zustand)
+│   └── useAuthStore.ts     # Auth state
+├── types/                  # TypeScript types
+├── theme/                  # Design system
+└── utils/                  # Helpers
+```
+
+---
+
 ## 🔧 Backend Configuration
-
-To connect to the VitalTrack backend API:
-
-### 1. Create Environment File
 
 Create `.env` in project root:
 
 ```ini
-# For physical device - use your computer's IPv4 address
+# Physical device - use your computer's IPv4 address
 EXPO_PUBLIC_API_URL=http://192.168.1.100:8000
 
-# For Android Emulator only
+# Android Emulator
 EXPO_PUBLIC_API_URL=http://10.0.2.2:8000
 
-# For iOS Simulator
+# iOS Simulator
 EXPO_PUBLIC_API_URL=http://localhost:8000
 ```
 
-### 2. Find Your IP Address
+### Find Your IP Address
 
 **Windows:**
 ```powershell
@@ -91,49 +113,9 @@ ipconfig
 ipconfig getifaddr en0
 ```
 
-### 3. Verify Backend is Running
-
-```bash
-curl http://YOUR_IP:8000/health
-# Should return: {"status":"healthy"...}
-```
-
 ---
 
-## 📁 Project Structure
-
-```
-vitaltrack-mobile/
-├── app/                    # Screens (Expo Router)
-│   ├── (auth)/             # Auth screens (Phase 2)
-│   │   ├── _layout.tsx
-│   │   ├── login.tsx
-│   │   ├── register.tsx
-│   │   ├── forgot-password.tsx
-│   │   └── reset-password.tsx
-│   ├── (tabs)/             # Main app tabs
-│   │   ├── index.tsx       # Dashboard
-│   │   ├── inventory.tsx   # Item list
-│   │   └── orders.tsx      # Order list
-│   ├── item/               # Item details
-│   └── order/              # Order screens
-├── components/             # Reusable components
-├── services/               # API layer (Phase 2)
-│   ├── api.ts              # HTTP client with JWT
-│   └── auth.ts             # Auth service
-├── store/                  # State management
-│   ├── useAppStore.ts      # App state (Zustand)
-│   └── useAuthStore.ts     # Auth state (Phase 2)
-├── types/                  # TypeScript types
-├── theme/                  # Design system
-└── utils/                  # Helpers
-```
-
----
-
-## 🔐 Authentication (Phase 2)
-
-### Available Screens
+## 🔐 Authentication Screens
 
 | Screen | Route | Description |
 |--------|-------|-------------|
@@ -142,64 +124,87 @@ vitaltrack-mobile/
 | Forgot Password | `/(auth)/forgot-password` | Request reset email |
 | Reset Password | `/(auth)/reset-password` | Enter new password |
 
-### API Endpoints Used
-
-| Feature | Endpoint |
-|---------|----------|
-| Register | `POST /api/v1/auth/register` |
-| Login | `POST /api/v1/auth/login` |
-| Logout | `POST /api/v1/auth/logout` |
-| Get Profile | `GET /api/v1/auth/me` |
-| Forgot Password | `POST /api/v1/auth/forgot-password` |
-| Reset Password | `POST /api/v1/auth/reset-password` |
-
 ---
 
 ## 🐛 Troubleshooting
 
 ### npm install fails with ERESOLVE error
-
 ```bash
-# This is expected - use legacy-peer-deps
 npm install --legacy-peer-deps
 ```
 
-### "Network request failed" when connecting to backend
+### "Network request failed" connecting to backend
+1. Verify backend running: `http://localhost:8000/health`
+2. Check `.env` has your computer's IP (not localhost for physical device)
+3. Ensure phone & computer on same WiFi
+4. Check firewall isn't blocking port 8000
 
-1. Verify backend is running: `http://localhost:8000/health`
-2. Check `.env` has your computer's IP (not `localhost` for physical device)
-3. Ensure phone & computer on **same WiFi network**
-4. Check Windows Firewall isn't blocking port 8000
-
-### TypeScript or Metro errors
-
-```bash
-# Clear cache and restart
-npx expo start --clear
-```
-
-### Images not showing
-
+### Metro bundler errors
 ```bash
 npx expo start --clear
 ```
 
----
-
-## 📋 TODO (Phase 3)
-
-- [ ] Add auth guard to `app/_layout.tsx`
-- [ ] Profile screen with edit capability
-- [ ] Replace local storage with API calls
-- [ ] Implement offline sync queue
-- [ ] Add sync status indicator
+### Tunnel mode (for network issues)
+```bash
+npx expo start --tunnel
+```
 
 ---
 
-## 📄 License
+## 🚢 Deployment (EAS Build)
 
-This project is for personal/private use for Home ICU management.
+### Configure EAS
+```bash
+npm install -g eas-cli
+eas login
+```
+
+### Build Preview APK
+```bash
+eas build --profile preview --platform android
+```
+
+### Build Production AAB
+```bash
+eas build --profile production --platform android
+```
+
+### Submit to Play Store
+```bash
+eas submit --platform android
+```
 
 ---
 
-**VitalTrack v2.0.0 - Phase 2 Complete** ✅
+## 🔧 Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| Framework | React Native 0.81 |
+| Platform | Expo SDK 54 |
+| Language | TypeScript 5.9 |
+| State | Zustand 4.5 |
+| Navigation | Expo Router |
+| Storage | AsyncStorage + SecureStore |
+| PDF | expo-print |
+
+---
+
+## 📦 Key Dependencies
+
+```json
+{
+  "expo": "^54.0.31",
+  "react": "19.1.0",
+  "react-native": "0.81.5",
+  "expo-router": "~6.0.21",
+  "zustand": "^4.5.2",
+  "@react-native-async-storage/async-storage": "2.2.0",
+  "expo-secure-store": "~14.0.8",
+  "expo-print": "~15.0.8"
+}
+```
+
+---
+
+**VitalTrack Mobile v2.0.0** | Phase 3 Complete ✅

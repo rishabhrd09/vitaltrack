@@ -1,0 +1,28 @@
+# VitalTrack Code Owners
+# ═══════════════════════════════════════════════════════════════════════════════
+# These owners will be automatically requested for review when someone opens a
+# pull request that modifies code they own.
+#
+# Order matters - the last matching pattern takes precedence.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Default owner for everything
+* @rishabhrd09
+
+# Backend code
+/vitaltrack-backend/ @rishabhrd09
+
+# Frontend/Mobile code
+/vitaltrack-mobile/ @rishabhrd09
+
+# CI/CD configuration (critical - requires review)
+/.github/ @rishabhrd09
+
+# Documentation
+*.md @rishabhrd09
+/docs/ @rishabhrd09
+
+# Configuration files (critical)
+/vitaltrack-backend/docker-compose.yml @rishabhrd09
+/vitaltrack-mobile/app.json @rishabhrd09
+/vitaltrack-mobile/eas.json @rishabhrd09

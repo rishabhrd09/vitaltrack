@@ -90,15 +90,9 @@ secrets/
 *.sublime-workspace
 
 # ============================================
-# Documentation Control
+# Archive / Extra Documentation
 # ============================================
-# Ignore ALL markdown files by default
-*.md
-
-# Exceptions (Files we WANT in the repo)
-!README.md
-!VITALTRACK_QUICKSTART.md
-!VITALTRACK_DEFINITIVE_GUIDE.md
+extra_docs/
 
 # ============================================
 # OS Generated

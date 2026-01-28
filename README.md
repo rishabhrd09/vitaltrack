@@ -5,6 +5,7 @@
 [![Backend](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
 [![Frontend](https://img.shields.io/badge/Frontend-React%20Native-61DAFB?style=flat-square&logo=react)](https://reactnative.dev)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2054-000020?style=flat-square&logo=expo)](https://expo.dev)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=flat-square&logo=github-actions)](https://github.com/features/actions)
 
 ---
 
@@ -44,9 +45,30 @@ Then restart both backend and frontend.
 
 | Document | Description |
 |----------|-------------|
-| [COMPLETE_STEP_BY_STEP_FLOW.md](./COMPLETE_STEP_BY_STEP_FLOW.md) | **START HERE! Complete flow from zero to Play Store** |
-| [VITALTRACK_MASTER_GUIDE.md](./VITALTRACK_MASTER_GUIDE.md) | Detailed technical guide |
-| [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) | Printable checklist |
+| [NEW_DEVELOPER_ONBOARDING.md](./NEW_DEVELOPER_ONBOARDING.md) | **New developers start here!** Quick onboarding guide |
+| [VITALTRACK_COMPLETE_DEVELOPER_GUIDE.md](./VITALTRACK_COMPLETE_DEVELOPER_GUIDE.md) | Complete guide: setup, workflow, deployment, and more |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | How to contribute: branching, PRs, code review |
+
+---
+
+## 🔄 Development Workflow
+
+We use a **professional PR-based workflow**:
+
+```
+1. git checkout -b feature/my-feature    # Create branch
+2. <make changes>                         # Work locally
+3. git commit -m "feat: description"      # Commit
+4. git push origin feature/my-feature     # Push branch
+5. Create Pull Request on GitHub          # Open PR
+6. CI tests run automatically             # Automated checks
+7. Get code review approval               # Peer review
+8. Merge → Auto-deploy                    # Production!
+```
+
+⚠️ **Never push directly to `main`** - all changes go through Pull Requests.
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for full workflow details.
 
 ---
 
@@ -54,10 +76,15 @@ Then restart both backend and frontend.
 
 ```
 vitaltrack/
-├── vitaltrack-backend/          # FastAPI + PostgreSQL backend
-├── vitaltrack-mobile/           # React Native + Expo mobile app
-├── .github/workflows/           # CI/CD pipeline
-└── *.md                         # Documentation
+├── .github/
+│   ├── workflows/ci.yml       # CI/CD Pipeline
+│   ├── CODEOWNERS             # Auto-assign reviewers
+│   └── pull_request_template.md
+├── vitaltrack-backend/        # FastAPI + PostgreSQL (36 Python files)
+├── vitaltrack-mobile/         # React Native + Expo (40 TypeScript files)
+├── CONTRIBUTING.md            # Contribution guidelines
+├── NEW_DEVELOPER_ONBOARDING.md
+└── VITALTRACK_COMPLETE_DEVELOPER_GUIDE.md
 ```
 
 ---
@@ -67,7 +94,7 @@ vitaltrack/
 ### Backend
 - **FastAPI** - Modern Python web framework
 - **PostgreSQL 16** - Database
-- **SQLAlchemy 2.0** - ORM
+- **SQLAlchemy 2.0** - Async ORM
 - **Alembic** - Migrations
 - **Docker** - Containerization
 
@@ -79,9 +106,9 @@ vitaltrack/
 - **TypeScript** - Type safety
 
 ### DevOps
-- **Railway/Render** - Cloud hosting
+- **Railway** - Cloud hosting
 - **EAS Build** - Mobile builds
-- **GitHub Actions** - CI/CD
+- **GitHub Actions** - CI/CD with branch protection
 
 ---
 
@@ -112,28 +139,21 @@ API Documentation: `http://localhost:8000/docs`
 
 ## 🚢 Deployment
 
-### Backend (choose one)
+### Backend (Railway)
 ```bash
-# Railway
 railway login
 cd vitaltrack-backend
 railway init
 railway add  # Select PostgreSQL
 railway up
-
-# Render
-# Push to GitHub, connect repo in Render dashboard
 ```
 
-### Mobile App
+### Mobile App (EAS Build)
 ```bash
 cd vitaltrack-mobile
-
-# Preview build (testing)
-eas build --profile preview --platform android
-
-# Production build (Play Store)
-eas build --profile production --platform android
+eas login
+eas build --profile preview --platform android   # For testing
+eas build --profile production --platform android # For Play Store
 ```
 
 ---
@@ -161,15 +181,21 @@ EXPO_PUBLIC_API_URL=https://your-backend-url.com
 | Phase 1: Frontend | ✅ Complete |
 | Phase 2: Backend | ✅ Complete |
 | Phase 3: Deployment | ✅ Complete |
+| CI/CD & Branch Protection | ✅ Complete |
 
 ---
 
 ## 🤝 Contributing
 
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
+
+**Quick summary:**
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Make changes and test locally
+4. Push and create a Pull Request
+5. Pass CI checks and get review approval
+6. Merge!
 
 ---
 
@@ -179,3 +205,4 @@ This project is for educational and portfolio purposes.
 
 ---
 
+**Happy coding! 🚀**

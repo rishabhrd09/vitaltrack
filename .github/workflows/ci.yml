@@ -1,0 +1,357 @@
+# VitalTrack CI/CD Pipeline
+# ═══════════════════════════════════════════════════════════════════════════════
+# PROFESSIONAL WORKFLOW: Feature Branch → Pull Request → Review → Merge to Main
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# HOW IT WORKS:
+# 1. Developer creates feature branch: git checkout -b feature/my-feature
+# 2. Developer makes changes and pushes: git push origin feature/my-feature
+# 3. Developer creates Pull Request on GitHub
+# 4. CI runs tests automatically on the PR
+# 5. Code review is required (if branch protection enabled)
+# 6. All checks must pass before merge is allowed
+# 7. After merge to main → Production deployment triggers
+#
+# BRANCH NAMING CONVENTION:
+# - feature/description  → New features
+# - fix/description      → Bug fixes
+# - hotfix/description   → Urgent production fixes
+# - docs/description     → Documentation updates
+# - refactor/description → Code refactoring
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+name: CI/CD Pipeline
+
+on:
+  # Run on ALL pull requests targeting main
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  
+  # Run on push to main (after PR is merged)
+  push:
+    branches: [main]
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+# Cancel in-progress runs for the same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # =============================================================================
+  # BACKEND TESTS (Required for PR merge)
+  # =============================================================================
+  test-backend:
+    name: "Backend Tests"
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: vitaltrack-backend/requirements.txt
+      
+      - name: Install dependencies
+        run: |
+          cd vitaltrack-backend
+          pip install -r requirements.txt
+      
+      - name: Run linting (Ruff)
+        run: |
+          cd vitaltrack-backend
+          pip install ruff
+          ruff check app/ --output-format=github
+      
+      - name: Run type checking
+        run: |
+          cd vitaltrack-backend
+          pip install mypy types-python-jose types-passlib
+          mypy app/ --ignore-missing-imports || echo "Type hints review recommended"
+      
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
+          SECRET_KEY: test-secret-key-for-ci-testing-minimum-32-chars-long
+          ENVIRONMENT: testing
+        run: |
+          cd vitaltrack-backend
+          # Smoke test - verify app imports
+          python -c "from app.main import app; print('✅ Backend imports successfully')"
+          
+          # Run pytest if tests exist
+          if [ -d "tests" ]; then
+            pip install pytest pytest-asyncio httpx pytest-cov
+            python -m pytest tests/ -v --tb=short --cov=app --cov-report=term-missing
+          else
+            echo "ℹ️ No tests directory - running import verification only"
+          fi
+      
+      - name: Verify API endpoints
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
+          SECRET_KEY: test-secret-key-for-ci-testing-minimum-32-chars-long
+          ENVIRONMENT: testing
+        run: |
+          cd vitaltrack-backend
+          python -c "
+          from app.main import app
+          routes = [r.path for r in app.routes if hasattr(r, 'path')]
+          api_routes = [r for r in routes if r.startswith('/api/v1')]
+          print(f'✅ {len(api_routes)} API endpoints registered')
+          assert len(api_routes) >= 30, 'Expected at least 30 API endpoints'
+          "
+
+  # =============================================================================
+  # FRONTEND TESTS (Required for PR merge)
+  # =============================================================================
+  test-frontend:
+    name: "Frontend Tests"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: vitaltrack-mobile/package-lock.json
+      
+      - name: Install dependencies
+        run: |
+          cd vitaltrack-mobile
+          npm ci
+      
+      - name: Run TypeScript type check
+        run: |
+          cd vitaltrack-mobile
+          npx tsc --noEmit
+          echo "✅ TypeScript check passed"
+      
+      - name: Run ESLint
+        run: |
+          cd vitaltrack-mobile
+          npm run lint
+          echo "✅ ESLint check passed"
+      
+      - name: Verify Expo configuration
+        run: |
+          cd vitaltrack-mobile
+          npx expo-doctor || echo "Expo doctor completed"
+
+  # =============================================================================
+  # SECURITY SCAN (Runs on PRs)
+  # =============================================================================
+  security-scan:
+    name: "Security Scan"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'  # Don't fail on vulnerabilities (warning only)
+        continue-on-error: true
+
+  # =============================================================================
+  # PR STATUS CHECK (Gate for merging)
+  # =============================================================================
+  pr-check:
+    name: "PR Ready to Merge"
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: All checks passed
+        run: |
+          echo "✅ All required checks passed!"
+          echo "✅ Backend tests: PASSED"
+          echo "✅ Frontend tests: PASSED"
+          echo ""
+          echo "This PR is ready for code review and merge."
+
+  # =============================================================================
+  # DEPLOY BACKEND (Only after merge to main)
+  # =============================================================================
+  deploy-backend:
+    name: "Deploy Backend to Railway"
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for Railway token
+        id: check-token
+        run: |
+          if [ -n "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_token=false" >> $GITHUB_OUTPUT
+            echo "⚠️ RAILWAY_TOKEN not configured - skipping deployment"
+          fi
+      
+      - name: Deploy to Railway
+        if: steps.check-token.outputs.has_token == 'true'
+        uses: railwayapp/deploy-action@v1
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: vitaltrack-api
+      
+      - name: Deployment summary
+        if: steps.check-token.outputs.has_token == 'true'
+        run: |
+          echo "🚀 Backend deployed to Railway!"
+          echo "Environment: production"
+
+  # =============================================================================
+  # BUILD MOBILE PREVIEW (On PR for testing)
+  # =============================================================================
+  build-preview:
+    name: "Build Preview APK"
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for Expo token
+        id: check-token
+        run: |
+          if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_token=false" >> $GITHUB_OUTPUT
+            echo "⚠️ EXPO_TOKEN not configured - skipping build"
+          fi
+      
+      - name: Set up Node.js
+        if: steps.check-token.outputs.has_token == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup Expo
+        if: steps.check-token.outputs.has_token == 'true'
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      
+      - name: Install dependencies
+        if: steps.check-token.outputs.has_token == 'true'
+        run: |
+          cd vitaltrack-mobile
+          npm ci
+      
+      - name: Build Preview APK
+        if: steps.check-token.outputs.has_token == 'true'
+        run: |
+          cd vitaltrack-mobile
+          eas build --profile preview --platform android --non-interactive
+      
+      - name: Comment PR with build link
+        if: steps.check-token.outputs.has_token == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '📱 **Preview APK build started!**\n\nCheck [Expo Dashboard](https://expo.dev) for the build status and download link.'
+            })
+
+  # =============================================================================
+  # BUILD PRODUCTION (Only after merge to main)
+  # =============================================================================
+  build-production:
+    name: "Build Production AAB"
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, deploy-backend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for Expo token
+        id: check-token
+        run: |
+          if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_token=false" >> $GITHUB_OUTPUT
+            echo "⚠️ EXPO_TOKEN not configured - skipping build"
+          fi
+      
+      - name: Set up Node.js
+        if: steps.check-token.outputs.has_token == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup Expo
+        if: steps.check-token.outputs.has_token == 'true'
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      
+      - name: Install dependencies
+        if: steps.check-token.outputs.has_token == 'true'
+        run: |
+          cd vitaltrack-mobile
+          npm ci
+      
+      - name: Build Production AAB
+        if: steps.check-token.outputs.has_token == 'true'
+        run: |
+          cd vitaltrack-mobile
+          eas build --profile production --platform android --non-interactive
+      
+      - name: Create Release Tag
+        if: steps.check-token.outputs.has_token == 'true'
+        run: |
+          echo "🏷️ Production build completed"
+          echo "Ready for Play Store submission"
