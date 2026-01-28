@@ -52,7 +52,7 @@ export default function VitalTrackTopBar({
         if (isSearchExpanded) {
             setTimeout(() => searchInputRef.current?.focus(), 100);
         }
-    }, [isSearchExpanded]);
+    }, [isSearchExpanded, searchBarHeight]);
 
     const toggleSearch = () => {
         if (isSearchExpanded) {

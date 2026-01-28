@@ -11,7 +11,6 @@ import {
     TouchableOpacity,
     StyleSheet,
     Alert,
-    FlatList,
     Modal,
     TextInput,
     KeyboardAvoidingView,
@@ -43,7 +42,7 @@ export default function BuildInventoryScreen() {
     const getBackups = useAppStore((state) => state.getBackups);
     const restoreBackup = useAppStore((state) => state.restoreBackup);
     const startFresh = useAppStore((state) => state.startFresh);
-    const restoreSeedData = useAppStore((state) => state.restoreSeedData);
+    // const restoreSeedData = useAppStore((state) => state.restoreSeedData);
     const toggleItemCritical = useAppStore((state) => state.toggleItemCritical);
 
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
@@ -371,7 +370,7 @@ export default function BuildInventoryScreen() {
             if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(uri, { UTI: 'com.adobe.pdf', mimeType: 'application/pdf' });
             }
-        } catch (e) {
+        } catch (_e) {
             Alert.alert('Error', 'Failed to export PDF');
         }
     };

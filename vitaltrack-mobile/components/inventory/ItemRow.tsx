@@ -10,7 +10,7 @@ import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import type { Item } from '@/types';
 import { isOutOfStock, isLowStock, isCriticalEquipment } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
-import { formatDate } from '@/utils/helpers';
+
 
 interface ItemRowProps {
   item: Item;

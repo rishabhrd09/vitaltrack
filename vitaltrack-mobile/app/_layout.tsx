@@ -29,7 +29,7 @@ function useProtectedRoute() {
       // Redirect to home if authenticated and in auth group
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, authInitialized, segments]);
+  }, [isAuthenticated, authInitialized, segments, router]);
 }
 
 function RootLayoutContent() {
@@ -46,7 +46,7 @@ function RootLayoutContent() {
     // Initialize both stores
     initializeAuth();
     initializeApp();
-  }, []);
+  }, [initializeAuth, initializeApp]);
 
   // Show loading while initializing
   if (!isAppInitialized || !isAuthInitialized) {
@@ -69,7 +69,7 @@ function RootLayoutContent() {
       >
         {/* Auth screens */}
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        
+
         {/* Main app screens */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen

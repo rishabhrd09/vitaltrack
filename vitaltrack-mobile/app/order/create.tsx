@@ -20,7 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as Clipboard from 'expo-clipboard';
+
 import { readAsStringAsync } from 'expo-file-system/legacy';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeContext';
