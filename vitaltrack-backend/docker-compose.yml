@@ -1,0 +1,107 @@
+# VitalTrack Backend - Docker Compose
+# Local development environment with PostgreSQL
+#
+# =============================================================================
+# QUICK START (works out of the box for mobile testing):
+# =============================================================================
+#   docker-compose up --build
+#
+# That's it! CORS is configured to allow ALL origins by default for development.
+# This means your mobile phone can connect without any IP configuration.
+#
+# For production: Set specific CORS_ORIGINS in your hosting dashboard.
+# =============================================================================
+
+services:
+  # =============================================================================
+  # API SERVICE
+  # =============================================================================
+  api:
+    build:
+      context: .
+      target: production
+    container_name: vitaltrack-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/vitaltrack
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - DATABASE_USER=postgres
+      - SECRET_KEY=development-secret-key-change-in-production-min-32-chars
+      # =======================================================================
+      # CORS CONFIGURATION
+      # =======================================================================
+      # DEFAULT: ["*"] allows ALL origins - perfect for local development
+      # Your phone can connect to this backend without any configuration!
+      # For production: Set specific origins in Railway/Render environment vars
+      # =======================================================================
+      - CORS_ORIGINS=["*"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - vitaltrack-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # =============================================================================
+  # DATABASE SERVICE
+  # =============================================================================
+  db:
+    image: postgres:16-alpine
+    container_name: vitaltrack-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vitaltrack
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vitaltrack-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vitaltrack"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # =============================================================================
+  # DEVELOPMENT TOOLS (optional)
+  # =============================================================================
+  
+  # pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: vitaltrack-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@vitaltrack.app
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - vitaltrack-network
+    profiles:
+      - dev-tools  # Only start with --profile dev-tools
+
+# =============================================================================
+# NETWORKS & VOLUMES
+# =============================================================================
+networks:
+  vitaltrack-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

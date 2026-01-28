@@ -1,0 +1,95 @@
+# VitalTrack Backend - Development Docker Compose
+# Use: docker-compose -f docker-compose.dev.yml up --build
+# 
+# IMPORTANT: Before running, update YOUR_LOCAL_IP in this file!
+# Find your IP: 
+#   Windows: ipconfig | findstr /i "IPv4"
+#   Mac: ifconfig | grep "inet " | grep -v 127.0.0.1
+#   Linux: hostname -I | awk '{print $1}'
+
+services:
+  # =============================================================================
+  # API SERVICE (Development with hot-reload)
+  # =============================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: vitaltrack-api-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/vitaltrack
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - DATABASE_USER=postgres
+      - SECRET_KEY=development-secret-key-change-in-production-min-32-chars
+      # ========================================
+      # IMPORTANT: Replace YOUR_LOCAL_IP below!
+      # ========================================
+      - CORS_ORIGINS=["http://localhost:3000","http://localhost:8081","http://localhost:19006","http://10.0.2.2:8081","exp://localhost:8081","http://YOUR_LOCAL_IP:8081","exp://YOUR_LOCAL_IP:8081"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app  # Mount for hot-reload
+      - ./alembic:/app/alembic  # Mount migrations
+    networks:
+      - vitaltrack-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # =============================================================================
+  # DATABASE SERVICE
+  # =============================================================================
+  db:
+    image: postgres:16-alpine
+    container_name: vitaltrack-db-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vitaltrack
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - vitaltrack-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vitaltrack"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # =============================================================================
+  # pgAdmin (Optional - Database GUI)
+  # =============================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: vitaltrack-pgadmin-dev
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@vitaltrack.app
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - vitaltrack-network
+    profiles:
+      - tools  # Only start with: docker-compose -f docker-compose.dev.yml --profile tools up
+
+networks:
+  vitaltrack-network:
+    driver: bridge
+
+volumes:
+  postgres_data_dev:
