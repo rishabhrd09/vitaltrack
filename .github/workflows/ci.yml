@@ -146,7 +146,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd vitaltrack-mobile
-          npm ci
+          npm install --legacy-peer-deps
       
       - name: Run TypeScript type check
         run: |
@@ -281,7 +281,7 @@ jobs:
         if: steps.check-token.outputs.has_token == 'true'
         run: |
           cd vitaltrack-mobile
-          npm ci
+          npm install --legacy-peer-deps
       
       - name: Build Preview APK
         if: steps.check-token.outputs.has_token == 'true'
@@ -342,7 +342,7 @@ jobs:
         if: steps.check-token.outputs.has_token == 'true'
         run: |
           cd vitaltrack-mobile
-          npm ci
+          npm install --legacy-peer-deps
       
       - name: Build Production AAB
         if: steps.check-token.outputs.has_token == 'true'
