@@ -6,7 +6,7 @@ CRUD operations for inventory categories
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import func, select
 
-from app.api.deps import DB, CurrentUser, Pagination
+from app.api.deps import DB, CurrentUser
 from app.models import ActivityActionType, ActivityLog, Category, Item
 from app.schemas import (
     CategoryCreate,
@@ -71,7 +71,7 @@ async def list_categories_with_counts(
             Category,
             func.count(Item.id).label("item_count"),
         )
-        .outerjoin(Item, (Item.category_id == Category.id) & (Item.is_active == True))
+        .outerjoin(Item, (Item.category_id == Category.id) & (Item.is_active.is_(True)))
         .where(Category.user_id == current_user.id)
         .group_by(Category.id)
         .order_by(Category.display_order)

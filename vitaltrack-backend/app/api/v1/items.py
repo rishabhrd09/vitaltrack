@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import and_, or_, select
 
-from app.api.deps import DB, CurrentUser, Pagination
+from app.api.deps import DB, CurrentUser
 from app.models import ActivityActionType, ActivityLog, Category, Item
 from app.schemas import (
     ItemCreate,
@@ -126,7 +126,7 @@ async def get_item_stats(
     result = await db.execute(
         select(Item).where(
             Item.user_id == current_user.id,
-            Item.is_active == True,
+            Item.is_active.is_(True),
         )
     )
     items = result.scalars().all()
@@ -184,7 +184,7 @@ async def get_items_needing_attention(
         select(Item)
         .where(
             Item.user_id == current_user.id,
-            Item.is_active == True,
+            Item.is_active.is_(True),
             or_(
                 Item.quantity <= 0,
                 Item.quantity < Item.minimum_stock,

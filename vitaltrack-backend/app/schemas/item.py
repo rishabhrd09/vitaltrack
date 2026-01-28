@@ -6,7 +6,7 @@ Pydantic models for item operations (matches frontend types)
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator, HttpUrl
+from pydantic import BaseModel, Field, field_validator
 import re
 
 

@@ -4,9 +4,7 @@ Offline-first synchronization endpoints
 """
 
 from datetime import datetime, timezone
-from typing import Optional
-
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 from sqlalchemy import or_, select
 
 from app.api.deps import DB, CurrentUser
@@ -16,7 +14,6 @@ from app.models import (
     Category,
     Item,
     Order,
-    OrderItem,
     OrderStatus,
 )
 from app.schemas import (

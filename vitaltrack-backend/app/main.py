@@ -16,7 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from app.api.v1 import router as api_v1_router
 from app.core.config import settings
 from app.core.database import create_tables, dispose_engine
-from app.schemas import ErrorResponse, HealthCheck
+from app.schemas import HealthCheck
 from app.utils.rate_limiter import limiter
 
 

@@ -9,9 +9,9 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from app.schemas.category import CategoryCreate, CategoryResponse
-from app.schemas.item import ItemCreate, ItemResponse
-from app.schemas.order import OrderCreate, OrderResponse
+from app.schemas.category import CategoryResponse
+from app.schemas.item import ItemResponse
+from app.schemas.order import OrderResponse
 
 
 class SyncOperationType(str, Enum):
