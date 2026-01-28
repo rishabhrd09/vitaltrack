@@ -370,7 +370,7 @@ export default function BuildInventoryScreen() {
             if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(uri, { UTI: 'com.adobe.pdf', mimeType: 'application/pdf' });
             }
-        } catch (_e) {
+        } catch {
             Alert.alert('Error', 'Failed to export PDF');
         }
     };

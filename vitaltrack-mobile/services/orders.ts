@@ -4,7 +4,7 @@
  */
 
 import { api } from './api';
-import type { SavedOrder, OrderItem, OrderStatus } from '@/types';
+import type { SavedOrder, OrderStatus } from '@/types';
 
 // Response types
 interface OrdersListResponse {
