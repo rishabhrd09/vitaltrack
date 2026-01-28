@@ -45,7 +45,7 @@ export const colors = {
   // ============================================================================
   // STATUS SYSTEM - Muted, professional (NOT alarming!)
   // ============================================================================
-  
+
   // Success/Good - Muted sage green
   statusGreen: '#7BC98C',
   statusGreenHover: '#6AB97C',
@@ -81,6 +81,23 @@ export const colors = {
   // White for icons on colored backgrounds
   white: '#FFFFFF',
   transparent: 'transparent',
+
+  // ============================================================================
+  // ALIAS PROPERTIES (for backward compatibility with auth screens)
+  // ============================================================================
+  background: '#121214',    // Alias for bgPrimary
+  text: '#F0F0F2',          // Alias for textPrimary
+  primary: '#5B9CF6',       // Alias for accentBlue
+  success: '#7BC98C',       // Alias for statusGreen
+  error: '#A65D5D',         // Alias for statusRed
+  warning: '#A68A5D',       // Alias for statusOrange
+  info: '#5B9CF6',          // Alias for accentBlue
+  border: '#2A2A2E',        // Alias for borderPrimary
+  surface: '#1E1E22',       // Alias for bgCard
+  card: '#1E1E22',          // Alias for bgCard
+  muted: '#A8A8B0',         // Alias for textSecondary
+  accent: '#5B9CF6',        // Alias for accentBlue
 };
 
 export type ColorKeys = keyof typeof colors;
+
