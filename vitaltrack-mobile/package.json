@@ -40,11 +40,12 @@
     "expo-secure-store": "~15.0.8",
     "@react-native-community/netinfo": "11.4.1"
   },
-  "@babel/core": "^7.24.0",
-  "@types/react": "~19.1.10",
-  "eslint": "^8.57.0",
-  "eslint-config-expo": "~8.0.1",
-  "typescript": "~5.9.2"
-},
-"private": true
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@types/react": "~19.1.10",
+    "eslint": "^8.57.0",
+    "eslint-config-expo": "~8.0.1",
+    "typescript": "~5.9.2"
+  },
+  "private": true
 }
