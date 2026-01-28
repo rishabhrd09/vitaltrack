@@ -83,21 +83,24 @@ export const colors = {
   transparent: 'transparent',
 
   // ============================================================================
-  // ALIAS PROPERTIES (for backward compatibility with auth screens)
+  // ALIAS PROPERTIES (Required by auth screens & ThemeContext)
+  // These map old property names to new ones for backward compatibility
   // ============================================================================
-  background: '#121214',    // Alias for bgPrimary
-  text: '#F0F0F2',          // Alias for textPrimary
-  primary: '#5B9CF6',       // Alias for accentBlue
-  success: '#7BC98C',       // Alias for statusGreen
-  error: '#A65D5D',         // Alias for statusRed
-  warning: '#A68A5D',       // Alias for statusOrange
-  info: '#5B9CF6',          // Alias for accentBlue
-  border: '#2A2A2E',        // Alias for borderPrimary
-  surface: '#1E1E22',       // Alias for bgCard
-  card: '#1E1E22',          // Alias for bgCard
-  muted: '#A8A8B0',         // Alias for textSecondary
-  accent: '#5B9CF6',        // Alias for accentBlue
+  background: '#121214',     // Alias for bgPrimary
+  text: '#F0F0F2',           // Alias for textPrimary
+  primary: '#5B9CF6',        // Alias for accentBlue
+  success: '#7BC98C',        // Alias for statusGreen
+  error: '#A65D5D',          // Alias for statusRed
+  warning: '#A68A5D',        // Alias for statusOrange
+  info: '#5B9CF6',           // Alias for accentBlue
+  border: '#2A2A2E',         // Alias for borderPrimary
+  surface: '#1E1E22',        // Alias for bgCard
+  card: '#1E1E22',           // Alias for bgCard
+  muted: '#A8A8B0',          // Alias for textSecondary
+  accent: '#5B9CF6',         // Alias for accentBlue
 };
 
-export type ColorKeys = keyof typeof colors;
-
+// Export the Colors type
+export type Colors = typeof colors;
+// Default export
+export default colors;

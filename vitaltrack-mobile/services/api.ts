@@ -96,7 +96,7 @@ async function refreshAccessToken(): Promise<string | null> {
             return null;
         }
 
-        const data: RefreshResponse = await response.json();
+        const data: RefreshResponse = (await response.json()) as unknown as RefreshResponse;
         await tokenStorage.setTokens(data.access_token, data.refresh_token);
         return data.access_token;
     } catch {
@@ -120,9 +120,9 @@ class ApiClient {
     ): Promise<T> {
         const url = `${this.baseUrl}${API_VERSION}${endpoint}`;
 
-        const headers: HeadersInit = {
+        const headers: Record<string, string> = {
             'Content-Type': 'application/json',
-            ...options.headers,
+            ...(options.headers as Record<string, string>),
         };
 
         // Add auth header if required
@@ -176,7 +176,7 @@ class ApiClient {
         let data: T | ApiError | null = null;
 
         if (contentType?.includes('application/json')) {
-            data = await response.json();
+            data = (await response.json()) as unknown as T;
         }
 
         if (!response.ok) {
