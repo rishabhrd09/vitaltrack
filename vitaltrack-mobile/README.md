@@ -29,7 +29,7 @@ npm install --legacy-peer-deps
 npx expo start --clear
 ```
 
-> **IMPORTANT:** Always use `--legacy-peer-deps` flag. Regular `npm install` will fail due to React 19 peer dependency conflicts.
+> **IMPORTANT:** Always use `--legacy-peer-deps` flag. Regular `npm install` will fail due to React 19 peer dependency conflicts. You will see several "deprecated" warnings during install—this is normal and safe to ignore.
 
 ### Run on Device
 

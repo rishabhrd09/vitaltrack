@@ -188,6 +188,7 @@ docker-compose up --build
 cd vitaltrack-mobile
 npm install --legacy-peer-deps
 npx expo start --clear
+# Note: You will see "deprecated" warnings. This is normal for React Native.
 ```
 
 ### Step 4: Test on Phone

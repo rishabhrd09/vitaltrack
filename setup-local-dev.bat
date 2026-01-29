@@ -94,7 +94,7 @@ echo     Open in browser: http://%LOCAL_IP%:8000/health
 echo.
 echo   STEP 4 - Start the frontend (in Command Prompt 2):
 echo     cd vitaltrack-mobile
-echo     npm install
+echo     npm install --legacy-peer-deps
 echo     npx expo start --clear
 echo.
 echo   STEP 5 - Test on your phone:

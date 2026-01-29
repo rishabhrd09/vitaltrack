@@ -55,7 +55,8 @@ setup-local-dev.bat     # Windows
 
 # Then start frontend
 cd vitaltrack-mobile
-npm install
+npm install --legacy-peer-deps
+# Note: You will see "deprecated" warnings. This is normal for React Native.
 npx expo start --clear
 ```
 
