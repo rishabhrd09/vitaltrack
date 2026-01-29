@@ -49,8 +49,12 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy application code
 COPY --chown=appuser:appgroup . .
 
-# Make entrypoint executable
-RUN chmod +x docker-entrypoint.sh
+# Make entrypoint executable and fix Windows line endings
+RUN apt-get update && apt-get install -y dos2unix && \
+    dos2unix docker-entrypoint.sh && \
+    chmod +x docker-entrypoint.sh && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Switch to non-root user
 USER appuser
