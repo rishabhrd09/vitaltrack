@@ -189,6 +189,7 @@ cd vitaltrack-mobile
 npm install --legacy-peer-deps
 npx expo start --clear
 # Note: You will see "deprecated" warnings. This is normal for React Native.
+# Note: You may be asked to log in to Expo/EAS on first run. Use your Expo account.
 ```
 
 ### Step 4: Test on Phone

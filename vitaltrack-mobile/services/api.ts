@@ -133,7 +133,26 @@ class ApiClient {
             }
         }
 
-        let response = await fetch(url, { ...options, headers });
+        let response: Response;
+        try {
+            response = await fetch(url, { ...options, headers });
+        } catch (error) {
+            console.error(`[API] Connection Failure: ${url}`, error);
+            const err = error as Error;
+            // Handle standard "Network request failed"
+            if (err.message === 'Network request failed' || err instanceof TypeError) {
+                throw new ApiClientError(
+                    `Starting Request to: ${url}\nFAILED: The app cannot reach the server.` +
+                    `\n\nCHECK THIS:` +
+                    `\n1. Windows Firewall? (Allow Port 8000)` +
+                    `\n2. Same WiFi? (Phone & PC must match)` +
+                    `\n3. Wrong IP? (Running on localhost?)`,
+                    0,
+                    { url, originalError: err.message }
+                );
+            }
+            throw error;
+        }
 
         // Handle 401 - try to refresh token
         if (response.status === 401 && requiresAuth) {
