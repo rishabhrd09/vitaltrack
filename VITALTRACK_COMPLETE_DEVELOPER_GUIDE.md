@@ -155,6 +155,8 @@ This creates `vitaltrack-mobile/.env` with your IP address.
 
 ```bash
 cd vitaltrack-backend
+copy .env.example .env    # Windows
+# OR: cp .env.example .env  # Mac/Linux
 docker-compose up --build
 ```
 
@@ -166,7 +168,7 @@ docker-compose up --build
 
 ```bash
 cd vitaltrack-mobile
-npm install
+npm install --legacy-peer-deps
 npx expo start --clear
 ```
 
@@ -523,7 +525,7 @@ After enabling branch protection:
 #### Step 2: Add PostgreSQL
 
 1. Click **"+ New"** → **Database** → **PostgreSQL**
-2. Railway auto-sets `DATABASE_URL`
+2. Railway auto-sets `DATABASE_URL` (no manual config needed)
 
 #### Step 3: Set Environment Variables
 
