@@ -91,14 +91,14 @@ npm install --legacy-peer-deps
 # 3. Create environment file with YOUR IP
 # IMPORTANT: Replace 192.168.1.15 with YOUR actual IP!
 
-# Windows (PowerShell) - Safe method preventing encoding issues:
+# Windows (PowerShell) - Recommended:
 "EXPO_PUBLIC_API_URL=http://192.168.1.15:8000" | Out-File -FilePath .env -Encoding utf8
 
-# Windows (CMD):
-# echo EXPO_PUBLIC_API_URL=http://192.168.1.15:8000> .env
+# Windows (Command Prompt):
+echo EXPO_PUBLIC_API_URL=http://192.168.1.15:8000 > .env
 
 # Mac/Linux:
-# echo "EXPO_PUBLIC_API_URL=http://192.168.1.15:8000" > .env
+echo "EXPO_PUBLIC_API_URL=http://192.168.1.15:8000" > .env
 ```
 
 ---
