@@ -8,7 +8,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Docker Desktop installed and running
@@ -38,7 +38,7 @@ vitaltrack-db     Up (healthy)    0.0.0.0:5432->5432/tcp
 
 ---
 
-## 📖 Documentation
+## Documentation
 
 | Document | Description |
 |----------|-------------|
@@ -47,7 +47,7 @@ vitaltrack-db     Up (healthy)    0.0.0.0:5432->5432/tcp
 
 ---
 
-## 🔧 Technology Stack
+## Technology Stack
 
 | Component | Technology |
 |-----------|------------|
@@ -60,7 +60,7 @@ vitaltrack-db     Up (healthy)    0.0.0.0:5432->5432/tcp
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 vitaltrack-backend/
@@ -78,7 +78,7 @@ vitaltrack-backend/
 
 ---
 
-## 🔐 API Endpoints (34 Total)
+## API Endpoints (34 Total)
 
 ### Authentication (11 endpoints)
 | Method | Endpoint | Description |
@@ -136,7 +136,7 @@ vitaltrack-backend/
 
 ---
 
-## 🐳 Docker Commands
+## Docker Commands
 
 ```bash
 # Start services
@@ -155,7 +155,7 @@ docker-compose up -d --build
 
 ---
 
-## 🔧 Local Development (Without Docker)
+## Local Development (Without Docker)
 
 ```bash
 # Create virtual environment
@@ -179,7 +179,7 @@ uvicorn app.main:app --reload --port 8000
 
 ---
 
-## 🚢 Deployment
+## Deployment
 
 ### Railway
 ```bash
@@ -197,7 +197,7 @@ railway up
 
 ---
 
-## 🔑 Environment Variables
+## Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -209,7 +209,7 @@ railway up
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run tests
@@ -221,4 +221,4 @@ pytest --cov=app --cov-report=html
 
 ---
 
-**VitalTrack Backend v1.0.0** | Phase 3 Complete ✅
+**VitalTrack Backend v1.0.0** | Phase 3 Complete

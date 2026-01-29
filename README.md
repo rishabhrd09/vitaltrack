@@ -1,4 +1,4 @@
-# 🏥 VitalTrack - Medical Inventory Management
+# VitalTrack - Medical Inventory Management
 
 > A complete mobile application for families managing home ICU medical supplies.
 
@@ -9,7 +9,7 @@
 
 ---
 
-## 🚀 Quick Start (5 Minutes)
+## Quick Start (5 Minutes)
 
 ### Prerequisites
 - [Node.js 20+](https://nodejs.org/)
@@ -41,17 +41,18 @@ Then restart both backend and frontend.
 
 ---
 
-## 📖 Documentation
+## Documentation
 
 | Document | Description |
 |----------|-------------|
 | [NEW_DEVELOPER_ONBOARDING.md](./NEW_DEVELOPER_ONBOARDING.md) | **New developers start here!** Quick onboarding guide |
+| [INTEGRATION_TESTING_GUIDE.md](./INTEGRATION_TESTING_GUIDE.md) | **How to test locally:** Frontend (Phone) + Backend (Docker) |
 | [VITALTRACK_COMPLETE_DEVELOPER_GUIDE.md](./VITALTRACK_COMPLETE_DEVELOPER_GUIDE.md) | Complete guide: setup, workflow, deployment, and more |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | How to contribute: branching, PRs, code review |
 
 ---
 
-## 🔄 Development Workflow
+## Development Workflow
 
 We use a **professional PR-based workflow**:
 
@@ -66,13 +67,13 @@ We use a **professional PR-based workflow**:
 8. Merge → Auto-deploy                    # Production!
 ```
 
-⚠️ **Never push directly to `main`** - all changes go through Pull Requests.
+**Never push directly to `main`** - all changes go through Pull Requests.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for full workflow details.
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 vitaltrack/
@@ -89,7 +90,7 @@ vitaltrack/
 
 ---
 
-## 🔧 Technology Stack
+## Technology Stack
 
 ### Backend
 - **FastAPI** - Modern Python web framework
@@ -112,7 +113,7 @@ vitaltrack/
 
 ---
 
-## 📱 Features
+## Features
 
 - ✅ **Inventory Management** - Track medical supplies by category
 - ✅ **Low Stock Alerts** - Visual indicators for items below minimum
@@ -123,7 +124,7 @@ vitaltrack/
 
 ---
 
-## 🔐 API Endpoints (34 Total)
+## API Endpoints (34 Total)
 
 | Category | Endpoints |
 |----------|-----------|
@@ -137,7 +138,7 @@ API Documentation: `http://localhost:8000/docs`
 
 ---
 
-## 🚢 Deployment
+## Deployment
 
 ### Backend (Railway)
 ```bash
@@ -158,7 +159,7 @@ eas build --profile production --platform android # For Play Store
 
 ---
 
-## 🔑 Environment Variables
+## Environment Variables
 
 ### Backend
 ```env
@@ -174,7 +175,7 @@ EXPO_PUBLIC_API_URL=https://your-backend-url.com
 
 ---
 
-## 📊 Development Status
+## Development Status
 
 | Phase | Status |
 |-------|--------|
@@ -185,7 +186,7 @@ EXPO_PUBLIC_API_URL=https://your-backend-url.com
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
 
@@ -199,10 +200,10 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## 📄 License
+## License
 
 This project is for educational and portfolio purposes.
 
 ---
 
-**Happy coding! 🚀**
+**Happy coding!**

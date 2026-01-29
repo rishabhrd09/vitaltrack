@@ -1,10 +1,10 @@
-# 🆕 VitalTrack: New Developer Onboarding Guide
+# VitalTrack: New Developer Onboarding Guide
 
 **Quick Start for New Developers Joining the Project**
 
 ---
 
-## 🎯 Your First Day Checklist
+## Your First Day Checklist
 
 Complete these steps in order:
 
@@ -63,13 +63,13 @@ npx expo start --clear
 
 1. Scan QR with Expo Go
 2. Tap "Create Account"
-3. See Dashboard = ✅ Success!
+3. See Dashboard = Success!
 
 ---
 
 ## Step 3: Make Your First Change
 
-### 🚨 IMPORTANT: Never Push to Main!
+### IMPORTANT: Never Push to Main!
 
 Always create a feature branch:
 
@@ -126,16 +126,16 @@ Your PR
 
 ---
 
-## 🔑 Key Rules
+## Key Rules
 
-### DO ✅
+### DO
 
 - Create feature branches for ALL changes
 - Write descriptive commit messages
 - Test locally before pushing
 - Keep PRs small and focused
 
-### DON'T ❌
+### DON'T
 
 - Push directly to `main`
 - Merge your own PRs (get review first)
@@ -183,10 +183,10 @@ git rebase main
 
 ## Getting Help
 
-- 📖 Full guide: `VITALTRACK_COMPLETE_DEVELOPER_GUIDE.md`
-- 📝 Contributing: `CONTRIBUTING.md`
-- 🐛 Issues: Open on GitHub
-- 💬 Questions: Tag `@rishabhrd09`
+- Full guide: `VITALTRACK_COMPLETE_DEVELOPER_GUIDE.md`
+- Contributing: `CONTRIBUTING.md`
+- Issues: Open on GitHub
+- Questions: Tag `@rishabhrd09`
 
 ---
 
@@ -201,4 +201,4 @@ git rebase main
 
 ---
 
-**Welcome to the team! 🎉**
+**Welcome to the team!**

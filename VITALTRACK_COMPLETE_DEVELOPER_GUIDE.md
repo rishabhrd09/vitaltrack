@@ -1,4 +1,4 @@
-# 🏥 VitalTrack: Complete Developer Guide
+# VitalTrack: Complete Developer Guide
 
 ## Professional Development Workflow - From Clone to Production
 
@@ -6,7 +6,7 @@
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 1. [Introduction](#1-introduction)
 2. [Prerequisites](#2-prerequisites)
@@ -35,18 +35,18 @@ VitalTrack is a **medical inventory management system** for families managing ho
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           VITALTRACK ARCHITECTURE                            │
+│                           VITALTRACK ARCHITECTURE                           │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   📱 MOBILE APP                              🖥️ BACKEND API                 │
-│   ─────────────                              ──────────────                  │
+│                                                                             │
+│     MOBILE APP                                 BACKEND API                  │
+│   ─────────────                              ──────────────                 │
 │   React Native + Expo SDK 54                 FastAPI + Python 3.11          │
 │   TypeScript                                 PostgreSQL 16                  │
 │   Zustand (State)                            SQLAlchemy 2.0 (Async)         │
 │   Expo Router                                JWT + Argon2 (Auth)            │
-│                                                                              │
-│                    ◄──── 34 REST API Endpoints ────►                        │
-│                                                                              │
+│                                                                             │
+│                         34 REST API Endpoints                               │
+│                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -181,7 +181,7 @@ npx expo start --clear
 
 ## 5. Professional Git Workflow
 
-### 🚨 IMPORTANT: Never Push Directly to Main
+### IMPORTANT: Never Push Directly to Main
 
 In professional development, you **never** push directly to the `main` branch. Instead:
 
@@ -370,7 +370,7 @@ Add expiry date notifications for items nearing expiration.
 │                                                                              │
 │   3. MERGE REQUIREMENTS                                                      │
 │      All must be true:                                                       │
-│      ☑️ All CI checks pass                                                   │
+│      - All CI checks pass                                                   │
 │      ☑️ At least 1 approval from reviewer                                    │
 │      ☑️ No merge conflicts                                                   │
 │      ☑️ Branch is up to date with main                                       │
@@ -464,7 +464,7 @@ CI will re-run automatically.
 
 ## 9. Branch Protection Setup
 
-### ⚠️ CRITICAL: Protect Your Main Branch
+### CRITICAL: Protect Your Main Branch
 
 Without branch protection, anyone can push directly to main. Set up protection rules:
 
@@ -480,22 +480,22 @@ Without branch protection, anyone can push directly to main. Set up protection r
 3. **Enable These Settings:**
 
    ```
-   ☑️ Require a pull request before merging
-      ☑️ Require approvals: 1
-      ☑️ Dismiss stale pull request approvals when new commits are pushed
+   - Require a pull request before merging
+      - Require approvals: 1
+      - Dismiss stale pull request approvals when new commits are pushed
    
-   ☑️ Require status checks to pass before merging
-      ☑️ Require branches to be up to date before merging
+   - Require status checks to pass before merging
+      - Require branches to be up to date before merging
       Add status checks:
-        • test-backend
-        • test-frontend
+        - test-backend
+        - test-frontend
    
-   ☑️ Require conversation resolution before merging
+   - Require conversation resolution before merging
    
-   ☑️ Do not allow bypassing the above settings
+   - Do not allow bypassing the above settings
    
-   ☐ Allow force pushes (keep UNCHECKED)
-   ☐ Allow deletions (keep UNCHECKED)
+   - Allow force pushes (keep UNCHECKED)
+   - Allow deletions (keep UNCHECKED)
    ```
 
 4. **Click "Create"**
@@ -504,8 +504,8 @@ Without branch protection, anyone can push directly to main. Set up protection r
 
 After enabling branch protection:
 
-- ❌ `git push origin main` → **REJECTED**
-- ✅ Create PR → Pass checks → Get review → Merge → **ALLOWED**
+- `git push origin main` -> **REJECTED**
+- Create PR -> Pass checks -> Get review -> Merge -> **ALLOWED**
 
 ---
 
@@ -543,7 +543,7 @@ Example: `https://vitaltrack-api.up.railway.app`
 
 ## 11. Mobile Builds
 
-### ⚠️ CRITICAL: Update app.json First
+### CRITICAL: Update app.json First
 
 ```bash
 cd vitaltrack-mobile
@@ -741,4 +741,4 @@ This guide implements **professional development practices**:
 
 ---
 
-*Happy coding! 🚀*
+*Happy coding!*

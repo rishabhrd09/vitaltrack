@@ -4,7 +4,7 @@ Thank you for your interest in contributing to VitalTrack! This document explain
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 1. [Development Workflow](#development-workflow)
 2. [Branch Naming Convention](#branch-naming-convention)
@@ -146,10 +146,10 @@ git push origin feature/your-feature-name
 For a PR to be merged, it must:
 
 1. **Pass all CI checks:**
-   - ✅ Backend tests pass
-   - ✅ Frontend tests pass
-   - ✅ TypeScript compilation succeeds
-   - ✅ Linting passes
+   - Backend tests pass
+   - Frontend tests pass
+   - TypeScript compilation succeeds
+   - Linting passes
 
 2. **Have code review approval:**
    - At least 1 approval from code owner
@@ -300,4 +300,4 @@ Add to your `~/.gitconfig`:
 - Tag `@rishabhrd09` for questions
 - Check existing PRs for examples
 
-Happy coding! 🚀
+Happy coding!

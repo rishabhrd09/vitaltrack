@@ -1,224 +1,170 @@
-# 📱 VitalTrack - Manual Integration Testing Guide
+# VitalTrack Local Integration Testing Guide
 
-> Step-by-step guide to test backend + frontend integration on Expo Go
+> **Goal:** Test the Frontend (Expo Go on phone) + Backend (Docker on PC) working together over WiFi.
 
----
-
-## 🔧 Prerequisites
-
-| Requirement | Status |
-|-------------|--------|
-| Docker Desktop | Running |
-| Node.js 18+ | Installed |
-| Expo Go app | Installed on phone |
-| Phone & PC on same WiFi | Verified |
+This guide provides step-by-step commands to test your complete application locally before pushing to GitHub.
 
 ---
 
-## Step 1: Find Your Computer's IP Address
+## Prerequisites
 
-### Windows (PowerShell)
-```powershell
-ipconfig | Select-String "IPv4"
-```
-Look for: `IPv4 Address. . . . : 192.168.X.X`
+Before starting, ensure you have:
 
-### Mac/Linux
-```bash
-ipconfig getifaddr en0    # Mac
-hostname -I                # Linux
-```
-
-**Write down your IP:** `_____________`
+| Requirement | How to Verify | Install Link |
+|-------------|---------------|--------------|
+| **Git** | `git --version` | [git-scm.com](https://git-scm.com/) |
+| **Docker Desktop** | Running in system tray | [docker.com](https://www.docker.com/products/docker-desktop/) |
+| **Node.js 20+** | `node --version` | [nodejs.org](https://nodejs.org/) |
+| **Expo Go App** | Installed on phone | [Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent) / [App Store](https://apps.apple.com/app/expo-go/id982107779) |
+| **Same WiFi** | Phone & PC connected | - |
 
 ---
 
-## Step 2: Start Backend
+## Step-by-Step Setup
+
+### Step 1: Backend Setup (The "Server")
+
+We run the FastAPI backend and PostgreSQL database in Docker containers.
 
 ```powershell
-cd d:\rd_projects_yt\mobile_app_chai_yt\android_home_icu\first_claude_draft\backedn_claude_1\phase3\latest\final_latest\final_backup\vitaltrack-production-ready\vitaltrack-backend
+# 1. Enter backend directory
+cd vitaltrack-backend
 
-# Start Docker containers
+# 2. Create environment file from template
+copy .env.example .env
+# (Mac/Linux: cp .env.example .env)
+
+# 3. Start Docker containers
+# This downloads images, builds the API, and starts everything
 docker-compose up -d --build
 
-# Wait 15 seconds, then verify
+# 4. Wait 30 seconds for initialization, then verify
 docker-compose ps
+# Should show 2 containers: api (running), postgres (running)
+
+# 5. (Optional) Force run database migrations
+docker-compose exec api alembic upgrade head
 ```
 
-**Expected output:**
-```
-NAME              STATUS          PORTS
-vitaltrack-api    Up (healthy)    0.0.0.0:8000->8000/tcp
-vitaltrack-db     Up (healthy)    0.0.0.0:5432->5432/tcp
-```
+**Verify Backend:** Open http://localhost:8000/docs in your browser.  
+You should see the **Swagger UI** with all API endpoints.
 
-**Verify API is running:**
-```powershell
-curl http://localhost:8000/health
-```
-Should return: `{"status":"healthy"...}`
+**Verify Health:** http://localhost:8000/health should return `{"status": "healthy"}`
 
 ---
 
-## Step 3: Configure Frontend for Your IP
+### Step 2: Find Your PC's IP Address (The "Bridge")
+
+Your phone needs to know your PC's IP address to connect to the local backend.
 
 ```powershell
-cd d:\rd_projects_yt\mobile_app_chai_yt\android_home_icu\first_claude_draft\backedn_claude_1\phase3\latest\final_latest\final_backup\vitaltrack-production-ready\vitaltrack-mobile
+# Windows
+ipconfig
 
-# Create/update .env file with YOUR IP address
-echo "EXPO_PUBLIC_API_URL=http://YOUR_IP_HERE:8000" > .env
+# Look for this section:
+# Wireless LAN adapter Wi-Fi:
+#    IPv4 Address. . . . . . . . . . . : 192.168.1.15  ← THIS IS YOUR IP
 ```
 
-**Example (replace with your IP):**
-```powershell
-echo "EXPO_PUBLIC_API_URL=http://192.168.1.100:8000" > .env
+```bash
+# Mac/Linux
+ifconfig | grep "inet " | grep -v 127.0.0.1
+# or
+ip addr show | grep "inet " | grep -v 127.0.0.1
 ```
+
+**Write down your IP address** (e.g., `192.168.1.15`). You'll need it next.
 
 ---
 
-## Step 4: Start Frontend
+### Step 3: Frontend Setup (The "App")
+
+Configure the mobile app to point to your PC's backend.
 
 ```powershell
-cd d:\rd_projects_yt\mobile_app_chai_yt\android_home_icu\first_claude_draft\backedn_claude_1\phase3\latest\final_latest\final_backup\vitaltrack-production-ready\vitaltrack-mobile
+# 1. Enter mobile directory
+cd ..\vitaltrack-mobile
 
-# Install dependencies (if not already done)
+# 2. Install dependencies
 npm install --legacy-peer-deps
 
-# Start Expo
+# 3. Create environment file with YOUR IP
+# IMPORTANT: Replace 192.168.1.15 with YOUR actual IP!
+
+# Windows (PowerShell) - Safe method preventing encoding issues:
+"EXPO_PUBLIC_API_URL=http://192.168.1.15:8000" | Out-File -FilePath .env -Encoding utf8
+
+# Windows (CMD):
+# echo EXPO_PUBLIC_API_URL=http://192.168.1.15:8000> .env
+
+# Mac/Linux:
+# echo "EXPO_PUBLIC_API_URL=http://192.168.1.15:8000" > .env
+```
+
+---
+
+### Step 4: Launch & Test
+
+```powershell
+# Start Expo development server
 npx expo start --clear
 ```
 
-**If network issues, use tunnel mode:**
+1. **Open Expo Go** app on your phone
+2. **Scan the QR code** displayed in terminal
+3. **Wait** for the app to bundle and load (~30 seconds first time)
+
+---
+
+## Verification Checklist
+
+Test each scenario to confirm the integration works:
+
+| # | Test | Action | Expected Result |
+|---|------|--------|-----------------|
+| 1 | **Backend Health** | Visit http://localhost:8000/health | `{"status": "healthy"}` |
+| 2 | **Register User** | Create account in app | Backend logs: `POST /api/v1/auth/register 200` |
+| 3 | **Login** | Login with new account | Dashboard loads successfully |
+| 4 | **Create Category** | Add a new category | Appears in category list |
+| 5 | **Create Item** | Add inventory item | Visible in http://localhost:8000/docs → GET /items |
+| 6 | **Offline Mode** | Turn off phone WiFi | App continues working (cached data) |
+| 7 | **Sync** | Turn WiFi back on | Data syncs automatically |
+
+---
+
+## Troubleshooting
+
+| Issue | Possible Causes | Solutions |
+|-------|-----------------|-----------|
+| **"Network request failed"** | Wrong IP / Firewall / Different WiFi | 1. Verify IP in `.env` matches `ipconfig` output<br>2. Check phone & PC on same WiFi<br>3. Temporarily disable Windows Firewall<br>4. Allow Docker through firewall |
+| **"Connection refused"** | Docker not running | 1. Check Docker Desktop is running<br>2. Run `docker ps` to verify containers<br>3. Run `docker-compose up -d` again |
+| **Database errors** | Migrations not run | Run `docker-compose exec api alembic upgrade head` |
+| **"Unable to resolve host"** | Using localhost instead of IP | Ensure `.env` has `http://192.168.x.x:8000`, NOT `localhost` |
+| **App not loading in Expo** | Cache issues | Run `npx expo start --clear` |
+| **Containers won't start** | Port conflict | Check if port 8000 or 5432 is in use: `netstat -ano \| findstr :8000` |
+
+---
+
+## Cleanup
+
+When finished testing:
+
 ```powershell
-npx expo start --tunnel --clear
-```
-
----
-
-## Step 5: Connect Expo Go
-
-1. Open **Expo Go** app on your phone
-2. Scan the **QR code** in terminal
-3. Wait for app to load (30-60 seconds first time)
-
----
-
-## 📋 Integration Test Checklist
-
-### Authentication Tests
-
-| Test | Steps | Expected Result | ✅ |
-|------|-------|-----------------|---|
-| **Register** | Tap "Create Account", fill form, submit | Account created, redirected to app | ☐ |
-| **Login** | Enter email/password, tap Login | Logged in, see Dashboard | ☐ |
-| **Logout** | Tap profile icon, tap Logout | Returned to login screen | ☐ |
-| **Wrong password** | Enter wrong password | "Invalid credentials" error | ☐ |
-
-### Inventory Tests
-
-| Test | Steps | Expected Result | ✅ |
-|------|-------|-----------------|---|
-| **View categories** | Tap Inventory tab | See all categories | ☐ |
-| **Create item** | Tap +, fill form, save | Item appears in list | ☐ |
-| **Edit item** | Tap item, modify, save | Changes saved | ☐ |
-| **Delete item** | Tap item, tap delete | Item removed | ☐ |
-| **Search** | Type in search bar | Results filtered | ☐ |
-
-### Order Tests
-
-| Test | Steps | Expected Result | ✅ |
-|------|-------|-----------------|---|
-| **Create order** | Tap Orders, tap Create | Order form opens | ☐ |
-| **Add items** | Select items, quantities | Items added to order | ☐ |
-| **Generate PDF** | Tap Generate | PDF preview shows | ☐ |
-| **Save order** | Tap Save | Order saved, appears in list | ☐ |
-| **Receive order** | Tap order, tap Received | Status changes to Received | ☐ |
-| **Apply to stock** | Tap Apply to Stock | Stock quantities updated | ☐ |
-
-### Sync Tests
-
-| Test | Steps | Expected Result | ✅ |
-|------|-------|-----------------|---|
-| **Offline mode** | Turn off WiFi, use app | App works, shows offline indicator | ☐ |
-| **Reconnect** | Turn WiFi back on | Data syncs automatically | ☐ |
-| **Token refresh** | Use app for 30+ min | No logout, tokens refresh | ☐ |
-
----
-
-## 🔍 Debugging Commands
-
-### Check Backend Logs
-```powershell
+# Stop backend containers (keeps data)
 cd vitaltrack-backend
-docker-compose logs -f api
-```
+docker-compose down
 
-### Check Frontend Logs
-Watch the terminal where `npx expo start` is running.
-
-### Test API Directly
-```powershell
-# Health check
-curl http://localhost:8000/health
-
-# Register test user
-curl -X POST http://localhost:8000/api/v1/auth/register `
-  -H "Content-Type: application/json" `
-  -d '{"email":"test@example.com","password":"Test1234!","name":"Test User"}'
-```
-
-### Reset Database
-```powershell
-cd vitaltrack-backend
+# Stop AND delete all data (fresh start next time)
 docker-compose down -v
-docker-compose up -d --build
 ```
 
 ---
 
-## 🐛 Common Issues
+## Quick Reference
 
-| Issue | Solution |
-|-------|----------|
-| "Network request failed" | Check IP in .env matches your computer |
-| Can't scan QR code | Use `npx expo start --tunnel` |
-| App won't load | Clear cache: `npx expo start --clear` |
-| Backend not healthy | Check Docker: `docker-compose ps` |
-| Login fails | Reset DB: `docker-compose down -v && docker-compose up -d` |
-
----
-
-## ✅ Test Complete Checklist
-
-Before declaring testing complete:
-
-- [ ] All authentication tests pass
-- [ ] All inventory CRUD operations work
-- [ ] All order operations work
-- [ ] Offline mode works, data syncs on reconnect
-- [ ] App works for 30+ minutes without re-login
-- [ ] No console errors in Metro bundler
-- [ ] No errors in backend logs
-
----
-
-## 🎯 Quick Reference
-
-```powershell
-# Start everything (run in 2 terminals)
-
-# Terminal 1 - Backend
-cd vitaltrack-backend
-docker-compose up -d --build
-docker-compose logs -f api
-
-# Terminal 2 - Frontend
-cd vitaltrack-mobile
-echo "EXPO_PUBLIC_API_URL=http://YOUR_IP:8000" > .env
-npm install --legacy-peer-deps
-npx expo start --clear
-```
-
----
-
-**VitalTrack v1.0.0** | Manual Integration Testing Guide
+| Resource | URL |
+|----------|-----|
+| Backend API | http://localhost:8000 |
+| API Documentation | http://localhost:8000/docs |
+| Health Check | http://localhost:8000/health |
+| Mobile App API URL | http://YOUR_PC_IP:8000 |

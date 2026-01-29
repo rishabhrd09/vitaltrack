@@ -8,7 +8,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 | Requirement | Version |
@@ -29,7 +29,7 @@ npm install --legacy-peer-deps
 npx expo start --clear
 ```
 
-> ⚠️ **IMPORTANT:** Always use `--legacy-peer-deps` flag. Regular `npm install` will fail due to React 19 peer dependency conflicts.
+> **IMPORTANT:** Always use `--legacy-peer-deps` flag. Regular `npm install` will fail due to React 19 peer dependency conflicts.
 
 ### Run on Device
 
@@ -39,23 +39,23 @@ npx expo start --clear
 
 ---
 
-## ✨ Features
+## Features
 
 | Feature | Description |
 |---------|-------------|
-| 📊 **Dashboard** | Real-time inventory overview with stats |
-| 📦 **Inventory** | Categories & items with search/filter |
-| ⚠️ **Stock Alerts** | Low stock & out of stock warnings |
-| 🔴 **Critical Items** | Special tracking for life-support equipment |
-| 📋 **Orders** | Create & track restock orders |
-| 📄 **PDF Export** | Professional order sheets |
-| 🔐 **Authentication** | Login, register, password reset |
-| ☁️ **Cloud Sync** | Backend integration with offline support |
-| 🌙 **Dark Mode** | Medical-grade dark interface |
+| **Dashboard** | Real-time inventory overview with stats |
+| **Inventory** | Categories & items with search/filter |
+| **Stock Alerts** | Low stock & out of stock warnings |
+| **Critical Items** | Special tracking for life-support equipment |
+| **Orders** | Create & track restock orders |
+| **PDF Export** | Professional order sheets |
+| **Authentication** | Login, register, password reset |
+| **Cloud Sync** | Backend integration with offline support |
+| **Dark Mode** | Medical-grade dark interface |
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 vitaltrack-mobile/
@@ -85,7 +85,7 @@ vitaltrack-mobile/
 
 ---
 
-## 🔧 Backend Configuration
+## Backend Configuration
 
 Create `.env` in project root:
 
@@ -115,7 +115,7 @@ ipconfig getifaddr en0
 
 ---
 
-## 🔐 Authentication Screens
+## Authentication Screens
 
 | Screen | Route | Description |
 |--------|-------|-------------|
@@ -126,7 +126,7 @@ ipconfig getifaddr en0
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### npm install fails with ERESOLVE error
 ```bash
@@ -151,7 +151,7 @@ npx expo start --tunnel
 
 ---
 
-## 🚢 Deployment (EAS Build)
+## Deployment (EAS Build)
 
 ### Configure EAS
 ```bash
@@ -176,7 +176,7 @@ eas submit --platform android
 
 ---
 
-## 🔧 Technology Stack
+## Technology Stack
 
 | Component | Technology |
 |-----------|------------|
@@ -190,7 +190,7 @@ eas submit --platform android
 
 ---
 
-## 📦 Key Dependencies
+## Key Dependencies
 
 ```json
 {
@@ -207,4 +207,4 @@ eas submit --platform android
 
 ---
 
-**VitalTrack Mobile v2.0.0** | Phase 3 Complete ✅
+**VitalTrack Mobile v2.0.0** | Phase 3 Complete
