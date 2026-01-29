@@ -86,12 +86,30 @@ vitaltrack/
 | Docker Desktop | Latest | `docker --version` | docker.com |
 | Node.js | 20+ | `node -v` | nodejs.org |
 | Git | Any | `git --version` | git-scm.com |
+| EAS CLI | Latest | `eas --version` | `npm install -g eas-cli` |
 
-### Install CLI Tools
+### Install Global Tools
 
 ```bash
-npm install -g expo-cli eas-cli
+# Only EAS CLI should be global
+npm install -g eas-cli
+
+# Verify
+eas --version
 ```
+
+### ⚠️ Important: Expo CLI Model (2025+)
+
+| Tool | Install Globally? | How to Use |
+|------|-------------------|------------|
+| `expo-cli` | ❌ NO (deprecated) | Use `npx expo` instead |
+| `eas-cli` | ✅ YES | `eas build`, `eas submit` |
+
+**Why `npx expo` instead of global `expo`?**
+- Ensures correct version for your project's SDK
+- Avoids "works on my machine" issues
+- CI/CD consistent behavior
+- No version drift between team members
 
 ### Required Accounts
 
