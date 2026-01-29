@@ -1,27 +1,25 @@
-#!/bin/bash
-# VitalTrack Backend - Docker Entrypoint
-# Runs database migrations before starting the application
-
+#!/bin/sh
 set -e
 
-echo "========================================"
-echo "VitalTrack Backend Starting..."
+echo "==================================="
+echo "VitalTrack API Starting..."
 echo "Environment: ${ENVIRONMENT:-development}"
-echo "========================================"
+echo "==================================="
 
-# Wait for database to be ready
+# Wait for PostgreSQL
 echo "Waiting for database..."
-while ! pg_isready -h ${DATABASE_HOST:-db} -p ${DATABASE_PORT:-5432} -U ${DATABASE_USER:-postgres} -q; do
-    echo "Database not ready, waiting..."
-    sleep 2
+until pg_isready -h "${DATABASE_HOST:-db}" -p "${DATABASE_PORT:-5432}" > /dev/null 2>&1; do
+  echo "Database not ready yet... waiting 2s"
+  sleep 2
 done
+
 echo "Database is ready!"
 
-# Run Alembic migrations
+# Run migrations
 echo "Running database migrations..."
 alembic upgrade head
-echo "Migrations complete!"
+echo "Migrations complete."
 
-# Start the application
-echo "Starting application server..."
-exec "$@"
+# Start FastAPI
+echo "Starting Uvicorn server..."
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000

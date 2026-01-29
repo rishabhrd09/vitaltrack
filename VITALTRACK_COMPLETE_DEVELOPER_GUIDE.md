@@ -648,6 +648,7 @@ eas build --profile production --platform android
 | Can't push to main | Use feature branch + PR |
 | EAS build fails | Run `eas init`, update app.json |
 | Docker won't start | Start Docker Desktop app |
+| `docker-entrypoint.sh` error | Fix: 1. Use LF line endings (not CRLF)<br>2. Ensure `#!/bin/sh` shebang<br>3. File must be executable |
 
 ### Debug Commands
 
