@@ -316,8 +316,8 @@ async def verify_email_html(
         </html>
         """)
         
-    except Exception as e:
-        return HTMLResponse(content=f"""
+    except Exception:
+        return HTMLResponse(content="""
         <html>
             <body style="font-family: Arial; text-align: center; padding: 50px;">
                 <h1 style="color: #FF6B6B;">Error</h1>

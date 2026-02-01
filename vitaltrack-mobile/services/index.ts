@@ -14,12 +14,12 @@ export { categoryService } from './categories';
 export type { CreateCategoryRequest, UpdateCategoryRequest, CategoryWithCount } from './categories';
 
 export { itemService } from './items';
-export type { 
-  ItemsQueryParams, 
-  CreateItemRequest, 
-  UpdateItemRequest, 
+export type {
+  ItemsQueryParams,
+  CreateItemRequest,
+  UpdateItemRequest,
   StockUpdateRequest,
-  NeedsAttentionResponse 
+  NeedsAttentionResponse
 } from './items';
 
 export { orderService } from './orders';
@@ -27,4 +27,3 @@ export type { CreateOrderRequest, CreateOrderItemRequest, UpdateOrderStatusReque
 
 // Sync service
 export { syncService, syncQueue, isOnline } from './sync';
-export type { SyncOperation, PushSyncRequest, PullSyncResponse, FullSyncResponse } from './sync';

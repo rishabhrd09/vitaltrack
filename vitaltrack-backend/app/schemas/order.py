@@ -10,7 +10,6 @@ Replace your app/schemas/order.py with this file.
 
 from datetime import datetime
 from typing import Optional, List
-from uuid import UUID
 
 from pydantic import BaseModel, Field
 

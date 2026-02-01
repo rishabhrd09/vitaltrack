@@ -65,6 +65,8 @@ interface AuthActions {
   login: (identifier: string, password: string) => Promise<boolean>;
   register: (data: RegisterRequest) => Promise<boolean>;
   logout: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<boolean>;
+  resetPassword: (token: string, newPassword: string) => Promise<boolean>;
   updateUser: (data: Partial<User>) => void;
   clearError: () => void;
   setLoading: (loading: boolean) => void;
@@ -352,6 +354,44 @@ export const useAuthStore = create<AuthStore>()(
       setLoading: (loading: boolean) => set({ isLoading: loading }),
 
       setSyncStatus: (status: 'idle' | 'syncing' | 'error') => set({ syncStatus: status }),
+
+      // =====================================================================
+      // FORGOT PASSWORD
+      // =====================================================================
+      forgotPassword: async (email: string): Promise<boolean> => {
+        console.log('[Auth] Forgot password request for:', email);
+        set({ isLoading: true, error: null });
+
+        try {
+          await authService.forgotPassword(email);
+          set({ isLoading: false });
+          return true;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to send reset email';
+          console.error('[Auth] Forgot password error:', message);
+          set({ isLoading: false, error: message });
+          return false;
+        }
+      },
+
+      // =====================================================================
+      // RESET PASSWORD
+      // =====================================================================
+      resetPassword: async (token: string, newPassword: string): Promise<boolean> => {
+        console.log('[Auth] Reset password request');
+        set({ isLoading: true, error: null });
+
+        try {
+          await authService.resetPassword(token, newPassword);
+          set({ isLoading: false });
+          return true;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to reset password';
+          console.error('[Auth] Reset password error:', message);
+          set({ isLoading: false, error: message });
+          return false;
+        }
+      },
     }),
     {
       name: 'vitaltrack-auth',

@@ -12,7 +12,7 @@ Replace your existing app/api/v1/sync.py with this file.
 from datetime import datetime, timezone
 from typing import Optional, Set
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 from sqlalchemy import or_, select, delete
 from sqlalchemy.orm import selectinload
 
