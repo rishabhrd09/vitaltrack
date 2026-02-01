@@ -93,6 +93,7 @@ secrets/
 # Archive / Extra Documentation
 # ============================================
 extra_docs/
+archive/
 
 # ============================================
 # OS Generated

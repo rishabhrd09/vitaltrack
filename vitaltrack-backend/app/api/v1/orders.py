@@ -13,9 +13,9 @@ from app.api.deps import DB, CurrentUser
 from app.models import ActivityActionType, ActivityLog, Item, Order, OrderItem, OrderStatus
 from app.schemas import (
     OrderCreate,
-    OrderList,
+    OrderListResponse,
     OrderResponse,
-    OrderStatusUpdate,
+    OrderUpdate,
     SuccessResponse,
 )
 
@@ -35,7 +35,7 @@ def generate_order_id(existing_count: int) -> str:
 # =============================================================================
 @router.get(
     "",
-    response_model=OrderList,
+    response_model=OrderListResponse,
     summary="List all orders",
 )
 async def list_orders(
@@ -44,7 +44,7 @@ async def list_orders(
     status_filter: Optional[OrderStatus] = Query(None, alias="status"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
-) -> OrderList:
+) -> OrderListResponse:
     """
     Get all orders for the current user.
     
@@ -72,7 +72,7 @@ async def list_orders(
     result = await db.execute(query)
     orders = result.scalars().all()
     
-    return OrderList(
+    return OrderListResponse(
         orders=[OrderResponse.model_validate(order) for order in orders],
         total=total,
     )
@@ -207,7 +207,7 @@ async def create_order(
 )
 async def update_order_status(
     order_id: str,
-    data: OrderStatusUpdate,
+    data: OrderUpdate,
     db: DB,
     current_user: CurrentUser,
 ) -> OrderResponse:

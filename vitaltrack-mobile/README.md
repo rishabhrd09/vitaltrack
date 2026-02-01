@@ -1,57 +1,28 @@
 # VitalTrack Mobile
 
-**Phase 3 Complete** | React Native + Expo | Production-Ready
+> React Native mobile app for VitalTrack medical inventory management.
 
+[![React Native](https://img.shields.io/badge/React%20Native-0.76-61DAFB?logo=react)](https://reactnative.dev)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2054-000020?logo=expo)](https://expo.dev)
-[![React Native](https://img.shields.io/badge/React%20Native-0.81-61DAFB?logo=react)](https://reactnative.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript)](https://www.typescriptlang.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript)](https://typescriptlang.org)
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
-| Requirement | Version |
-|-------------|---------|
-| Node.js | 18+ |
-| npm | 9+ |
-| Expo Go App | Latest (on phone) |
+- Node.js 20+
+- Expo Go app on phone
+- Backend running (see [Backend README](../vitaltrack-backend/README.md))
 
-### Installation
-
+### Install & Run
 ```bash
 cd vitaltrack-mobile
-
-# Install dependencies (REQUIRED flag for React 19)
 npm install --legacy-peer-deps
-
-# Start development server
 npx expo start --clear
 ```
 
-> **IMPORTANT:** Always use `--legacy-peer-deps` flag. Regular `npm install` will fail due to React 19 peer dependency conflicts. You will see several "deprecated" warnings during install—this is normal and safe to ignore.
-
-### Run on Device
-
-1. Open **Expo Go** app on your phone
-2. Scan the **QR code** shown in terminal
-3. Ensure phone & computer on **same WiFi network**
-
----
-
-## Features
-
-| Feature | Description |
-|---------|-------------|
-| **Dashboard** | Real-time inventory overview with stats |
-| **Inventory** | Categories & items with search/filter |
-| **Stock Alerts** | Low stock & out of stock warnings |
-| **Critical Items** | Special tracking for life-support equipment |
-| **Orders** | Create & track restock orders |
-| **PDF Export** | Professional order sheets |
-| **Authentication** | Login, register, password reset |
-| **Cloud Sync** | Backend integration with offline support |
-| **Dark Mode** | Medical-grade dark interface |
+Scan QR code with Expo Go to launch app.
 
 ---
 
@@ -59,152 +30,364 @@ npx expo start --clear
 
 ```
 vitaltrack-mobile/
-├── app/                    # Screens (Expo Router)
-│   ├── (auth)/             # Auth screens
-│   │   ├── login.tsx       # Login
-│   │   ├── register.tsx    # Registration
-│   │   ├── forgot-password.tsx
-│   │   └── reset-password.tsx
-│   ├── (tabs)/             # Main app tabs
-│   │   ├── index.tsx       # Dashboard
-│   │   ├── inventory.tsx   # Item list
-│   │   └── orders.tsx      # Order list
-│   ├── item/[id].tsx       # Item form
-│   └── order/create.tsx    # Create order
-├── components/             # Reusable components
-├── services/               # API layer
-│   ├── api.ts              # HTTP client with JWT
-│   └── auth.ts             # Auth service
-├── store/                  # State management
-│   ├── useAppStore.ts      # App state (Zustand)
-│   └── useAuthStore.ts     # Auth state
-├── types/                  # TypeScript types
-├── theme/                  # Design system
-└── utils/                  # Helpers
+├── app/                        # Expo Router screens
+│   ├── (auth)/                 # Auth screens (login, register)
+│   ├── (tabs)/                 # Main tab screens
+│   │   ├── index.tsx          # Dashboard
+│   │   ├── inventory.tsx      # Inventory list
+│   │   └── orders.tsx         # Orders list
+│   ├── item/[id].tsx          # Item detail/edit
+│   └── order/create.tsx       # Create order
+├── components/
+│   ├── common/                 # Shared components
+│   ├── dashboard/              # Dashboard components
+│   ├── inventory/              # Inventory components
+│   └── orders/                 # Order components
+├── services/                   # API & sync services
+│   ├── api.ts                 # HTTP client
+│   ├── auth.ts                # Auth service
+│   └── sync.ts                # Offline sync
+├── store/                      # Zustand stores
+│   ├── useAppStore.ts         # Main app state
+│   └── useAuthStore.ts        # Auth state
+├── theme/                      # Design system
+├── types/                      # TypeScript types
+└── utils/                      # Helpers
 ```
 
 ---
 
-## Backend Configuration
+## Key Features
 
-Create `.env` in project root:
+### Offline-First Architecture
+- Data stored locally in AsyncStorage
+- Changes queued for sync when offline
+- Automatic sync when online
 
-```ini
-# Physical device - use your computer's IPv4 address
-EXPO_PUBLIC_API_URL=http://192.168.1.100:8000
+### State Management (Zustand)
+```typescript
+// Example: Accessing store
+const { items, createItem, updateStock } = useAppStore();
 
-# Android Emulator
-EXPO_PUBLIC_API_URL=http://10.0.2.2:8000
-
-# iOS Simulator
-EXPO_PUBLIC_API_URL=http://localhost:8000
+// Example: Creating item
+const newItem = createItem({
+  name: 'Oxygen Mask',
+  quantity: 10,
+  categoryId: 'xxx',
+});
 ```
 
-### Find Your IP Address
+### Authentication
+- JWT tokens stored in SecureStore
+- Automatic token refresh
+- Session persists across app restarts
 
-**Windows:**
-```powershell
-ipconfig
-# Look for: IPv4 Address under "Wireless LAN adapter Wi-Fi"
-```
+---
 
-**Mac:**
-```bash
-ipconfig getifaddr en0
+## Screens
+
+### Dashboard (`app/(tabs)/index.tsx`)
+- Statistics cards (total items, low stock, out of stock)
+- Needs Attention section (emergency alerts)
+- Recent activity log
+
+### Inventory (`app/(tabs)/inventory.tsx`)
+- Category-grouped items
+- Search and filter
+- Quick stock update
+
+### Item Detail (`app/item/[id].tsx`)
+- Full item editor
+- Stock management
+- Delete confirmation
+
+### Orders (`app/(tabs)/orders.tsx`)
+- Order history
+- Status tracking
+- Apply to stock
+
+### Create Order (`app/order/create.tsx`)
+- Select low stock items
+- Generate order
+- Export options
+
+---
+
+## Components
+
+### Critical Components
+
+| Component | Location | Description |
+|-----------|----------|-------------|
+| `NeedsAttention` | `components/dashboard/` | Emergency backup alerts |
+| `StatsCard` | `components/dashboard/` | Dashboard statistics |
+| `ItemRow` | `components/inventory/` | Inventory list item |
+| `OrderCard` | `components/orders/` | Order card |
+| `VitalTrackTopBar` | `components/common/` | App header |
+
+### Usage Example
+```tsx
+import NeedsAttention from '@/components/dashboard/NeedsAttention';
+
+<NeedsAttention
+  outOfStockItems={outOfStock}
+  lowStockItems={lowStock}
+  onOrderNow={() => router.push('/order/create')}
+  onEditItem={(id) => router.push(`/item/${id}`)}
+/>
 ```
 
 ---
 
-## Authentication Screens
+## Services
 
-| Screen | Route | Description |
-|--------|-------|-------------|
-| Login | `/(auth)/login` | Email/username login |
-| Register | `/(auth)/register` | New account creation |
-| Forgot Password | `/(auth)/forgot-password` | Request reset email |
-| Reset Password | `/(auth)/reset-password` | Enter new password |
-
----
-
-## Troubleshooting
-
-### npm install fails with ERESOLVE error
-```bash
-npm install --legacy-peer-deps
+### API Service (`services/api.ts`)
+HTTP client with automatic token handling:
+```typescript
+const api = {
+  async get<T>(endpoint: string): Promise<T>,
+  async post<T>(endpoint: string, data: any): Promise<T>,
+  async put<T>(endpoint: string, data: any): Promise<T>,
+  async delete<T>(endpoint: string): Promise<T>,
+};
 ```
 
-### "Network request failed" connecting to backend
-1. Verify backend running: `http://localhost:8000/health`
-2. Check `.env` has your computer's IP (not localhost for physical device)
-3. Ensure phone & computer on same WiFi
-4. Check firewall isn't blocking port 8000
+### Sync Service (`services/sync.ts`)
+Offline-first synchronization:
+```typescript
+// Push local changes
+await syncService.push({
+  categories: { created: [...], updated: [...], deleted: [...] },
+  items: { created: [...], updated: [...], deleted: [...] },
+});
 
-### Metro bundler errors
-```bash
-npx expo start --clear
+// Pull server changes
+const data = await syncService.pull();
 ```
 
-### Tunnel mode (for network issues)
-```bash
-npx expo start --tunnel
-```
-
----
-
-## Deployment (EAS Build)
-
-### Configure EAS
-```bash
-npm install -g eas-cli
-eas login
-```
-
-### Build Preview APK
-```bash
-eas build --profile preview --platform android
-```
-
-### Build Production AAB
-```bash
-eas build --profile production --platform android
-```
-
-### Submit to Play Store
-```bash
-eas submit --platform android
+### Auth Service (`services/auth.ts`)
+Authentication operations:
+```typescript
+await authService.login(email, password);
+await authService.register(email, password, name);
+await authService.logout();
+await authService.refreshToken();
 ```
 
 ---
 
-## Technology Stack
+## State Stores
 
-| Component | Technology |
-|-----------|------------|
-| Framework | React Native 0.81 |
-| Platform | Expo SDK 54 |
-| Language | TypeScript 5.9 |
-| State | Zustand 4.5 |
-| Navigation | Expo Router |
-| Storage | AsyncStorage + SecureStore |
-| PDF | expo-print |
+### useAppStore
+Main application state:
+```typescript
+interface AppState {
+  categories: Category[];
+  items: Item[];
+  activityLogs: ActivityLog[];
+  savedOrders: SavedOrder[];
+  
+  // Actions
+  createItem(data: Partial<Item>): Item;
+  updateItem(id: string, data: Partial<Item>): Item | null;
+  deleteItem(id: string): void;
+  updateStock(id: string, quantity: number): Item | null;
+  
+  // Computed
+  getStats(): DashboardStats;
+  getLowStockItems(): Item[];
+  getOutOfStockItems(): Item[];
+}
+```
 
----
-
-## Key Dependencies
-
-```json
-{
-  "expo": "^54.0.31",
-  "react": "19.1.0",
-  "react-native": "0.81.5",
-  "expo-router": "~6.0.21",
-  "zustand": "^4.5.2",
-  "@react-native-async-storage/async-storage": "2.2.0",
-  "expo-secure-store": "~14.0.8",
-  "expo-print": "~15.0.8"
+### useAuthStore
+Authentication state:
+```typescript
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  
+  // Actions
+  login(identifier: string, password: string): Promise<void>;
+  register(data: RegisterData): Promise<void>;
+  logout(): Promise<void>;
 }
 ```
 
 ---
 
-**VitalTrack Mobile v2.0.0** | Phase 3 Complete
+## Types
+
+### Core Types (`types/index.ts`)
+
+```typescript
+interface Item {
+  id: string;
+  localId?: string;
+  categoryId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  minimumStock: number;
+  isCritical: boolean;
+  // ... more fields
+}
+
+interface Category {
+  id: string;
+  localId?: string;
+  name: string;
+  displayOrder: number;
+}
+
+interface SavedOrder {
+  id: string;
+  orderId: string;
+  items: OrderItem[];
+  status: OrderStatus;
+  totalItems: number;
+  totalUnits: number;
+}
+```
+
+### Helper Functions
+```typescript
+// Check if item is low stock
+isLowStock(item: Item): boolean
+
+// Check if item is critical equipment
+isCriticalEquipment(item: Item): boolean
+
+// Check if item needs emergency backup
+needsEmergencyBackup(item: Item): boolean
+```
+
+---
+
+## Environment Variables
+
+Create `.env` file:
+```env
+EXPO_PUBLIC_API_URL=http://YOUR_IP:8000
+```
+
+**Important:** Restart Expo with `--clear` after changing `.env`
+
+---
+
+## Development
+
+### Run Development Server
+```bash
+# Normal
+npx expo start
+
+# Clear cache (after .env changes)
+npx expo start --clear
+
+# Tunnel mode (firewall bypass)
+npx expo start --tunnel
+```
+
+### Type Check
+```bash
+npx tsc --noEmit
+```
+
+### Lint
+```bash
+npm run lint
+```
+
+### Reset Everything
+```bash
+rm -rf node_modules .expo
+npm install --legacy-peer-deps
+npx expo start --clear
+```
+
+---
+
+## Building
+
+### Preview APK (Testing)
+```bash
+eas build --profile preview --platform android
+```
+
+### Production AAB (Play Store)
+```bash
+eas build --profile production --platform android
+```
+
+See [Deployment Guide](../docs/DEPLOYMENT_GUIDE.md) for full details.
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| "Network request failed" | Check `.env` has correct IP, restart with `--clear` |
+| "Unable to resolve module" | Delete `node_modules`, reinstall |
+| Stuck on splash screen | Clear cache: `npx expo start --clear` |
+| Changes not reflecting | Restart Metro with `--clear` |
+| Auth token expired | Login again, check token refresh |
+
+---
+
+## Theme
+
+### Colors (`theme/colors.ts`)
+Groww-inspired dark theme:
+```typescript
+const colors = {
+  bgPrimary: '#0E0E10',
+  bgSecondary: '#1A1A1D',
+  textPrimary: '#FFFFFF',
+  accentGreen: '#00D09C',
+  accentBlue: '#5367FF',
+  statusRed: '#EB5757',
+  statusOrange: '#F2994A',
+};
+```
+
+### Spacing (`theme/spacing.ts`)
+Consistent spacing scale:
+```typescript
+const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
+};
+```
+
+---
+
+## Architecture Decisions
+
+### Why Zustand?
+- Simpler than Redux
+- Built-in persistence
+- TypeScript-first
+- No boilerplate
+
+### Why AsyncStorage for Activity Logs?
+- Separate from main sync
+- Per-user isolation
+- Survives logout/login
+
+### Why Offline-First?
+- Medical caregivers can't depend on internet
+- Data must be available during emergencies
+- Sync when possible, work offline always
+
+---
+
+## License
+
+This project is for educational and portfolio purposes.

@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi.responses import HTMLResponse
 from sqlalchemy import select, update
 
 from app.api.deps import DB, CurrentUser
@@ -260,9 +261,76 @@ async def login(
 # EMAIL VERIFICATION
 # =============================================================================
 @router.get(
+    "/verify-email",
+    response_class=HTMLResponse,
+    summary="Verify email address (HTML View)",
+)
+async def verify_email_html(
+    token: str,
+    db: DB,
+) -> HTMLResponse:
+    """
+    Verify user's email address and return an HTML page.
+    Authentication-friendly view for email links.
+    """
+    try:
+        # Find users with pending verification
+        result = await db.execute(
+            select(User).where(
+                User.email_verification_token.isnot(None),
+                User.email_verification_expiry > datetime.now(timezone.utc),
+            )
+        )
+        users = result.scalars().all()
+        
+        verified_user = None
+        for user in users:
+            if verify_token(token, user.email_verification_token):
+                verified_user = user
+                break
+        
+        if not verified_user:
+            return HTMLResponse(content="""
+            <html>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1 style="color: #FF6B6B;">Verification Failed</h1>
+                    <p>The verification link is invalid or has expired.</p>
+                </body>
+            </html>
+            """, status_code=400)
+            
+        # Mark as verified
+        verified_user.is_email_verified = True
+        verified_user.email_verification_token = None
+        verified_user.email_verification_expiry = None
+        
+        await db.commit()
+        
+        return HTMLResponse(content="""
+        <html>
+            <body style="font-family: Arial; text-align: center; padding: 50px;">
+                <h1 style="color: #00D09C;">Email Verified!</h1>
+                <p>Your email has been successfully verified.</p>
+                <p>You can now return to the VitalTrack app and log in.</p>
+            </body>
+        </html>
+        """)
+        
+    except Exception as e:
+        return HTMLResponse(content=f"""
+        <html>
+            <body style="font-family: Arial; text-align: center; padding: 50px;">
+                <h1 style="color: #FF6B6B;">Error</h1>
+                <p>An unexpected error occurred.</p>
+            </body>
+        </html>
+        """, status_code=500)
+
+
+@router.get(
     "/verify-email/{token}",
     response_model=VerifyEmailResponse,
-    summary="Verify email address",
+    summary="Verify email address (API)",
 )
 async def verify_email(
     token: str,

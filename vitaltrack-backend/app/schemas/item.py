@@ -127,6 +127,7 @@ class ItemResponse(BaseModel):
     """Item response - matches frontend Item interface exactly."""
     
     id: str
+    local_id: Optional[str] = Field(None, serialization_alias="localId")  # For sync matching
     category_id: str = Field(serialization_alias="categoryId")
     name: str
     description: Optional[str] = None

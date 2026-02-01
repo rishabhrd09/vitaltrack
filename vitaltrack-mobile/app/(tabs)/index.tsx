@@ -167,7 +167,7 @@ export default function DashboardScreen() {
         {/* Recent Activity */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Recent Activity</Text>
-          <ActivityList activities={activityLogs.slice(0, 5)} />
+          <ActivityList activities={activityLogs.slice(0, 20)} />
         </View>
       </ScrollView>
 

@@ -39,6 +39,7 @@ export default function ItemFormScreen() {
   const createItem = useAppStore((state) => state.createItem);
   const updateItem = useAppStore((state) => state.updateItem);
   const deleteItem = useAppStore((state) => state.deleteItem);
+  const toggleItemCritical = useAppStore((state) => state.toggleItemCritical);
 
   const existingItem = !isNew ? getItemById(id) : undefined;
 
@@ -57,17 +58,27 @@ export default function ItemFormScreen() {
   const [purchaseLink, setPurchaseLink] = useState(existingItem?.purchaseLink || '');
   const [notes, setNotes] = useState(existingItem?.notes || '');
   const [imageUri, setImageUri] = useState(existingItem?.imageUri || '');
+  const [isCritical, setIsCritical] = useState(existingItem?.isCritical || false);
 
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showUnitPicker, setShowUnitPicker] = useState(false);
   const [showNameSuggestions, setShowNameSuggestions] = useState(false);
 
-  // Filter items for autocomplete (exclude current item when editing)
-  const nameSuggestions = name.trim().length >= 2
+  // Filter ACTIVE items for duplicate warning (exclude current item when editing)
+  const activeItemSuggestions = name.trim().length >= 2
     ? items.filter(item =>
+      item.isActive &&
       item.name.toLowerCase().includes(name.toLowerCase()) &&
       item.id !== id
     ).slice(0, 5)
+    : [];
+
+  // Find hidden items that match the name (for reactivation prompt)
+  const hiddenMatchingItems = name.trim().length >= 2
+    ? items.filter(item =>
+      !item.isActive &&
+      item.name.toLowerCase() === name.toLowerCase().trim()
+    )
     : [];
 
   const pickImage = async () => {
@@ -110,13 +121,27 @@ export default function ItemFormScreen() {
       purchaseLink: sanitizedPurchaseLink,
       notes: sanitizeString(notes, 1000) || undefined,
       imageUri: imageUri || undefined,
+      isCritical: isCritical,
     };
 
     if (isNew) {
-      createItem(itemData);
-      Alert.alert('Success', 'Item created successfully', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      // Check if there's a hidden item with the same name (case-insensitive)
+      const hiddenItem = items.find(
+        item => !item.isActive && item.name.toLowerCase() === sanitizedName.toLowerCase()
+      );
+
+      if (hiddenItem) {
+        // Reactivate the hidden item instead of creating a duplicate
+        updateItem(hiddenItem.id, { ...itemData, isActive: true });
+        Alert.alert('Success', 'Item restored and updated successfully', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      } else {
+        createItem(itemData);
+        Alert.alert('Success', 'Item created successfully', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      }
     } else {
       updateItem(id, itemData);
       Alert.alert('Success', 'Item updated successfully', [
@@ -242,10 +267,10 @@ export default function ItemFormScreen() {
               placeholder="Enter item name"
               placeholderTextColor={colors.textMuted}
             />
-            {showNameSuggestions && nameSuggestions.length > 0 && (
+            {showNameSuggestions && activeItemSuggestions.length > 0 && (
               <View style={[styles.suggestionsContainer, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary }]}>
                 <Text style={[styles.suggestionsHeader, { color: colors.textTertiary }]}>⚠️ Similar items exist:</Text>
-                {nameSuggestions.map((item) => (
+                {activeItemSuggestions.map((item: Item) => (
                   <TouchableOpacity
                     key={item.id}
                     style={[styles.suggestionItem, { borderBottomColor: colors.borderPrimary }]}
@@ -352,6 +377,33 @@ export default function ItemFormScreen() {
               placeholder="0"
               placeholderTextColor={colors.textMuted}
             />
+          </View>
+
+          {/* Critical Equipment Toggle */}
+          <View style={styles.field}>
+            <TouchableOpacity
+              style={[styles.criticalToggle, { backgroundColor: colors.bgCard, borderColor: isCritical ? '#FAB005' : colors.borderPrimary }]}
+              onPress={() => setIsCritical(!isCritical)}
+            >
+              <View style={styles.criticalToggleLeft}>
+                <Ionicons
+                  name={isCritical ? "star" : "star-outline"}
+                  size={22}
+                  color={isCritical ? "#FAB005" : colors.textTertiary}
+                />
+                <View>
+                  <Text style={[styles.criticalToggleTitle, { color: colors.textPrimary }]}>Critical Equipment</Text>
+                  <Text style={[styles.criticalToggleSubtitle, { color: colors.textTertiary }]}>
+                    {isCritical ? 'Will show in Emergency Backup alerts' : 'Mark as life-support equipment'}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.criticalBadge, { backgroundColor: isCritical ? '#FAB00520' : colors.bgTertiary }]}>
+                <Text style={{ color: isCritical ? '#FAB005' : colors.textTertiary, fontSize: 12, fontWeight: '600' }}>
+                  {isCritical ? 'ON' : 'OFF'}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Brand */}
@@ -580,5 +632,33 @@ const styles = StyleSheet.create({
   suggestionText: {
     fontSize: fontSize.md,
     flex: 1,
+  },
+  criticalToggle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  criticalToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+  },
+  criticalToggleTitle: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+  },
+  criticalToggleSubtitle: {
+    fontSize: fontSize.xs,
+    marginTop: 2,
+  },
+  criticalBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
   },
 });

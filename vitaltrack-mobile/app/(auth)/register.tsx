@@ -1,6 +1,11 @@
 /**
  * VitalTrack Mobile - Register Screen
- * New user registration with email verification
+ * FIXED VERSION 3.0 - Proper navigation timing
+ * 
+ * CRITICAL FIXES:
+ * 1. Navigation uses setTimeout to ensure root layout is mounted
+ * 2. Loading state properly prevents double-submit
+ * 3. Better error display from API
  */
 
 import { useState } from 'react';
@@ -26,39 +31,102 @@ export default function RegisterScreen() {
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [localError, setLocalError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleRegister = async () => {
-        setLocalError(null);
-        clearError();
-
-        // Validation
-        if (!name.trim() || !email.trim() || !password.trim()) {
-            setLocalError('Please fill in all required fields');
+        // Prevent double-submit
+        if (isSubmitting || isLoading) {
+            console.log('[Register] Already submitting, ignoring');
             return;
         }
 
+        setLocalError(null);
+        clearError();
+
+        // Basic Required Fields Check
+        if (!name.trim() || !password.trim()) {
+            setLocalError('Name and Password are required');
+            return;
+        }
+
+        // Identifier Check (Must have at least one)
+        if (!email.trim() && !username.trim()) {
+            setLocalError('Please provide either an Email or a Username');
+            return;
+        }
+
+        // Username Validation (Optional but strict if provided)
+        if (username.trim()) {
+            const usernameRegex = /^[a-z0-9_]{3,50}$/;
+            if (!usernameRegex.test(username.trim())) {
+                setLocalError('Username must be 3-50 chars, lowercase letters, numbers, or _');
+                return;
+            }
+        }
+
+        // Email Validation (Only if provided)
+        if (email.trim()) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.trim())) {
+                setLocalError('Please enter a valid email address');
+                return;
+            }
+        }
+
+        // Password Match Check
         if (password !== confirmPassword) {
             setLocalError('Passwords do not match');
             return;
         }
 
-        if (password.length < 8) {
-            setLocalError('Password must be at least 8 characters');
+        // Strict Password Complexity Check
+        // Backend requires: Min 8 chars, 1 Uppercase, 1 Lowercase, 1 Digit
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            setLocalError(
+                'Password must be 8+ chars, with at least 1 Uppercase, 1 Lowercase, and 1 Number'
+            );
             return;
         }
 
-        const success = await register({
-            email: email.trim(),
-            password,
-            name: name.trim(),
-        });
+        console.log('[Register] Starting registration');
+        setIsSubmitting(true);
 
-        if (success) {
-            router.replace('/(tabs)');
+        try {
+            const success = await register({
+                email: email.trim() || undefined,
+                password,
+                name: name.trim(),
+                username: username.trim() || undefined,
+            });
+
+            if (success) {
+                console.log('[Register] Registration successful, navigating to tabs');
+                // FIXED: Use setTimeout to ensure root layout is mounted
+                setTimeout(() => {
+                    try {
+                        router.replace('/(tabs)');
+                    } catch (navError) {
+                        console.warn('[Register] Navigation failed, retrying:', navError);
+                        // Retry after a short delay
+                        setTimeout(() => {
+                            router.replace('/(tabs)');
+                        }, 500);
+                    }
+                }, 100);
+            } else {
+                console.log('[Register] Registration returned false');
+            }
+        } catch (err) {
+            console.error('[Register] Registration error:', err);
+            setLocalError('An unexpected error occurred. Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -95,7 +163,7 @@ export default function RegisterScreen() {
 
                     {/* Name Input */}
                     <View style={styles.inputContainer}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>Full Name</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>Full Name *</Text>
                         <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                             <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
                             <TextInput
@@ -105,13 +173,32 @@ export default function RegisterScreen() {
                                 value={name}
                                 onChangeText={setName}
                                 autoCorrect={false}
+                                editable={!isLoading && !isSubmitting}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Username Input */}
+                    <View style={styles.inputContainer}>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>Username (Optional)</Text>
+                        <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                            <Ionicons name="at-outline" size={20} color={colors.textSecondary} />
+                            <TextInput
+                                style={[styles.input, { color: colors.text }]}
+                                placeholder="unique_username"
+                                placeholderTextColor={colors.textSecondary}
+                                value={username}
+                                onChangeText={(text) => setUsername(text.toLowerCase())}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                editable={!isLoading && !isSubmitting}
                             />
                         </View>
                     </View>
 
                     {/* Email Input */}
                     <View style={styles.inputContainer}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>Email (Optional)</Text>
                         <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                             <Ionicons name="mail-outline" size={20} color={colors.textSecondary} />
                             <TextInput
@@ -123,13 +210,14 @@ export default function RegisterScreen() {
                                 autoCapitalize="none"
                                 autoCorrect={false}
                                 keyboardType="email-address"
+                                editable={!isLoading && !isSubmitting}
                             />
                         </View>
                     </View>
 
                     {/* Password Input */}
                     <View style={styles.inputContainer}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>Password</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>Password *</Text>
                         <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                             <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
                             <TextInput
@@ -140,8 +228,12 @@ export default function RegisterScreen() {
                                 onChangeText={setPassword}
                                 secureTextEntry={!showPassword}
                                 autoCapitalize="none"
+                                editable={!isLoading && !isSubmitting}
                             />
-                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                            <TouchableOpacity 
+                                onPress={() => setShowPassword(!showPassword)}
+                                disabled={isLoading || isSubmitting}
+                            >
                                 <Ionicons
                                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                                     size={20}
@@ -156,7 +248,7 @@ export default function RegisterScreen() {
 
                     {/* Confirm Password Input */}
                     <View style={styles.inputContainer}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>Confirm Password</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>Confirm Password *</Text>
                         <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                             <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
                             <TextInput
@@ -167,6 +259,7 @@ export default function RegisterScreen() {
                                 onChangeText={setConfirmPassword}
                                 secureTextEntry={!showPassword}
                                 autoCapitalize="none"
+                                editable={!isLoading && !isSubmitting}
                             />
                         </View>
                     </View>
@@ -176,12 +269,12 @@ export default function RegisterScreen() {
                         style={[
                             styles.button,
                             { backgroundColor: colors.primary },
-                            isLoading && styles.buttonDisabled,
+                            (isLoading || isSubmitting) && styles.buttonDisabled,
                         ]}
                         onPress={handleRegister}
-                        disabled={isLoading}
+                        disabled={isLoading || isSubmitting}
                     >
-                        {isLoading ? (
+                        {(isLoading || isSubmitting) ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
                             <Text style={styles.buttonText}>Create Account</Text>
@@ -194,7 +287,7 @@ export default function RegisterScreen() {
                             Already have an account?{' '}
                         </Text>
                         <Link href="/(auth)/login" asChild>
-                            <TouchableOpacity>
+                            <TouchableOpacity disabled={isLoading || isSubmitting}>
                                 <Text style={[styles.loginLink, { color: colors.primary }]}>
                                     Sign In
                                 </Text>

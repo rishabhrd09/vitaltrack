@@ -61,6 +61,7 @@ class CategoryResponse(BaseModel):
     """Category response - matches frontend Category interface."""
     
     id: str
+    local_id: Optional[str] = Field(None, serialization_alias="localId")  # For sync matching
     name: str
     description: Optional[str] = None
     display_order: int = Field(serialization_alias="displayOrder")

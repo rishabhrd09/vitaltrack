@@ -80,8 +80,8 @@ class Settings(BaseSettings):
     MAIL_STARTTLS: bool = True
     MAIL_SSL_TLS: bool = False
 
-    # Frontend URL for email links
-    FRONTEND_URL: str = "http://localhost:3000"
+    # Frontend URL for email links (Points to Backend HTML View)
+    FRONTEND_URL: str = "http://127.0.0.1:8000/api/v1/auth"
 
     # Token Expiry
     EMAIL_VERIFICATION_EXPIRY_HOURS: int = 24

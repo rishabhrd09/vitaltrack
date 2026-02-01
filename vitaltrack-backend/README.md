@@ -1,62 +1,44 @@
 # VitalTrack Backend
 
-**Phase 3 Complete** | FastAPI + PostgreSQL | Production-Ready
+> FastAPI backend for VitalTrack medical inventory management system.
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)](https://fastapi.tiangolo.com)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)](https://www.postgresql.org)
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python)](https://www.python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python)](https://python.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)](https://postgresql.org)
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
-- Docker Desktop installed and running
+- Docker Desktop (running)
+- Or: Python 3.12+ with PostgreSQL 16
 
-### Start Backend (2 minutes)
-
+### Using Docker (Recommended)
 ```bash
 cd vitaltrack-backend
-
-# Start containers
-docker-compose up -d --build
-
-# Wait 15 seconds, then verify
-docker-compose ps
+docker-compose -f docker-compose.dev.yml up --build
 ```
 
-**Expected output:**
+### Without Docker
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run migrations
+alembic upgrade head
+
+# Start server
+uvicorn app.main:app --reload --port 8000
 ```
-NAME              STATUS          PORTS
-vitaltrack-api    Up (healthy)    0.0.0.0:8000->8000/tcp
-vitaltrack-db     Up (healthy)    0.0.0.0:5432->5432/tcp
-```
 
-### Verify API
-- **Swagger Docs**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
-
----
-
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| [API_TESTING_GUIDE.md](./API_TESTING_GUIDE.md) | Complete API testing guide with examples |
-| [DOCKER_GUIDE.md](./DOCKER_GUIDE.md) | Docker concepts and commands explained |
-
----
-
-## Technology Stack
-
-| Component | Technology |
-|-----------|------------|
-| Framework | FastAPI 0.115 |
-| Database | PostgreSQL 16 |
-| ORM | SQLAlchemy 2.0 (async) |
-| Auth | JWT + Argon2 |
-| Migrations | Alembic |
-| Server | Uvicorn |
+### Verify
+- Health: http://localhost:8000/health
+- API Docs: http://localhost:8000/docs
 
 ---
 
@@ -64,16 +46,29 @@ vitaltrack-db     Up (healthy)    0.0.0.0:5432->5432/tcp
 
 ```
 vitaltrack-backend/
+├── alembic/                    # Database migrations
+│   └── versions/               # Migration files
 ├── app/
-│   ├── api/v1/           # API routes (auth, categories, items, orders, sync)
-│   ├── core/             # Config, database, security
-│   ├── models/           # SQLAlchemy models
-│   ├── schemas/          # Pydantic schemas
-│   └── main.py           # FastAPI application
-├── alembic/              # Database migrations
-├── Dockerfile            # Production dockerfile
-├── docker-compose.yml    # Docker services
-└── requirements.txt      # Python dependencies
+│   ├── api/
+│   │   ├── deps.py            # Dependency injection
+│   │   └── v1/                # API routes
+│   │       ├── auth.py        # Authentication
+│   │       ├── categories.py  # Category CRUD
+│   │       ├── items.py       # Item CRUD
+│   │       ├── orders.py      # Order management
+│   │       └── sync.py        # Offline sync
+│   ├── core/
+│   │   ├── config.py          # Settings
+│   │   ├── database.py        # DB connection
+│   │   └── security.py        # JWT + Argon2
+│   ├── models/                # SQLAlchemy models
+│   ├── schemas/               # Pydantic schemas
+│   └── utils/
+│       ├── email.py           # Email service
+│       └── rate_limiter.py    # Rate limiting
+├── docker-compose.dev.yml     # Development setup
+├── Dockerfile                 # Production build
+└── requirements.txt           # Dependencies
 ```
 
 ---
@@ -83,49 +78,49 @@ vitaltrack-backend/
 ### Authentication (11 endpoints)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/v1/auth/register` | Register new user |
-| POST | `/api/v1/auth/login` | Login |
-| POST | `/api/v1/auth/refresh` | Refresh tokens |
-| POST | `/api/v1/auth/logout` | Logout |
-| GET | `/api/v1/auth/me` | Get profile |
+| POST | `/api/v1/auth/register` | Create account |
+| POST | `/api/v1/auth/login` | Login (email or username) |
+| POST | `/api/v1/auth/refresh` | Refresh access token |
+| POST | `/api/v1/auth/logout` | Revoke refresh token |
+| GET | `/api/v1/auth/me` | Get current user |
 | PATCH | `/api/v1/auth/me` | Update profile |
 | POST | `/api/v1/auth/change-password` | Change password |
-| GET | `/api/v1/auth/verify-email/{token}` | Verify email |
-| POST | `/api/v1/auth/resend-verification` | Resend verification |
-| POST | `/api/v1/auth/forgot-password` | Request password reset |
-| POST | `/api/v1/auth/reset-password` | Reset password |
+| POST | `/api/v1/auth/forgot-password` | Request reset |
+| POST | `/api/v1/auth/reset-password` | Reset with token |
+| POST | `/api/v1/auth/verify-email` | Verify email |
+| POST | `/api/v1/auth/resend-verification` | Resend email |
 
 ### Categories (6 endpoints)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/v1/categories` | List all |
-| GET | `/api/v1/categories/with-counts` | List with item counts |
 | POST | `/api/v1/categories` | Create |
 | GET | `/api/v1/categories/{id}` | Get one |
 | PUT | `/api/v1/categories/{id}` | Update |
 | DELETE | `/api/v1/categories/{id}` | Delete |
+| GET | `/api/v1/categories/count` | Get count |
 
 ### Items (8 endpoints)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/items` | List with filters |
-| GET | `/api/v1/items/stats` | Dashboard statistics |
-| GET | `/api/v1/items/needs-attention` | Low/out of stock |
+| GET | `/api/v1/items` | List all (with filters) |
 | POST | `/api/v1/items` | Create |
 | GET | `/api/v1/items/{id}` | Get one |
 | PUT | `/api/v1/items/{id}` | Update |
-| PATCH | `/api/v1/items/{id}/stock` | Update stock only |
 | DELETE | `/api/v1/items/{id}` | Delete |
+| PATCH | `/api/v1/items/{id}/stock` | Update stock |
+| GET | `/api/v1/items/stats` | Get statistics |
+| GET | `/api/v1/items/low-stock` | Get low stock items |
 
 ### Orders (6 endpoints)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/orders` | List orders |
+| GET | `/api/v1/orders` | List all |
 | POST | `/api/v1/orders` | Create |
 | GET | `/api/v1/orders/{id}` | Get one |
+| DELETE | `/api/v1/orders/{id}` | Delete |
 | PATCH | `/api/v1/orders/{id}/status` | Update status |
 | POST | `/api/v1/orders/{id}/apply` | Apply to stock |
-| DELETE | `/api/v1/orders/{id}` | Delete |
 
 ### Sync (3 endpoints)
 | Method | Endpoint | Description |
@@ -136,45 +131,137 @@ vitaltrack-backend/
 
 ---
 
-## Docker Commands
+## Authentication
 
-```bash
-# Start services
-docker-compose up -d --build
+### JWT Token Flow
+```
+┌────────────┐  POST /auth/login   ┌────────────┐
+│   Client   │ ───────────────────► │   Server   │
+│            │ {email, password}   │            │
+│            │ ◄─────────────────── │            │
+│            │ {access_token,      │            │
+│            │  refresh_token}     │            │
+└────────────┘                     └────────────┘
+      │
+      │ API Request with:
+      │ Authorization: Bearer <access_token>
+      ▼
+┌────────────┐                     ┌────────────┐
+│   Client   │ GET /api/v1/items   │   Server   │
+│            │ ───────────────────► │            │
+│            │ ◄─────────────────── │            │
+│            │ [items array]        │            │
+└────────────┘                     └────────────┘
+```
 
-# View logs
-docker-compose logs -f api
+### Token Configuration
+```python
+ACCESS_TOKEN_EXPIRE_MINUTES=30    # 30 minutes
+REFRESH_TOKEN_EXPIRE_DAYS=30      # 30 days
+```
 
-# Stop services
-docker-compose down
+### Security Features
+- **Argon2** password hashing (OWASP recommended)
+- **JWT** with RS256 algorithm
+- **Token rotation** on refresh
+- **Rate limiting** on auth endpoints
 
-# Reset database (deletes all data)
-docker-compose down -v
-docker-compose up -d --build
+---
+
+## Database Schema
+
+See [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) for complete schema.
+
+### Quick Overview
+```
+users ──┬── categories ── items
+        │
+        └── orders ── order_items
+
+        └── refresh_tokens
+
+        └── activity_logs
 ```
 
 ---
 
-## Local Development (Without Docker)
+## Environment Variables
 
+### Required
+```env
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname
+SECRET_KEY=<min-32-chars-random-string>
+```
+
+### Optional
+```env
+ENVIRONMENT=development          # or: production, testing
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=30
+CORS_ORIGINS=*                   # Comma-separated in production
+```
+
+---
+
+## Development
+
+### Run Tests
 ```bash
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
+# Install test dependencies
+pip install pytest pytest-asyncio httpx
 
-# Install dependencies
-pip install -r requirements.txt
+# Run tests
+pytest -v
+```
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your database credentials
+### Code Quality
+```bash
+# Linting
+pip install ruff
+ruff check app/
 
-# Run migrations
+# Type checking
+pip install mypy
+mypy app/
+
+# Format code
+pip install black
+black app/
+```
+
+### Database Migrations
+```bash
+# Create migration
+alembic revision --autogenerate -m "description"
+
+# Apply migrations
 alembic upgrade head
 
-# Start server
-uvicorn app.main:app --reload --port 8000
+# Rollback one
+alembic downgrade -1
+
+# View current
+alembic current
+```
+
+---
+
+## Docker Commands
+
+```bash
+# Development
+docker-compose -f docker-compose.dev.yml up --build
+docker-compose -f docker-compose.dev.yml down
+docker-compose -f docker-compose.dev.yml logs -f api
+
+# Access database
+docker-compose exec db psql -U postgres -d vitaltrack
+
+# Run migrations
+docker-compose exec api alembic upgrade head
+
+# Production build
+docker build -t vitaltrack-api .
 ```
 
 ---
@@ -182,43 +269,59 @@ uvicorn app.main:app --reload --port 8000
 ## Deployment
 
 ### Railway
+See `railway.toml` for configuration.
+
 ```bash
-railway login
-railway init
-railway add      # Select PostgreSQL
+# Install CLI
+npm i -g @railway/cli
+
+# Deploy
 railway up
 ```
 
 ### Render
-1. Create Web Service from repo
-2. Add PostgreSQL database
-3. Build: `pip install -r requirements.txt`
-4. Start: `gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker`
+See `render.yaml` for configuration.
 
 ---
 
-## Environment Variables
+## API Testing
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | Required |
-| `SECRET_KEY` | JWT signing key (64 chars) | Required |
-| `ENVIRONMENT` | `development` or `production` | development |
-| `DEBUG` | Enable debug mode | false |
-| `CORS_ORIGINS` | Allowed origins (comma-separated) | * |
+See [API_TESTING_GUIDE.md](API_TESTING_GUIDE.md) for complete testing guide.
 
----
-
-## Testing
+### Quick cURL Examples
 
 ```bash
-# Run tests
-pytest
+# Health check
+curl http://localhost:8000/health
 
-# With coverage
-pytest --cov=app --cov-report=html
+# Register
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"Test123!","name":"Test User"}'
+
+# Login
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"identifier":"test@example.com","password":"Test123!"}'
+
+# Get items (with token)
+curl http://localhost:8000/api/v1/items \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ---
 
-**VitalTrack Backend v1.0.0** | Phase 3 Complete
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Port 5432 in use | Stop local PostgreSQL or change port |
+| Database connection failed | Check DATABASE_URL format |
+| JWT decode error | Verify SECRET_KEY is same |
+| Rate limit exceeded | Wait or configure higher limits |
+
+---
+
+## License
+
+This project is for educational and portfolio purposes.

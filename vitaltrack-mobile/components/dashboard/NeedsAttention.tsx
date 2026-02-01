@@ -1,6 +1,8 @@
 /**
  * VitalTrack - Needs Attention Section
  * Matches Kotlin app design: Out of Stock, Emergency Backup, Low Stock
+ * 
+ * FIXED: Emergency backup now also includes critical items that are out of stock
  */
 
 import { useState } from 'react';
@@ -36,8 +38,13 @@ export default function NeedsAttention({
 
   const totalCount = outOfStockItems.length + lowStockItems.length;
 
-  // Find critical items that need emergency backup (stock == 1)
-  const emergencyBackupItems = lowStockItems.filter((item) => needsEmergencyBackup(item));
+  // FIXED: Find critical items that need emergency backup
+  // Include both: critical items with qty=1 (from lowStock) AND critical items with qty=0 (from outOfStock)
+  const lowStockEmergencyItems = lowStockItems.filter((item) => needsEmergencyBackup(item));
+  const outOfStockCriticalItems = outOfStockItems.filter((item) => isCriticalEquipment(item));
+  
+  // Combine both: critical items at qty=0 or qty=1 need emergency backup
+  const emergencyBackupItems = [...lowStockEmergencyItems, ...outOfStockCriticalItems];
   const showEmergencyBackup = emergencyBackupItems.length > 0;
 
   // Sort all items: critical first
@@ -158,10 +165,13 @@ export default function NeedsAttention({
                 <Ionicons name="warning" size={20} color={colors.statusOrange} />
                 <View style={styles.emergencyText}>
                   <Text style={[styles.emergencyTitle, { color: colors.statusOrange }]}>
-                    Consider Backup for Emergency ({emergencyBackupItems.length})
+                    ⚠️ Emergency Backup Required ({emergencyBackupItems.length})
                   </Text>
                   <Text style={[styles.emergencySubtitle, { color: colors.textSecondary }]}>
-                    {emergencyBackupItems.map(item => item.name).join(', ')} - only 1 unit left. Having a backup is critical.
+                    {emergencyBackupItems.map(item => {
+                      const status = item.quantity === 0 ? 'OUT OF STOCK' : 'only 1 unit';
+                      return `${item.name} (${status})`;
+                    }).join(', ')}. These are critical life-support items - having backup is essential!
                   </Text>
                 </View>
               </View>

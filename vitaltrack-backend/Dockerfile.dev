@@ -19,9 +19,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy entrypoint and application code
-COPY docker-entrypoint.sh .
-RUN chmod +x docker-entrypoint.sh
+# Copy application code
 COPY . .
 
 # Environment variables
@@ -31,8 +29,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 EXPOSE 8000
 
-# Use entrypoint for migrations
-ENTRYPOINT ["./docker-entrypoint.sh"]
+# Create entrypoint script INSIDE the container (avoids Windows encoding issues)
+RUN echo '#!/bin/sh' > /entrypoint.sh && \
+    echo 'echo "VitalTrack API Starting..."' >> /entrypoint.sh && \
+    echo 'echo "Waiting for database..."' >> /entrypoint.sh && \
+    echo 'until pg_isready -h "${DATABASE_HOST:-db}" -p "${DATABASE_PORT:-5432}" > /dev/null 2>&1; do' >> /entrypoint.sh && \
+    echo '  echo "Database not ready... waiting 2s"' >> /entrypoint.sh && \
+    echo '  sleep 2' >> /entrypoint.sh && \
+    echo 'done' >> /entrypoint.sh && \
+    echo 'echo "Database ready! Running migrations..."' >> /entrypoint.sh && \
+    echo 'alembic upgrade head' >> /entrypoint.sh && \
+    echo 'echo "Starting server..."' >> /entrypoint.sh && \
+    echo 'exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
-# Development server with hot-reload
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+ENTRYPOINT ["/entrypoint.sh"]

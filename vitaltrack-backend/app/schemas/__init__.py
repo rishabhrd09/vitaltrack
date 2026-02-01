@@ -29,9 +29,9 @@ from app.schemas.order import (
     OrderCreate,
     OrderItemCreate,
     OrderItemResponse,
-    OrderList,
+    OrderListResponse,
     OrderResponse,
-    OrderStatusUpdate,
+    OrderUpdate,
 )
 from app.schemas.sync import (
     ConflictResolution,
@@ -101,9 +101,9 @@ __all__ = [
     "OrderCreate",
     "OrderItemCreate",
     "OrderItemResponse",
-    "OrderList",
+    "OrderListResponse",
     "OrderResponse",
-    "OrderStatusUpdate",
+    "OrderUpdate",
     # Sync
     "ConflictResolution",
     "FullSyncRequest",

@@ -1,6 +1,13 @@
 /**
  * VitalTrack Mobile - Zustand Store
- * Complete state management with AsyncStorage persistence
+ * FIXED VERSION 3.0 - Complete data management with proper null safety
+ * 
+ * CRITICAL FIXES:
+ * 1. All filter operations now use isValidItem() check
+ * 2. SavedOrder uses createdAt field (matches interface)
+ * 3. getStats() has bulletproof null safety
+ * 4. clearStore() properly clears AsyncStorage
+ * 5. loadUserData() handles API errors gracefully
  */
 
 import { create } from 'zustand';
@@ -10,10 +17,87 @@ import type {
   Item, Category, ActivityLog, ActivityActionType,
   SavedOrder, OrderItem, OrderStatus, DashboardStats, ExportPayload, Backup
 } from '@/types';
-import { isLowStock, isOutOfStock } from '@/types';
+import { isLowStock, isOutOfStock, isValidItem } from '@/types';
 import { SEED_DATA, ESSENTIAL_ITEM_KEYWORDS } from '@/data/seedData';
 import { generateId, now, getTodayDateString, generateOrderId } from '@/utils/helpers';
 import { validateCategoryData, validateItemData } from '@/utils/sanitize';
+
+// ============================================================================
+// STORAGE KEY CONSTANTS
+// ============================================================================
+
+const STORAGE_KEYS = {
+  APP_STORE: 'vitaltrack-storage',
+  AUTH_STORE: 'vitaltrack-auth',
+  SYNC_QUEUE: 'vitaltrack_sync_queue',
+  ACTIVITY_LOGS_PREFIX: 'vitaltrack_activity_',  // Per-user activity logs
+};
+
+/**
+ * Get activity logs storage key for a specific user
+ */
+function getActivityLogsKey(userId: string): string {
+  return `${STORAGE_KEYS.ACTIVITY_LOGS_PREFIX}${userId}`;
+}
+
+/**
+ * Save activity logs for a specific user
+ * Called whenever activity logs change
+ */
+export async function saveUserActivityLogs(userId: string, logs: ActivityLog[]): Promise<void> {
+  if (!userId) return;
+  try {
+    const key = getActivityLogsKey(userId);
+    // Keep only the last 100 activity logs to avoid storage bloat
+    const logsToSave = logs.slice(0, 100);
+    await AsyncStorage.setItem(key, JSON.stringify(logsToSave));
+    console.log(`[ActivityLogs] Saved ${logsToSave.length} logs for user ${userId.slice(0, 8)}...`);
+  } catch (error) {
+    console.error('[ActivityLogs] Failed to save activity logs:', error);
+  }
+}
+
+/**
+ * Load activity logs for a specific user
+ * Called when user logs in
+ */
+export async function loadUserActivityLogs(userId: string): Promise<ActivityLog[]> {
+  if (!userId) return [];
+  try {
+    const key = getActivityLogsKey(userId);
+    const data = await AsyncStorage.getItem(key);
+    if (data) {
+      const logs = JSON.parse(data) as ActivityLog[];
+      console.log(`[ActivityLogs] Loaded ${logs.length} logs for user ${userId.slice(0, 8)}...`);
+      return logs;
+    }
+  } catch (error) {
+    console.error('[ActivityLogs] Failed to load activity logs:', error);
+  }
+  return [];
+}
+
+/**
+ * Clear ALL user data from AsyncStorage
+ */
+export async function clearAllUserData(): Promise<void> {
+  console.log('[DataIsolation] Clearing all user data from AsyncStorage...');
+  try {
+    await AsyncStorage.multiRemove([
+      STORAGE_KEYS.APP_STORE,
+      STORAGE_KEYS.SYNC_QUEUE,
+    ]);
+    console.log('[DataIsolation] AsyncStorage cleared successfully');
+  } catch (error) {
+    console.error('[DataIsolation] Failed to clear AsyncStorage:', error);
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.APP_STORE);
+      await AsyncStorage.removeItem(STORAGE_KEYS.SYNC_QUEUE);
+    } catch (e) {
+      console.error('[DataIsolation] Fallback clear also failed:', e);
+    }
+  }
+}
 
 // ============================================================================
 // STORE TYPES
@@ -30,6 +114,7 @@ interface AppState {
   selectedCategoryId: string | null;
   expandedCategories: string[];
   expandedItems: string[];
+  currentUserId: string | null;
 }
 
 interface AppActions {
@@ -96,6 +181,11 @@ interface AppActions {
   getBackups: () => Backup[];
   restoreBackup: (backupId: string) => boolean;
   deleteBackup: (backupId: string) => void;
+
+  // Data Isolation
+  clearStore: () => Promise<void>;
+  loadUserData: (userId: string) => Promise<boolean>;
+  syncToBackend: () => Promise<boolean>;
 }
 
 type AppStore = AppState & AppActions;
@@ -123,6 +213,7 @@ function createSeedData(): { categories: Category[]; items: Item[] } {
     });
 
     seedCat.items.forEach((seedItem) => {
+      const itemName = seedItem.name.toLowerCase();
       items.push({
         id: generateId(),
         categoryId,
@@ -132,14 +223,14 @@ function createSeedData(): { categories: Category[]; items: Item[] } {
         unit: seedItem.unit,
         minimumStock: seedItem.minimumStock,
         isActive: true,
-        isCritical: seedItem.name.toLowerCase().includes('ventilator') ||
-          seedItem.name.toLowerCase().includes('bipap') ||
-          seedItem.name.toLowerCase().includes('oxygen') ||
-          seedItem.name.toLowerCase().includes('ambu') ||
-          seedItem.name.toLowerCase().includes('suction') ||
-          seedItem.name.toLowerCase().includes('nebulizer') ||
-          seedItem.name.toLowerCase().includes('tube') ||
-          seedItem.name.toLowerCase().includes('catheter mount'),
+        isCritical: itemName.includes('ventilator') ||
+          itemName.includes('bipap') ||
+          itemName.includes('oxygen') ||
+          itemName.includes('ambu') ||
+          itemName.includes('suction') ||
+          itemName.includes('nebulizer') ||
+          itemName.includes('tube') ||
+          itemName.includes('catheter mount'),
         createdAt: timestamp,
         updatedAt: timestamp,
       });
@@ -167,6 +258,7 @@ export const useAppStore = create<AppStore>()(
       selectedCategoryId: null,
       expandedCategories: [],
       expandedItems: [],
+      currentUserId: null,
 
       // =====================================================================
       // INITIALIZATION
@@ -175,10 +267,9 @@ export const useAppStore = create<AppStore>()(
       initialize: () => {
         const { categories, items, isInitialized } = get();
 
-        // AUTO-FIX: Detect duplication anomaly (User reported ~60 items vs 31 expected)
-        // If we have significantly more items than the seed data (31), it's likely a duplication bug from development.
+        // AUTO-FIX: Detect duplication anomaly
         if (items.length > 50) {
-          console.log('Detected data anomaly (duplicate items). Auto-resetting to clean state.');
+          console.log('[Store] Detected data anomaly. Auto-resetting.');
           get().resetToDefaults();
           return;
         }
@@ -206,8 +297,10 @@ export const useAppStore = create<AppStore>()(
       // =====================================================================
 
       createItem: (data) => {
+        const id = generateId();
         const item: Item = {
-          id: generateId(),
+          id,
+          localId: id,  // CRITICAL: Set localId = id for sync matching
           categoryId: data.categoryId || '',
           name: data.name || 'New Item',
           description: data.description,
@@ -219,6 +312,7 @@ export const useAppStore = create<AppStore>()(
           notes: data.notes,
           supplierName: data.supplierName,
           supplierContact: data.supplierContact,
+          purchaseLink: data.purchaseLink,
           imageUri: data.imageUri,
           isActive: true,
           isCritical: data.isCritical || false,
@@ -244,23 +338,30 @@ export const useAppStore = create<AppStore>()(
         }));
 
         const changes: string[] = [];
-        if (data.name && data.name !== oldItem.name) changes.push(`Name: ${oldItem.name} → ${data.name}`);
-        if (data.quantity !== undefined && data.quantity !== oldItem.quantity)
-          changes.push(`Qty: ${oldItem.quantity} → ${data.quantity}`);
-        if (data.minimumStock !== undefined && data.minimumStock !== oldItem.minimumStock)
-          changes.push(`Min: ${oldItem.minimumStock} → ${data.minimumStock}`);
+        if (data.name && data.name !== oldItem.name) changes.push(`name to ${data.name}`);
+        if (data.quantity !== undefined && data.quantity !== oldItem.quantity) {
+          changes.push(`qty ${oldItem.quantity}→${data.quantity}`);
+        }
 
-        get().logActivity('item_update', updated.name, changes.join(', ') || 'Updated', id);
+        get().logActivity(
+          'item_update',
+          updated.name,
+          changes.length > 0 ? changes.join(', ') : 'Updated',
+          id
+        );
 
         return updated;
       },
 
       deleteItem: (id) => {
         const item = get().items.find((i) => i.id === id);
-        if (item) {
-          set((state) => ({ items: state.items.filter((i) => i.id !== id) }));
-          get().logActivity('item_delete', item.name, 'Deleted');
-        }
+        if (!item) return;
+
+        set((state) => ({
+          items: state.items.filter((i) => i.id !== id),
+        }));
+
+        get().logActivity('item_delete', item.name, 'Deleted', id);
       },
 
       updateStock: (id, newQuantity) => {
@@ -269,44 +370,42 @@ export const useAppStore = create<AppStore>()(
 
         if (!item) return null;
 
-        const oldQty = item.quantity;
         const updated: Item = { ...item, quantity: newQuantity, updatedAt: now() };
 
         set((state) => ({
           items: state.items.map((i) => (i.id === id ? updated : i)),
         }));
 
-        const diff = newQuantity - oldQty;
-        const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
-        get().logActivity('stock_update', item.name, `${oldQty} → ${newQuantity} (${diffStr})`, id);
+        get().logActivity(
+          'stock_update',
+          item.name,
+          `Stock: ${item.quantity} → ${newQuantity}`,
+          id
+        );
 
         return updated;
       },
 
-      getItemById: (id) => get().items.find((i) => i.id === id),
-
       toggleItemCritical: (id) => {
-        const { items } = get();
-        const item = items.find((i) => i.id === id);
-        if (item) {
-          const updated = { ...item, isCritical: !item.isCritical, updatedAt: now() };
-          set((state) => ({
-            items: state.items.map((i) => (i.id === id ? updated : i)),
-          }));
-          get().logActivity('item_update', item.name, `Critical: ${!item.isCritical}`, id);
-        }
+        const item = get().items.find((i) => i.id === id);
+        if (!item) return;
+
+        get().updateItem(id, { isCritical: !item.isCritical });
       },
+
+      getItemById: (id) => get().items.find((i) => i.id === id),
 
       // =====================================================================
       // CATEGORY OPERATIONS
       // =====================================================================
 
       createCategory: (data) => {
+        const { categories } = get();
         const category: Category = {
           id: generateId(),
           name: data.name || 'New Category',
           description: data.description,
-          displayOrder: get().categories.length,
+          displayOrder: categories.length,
           isDefault: false,
           createdAt: now(),
           updatedAt: now(),
@@ -317,30 +416,34 @@ export const useAppStore = create<AppStore>()(
           expandedCategories: [...state.expandedCategories, category.id],
         }));
 
+        get().logActivity('category_create', category.name, 'Created');
         return category;
       },
 
       updateCategory: (id, data) => {
-        const { categories } = get();
-        const oldCat = categories.find((c) => c.id === id);
+        const category = get().categories.find((c) => c.id === id);
+        if (!category) return null;
 
-        if (!oldCat) return null;
-
-        const updated: Category = { ...oldCat, ...data, updatedAt: now() };
+        const updated: Category = { ...category, ...data, updatedAt: now() };
 
         set((state) => ({
-          categories: state.categories.map((cat) => (cat.id === id ? updated : cat)),
+          categories: state.categories.map((c) => (c.id === id ? updated : c)),
         }));
 
         return updated;
       },
 
       deleteCategory: (id) => {
+        const category = get().categories.find((c) => c.id === id);
+        if (!category) return;
+
         set((state) => ({
           categories: state.categories.filter((c) => c.id !== id),
           items: state.items.filter((i) => i.categoryId !== id),
           expandedCategories: state.expandedCategories.filter((cid) => cid !== id),
         }));
+
+        get().logActivity('category_delete', category.name, 'Deleted');
       },
 
       getCategoryById: (id) => get().categories.find((c) => c.id === id),
@@ -381,7 +484,7 @@ export const useAppStore = create<AppStore>()(
       // =====================================================================
 
       logActivity: (action, itemName, details, itemId, orderId) => {
-        const log: ActivityLog = {
+        const activity: ActivityLog = {
           id: generateId(),
           action,
           itemName,
@@ -391,9 +494,20 @@ export const useAppStore = create<AppStore>()(
           timestamp: now(),
         };
 
-        set((state) => ({
-          activityLogs: [log, ...state.activityLogs].slice(0, 100), // Keep last 100
-        }));
+        const { currentUserId } = get();
+        
+        set((state) => {
+          const newLogs = [activity, ...state.activityLogs].slice(0, 100);
+          
+          // Persist activity logs to AsyncStorage for this user
+          if (currentUserId) {
+            saveUserActivityLogs(currentUserId, newLogs).catch(err => 
+              console.warn('[ActivityLogs] Failed to persist:', err)
+            );
+          }
+          
+          return { activityLogs: newLogs };
+        });
       },
 
       // =====================================================================
@@ -402,24 +516,29 @@ export const useAppStore = create<AppStore>()(
 
       getTodayOrderCount: () => {
         const today = getTodayDateString();
-        return get().savedOrders.filter((o) => o.orderId.includes(today)).length;
+        return get().savedOrders.filter(
+          (order) => order.createdAt && order.createdAt.startsWith(today)
+        ).length;
       },
 
       createOrderId: () => {
-        return generateOrderId(get().getTodayOrderCount());
+        const count = get().getTodayOrderCount();
+        return generateOrderId(count);
       },
 
-      saveOrder: (orderItems) => {
+      saveOrder: (items) => {
         const orderId = get().createOrderId();
+        const timestamp = now();
 
         const order: SavedOrder = {
           id: generateId(),
           orderId,
-          items: orderItems,
-          totalItems: orderItems.length,
-          totalUnits: orderItems.reduce((sum, item) => sum + item.quantity, 0),
+          items,
+          totalItems: items.length,
+          totalUnits: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
           status: 'pending',
-          exportedAt: now(),
+          createdAt: timestamp,
+          exportedAt: timestamp,
         };
 
         set((state) => ({
@@ -438,24 +557,18 @@ export const useAppStore = create<AppStore>()(
       },
 
       updateOrderStatus: (orderId, status) => {
-        const timestampMap: Record<string, keyof SavedOrder> = {
-          ordered: 'orderedAt',
-          received: 'receivedAt',
-          stock_updated: 'appliedAt',
-          declined: 'declinedAt',
-        };
-        const timestampField = timestampMap[status];
-
         set((state) => ({
-          savedOrders: state.savedOrders.map((o) =>
-            o.id === orderId || o.orderId === orderId
-              ? {
-                ...o,
-                status,
-                ...(timestampField ? { [timestampField]: now() } : {}),
-              }
-              : o
-          ),
+          savedOrders: state.savedOrders.map((order) => {
+            if (order.id === orderId || order.orderId === orderId) {
+              const updates: Partial<SavedOrder> = { status };
+              if (status === 'ordered') updates.orderedAt = now();
+              if (status === 'received') updates.receivedAt = now();
+              if (status === 'stock_updated') updates.appliedAt = now();
+              if (status === 'declined') updates.declinedAt = now();
+              return { ...order, ...updates };
+            }
+            return order;
+          }),
         }));
       },
 
@@ -463,17 +576,21 @@ export const useAppStore = create<AppStore>()(
         get().updateOrderStatus(orderId, 'received');
         const order = get().getOrderById(orderId);
         if (order) {
-          get().logActivity('order_received', `Order ${order.orderId}`, 'Marked as received', undefined, order.orderId);
+          get().logActivity(
+            'order_received',
+            `Order ${order.orderId}`,
+            'Marked as received',
+            undefined,
+            order.orderId
+          );
         }
       },
 
       applyOrderToStock: (orderId) => {
-        const { savedOrders, items } = get();
-        const order = savedOrders.find((o) => o.id === orderId || o.orderId === orderId);
+        const order = get().getOrderById(orderId);
+        if (!order) return;
 
-        if (!order || order.status === 'stock_updated') return;
-
-        // Update stock for each item in the order
+        const { items } = get();
         const updatedItems = items.map((item) => {
           const orderItem = order.items.find((oi) => oi.itemId === item.id);
           if (orderItem) {
@@ -504,48 +621,58 @@ export const useAppStore = create<AppStore>()(
       },
 
       // =====================================================================
-      // COMPUTED DATA
+      // COMPUTED DATA - FIXED: Bulletproof null safety
       // =====================================================================
 
       getStats: () => {
         const { items, categories, savedOrders } = get();
-        const activeItems = items.filter((i) => i.isActive);
+
+        // FIXED: Filter out any invalid items before processing
+        const validItems = (items || []).filter(item => isValidItem(item));
+        const activeItems = validItems.filter((i) => i.isActive === true);
 
         return {
           totalItems: activeItems.length,
-          totalCategories: categories.length,
+          totalCategories: (categories || []).length,
           lowStockCount: activeItems.filter((i) => isLowStock(i)).length,
           outOfStockCount: activeItems.filter((i) => isOutOfStock(i)).length,
-          pendingOrdersCount: savedOrders.filter((o) => o.status === 'pending' || o.status === 'received').length,
+          pendingOrdersCount: (savedOrders || []).filter((o) => o.status === 'pending' || o.status === 'received').length,
         };
       },
 
       getFilteredItems: () => {
         const { items, searchQuery } = get();
-        const activeItems = items.filter((i) => i.isActive);
+        const validItems = (items || []).filter(item => isValidItem(item));
+        const activeItems = validItems.filter((i) => i.isActive === true);
 
-        if (!searchQuery.trim()) return activeItems;
+        if (!searchQuery || !searchQuery.trim()) return activeItems;
 
         const query = searchQuery.toLowerCase();
         return activeItems.filter((item) =>
-          item.name.toLowerCase().includes(query) ||
-          item.brand?.toLowerCase().includes(query) ||
-          item.description?.toLowerCase().includes(query)
+          (item.name && item.name.toLowerCase().includes(query)) ||
+          (item.brand && item.brand.toLowerCase().includes(query)) ||
+          (item.description && item.description.toLowerCase().includes(query))
         );
       },
 
-      getActiveItems: () => get().items.filter((i) => i.isActive),
+      getActiveItems: () => {
+        const { items } = get();
+        return (items || []).filter((i) => isValidItem(i) && i.isActive === true);
+      },
 
       getLowStockItems: () => {
-        return get().items.filter((i) => i.isActive && isLowStock(i));
+        const { items } = get();
+        return (items || []).filter((i) => isValidItem(i) && i.isActive === true && isLowStock(i));
       },
 
       getOutOfStockItems: () => {
-        return get().items.filter((i) => i.isActive && isOutOfStock(i));
+        const { items } = get();
+        return (items || []).filter((i) => isValidItem(i) && i.isActive === true && isOutOfStock(i));
       },
 
       getNeedsOrderItems: () => {
-        return get().items.filter((i) => i.isActive && (isLowStock(i) || isOutOfStock(i)));
+        const { items } = get();
+        return (items || []).filter((i) => isValidItem(i) && i.isActive === true && (isLowStock(i) || isOutOfStock(i)));
       },
 
       // =====================================================================
@@ -566,13 +693,11 @@ export const useAppStore = create<AppStore>()(
       },
 
       importData: (data) => {
-        // Basic structure validation
         if (!data || !Array.isArray(data.categories) || !Array.isArray(data.items)) {
           console.warn('Import failed: Invalid data structure');
           return false;
         }
 
-        // Validate each category
         for (const category of data.categories) {
           if (!validateCategoryData(category)) {
             console.warn('Import failed: Invalid category data', category);
@@ -580,7 +705,6 @@ export const useAppStore = create<AppStore>()(
           }
         }
 
-        // Validate each item
         for (const item of data.items) {
           if (!validateItemData(item)) {
             console.warn('Import failed: Invalid item data', item);
@@ -617,13 +741,12 @@ export const useAppStore = create<AppStore>()(
       startFresh: () => {
         const { items, categories } = get();
 
-        // Helper function to check if item is essential
         const isEssential = (name: string) => {
+          if (!name) return false;
           const lowerName = name.toLowerCase();
           return ESSENTIAL_ITEM_KEYWORDS.some((keyword) => lowerName.includes(keyword));
         };
 
-        // Hide all non-essential items
         const updatedItems = items.map((item) => ({
           ...item,
           isActive: isEssential(item.name),
@@ -645,7 +768,6 @@ export const useAppStore = create<AppStore>()(
       restoreSeedData: () => {
         const { items } = get();
 
-        // Reactivate all items
         const reactivatedItems = items.map((item) => ({
           ...item,
           isActive: true,
@@ -672,7 +794,6 @@ export const useAppStore = create<AppStore>()(
           savedOrders: [...savedOrders],
         };
 
-        // Keep max 3 backups
         const updatedBackups = [backup, ...backups].slice(0, 3);
         set({ backups: updatedBackups });
 
@@ -705,9 +826,189 @@ export const useAppStore = create<AppStore>()(
           backups: state.backups.filter((b) => b.id !== backupId),
         }));
       },
+
+      // =====================================================================
+      // DATA ISOLATION
+      // =====================================================================
+
+      clearStore: async () => {
+        console.log('[DataIsolation] clearStore called - clearing ALL user data');
+
+        set({
+          categories: [],
+          items: [],
+          activityLogs: [],
+          savedOrders: [],
+          backups: [],
+          isInitialized: false,
+          searchQuery: '',
+          selectedCategoryId: null,
+          expandedCategories: [],
+          expandedItems: [],
+          currentUserId: null,
+        });
+
+        await clearAllUserData();
+        console.log('[DataIsolation] Store and AsyncStorage cleared successfully');
+      },
+
+      loadUserData: async (userId: string) => {
+        console.log(`[DataIsolation] loadUserData called for user: ${userId}`);
+
+        try {
+          const { currentUserId } = get();
+
+          if (currentUserId && currentUserId !== userId) {
+            console.log('[DataIsolation] Different user detected - clearing old data');
+            await get().clearStore();
+          }
+
+          await clearAllUserData();
+
+          // FIXED: Load activity logs for this user BEFORE clearing the store
+          const savedActivityLogs = await loadUserActivityLogs(userId);
+          console.log(`[DataIsolation] Restored ${savedActivityLogs.length} activity logs for user`);
+
+          set({
+            categories: [],
+            items: [],
+            activityLogs: savedActivityLogs,  // FIXED: Restore activity logs
+            savedOrders: [],
+            backups: [],
+            isInitialized: false,
+            currentUserId: userId,
+          });
+
+          const { syncService, isOnline } = await import('@/services/sync');
+          const online = await isOnline();
+
+          if (!online) {
+            console.log('[DataIsolation] Offline: Seeding with default data');
+            const { categories: seedCats, items: seedItems } = createSeedData();
+            set({
+              categories: seedCats,
+              items: seedItems,
+              activityLogs: savedActivityLogs,  // Preserve activity logs
+              expandedCategories: seedCats.map(c => c.id),
+              isInitialized: true,
+              currentUserId: userId,
+            });
+            return false;
+          }
+
+          console.log('[DataIsolation] Fetching user data from backend...');
+          const pulled = await syncService.pull();
+
+          if (pulled.categories.length > 0 || pulled.items.length > 0) {
+            // CRITICAL: Preserve localId from server for sync matching
+            const categoriesWithLocalId = pulled.categories.map(cat => ({
+              ...cat,
+              localId: cat.localId || cat.id,
+            }));
+            const itemsWithLocalId = pulled.items.map(item => ({
+              ...item,
+              localId: item.localId || item.id,
+            }));
+            const ordersWithLocalId = (pulled.orders || []).map(order => ({
+              ...order,
+              localId: order.localId || order.id,
+              items: order.items || [],
+            }));
+
+            console.log(`[DataIsolation] Loaded: ${categoriesWithLocalId.length} categories, ${itemsWithLocalId.length} items, ${ordersWithLocalId.length} orders`);
+            set({
+              categories: categoriesWithLocalId,
+              items: itemsWithLocalId,
+              savedOrders: ordersWithLocalId,
+              activityLogs: savedActivityLogs,  // FIXED: Preserve activity logs
+              expandedCategories: categoriesWithLocalId.map(c => c.id),
+              isInitialized: true,
+              currentUserId: userId,
+            });
+          } else {
+            console.log('[DataIsolation] New user - seeding with default data');
+            const { categories: seedCats, items: seedItems } = createSeedData();
+            set({
+              categories: seedCats,
+              items: seedItems,
+              activityLogs: savedActivityLogs,  // FIXED: Preserve activity logs
+              expandedCategories: seedCats.map(c => c.id),
+              isInitialized: true,
+              currentUserId: userId,
+            });
+
+            try {
+              await syncService.push({
+                categories: { created: seedCats },
+                items: { created: seedItems },
+              });
+              console.log('[DataIsolation] Seed data pushed to backend');
+            } catch (pushErr) {
+              console.warn('[DataIsolation] Failed to push seed data:', pushErr);
+            }
+          }
+
+          return true;
+        } catch (error) {
+          console.error('[DataIsolation] Failed to load user data:', error);
+
+          // FIXED: Try to load activity logs even on error
+          const savedActivityLogs = await loadUserActivityLogs(userId);
+          
+          const { categories: seedCats, items: seedItems } = createSeedData();
+          set({
+            categories: seedCats,
+            items: seedItems,
+            activityLogs: savedActivityLogs,  // Preserve activity logs on error too
+            expandedCategories: seedCats.map(c => c.id),
+            isInitialized: true,
+            currentUserId: userId,
+          });
+          return false;
+        }
+      },
+
+      // =====================================================================
+      // SYNC TO BACKEND - Push all local changes before logout
+      // =====================================================================
+
+      syncToBackend: async () => {
+        console.log('[Sync] syncToBackend: Pushing all local data to backend...');
+
+        try {
+          const { syncService, isOnline } = await import('@/services/sync');
+          const online = await isOnline();
+
+          if (!online) {
+            console.log('[Sync] syncToBackend: Offline - skipping sync');
+            return false;
+          }
+
+          const { categories, items, savedOrders } = get();
+
+          if (categories.length === 0 && items.length === 0) {
+            console.log('[Sync] syncToBackend: No data to sync');
+            return true;
+          }
+
+          // Push all current data - backend uses UPSERT to update existing records
+          // Using 'created' ensures all fields are sent (including quantity!)
+          await syncService.push({
+            categories: { created: categories },
+            items: { created: items },
+            orders: { created: savedOrders },
+          });
+
+          console.log(`[Sync] syncToBackend: Complete - ${categories.length} categories, ${items.length} items, ${savedOrders.length} orders`);
+          return true;
+        } catch (error) {
+          console.error('[Sync] syncToBackend: Failed:', error);
+          return false;
+        }
+      },
     }),
     {
-      name: 'vitaltrack-storage',
+      name: STORAGE_KEYS.APP_STORE,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         categories: state.categories,
@@ -717,6 +1018,7 @@ export const useAppStore = create<AppStore>()(
         backups: state.backups,
         isInitialized: state.isInitialized,
         expandedCategories: state.expandedCategories,
+        currentUserId: state.currentUserId,
       }),
     }
   )

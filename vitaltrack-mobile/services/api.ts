@@ -210,6 +210,12 @@ class ApiClient {
                 }
             }
 
+            // Log detailed error info
+            console.error(`[API] Request failed: ${options.method || 'GET'} ${endpoint}`);
+            console.error(`[API] Status: ${response.status}`);
+            console.error(`[API] Error: ${message}`);
+            console.error(`[API] Data:`, JSON.stringify(data).substring(0, 500));
+
             throw new ApiClientError(message, response.status, data);
         }
 
