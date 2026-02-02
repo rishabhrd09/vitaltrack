@@ -26,6 +26,7 @@ export default function OrderCard({
 }: OrderCardProps) {
   const { colors } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showAllItems, setShowAllItems] = useState(false);
 
   const getStatusConfig = (status: OrderStatus) => {
     switch (status) {
@@ -112,7 +113,8 @@ export default function OrderCard({
           {/* Items List */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>Items</Text>
-            {order.items.slice(0, 5).map((item) => (
+
+            {(showAllItems ? order.items : order.items.slice(0, 3)).map((item) => (
               <View key={item.id} style={styles.itemRow}>
                 <Text style={[styles.itemName, { color: colors.textPrimary }]} numberOfLines={1}>
                   {item.name}
@@ -122,10 +124,16 @@ export default function OrderCard({
                 </Text>
               </View>
             ))}
-            {order.items.length > 5 && (
-              <Text style={[styles.moreItems, { color: colors.textTertiary }]}>
-                +{order.items.length - 5} more items
-              </Text>
+
+            {order.items.length > 3 && (
+              <TouchableOpacity
+                onPress={() => setShowAllItems(!showAllItems)}
+                style={{ marginTop: 8 }}
+              >
+                <Text style={[styles.moreItems, { color: colors.accentBlue }]}>
+                  {showAllItems ? 'Show less' : `+${order.items.length - 3} more items`}
+                </Text>
+              </TouchableOpacity>
             )}
           </View>
 

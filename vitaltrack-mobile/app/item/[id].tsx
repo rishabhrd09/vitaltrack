@@ -39,7 +39,6 @@ export default function ItemFormScreen() {
   const createItem = useAppStore((state) => state.createItem);
   const updateItem = useAppStore((state) => state.updateItem);
   const deleteItem = useAppStore((state) => state.deleteItem);
-  const toggleItemCritical = useAppStore((state) => state.toggleItemCritical);
 
   const existingItem = !isNew ? getItemById(id) : undefined;
 
@@ -71,14 +70,6 @@ export default function ItemFormScreen() {
       item.name.toLowerCase().includes(name.toLowerCase()) &&
       item.id !== id
     ).slice(0, 5)
-    : [];
-
-  // Find hidden items that match the name (for reactivation prompt)
-  const hiddenMatchingItems = name.trim().length >= 2
-    ? items.filter(item =>
-      !item.isActive &&
-      item.name.toLowerCase() === name.toLowerCase().trim()
-    )
     : [];
 
   const pickImage = async () => {

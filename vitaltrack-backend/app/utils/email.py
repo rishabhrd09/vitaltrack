@@ -87,7 +87,7 @@ async def send_verification_email(
     Returns:
         bool: True if sent successfully
     """
-    print(f"[EMAIL] ===== send_verification_email called =====")
+    print("[EMAIL] ===== send_verification_email called =====")
     print(f"[EMAIL] Recipient: {email}, Username: {username}")
     print(f"[EMAIL] MAIL_USERNAME: {settings.MAIL_USERNAME}")
     print(f"[EMAIL] MAIL_SERVER: {settings.MAIL_SERVER}")
@@ -97,7 +97,7 @@ async def send_verification_email(
         print(f"[EMAIL] Mail not configured. Verification token for {email}: {token}")
         return False
     
-    print(f"[EMAIL] Mail config OK, preparing to send...")
+    print("[EMAIL] Mail config OK, preparing to send...")
     verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
     
     html_content = f"""

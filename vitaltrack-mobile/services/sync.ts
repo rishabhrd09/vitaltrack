@@ -426,7 +426,7 @@ export const syncQueue = {
       try {
         // Create a single-operation push
         const response = await api.post<{
-          results: Array<{ operationId: string; success: boolean; error?: string }>;
+          results: { operationId: string; success: boolean; error?: string }[];
           successCount: number;
           errorCount: number;
         }>('/sync/push', {
@@ -496,7 +496,7 @@ export const syncService = {
       });
 
       const responsePromise = api.post<{
-        results: Array<{ operationId: string; success: boolean; error?: string; serverId?: string }>;
+        results: { operationId: string; success: boolean; error?: string; serverId?: string }[];
         successCount: number;
         errorCount: number;
         serverTime: string;

@@ -130,3 +130,5 @@ htmlcov/
 # ============================================
 # Don't ignore docker files, but ignore volumes
 docker-volumes/
+
+docs/development_stories

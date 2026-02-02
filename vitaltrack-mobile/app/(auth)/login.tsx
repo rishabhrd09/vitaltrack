@@ -34,10 +34,23 @@ export default function LoginScreen() {
         }
 
         clearError();
-        const success = await login(identifier.trim(), password);
 
-        if (success) {
-            router.replace('/(tabs)');
+        try {
+            const success = await login(identifier.trim(), password);
+
+            if (success) {
+                router.replace('/(tabs)');
+            }
+        } catch (err) {
+            // Handle email not verified error
+            const error = err as Error;
+            if (error.message === 'EMAIL_NOT_VERIFIED') {
+                router.push({
+                    pathname: '/(auth)/verify-email-pending' as const,
+                    params: { email: identifier.trim() }
+                } as never);
+            }
+            // Other errors are handled by useAuthStore and shown via error state
         }
     };
 

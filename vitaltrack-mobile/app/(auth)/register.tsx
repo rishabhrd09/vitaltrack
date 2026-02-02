@@ -106,19 +106,29 @@ export default function RegisterScreen() {
             });
 
             if (success) {
-                console.log('[Register] Registration successful, navigating to tabs');
-                // FIXED: Use setTimeout to ensure root layout is mounted
-                setTimeout(() => {
-                    try {
-                        router.replace('/(tabs)');
-                    } catch (navError) {
-                        console.warn('[Register] Navigation failed, retrying:', navError);
-                        // Retry after a short delay
-                        setTimeout(() => {
+                // If email was provided, redirect to verification screen
+                // If only username (no email), go directly to app
+                if (email.trim()) {
+                    console.log('[Register] Registration successful, redirecting to email verification');
+                    setTimeout(() => {
+                        router.replace({
+                            pathname: '/(auth)/verify-email-pending' as const,
+                            params: { email: email.trim() }
+                        } as never);
+                    }, 100);
+                } else {
+                    console.log('[Register] Username-only registration, navigating to tabs');
+                    setTimeout(() => {
+                        try {
                             router.replace('/(tabs)');
-                        }, 500);
-                    }
-                }, 100);
+                        } catch (navError) {
+                            console.warn('[Register] Navigation failed, retrying:', navError);
+                            setTimeout(() => {
+                                router.replace('/(tabs)');
+                            }, 500);
+                        }
+                    }, 100);
+                }
             } else {
                 console.log('[Register] Registration returned false');
             }
@@ -230,7 +240,7 @@ export default function RegisterScreen() {
                                 autoCapitalize="none"
                                 editable={!isLoading && !isSubmitting}
                             />
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => setShowPassword(!showPassword)}
                                 disabled={isLoading || isSubmitting}
                             >
