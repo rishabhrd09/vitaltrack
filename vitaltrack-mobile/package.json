@@ -4,6 +4,8 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
+    "start:local": "cross-env EXPO_PUBLIC_API_URL=http://localhost:8000 expo start --clear",
+    "start:prod": "cross-env EXPO_PUBLIC_API_URL=https://vitaltrack-production.up.railway.app expo start --clear",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

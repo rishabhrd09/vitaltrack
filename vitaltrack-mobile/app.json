@@ -46,9 +46,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": "your-project-id-here"
-      }
+        "projectId": "8002d6b9-b60e-4014-a234-230a31813ea9"
+      },
+      "router": {}
     },
-    "owner": "your-expo-username"
+    "owner": "rishabhrd09"
   }
 }
