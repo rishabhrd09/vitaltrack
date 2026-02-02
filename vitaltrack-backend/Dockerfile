@@ -69,16 +69,16 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 # Set entrypoint
 ENTRYPOINT ["./docker-entrypoint.sh"]
 
-# Run the application
-CMD ["gunicorn", "app.main:app", \
-    "--worker-class", "uvicorn.workers.UvicornWorker", \
-    "--workers", "4", \
-    "--bind", "0.0.0.0:8000", \
-    "--access-logfile", "-", \
-    "--error-logfile", "-", \
-    "--capture-output"]
+# Run the application (Shell form to allow variable expansion)
+CMD gunicorn app.main:app \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --workers 4 \
+    --bind 0.0.0.0:${PORT:-8000} \
+    --access-logfile - \
+    --error-logfile - \
+    --capture-output
