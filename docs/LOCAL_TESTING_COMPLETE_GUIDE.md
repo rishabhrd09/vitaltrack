@@ -62,6 +62,25 @@ How is your phone connecting to your PC?
 
 ---
 
+## Section B.1: Flexible Environment Switching (The "Pro" Way)
+
+Instead of editing files manually, you can use these **Magic Commands**:
+
+| Command | Connects To... | Use Case |
+| :--- | :--- | :--- |
+| **`npm run start:local`** | **Local Docker** | Building features, debugging, working offline. |
+| **`npm run start:prod`** | **Railway Cloud** | Testing connection to live server, checking production bugs. |
+
+### ⚡ Setup Requirement
+You must install one small tool for this to work on Windows:
+```bash
+npm install --save-dev cross-env
+```
+
+Now you never have to edit `.env` again! Just run the command you need.
+
+---
+
 ## Section C: WiFi Method (Complete Steps)
 
 ### Step 1: Find Your PC's IP Address
@@ -96,17 +115,24 @@ http://YOUR_IP:8000/health
 ❌ **If timeout:** Check firewall (Section E)  
 ❌ **If refused:** Backend not running (restart Docker)
 
-### Step 3: Configure Frontend .env
+### Step 3: Choose Your Backend
 
-Edit `vitaltrack-mobile/.env`:
+**Option A: The Automatic Way (Recommended)**
+Skip editing the `.env` file entirely. Just use the commands from **Section B.1**:
+- `npm run start:local` (Connects to Localhub/USB)
+- `npm run start:prod` (Connects to Railway)
+
+**Option B: The Manual Way**
+Edit `vitaltrack-mobile/.env` manually:
 ```env
-EXPO_PUBLIC_API_URL=http://192.168.X.X:8000
-```
+# Uncomment ONE line:
 
-⚠️ **Critical:**
-- NO trailing slash!
-- Must be `http://` not `https://`
-- Replace `X.X` with your actual IP
+# For Local (USB/Emulator):
+# EXPO_PUBLIC_API_URL=http://localhost:8000
+
+# For Production (Railway):
+EXPO_PUBLIC_API_URL=https://vitaltrack-production.up.railway.app
+```
 
 ### Step 4: Restart Expo (Required!)
 
