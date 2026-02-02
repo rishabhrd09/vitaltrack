@@ -218,6 +218,17 @@ async def login(
             detail="Account is disabled",
         )
     
+    # Block login if email verification is required and email not verified
+    if (
+        settings.REQUIRE_EMAIL_VERIFICATION
+        and user.email
+        and not user.is_email_verified
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="EMAIL_NOT_VERIFIED",
+        )
+    
     # Create tokens
     jti = str(uuid4())
     tokens = create_token_pair(user.id, jti)

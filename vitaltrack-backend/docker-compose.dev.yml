@@ -29,7 +29,22 @@ services:
       # ========================================
       # IMPORTANT: Replace YOUR_LOCAL_IP below!
       # ========================================
-      - CORS_ORIGINS=["http://localhost:3000","http://localhost:8081","http://localhost:19006","http://10.0.2.2:8081","exp://localhost:8081","http://YOUR_LOCAL_IP:8081","exp://YOUR_LOCAL_IP:8081"]
+      - CORS_ORIGINS=["http://localhost:3000","http://localhost:8081","http://localhost:19006","http://10.0.2.2:8081","exp://localhost:8081","http://172.25.32.1:8081","exp://172.25.32.1:8081"]
+      # ========================================
+      # EMAIL CONFIGURATION (Brevo SMTP)
+      # ========================================
+      - MAIL_USERNAME=a14a39001@smtp-brevo.com
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_FROM=rishabhdongre.rd@gmail.com
+      - MAIL_SERVER=smtp-relay.brevo.com
+      - MAIL_PORT=587
+      - MAIL_STARTTLS=true
+      - MAIL_SSL_TLS=false
+      # ========================================
+      # EMAIL VERIFICATION
+      # ========================================
+      - REQUIRE_EMAIL_VERIFICATION=true
+      - FRONTEND_URL=http://172.25.32.1:8000/api/v1/auth
     depends_on:
       db:
         condition: service_healthy

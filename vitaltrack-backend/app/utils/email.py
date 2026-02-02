@@ -87,11 +87,17 @@ async def send_verification_email(
     Returns:
         bool: True if sent successfully
     """
+    print(f"[EMAIL] ===== send_verification_email called =====")
+    print(f"[EMAIL] Recipient: {email}, Username: {username}")
+    print(f"[EMAIL] MAIL_USERNAME: {settings.MAIL_USERNAME}")
+    print(f"[EMAIL] MAIL_SERVER: {settings.MAIL_SERVER}")
+    
     mail_config = _get_mail_config()
     if not mail_config:
         print(f"[EMAIL] Mail not configured. Verification token for {email}: {token}")
         return False
     
+    print(f"[EMAIL] Mail config OK, preparing to send...")
     verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
     
     html_content = f"""
@@ -141,9 +147,10 @@ async def send_verification_email(
     try:
         fast_mail = FastMail(mail_config)
         await fast_mail.send_message(message)
+        print(f"[EMAIL] ✅ Verification email SENT to {email}")
         return True
     except Exception as e:
-        print(f"[EMAIL] Failed to send verification email to {email}: {e}")
+        print(f"[EMAIL] ❌ Failed to send verification email to {email}: {e}")
         return False
 
 

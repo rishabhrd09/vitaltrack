@@ -37,6 +37,20 @@ class Settings(BaseSettings):
     DATABASE_MAX_OVERFLOW: int = 10
     DATABASE_POOL_TIMEOUT: int = 30
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def ensure_asyncpg_driver(cls, v):
+        """Ensure DATABASE_URL uses asyncpg driver (Railway provides postgresql://)."""
+        if isinstance(v, str):
+            # Railway provides: postgresql://user:pass@host:port/db
+            # We need: postgresql+asyncpg://user:pass@host:port/db
+            if v.startswith("postgresql://") and "+asyncpg" not in v:
+                v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+            elif v.startswith("postgres://"):
+                # Some providers use postgres:// instead of postgresql://
+                v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+        return v
+
     # Security
     SECRET_KEY: str = "CHANGE-THIS-IN-PRODUCTION-MIN-32-CHARS-LONG-RANDOM-STRING"
     JWT_ALGORITHM: str = "HS256"
@@ -86,6 +100,9 @@ class Settings(BaseSettings):
     # Token Expiry
     EMAIL_VERIFICATION_EXPIRY_HOURS: int = 24
     PASSWORD_RESET_EXPIRY_HOURS: int = 1
+    
+    # Email Verification Enforcement
+    REQUIRE_EMAIL_VERIFICATION: bool = True  # If True, block login until email verified
 
     @property
     def database_url_sync(self) -> str:
