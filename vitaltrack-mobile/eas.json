@@ -22,7 +22,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "YOUR_RAILWAY_OR_RENDER_URL_HERE"
+        "EXPO_PUBLIC_API_URL": "https://vitaltrack-production.up.railway.app"
       }
     },
     "production": {
