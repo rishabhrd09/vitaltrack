@@ -36,10 +36,7 @@ services:
       - MAIL_USERNAME=a14a39001@smtp-brevo.com
       - MAIL_PASSWORD=${MAIL_PASSWORD}
       - MAIL_FROM=rishabhdongre.rd@gmail.com
-      - MAIL_SERVER=smtp-relay.brevo.com
-      - MAIL_PORT=587
-      - MAIL_STARTTLS=true
-      - MAIL_SSL_TLS=false
+      # SMTP Variables are no longer used (Using HTTP API)
       # ========================================
       # EMAIL VERIFICATION
       # ========================================
