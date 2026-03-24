@@ -1,5 +1,7 @@
 # Deployment Guide
 
+> **⚠️ MIGRATION NOTICE (March 2026):** VitalTrack's backend has migrated from Railway to **Render (free tier) + Neon PostgreSQL (free tier)**. The Railway instructions below are preserved for historical reference. For current deployment setup, see **[RAILWAY_TO_RENDER_MIGRATION.md](./RAILWAY_TO_RENDER_MIGRATION.md)**.
+
 > **Complete guide** for deploying VitalTrack to production.
 
 ---

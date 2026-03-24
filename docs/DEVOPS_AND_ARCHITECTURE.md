@@ -1,5 +1,7 @@
 # VitalTrack: DevOps, Architecture & CI/CD Guide
 
+> **⚠️ MIGRATION NOTICE (March 2026):** Backend hosting migrated from Railway to Render + Neon. See **[RAILWAY_TO_RENDER_MIGRATION.md](./RAILWAY_TO_RENDER_MIGRATION.md)** for details. Architecture diagrams below showing "Railway" should be read as "Render" for current deployment.
+
 > **Complete technical reference for understanding the infrastructure, deployment pipeline, and technology decisions behind VitalTrack.**
 
 ---

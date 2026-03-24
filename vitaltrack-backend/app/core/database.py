@@ -71,6 +71,9 @@ class UUIDMixin:
 # =============================================================================
 # ASYNC ENGINE & SESSION
 # =============================================================================
+# SSL is required for Neon (production) but not for local Docker PostgreSQL
+_connect_args = {"ssl": True} if settings.ENVIRONMENT == "production" else {}
+
 engine = create_async_engine(
     settings.DATABASE_URL,
     pool_size=settings.DATABASE_POOL_SIZE,
@@ -78,6 +81,7 @@ engine = create_async_engine(
     pool_timeout=settings.DATABASE_POOL_TIMEOUT,
     pool_pre_ping=True,  # Enable connection health check
     echo=settings.DEBUG,  # Log SQL statements in debug mode
+    connect_args=_connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(
