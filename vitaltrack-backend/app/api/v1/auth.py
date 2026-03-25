@@ -36,6 +36,7 @@ from app.schemas import (
 from app.utils.email import (
     generate_verification_token,
     is_email_configured,
+    test_email_service,
     verify_token,
     get_email_verification_expiry,
     get_password_reset_expiry,
@@ -404,9 +405,16 @@ async def resend_verification_email(
 ) -> MessageResponse:
     """
     Resend the email verification link.
-    
+
     Rate limited: 3 requests per hour per IP.
     """
+    # Verify email service is actually working before promising to send
+    if not is_email_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Email service is not available. Please try logging in with your username instead, or contact support.",
+        )
+
     # Find user by email
     result = await db.execute(
         select(User).where(User.email == data.email.lower())
@@ -463,10 +471,17 @@ async def forgot_password(
 ) -> MessageResponse:
     """
     Send a password reset link to the user's email.
-    
+
     Rate limited: 3 requests per hour per IP.
     Always returns success to prevent email enumeration.
     """
+    # Verify email service is available
+    if not is_email_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Email service is not available. Password reset via email is currently unavailable.",
+        )
+
     # Find user by email
     result = await db.execute(
         select(User).where(User.email == data.email.lower())
@@ -803,3 +818,35 @@ async def change_password(
     await db.commit()
     
     return MessageResponse(message="Password changed successfully")
+
+
+# =============================================================================
+# EMAIL SERVICE DIAGNOSTIC
+# =============================================================================
+@router.get(
+    "/email-service-status",
+    response_model=MessageResponse,
+    summary="Check email service health",
+)
+async def email_service_status() -> MessageResponse:
+    """
+    Check if the email service (Brevo) is properly configured and reachable.
+    No authentication required — diagnostic endpoint.
+    """
+    from app.utils.email import test_email_service
+
+    if not is_email_configured():
+        return MessageResponse(
+            message="Email service NOT configured: MAIL_PASSWORD is empty or not set.",
+        )
+
+    is_working, error_msg = await test_email_service()
+
+    if is_working:
+        return MessageResponse(
+            message=f"Email service is working. Sender: {settings.MAIL_FROM}",
+        )
+    else:
+        return MessageResponse(
+            message=f"Email service FAILED: {error_msg}",
+        )

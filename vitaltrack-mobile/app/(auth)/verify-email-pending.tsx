@@ -123,8 +123,27 @@ export default function VerifyEmailPendingScreen() {
                 {/* Help Text */}
                 <Text style={[styles.helpText, { color: colors.textSecondary }]}>
                     Didn't receive the email? Check your spam folder or try resending.
-                    You must verify your email before you can log in.
                 </Text>
+
+                {/* Escape route if email isn't working */}
+                <View style={[styles.helpSection, { borderTopColor: colors.border }]}>
+                    <Text style={[styles.helpSectionTitle, { color: colors.textSecondary }]}>
+                        Not receiving the email?
+                    </Text>
+                    <Text style={[styles.helpSectionText, { color: colors.textSecondary }]}>
+                        The email service may be temporarily down.
+                        You can go back and try logging in with your username instead.
+                    </Text>
+                    <TouchableOpacity
+                        style={[styles.skipButton, { borderColor: colors.textSecondary }]}
+                        onPress={() => router.replace('/(auth)/login')}
+                    >
+                        <Ionicons name="arrow-back" size={18} color={colors.textSecondary} />
+                        <Text style={[styles.skipButtonText, { color: colors.textSecondary }]}>
+                            Back to Login (try username instead)
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
@@ -225,5 +244,36 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginTop: 24,
         paddingHorizontal: 16,
+    },
+    helpSection: {
+        marginTop: 24,
+        paddingTop: 24,
+        borderTopWidth: 1,
+        alignItems: 'center',
+    },
+    helpSectionTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    helpSectionText: {
+        fontSize: 13,
+        textAlign: 'center',
+        lineHeight: 18,
+        marginBottom: 16,
+        paddingHorizontal: 20,
+    },
+    skipButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        borderWidth: 1,
+    },
+    skipButtonText: {
+        fontSize: 14,
+        fontWeight: '500',
     },
 });

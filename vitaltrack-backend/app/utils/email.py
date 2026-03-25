@@ -18,6 +18,33 @@ def is_email_configured() -> bool:
     return bool(settings.MAIL_PASSWORD and settings.MAIL_PASSWORD.strip())
 
 
+async def test_email_service() -> tuple[bool, str]:
+    """
+    Quick test to verify Brevo API credentials are valid.
+    Makes a lightweight API call without sending an email.
+    Returns (is_working, error_message).
+    """
+    if not is_email_configured():
+        return False, "MAIL_PASSWORD not configured"
+
+    url = "https://api.brevo.com/v3/account"
+    headers = {
+        "accept": "application/json",
+        "api-key": settings.MAIL_PASSWORD,
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers, timeout=5.0)
+
+        if response.status_code == 200:
+            return True, ""
+        else:
+            return False, f"Brevo API error: {response.status_code} — {response.text[:200]}"
+    except Exception as e:
+        return False, f"Cannot reach Brevo: {str(e)}"
+
+
 def generate_verification_token() -> tuple[str, str]:
     """Generate a verification token pair (unhashed, hashed)."""
     unhashed_token = secrets.token_urlsafe(32)

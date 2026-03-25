@@ -114,12 +114,34 @@ export default function RegisterScreen() {
             });
 
             if (success) {
-                const currentUser = useAuthStore.getState().user;
+                const isEmailRegistration = !!email.trim();
 
-                // If user registered with email, redirect to verification screen
-                // User must verify email before accessing the app
-                if (email.trim()) {
-                    console.log('[Register] Email registration — redirecting to verify screen');
+                if (isEmailRegistration) {
+                    // Try to login immediately to check if backend enforces verification
+                    console.log('[Register] Email registration — checking if verification is enforced');
+                    try {
+                        const { login } = useAuthStore.getState();
+                        const loginSuccess = await login(email.trim(), password);
+                        if (loginSuccess) {
+                            console.log('[Register] Login succeeded — verification not enforced');
+                            router.replace('/(tabs)');
+                            return;
+                        }
+                    } catch (loginErr) {
+                        const loginError = loginErr as Error;
+                        if (loginError.message === 'EMAIL_NOT_VERIFIED') {
+                            console.log('[Register] Verification enforced — showing verify screen');
+                            setTimeout(() => {
+                                router.replace({
+                                    pathname: '/(auth)/verify-email-pending' as const,
+                                    params: { email: email.trim() }
+                                } as never);
+                            }, 100);
+                            return;
+                        }
+                        console.warn('[Register] Post-register login error:', loginError.message);
+                    }
+                    // Fallback: go to verify screen
                     setTimeout(() => {
                         router.replace({
                             pathname: '/(auth)/verify-email-pending' as const,
