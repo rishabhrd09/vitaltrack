@@ -142,11 +142,7 @@ class ApiClient {
             // Handle standard "Network request failed"
             if (err.message === 'Network request failed' || err instanceof TypeError) {
                 throw new ApiClientError(
-                    `Starting Request to: ${url}\nFAILED: The app cannot reach the server.` +
-                    `\n\nCHECK THIS:` +
-                    `\n1. Windows Firewall? (Allow Port 8000)` +
-                    `\n2. Same WiFi? (Phone & PC must match)` +
-                    `\n3. Wrong IP? (Running on localhost?)`,
+                    'Unable to connect to server. The server may be starting up — please wait a moment and try again.',
                     0,
                     { url, originalError: err.message }
                 );
@@ -200,13 +196,48 @@ class ApiClient {
 
         if (!response.ok) {
             const errorData = data as ApiError;
-            let message = 'An error occurred';
+            let message = '';
 
+            // Extract error message from API response
             if (errorData?.detail) {
                 if (typeof errorData.detail === 'string') {
                     message = errorData.detail;
                 } else if (Array.isArray(errorData.detail)) {
                     message = errorData.detail.map((e) => e.msg).join(', ');
+                }
+            }
+
+            // If no message from API, generate user-friendly one based on HTTP status
+            if (!message) {
+                switch (response.status) {
+                    case 400:
+                        message = 'Invalid request. Please check your input.';
+                        break;
+                    case 401:
+                        message = 'Incorrect email/username or password.';
+                        break;
+                    case 403:
+                        message = 'Access denied. Please log in again.';
+                        break;
+                    case 404:
+                        message = 'Account not found. Please check your credentials.';
+                        break;
+                    case 409:
+                        message = 'This email or username is already registered.';
+                        break;
+                    case 422:
+                        message = 'Please check your input and try again.';
+                        break;
+                    case 429:
+                        message = 'Too many attempts. Please wait a moment and try again.';
+                        break;
+                    case 500:
+                    case 502:
+                    case 503:
+                        message = 'Server is temporarily unavailable. Please try again in a moment.';
+                        break;
+                    default:
+                        message = `Something went wrong (error ${response.status}). Please try again.`;
                 }
             }
 

@@ -116,7 +116,7 @@ class Settings(BaseSettings):
     PASSWORD_RESET_EXPIRY_HOURS: int = 1
     
     # Email Verification Enforcement
-    REQUIRE_EMAIL_VERIFICATION: bool = True  # If True, block login until email verified
+    REQUIRE_EMAIL_VERIFICATION: bool = False  # Default False — set True only when Brevo MAIL_PASSWORD is configured
 
     @property
     def database_url_sync(self) -> str:
