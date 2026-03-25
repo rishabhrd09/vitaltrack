@@ -833,8 +833,6 @@ async def email_service_status() -> MessageResponse:
     Check if the email service (Brevo) is properly configured and reachable.
     No authentication required — diagnostic endpoint.
     """
-    from app.utils.email import test_email_service
-
     if not is_email_configured():
         return MessageResponse(
             message="Email service NOT configured: MAIL_PASSWORD is empty or not set.",
