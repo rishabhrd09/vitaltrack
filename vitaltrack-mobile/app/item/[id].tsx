@@ -327,7 +327,7 @@ export default function ItemFormScreen() {
               </TouchableOpacity>
               {showUnitPicker && (
                 <View style={[styles.pickerDropdown, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary }]}>
-                  <ScrollView style={{ maxHeight: 200 }}>
+                  <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
                     {COMMON_UNITS.map((u) => (
                       <TouchableOpacity
                         key={u}

@@ -55,6 +55,7 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isLoggingOut: boolean;
   error: string | null;
   isInitialized: boolean;
   syncStatus: 'idle' | 'syncing' | 'error';
@@ -86,6 +87,7 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      isLoggingOut: false,
       error: null,
       isInitialized: false,
       syncStatus: 'idle',
@@ -140,14 +142,29 @@ export const useAuthStore = create<AuthStore>()(
           }, 100);
         } catch (error) {
           console.error('[Auth] Initialize failed:', error);
-          await tokenStorage.clearTokens();
-          set({
-            isAuthenticated: false,
-            user: null,
-            isLoading: false,
-            isInitialized: true,
-            error: null,
-          });
+          // Only clear tokens on explicit auth errors (401)
+          // On network errors (Render cold start), preserve cached auth state
+          const apiError = error as { status?: number };
+          if (apiError.status === 401) {
+            await tokenStorage.clearTokens();
+            set({
+              isAuthenticated: false,
+              user: null,
+              isLoading: false,
+              isInitialized: true,
+              error: null,
+            });
+          } else {
+            // Network error — keep existing persisted auth state
+            console.log('[Auth] Network error during init — preserving cached auth state');
+            const existingUser = get().user;
+            set({
+              isAuthenticated: !!existingUser,
+              isLoading: false,
+              isInitialized: true,
+              error: null,
+            });
+          }
         }
       },
 
@@ -258,96 +275,60 @@ export const useAuthStore = create<AuthStore>()(
       // LOGOUT - CRITICAL: Must sync then clear all user data for isolation
       // =====================================================================
       logout: async () => {
+        // Prevent double-tap
+        if (get().isLoggingOut) return;
+        set({ isLoggingOut: true });
+
         console.log('[Auth] ========== LOGOUT STARTED ==========');
-        set({ isLoading: true, syncStatus: 'syncing' });
 
         try {
-          // Check if online
           const online = await isOnline();
 
           if (online) {
-            // Step 0: SYNC LOCAL CHANGES TO BACKEND BEFORE CLEARING (prevents data loss)
-            console.log('[Auth] Step 0: Syncing local changes to backend...');
+            // Sync with 5-second timeout — don't let sync block logout
             try {
-              const { useAppStore } = await import('./useAppStore');
-
-              // First, process any queued operations
-              const queueSize = await syncQueue.getSize();
-              if (queueSize > 0) {
-                console.log(`[Auth] Processing ${queueSize} queued operations first...`);
-                await syncQueue.processQueue();
-              }
-
-              // Then sync current state
-              const synced = await useAppStore.getState().syncToBackend();
-              if (synced) {
-                console.log('[Auth] Sync complete');
-                set({ syncStatus: 'idle' });
-              } else {
-                console.warn('[Auth] Sync returned false, but continuing with logout');
-              }
+              await Promise.race([
+                (async () => {
+                  const { useAppStore } = await import('./useAppStore');
+                  const queueSize = await syncQueue.getSize();
+                  if (queueSize > 0) await syncQueue.processQueue();
+                  await useAppStore.getState().syncToBackend();
+                })(),
+                new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error('Sync timeout')), 5000)
+                ),
+              ]);
+              console.log('[Auth] Pre-logout sync complete');
             } catch (syncErr) {
-              console.warn('[Auth] Sync failed (data queued for next login):', syncErr);
-              set({ syncStatus: 'error' });
-              // Don't throw - we still want to logout even if sync fails
-              // Data is preserved in the sync queue
+              console.warn('[Auth] Pre-logout sync failed/timed out:', syncErr);
             }
-          } else {
-            console.log('[Auth] Offline - skipping sync (data preserved in queue)');
+
+            // Logout from backend
+            try { await authService.logout(); } catch { /* ignore */ }
           }
 
-          // Step 1: Clear auth tokens from backend (if online)
-          if (online) {
-            console.log('[Auth] Step 1: Logging out from backend...');
-            try {
-              await authService.logout();
-            } catch (err) {
-              console.warn('[Auth] Backend logout failed (continuing):', err);
-            }
-          }
-
-          // Step 2: DO NOT clear sync queue - preserve it for data recovery
-          // The queue will be processed on next login
-          console.log('[Auth] Step 2: Preserving sync queue for data recovery');
-          const remainingOps = await syncQueue.getSize();
-          if (remainingOps > 0) {
-            console.log(`[Auth] ${remainingOps} operations preserved in sync queue`);
-          }
-
-          // Step 3: Clear app store data
-          console.log('[Auth] Step 3: Clearing app store...');
+          // Clear app store
           try {
             const { useAppStore } = await import('./useAppStore');
             await useAppStore.getState().clearStore();
-          } catch (err) {
-            console.warn('[Auth] Failed to clear app store:', err);
-          }
+          } catch { /* ignore */ }
 
-          // Step 4: Clear tokens from secure storage
-          console.log('[Auth] Step 4: Clearing tokens...');
+          // Clear tokens
           await tokenStorage.clearTokens();
 
-          // Step 5: Reset auth state
-          console.log('[Auth] Step 5: Resetting auth state...');
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null,
-            syncStatus: 'idle',
-          });
-
-          console.log('[Auth] ========== LOGOUT COMPLETE ==========');
         } catch (error) {
           console.error('[Auth] Logout error:', error);
-          // Force logout even on error
+        } finally {
+          // ALWAYS reset state, no matter what happened above
           set({
             user: null,
             isAuthenticated: false,
             isLoading: false,
+            isLoggingOut: false,
             error: null,
             syncStatus: 'idle',
           });
+          console.log('[Auth] ========== LOGOUT COMPLETE ==========');
         }
       },
 

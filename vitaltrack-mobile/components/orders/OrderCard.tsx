@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import { formatDate } from '@/utils/helpers';
+import { showPdfExportDialog } from '@/utils/orderPdfExport';
 import type { SavedOrder, OrderStatus } from '@/types';
 
 interface OrderCardProps {
@@ -171,6 +172,19 @@ export default function OrderCard({
                 </Text>
               </TouchableOpacity>
             )}
+
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: colors.bgTertiary }]}
+              onPress={() => showPdfExportDialog({
+                id: order.orderId,
+                items: order.items,
+                createdAt: order.exportedAt,
+              })}
+            >
+              <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
+                Export PDF
+              </Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.deleteButton, { borderColor: colors.borderPrimary }]}
