@@ -40,14 +40,28 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def ensure_asyncpg_driver(cls, v):
-        """Ensure DATABASE_URL uses asyncpg driver (Railway provides postgresql://)."""
+        """
+        Ensure DATABASE_URL uses asyncpg driver and is compatible with asyncpg.
+
+        Handles two issues:
+        1. Provider URL format conversion (postgresql:// → postgresql+asyncpg://)
+        2. Query parameter stripping — Neon provides ?sslmode=require&channel_binding=require
+           but asyncpg doesn't accept these as URL params. SSL is handled via connect_args
+           in database.py instead.
+        """
         if isinstance(v, str):
-            # Railway provides: postgresql://user:pass@host:port/db
-            # We need: postgresql+asyncpg://user:pass@host:port/db
+            # Strip query parameters (e.g., ?sslmode=require from Neon)
+            # asyncpg can't handle these as URL params — SSL is set via connect_args instead
+            if "?" in v:
+                v = v.split("?")[0]
+
+            # Convert provider URL formats to asyncpg format
+            # Railway/Render provide: postgresql://user:pass@host:port/db
+            # Neon provides:          postgres://user:pass@host/db (sometimes)
+            # We need:                postgresql+asyncpg://user:pass@host:port/db
             if v.startswith("postgresql://") and "+asyncpg" not in v:
                 v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
             elif v.startswith("postgres://"):
-                # Some providers use postgres:// instead of postgresql://
                 v = v.replace("postgres://", "postgresql+asyncpg://", 1)
         return v
 

@@ -227,6 +227,127 @@ class SyncOperation(BaseModel):
 
 ---
 
+## Challenge 9: Expo Go "Unable to Download Remote Update" (SDK 54)
+
+### Symptom
+App loads in Expo Go but immediately crashes with: `Something went wrong. Fatal error: failed to download remote update`
+
+### Root Cause
+`expo-updates` package was installed as a dependency but **no `updates` configuration existed in `app.json`**. Expo Go tried to fetch OTA updates from Expo's servers, found no update URL configured, and crashed before the app could even render.
+
+### Solution
+Disable OTA updates in `app.json`:
+```json
+{
+  "expo": {
+    "updates": {
+      "enabled": false
+    }
+  }
+}
+```
+
+### Why This Works
+The `expo-updates` package is needed for production OTA update support, but in development with Expo Go, it tries to check for remote updates on app launch. Disabling it tells Expo Go to skip the update check and load the JavaScript bundle directly from Metro.
+
+### Files Changed
+- `vitaltrack-mobile/app.json` (added `updates.enabled: false`)
+
+---
+
+## Challenge 10: ADB Reverse Port Mapping Corruption
+
+### Symptom
+App loads, UI renders, but all API calls return **404**. Login and registration fail with `[API] Status: 404`.
+
+### Root Cause
+Running `adb reverse` with incorrect port mapping. The actual state was:
+```
+tcp:8000 → tcp:8081   ← WRONG! Backend port mapped to Metro bundler
+tcp:8081 → tcp:8081   ← Correct
+```
+Port 8000 on the phone was routing to Metro (8081) instead of the FastAPI backend (8000). Every API call hit Metro's HTTP server which returned 404.
+
+### How to Diagnose
+```bash
+adb reverse --list
+```
+Check that `tcp:8000` maps to `tcp:8000` (not `tcp:8081`).
+
+### Solution
+```bash
+adb reverse --remove-all
+adb reverse tcp:8000 tcp:8000
+adb reverse tcp:8081 tcp:8081
+adb reverse --list
+# Verify: tcp:8000 → tcp:8000, tcp:8081 → tcp:8081
+```
+
+### Prevention
+Always run `adb reverse --remove-all` before setting up new mappings. Stale or incorrect mappings persist across Expo restarts.
+
+---
+
+## Challenge 11: Expo Go Auto-Update Uninstalls Itself (Phone Storage Full)
+
+### Symptom
+Pressing `a` in Expo terminal triggers: `Install the recommended Expo Go version?` → Accept → Expo Go uninstalled → New version fails to install with `java.io.IOException: not enough space`.
+
+Now the phone has NO Expo Go at all.
+
+### Root Cause
+Expo CLI auto-detected a minor version mismatch (54.0.6 on phone vs 54.0.7 recommended), uninstalled the old version first, then failed to install the new one due to insufficient storage.
+
+### Solution
+1. Free up phone storage (delete unused apps, clear cache)
+2. Reinstall Expo Go from Play Store manually
+3. When Expo asks to update, say **NO** — minor patch differences (54.0.6 vs 54.0.7) are compatible
+
+### Prevention
+Always decline Expo Go auto-updates if phone storage is low. Minor version differences within the same SDK (54.x) are compatible.
+
+---
+
+## Challenge 12: Windows Firewall Blocks Phone-to-PC Connection
+
+### Symptom
+Phone browser cannot reach `http://192.168.x.x:8000/health` — shows "Site unreachable". Same Wi-Fi confirmed.
+
+### Root Cause
+Windows Firewall blocks inbound connections to port 8000 and 8081 by default.
+
+### Solution
+Run in **PowerShell as Administrator**:
+```powershell
+New-NetFirewallRule -DisplayName "VitalTrack Backend 8000" -Direction Inbound -Port 8000 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "Expo Metro 8081" -Direction Inbound -Port 8081 -Protocol TCP -Action Allow
+```
+
+### Alternative: USB Method
+If firewall rules don't help (corporate networks, AP isolation on router), use USB debugging with `adb reverse` — bypasses network entirely.
+
+---
+
+## Challenge 13: Ngrok Tunnel Service Down
+
+### Symptom
+`npx expo start --tunnel` fails with `CommandError: failed to start tunnel — remote gone away`
+
+### Root Cause
+Ngrok's relay service was experiencing an outage. Tunnel mode routes Metro traffic through Ngrok's servers — if they're down, it can't work.
+
+### Solution
+Use LAN mode (`npx expo start --lan`) or USB mode (`npx expo start --localhost` with `adb reverse`) instead. Tunnel mode is a convenience, not a requirement.
+
+### When to Use Each Mode
+| Mode | Command | When to Use |
+|------|---------|-------------|
+| LAN | `npx expo start --lan` | Phone and PC on same Wi-Fi, no firewall issues |
+| Localhost + USB | `npx expo start --localhost` | Wi-Fi doesn't work, USB cable available |
+| Tunnel | `npx expo start --tunnel` | Different networks, no USB cable |
+
+---
+
 ## Architecture Decisions
 
 ### Why Offline-First?
