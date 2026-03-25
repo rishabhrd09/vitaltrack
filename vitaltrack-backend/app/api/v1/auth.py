@@ -35,6 +35,7 @@ from app.schemas import (
 )
 from app.utils.email import (
     generate_verification_token,
+    is_email_configured,
     verify_token,
     get_email_verification_expiry,
     get_password_reset_expiry,
@@ -148,8 +149,8 @@ async def register(
     await db.commit()
     await db.refresh(user)
     
-    # Send verification email in background (if email provided)
-    if user.email and unhashed_token:
+    # Send verification email in background (only if email service is configured)
+    if user.email and unhashed_token and is_email_configured():
         background_tasks.add_task(
             send_verification_email,
             email=user.email,

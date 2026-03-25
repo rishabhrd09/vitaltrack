@@ -8,7 +8,7 @@
  * 3. Better error display from API
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -20,7 +20,7 @@ import {
     ScrollView,
     ActivityIndicator,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Link, router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +37,14 @@ export default function RegisterScreen() {
     const [showPassword, setShowPassword] = useState(false);
     const [localError, setLocalError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Clear stale errors when screen gains focus
+    useFocusEffect(
+        useCallback(() => {
+            clearError();
+            setLocalError(null);
+        }, [clearError])
+    );
 
     const handleRegister = async () => {
         // Prevent double-submit
@@ -106,27 +114,22 @@ export default function RegisterScreen() {
             });
 
             if (success) {
-                // If email was provided, redirect to verification screen
-                // If only username (no email), go directly to app
-                if (email.trim()) {
-                    console.log('[Register] Registration successful, redirecting to email verification');
+                const currentUser = useAuthStore.getState().user;
+
+                // If user registered with email, show verification info screen
+                // (push, not replace — user can dismiss and use the app)
+                if (email.trim() && currentUser && !currentUser.isEmailVerified) {
+                    console.log('[Register] Email registration, showing verification prompt');
                     setTimeout(() => {
-                        router.replace({
+                        router.push({
                             pathname: '/(auth)/verify-email-pending' as const,
                             params: { email: email.trim() }
                         } as never);
                     }, 100);
                 } else {
-                    console.log('[Register] Username-only registration, navigating to tabs');
+                    console.log('[Register] Navigating to app');
                     setTimeout(() => {
-                        try {
-                            router.replace('/(tabs)');
-                        } catch (navError) {
-                            console.warn('[Register] Navigation failed, retrying:', navError);
-                            setTimeout(() => {
-                                router.replace('/(tabs)');
-                            }, 500);
-                        }
+                        router.replace('/(tabs)');
                     }, 100);
                 }
             } else {

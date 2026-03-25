@@ -3,7 +3,7 @@
  * User authentication with email/username and password
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -15,10 +15,25 @@ import {
     ScrollView,
     ActivityIndicator,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Link, router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+
+// Map backend error messages to user-friendly text
+const getFriendlyError = (error: string): string => {
+    const errorMap: Record<string, string> = {
+        'Incorrect email/username or password': 'Incorrect password or account not found. Please check your credentials.',
+        'Account is disabled': 'Your account has been disabled. Please contact support.',
+        'An error occurred': 'Unable to connect to server. Please try again.',
+        'Session expired. Please log in again.': 'Your session has expired. Please log in again.',
+    };
+    // Check for rate limit errors
+    if (error.includes('Rate limit') || error.includes('rate limit')) {
+        return 'Too many attempts. Please wait a moment and try again.';
+    }
+    return errorMap[error] || error;
+};
 
 export default function LoginScreen() {
     const theme = useTheme();
@@ -27,6 +42,13 @@ export default function LoginScreen() {
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+
+    // Clear stale errors when screen gains focus
+    useFocusEffect(
+        useCallback(() => {
+            clearError();
+        }, [clearError])
+    );
 
     const handleLogin = async () => {
         if (!identifier.trim() || !password.trim()) {
@@ -80,7 +102,7 @@ export default function LoginScreen() {
                     {error && (
                         <View style={[styles.errorBox, { backgroundColor: colors.error + '20' }]}>
                             <Ionicons name="alert-circle" size={20} color={colors.error} />
-                            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+                            <Text style={[styles.errorText, { color: colors.error }]}>{getFriendlyError(error)}</Text>
                         </View>
                     )}
 

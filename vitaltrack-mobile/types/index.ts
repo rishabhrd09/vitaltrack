@@ -17,6 +17,7 @@ export interface User {
   full_name?: string;
   is_active: boolean;
   is_verified: boolean;
+  isEmailVerified?: boolean;  // Matches backend UserResponse serialization_alias
   created_at: string;
   updated_at: string;
 }

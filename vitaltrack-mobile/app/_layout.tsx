@@ -27,7 +27,11 @@ function useProtectedRoute() {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
       // Redirect to home if authenticated and in auth group
-      router.replace('/(tabs)');
+      // BUT allow authenticated users to stay on verify-email-pending
+      const currentRoute = segments[segments.length - 1];
+      if (currentRoute !== 'verify-email-pending') {
+        router.replace('/(tabs)');
+      }
     }
   }, [isAuthenticated, authInitialized, segments, router]);
 }

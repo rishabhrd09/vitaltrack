@@ -3,7 +3,7 @@
  * Request password reset email
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -15,7 +15,7 @@ import {
     ScrollView,
     ActivityIndicator,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Link, router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +26,13 @@ export default function ForgotPasswordScreen() {
 
     const [email, setEmail] = useState('');
     const [success, setSuccess] = useState(false);
+
+    // Clear stale errors when screen gains focus
+    useFocusEffect(
+        useCallback(() => {
+            clearError();
+        }, [clearError])
+    );
 
     const handleSubmit = async () => {
         if (!email.trim()) return;
@@ -88,6 +95,9 @@ export default function ForgotPasswordScreen() {
                     <Text style={[styles.title, { color: colors.text }]}>Forgot Password?</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                         Enter your email address and we'll send you a link to reset your password.
+                    </Text>
+                    <Text style={[styles.subtitle, { color: colors.textSecondary, fontSize: 12, marginTop: 8 }]}>
+                        Registered with only a username? Log in and add an email in Settings to enable password recovery.
                     </Text>
                 </View>
 

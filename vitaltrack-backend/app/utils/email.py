@@ -13,6 +13,11 @@ from pydantic import EmailStr
 from app.core.config import settings
 
 
+def is_email_configured() -> bool:
+    """Check if email service (Brevo) is properly configured."""
+    return bool(settings.MAIL_PASSWORD and settings.MAIL_PASSWORD.strip())
+
+
 def generate_verification_token() -> tuple[str, str]:
     """Generate a verification token pair (unhashed, hashed)."""
     unhashed_token = secrets.token_urlsafe(32)

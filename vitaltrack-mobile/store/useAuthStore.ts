@@ -219,35 +219,26 @@ export const useAuthStore = create<AuthStore>()(
 
           console.log('[Auth] Registration successful:', response.user.id);
 
-          // If email was provided, DON'T auto-authenticate - user must verify email first
-          // If only username (no email), allow immediate access
-          if (data.email) {
-            console.log('[Auth] Email registration - pending verification');
-            set({
-              user: response.user,
-              isAuthenticated: false,  // NOT authenticated until email verified
-              isLoading: false,
-              error: null,
-            });
-          } else {
-            console.log('[Auth] Username-only registration - immediate access');
-            set({
-              user: response.user,
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-            });
+          // Backend always returns valid tokens on registration.
+          // Set authenticated for ALL registrations — the backend controls
+          // whether unverified email users can log in later (via REQUIRE_EMAIL_VERIFICATION).
+          // This matches common patterns (Slack, Discord): use the app now, verify later.
+          set({
+            user: response.user,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
 
-            // Load user data in background - only for username-only registration
-            setTimeout(async () => {
-              try {
-                const { useAppStore } = await import('./useAppStore');
-                await useAppStore.getState().loadUserData(response.user.id);
-              } catch (err) {
-                console.warn('[Auth] Failed to load user data after register:', err);
-              }
-            }, 100);
-          }
+          // Load user data in background for all registrations
+          setTimeout(async () => {
+            try {
+              const { useAppStore } = await import('./useAppStore');
+              await useAppStore.getState().loadUserData(response.user.id);
+            } catch (err) {
+              console.warn('[Auth] Failed to load user data after register:', err);
+            }
+          }, 100);
 
           return true;
         } catch (error) {
