@@ -116,18 +116,18 @@ export default function RegisterScreen() {
             if (success) {
                 const currentUser = useAuthStore.getState().user;
 
-                // If user registered with email, show verification info screen
-                // (push, not replace — user can dismiss and use the app)
-                if (email.trim() && currentUser && !currentUser.isEmailVerified) {
-                    console.log('[Register] Email registration, showing verification prompt');
+                // If user registered with email, redirect to verification screen
+                // User must verify email before accessing the app
+                if (email.trim()) {
+                    console.log('[Register] Email registration — redirecting to verify screen');
                     setTimeout(() => {
-                        router.push({
+                        router.replace({
                             pathname: '/(auth)/verify-email-pending' as const,
                             params: { email: email.trim() }
                         } as never);
                     }, 100);
                 } else {
-                    console.log('[Register] Navigating to app');
+                    console.log('[Register] Username-only — navigating to app');
                     setTimeout(() => {
                         router.replace('/(tabs)');
                     }, 100);

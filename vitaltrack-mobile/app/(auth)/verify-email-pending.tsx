@@ -112,26 +112,18 @@ export default function VerifyEmailPendingScreen() {
                     )}
                 </TouchableOpacity>
 
-                {/* Continue to App (user is already authenticated) */}
+                {/* Back to Login (after verifying via email link) */}
                 <TouchableOpacity
                     style={[styles.loginButton, { backgroundColor: colors.primary }]}
-                    onPress={() => router.replace('/(tabs)')}
-                >
-                    <Text style={styles.loginButtonText}>Continue to App</Text>
-                </TouchableOpacity>
-
-                {/* Back to Login */}
-                <TouchableOpacity
-                    style={[styles.resendButton, { borderColor: colors.border }]}
                     onPress={handleBackToLogin}
                 >
-                    <Text style={[styles.resendButtonText, { color: colors.textSecondary }]}>Back to Login</Text>
+                    <Text style={styles.loginButtonText}>I've Verified — Go to Login</Text>
                 </TouchableOpacity>
 
                 {/* Help Text */}
                 <Text style={[styles.helpText, { color: colors.textSecondary }]}>
                     Didn't receive the email? Check your spam folder or try resending.
-                    You can verify your email later — the app works without it.
+                    You must verify your email before you can log in.
                 </Text>
             </View>
         </View>

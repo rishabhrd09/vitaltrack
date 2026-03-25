@@ -21,24 +21,15 @@ function useProtectedRoute() {
     if (!authInitialized) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const currentRoute = segments[segments.length - 1];
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
-      // Allow authenticated users to stay on verify-email-pending
-      if (currentRoute === 'verify-email-pending') return;
-
-      // Small delay to allow register → verify-email-pending navigation to settle
-      const timer = setTimeout(() => {
-        const latestSegments = segments;
-        const latestRoute = latestSegments[latestSegments.length - 1];
-        if (latestRoute !== 'verify-email-pending') {
-          router.replace('/(tabs)');
-        }
-      }, 300);
-      return () => clearTimeout(timer);
+      // Authenticated users shouldn't be in auth group — redirect to app
+      router.replace('/(tabs)');
     }
+    // Note: unauthenticated users in auth group (login, register, verify-email-pending)
+    // stay where they are — this is correct behavior
   }, [isAuthenticated, authInitialized, segments, router]);
 }
 
