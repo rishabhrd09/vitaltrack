@@ -3,7 +3,7 @@
  * User authentication with email/username and password
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
     View,
     Text,
@@ -27,11 +27,6 @@ export default function LoginScreen() {
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-
-    // Clear stale errors when screen mounts
-    useEffect(() => {
-        clearError();
-    }, []);
 
     const handleLogin = async () => {
         if (!identifier.trim() || !password.trim()) {

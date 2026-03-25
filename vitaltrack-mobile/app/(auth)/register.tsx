@@ -8,7 +8,7 @@
  * 3. Better error display from API
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
     View,
     Text,
@@ -28,11 +28,6 @@ import { Ionicons } from '@expo/vector-icons';
 export default function RegisterScreen() {
     const theme = useTheme();
     const { register, isLoading, error, clearError } = useAuthStore();
-
-    // Clear stale errors when screen mounts
-    useEffect(() => {
-        clearError();
-    }, []);
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -111,17 +106,29 @@ export default function RegisterScreen() {
             });
 
             if (success) {
-                console.log('[Register] Registration successful, navigating to app');
-                setTimeout(() => {
-                    try {
-                        router.replace('/(tabs)');
-                    } catch (navError) {
-                        console.warn('[Register] Navigation failed, retrying:', navError);
-                        setTimeout(() => {
+                // If email was provided, redirect to verification screen
+                // If only username (no email), go directly to app
+                if (email.trim()) {
+                    console.log('[Register] Registration successful, redirecting to email verification');
+                    setTimeout(() => {
+                        router.replace({
+                            pathname: '/(auth)/verify-email-pending' as const,
+                            params: { email: email.trim() }
+                        } as never);
+                    }, 100);
+                } else {
+                    console.log('[Register] Username-only registration, navigating to tabs');
+                    setTimeout(() => {
+                        try {
                             router.replace('/(tabs)');
-                        }, 500);
-                    }
-                }, 100);
+                        } catch (navError) {
+                            console.warn('[Register] Navigation failed, retrying:', navError);
+                            setTimeout(() => {
+                                router.replace('/(tabs)');
+                            }, 500);
+                        }
+                    }, 100);
+                }
             } else {
                 console.log('[Register] Registration returned false');
             }

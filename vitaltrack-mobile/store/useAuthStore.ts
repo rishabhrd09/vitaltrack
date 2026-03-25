@@ -219,37 +219,35 @@ export const useAuthStore = create<AuthStore>()(
 
           console.log('[Auth] Registration successful:', response.user.id);
 
-          // Check if the user needs email verification
-          // If email was provided AND email is not verified AND backend enforces verification,
-          // the login attempt would fail with EMAIL_NOT_VERIFIED.
-          // But since REQUIRE_EMAIL_VERIFICATION=false on production, grant immediate access.
-          // The backend already returned tokens — the user is authenticated.
-          const needsVerification = data.email && !response.user.isEmailVerified;
-
-          if (needsVerification) {
-            // Try to check if backend actually blocks unverified emails
-            // by looking at the response — if we got tokens, we're good
-            console.log('[Auth] Email registration - tokens received, granting access');
+          // If email was provided, DON'T auto-authenticate - user must verify email first
+          // If only username (no email), allow immediate access
+          if (data.email) {
+            console.log('[Auth] Email registration - pending verification');
+            set({
+              user: response.user,
+              isAuthenticated: false,  // NOT authenticated until email verified
+              isLoading: false,
+              error: null,
+            });
           } else {
             console.log('[Auth] Username-only registration - immediate access');
+            set({
+              user: response.user,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+            });
+
+            // Load user data in background - only for username-only registration
+            setTimeout(async () => {
+              try {
+                const { useAppStore } = await import('./useAppStore');
+                await useAppStore.getState().loadUserData(response.user.id);
+              } catch (err) {
+                console.warn('[Auth] Failed to load user data after register:', err);
+              }
+            }, 100);
           }
-
-          set({
-            user: response.user,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
-
-          // Load user data in background
-          setTimeout(async () => {
-            try {
-              const { useAppStore } = await import('./useAppStore');
-              await useAppStore.getState().loadUserData(response.user.id);
-            } catch (err) {
-              console.warn('[Auth] Failed to load user data after register:', err);
-            }
-          }, 100);
 
           return true;
         } catch (error) {
