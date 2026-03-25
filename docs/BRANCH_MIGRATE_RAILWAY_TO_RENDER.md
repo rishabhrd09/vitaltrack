@@ -343,4 +343,37 @@ BUSINESS LOGIC CHANGES: ZERO
 
 ---
 
-*Created: March 2026*
+## Post-Merge Fixes (Direct to main, March 25)
+
+After the branch was merged, APK testing on a real device revealed additional issues that were fixed directly on main:
+
+| Commit | Fix |
+|--------|-----|
+| `065757b` | Production-grade auth system — 10 fixes (isEmailVerified type, route guard, error clearing, friendly messages, email config guard) |
+| `c9d127d` | Auth screen bugs — REQUIRE_EMAIL_VERIFICATION default to False, status-specific error messages |
+| `634a22b` | APK round 2 — logout isLoggingOut guard, nestedScrollEnabled, PDF export utility, PDF quality |
+| `4900169` | Data loss fix — don't clearAllUserData for same user, preserve local state on network error |
+| `1af2592` | Strict email verification — isAuthenticated=false for email registrations, Brevo configured |
+
+### Additional Files Modified Post-Merge
+```
+vitaltrack-mobile/store/useAuthStore.ts    ← Register flow, logout, init resilience
+vitaltrack-mobile/store/useAppStore.ts     ← Data persistence (no clear on same user)
+vitaltrack-mobile/app/_layout.tsx          ← Route guard simplified
+vitaltrack-mobile/app/(auth)/*.tsx         ← Error clearing, verify screen, friendly errors
+vitaltrack-mobile/types/index.ts           ← Added isEmailVerified
+vitaltrack-mobile/services/api.ts          ← Status-specific error messages
+vitaltrack-mobile/utils/orderPdfExport.ts  ← NEW: shared PDF export utility
+vitaltrack-mobile/components/orders/OrderCard.tsx ← Export PDF button
+vitaltrack-mobile/app/item/[id].tsx        ← nestedScrollEnabled
+vitaltrack-backend/app/utils/rate_limiter.py ← Proxy-aware, swallow_errors
+vitaltrack-backend/app/utils/email.py      ← is_email_configured()
+vitaltrack-backend/app/api/v1/auth.py      ← MAIL_PASSWORD guard
+vitaltrack-backend/app/core/config.py      ← REQUIRE_EMAIL_VERIFICATION default
+```
+
+See `docs/PROJECT_LEARNINGS_AND_JOURNEY.md` for the complete story.
+
+---
+
+*Created: March 2026 | Updated: March 25, 2026*

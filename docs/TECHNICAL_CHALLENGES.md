@@ -348,6 +348,205 @@ Use LAN mode (`npx expo start --lan`) or USB mode (`npx expo start --localhost` 
 
 ---
 
+## Challenge 14: Rate Limiter 500 Error Behind Cloudflare/Render Proxy
+
+### Symptom
+All rate-limited endpoints (register, login) returned `500 Internal Server Error` on Render. Non-rate-limited endpoints worked fine.
+
+### Root Cause
+The `slowapi` rate limiter's default `get_remote_address` function got the proxy IP instead of the real client IP. Behind Render's Cloudflare proxy, `request.client.host` returns the proxy's IP. The `swallow_errors=False` default meant any storage issue crashed the request.
+
+### Solution
+```python
+# vitaltrack-backend/app/utils/rate_limiter.py
+def get_real_client_ip(request: Request) -> str:
+    cf_ip = request.headers.get("CF-Connecting-IP")
+    if cf_ip: return cf_ip
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for: return forwarded_for.split(",")[0].strip()
+    if request.client and request.client.host: return request.client.host
+    return "unknown"
+
+limiter = Limiter(
+    key_func=get_real_client_ip,
+    swallow_errors=True,
+    in_memory_fallback_enabled=True,
+)
+```
+
+### Key Insight
+Always test rate-limited endpoints behind the actual production proxy, not just locally.
+
+---
+
+## Challenge 15: Data Loss on App Reopen (P0)
+
+### Symptom
+User adds items, edits quantities → closes app → reopens → everything reset to default seed data.
+
+### Root Cause
+`loadUserData()` in `useAppStore.ts` called `clearAllUserData()` on EVERY app open (line 866), destroying the locally persisted Zustand state BEFORE fetching from the server. If the server was slow (Render cold start) or returned empty data, local changes were permanently gone.
+
+### Solution
+- Only call `clearAllUserData()` when switching between different users
+- If server returns empty but local data exists, preserve local data and push it to server
+- On network error, preserve existing local state instead of overwriting with seed data
+
+### Key Insight
+Never destroy local data before confirming server has a complete copy. Merge, don't replace.
+
+---
+
+## Challenge 16: Stale Error State Across Auth Screens
+
+### Symptom
+"An error occurred" banner showing on login/register/forgot-password screens before user does anything.
+
+### Root Cause
+Zustand `error` field is shared across all auth screens. When one screen sets an error, navigating to another screen doesn't clear it. The error renders immediately on mount.
+
+### Solution
+Added `useFocusEffect` with `clearError()` to all three auth screens:
+```typescript
+useFocusEffect(
+    useCallback(() => {
+        clearError();
+    }, [clearError])
+);
+```
+
+### Key Insight
+Shared global error state needs explicit cleanup on screen transitions. Use `useFocusEffect` (fires on every focus), not `useEffect` (fires only on mount).
+
+---
+
+## Challenge 17: Logout Requires Double-Tap / Does Nothing
+
+### Symptom
+Tapping logout sometimes does nothing. Confirmation dialog appears but after "OK", nothing happens.
+
+### Root Cause
+The logout function ran a long sync-before-logout sequence. If sync took too long or `isLoading` was already true from a previous operation, the state update didn't trigger re-render.
+
+### Solution
+1. Added `isLoggingOut` guard to prevent double-tap
+2. Wrapped sync in `Promise.race` with 5-second timeout
+3. Used `finally` block to ALWAYS reset state, even if sync fails
+
+```typescript
+logout: async () => {
+    if (get().isLoggingOut) return;
+    set({ isLoggingOut: true });
+    try {
+        await Promise.race([syncOperation(), timeout(5000)]);
+    } catch { /* continue */ }
+    finally {
+        set({ user: null, isAuthenticated: false, isLoggingOut: false });
+    }
+}
+```
+
+---
+
+## Challenge 18: Unit Dropdown Can't Scroll on Android
+
+### Symptom
+The unit picker dropdown in item edit shows only 3-4 options. Cannot scroll to see 30+ available units.
+
+### Root Cause
+Nested `ScrollView` inside another `ScrollView`. On Android, the inner ScrollView doesn't scroll without `nestedScrollEnabled={true}`.
+
+### Solution
+```tsx
+<ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
+```
+
+### Key Insight
+Android requires explicit `nestedScrollEnabled` for nested ScrollViews. iOS handles this automatically.
+
+---
+
+## Challenge 19: Email Verification Not Working End-to-End
+
+### Symptom
+Register with email → verify-email-pending screen flashes briefly → goes straight to dashboard. No verification email arrives. User can never be blocked.
+
+### Root Cause (Multiple Issues)
+1. `MAIL_PASSWORD` (Brevo API key) wasn't configured on Render → emails never sent
+2. Frontend set `isAuthenticated: true` for ALL registrations → route guard kicked user to dashboard
+3. `REQUIRE_EMAIL_VERIFICATION` defaulted to `True` in code but wasn't set on Render
+4. Route guard timing: `useEffect` fired before navigation to verify screen settled
+
+### Solution (4-Part Fix)
+1. **Brevo configured on Render**: `MAIL_PASSWORD`, `MAIL_FROM`, `REQUIRE_EMAIL_VERIFICATION=true`
+2. **Auth store**: Email registrations set `isAuthenticated: false` — user stays in auth group
+3. **Register screen**: Uses `router.replace` (not push) to verify-email-pending — no escape
+4. **Verify screen**: Removed "Continue to App" — must verify first, then "Go to Login"
+5. **Backend guard**: Login blocked with `EMAIL_NOT_VERIFIED` only when `MAIL_PASSWORD` is configured
+6. **Backend email.py**: `is_email_configured()` check prevents silent email failures
+
+### Auth Flow After Fix
+```
+Email registration → isAuthenticated=false → verify-email-pending (blocked)
+  → User clicks email link → verified in DB
+  → User taps "Go to Login" → login succeeds → dashboard
+
+Username registration → isAuthenticated=true → dashboard immediately
+```
+
+---
+
+## Challenge 20: Generic "An Error Occurred" Messages
+
+### Symptom
+Every API error showed "An error occurred" — no distinction between wrong password, server down, rate limit, etc.
+
+### Root Cause
+`api.ts` had a single fallback: `let message = 'An error occurred'`. No HTTP status code differentiation.
+
+### Solution
+Replaced with status-specific messages:
+```typescript
+switch (response.status) {
+    case 401: message = 'Incorrect email/username or password.'; break;
+    case 429: message = 'Too many attempts. Please wait a moment.'; break;
+    case 500: case 502: case 503:
+        message = 'Server temporarily unavailable.'; break;
+    // ... etc
+}
+```
+
+Also improved network error for Render cold starts:
+```typescript
+'Unable to connect to server. The server may be starting up — please wait a moment and try again.'
+```
+
+---
+
+## Challenge 21: Auth Initialize Clears State on Network Failure
+
+### Symptom
+Open app after it's been closed → long wait (Render cold start) → user logged out with all data gone.
+
+### Root Cause
+`initialize()` called `tokenStorage.clearTokens()` on ANY error, including network timeouts. This logged the user out even though their token was still valid.
+
+### Solution
+Only clear tokens on explicit 401 (token actually invalid). On network errors, preserve cached auth state:
+```typescript
+} catch (error) {
+    const apiError = error as { status?: number };
+    if (apiError.status === 401) {
+        await tokenStorage.clearTokens(); // Token invalid
+    } else {
+        // Network error — keep existing state
+        set({ isLoading: false, isInitialized: true });
+    }
+}
+```
+
+---
+
 ## Architecture Decisions
 
 ### Why Offline-First?
