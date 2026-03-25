@@ -21,17 +21,23 @@ function useProtectedRoute() {
     if (!authInitialized) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const currentRoute = segments[segments.length - 1];
 
     if (!isAuthenticated && !inAuthGroup) {
-      // Redirect to login if not authenticated and not already in auth group
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
-      // Redirect to home if authenticated and in auth group
-      // BUT allow authenticated users to stay on verify-email-pending
-      const currentRoute = segments[segments.length - 1];
-      if (currentRoute !== 'verify-email-pending') {
-        router.replace('/(tabs)');
-      }
+      // Allow authenticated users to stay on verify-email-pending
+      if (currentRoute === 'verify-email-pending') return;
+
+      // Small delay to allow register → verify-email-pending navigation to settle
+      const timer = setTimeout(() => {
+        const latestSegments = segments;
+        const latestRoute = latestSegments[latestSegments.length - 1];
+        if (latestRoute !== 'verify-email-pending') {
+          router.replace('/(tabs)');
+        }
+      }, 300);
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, authInitialized, segments, router]);
 }

@@ -856,26 +856,23 @@ export const useAppStore = create<AppStore>()(
         console.log(`[DataIsolation] loadUserData called for user: ${userId}`);
 
         try {
-          const { currentUserId } = get();
+          const { currentUserId, categories: localCategories, items: localItems, savedOrders: localOrders } = get();
 
+          // Only clear data if switching users
           if (currentUserId && currentUserId !== userId) {
             console.log('[DataIsolation] Different user detected - clearing old data');
             await get().clearStore();
+            await clearAllUserData();
           }
+          // DON'T clear data for same user — preserve local state
 
-          await clearAllUserData();
-
-          // FIXED: Load activity logs for this user BEFORE clearing the store
           const savedActivityLogs = await loadUserActivityLogs(userId);
           console.log(`[DataIsolation] Restored ${savedActivityLogs.length} activity logs for user`);
+          console.log(`[DataIsolation] Local state: ${localCategories.length} categories, ${localItems.length} items, ${localOrders.length} orders`);
 
+          // Set userId and activity logs without clearing existing data
           set({
-            categories: [],
-            items: [],
-            activityLogs: savedActivityLogs,  // FIXED: Restore activity logs
-            savedOrders: [],
-            backups: [],
-            isInitialized: false,
+            activityLogs: savedActivityLogs,
             currentUserId: userId,
           });
 
@@ -883,16 +880,19 @@ export const useAppStore = create<AppStore>()(
           const online = await isOnline();
 
           if (!online) {
-            console.log('[DataIsolation] Offline: Seeding with default data');
-            const { categories: seedCats, items: seedItems } = createSeedData();
-            set({
-              categories: seedCats,
-              items: seedItems,
-              activityLogs: savedActivityLogs,  // Preserve activity logs
-              expandedCategories: seedCats.map(c => c.id),
-              isInitialized: true,
-              currentUserId: userId,
-            });
+            console.log('[DataIsolation] Offline: preserving local data');
+            // If we have local data, keep it. Only seed if completely empty.
+            if (localCategories.length === 0 && localItems.length === 0) {
+              const { categories: seedCats, items: seedItems } = createSeedData();
+              set({
+                categories: seedCats,
+                items: seedItems,
+                expandedCategories: seedCats.map(c => c.id),
+                isInitialized: true,
+              });
+            } else {
+              set({ isInitialized: true });
+            }
             return false;
           }
 
@@ -900,7 +900,6 @@ export const useAppStore = create<AppStore>()(
           const pulled = await syncService.pull();
 
           if (pulled.categories.length > 0 || pulled.items.length > 0) {
-            // CRITICAL: Preserve localId from server for sync matching
             const categoriesWithLocalId = pulled.categories.map(cat => ({
               ...cat,
               localId: cat.localId || cat.id,
@@ -915,23 +914,36 @@ export const useAppStore = create<AppStore>()(
               items: order.items || [],
             }));
 
-            console.log(`[DataIsolation] Loaded: ${categoriesWithLocalId.length} categories, ${itemsWithLocalId.length} items, ${ordersWithLocalId.length} orders`);
+            console.log(`[DataIsolation] Server: ${categoriesWithLocalId.length} categories, ${itemsWithLocalId.length} items, ${ordersWithLocalId.length} orders`);
             set({
               categories: categoriesWithLocalId,
               items: itemsWithLocalId,
               savedOrders: ordersWithLocalId,
-              activityLogs: savedActivityLogs,  // FIXED: Preserve activity logs
+              activityLogs: savedActivityLogs,
               expandedCategories: categoriesWithLocalId.map(c => c.id),
               isInitialized: true,
               currentUserId: userId,
             });
+          } else if (localCategories.length > 0 || localItems.length > 0) {
+            // Server returned empty but we have local data — keep local, push to server
+            console.log('[DataIsolation] Server empty but local data exists — preserving local, pushing to server');
+            set({ isInitialized: true });
+            try {
+              await syncService.push({
+                categories: { created: localCategories },
+                items: { created: localItems },
+              });
+              console.log('[DataIsolation] Local data pushed to backend');
+            } catch (pushErr) {
+              console.warn('[DataIsolation] Failed to push local data:', pushErr);
+            }
           } else {
             console.log('[DataIsolation] New user - seeding with default data');
             const { categories: seedCats, items: seedItems } = createSeedData();
             set({
               categories: seedCats,
               items: seedItems,
-              activityLogs: savedActivityLogs,  // FIXED: Preserve activity logs
+              activityLogs: savedActivityLogs,
               expandedCategories: seedCats.map(c => c.id),
               isInitialized: true,
               currentUserId: userId,
@@ -952,18 +964,29 @@ export const useAppStore = create<AppStore>()(
         } catch (error) {
           console.error('[DataIsolation] Failed to load user data:', error);
 
-          // FIXED: Try to load activity logs even on error
+          // On error, preserve existing local data instead of overwriting with seed
+          const { categories: localCats, items: localItems } = get();
           const savedActivityLogs = await loadUserActivityLogs(userId);
-          
-          const { categories: seedCats, items: seedItems } = createSeedData();
-          set({
-            categories: seedCats,
-            items: seedItems,
-            activityLogs: savedActivityLogs,  // Preserve activity logs on error too
-            expandedCategories: seedCats.map(c => c.id),
-            isInitialized: true,
-            currentUserId: userId,
-          });
+
+          if (localCats.length === 0 && localItems.length === 0) {
+            // Only seed if truly empty
+            const { categories: seedCats, items: seedItems } = createSeedData();
+            set({
+              categories: seedCats,
+              items: seedItems,
+              activityLogs: savedActivityLogs,
+              expandedCategories: seedCats.map(c => c.id),
+              isInitialized: true,
+              currentUserId: userId,
+            });
+          } else {
+            console.log('[DataIsolation] Error but local data exists — preserving');
+            set({
+              activityLogs: savedActivityLogs,
+              isInitialized: true,
+              currentUserId: userId,
+            });
+          }
           return false;
         }
       },
