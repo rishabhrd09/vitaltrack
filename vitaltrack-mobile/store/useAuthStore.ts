@@ -114,7 +114,39 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           console.log('[Auth] Token found, fetching profile...');
-          const user = await authService.getProfile();
+
+          // Race profile fetch against timeout (Render cold start can take 60s)
+          let user;
+          try {
+            user = await Promise.race([
+              authService.getProfile(),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('PROFILE_TIMEOUT')), 8000)
+              ),
+            ]);
+          } catch (timeoutErr) {
+            const err = timeoutErr as Error;
+            if (err.message === 'PROFILE_TIMEOUT') {
+              console.log('[Auth] Profile fetch timed out (server cold start?) — using cached state');
+              set({
+                isAuthenticated: true,
+                isLoading: false,
+                isInitialized: true,
+              });
+              // Retry in background after server wakes
+              setTimeout(async () => {
+                try {
+                  const freshUser = await authService.getProfile();
+                  set({ user: freshUser });
+                  console.log('[Auth] Background profile refresh succeeded');
+                } catch {
+                  console.warn('[Auth] Background profile refresh failed');
+                }
+              }, 5000);
+              return;
+            }
+            throw timeoutErr;
+          }
 
           console.log('[Auth] Profile loaded:', user.email || user.username);
           set({
@@ -276,7 +308,9 @@ export const useAuthStore = create<AuthStore>()(
       logout: async () => {
         // Prevent double-tap
         if (get().isLoggingOut) return;
-        set({ isLoggingOut: true });
+        // Immediately deauthenticate so the UI redirects to login
+        // Cleanup (sync, token revoke, store clear) happens in background
+        set({ isAuthenticated: false, isLoggingOut: true });
 
         console.log('[Auth] ========== LOGOUT STARTED ==========');
 
@@ -294,7 +328,7 @@ export const useAuthStore = create<AuthStore>()(
                   await useAppStore.getState().syncToBackend();
                 })(),
                 new Promise((_, reject) =>
-                  setTimeout(() => reject(new Error('Sync timeout')), 5000)
+                  setTimeout(() => reject(new Error('Sync timeout')), 2000)
                 ),
               ]);
               console.log('[Auth] Pre-logout sync complete');

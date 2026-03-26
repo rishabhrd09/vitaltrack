@@ -6,7 +6,7 @@ User registration, login, token refresh, logout, email verification, and passwor
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select, update
 
@@ -519,6 +519,146 @@ async def forgot_password(
     return MessageResponse(
         message="If an account exists with this email, a password reset link will be sent.",
     )
+
+
+@router.get(
+    "/reset-password",
+    response_class=HTMLResponse,
+    summary="Reset password form (HTML)",
+    include_in_schema=False,
+)
+async def reset_password_html(
+    token: str = Query(..., description="Reset token from email"),
+) -> HTMLResponse:
+    """
+    Render an HTML form for password reset.
+    Users see this when they click the link in the reset email.
+    The form submits to the POST /reset-password endpoint via JavaScript.
+    """
+    return HTMLResponse(content=f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Reset Password - VitalTrack</title>
+        <style>
+            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+                color: #e2e8f0;
+                min-height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 20px;
+            }}
+            .card {{
+                background: #1e293b;
+                border: 1px solid #334155;
+                border-radius: 16px;
+                padding: 40px;
+                max-width: 420px;
+                width: 100%;
+                box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            }}
+            .logo {{ text-align: center; margin-bottom: 24px; }}
+            .logo h1 {{ font-size: 24px; color: #60a5fa; margin-bottom: 4px; }}
+            .logo p {{ font-size: 14px; color: #94a3b8; }}
+            .form-group {{ margin-bottom: 20px; }}
+            label {{ display: block; font-size: 14px; font-weight: 500; color: #94a3b8; margin-bottom: 8px; }}
+            input {{
+                width: 100%; padding: 12px 16px; background: #0f172a;
+                border: 1px solid #334155; border-radius: 8px; color: #e2e8f0;
+                font-size: 16px; outline: none; transition: border-color 0.2s;
+            }}
+            input:focus {{ border-color: #60a5fa; }}
+            .hint {{ font-size: 12px; color: #64748b; margin-top: 6px; }}
+            button {{
+                width: 100%; padding: 14px; background: #3b82f6; color: white;
+                border: none; border-radius: 8px; font-size: 16px; font-weight: 600;
+                cursor: pointer; transition: background 0.2s;
+            }}
+            button:hover {{ background: #2563eb; }}
+            button:disabled {{ background: #475569; cursor: not-allowed; }}
+            .message {{ text-align: center; padding: 16px; border-radius: 8px; margin-top: 16px; font-size: 14px; }}
+            .success {{ background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }}
+            .error {{ background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }}
+            #result {{ display: none; }}
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <div class="logo">
+                <h1>VitalTrack</h1>
+                <p>Reset Your Password</p>
+            </div>
+            <div id="form-container">
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="password" placeholder="Enter new password" />
+                    <div class="hint">Min 8 characters, 1 uppercase, 1 number</div>
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="confirm" placeholder="Confirm new password" />
+                </div>
+                <button id="submit-btn" onclick="resetPassword()">Reset Password</button>
+            </div>
+            <div id="result" class="message"></div>
+        </div>
+        <script>
+            async function resetPassword() {{
+                const password = document.getElementById('password').value;
+                const confirm = document.getElementById('confirm').value;
+                const btn = document.getElementById('submit-btn');
+                const result = document.getElementById('result');
+                if (!password || password.length < 8) {{
+                    result.className = 'message error';
+                    result.textContent = 'Password must be at least 8 characters.';
+                    result.style.display = 'block';
+                    return;
+                }}
+                if (password !== confirm) {{
+                    result.className = 'message error';
+                    result.textContent = 'Passwords do not match.';
+                    result.style.display = 'block';
+                    return;
+                }}
+                btn.disabled = true;
+                btn.textContent = 'Resetting...';
+                try {{
+                    const response = await fetch(window.location.pathname, {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ token: '{token}', new_password: password }})
+                    }});
+                    const data = await response.json();
+                    if (response.ok) {{
+                        document.getElementById('form-container').style.display = 'none';
+                        result.className = 'message success';
+                        result.innerHTML = '<strong>Password Reset Successful!</strong><br><br>You can now open the VitalTrack app and log in with your new password.';
+                        result.style.display = 'block';
+                    }} else {{
+                        result.className = 'message error';
+                        result.textContent = data.detail || 'Reset failed. The link may have expired.';
+                        result.style.display = 'block';
+                        btn.disabled = false;
+                        btn.textContent = 'Reset Password';
+                    }}
+                }} catch (err) {{
+                    result.className = 'message error';
+                    result.textContent = 'Network error. Please try again.';
+                    result.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Reset Password';
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """)
 
 
 @router.post(

@@ -759,8 +759,8 @@ export default function CreateOrderScreen() {
           onPress={generatePDF}
           disabled={totalItems === 0 || isGenerating}
         >
-          <Ionicons name="share-outline" size={18} color="white" />
-          <Text style={styles.exportText}>{isGenerating ? 'Exporting...' : 'Export PDF'}</Text>
+          <Ionicons name="cart-outline" size={18} color="white" />
+          <Text style={styles.exportText}>{isGenerating ? 'Creating...' : 'Create Order & Export PDF'}</Text>
         </TouchableOpacity>
       </View>
 
