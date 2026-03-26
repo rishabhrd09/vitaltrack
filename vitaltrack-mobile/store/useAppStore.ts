@@ -515,9 +515,9 @@ export const useAppStore = create<AppStore>()(
       // =====================================================================
 
       getTodayOrderCount: () => {
-        const today = getTodayDateString();
+        const todayStr = new Date().toISOString().slice(0, 10); // "2026-03-26"
         return get().savedOrders.filter(
-          (order) => order.createdAt && order.createdAt.startsWith(today)
+          (order) => order.createdAt && order.createdAt.startsWith(todayStr)
         ).length;
       },
 

@@ -574,6 +574,41 @@ When user deletes item locally:
 3. Backend compares: "What's in DB but not in push?"
 4. Those orphans are deleted
 
+### Why Images Are NOT Stored in the Database
+Images added to items are stored as **local file paths** on the phone's filesystem (e.g., `file:///data/user/0/com.vitaltrack.mobile/cache/photo.jpg`). The Neon database only stores the path string (`imageUri`), not the image binary.
+
+**Consequence:** When the app is uninstalled and reinstalled, the image files are deleted by Android but the path strings persist in the database. The app tries to load the old paths → files don't exist → images appear blank. All other data (items, quantities, categories, orders) is preserved via the database.
+
+**Why this tradeoff:**
+- Neon free tier has 0.5 GB storage — storing images as base64 would exhaust it quickly
+- Syncing image binaries on every pull/push would be extremely slow on mobile networks
+- Images are supplementary (item reference photos), not critical medical data
+- This is the same pattern used by WhatsApp ("media not included in backup"), Instagram, and most inventory apps
+
+**Future upgrade path (if needed):**
+1. **Cloud storage** (S3, Cloudinary, Supabase Storage) — upload images to a URL, store URL in database. Best solution for persistence across installs.
+2. **Base64 in database** — simple but heavy, not recommended at scale.
+3. **Accept the tradeoff** — current approach is fine for a medical supply tracker where photos are optional reference images.
+
+### Why No Permission Popup When Picking Photos
+On Android 13+, `expo-image-picker` uses the **system Photo Picker API** — an OS-level UI that runs outside the app's process. The user selects a photo, and the OS gives the app access to **only that specific file**. No permission is needed because the app never accesses the full gallery.
+
+**Permission behavior by action:**
+
+| Action | Permission Needed? | Why |
+|--------|-------------------|-----|
+| Pick photo via system picker | **No** | OS mediates access, gives only the selected file |
+| Access full gallery / all photos | **Yes** (`READ_MEDIA_IMAGES`) | App wants to browse everything |
+| Take a new photo with camera | **Yes** (`CAMERA`) | Direct hardware access |
+| Save file to shared storage | **Yes** (`WRITE_EXTERNAL_STORAGE`) | Writing outside app sandbox |
+
+**Our `app.json` declares permissions:**
+```json
+"permissions": ["android.permission.CAMERA", "android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE"]
+```
+
+But on Android 13+, `READ_EXTERNAL_STORAGE` is ignored — the OS uses the photo picker instead. `CAMERA` permission is requested at runtime only when the user taps "Take Photo". Permissions are declared in the manifest but only prompted **at the moment they're needed**, not on install. This is standard Android behavior — same as Instagram, WhatsApp, etc.
+
 ---
 
 ## Performance Optimizations

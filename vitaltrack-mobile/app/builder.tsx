@@ -367,8 +367,13 @@ export default function BuildInventoryScreen() {
 
         try {
             const { uri } = await Print.printToFileAsync({ html });
+            const FileSystem = await import('expo-file-system/legacy');
+            const pdfDir = FileSystem.documentDirectory || '';
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const newUri = `${pdfDir}VitalTrack-Inventory-${dateStr}.pdf`;
+            await FileSystem.copyAsync({ from: uri, to: newUri });
             if (await Sharing.isAvailableAsync()) {
-                await Sharing.shareAsync(uri, { UTI: 'com.adobe.pdf', mimeType: 'application/pdf' });
+                await Sharing.shareAsync(newUri, { UTI: 'com.adobe.pdf', mimeType: 'application/pdf', dialogTitle: 'VitalTrack Inventory Report' });
             }
         } catch {
             Alert.alert('Error', 'Failed to export PDF');
