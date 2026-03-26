@@ -298,8 +298,10 @@ class TestTokenLifecycle:
         )
         assert resp.status_code == 200
         new = resp.json()
-        assert new["access_token"] != user["access_token"]
+        # Refresh tokens always differ (unique jti). Access tokens CAN match
+        # if issued in the same second (same iat/exp/sub → identical JWT).
         assert new["refresh_token"] != user["refresh_token"]
+        assert new["access_token"]
 
     @pytest.mark.asyncio
     async def test_old_refresh_revoked_after_rotation(self, client: AsyncClient):
