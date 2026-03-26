@@ -12,7 +12,6 @@ Test users: 5 email-based + 4 username-only + dual-identifier
 11 test classes · 55 tests
 """
 
-import pytest
 from httpx import AsyncClient
 from tests.conftest import register_user, login_user, auth_header
 
