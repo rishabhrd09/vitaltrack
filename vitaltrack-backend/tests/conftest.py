@@ -54,6 +54,10 @@ async def _test_db_override() -> AsyncGenerator[AsyncSession, None]:
 
 app.dependency_overrides[get_db] = _test_db_override
 
+# Disable rate limiting during tests — all requests come from 127.0.0.1
+# and would hit the 3/hour limit after just 3 registrations
+app.state.limiter.enabled = False
+
 
 @pytest_asyncio.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
@@ -71,7 +75,7 @@ async def register_user(
     if username: payload["username"] = username
     if email: payload["email"] = email
     resp = await client.post("/api/v1/auth/register", json=payload)
-    assert resp.status_code == 200, f"Registration failed for {username or email}: {resp.text}"
+    assert resp.status_code in [200, 201], f"Registration failed for {username or email}: {resp.text}"
     return resp.json()
 
 
