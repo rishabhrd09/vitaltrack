@@ -6,8 +6,10 @@ VitalTrack — Test Configuration
 - Rate limiter disabled globally
 """
 
+import asyncio
 from typing import AsyncGenerator
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -33,11 +35,20 @@ app.state.limiter.enabled = False
 
 
 # =============================================================================
+# EVENT LOOP — required for session-scoped async operations
+# =============================================================================
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
+
+
+# =============================================================================
 # DATABASE ISOLATION — drop + recreate ALL tables before each test
 # =============================================================================
 @pytest_asyncio.fixture(autouse=True)
 async def fresh_database():
-    """Drop and recreate ALL tables before each test — zero pollution."""
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
@@ -47,7 +58,7 @@ async def fresh_database():
 
 
 # =============================================================================
-# DEPENDENCY OVERRIDE — route all DB access through test session
+# DEPENDENCY OVERRIDE
 # =============================================================================
 async def _test_db_override() -> AsyncGenerator[AsyncSession, None]:
     async with TestSession() as session:
