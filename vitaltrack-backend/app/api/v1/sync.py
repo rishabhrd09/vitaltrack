@@ -43,6 +43,9 @@ from app.schemas import (
 )
 
 
+import logging
+logger = logging.getLogger("vitaltrack.sync")
+
 router = APIRouter(prefix="/sync", tags=["Sync"])
 
 
@@ -92,7 +95,7 @@ async def sync_push(
     pushed_item_local_ids: Set[str] = set()
     pushed_order_local_ids: Set[str] = set()
     
-    print(f"[Sync] Push received: {len(data.operations)} operations from user {current_user.id}")
+    logger.info(f"Push received: {len(data.operations)} operations from user {current_user.id}")
     
     # =========================================================================
     # CRITICAL FIX: Sort operations by dependency order
@@ -109,9 +112,9 @@ async def sync_push(
         return 3
     
     sorted_operations = sorted(data.operations, key=get_operation_priority)
-    print(f"[Sync] Operations sorted: {sum(1 for o in sorted_operations if o.entity == SyncEntityType.CATEGORY)} categories, "
-          f"{sum(1 for o in sorted_operations if o.entity == SyncEntityType.ITEM)} items, "
-          f"{sum(1 for o in sorted_operations if o.entity == SyncEntityType.ORDER)} orders")
+    logger.info(f"Operations sorted: {sum(1 for o in sorted_operations if o.entity == SyncEntityType.CATEGORY)} categories, "
+               f"{sum(1 for o in sorted_operations if o.entity == SyncEntityType.ITEM)} items, "
+               f"{sum(1 for o in sorted_operations if o.entity == SyncEntityType.ORDER)} orders")
     
     for op in sorted_operations:
         try:
@@ -129,9 +132,9 @@ async def sync_push(
                 success_count += 1
             else:
                 error_count += 1
-                print(f"[Sync] Operation failed: {op.id} - {result.error}")
+                logger.error(f"Operation failed: {op.id} - {result.error}")
         except Exception as e:
-            print(f"[Sync] Operation exception: {op.id} - {str(e)}")
+            logger.error(f"Operation exception: {op.id} - {str(e)}")
             results.append(
                 SyncOperationResult(
                     operation_id=op.id,
@@ -159,7 +162,7 @@ async def sync_push(
                 )
             )
             for item in orphan_items.scalars().all():
-                print(f"[Sync] Deleting orphan item: {item.local_id} - {item.name}")
+                logger.info(f"Deleting orphan item: {item.local_id} - {item.name}")
                 await db.delete(item)
                 orphans_deleted += 1
         
@@ -178,7 +181,7 @@ async def sync_push(
                     select(Item).where(Item.category_id == cat.id).limit(1)
                 )
                 if not items_in_cat.scalar_one_or_none():
-                    print(f"[Sync] Deleting orphan category: {cat.local_id} - {cat.name}")
+                    logger.info(f"Deleting orphan category: {cat.local_id} - {cat.name}")
                     await db.delete(cat)
                     orphans_deleted += 1
         
@@ -191,12 +194,12 @@ async def sync_push(
                 )
             )
             for order in orphan_orders.scalars().all():
-                print(f"[Sync] Deleting orphan order: {order.local_id}")
+                logger.info(f"Deleting orphan order: {order.local_id}")
                 await db.delete(order)
                 orphans_deleted += 1
     
     if orphans_deleted > 0:
-        print(f"[Sync] Orphan cleanup: deleted {orphans_deleted} orphaned records")
+        logger.info(f"Orphan cleanup: deleted {orphans_deleted} orphaned records")
     
     # Log sync activity
     activity = ActivityLog(
@@ -209,7 +212,7 @@ async def sync_push(
     
     await db.commit()
     
-    print(f"[Sync] Push complete: {success_count} succeeded, {error_count} failed, {orphans_deleted} orphans deleted")
+    logger.info(f"Push complete: {success_count} succeeded, {error_count} failed, {orphans_deleted} orphans deleted")
     
     return SyncPushResponse(
         results=results,
@@ -262,7 +265,7 @@ async def _sync_category(
         
         if existing_category:
             # UPSERT: Update existing category
-            print(f"[Sync] Category exists, updating: {op.local_id} -> {existing_category.name}")
+            logger.debug(f"Category exists, updating: {op.local_id} -> {existing_category.name}")
             
             if op.data:
                 if "name" in op.data:
@@ -297,7 +300,7 @@ async def _sync_category(
         db.add(category)
         await db.flush()
         
-        print(f"[Sync] Category created: {category.id} - {category.name} (local: {op.local_id})")
+        logger.info(f"Category created: {category.id} - {category.name} (local: {op.local_id})")
         
         return SyncOperationResult(
             operation_id=op.id,
@@ -351,7 +354,7 @@ async def _sync_category(
         
         if category:
             await db.delete(category)
-            print(f"[Sync] Category deleted: {op.local_id}")
+            logger.info(f"Category deleted: {op.local_id}")
         
         return SyncOperationResult(
             operation_id=op.id,
@@ -388,7 +391,7 @@ async def _sync_item(
         
         if existing_item:
             # UPSERT: Update existing item
-            print(f"[Sync] Item exists, updating: {op.local_id} -> {existing_item.name}")
+            logger.debug(f"Item exists, updating: {op.local_id} -> {existing_item.name}")
             
             if op.data:
                 # Resolve category ID if provided
@@ -478,7 +481,7 @@ async def _sync_item(
         db.add(item)
         await db.flush()
         
-        print(f"[Sync] Item created: {item.id} - {item.name} (local: {op.local_id})")
+        logger.info(f"Item created: {item.id} - {item.name} (local: {op.local_id})")
         
         return SyncOperationResult(
             operation_id=op.id,
@@ -545,7 +548,7 @@ async def _sync_item(
             
             item.updated_at = datetime.now(timezone.utc)
         
-        print(f"[Sync] Item updated: {item.id} - {item.name}")
+        logger.info(f"Item updated: {item.id} - {item.name}")
         
         return SyncOperationResult(
             operation_id=op.id,
@@ -569,7 +572,7 @@ async def _sync_item(
         if item:
             item_name = item.name
             await db.delete(item)
-            print(f"[Sync] Item deleted: {op.local_id} - {item_name}")
+            logger.info(f"Item deleted: {op.local_id} - {item_name}")
         
         return SyncOperationResult(
             operation_id=op.id,
@@ -611,7 +614,7 @@ async def _sync_order(
         
         if existing_order:
             # UPSERT: Update existing order
-            print(f"[Sync] Order exists, updating: {op.local_id} -> {existing_order.order_id}")
+            logger.debug(f"Order exists, updating: {op.local_id} -> {existing_order.order_id}")
             
             if op.data:
                 if "status" in op.data:
@@ -677,7 +680,7 @@ async def _sync_order(
             import uuid
             unique_suffix = str(uuid.uuid4())[:8].upper()
             proposed_order_id = f"{proposed_order_id}-{current_user.id[:4]}-{unique_suffix}"
-            print(f"[Sync] Order ID collision detected, using unique ID: {proposed_order_id}")
+            logger.warning(f"Order ID collision detected, using unique ID: {proposed_order_id}")
         
         order = Order(
             user_id=current_user.id,
@@ -717,7 +720,7 @@ async def _sync_order(
                 db.add(order_item)
                 items_count += 1
         
-        print(f"[Sync] Order created: {order.id} - {order.order_id} with {items_count} items")
+        logger.info(f"Order created: {order.id} - {order.order_id} with {items_count} items")
         
         return SyncOperationResult(
             operation_id=op.id,
@@ -749,7 +752,7 @@ async def _sync_order(
                 delete(OrderItem).where(OrderItem.order_id == order.id)
             )
             await db.delete(order)
-            print(f"[Sync] Order deleted: {op.local_id}")
+            logger.info(f"Order deleted: {op.local_id}")
         
         return SyncOperationResult(
             operation_id=op.id,
@@ -811,7 +814,7 @@ async def sync_pull(
     db.add(activity)
     await db.commit()
     
-    print(f"[Sync] Pull complete for user {current_user.id}: {len(categories)} categories, {len(items)} items, {len(orders)} orders")
+    logger.info(f"Pull complete for user {current_user.id}: {len(categories)} categories, {len(items)} items, {len(orders)} orders")
     
     return SyncPullResponse(
         categories=[CategoryResponse.model_validate(c) for c in categories],

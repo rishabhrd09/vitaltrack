@@ -19,6 +19,16 @@ from app.core.database import create_tables, dispose_engine
 from app.schemas import HealthCheck
 from app.utils.rate_limiter import limiter
 
+import logging
+
+# Configure structured logging (12-Factor: treat logs as event streams)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("vitaltrack.main")
+
 
 # =============================================================================
 # APPLICATION LIFECYCLE
@@ -27,20 +37,20 @@ from app.utils.rate_limiter import limiter
 async def lifespan(app: FastAPI):
     """Application lifecycle manager."""
     # Startup
-    print(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
-    print(f"Environment: {settings.ENVIRONMENT}")
-    print(f"CORS Origins: {settings.CORS_ORIGINS}")
-    print(f"CORS Allow All: {settings.is_cors_allow_all}")
+    logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    logger.info(f"Environment: {settings.ENVIRONMENT}")
+    logger.info(f"CORS Origins: {settings.CORS_ORIGINS}")
+    logger.info(f"CORS Allow All: {settings.is_cors_allow_all}")
     
     # In development, create tables automatically
     if settings.ENVIRONMENT == "development":
         await create_tables()
-        print("Database tables created/verified")
+        logger.info("Database tables created/verified")
     
     yield
     
     # Shutdown
-    print("Shutting down...")
+    logger.info("Shutting down...")
     await dispose_engine()
 
 
@@ -71,7 +81,7 @@ def create_app() -> FastAPI:
     if settings.is_cors_allow_all:
         # Development mode: Allow all origins but disable credentials
         # This is safe for local dev and works with mobile apps
-        print("⚠️  CORS: Development mode - allowing all origins (credentials disabled)")
+        logger.warning("CORS: Development mode — allowing all origins")
         app.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
@@ -82,7 +92,7 @@ def create_app() -> FastAPI:
         )
     else:
         # Production mode: Specific origins with credentials
-        print(f"🔒 CORS: Production mode - allowing specific origins: {settings.CORS_ORIGINS}")
+        logger.info(f"CORS: Production mode — specific origins: {settings.CORS_ORIGINS}")
         app.add_middleware(
             CORSMiddleware,
             allow_origins=settings.CORS_ORIGINS,
@@ -92,6 +102,21 @@ def create_app() -> FastAPI:
             expose_headers=["X-Total-Count", "X-Page", "X-Page-Size"],
         )
     
+    # =========================================================================
+    # SECURITY HEADERS (OWASP recommended)
+    # =========================================================================
+    @app.middleware("http")
+    async def add_security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Cache-Control"] = "no-store"
+        if settings.ENVIRONMENT == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
     # Include API routers
     app.include_router(api_v1_router)
     
@@ -149,9 +174,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             # In production, you would log to an error tracking service
             pass
         else:
-            # In development, print the error
-            import traceback
-            traceback.print_exc()
+            logger.exception("Unhandled exception")
         
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

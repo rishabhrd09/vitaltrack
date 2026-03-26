@@ -14,14 +14,18 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        sync: false  # Set manually (from Neon — no query params, SSL via connect_args)
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: ENVIRONMENT
         value: production
       - key: CORS_ORIGINS
-        value: '["*"]'  # Safe for mobile-only API (CORS is a browser mechanism)
+        value: '["*"]'
       - key: REQUIRE_EMAIL_VERIFICATION
-        value: "false"
+        value: "true"
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
       - key: FRONTEND_URL
         value: https://vitaltrack-api.onrender.com/api/v1/auth

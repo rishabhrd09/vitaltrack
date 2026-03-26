@@ -12,6 +12,9 @@ from pydantic import EmailStr
 
 from app.core.config import settings
 
+import logging
+logger = logging.getLogger("vitaltrack.email")
+
 
 def is_email_configured() -> bool:
     """Check if email service (Brevo) is properly configured."""
@@ -94,21 +97,21 @@ async def send_email_via_api(to_email: str, to_name: str, subject: str, html_con
         "htmlContent": html_content
     }
     
-    print(f"[EMAIL API] Sending to {to_email} via Brevo API...")
+    logger.info(f"Sending email to {to_email} via Brevo API...")
     
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(url, json=payload, headers=headers, timeout=10.0)
             
         if response.status_code == 201:
-            print(f"[EMAIL API] ✅ Success! Message ID: {response.json().get('messageId')}")
+            logger.info(f"Email sent. Message ID: {response.json().get('messageId')}")
             return True
         else:
-            print(f"[EMAIL API] ❌ Failed. Status: {response.status_code}, Response: {response.text}")
+            logger.error(f"Email failed. Status: {response.status_code}, Response: {response.text}")
             return False
             
     except Exception as e:
-        print(f"[EMAIL API] ❌ Exception: {str(e)}")
+        logger.error(f"Email exception: {str(e)}")
         return False
 
 
