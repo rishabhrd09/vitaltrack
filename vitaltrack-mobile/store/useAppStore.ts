@@ -23,6 +23,34 @@ import { generateId, now, getTodayDateString, generateOrderId } from '@/utils/he
 import { validateCategoryData, validateItemData } from '@/utils/sanitize';
 
 // ============================================================================
+// DEBOUNCED AUTO-SYNC — pushes changes to server after mutations
+// ============================================================================
+
+let _syncTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Schedule a background sync after data changes.
+ * Debounced to 5 seconds — multiple rapid edits only trigger one sync.
+ * This ensures brand, supplier, links etc. persist to the server
+ * even if the user closes the app without logging out.
+ */
+function scheduleSyncToBackend() {
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(async () => {
+    try {
+      const { useAppStore } = await import('./useAppStore');
+      const store = useAppStore.getState();
+      if (store.isInitialized && store.currentUserId) {
+        await store.syncToBackend();
+        console.log('[AutoSync] Background sync completed');
+      }
+    } catch (err) {
+      console.warn('[AutoSync] Background sync failed:', err);
+    }
+  }, 5000);
+}
+
+// ============================================================================
 // STORAGE KEY CONSTANTS
 // ============================================================================
 
@@ -322,6 +350,7 @@ export const useAppStore = create<AppStore>()(
 
         set((state) => ({ items: [...state.items, item] }));
         get().logActivity('item_create', item.name, `Created with ${item.quantity} ${item.unit}`, item.id);
+        scheduleSyncToBackend();
         return item;
       },
 
@@ -350,6 +379,7 @@ export const useAppStore = create<AppStore>()(
           id
         );
 
+        scheduleSyncToBackend();
         return updated;
       },
 
@@ -362,6 +392,7 @@ export const useAppStore = create<AppStore>()(
         }));
 
         get().logActivity('item_delete', item.name, 'Deleted', id);
+        scheduleSyncToBackend();
       },
 
       updateStock: (id, newQuantity) => {
@@ -383,6 +414,7 @@ export const useAppStore = create<AppStore>()(
           id
         );
 
+        scheduleSyncToBackend();
         return updated;
       },
 
@@ -417,6 +449,7 @@ export const useAppStore = create<AppStore>()(
         }));
 
         get().logActivity('category_create', category.name, 'Created');
+        scheduleSyncToBackend();
         return category;
       },
 
@@ -444,6 +477,7 @@ export const useAppStore = create<AppStore>()(
         }));
 
         get().logActivity('category_delete', category.name, 'Deleted');
+        scheduleSyncToBackend();
       },
 
       getCategoryById: (id) => get().categories.find((c) => c.id === id),
