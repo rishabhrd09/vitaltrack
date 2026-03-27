@@ -329,34 +329,6 @@ export default function CreateOrderScreen() {
         .footer b { color: #1e3a5f; }
 
         .img-section { page-break-before: always; }
-        .img-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        .img-table th {
-            background: #1e3a5f;
-            color: #fff;
-            padding: 10px 8px;
-            text-align: left;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-        }
-        .img-table td {
-            padding: 14px 10px;
-            border-bottom: 1px solid #edf2f7;
-            vertical-align: middle;
-        }
-        .img-table tr { page-break-inside: avoid; min-height: 180px; }
-        .img-table tr:nth-child(even) { background: #fafbfc; }
-        .img-cell { width: 280px; text-align: center; padding: 10px; }
-        .img-cell img {
-            max-width: 260px;
-            max-height: 200px;
-            object-fit: contain;
-            border-radius: 6px;
-            border: 1px solid #edf2f7;
-        }
-        .img-item-name { font-weight: 600; color: #2d3748; font-size: 16px; }
-        .img-details { font-size: 13px; color: #718096; margin-top: 4px; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -408,51 +380,18 @@ export default function CreateOrderScreen() {
 
     ${itemsWithImages.filter(ci => ci.imageBase64).length > 0 ? `
     <div class="img-section">
-        <div class="section-title">📸 Order Items — Photo Reference</div>
-        <p style="color: #a0aec0; font-size: 12px; margin-bottom: 14px;">
-            Visual reference for ${itemsWithImages.filter(ci => ci.imageBase64).length} items with photos
+        <div class="section-title">📸 Product Photos</div>
+        <p style="color: #a0aec0; font-size: 12px; margin-bottom: 20px;">
+            ${itemsWithImages.filter(ci => ci.imageBase64).length} items with photos
         </p>
-
-        <table class="img-table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Item</th>
-                    <th>Details</th>
-                    <th style="text-align:center">Photo</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${itemsWithImages.filter(ci => ci.imageBase64).map((ci, idx) => `
-                    <tr>
-                        <td style="text-align:center;color:#a0aec0;width:30px">${idx + 1}</td>
-                        <td><div class="img-item-name">${escapeHtml(ci.item.name)}</div></td>
-                        <td>
-                            <div class="img-details">
-                                <strong>${ci.quantity} ${escapeHtml(ci.item.unit)}</strong><br/>
-                                ${ci.item.brand ? 'Brand: ' + escapeHtml(ci.item.brand) + '<br/>' : ''}
-                                ${ci.item.supplierName ? 'From: ' + escapeHtml(ci.item.supplierName) : ''}
-                            </div>
-                        </td>
-                        <td class="img-cell">
-                            <img src="${ci.imageBase64}" alt="${escapeHtml(ci.item.name)}" />
-                        </td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-
-        <div style="page-break-before: always; text-align: center; padding: 24px 0 16px;">
-            <div class="section-title">🔍 Full-Size Product Photos</div>
-            <p style="color: #a0aec0; font-size: 12px; margin-bottom: 20px;">
-                Enlarged images for packaging verification
-            </p>
-        </div>
-        ${itemsWithImages.filter(ci => ci.imageBase64).map(ci => `
-            <div style="page-break-inside: avoid; text-align: center; margin-bottom: 40px; padding: 16px;">
-                <h3 style="color: #1e3a5f; font-size: 18px; margin-bottom: 4px;">${escapeHtml(ci.item.name)}</h3>
-                <p style="color: #718096; font-size: 13px; margin-bottom: 14px;">
-                    ${ci.quantity} ${escapeHtml(ci.item.unit)}${ci.item.brand ? ' · ' + escapeHtml(ci.item.brand) : ''}${ci.item.supplierName ? ' · ' + escapeHtml(ci.item.supplierName) : ''}
+        ${itemsWithImages.filter(ci => ci.imageBase64).map((ci, idx) => `
+            <div style="page-break-inside: avoid; text-align: center; margin-bottom: 44px; padding: 16px;">
+                <div style="margin-bottom: 6px;">
+                    <span style="color: #a0aec0; font-size: 14px;">${idx + 1}.</span>
+                    <span style="color: #1e3a5f; font-size: 22px; font-weight: 700;">${escapeHtml(ci.item.name)}</span>
+                </div>
+                <p style="color: #1e3a5f; font-size: 17px; font-weight: 600; margin-bottom: 14px;">
+                    Order: ${ci.quantity} ${escapeHtml(ci.item.unit)}${ci.item.brand ? ' · ' + escapeHtml(ci.item.brand) : ''}
                 </p>
                 <img src="${ci.imageBase64}" style="max-width: 95%; max-height: 550px; object-fit: contain; border-radius: 8px; box-shadow: 0 2px 16px rgba(0,0,0,0.08);" />
             </div>
