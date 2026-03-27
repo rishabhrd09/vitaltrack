@@ -219,85 +219,248 @@ export default function CreateOrderScreen() {
   // PDF GENERATION - Two Options: Table Layout & Card Layout with Images
   // ============================================================================
 
-  // Show format selection dialog
+  // Single export: table + image reference in one PDF
   const generatePDF = () => {
-    if (cartItems.length === 0) return;
-    Alert.alert(
-      '📄 Export PDF Format',
-      'Choose your preferred layout:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: '📊 Table (No Images)', onPress: () => generateTablePDF() },
-        { text: '🖼️ Cards (With Images)', onPress: () => generateCardPDF() },
-      ]
-    );
+    if (cartItems.length === 0) {
+      Alert.alert('No Items', 'Add items to the order first.');
+      return;
+    }
+    generateTablePDF();
   };
 
-  // OPTION 1: Clean Table Layout (No Images) - Like the uploaded reference
+  // Combined Table + Image Reference PDF
   const generateTablePDF = async () => {
     setIsGenerating(true);
     try {
       const orderId = createOrderId();
       const currentDate = formatDate(now());
 
-      const html = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              * { box-sizing: border-box; margin: 0; padding: 0; }
-              body { font-family: 'Segoe UI', -apple-system, sans-serif; padding: 25px; color: #1a1a1a; background: #fff; font-size: 15px; }
-              .header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #1e3a5f; }
-              h1 { font-size: 28px; color: #1e3a5f; margin-bottom: 5px; }
-              .order-id { font-size: 16px; color: #666; }
-              .meta { color: #888; font-size: 14px; }
-              .summary { background: #f0f4ff; padding: 14px 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-size: 15px; color: #1e3a5f; }
-              table { width: 100%; border-collapse: collapse; }
-              th { background: #1e3a5f; color: white; padding: 14px 12px; text-align: left; font-weight: 600; font-size: 14px; }
-              th:first-child { width: 40px; text-align: center; }
-              th:nth-child(4) { text-align: center; }
-              th:last-child { text-align: center; }
-              td { padding: 14px 12px; border-bottom: 1px solid #e8e8f0; font-size: 14px; vertical-align: middle; }
-              tr:nth-child(even) { background: #f8f9fc; }
-              td:first-child { text-align: center; color: #666; }
-              td:nth-child(4) { text-align: center; font-weight: 700; color: #1e3a5f; }
-              td:last-child { text-align: center; }
-              .item-name { font-weight: 600; color: #1a1a1a; }
-              .empty { color: #aaa; font-style: italic; font-size: 12px; }
-              .link-btn { color: #1e3a5f; text-decoration: none; font-size: 13px; }
-              .footer { margin-top: 25px; text-align: center; font-size: 13px; color: #888; padding-top: 15px; border-top: 1px solid #e8e8f0; }
-              .footer-brand { color: #1e3a5f; font-weight: 600; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>🛒 Purchase Order</h1>
-              <div class="order-id">Order #${orderId}</div>
-              <div class="meta">${currentDate}</div>
-            </div>
-            <div class="summary"><strong>${totalItems}</strong> Items to Order  •  <strong>${totalUnits}</strong> Total Units</div>
-            <table>
-              <thead>
-                <tr><th>#</th><th>Item Name</th><th>Brand</th><th>Qty</th><th>Supplier</th><th>Link</th></tr>
-              </thead>
-              <tbody>
-                ${cartItems.map((ci, idx) => `
-                  <tr>
+      // Process images for the photo reference section
+      const itemsWithImages = await Promise.all(
+        cartItems.map(async (ci) => ({
+          ...ci,
+          imageBase64: ci.item.imageUri ? await getBase64Image(ci.item.imageUri) : '',
+        }))
+      );
+
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', -apple-system, sans-serif;
+            padding: 28px;
+            color: #2d3748;
+            background: #fff;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 3px solid #1e3a5f;
+        }
+        h1 { font-size: 28px; color: #1e3a5f; font-weight: 700; margin-bottom: 6px; }
+        .order-id { font-size: 16px; color: #718096; }
+        .meta { color: #a0aec0; font-size: 14px; }
+
+        .summary-bar {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a7b 100%);
+            color: white;
+            padding: 16px 28px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+        }
+        .summary-item { text-align: center; }
+        .summary-value { font-size: 26px; font-weight: 700; }
+        .summary-label { font-size: 11px; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.03em; }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin: 20px 0 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            background: #1e3a5f;
+            color: #fff;
+            padding: 12px 10px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        th:first-child { width: 35px; text-align: center; }
+        th.col-qty { text-align: center; width: 90px; }
+        th.col-link { text-align: center; width: 50px; }
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #edf2f7;
+            font-size: 14px;
+            vertical-align: middle;
+            color: #4a5568;
+        }
+        tr:nth-child(even) { background: #fafbfc; }
+        td:first-child { text-align: center; color: #a0aec0; font-size: 12px; }
+        .item-name { font-weight: 600; color: #2d3748; font-size: 16px; }
+        .qty { font-weight: 700; text-align: center; color: #1e3a5f; font-size: 15px; }
+        .dim { color: #c0c8d0; font-style: italic; font-size: 13px; }
+        .link-btn { color: #1e3a5f; text-decoration: none; font-size: 13px; font-weight: 600; }
+
+        .footer {
+            margin-top: 28px;
+            text-align: center;
+            font-size: 11px;
+            color: #a0aec0;
+            padding-top: 14px;
+            border-top: 1px solid #edf2f7;
+        }
+        .footer b { color: #1e3a5f; }
+
+        .img-section { page-break-before: always; }
+        .img-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        .img-table th {
+            background: #1e3a5f;
+            color: #fff;
+            padding: 10px 8px;
+            text-align: left;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .img-table td {
+            padding: 14px 10px;
+            border-bottom: 1px solid #edf2f7;
+            vertical-align: middle;
+        }
+        .img-table tr { page-break-inside: avoid; min-height: 180px; }
+        .img-table tr:nth-child(even) { background: #fafbfc; }
+        .img-cell { width: 280px; text-align: center; padding: 10px; }
+        .img-cell img {
+            max-width: 260px;
+            max-height: 200px;
+            object-fit: contain;
+            border-radius: 6px;
+            border: 1px solid #edf2f7;
+        }
+        .img-item-name { font-weight: 600; color: #2d3748; font-size: 16px; }
+        .img-details { font-size: 13px; color: #718096; margin-top: 4px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛒 Purchase Order</h1>
+        <div class="order-id">Order #${orderId}</div>
+        <div class="meta">${currentDate}</div>
+    </div>
+
+    <div class="summary-bar">
+        <div class="summary-item">
+            <div class="summary-value">${totalItems}</div>
+            <div class="summary-label">Items to Order</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-value">${totalUnits}</div>
+            <div class="summary-label">Total Units</div>
+        </div>
+    </div>
+
+    <div class="section-title">📋 Order Summary</div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Item Name</th>
+                <th>Brand</th>
+                <th class="col-qty">Qty</th>
+                <th>Supplier</th>
+                <th class="col-link">Link</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${cartItems.map((ci, idx) => `
+                <tr>
                     <td>${idx + 1}</td>
                     <td><span class="item-name">${escapeHtml(ci.item.name)}</span></td>
-                    <td>${escapeHtml(ci.item.brand) || '<span class="empty">Not specified</span>'}</td>
-                    <td>${ci.quantity} ${escapeHtml(ci.item.unit)}</td>
-                    <td>${escapeHtml(ci.item.supplierName) || '<span class="empty">Not specified</span>'}</td>
-                    <td>${ci.item.purchaseLink ? '<a href="' + encodeURI(ci.item.purchaseLink) + '" class="link-btn">🔗</a>' : '<span class="empty">N/A</span>'}</td>
-                  </tr>
+                    <td>${escapeHtml(ci.item.brand) || '<span class="dim">—</span>'}</td>
+                    <td class="qty">${ci.quantity} ${escapeHtml(ci.item.unit)}</td>
+                    <td>${escapeHtml(ci.item.supplierName) || '<span class="dim">—</span>'}</td>
+                    <td style="text-align:center">${ci.item.purchaseLink ? '<a href="' + encodeURI(ci.item.purchaseLink) + '" class="link-btn">🔗</a>' : '<span class="dim">—</span>'}</td>
+                </tr>
+            `).join('')}
+        </tbody>
+    </table>
+
+    <div class="footer">Generated by <b>VitalTrack</b> • Home ICU Inventory Management</div>
+
+    ${itemsWithImages.filter(ci => ci.imageBase64).length > 0 ? `
+    <div class="img-section">
+        <div class="section-title">📸 Order Items — Photo Reference</div>
+        <p style="color: #a0aec0; font-size: 12px; margin-bottom: 14px;">
+            Visual reference for ${itemsWithImages.filter(ci => ci.imageBase64).length} items with photos
+        </p>
+
+        <table class="img-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Item</th>
+                    <th>Details</th>
+                    <th style="text-align:center">Photo</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itemsWithImages.filter(ci => ci.imageBase64).map((ci, idx) => `
+                    <tr>
+                        <td style="text-align:center;color:#a0aec0;width:30px">${idx + 1}</td>
+                        <td><div class="img-item-name">${escapeHtml(ci.item.name)}</div></td>
+                        <td>
+                            <div class="img-details">
+                                <strong>${ci.quantity} ${escapeHtml(ci.item.unit)}</strong><br/>
+                                ${ci.item.brand ? 'Brand: ' + escapeHtml(ci.item.brand) + '<br/>' : ''}
+                                ${ci.item.supplierName ? 'From: ' + escapeHtml(ci.item.supplierName) : ''}
+                            </div>
+                        </td>
+                        <td class="img-cell">
+                            <img src="${ci.imageBase64}" alt="${escapeHtml(ci.item.name)}" />
+                        </td>
+                    </tr>
                 `).join('')}
-              </tbody>
-            </table>
-            <div class="footer">Generated by <span class="footer-brand">VitalTrack</span> • Home ICU Inventory Management</div>
-          </body>
-        </html>
-      `;
+            </tbody>
+        </table>
+
+        <div style="page-break-before: always; text-align: center; padding: 24px 0 16px;">
+            <div class="section-title">🔍 Full-Size Product Photos</div>
+            <p style="color: #a0aec0; font-size: 12px; margin-bottom: 20px;">
+                Enlarged images for packaging verification
+            </p>
+        </div>
+        ${itemsWithImages.filter(ci => ci.imageBase64).map(ci => `
+            <div style="page-break-inside: avoid; text-align: center; margin-bottom: 40px; padding: 16px;">
+                <h3 style="color: #1e3a5f; font-size: 18px; margin-bottom: 4px;">${escapeHtml(ci.item.name)}</h3>
+                <p style="color: #718096; font-size: 13px; margin-bottom: 14px;">
+                    ${ci.quantity} ${escapeHtml(ci.item.unit)}${ci.item.brand ? ' · ' + escapeHtml(ci.item.brand) : ''}${ci.item.supplierName ? ' · ' + escapeHtml(ci.item.supplierName) : ''}
+                </p>
+                <img src="${ci.imageBase64}" style="max-width: 95%; max-height: 550px; object-fit: contain; border-radius: 8px; box-shadow: 0 2px 16px rgba(0,0,0,0.08);" />
+            </div>
+        `).join('')}
+    </div>
+    ` : ''}
+</body>
+</html>`;
 
       const { uri } = await Print.printToFileAsync({ html });
       const FileSystem = await import('expo-file-system/legacy');
@@ -335,274 +498,6 @@ export default function CreateOrderScreen() {
     saveOrder(savedOrderItems);
     router.back();
     Alert.alert("Order Created", "Your order has been saved and exported.");
-  };
-
-  // OPTION 2: Card Layout with Images
-  const generateCardPDF = async () => {
-    if (cartItems.length === 0) return;
-    setIsGenerating(true);
-
-    try {
-      const orderId = createOrderId();
-      const currentDate = formatDate(now());
-
-      // Convert all images to base64 first
-      const itemsWithImages = await Promise.all(
-        cartItems.map(async (ci) => ({
-          ...ci,
-          imageBase64: ci.item.imageUri ? await getBase64Image(ci.item.imageUri) : '',
-        }))
-      );
-
-      const html = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              * { box-sizing: border-box; margin: 0; padding: 0; }
-              body { 
-                font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; 
-                padding: 30px; 
-                color: #1a1a1a; 
-                background: #fff;
-                line-height: 1.4;
-              }
-              .header { 
-                text-align: center; 
-                margin-bottom: 30px; 
-                padding-bottom: 20px; 
-                border-bottom: 3px solid #1e3a5f; 
-              }
-              h1 { 
-                font-size: 28px; 
-                color: #1e3a5f; 
-                font-weight: 700;
-                margin-bottom: 8px;
-              }
-              .order-id {
-                font-size: 16px;
-                color: #64748b;
-                margin-bottom: 5px;
-              }
-              .meta { 
-                color: #888; 
-                font-size: 14px; 
-              }
-              .summary-bar {
-                display: flex;
-                justify-content: center;
-                gap: 40px;
-                background: linear-gradient(135deg, #1e3a5f 0%, #2d5a7b 100%);
-                color: white;
-                padding: 18px 30px;
-                border-radius: 12px;
-                margin-bottom: 30px;
-              }
-              .summary-item {
-                text-align: center;
-              }
-              .summary-value {
-                font-size: 28px;
-                font-weight: 700;
-              }
-              .summary-label {
-                font-size: 13px;
-                opacity: 0.9;
-              }
-              /* Refined Professional Card Layout - 60/40 Split */
-              .item-card { 
-                display: flex; 
-                flex-direction: row;
-                margin-bottom: 25px; 
-                border: 1px solid #e0e0e0; 
-                border-radius: 12px; 
-                overflow: hidden; 
-                background: #fafafa;
-                page-break-inside: avoid;
-                min-height: 300px; /* Ensure ample vertical space */
-              }
-              .item-main { 
-                flex: 0 0 60%; 
-                padding: 20px; 
-                display: flex;
-                flex-direction: column;
-                gap: 15px; /* Space between Name and Grid */
-              }
-              .item-name { 
-                font-size: 18px; 
-                font-weight: 700; 
-                color: #1e3a5f;
-                padding-bottom: 10px;
-                border-bottom: 2px solid #f1f5f9;
-              }
-              .details-grid { 
-                display: grid; 
-                grid-template-columns: 1fr 1fr; 
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                overflow: hidden;
-                background: #fff;
-              }
-              .detail-box { 
-                padding: 12px; 
-                border-right: 1px solid #e2e8f0;
-                border-bottom: 1px solid #e2e8f0;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-              }
-              /* Remove borders for last column/row logic handled by grid container? No, simple CSS trick: */
-              .detail-box:nth-child(2n) { border-right: none; }
-              .detail-box:nth-child(n+3) { border-bottom: none; }
-              
-              .detail-label { 
-                font-size: 11px; 
-                color: #64748b; 
-                text-transform: uppercase; 
-                letter-spacing: 0.5px; 
-                margin-bottom: 4px;
-                font-weight: 600;
-              }
-              .detail-value { 
-                font-size: 14px; 
-                font-weight: 600; 
-                color: #334155; 
-              }
-              .link-btn { 
-                display: inline-block; 
-                background: #f1f5f9; 
-                color: #1e3a5f; 
-                padding: 6px 12px; 
-                border-radius: 4px; 
-                font-size: 12px; 
-                text-decoration: none; 
-                font-weight: 600; 
-                text-align: center;
-                border: 1px solid #e2e8f0;
-              }
-              .item-image { 
-                flex: 0 0 40%; 
-                background: #fff; 
-                border-left: 1px solid #e0e0e0; 
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
-                padding: 10px;
-              }
-              .item-image img {
-                width: 100%;
-                height: 100%;
-                object-fit: contain; /* Clear image, no cropping */
-                max-height: 350px;
-              }
-              .item-image .no-img { 
-                color: #cbd5e1; 
-                font-size: 12px; 
-                text-align: center; 
-              }
-              .footer { 
-                margin-top: 40px; 
-                text-align: center; 
-                font-size: 12px; 
-                color: #888; 
-                padding-top: 20px; 
-                border-top: 2px solid #e8e8e8; 
-              }
-              .footer-brand {
-                font-weight: 600;
-                color: #1e3a5f;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>🛒 Purchase Order</h1>
-              <div class="order-id">Order #${orderId}</div>
-              <div class="meta">${currentDate}</div>
-            </div>
-
-            <div class="summary-bar">
-              <div class="summary-item">
-                <div class="summary-value">${totalItems}</div>
-                <div class="summary-label">Items to Order</div>
-              </div>
-              <div class="summary-item">
-                <div class="summary-value">${totalUnits}</div>
-                <div class="summary-label">Total Units</div>
-              </div>
-            </div>
-
-            ${itemsWithImages.map((ci, index) => `
-              <div class="item-card">
-                <div class="item-main">
-                  <div class="item-header">
-                    <div class="item-name"><span style="color: #64748b; font-weight: 400;">${index + 1}.</span> ${escapeHtml(ci.item.name)}</div>
-                  </div>
-                  
-                  <div class="details-grid">
-                    <div class="detail-box">
-                      <div class="detail-label">📦 Order</div>
-                      <div class="detail-value" style="font-size: 15px; color: #1e3a5f;">${ci.quantity} ${escapeHtml(ci.item.unit)}</div>
-                    </div>
-                    <div class="detail-box">
-                      <div class="detail-label">🏷️ Brand</div>
-                      <div class="detail-value">${escapeHtml(ci.item.brand) || '—'}</div>
-                    </div>
-                    <div class="detail-box">
-                      <div class="detail-label">📍 Supplier</div>
-                      <div class="detail-value">${escapeHtml(ci.item.supplierName) || '—'}</div>
-                    </div>
-                    <div class="detail-box">
-                      <div class="detail-label">🔗 Link</div>
-                      ${ci.item.purchaseLink ? `<a href="${encodeURI(ci.item.purchaseLink)}" class="link-btn">Buy Now</a>` : '<div class="detail-value">—</div>'}
-                    </div>
-                  </div>
-                </div>
-                <!-- Image Slot -->
-                ${ci.imageBase64 ? `<div class="item-image"><img src="${ci.imageBase64}" alt="${escapeHtml(ci.item.name)}"/></div>` : ''}
-              </div>
-            `).join('')}
-
-            <div class="footer">
-              Generated by <span class="footer-brand">VitalTrack</span> • Home ICU Inventory Management
-            </div>
-
-            ${itemsWithImages.filter(ci => ci.imageBase64).length > 0 ? `
-            <!-- Full-size image gallery -->
-            <div style="page-break-before: always; text-align: center; padding: 20px;">
-                <h2 style="color: #1e3a5f; margin-bottom: 20px;">Order Item Photos</h2>
-                <p style="color: #888; font-size: 13px; margin-bottom: 30px;">Full-size images for detailed reference</p>
-            </div>
-            ${itemsWithImages.filter(ci => ci.imageBase64).map(ci => `
-                <div style="page-break-inside: avoid; text-align: center; margin-bottom: 40px; padding: 20px;">
-                    <h3 style="color: #1e3a5f; margin-bottom: 10px;">${escapeHtml(ci.item.name)}</h3>
-                    <p style="color: #888; font-size: 12px; margin-bottom: 15px;">${ci.quantity} ${escapeHtml(ci.item.unit)}</p>
-                    <img src="${ci.imageBase64}" style="max-width: 95%; max-height: 600px; object-fit: contain; border-radius: 8px;" />
-                </div>
-            `).join('')}
-            ` : ''}
-          </body>
-        </html>
-      `;
-
-      const { uri } = await Print.printToFileAsync({ html });
-      const FileSystem = await import('expo-file-system/legacy');
-      const pdfDir = FileSystem.documentDirectory || '';
-      const newUri = `${pdfDir}VitalTrack-${orderId}-Photos.pdf`;
-      await FileSystem.copyAsync({ from: uri, to: newUri });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(newUri, { UTI: 'com.adobe.pdf', mimeType: 'application/pdf', dialogTitle: `VitalTrack Order ${orderId}` });
-      }
-
-      saveOrderToStore(orderId);
-
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Failed to generate PDF");
-    } finally {
-      setIsGenerating(false);
-    }
   };
 
   // ============================================================================
