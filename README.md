@@ -11,6 +11,7 @@
 | I want to... | Go to |
 |--------------|-------|
 | Run locally in 30 min | [Quick Start](docs/NEW_DEVELOPER_QUICKSTART.md) |
+| Test, build, preview APK, CI/CD | [Testing & Build Quick Reference](docs/TESTING_AND_BUILD_QUICK_REFERENCE.md) |
 | Deep dive setup + troubleshooting | [Complete Local Testing Guide](docs/LOCAL_TESTING_COMPLETE_GUIDE.md) |
 | Connect phone via USB | [USB ADB Guide](docs/USB_ADB_REVERSE_GUIDE.md) |
 | Understand technical decisions | [Technical Challenges](docs/TECHNICAL_CHALLENGES.md) |
@@ -38,15 +39,19 @@ cd ../vitaltrack-mobile && npm install --legacy-peer-deps && npx expo start --cl
 | **Backend** | FastAPI, SQLAlchemy 2.0 (Async), Alembic, Argon2 |
 | **Database** | PostgreSQL 16 |
 | **Auth** | JWT + Refresh Token Rotation |
-| **CI/CD** | GitHub Actions, Railway, EAS Build |
+| **CI/CD** | GitHub Actions, Render, EAS Build |
 
 ## Features
 
-✅ Offline-first inventory management  
-✅ Emergency backup alerts for critical equipment  
-✅ Order tracking with PDF export  
-✅ Cloud sync across devices  
-✅ Secure JWT authentication  
+✅ Offline-first inventory management
+✅ Emergency backup alerts for critical equipment
+✅ Order tracking with compact table PDF + photo gallery
+✅ Inventory report PDF with status badges (OUT/LOW/OK)
+✅ Cloud sync across devices
+✅ Secure JWT auth with refresh token rotation
+✅ 73 automated tests (auth + security)
+✅ OWASP security headers
+✅ Structured logging (12-Factor compliant)
 
 ## Project Status: Production Ready ✅
 
