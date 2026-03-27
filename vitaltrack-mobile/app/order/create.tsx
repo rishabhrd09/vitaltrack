@@ -219,29 +219,43 @@ export default function CreateOrderScreen() {
   // PDF GENERATION - Two Options: Table Layout & Card Layout with Images
   // ============================================================================
 
-  // Single export: table + image reference in one PDF
+  // Ask user if they want photos, then export
   const generatePDF = () => {
     if (cartItems.length === 0) {
       Alert.alert('No Items', 'Add items to the order first.');
       return;
     }
-    generateTablePDF();
+    const hasImages = cartItems.some(ci => ci.item.imageUri);
+    if (hasImages) {
+      Alert.alert(
+        'Export PDF',
+        'Include product photos in the PDF?',
+        [
+          { text: 'Table Only', onPress: () => generateTablePDF(false) },
+          { text: 'With Photos', onPress: () => generateTablePDF(true) },
+        ]
+      );
+    } else {
+      generateTablePDF(false);
+    }
   };
 
-  // Combined Table + Image Reference PDF
-  const generateTablePDF = async () => {
+  // Combined Table + optional Photo Reference PDF
+  const generateTablePDF = async (includePhotos: boolean) => {
     setIsGenerating(true);
     try {
       const orderId = createOrderId();
       const currentDate = formatDate(now());
 
-      // Process images for the photo reference section
-      const itemsWithImages = await Promise.all(
-        cartItems.map(async (ci) => ({
-          ...ci,
-          imageBase64: ci.item.imageUri ? await getBase64Image(ci.item.imageUri) : '',
-        }))
-      );
+      // Only process images if user wants photos
+      const itemsWithImages = includePhotos
+        ? await Promise.all(
+            cartItems.map(async (ci) => ({
+              ...ci,
+              imageBase64: ci.item.imageUri ? await getBase64Image(ci.item.imageUri) : '',
+            }))
+          )
+        : cartItems.map(ci => ({ ...ci, imageBase64: '' }));
 
       const html = `<!DOCTYPE html>
 <html>

@@ -61,6 +61,23 @@ export default function ExportModal({ visible, onClose }: ExportModalProps) {
     };
 
     const handleExportPDF = async () => {
+        const activeItems = items.filter(i => i.isActive);
+        const hasImages = activeItems.some(i => i.imageUri);
+        if (hasImages) {
+            Alert.alert(
+                'Export PDF',
+                'Include item photos in the PDF?',
+                [
+                    { text: 'Table Only', onPress: () => doExportPDF(false) },
+                    { text: 'With Photos', onPress: () => doExportPDF(true) },
+                ]
+            );
+        } else {
+            doExportPDF(false);
+        }
+    };
+
+    const doExportPDF = async (includePhotos: boolean) => {
         setIsExporting(true);
         try {
             // Filter active items only (matching dashboard logic)
@@ -70,11 +87,13 @@ export default function ExportModal({ visible, onClose }: ExportModalProps) {
             const outOfStockItems = activeItems.filter(i => isOutOfStock(i));
             const lowStockItems = activeItems.filter(i => isLowStock(i));
 
-            // Process images
-            const itemsWithImages = await Promise.all(activeItems.map(async (item) => {
-                const imageBase64 = await getBase64Image(item.imageUri || '');
-                return { ...item, imageBase64 };
-            }));
+            // Only process images if user wants photos
+            const itemsWithImages = includePhotos
+                ? await Promise.all(activeItems.map(async (item) => {
+                    const imageBase64 = await getBase64Image(item.imageUri || '');
+                    return { ...item, imageBase64 };
+                }))
+                : activeItems.map(item => ({ ...item, imageBase64: '' }));
 
             const currentDate = formatDate(now());
             const html = `<!DOCTYPE html>

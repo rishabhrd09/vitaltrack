@@ -44,19 +44,21 @@ async function getBase64Image(uri: string): Promise<string> {
 /**
  * Generate combined Table + Image Reference PDF and share
  */
-async function generateCombinedPDF(order: ExportableOrder): Promise<void> {
+async function generateCombinedPDF(order: ExportableOrder, includePhotos: boolean): Promise<void> {
   const { id: orderId, items } = order;
   const currentDate = order.createdAt || formatDate(now());
   const totalItems = items.length;
   const totalUnits = items.reduce((sum, i) => sum + i.quantity, 0);
 
-  // Process images for the photo reference section
-  const itemsWithImages = await Promise.all(
-    items.map(async (item) => ({
-      ...item,
-      imageBase64: item.imageUri ? await getBase64Image(item.imageUri) : '',
-    }))
-  );
+  // Only process images if user wants photos
+  const itemsWithImages = includePhotos
+    ? await Promise.all(
+        items.map(async (item) => ({
+          ...item,
+          imageBase64: item.imageUri ? await getBase64Image(item.imageUri) : '',
+        }))
+      )
+    : items.map(item => ({ ...item, imageBase64: '' }));
 
   const html = `<!DOCTYPE html>
 <html>
@@ -223,14 +225,30 @@ async function generateCombinedPDF(order: ExportableOrder): Promise<void> {
 }
 
 /**
- * Export order PDF directly (no format dialog)
+ * Export order PDF — asks user if they want photos included
  */
 export function showPdfExportDialog(order: ExportableOrder): void {
   if (order.items.length === 0) {
     Alert.alert('No Items', 'This order has no items to export.');
     return;
   }
-  generateCombinedPDF(order).catch((e) => {
+  const hasImages = order.items.some(i => i.imageUri);
+  if (hasImages) {
+    Alert.alert(
+      'Export PDF',
+      'Include product photos in the PDF?',
+      [
+        { text: 'Table Only', onPress: () => doExport(order, false) },
+        { text: 'With Photos', onPress: () => doExport(order, true) },
+      ]
+    );
+  } else {
+    doExport(order, false);
+  }
+}
+
+function doExport(order: ExportableOrder, includePhotos: boolean): void {
+  generateCombinedPDF(order, includePhotos).catch((e) => {
     console.error(e);
     Alert.alert('Error', 'Failed to generate PDF');
   });
