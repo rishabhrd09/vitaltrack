@@ -22,7 +22,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://vitaltrack-api.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://vitaltrack-api-staging.onrender.com"
       }
     },
     "production": {
