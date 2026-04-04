@@ -283,6 +283,7 @@ jobs:
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
+          packager: npm
       
       - name: Trigger Preview APK build on EAS
         run: eas build --profile preview --platform android --non-interactive --no-wait
@@ -349,6 +350,7 @@ jobs:
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
+          packager: npm
       
       - name: Install dependencies
         if: steps.check-token.outputs.has_token == 'true'
