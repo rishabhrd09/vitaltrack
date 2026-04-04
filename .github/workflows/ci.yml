@@ -27,7 +27,7 @@ on:
   # Run on ALL pull requests targeting main
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled]
   
   # Run on push to main (after PR is merged)
   push:
@@ -246,55 +246,49 @@ jobs:
           echo "URL: https://vitaltrack-api.onrender.com"
 
   # =============================================================================
-  # BUILD MOBILE PREVIEW (On PR for testing)
+  # BUILD MOBILE PREVIEW (Only when 'build-apk' label is added to PR)
+  # =============================================================================
+  # This job saves EAS build credits by only running when explicitly requested.
+  # To trigger: add the 'build-apk' label to the PR on GitHub.
+  # Each build uses 1 of 30 monthly free EAS credits.
   # =============================================================================
   build-preview:
     name: "Build Preview APK"
     runs-on: ubuntu-latest
     needs: [test-backend, test-frontend]
-    if: github.event_name == 'pull_request'
+    # Only runs on PRs AND only when the 'build-apk' label is present
+    if: |
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'build-apk')
+    defaults:
+      run:
+        working-directory: vitaltrack-mobile
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Check for Expo token
-        id: check-token
-        run: |
-          if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
-            echo "has_token=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_token=false" >> $GITHUB_OUTPUT
-            echo "⚠️ EXPO_TOKEN not configured - skipping build"
-          fi
-      
-      - name: Set up Node.js
-        if: steps.check-token.outputs.has_token == 'true'
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: vitaltrack-mobile/package-lock.json
       
-      - name: Setup Expo
-        if: steps.check-token.outputs.has_token == 'true'
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+      
+      - name: Setup EAS CLI
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
       
-      - name: Install dependencies
-        if: steps.check-token.outputs.has_token == 'true'
-        run: |
-          cd vitaltrack-mobile
-          npm install --legacy-peer-deps
+      - name: Trigger Preview APK build on EAS
+        run: eas build --profile preview --platform android --non-interactive --no-wait
       
-      - name: Build Preview APK
-        if: steps.check-token.outputs.has_token == 'true'
-        run: |
-          cd vitaltrack-mobile
-          eas build --profile preview --platform android --non-interactive
-      
-      - name: Comment PR with build link
-        if: steps.check-token.outputs.has_token == 'true'
+      - name: Post build notification on PR
+        if: success()
         uses: actions/github-script@v7
         with:
           script: |
@@ -302,7 +296,21 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '📱 **Preview APK build started!**\n\nCheck [Expo Dashboard](https://expo.dev) for the build status and download link.'
+              body: [
+                '## 📱 Preview APK Build Triggered',
+                '',
+                'Build is running on **EAS Cloud** (~15 minutes).',
+                '',
+                '| Detail | Value |',
+                '|--------|-------|',
+                '| **Backend** | `vitaltrack-api-staging.onrender.com` (staging) |',
+                '| **Database** | `vitaltrack_staging` (test data only) |',
+                '| **Download** | Check [EAS Builds Dashboard](https://expo.dev) |',
+                '',
+                '> Install the APK on your phone, register a test account, and verify the app works before merging.',
+                '',
+                '⚠️ *This used 1 of 30 monthly free EAS build credits.*'
+              ].join('\n')
             })
 
   # =============================================================================

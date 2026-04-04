@@ -1,0 +1,26 @@
+# Labels used by CI/CD automation
+# Create these manually at: github.com/rishabhrd09/vitaltrack/labels
+
+- name: build-apk
+  color: "7c3aed"
+  description: "Triggers automatic Preview APK build in CI"
+
+- name: skip-apk
+  color: "6b7280"
+  description: "Explicitly skip APK build even if other conditions are met"
+
+- name: backend
+  color: "f59e0b"
+  description: "Changes to vitaltrack-backend/"
+
+- name: mobile
+  color: "3b82f6"
+  description: "Changes to vitaltrack-mobile/"
+
+- name: docs
+  color: "10b981"
+  description: "Documentation changes"
+
+- name: ci-cd
+  color: "8b5cf6"
+  description: "CI/CD pipeline changes"

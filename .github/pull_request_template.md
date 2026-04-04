@@ -1,54 +1,42 @@
-## Description
+## What does this PR do?
 
-<!-- Briefly describe what this PR does -->
+<!-- Describe your changes in 1-3 sentences -->
 
-## Type of Change
+## Type of change
 
-<!-- Check the relevant option -->
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Refactor / code cleanup
+- [ ] Documentation
+- [ ] CI/CD / infrastructure
+- [ ] Other: ___
 
-- [ ] 🚀 Feature (new functionality)
-- [ ] 🐛 Bug fix (fixes an issue)
-- [ ] 📝 Documentation (updates docs only)
-- [ ] 🔧 Refactor (code improvement, no feature change)
-- [ ] 🧪 Test (adds/updates tests)
-- [ ] 🔨 Chore (maintenance, dependencies)
+## Environments affected
 
-## Changes Made
-
-<!-- List the main changes -->
-
-- 
-- 
-- 
+- [ ] Backend (vitaltrack-backend/)
+- [ ] Mobile app (vitaltrack-mobile/)
+- [ ] CI/CD (.github/workflows/)
+- [ ] Documentation (docs/)
 
 ## Testing
 
-<!-- How did you test these changes? -->
+<!-- Describe how you tested this -->
 
-- [ ] Tested locally with Expo Go
-- [ ] Tested with Docker backend
-- [ ] Added/updated unit tests
-- [ ] Verified no regressions
+- [ ] Tested locally with Docker + Expo Go
+- [ ] Preview APK tested on device
+- [ ] curl commands verified
+- [ ] Not applicable (docs/config only)
 
-## Screenshots (if applicable)
+## Preview APK
 
-<!-- Add screenshots for UI changes -->
+> **Want a Preview APK built automatically?**
+> Add the label `build-apk` to this PR. CI will trigger an EAS build after tests pass.
+> The APK hits the **staging** backend — no production data is affected.
+> ⚠️ Each build uses 1 of 30 monthly free EAS credits.
 
 ## Checklist
 
-<!-- Ensure all items are checked before requesting review -->
-
-- [ ] Code compiles without errors
-- [ ] Self-reviewed the code
-- [ ] Added/updated tests if needed
-- [ ] Updated documentation if needed
-- [ ] Branch is up to date with `main`
-
-## Related Issues
-
-<!-- Link any related issues: Fixes #123, Closes #456 -->
-
----
-
-**Reviewer Notes:**
-<!-- Any specific areas you'd like reviewers to focus on? -->
+- [ ] My code follows the project's style (ruff + mypy pass)
+- [ ] I have tested my changes locally
+- [ ] I have not modified the production profile in eas.json
+- [ ] I have updated documentation if needed
