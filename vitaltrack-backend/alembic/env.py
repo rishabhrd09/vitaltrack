@@ -89,8 +89,8 @@ async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = settings.DATABASE_URL
     
-    # SSL is required for Neon (production) but not for local Docker PostgreSQL
-    _connect_args = {"ssl": True} if settings.ENVIRONMENT == "production" else {}
+    # SSL required for Neon (staging + production) but not for local Docker or CI
+    _connect_args = {"ssl": True} if settings.ENVIRONMENT not in ("development", "testing") else {}
 
     connectable = async_engine_from_config(
         configuration,
