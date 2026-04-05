@@ -33,6 +33,10 @@ let _syncTimer: ReturnType<typeof setTimeout> | null = null;
  * Debounced to 5 seconds — multiple rapid edits only trigger one sync.
  * This ensures brand, supplier, links etc. persist to the server
  * even if the user closes the app without logging out.
+ * 
+ * CRITICAL FIX: Only syncs when isInitialSyncComplete is true.
+ * This prevents stale persisted data from being pushed to server
+ * before fresh data has been fetched on login/app restart.
  */
 function scheduleSyncToBackend() {
   if (_syncTimer) clearTimeout(_syncTimer);
@@ -40,6 +44,13 @@ function scheduleSyncToBackend() {
     try {
       const { useAppStore } = await import('./useAppStore');
       const store = useAppStore.getState();
+
+      // CRITICAL GUARD: Never sync before initial server fetch completes
+      if (!store.isInitialSyncComplete) {
+        console.log('[AutoSync] Skipped — initial sync not yet complete');
+        return;
+      }
+
       if (store.isInitialized && store.currentUserId) {
         await store.syncToBackend();
         console.log('[AutoSync] Background sync completed');
@@ -138,6 +149,7 @@ interface AppState {
   savedOrders: SavedOrder[];
   backups: Backup[];
   isInitialized: boolean;
+  isInitialSyncComplete: boolean;  // CRITICAL: Guards sync — false until server data loaded
   searchQuery: string;
   selectedCategoryId: string | null;
   expandedCategories: string[];
@@ -282,6 +294,7 @@ export const useAppStore = create<AppStore>()(
       savedOrders: [],
       backups: [],
       isInitialized: false,
+      isInitialSyncComplete: false,  // CRITICAL: Must start false — set true after server fetch
       searchQuery: '',
       selectedCategoryId: null,
       expandedCategories: [],
@@ -348,9 +361,44 @@ export const useAppStore = create<AppStore>()(
           updatedAt: now(),
         };
 
+        // Optimistic local update — instant UI
         set((state) => ({ items: [...state.items, item] }));
         get().logActivity('item_create', item.name, `Created with ${item.quantity} ${item.unit}`, item.id);
-        scheduleSyncToBackend();
+
+        // FIX: Immediately push to server (hybrid approach)
+        // Don't rely on debounced sync — push right away if online
+        if (get().isInitialSyncComplete) {
+          (async () => {
+            try {
+              const { syncService, isOnline } = await import('@/services/sync');
+              const online = await isOnline();
+              if (online) {
+                await syncService.push({
+                  items: { created: [item] },
+                });
+                console.log(`[CreateItem] Pushed "${item.name}" to server immediately`);
+              } else {
+                // Queue for later sync
+                const { syncQueue } = await import('@/services/sync');
+                const op = {
+                  id: `op_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  type: 'create' as const,
+                  entity: 'item' as const,
+                  entityId: item.id,
+                  localId: item.localId || item.id,
+                  data: { ...item },
+                  timestamp: new Date().toISOString(),
+                };
+                await syncQueue.addOperation(op);
+                console.log(`[CreateItem] Offline — queued "${item.name}" for sync`);
+              }
+            } catch (err) {
+              console.warn(`[CreateItem] Server push failed for "${item.name}", will retry via auto-sync:`, err);
+              scheduleSyncToBackend();
+            }
+          })();
+        }
+
         return item;
       },
 
@@ -625,14 +673,18 @@ export const useAppStore = create<AppStore>()(
         if (!order) return;
 
         const { items } = get();
+        const updatedItemsList: Item[] = [];
         const updatedItems = items.map((item) => {
           const orderItem = order.items.find((oi) => oi.itemId === item.id);
           if (orderItem) {
-            return { ...item, quantity: item.quantity + orderItem.quantity, updatedAt: now() };
+            const updated = { ...item, quantity: item.quantity + orderItem.quantity, updatedAt: now() };
+            updatedItemsList.push(updated);
+            return updated;
           }
           return item;
         });
 
+        // Optimistic local update — instant UI
         set({ items: updatedItems });
         get().updateOrderStatus(orderId, 'stock_updated');
         get().logActivity(
@@ -642,6 +694,50 @@ export const useAppStore = create<AppStore>()(
           undefined,
           order.orderId
         );
+
+        // FIX: Immediately push stock updates to server
+        if (updatedItemsList.length > 0) {
+          (async () => {
+            try {
+              const { syncService, isOnline, syncQueue } = await import('@/services/sync');
+              const online = await isOnline();
+
+              if (online) {
+                // Push updated items to server immediately
+                await syncService.push({
+                  items: { updated: updatedItemsList },
+                });
+                console.log(`[ApplyOrder] Pushed ${updatedItemsList.length} stock updates to server`);
+              } else {
+                // Queue individual stock updates for retry when online
+                for (const updatedItem of updatedItemsList) {
+                  const op = {
+                    id: `op_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    type: 'update' as const,
+                    entity: 'item' as const,
+                    entityId: updatedItem.id,
+                    localId: updatedItem.localId || updatedItem.id,
+                    data: {
+                      quantity: updatedItem.quantity,
+                      categoryId: updatedItem.categoryId,
+                      name: updatedItem.name,
+                      unit: updatedItem.unit,
+                      minimumStock: updatedItem.minimumStock,
+                      isActive: updatedItem.isActive,
+                      isCritical: updatedItem.isCritical,
+                    },
+                    timestamp: new Date().toISOString(),
+                  };
+                  await syncQueue.addOperation(op);
+                }
+                console.log(`[ApplyOrder] Offline — queued ${updatedItemsList.length} stock updates`);
+              }
+            } catch (err) {
+              console.warn('[ApplyOrder] Server push failed, falling back to auto-sync:', err);
+              scheduleSyncToBackend();
+            }
+          })();
+        }
       },
 
       deleteOrder: (orderId) => {
@@ -875,6 +971,7 @@ export const useAppStore = create<AppStore>()(
           savedOrders: [],
           backups: [],
           isInitialized: false,
+          isInitialSyncComplete: false,  // CRITICAL: Reset sync guard
           searchQuery: '',
           selectedCategoryId: null,
           expandedCategories: [],
@@ -882,29 +979,50 @@ export const useAppStore = create<AppStore>()(
           currentUserId: null,
         });
 
+        // Clear persisted data AND sync queue
         await clearAllUserData();
+        try {
+          const { syncQueue } = await import('@/services/sync');
+          await syncQueue.clearQueue();
+          console.log('[DataIsolation] Sync queue cleared');
+        } catch (err) {
+          console.warn('[DataIsolation] Failed to clear sync queue:', err);
+        }
         console.log('[DataIsolation] Store and AsyncStorage cleared successfully');
       },
 
       loadUserData: async (userId: string) => {
         console.log(`[DataIsolation] loadUserData called for user: ${userId}`);
 
-        try {
-          const { currentUserId, categories: localCategories, items: localItems, savedOrders: localOrders } = get();
+        // CRITICAL FIX: Always set isInitialSyncComplete = false at start
+        // This prevents stale persisted data from being auto-synced to server
+        set({ isInitialSyncComplete: false });
 
-          // Only clear data if switching users
+        try {
+          const { currentUserId } = get();
+
+          // CRITICAL FIX: Always clear local data before loading from server
+          // Previously, same-user re-login preserved stale local state
+          // which then got pushed to server, overwriting correct values
+          console.log('[DataIsolation] Clearing stale local data before server fetch...');
+          set({
+            categories: [],
+            items: [],
+            savedOrders: [],
+            isInitialized: false,
+            isInitialSyncComplete: false,
+            currentUserId: userId,
+          });
+
+          // If switching users, also clear AsyncStorage
           if (currentUserId && currentUserId !== userId) {
-            console.log('[DataIsolation] Different user detected - clearing old data');
-            await get().clearStore();
+            console.log('[DataIsolation] Different user detected - clearing persisted data');
             await clearAllUserData();
           }
-          // DON'T clear data for same user — preserve local state
 
           const savedActivityLogs = await loadUserActivityLogs(userId);
           console.log(`[DataIsolation] Restored ${savedActivityLogs.length} activity logs for user`);
-          console.log(`[DataIsolation] Local state: ${localCategories.length} categories, ${localItems.length} items, ${localOrders.length} orders`);
 
-          // Set userId and activity logs without clearing existing data
           set({
             activityLogs: savedActivityLogs,
             currentUserId: userId,
@@ -914,26 +1032,26 @@ export const useAppStore = create<AppStore>()(
           const online = await isOnline();
 
           if (!online) {
-            console.log('[DataIsolation] Offline: preserving local data');
-            // If we have local data, keep it. Only seed if completely empty.
-            if (localCategories.length === 0 && localItems.length === 0) {
-              const { categories: seedCats, items: seedItems } = createSeedData();
-              set({
-                categories: seedCats,
-                items: seedItems,
-                expandedCategories: seedCats.map(c => c.id),
-                isInitialized: true,
-              });
-            } else {
-              set({ isInitialized: true });
-            }
+            console.log('[DataIsolation] Offline: seeding with default data (will fetch from server when online)');
+            // When offline, start with seed data — do NOT use stale persisted data
+            const { categories: seedCats, items: seedItems } = createSeedData();
+            set({
+              categories: seedCats,
+              items: seedItems,
+              expandedCategories: seedCats.map(c => c.id),
+              isInitialized: true,
+              // NOTE: isInitialSyncComplete stays FALSE while offline
+              // This means auto-sync will be blocked even after coming online
+              // until a successful server fetch happens
+            });
             return false;
           }
 
-          console.log('[DataIsolation] Fetching user data from backend...');
+          console.log('[DataIsolation] Fetching user data from backend (server is authoritative)...');
           const pulled = await syncService.pull();
 
           if (pulled.categories.length > 0 || pulled.items.length > 0) {
+            // Server has data — use it as source of truth
             const categoriesWithLocalId = pulled.categories.map(cat => ({
               ...cat,
               localId: cat.localId || cat.id,
@@ -948,7 +1066,17 @@ export const useAppStore = create<AppStore>()(
               items: order.items || [],
             }));
 
-            console.log(`[DataIsolation] Server: ${categoriesWithLocalId.length} categories, ${itemsWithLocalId.length} items, ${ordersWithLocalId.length} orders`);
+            console.log(`[DataIsolation] Server data loaded: ${categoriesWithLocalId.length} categories, ${itemsWithLocalId.length} items, ${ordersWithLocalId.length} orders`);
+
+            // Log sample quantities for debugging
+            const nonZeroItems = itemsWithLocalId.filter(i => i.quantity > 0);
+            console.log(`[DataIsolation] Items with non-zero quantity: ${nonZeroItems.length}`);
+            if (nonZeroItems.length > 0) {
+              nonZeroItems.slice(0, 3).forEach(i => 
+                console.log(`[DataIsolation]   - ${i.name}: qty=${i.quantity}`)
+              );
+            }
+
             set({
               categories: categoriesWithLocalId,
               items: itemsWithLocalId,
@@ -956,23 +1084,12 @@ export const useAppStore = create<AppStore>()(
               activityLogs: savedActivityLogs,
               expandedCategories: categoriesWithLocalId.map(c => c.id),
               isInitialized: true,
+              isInitialSyncComplete: true,  // NOW safe to sync
               currentUserId: userId,
             });
-          } else if (localCategories.length > 0 || localItems.length > 0) {
-            // Server returned empty but we have local data — keep local, push to server
-            console.log('[DataIsolation] Server empty but local data exists — preserving local, pushing to server');
-            set({ isInitialized: true });
-            try {
-              await syncService.push({
-                categories: { created: localCategories },
-                items: { created: localItems },
-              });
-              console.log('[DataIsolation] Local data pushed to backend');
-            } catch (pushErr) {
-              console.warn('[DataIsolation] Failed to push local data:', pushErr);
-            }
           } else {
-            console.log('[DataIsolation] New user - seeding with default data');
+            // Server returned empty — this is a genuinely new user
+            console.log('[DataIsolation] Server empty — new user, seeding with default data');
             const { categories: seedCats, items: seedItems } = createSeedData();
             set({
               categories: seedCats,
@@ -980,15 +1097,17 @@ export const useAppStore = create<AppStore>()(
               activityLogs: savedActivityLogs,
               expandedCategories: seedCats.map(c => c.id),
               isInitialized: true,
+              isInitialSyncComplete: true,  // Safe to sync — we're creating fresh data
               currentUserId: userId,
             });
 
+            // Push seed data to server for this new user
             try {
               await syncService.push({
                 categories: { created: seedCats },
                 items: { created: seedItems },
               });
-              console.log('[DataIsolation] Seed data pushed to backend');
+              console.log('[DataIsolation] Seed data pushed to backend for new user');
             } catch (pushErr) {
               console.warn('[DataIsolation] Failed to push seed data:', pushErr);
             }
@@ -998,39 +1117,51 @@ export const useAppStore = create<AppStore>()(
         } catch (error) {
           console.error('[DataIsolation] Failed to load user data:', error);
 
-          // On error, preserve existing local data instead of overwriting with seed
-          const { categories: localCats, items: localItems } = get();
+          // On error, seed with defaults but do NOT enable sync
+          // This prevents stale data from being pushed when the error was a server issue
           const savedActivityLogs = await loadUserActivityLogs(userId);
 
-          if (localCats.length === 0 && localItems.length === 0) {
-            // Only seed if truly empty
-            const { categories: seedCats, items: seedItems } = createSeedData();
-            set({
-              categories: seedCats,
-              items: seedItems,
-              activityLogs: savedActivityLogs,
-              expandedCategories: seedCats.map(c => c.id),
-              isInitialized: true,
-              currentUserId: userId,
-            });
-          } else {
-            console.log('[DataIsolation] Error but local data exists — preserving');
-            set({
-              activityLogs: savedActivityLogs,
-              isInitialized: true,
-              currentUserId: userId,
-            });
-          }
+          const { categories: seedCats, items: seedItems } = createSeedData();
+          set({
+            categories: seedCats,
+            items: seedItems,
+            activityLogs: savedActivityLogs,
+            expandedCategories: seedCats.map(c => c.id),
+            isInitialized: true,
+            isInitialSyncComplete: false,  // CRITICAL: Keep sync disabled — server fetch failed
+            currentUserId: userId,
+          });
+
+          // Retry server fetch in background after 10 seconds
+          setTimeout(async () => {
+            try {
+              console.log('[DataIsolation] Retrying server fetch after error...');
+              const { useAppStore } = await import('./useAppStore');
+              const store = useAppStore.getState();
+              if (store.currentUserId === userId && !store.isInitialSyncComplete) {
+                await store.loadUserData(userId);
+              }
+            } catch (retryErr) {
+              console.warn('[DataIsolation] Retry failed:', retryErr);
+            }
+          }, 10000);
+
           return false;
         }
       },
 
       // =====================================================================
-      // SYNC TO BACKEND - Push all local changes before logout
+      // SYNC TO BACKEND - Uses timestamp-based conflict resolution
       // =====================================================================
 
       syncToBackend: async () => {
-        console.log('[Sync] syncToBackend: Pushing all local data to backend...');
+        console.log('[Sync] syncToBackend: Starting with conflict resolution...');
+
+        // CRITICAL GUARD: Never push if initial sync hasn't completed
+        if (!get().isInitialSyncComplete) {
+          console.log('[Sync] syncToBackend: BLOCKED — initial sync not complete, skipping to prevent stale data push');
+          return false;
+        }
 
         try {
           const { syncService, isOnline } = await import('@/services/sync');
@@ -1048,15 +1179,60 @@ export const useAppStore = create<AppStore>()(
             return true;
           }
 
-          // Push all current data - backend uses UPSERT to update existing records
-          // Using 'created' ensures all fields are sent (including quantity!)
-          await syncService.push({
-            categories: { created: categories },
-            items: { created: items },
-            orders: { created: savedOrders },
-          });
+          // FIX: Use timestamp-based conflict resolution instead of blind overwrite
+          // This compares updatedAt for each entity and only pushes items
+          // where local is strictly newer than server
+          const result = await syncService.pushWithConflictResolution(
+            categories,
+            items,
+            savedOrders,
+          );
 
-          console.log(`[Sync] syncToBackend: Complete - ${categories.length} categories, ${items.length} items, ${savedOrders.length} orders`);
+          // Merge server-newer entities into local state
+          if (result.serverNewerItems.length > 0 || result.serverNewerCategories.length > 0 || result.serverNewerOrders.length > 0) {
+            console.log(`[Sync] Merging ${result.serverNewerItems.length} server-newer items into local state`);
+            
+            const currentItems = get().items;
+            const currentCategories = get().categories;
+            const currentOrders = get().savedOrders;
+
+            // Replace local items with server-newer versions
+            const mergedItems = currentItems.map(localItem => {
+              const localKey = localItem.localId || localItem.id;
+              const serverItem = result.serverNewerItems.find(si => 
+                (si.localId || si.id) === localKey
+              );
+              if (serverItem) {
+                console.log(`[Sync] Updated local "${localItem.name}": qty ${localItem.quantity} → ${serverItem.quantity}`);
+                return { ...serverItem, localId: serverItem.localId || serverItem.id };
+              }
+              return localItem;
+            });
+
+            const mergedCategories = currentCategories.map(localCat => {
+              const localKey = localCat.localId || localCat.id;
+              const serverCat = result.serverNewerCategories.find(sc =>
+                (sc.localId || sc.id) === localKey
+              );
+              return serverCat ? { ...serverCat, localId: serverCat.localId || serverCat.id } : localCat;
+            });
+
+            const mergedOrders = currentOrders.map(localOrder => {
+              const localKey = localOrder.localId || localOrder.id;
+              const serverOrder = result.serverNewerOrders.find(so =>
+                (so.localId || so.id) === localKey
+              );
+              return serverOrder ? { ...serverOrder, localId: serverOrder.localId || serverOrder.id, items: serverOrder.items || [] } : localOrder;
+            });
+
+            set({
+              items: mergedItems,
+              categories: mergedCategories,
+              savedOrders: mergedOrders,
+            });
+          }
+
+          console.log(`[Sync] syncToBackend: Complete — pushed ${result.pushed}, merged ${result.serverNewerItems.length} server-newer items`);
           return true;
         } catch (error) {
           console.error('[Sync] syncToBackend: Failed:', error);
@@ -1074,6 +1250,9 @@ export const useAppStore = create<AppStore>()(
         savedOrders: state.savedOrders,
         backups: state.backups,
         isInitialized: state.isInitialized,
+        // NOTE: isInitialSyncComplete is INTENTIONALLY excluded from persist
+        // It must always start as false on app restart — the only way to
+        // set it true is by successfully fetching from server
         expandedCategories: state.expandedCategories,
         currentUserId: state.currentUserId,
       }),

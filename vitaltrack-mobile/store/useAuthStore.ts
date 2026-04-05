@@ -157,16 +157,25 @@ export const useAuthStore = create<AuthStore>()(
           });
 
           // Load user data in background - don't block auth
+          // CRITICAL FIX: Set isInitialSyncComplete = false before loading
+          // This ensures stale persisted data is never auto-synced to server
           setTimeout(async () => {
             try {
               const { useAppStore } = await import('./useAppStore');
-              await useAppStore.getState().loadUserData(user.id);
+              const appStore = useAppStore.getState();
+              
+              // Ensure sync guard is set before any data loading
+              useAppStore.setState({ isInitialSyncComplete: false });
+              
+              await appStore.loadUserData(user.id);
 
-              // Process any queued operations
-              const queueSize = await syncQueue.getSize();
-              if (queueSize > 0) {
-                console.log(`[Auth] Found ${queueSize} queued operations, processing...`);
-                await syncQueue.processQueue();
+              // Process any queued operations ONLY after initial sync completes
+              if (useAppStore.getState().isInitialSyncComplete) {
+                const queueSize = await syncQueue.getSize();
+                if (queueSize > 0) {
+                  console.log(`[Auth] Found ${queueSize} queued operations, processing...`);
+                  await syncQueue.processQueue();
+                }
               }
             } catch (err) {
               console.warn('[Auth] Failed to load user data:', err);
@@ -218,17 +227,28 @@ export const useAuthStore = create<AuthStore>()(
             error: null,
           });
 
-          // Load user data in background
+          // CRITICAL FIX: Clear stale state and load fresh data from server
+          // Must not use setTimeout — data loading must happen before sync is enabled
           setTimeout(async () => {
             try {
               const { useAppStore } = await import('./useAppStore');
+
+              // CRITICAL: Disable sync before loading data to prevent stale push
+              useAppStore.setState({ isInitialSyncComplete: false });
+
+              // Clear stale persisted state from previous session
+              await useAppStore.getState().clearStore();
+
+              // Load fresh data from server (sets isInitialSyncComplete = true on success)
               await useAppStore.getState().loadUserData(response.user.id);
 
-              // Process any queued operations from previous session
-              const queueSize = await syncQueue.getSize();
-              if (queueSize > 0) {
-                console.log(`[Auth] Found ${queueSize} queued operations, processing...`);
-                await syncQueue.processQueue();
+              // Process any queued operations ONLY after initial sync completes
+              if (useAppStore.getState().isInitialSyncComplete) {
+                const queueSize = await syncQueue.getSize();
+                if (queueSize > 0) {
+                  console.log(`[Auth] Found ${queueSize} queued operations, processing...`);
+                  await syncQueue.processQueue();
+                }
               }
             } catch (err) {
               console.warn('[Auth] Failed to load user data after login:', err);
@@ -340,10 +360,16 @@ export const useAuthStore = create<AuthStore>()(
             try { await authService.logout(); } catch { /* ignore */ }
           }
 
-          // Clear app store
+          // Clear app store AND sync queue
           try {
             const { useAppStore } = await import('./useAppStore');
-            await useAppStore.getState().clearStore();
+            await useAppStore.getState().clearStore();  // clearStore now also clears sync queue
+          } catch { /* ignore */ }
+
+          // Clear any per-user activity logs
+          try {
+            const { clearAllUserData } = await import('./useAppStore');
+            await clearAllUserData();
           } catch { /* ignore */ }
 
           // Clear tokens
