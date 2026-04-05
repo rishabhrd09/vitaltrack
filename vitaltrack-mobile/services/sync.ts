@@ -605,6 +605,144 @@ export const syncService = {
       syncedAt: pullResult.serverTime,
     };
   },
+
+  /**
+   * Push with timestamp-based conflict resolution.
+   * 
+   * 1. Pull current server state
+   * 2. For each local entity, compare updatedAt with server's version
+   * 3. Only push entities where local updatedAt > server updatedAt
+   * 4. Return entities where server is newer (caller should merge into local)
+   * 
+   * This prevents stale local data from overwriting newer server data.
+   */
+  async pushWithConflictResolution(
+    localCategories: Category[],
+    localItems: Item[],
+    localOrders: SavedOrder[],
+  ): Promise<{
+    pushed: number;
+    serverNewerItems: Item[];
+    serverNewerCategories: Category[];
+    serverNewerOrders: SavedOrder[];
+  }> {
+    console.log('[Sync] pushWithConflictResolution: Starting...');
+
+    // Step 1: Pull current server state
+    const serverData = await this.pull();
+
+    // Step 2: Build server lookup maps by localId (backend matches on localId)
+    const serverItemMap = new Map<string, Item>();
+    for (const item of serverData.items) {
+      const key = item.localId || item.id;
+      serverItemMap.set(key, item);
+    }
+
+    const serverCatMap = new Map<string, Category>();
+    for (const cat of serverData.categories) {
+      const key = cat.localId || cat.id;
+      serverCatMap.set(key, cat);
+    }
+
+    const serverOrderMap = new Map<string, SavedOrder>();
+    for (const order of serverData.orders) {
+      const key = order.localId || order.id;
+      serverOrderMap.set(key, order);
+    }
+
+    // Step 3: Compare timestamps — only push where local is newer
+    const itemsToPush: Item[] = [];
+    const serverNewerItems: Item[] = [];
+
+    for (const localItem of localItems) {
+      const localKey = localItem.localId || localItem.id;
+      const serverItem = serverItemMap.get(localKey);
+
+      if (!serverItem) {
+        // New local item — push it
+        itemsToPush.push(localItem);
+      } else {
+        const localTime = new Date(localItem.updatedAt).getTime();
+        const serverTime = new Date(serverItem.updatedAt || serverItem.createdAt).getTime();
+
+        if (localTime > serverTime) {
+          itemsToPush.push(localItem);
+          console.log(`[Sync] Item "${localItem.name}": local is newer (${localItem.updatedAt} > ${serverItem.updatedAt})`);
+        } else if (serverTime > localTime) {
+          serverNewerItems.push(serverItem);
+          console.log(`[Sync] Item "${localItem.name}": server is newer (${serverItem.updatedAt} > ${localItem.updatedAt}), qty=${serverItem.quantity}`);
+        }
+        // Equal timestamps → skip
+      }
+    }
+
+    const categoriesToPush: Category[] = [];
+    const serverNewerCategories: Category[] = [];
+
+    for (const localCat of localCategories) {
+      const localKey = localCat.localId || localCat.id;
+      const serverCat = serverCatMap.get(localKey);
+
+      if (!serverCat) {
+        categoriesToPush.push(localCat);
+      } else {
+        const localTime = new Date(localCat.updatedAt).getTime();
+        const serverTime = new Date(serverCat.updatedAt || serverCat.createdAt).getTime();
+
+        if (localTime > serverTime) {
+          categoriesToPush.push(localCat);
+        } else if (serverTime > localTime) {
+          serverNewerCategories.push(serverCat);
+        }
+      }
+    }
+
+    const ordersToPush: SavedOrder[] = [];
+    const serverNewerOrders: SavedOrder[] = [];
+
+    for (const localOrder of localOrders) {
+      const localKey = localOrder.localId || localOrder.id;
+      const serverOrder = serverOrderMap.get(localKey);
+
+      if (!serverOrder) {
+        ordersToPush.push(localOrder);
+      } else {
+        const localTime = new Date(localOrder.updatedAt || localOrder.createdAt || '').getTime();
+        const serverTime = new Date(serverOrder.updatedAt || serverOrder.createdAt || '').getTime();
+
+        if (localTime > serverTime) {
+          ordersToPush.push(localOrder);
+        } else if (serverTime > localTime) {
+          serverNewerOrders.push(serverOrder);
+        }
+      }
+    }
+
+    console.log(`[Sync] Conflict resolution: pushing ${itemsToPush.length} items, ${categoriesToPush.length} categories, ${ordersToPush.length} orders`);
+    console.log(`[Sync] Server newer: ${serverNewerItems.length} items, ${serverNewerCategories.length} categories, ${serverNewerOrders.length} orders`);
+
+    // Step 4: Push only the entities where local is newer
+    let pushed = 0;
+    if (itemsToPush.length > 0 || categoriesToPush.length > 0 || ordersToPush.length > 0) {
+      try {
+        const result = await this.push({
+          categories: categoriesToPush.length > 0 ? { created: categoriesToPush } : undefined,
+          items: itemsToPush.length > 0 ? { created: itemsToPush } : undefined,
+          orders: ordersToPush.length > 0 ? { created: ordersToPush } : undefined,
+        });
+        pushed = result.synced;
+      } catch (error) {
+        console.error('[Sync] pushWithConflictResolution push failed:', error);
+      }
+    }
+
+    return {
+      pushed,
+      serverNewerItems,
+      serverNewerCategories,
+      serverNewerOrders,
+    };
+  },
 };
 
 export type { SyncOperation, SyncPullResponse, LegacyPushData, QueuedOperation };
