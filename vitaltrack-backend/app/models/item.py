@@ -109,6 +109,14 @@ class Item(UUIDMixin, TimestampMixin, Base):
         nullable=False,
     )
 
+    # Optimistic concurrency control
+    version: Mapped[int] = mapped_column(
+        Integer,
+        default=1,
+        server_default="1",
+        nullable=False,
+    )
+
     # Sync tracking (for offline-first)
     local_id: Mapped[Optional[str]] = mapped_column(
         String(36),

@@ -1,6 +1,7 @@
 """VitalTrack Backend - Database Models"""
 
 from app.models.activity import ActivityActionType, ActivityLog
+from app.models.audit_log import AuditLog
 from app.models.category import Category
 from app.models.item import Item
 from app.models.order import Order, OrderItem, OrderStatus
@@ -21,4 +22,6 @@ __all__ = [
     # Activity
     "ActivityLog",
     "ActivityActionType",
+    # Audit
+    "AuditLog",
 ]
