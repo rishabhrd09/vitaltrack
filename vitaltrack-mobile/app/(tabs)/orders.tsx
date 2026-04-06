@@ -1,66 +1,82 @@
 /**
  * VitalTrack Mobile - Orders Screen
- * List of orders with status tracking
+ * List of orders with status tracking — server-first
  */
 
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import OrderCard from '@/components/orders/OrderCard';
+import OfflineBanner from '@/components/common/OfflineBanner';
+import { useOrders } from '@/hooks/useServerData';
+import { useUpdateOrderStatus, useApplyOrderToStock, useDeleteOrder } from '@/hooks/useServerMutations';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { handleMutationError } from '@/utils/serverErrors';
+import type { OrderStatus } from '@/types';
 
 export default function OrdersScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const savedOrders = useAppStore((state) => state.savedOrders);
-  const markOrderReceived = useAppStore((state) => state.markOrderReceived);
-  const applyOrderToStock = useAppStore((state) => state.applyOrderToStock);
-  const deleteOrder = useAppStore((state) => state.deleteOrder);
+  const { isOnline } = useNetworkStatus();
+
+  const { data: savedOrders = [], isLoading, refetch, isRefetching } = useOrders();
+  const updateOrderStatus = useUpdateOrderStatus();
+  const applyOrderToStock = useApplyOrderToStock();
+  const deleteOrderMutation = useDeleteOrder();
 
   const handleMarkReceived = (orderId: string) => {
-    Alert.alert(
-      'Order Received?',
-      'Have you received this order?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Received',
-          onPress: () => markOrderReceived(orderId),
+    if (!isOnline) { Alert.alert('Offline', 'Connect to WiFi to update orders.'); return; }
+    Alert.alert('Order Received?', 'Have you received this order?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes, Received',
+        onPress: async () => {
+          try {
+            await updateOrderStatus.mutateAsync({ id: orderId, status: 'received' as OrderStatus });
+          } catch (error) {
+            handleMutationError(error, 'Mark Received');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleUpdateStock = (orderId: string) => {
-    Alert.alert(
-      'Update Stock',
-      'This will add the order quantities to your inventory. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Update Stock',
-          onPress: () => applyOrderToStock(orderId),
+    if (!isOnline) { Alert.alert('Offline', 'Connect to WiFi to update stock.'); return; }
+    Alert.alert('Update Stock', 'This will add the order quantities to your inventory. Continue?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Update Stock',
+        onPress: async () => {
+          try {
+            await applyOrderToStock.mutateAsync(orderId);
+          } catch (error) {
+            handleMutationError(error, 'Apply Stock');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleDeleteOrder = (orderId: string) => {
-    Alert.alert(
-      'Delete Order',
-      'Are you sure you want to remove this order?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteOrder(orderId),
+    if (!isOnline) { Alert.alert('Offline', 'Connect to WiFi to delete orders.'); return; }
+    Alert.alert('Delete Order', 'Are you sure you want to remove this order?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteOrderMutation.mutateAsync(orderId);
+          } catch (error) {
+            handleMutationError(error, 'Delete Order');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -73,8 +89,14 @@ export default function OrdersScreen() {
         </View>
       </View>
 
+      <OfflineBanner />
+
       {/* Content */}
-      {savedOrders.length === 0 ? (
+      {isLoading ? (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={colors.accentBlue} />
+        </View>
+      ) : savedOrders.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconContainer}>
             <Ionicons name="cart-outline" size={48} color={colors.textTertiary} />
@@ -96,6 +118,7 @@ export default function OrdersScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
         >
           {savedOrders.map((order) => (
             <OrderCard

@@ -9,7 +9,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import type { Item } from '@/types';
 import { isOutOfStock, isLowStock, isCriticalEquipment } from '@/types';
-import { useAppStore } from '@/store/useAppStore';
+import { useCategories } from '@/hooks/useServerData';
 
 
 interface ItemRowProps {
@@ -28,8 +28,8 @@ export default function ItemRow({
   showCategory = false,
 }: ItemRowProps) {
   const { colors } = useTheme();
-  const getCategoryById = useAppStore((state) => state.getCategoryById);
-  const category = showCategory ? getCategoryById(item.categoryId) : null;
+  const { data: categories = [] } = useCategories();
+  const category = showCategory ? categories.find(c => c.id === item.categoryId) : null;
 
   const isOOS = isOutOfStock(item);
   const isLow = isLowStock(item);

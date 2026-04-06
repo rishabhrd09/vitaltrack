@@ -78,6 +78,7 @@ export interface Item {
   imageUri?: string;
   isActive: boolean;
   isCritical: boolean;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }

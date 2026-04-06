@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +22,8 @@ import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import CategoryHeader from '@/components/inventory/CategoryHeader';
 import ItemRow from '@/components/inventory/ItemRow';
+import OfflineBanner from '@/components/common/OfflineBanner';
+import { useItems, useCategories } from '@/hooks/useServerData';
 
 type ViewMode = 'categories' | 'all';
 
@@ -29,8 +33,12 @@ export default function InventoryScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('categories');
   const [localSearch, setLocalSearch] = useState('');
 
-  const categories = useAppStore((state) => state.categories);
-  const items = useAppStore((state) => state.getActiveItems());
+  // Server data
+  const { data: allItems = [], isLoading, refetch, isRefetching } = useItems();
+  const { data: categories = [] } = useCategories();
+  const items = useMemo(() => allItems.filter(i => i.isActive), [allItems]);
+
+  // UI state from Zustand
   const expandedCategories = useAppStore((state) => state.expandedCategories);
   const expandedItems = useAppStore((state) => state.expandedItems);
   const toggleCategoryExpand = useAppStore((state) => state.toggleCategoryExpand);
@@ -131,6 +139,8 @@ export default function InventoryScreen() {
         </View>
       </View>
 
+      <OfflineBanner />
+
       {/* Search Results Banner */}
       {localSearch.trim() && (
         <View style={[styles.searchBanner, { backgroundColor: colors.accentBlueBg }]}>
@@ -141,10 +151,16 @@ export default function InventoryScreen() {
       )}
 
       {/* Content */}
+      {isLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.accentBlue} />
+        </View>
+      ) : (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
       >
         {viewMode === 'categories' ? (
           categories.map((category) => {
@@ -204,6 +220,7 @@ export default function InventoryScreen() {
           </View>
         )}
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

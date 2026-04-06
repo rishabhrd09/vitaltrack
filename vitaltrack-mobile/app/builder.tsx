@@ -21,29 +21,28 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import { formatDate, now } from '@/utils/helpers';
 import { escapeHtml } from '@/utils/sanitize';
 import { isOutOfStock, isLowStock } from '@/types';
+import { useItems, useCategories } from '@/hooks/useServerData';
+import { useDeleteItem, useDeleteCategory, useCreateCategory, useToggleItemCritical } from '@/hooks/useServerMutations';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { handleMutationError } from '@/utils/serverErrors';
 
 export default function BuildInventoryScreen() {
     const router = useRouter();
     const { colors } = useTheme();
     const scrollRef = useRef<ScrollView>(null);
+    const { isOnline } = useNetworkStatus();
 
-    const categories = useAppStore((state) => state.categories);
-    const items = useAppStore((state) => state.items);
-    const deleteItem = useAppStore((state) => state.deleteItem);
-    const deleteCategory = useAppStore((state) => state.deleteCategory);
-    const createCategory = useAppStore((state) => state.createCategory);
-    const createBackup = useAppStore((state) => state.createBackup);
-    const getBackups = useAppStore((state) => state.getBackups);
-    const restoreBackup = useAppStore((state) => state.restoreBackup);
-    const startFresh = useAppStore((state) => state.startFresh);
-    // const restoreSeedData = useAppStore((state) => state.restoreSeedData);
-    const toggleItemCritical = useAppStore((state) => state.toggleItemCritical);
+    const { data: categories = [] } = useCategories();
+    const { data: items = [] } = useItems();
+    const deleteItemMutation = useDeleteItem();
+    const deleteCategoryMutation = useDeleteCategory();
+    const createCategoryMutation = useCreateCategory();
+    const toggleItemCriticalMutation = useToggleItemCritical();
 
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
         categories.length > 0 ? categories[0].id : null
@@ -58,45 +57,15 @@ export default function BuildInventoryScreen() {
     // ========== DATA MANAGEMENT HANDLERS ==========
 
     const handleBackup = () => {
-        const backup = createBackup();
-        Alert.alert('✓ Backup Created', `"${backup.name}" saved successfully.`);
+        Alert.alert('Info', 'Backup is no longer needed — all data is stored on the server.');
     };
 
     const handleRestore = () => {
-        const backups = getBackups();
-        if (backups.length === 0) {
-            Alert.alert('No Backups', 'Create a backup first to have something to restore.');
-            return;
-        }
-        Alert.alert('Restore Backup', `Restore from "${backups[0].name}"?`, [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Restore',
-                onPress: () => {
-                    restoreBackup(backups[0].id);
-                    Alert.alert('✓ Restored', 'Inventory restored from backup.');
-                },
-            },
-        ]);
+        Alert.alert('Info', 'Restore is no longer needed — all data is stored on the server.');
     };
 
     const handleStartFresh = () => {
-        Alert.alert(
-            'Start Fresh',
-            'Keep only essential life-support equipment and remove everything else. A backup is saved first.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Start Fresh',
-                    style: 'destructive',
-                    onPress: () => {
-                        createBackup('Pre-fresh backup');
-                        startFresh();
-                        Alert.alert('✓ Fresh Start', 'Essential items retained.');
-                    },
-                },
-            ]
-        );
+        Alert.alert('Info', 'This feature has been removed in the server-first architecture.');
     };
 
     const handleExportPDF = async () => {
@@ -381,14 +350,21 @@ export default function BuildInventoryScreen() {
     };
 
     const handleDeleteItem = (itemId: string, itemName: string) => {
+        if (!isOnline) { Alert.alert('Offline', 'Connect to WiFi to delete items.'); return; }
         Alert.alert('Delete Item', `Remove "${itemName}"?`, [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: () => deleteItem(itemId) },
+            {
+                text: 'Delete', style: 'destructive', onPress: async () => {
+                    try { await deleteItemMutation.mutateAsync(itemId); }
+                    catch (error) { handleMutationError(error, 'Delete Item'); }
+                },
+            },
         ]);
     };
 
     const handleDeleteCategory = () => {
         if (!selectedCategory) return;
+        if (!isOnline) { Alert.alert('Offline', 'Connect to WiFi to delete categories.'); return; }
         if (categoryItems.length > 0) {
             Alert.alert('Cannot Delete', `"${selectedCategory.name}" has ${categoryItems.length} items. Remove items first.`);
             return;
@@ -398,27 +374,32 @@ export default function BuildInventoryScreen() {
             {
                 text: 'Delete',
                 style: 'destructive',
-                onPress: () => {
-                    deleteCategory(selectedCategory.id);
-                    setSelectedCategoryId(categories.length > 1 ? categories[0].id : null);
+                onPress: async () => {
+                    try {
+                        await deleteCategoryMutation.mutateAsync(selectedCategory.id);
+                        setSelectedCategoryId(categories.length > 1 ? categories[0].id : null);
+                    } catch (error) { handleMutationError(error, 'Delete Category'); }
                 },
             },
         ]);
     };
 
-    const handleAddCategory = () => {
+    const handleAddCategory = async () => {
         if (!newCategoryName.trim()) {
             Alert.alert('Error', 'Please enter a category name.');
             return;
         }
-        createCategory({
-            name: newCategoryName.trim(),
-            description: newCategoryDesc.trim() || undefined,
-        });
-        setNewCategoryName('');
-        setNewCategoryDesc('');
-        setShowAddCategoryModal(false);
-        Alert.alert('✓ Created', `Category "${newCategoryName}" added.`);
+        if (!isOnline) { Alert.alert('Offline', 'Connect to WiFi to create categories.'); return; }
+        try {
+            await createCategoryMutation.mutateAsync({
+                name: newCategoryName.trim(),
+                description: newCategoryDesc.trim() || undefined,
+            });
+            setNewCategoryName('');
+            setNewCategoryDesc('');
+            setShowAddCategoryModal(false);
+            Alert.alert('Created', `Category "${newCategoryName}" added.`);
+        } catch (error) { handleMutationError(error, 'Create Category'); }
     };
 
     const mutedRed = '#A65D5D';
@@ -577,7 +558,11 @@ export default function BuildInventoryScreen() {
                                     <View style={styles.itemActions}>
                                         <TouchableOpacity
                                             style={[styles.iconButton, { backgroundColor: item.isCritical ? '#FFD70020' : 'transparent' }]}
-                                            onPress={() => toggleItemCritical(item.id)}
+                                            onPress={async () => {
+                                                if (!isOnline) { Alert.alert('Offline', 'Connect to WiFi.'); return; }
+                                                try { await toggleItemCriticalMutation.mutateAsync({ id: item.id, isCritical: !item.isCritical, version: item.version }); }
+                                                catch (error) { handleMutationError(error, 'Toggle Critical'); }
+                                            }}
                                         >
                                             <Ionicons
                                                 name={item.isCritical ? "star" : "star-outline"}

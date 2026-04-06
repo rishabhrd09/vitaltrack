@@ -19,10 +19,10 @@ import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
-import { useAppStore } from '@/store/useAppStore';
 import { formatDate, now } from '@/utils/helpers';
 import { escapeHtml, validateImageUri } from '@/utils/sanitize';
 import { isLowStock, isOutOfStock } from '@/types';
+import { useItems, useCategories } from '@/hooks/useServerData';
 
 interface ExportModalProps {
     visible: boolean;
@@ -33,8 +33,8 @@ export default function ExportModal({ visible, onClose }: ExportModalProps) {
     const { colors } = useTheme();
     const [isExporting, setIsExporting] = useState(false);
 
-    const items = useAppStore((state) => state.items);
-    const categories = useAppStore((state) => state.categories);
+    const { data: items = [] } = useItems();
+    const { data: categories = [] } = useCategories();
 
     const getBase64Image = async (uri: string): Promise<string> => {
         try {

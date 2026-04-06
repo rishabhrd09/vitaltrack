@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
+import { QueryProvider } from '@/providers/QueryProvider';
 
 function useProtectedRoute() {
   const segments = useSegments();
@@ -101,11 +102,13 @@ function RootLayoutContent() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <RootLayoutContent />
-      </GestureHandlerRootView>
-    </ThemeProvider>
+    <QueryProvider>
+      <ThemeProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <RootLayoutContent />
+        </GestureHandlerRootView>
+      </ThemeProvider>
+    </QueryProvider>
   );
 }
 

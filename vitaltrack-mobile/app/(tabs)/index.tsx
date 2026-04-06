@@ -3,7 +3,7 @@
  * Shows stats overview, needs attention items, and recent activity
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
@@ -25,6 +25,9 @@ import ExportModal from '@/components/common/ExportModal';
 import StatsCard from '@/components/dashboard/StatsCard';
 import NeedsAttention from '@/components/dashboard/NeedsAttention';
 import ActivityList from '@/components/dashboard/ActivityList';
+import OfflineBanner from '@/components/common/OfflineBanner';
+import { useItems, useOrders } from '@/hooks/useServerData';
+import { isOutOfStock, isLowStock } from '@/types';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -39,10 +42,19 @@ export default function DashboardScreen() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
-  const stats = useAppStore((state) => state.getStats());
-  const outOfStockItems = useAppStore((state) => state.getOutOfStockItems());
-  const lowStockItems = useAppStore((state) => state.getLowStockItems());
-  const activityLogs = useAppStore((state) => state.activityLogs);
+  // Server data via React Query
+  const { data: items = [], isLoading, error, refetch } = useItems();
+  const { data: orders = [] } = useOrders();
+
+  const activeItems = useMemo(() => items.filter(i => i.isActive), [items]);
+  const outOfStockItems = useMemo(() => activeItems.filter(isOutOfStock), [activeItems]);
+  const lowStockItems = useMemo(() => activeItems.filter(isLowStock), [activeItems]);
+  const stats = useMemo(() => ({
+    totalItems: activeItems.length,
+    outOfStockCount: outOfStockItems.length,
+    lowStockCount: lowStockItems.length,
+    pendingOrdersCount: orders.filter(o => o.status === 'pending' || o.status === 'received').length,
+  }), [activeItems, outOfStockItems, lowStockItems, orders]);
 
   // Logout handler
   const handleLogout = () => {
@@ -89,6 +101,20 @@ export default function DashboardScreen() {
         userName={user?.name || 'User'}
       />
 
+      <OfflineBanner />
+
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.accentBlue} />
+        </View>
+      ) : error ? (
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.errorText, { color: colors.statusRed }]}>Failed to load data</Text>
+          <TouchableOpacity onPress={() => refetch()} style={[styles.retryButton, { backgroundColor: colors.accentBlue }]}>
+            <Text style={{ color: colors.white }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
       <ScrollView
         ref={scrollRef}
         style={styles.scrollView}
@@ -167,9 +193,10 @@ export default function DashboardScreen() {
         {/* Recent Activity */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Recent Activity</Text>
-          <ActivityList activities={activityLogs.slice(0, 20)} />
+          <ActivityList activities={[]} />
         </View>
       </ScrollView>
+      )}
 
       {/* Profile Menu Sheet */}
       <ProfileMenuSheet
@@ -209,6 +236,21 @@ const createDynamicStyles = (colors: any) => StyleSheet.create({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  errorText: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+  },
+  retryButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
   },
   scrollView: {
     flex: 1,
