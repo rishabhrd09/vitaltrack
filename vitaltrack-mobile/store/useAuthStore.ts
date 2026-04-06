@@ -17,7 +17,6 @@ import * as SecureStore from 'expo-secure-store';
 import type { User, RegisterRequest } from '@/types';
 import { authService } from '@/services/auth';
 import { tokenStorage } from '@/services/api';
-import { syncQueue, isOnline } from '@/services/sync';
 
 // ============================================================================
 // SECURE STORAGE ADAPTER
@@ -156,20 +155,13 @@ export const useAuthStore = create<AuthStore>()(
             isInitialized: true
           });
 
-          // Load user data in background - don't block auth
+          // Invalidate React Query cache for the new session
           setTimeout(async () => {
             try {
-              const { useAppStore } = await import('./useAppStore');
-              await useAppStore.getState().loadUserData(user.id);
-
-              // Process any queued operations
-              const queueSize = await syncQueue.getSize();
-              if (queueSize > 0) {
-                console.log(`[Auth] Found ${queueSize} queued operations, processing...`);
-                await syncQueue.processQueue();
-              }
+              const { queryClient } = await import('@/providers/QueryProvider');
+              queryClient.invalidateQueries();
             } catch (err) {
-              console.warn('[Auth] Failed to load user data:', err);
+              console.warn('[Auth] Failed to invalidate queries:', err);
             }
           }, 100);
         } catch (error) {
@@ -218,20 +210,13 @@ export const useAuthStore = create<AuthStore>()(
             error: null,
           });
 
-          // Load user data in background
+          // Invalidate React Query cache for the new user
           setTimeout(async () => {
             try {
-              const { useAppStore } = await import('./useAppStore');
-              await useAppStore.getState().loadUserData(response.user.id);
-
-              // Process any queued operations from previous session
-              const queueSize = await syncQueue.getSize();
-              if (queueSize > 0) {
-                console.log(`[Auth] Found ${queueSize} queued operations, processing...`);
-                await syncQueue.processQueue();
-              }
+              const { queryClient } = await import('@/providers/QueryProvider');
+              queryClient.invalidateQueries();
             } catch (err) {
-              console.warn('[Auth] Failed to load user data after login:', err);
+              console.warn('[Auth] Failed to invalidate queries after login:', err);
             }
           }, 100);
 
@@ -278,13 +263,13 @@ export const useAuthStore = create<AuthStore>()(
             error: null,
           });
 
-          // Load user data in background
+          // Invalidate React Query cache for the new user
           setTimeout(async () => {
             try {
-              const { useAppStore } = await import('./useAppStore');
-              await useAppStore.getState().loadUserData(response.user.id);
+              const { queryClient } = await import('@/providers/QueryProvider');
+              queryClient.invalidateQueries();
             } catch (err) {
-              console.warn('[Auth] Failed to load user data after register:', err);
+              console.warn('[Auth] Failed to invalidate queries after register:', err);
             }
           }, 100);
 
@@ -315,35 +300,19 @@ export const useAuthStore = create<AuthStore>()(
         console.log('[Auth] ========== LOGOUT STARTED ==========');
 
         try {
-          const online = await isOnline();
+          // Logout from backend
+          try { await authService.logout(); } catch { /* ignore */ }
 
-          if (online) {
-            // Sync with 5-second timeout — don't let sync block logout
-            try {
-              await Promise.race([
-                (async () => {
-                  const { useAppStore } = await import('./useAppStore');
-                  const queueSize = await syncQueue.getSize();
-                  if (queueSize > 0) await syncQueue.processQueue();
-                  await useAppStore.getState().syncToBackend();
-                })(),
-                new Promise((_, reject) =>
-                  setTimeout(() => reject(new Error('Sync timeout')), 2000)
-                ),
-              ]);
-              console.log('[Auth] Pre-logout sync complete');
-            } catch (syncErr) {
-              console.warn('[Auth] Pre-logout sync failed/timed out:', syncErr);
-            }
+          // Clear React Query cache
+          try {
+            const { queryClient } = await import('@/providers/QueryProvider');
+            queryClient.clear();
+          } catch { /* ignore */ }
 
-            // Logout from backend
-            try { await authService.logout(); } catch { /* ignore */ }
-          }
-
-          // Clear app store
+          // Reset UI state
           try {
             const { useAppStore } = await import('./useAppStore');
-            await useAppStore.getState().clearStore();
+            useAppStore.getState().resetUIState();
           } catch { /* ignore */ }
 
           // Clear tokens
