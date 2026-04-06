@@ -1,14 +1,7 @@
 /**
- * VitalTrack Mobile - Auth Store (FIXED v4)
- * 
- * CRITICAL FIXES:
- * 1. Imports syncQueue from the correct location (now exported from sync.ts)
- * 2. Better error handling during logout sync
- * 3. Waits for sync to complete before clearing data
- * 4. Processes any queued operations before logout
- * 5. Shows user feedback during sync
- * 
- * Replace your store/useAuthStore.ts with this file.
+ * VitalTrack Mobile - Auth Store
+ * Handles authentication state, login, register, logout.
+ * Uses React Query cache invalidation on auth transitions.
  */
 
 import { create } from 'zustand';
@@ -57,7 +50,6 @@ interface AuthState {
   isLoggingOut: boolean;
   error: string | null;
   isInitialized: boolean;
-  syncStatus: 'idle' | 'syncing' | 'error';
 }
 
 interface AuthActions {
@@ -70,7 +62,6 @@ interface AuthActions {
   updateUser: (data: Partial<User>) => void;
   clearError: () => void;
   setLoading: (loading: boolean) => void;
-  setSyncStatus: (status: 'idle' | 'syncing' | 'error') => void;
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -89,8 +80,6 @@ export const useAuthStore = create<AuthStore>()(
       isLoggingOut: false,
       error: null,
       isInitialized: false,
-      syncStatus: 'idle',
-
       // =====================================================================
       // INITIALIZE - Check for existing session
       // =====================================================================
@@ -288,13 +277,12 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       // =====================================================================
-      // LOGOUT - CRITICAL: Must sync then clear all user data for isolation
+      // LOGOUT - Clear all user data for isolation
       // =====================================================================
       logout: async () => {
         // Prevent double-tap
         if (get().isLoggingOut) return;
         // Immediately deauthenticate so the UI redirects to login
-        // Cleanup (sync, token revoke, store clear) happens in background
         set({ isAuthenticated: false, isLoggingOut: true });
 
         console.log('[Auth] ========== LOGOUT STARTED ==========');
@@ -328,7 +316,6 @@ export const useAuthStore = create<AuthStore>()(
             isLoading: false,
             isLoggingOut: false,
             error: null,
-            syncStatus: 'idle',
           });
           console.log('[Auth] ========== LOGOUT COMPLETE ==========');
         }
@@ -347,8 +334,6 @@ export const useAuthStore = create<AuthStore>()(
       clearError: () => set({ error: null }),
 
       setLoading: (loading: boolean) => set({ isLoading: loading }),
-
-      setSyncStatus: (status: 'idle' | 'syncing' | 'error') => set({ syncStatus: status }),
 
       // =====================================================================
       // FORGOT PASSWORD
