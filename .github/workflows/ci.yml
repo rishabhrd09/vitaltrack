@@ -317,11 +317,15 @@ jobs:
   # =============================================================================
   # BUILD PRODUCTION (Only after merge to main)
   # =============================================================================
+  # DISABLED: production AAB builds are turned off while we iterate on the
+  # server-first refactor. To re-enable, change `if: false` back to:
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  # =============================================================================
   build-production:
     name: "Build Production AAB"
     runs-on: ubuntu-latest
     needs: [test-backend, test-frontend, deploy-backend]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: false  # disabled — was: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
     
     steps:
