@@ -26,7 +26,7 @@ import StatsCard from '@/components/dashboard/StatsCard';
 import NeedsAttention from '@/components/dashboard/NeedsAttention';
 import ActivityList from '@/components/dashboard/ActivityList';
 import OfflineBanner from '@/components/common/OfflineBanner';
-import { useItems, useOrders } from '@/hooks/useServerData';
+import { useItems, useOrders, useActivities } from '@/hooks/useServerData';
 import { isOutOfStock, isLowStock } from '@/types';
 
 export default function DashboardScreen() {
@@ -45,6 +45,7 @@ export default function DashboardScreen() {
   // Server data via React Query
   const { data: items = [], isLoading, error, refetch } = useItems();
   const { data: orders = [] } = useOrders();
+  const { data: activityLogs = [] } = useActivities(20);
 
   const activeItems = useMemo(() => items.filter(i => i.isActive), [items]);
   const outOfStockItems = useMemo(() => activeItems.filter(isOutOfStock), [activeItems]);
@@ -193,7 +194,7 @@ export default function DashboardScreen() {
         {/* Recent Activity */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Recent Activity</Text>
-          <ActivityList activities={[]} />
+          <ActivityList activities={activityLogs} />
         </View>
       </ScrollView>
       )}

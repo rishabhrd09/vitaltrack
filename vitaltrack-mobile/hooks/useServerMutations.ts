@@ -14,7 +14,10 @@ export function useCreateItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateItemRequest): Promise<Item> => itemService.create(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.items }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.items });
+      qc.invalidateQueries({ queryKey: queryKeys.activities });
+    },
   });
 }
 
@@ -23,7 +26,10 @@ export function useUpdateItem() {
   return useMutation({
     mutationFn: ({ id, ...data }: UpdateItemRequest & { id: string; version: number }): Promise<Item> =>
       itemService.update(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.items }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.items });
+      qc.invalidateQueries({ queryKey: queryKeys.activities });
+    },
   });
 }
 
@@ -32,7 +38,10 @@ export function useUpdateStock() {
   return useMutation({
     mutationFn: ({ id, quantity, version }: { id: string; quantity: number; version: number }): Promise<Item> =>
       itemService.updateStock(id, quantity, version),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.items }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.items });
+      qc.invalidateQueries({ queryKey: queryKeys.activities });
+    },
   });
 }
 
@@ -40,7 +49,10 @@ export function useDeleteItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => itemService.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.items }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.items });
+      qc.invalidateQueries({ queryKey: queryKeys.activities });
+    },
   });
 }
 
@@ -49,7 +61,10 @@ export function useToggleItemCritical() {
   return useMutation({
     mutationFn: ({ id, isCritical, version }: { id: string; isCritical: boolean; version: number }): Promise<Item> =>
       itemService.update(id, { isCritical, version }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.items }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.items });
+      qc.invalidateQueries({ queryKey: queryKeys.activities });
+    },
   });
 }
 
@@ -59,7 +74,10 @@ export function useCreateCategory() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateCategoryRequest): Promise<Category> => categoryService.create(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.categories }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.categories });
+      qc.invalidateQueries({ queryKey: queryKeys.activities });
+    },
   });
 }
 
@@ -68,7 +86,10 @@ export function useUpdateCategory() {
   return useMutation({
     mutationFn: ({ id, ...data }: UpdateCategoryRequest & { id: string }): Promise<Category> =>
       categoryService.update(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.categories }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.categories });
+      qc.invalidateQueries({ queryKey: queryKeys.activities });
+    },
   });
 }
 
@@ -79,6 +100,7 @@ export function useDeleteCategory() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.categories });
       qc.invalidateQueries({ queryKey: queryKeys.items });
+      qc.invalidateQueries({ queryKey: queryKeys.activities });
     },
   });
 }
@@ -89,7 +111,10 @@ export function useCreateOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateOrderRequest): Promise<SavedOrder> => orderService.create(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.orders }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.orders });
+      qc.invalidateQueries({ queryKey: queryKeys.activities });
+    },
   });
 }
 
@@ -98,7 +123,10 @@ export function useUpdateOrderStatus() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: OrderStatus }): Promise<SavedOrder> =>
       orderService.updateStatus(id, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.orders }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.orders });
+      qc.invalidateQueries({ queryKey: queryKeys.activities });
+    },
   });
 }
 
@@ -109,6 +137,7 @@ export function useApplyOrderToStock() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.items });
       qc.invalidateQueries({ queryKey: queryKeys.orders });
+      qc.invalidateQueries({ queryKey: queryKeys.activities });
     },
   });
 }
@@ -117,6 +146,9 @@ export function useDeleteOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => orderService.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.orders }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.orders });
+      qc.invalidateQueries({ queryKey: queryKeys.activities });
+    },
   });
 }

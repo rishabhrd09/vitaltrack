@@ -3,7 +3,7 @@
  * User authentication with email/username and password
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -42,6 +42,8 @@ export default function LoginScreen() {
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [coldStartHint, setColdStartHint] = useState(false);
+    const coldStartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Clear stale errors when screen gains focus
     useFocusEffect(
@@ -49,6 +51,19 @@ export default function LoginScreen() {
             clearError();
         }, [clearError])
     );
+
+    // Show "server starting up" hint after 8s of waiting (cold start on Render free tier)
+    useEffect(() => {
+        if (isLoading) {
+            coldStartTimer.current = setTimeout(() => setColdStartHint(true), 8000);
+        } else {
+            if (coldStartTimer.current) clearTimeout(coldStartTimer.current);
+            setColdStartHint(false);
+        }
+        return () => {
+            if (coldStartTimer.current) clearTimeout(coldStartTimer.current);
+        };
+    }, [isLoading]);
 
     const handleLogin = async () => {
         if (!identifier.trim() || !password.trim()) {
@@ -178,6 +193,13 @@ export default function LoginScreen() {
                         )}
                     </TouchableOpacity>
 
+                    {/* Cold start hint */}
+                    {coldStartHint && (
+                        <Text style={[styles.coldStartHint, { color: colors.textSecondary }]}>
+                            Server is starting up. This can take 30–60 seconds on the first login of the day.
+                        </Text>
+                    )}
+
                     {/* Register Link */}
                     <View style={styles.registerContainer}>
                         <Text style={[styles.registerText, { color: colors.textSecondary }]}>
@@ -278,6 +300,14 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+    },
+    coldStartHint: {
+        fontSize: 13,
+        textAlign: 'center',
+        marginTop: -12,
+        marginBottom: 16,
+        paddingHorizontal: 16,
+        lineHeight: 18,
     },
     registerContainer: {
         flexDirection: 'row',
