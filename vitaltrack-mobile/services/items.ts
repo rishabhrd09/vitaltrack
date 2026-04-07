@@ -74,6 +74,19 @@ interface StockUpdateRequest {
   version: number;
 }
 
+// Drop undefined and empty-string fields. Keeps falsy values like 0 and false.
+// Avoids sending empty `expiryDate: ""` (fails date parsing) or `purchaseLink: ""`
+// (fails URL validator) while still allowing required fields and zero quantities.
+function stripEmpty<T extends Record<string, unknown>>(data: T): Partial<T> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined) continue;
+    if (typeof value === 'string' && value.trim() === '') continue;
+    out[key] = value;
+  }
+  return out as Partial<T>;
+}
+
 // Build query string from params
 function buildQueryString(params?: ItemsQueryParams): string {
   if (!params) return '';
@@ -123,16 +136,20 @@ export const itemService = {
 
   /**
    * Create new item
+   * Strip undefined and empty-string optional fields so the backend validators
+   * (URL, date) don't reject them.
    */
   async create(data: CreateItemRequest): Promise<Item> {
-    return api.post<Item>('/items', data);
+    const cleaned = stripEmpty(data);
+    return api.post<Item>('/items', cleaned);
   },
 
   /**
    * Update existing item
    */
   async update(id: string, data: UpdateItemRequest): Promise<Item> {
-    return api.put<Item>(`/items/${id}`, data);
+    const cleaned = stripEmpty(data);
+    return api.put<Item>(`/items/${id}`, cleaned);
   },
 
   /**

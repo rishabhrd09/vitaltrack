@@ -59,16 +59,27 @@ export const categoryService = {
 
   /**
    * Create new category
+   * NOTE: backend CategoryCreate uses snake_case (no aliases),
+   * so we translate displayOrder -> display_order at the API boundary.
    */
   async create(data: CreateCategoryRequest): Promise<Category> {
-    return api.post<Category>('/categories', data);
+    return api.post<Category>('/categories', {
+      name: data.name,
+      description: data.description,
+      display_order: data.displayOrder ?? 0,
+    });
   },
 
   /**
    * Update existing category
+   * NOTE: backend CategoryUpdate uses snake_case (no aliases).
    */
   async update(id: string, data: UpdateCategoryRequest): Promise<Category> {
-    return api.put<Category>(`/categories/${id}`, data);
+    const payload: Record<string, unknown> = {};
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.description !== undefined) payload.description = data.description;
+    if (data.displayOrder !== undefined) payload.display_order = data.displayOrder;
+    return api.put<Category>(`/categories/${id}`, payload);
   },
 
   /**
