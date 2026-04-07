@@ -14,8 +14,14 @@ const ACCESS_TOKEN_KEY = 'vitaltrack_access_token';
 const REFRESH_TOKEN_KEY = 'vitaltrack_refresh_token';
 
 // Types
+// Backend returns errors in several shapes:
+// - FastAPI default: { detail: "..." } or { detail: [{ msg, loc, type }] }
+// - Custom handlers: { error: "...", message: "...", details?: [{ field, message, code }] }
 interface ApiError {
-    detail: string | { msg: string; loc: string[] }[];
+    detail?: string | { msg: string; loc: string[] }[];
+    error?: string;
+    message?: string;
+    details?: { field?: string; message: string; code?: string }[];
 }
 
 interface RefreshResponse {
@@ -198,13 +204,21 @@ class ApiClient {
             const errorData = data as ApiError;
             let message = '';
 
-            // Extract error message from API response
+            // Extract error message from API response.
+            // Try all known shapes: FastAPI default `detail`, custom handler `message`+`details`.
             if (errorData?.detail) {
                 if (typeof errorData.detail === 'string') {
                     message = errorData.detail;
                 } else if (Array.isArray(errorData.detail)) {
                     message = errorData.detail.map((e) => e.msg).join(', ');
                 }
+            } else if (Array.isArray(errorData?.details) && errorData.details.length > 0) {
+                // Custom validation handler shape
+                message = errorData.details
+                    .map((d) => (d.field ? `${d.field}: ${d.message}` : d.message))
+                    .join(', ');
+            } else if (errorData?.message) {
+                message = errorData.message;
             }
 
             // If no message from API, generate user-friendly one based on HTTP status
