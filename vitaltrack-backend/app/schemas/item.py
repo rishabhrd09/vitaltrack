@@ -71,8 +71,8 @@ class ItemCreate(BaseModel):
 
 
 class ItemUpdate(BaseModel):
-    """Update item request - all fields optional."""
-    
+    """Update item request - requires version for optimistic concurrency control."""
+
     category_id: Optional[str] = Field(None, max_length=36, alias="categoryId")
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
@@ -88,6 +88,7 @@ class ItemUpdate(BaseModel):
     image_uri: Optional[str] = Field(None, max_length=500, alias="imageUri")
     is_active: Optional[bool] = Field(None, alias="isActive")
     is_critical: Optional[bool] = Field(None, alias="isCritical")
+    version: int = Field(..., description="Required — must match server's current version")
 
     model_config = {"populate_by_name": True}
 
@@ -115,9 +116,10 @@ class ItemUpdate(BaseModel):
 
 
 class StockUpdate(BaseModel):
-    """Quick stock update request."""
-    
+    """Quick stock update request — requires version for optimistic concurrency control."""
+
     quantity: int = Field(..., ge=0, le=999999)
+    version: int = Field(..., description="Required — must match server's current version")
 
 
 # =============================================================================
@@ -143,6 +145,7 @@ class ItemResponse(BaseModel):
     image_uri: Optional[str] = Field(None, serialization_alias="imageUri")
     is_active: bool = Field(serialization_alias="isActive")
     is_critical: bool = Field(serialization_alias="isCritical")
+    version: int = 1
     created_at: datetime = Field(serialization_alias="createdAt")
     updated_at: datetime = Field(serialization_alias="updatedAt")
 

@@ -22,13 +22,16 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
 import { readAsStringAsync } from 'expo-file-system/legacy';
-import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
-import type { Item, OrderItem } from '@/types';
+import type { Item } from '@/types';
 import { isOutOfStock, isLowStock, isCriticalEquipment } from '@/types';
-import { generateId, formatDate, now } from '@/utils/helpers';
+import { formatDate, now } from '@/utils/helpers';
 import { escapeHtml, validateImageUri } from '@/utils/sanitize';
+import { useItems } from '@/hooks/useServerData';
+import { useCreateOrder } from '@/hooks/useServerMutations';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { handleMutationError } from '@/utils/serverErrors';
 
 interface CartItem {
   item: Item;
@@ -39,10 +42,10 @@ export default function CreateOrderScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { mode } = useLocalSearchParams();
+  const { isOnline } = useNetworkStatus();
 
-  const items = useAppStore((state) => state.items);
-  const saveOrder = useAppStore((state) => state.saveOrder);
-  const createOrderId = useAppStore((state) => state.createOrderId);
+  const { data: items = [] } = useItems();
+  const createOrderMutation = useCreateOrder();
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -244,7 +247,7 @@ export default function CreateOrderScreen() {
   const generateTablePDF = async (includePhotos: boolean) => {
     setIsGenerating(true);
     try {
-      const orderId = createOrderId();
+      const orderId = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 9999).toString().padStart(4, '0')}`;
       const currentDate = formatDate(now());
 
       // Only process images if user wants photos
@@ -432,25 +435,31 @@ export default function CreateOrderScreen() {
     }
   };
 
-  // Helper to save order
-  const saveOrderToStore = (orderId: string) => {
-    const savedOrderItems: OrderItem[] = cartItems.map(ci => ({
-      id: generateId(),
-      orderId,
-      itemId: ci.item.id,
-      name: ci.item.name,
-      quantity: ci.quantity,
-      currentStock: ci.item.quantity,
-      minimumStock: ci.item.minimumStock,
-      unit: ci.item.unit,
-      brand: ci.item.brand,
-      imageUri: ci.item.imageUri,
-      purchaseLink: ci.item.purchaseLink,
-      supplierName: ci.item.supplierName,
-    }));
-    saveOrder(savedOrderItems);
-    router.back();
-    Alert.alert("Order Created", "Your order has been saved and exported.");
+  // Helper to save order to server
+  const saveOrderToStore = async (orderId: string) => {
+    if (!isOnline) {
+      Alert.alert('Offline', 'Connect to WiFi to save orders.');
+      return;
+    }
+    try {
+      const orderItems = cartItems.map(ci => ({
+        itemId: ci.item.id,
+        name: ci.item.name,
+        quantity: ci.quantity,
+        currentStock: ci.item.quantity,
+        minimumStock: ci.item.minimumStock,
+        unit: ci.item.unit,
+        brand: ci.item.brand,
+        imageUri: ci.item.imageUri,
+        purchaseLink: ci.item.purchaseLink,
+        supplierName: ci.item.supplierName,
+      }));
+      await createOrderMutation.mutateAsync({ items: orderItems });
+      router.back();
+      Alert.alert("Order Created", "Your order has been saved and exported.");
+    } catch (error) {
+      handleMutationError(error, 'Create Order');
+    }
   };
 
   // ============================================================================

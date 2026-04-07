@@ -6,6 +6,7 @@ CRUD operations for inventory items
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import and_, or_, select
 
 from app.api.deps import DB, CurrentUser
@@ -19,6 +20,7 @@ from app.schemas import (
     StockUpdate,
     SuccessResponse,
 )
+from app.services.audit import log_audit
 
 
 router = APIRouter(prefix="/items", tags=["Items"])
@@ -294,7 +296,7 @@ async def create_item(
     )
     db.add(item)
     await db.flush()
-    
+
     # Log activity
     activity = ActivityLog(
         user_id=current_user.id,
@@ -304,10 +306,20 @@ async def create_item(
         details=f"Created with {item.quantity} {item.unit}",
     )
     db.add(activity)
-    
+
+    # Audit log
+    await log_audit(
+        db,
+        user_id=current_user.id,
+        entity_type="item",
+        entity_id=item.id,
+        action="create",
+        new_values={"name": item.name, "quantity": item.quantity, "unit": item.unit},
+    )
+
     await db.commit()
     await db.refresh(item)
-    
+
     return ItemResponse.model_validate(item)
 
 
@@ -343,10 +355,32 @@ async def update_item(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Item not found",
         )
-    
+
+    # Optimistic concurrency control — version check
+    if item.version != data.version:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": "Version conflict",
+                "message": "This item was modified by someone else. Please refresh and try again.",
+                "server_version": item.version,
+                "server_quantity": item.quantity,
+            },
+        )
+
+    # Snapshot old values for audit
+    old_values = {
+        "name": item.name,
+        "quantity": item.quantity,
+        "unit": item.unit,
+        "minimum_stock": item.minimum_stock,
+        "is_active": item.is_active,
+        "is_critical": item.is_critical,
+    }
+
     # Track changes for activity log
     changes = []
-    
+
     # Verify category if changing
     if data.category_id and data.category_id != item.category_id:
         cat_result = await db.execute(
@@ -362,7 +396,7 @@ async def update_item(
             )
         item.category_id = data.category_id
         changes.append("category changed")
-    
+
     # Update fields
     if data.name is not None:
         item.name = data.name
@@ -393,7 +427,10 @@ async def update_item(
         item.is_active = data.is_active
     if data.is_critical is not None:
         item.is_critical = data.is_critical
-    
+
+    # Increment version
+    item.version += 1
+
     # Log activity
     activity = ActivityLog(
         user_id=current_user.id,
@@ -403,10 +440,29 @@ async def update_item(
         details=", ".join(changes) if changes else "Updated",
     )
     db.add(activity)
-    
+
+    # Audit log with old/new snapshots
+    new_values = {
+        "name": item.name,
+        "quantity": item.quantity,
+        "unit": item.unit,
+        "minimum_stock": item.minimum_stock,
+        "is_active": item.is_active,
+        "is_critical": item.is_critical,
+    }
+    await log_audit(
+        db,
+        user_id=current_user.id,
+        entity_type="item",
+        entity_id=item.id,
+        action="update",
+        old_values=old_values,
+        new_values=new_values,
+    )
+
     await db.commit()
     await db.refresh(item)
-    
+
     return ItemResponse.model_validate(item)
 
 
@@ -442,10 +498,23 @@ async def update_stock(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Item not found",
         )
-    
+
+    # Optimistic concurrency control — version check
+    if item.version != data.version:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": "Version conflict",
+                "message": "This item was modified by someone else. Please refresh and try again.",
+                "server_version": item.version,
+                "server_quantity": item.quantity,
+            },
+        )
+
     old_quantity = item.quantity
     item.quantity = data.quantity
-    
+    item.version += 1
+
     # Log activity
     activity = ActivityLog(
         user_id=current_user.id,
@@ -455,10 +524,21 @@ async def update_stock(
         details=f"Stock: {old_quantity} → {data.quantity} {item.unit}",
     )
     db.add(activity)
-    
+
+    # Audit log
+    await log_audit(
+        db,
+        user_id=current_user.id,
+        entity_type="item",
+        entity_id=item.id,
+        action="stock_update",
+        old_values={"quantity": old_quantity},
+        new_values={"quantity": data.quantity},
+    )
+
     await db.commit()
     await db.refresh(item)
-    
+
     return ItemResponse.model_validate(item)
 
 
@@ -493,7 +573,7 @@ async def delete_item(
         )
     
     item_name = item.name
-    
+
     # Log activity before deletion
     activity = ActivityLog(
         user_id=current_user.id,
@@ -502,8 +582,18 @@ async def delete_item(
         details="Item deleted",
     )
     db.add(activity)
-    
+
+    # Audit log
+    await log_audit(
+        db,
+        user_id=current_user.id,
+        entity_type="item",
+        entity_id=item.id,
+        action="delete",
+        old_values={"name": item.name, "quantity": item.quantity},
+    )
+
     await db.delete(item)
     await db.commit()
-    
+
     return SuccessResponse(message=f"Item '{item_name}' deleted")

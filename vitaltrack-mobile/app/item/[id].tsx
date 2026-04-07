@@ -20,27 +20,30 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import { COMMON_UNITS } from '@/utils/helpers';
 import { sanitizeName, sanitizeString, sanitizeUrl, sanitizeContact, sanitizeNumber } from '@/utils/sanitize';
 import type { Item } from '@/types';
+import { useItems, useCategories } from '@/hooks/useServerData';
+import { useCreateItem, useUpdateItem, useDeleteItem } from '@/hooks/useServerMutations';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { handleMutationError } from '@/utils/serverErrors';
 
 export default function ItemFormScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { id, categoryId: preselectedCategoryId } = useLocalSearchParams<{ id: string; categoryId?: string }>();
   const isNew = id === 'new';
+  const { isOnline } = useNetworkStatus();
 
-  const categories = useAppStore((state) => state.categories);
-  const items = useAppStore((state) => state.items);
-  const getItemById = useAppStore((state) => state.getItemById);
-  const createItem = useAppStore((state) => state.createItem);
-  const updateItem = useAppStore((state) => state.updateItem);
-  const deleteItem = useAppStore((state) => state.deleteItem);
+  const { data: categories = [] } = useCategories();
+  const { data: items = [] } = useItems();
+  const createItemMutation = useCreateItem();
+  const updateItemMutation = useUpdateItem();
+  const deleteItemMutation = useDeleteItem();
 
-  const existingItem = !isNew ? getItemById(id) : undefined;
+  const existingItem = !isNew ? items.find(i => i.id === id) : undefined;
 
   // Form state - use preselectedCategoryId if provided, then existingItem's category, then first category
   const [categoryId, setCategoryId] = useState(
@@ -85,7 +88,7 @@ export default function ItemFormScreen() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert('Error', 'Item name is required');
       return;
@@ -94,12 +97,16 @@ export default function ItemFormScreen() {
       Alert.alert('Error', 'Please select a category');
       return;
     }
+    if (!isOnline) {
+      Alert.alert('Offline', 'Connect to WiFi to save changes.');
+      return;
+    }
 
     // Sanitize all user inputs for security
     const sanitizedName = sanitizeName(name);
     const sanitizedPurchaseLink = sanitizeUrl(purchaseLink);
 
-    const itemData: Partial<Item> = {
+    const itemData = {
       categoryId,
       name: sanitizedName,
       description: sanitizeString(description, 1000) || undefined,
@@ -115,33 +122,37 @@ export default function ItemFormScreen() {
       isCritical: isCritical,
     };
 
-    if (isNew) {
-      // Check if there's a hidden item with the same name (case-insensitive)
-      const hiddenItem = items.find(
-        item => !item.isActive && item.name.toLowerCase() === sanitizedName.toLowerCase()
-      );
+    try {
+      if (isNew) {
+        // Check if there's a hidden item with the same name (case-insensitive)
+        const hiddenItem = items.find(
+          item => !item.isActive && item.name.toLowerCase() === sanitizedName.toLowerCase()
+        );
 
-      if (hiddenItem) {
-        // Reactivate the hidden item instead of creating a duplicate
-        updateItem(hiddenItem.id, { ...itemData, isActive: true });
-        Alert.alert('Success', 'Item restored and updated successfully', [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+        if (hiddenItem) {
+          await updateItemMutation.mutateAsync({ id: hiddenItem.id, ...itemData, isActive: true, version: hiddenItem.version });
+          Alert.alert('Success', 'Item restored and updated successfully', [
+            { text: 'OK', onPress: () => router.back() },
+          ]);
+        } else {
+          await createItemMutation.mutateAsync(itemData);
+          Alert.alert('Success', 'Item created successfully', [
+            { text: 'OK', onPress: () => router.back() },
+          ]);
+        }
       } else {
-        createItem(itemData);
-        Alert.alert('Success', 'Item created successfully', [
+        await updateItemMutation.mutateAsync({ id, ...itemData, version: existingItem?.version ?? 1 });
+        Alert.alert('Success', 'Item updated successfully', [
           { text: 'OK', onPress: () => router.back() },
         ]);
       }
-    } else {
-      updateItem(id, itemData);
-      Alert.alert('Success', 'Item updated successfully', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+    } catch (error) {
+      handleMutationError(error, isNew ? 'Create Item' : 'Update Item');
     }
   };
 
   const handleDelete = () => {
+    if (!isOnline) { Alert.alert('Offline', 'Connect to WiFi to delete items.'); return; }
     Alert.alert(
       'Delete Item',
       `Are you sure you want to delete "${name}"?`,
@@ -150,9 +161,13 @@ export default function ItemFormScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            deleteItem(id);
-            router.back();
+          onPress: async () => {
+            try {
+              await deleteItemMutation.mutateAsync(id);
+              router.back();
+            } catch (error) {
+              handleMutationError(error, 'Delete Item');
+            }
           },
         },
       ]

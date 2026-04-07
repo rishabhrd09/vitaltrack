@@ -18,6 +18,7 @@ from app.schemas import (
     OrderUpdate,
     SuccessResponse,
 )
+from app.services.audit import log_audit
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -313,7 +314,8 @@ async def apply_order_to_stock(
             detail="Order must be in 'received' status to apply to stock",
         )
     
-    # Update stock for each item
+    # Update stock for each item — atomic transaction
+    updated_items = []
     for order_item in order.items:
         item_result = await db.execute(
             select(Item).where(
@@ -322,27 +324,41 @@ async def apply_order_to_stock(
             )
         )
         item = item_result.scalar_one_or_none()
-        
+
         if item:
+            old_qty = item.quantity
             item.quantity += order_item.quantity
-    
+            item.version += 1
+            updated_items.append({"id": item.id, "name": item.name, "old_qty": old_qty, "new_qty": item.quantity})
+
+            # Audit each stock update
+            await log_audit(
+                db,
+                user_id=current_user.id,
+                entity_type="item",
+                entity_id=item.id,
+                action="stock_update",
+                old_values={"quantity": old_qty},
+                new_values={"quantity": item.quantity, "source": f"order:{order.order_id}"},
+            )
+
     # Update order status
     order.status = OrderStatus.STOCK_UPDATED
     order.applied_at = datetime.now(timezone.utc)
-    
+
     # Log activity
     activity = ActivityLog(
         user_id=current_user.id,
         action=ActivityActionType.ORDER_APPLIED,
         item_name=f"Order {order.order_id}",
         order_id=order.order_id,
-        details=f"Stock updated: +{order.total_units} units",
+        details=f"Stock updated: +{order.total_units} units across {len(updated_items)} items",
     )
     db.add(activity)
-    
+
     await db.commit()
     await db.refresh(order)
-    
+
     return OrderResponse.model_validate(order)
 
 

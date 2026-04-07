@@ -25,5 +25,4 @@ export type {
 export { orderService } from './orders';
 export type { CreateOrderRequest, CreateOrderItemRequest, UpdateOrderStatusRequest } from './orders';
 
-// Sync service
-export { syncService, syncQueue, isOnline } from './sync';
+// Sync service removed — server-first architecture

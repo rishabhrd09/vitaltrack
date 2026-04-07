@@ -65,11 +65,13 @@ interface UpdateItemRequest {
   imageUri?: string;
   isCritical?: boolean;
   isActive?: boolean;
+  version: number;
 }
 
 // Stock update request
 interface StockUpdateRequest {
   quantity: number;
+  version: number;
 }
 
 // Build query string from params
@@ -134,10 +136,10 @@ export const itemService = {
   },
 
   /**
-   * Quick stock update
+   * Quick stock update (requires version for OCC)
    */
-  async updateStock(id: string, quantity: number): Promise<Item> {
-    return api.patch<Item>(`/items/${id}/stock`, { quantity });
+  async updateStock(id: string, quantity: number, version: number): Promise<Item> {
+    return api.patch<Item>(`/items/${id}/stock`, { quantity, version });
   },
 
   /**
