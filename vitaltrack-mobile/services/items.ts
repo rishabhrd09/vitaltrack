@@ -140,7 +140,7 @@ export const itemService = {
    * (URL, date) don't reject them.
    */
   async create(data: CreateItemRequest): Promise<Item> {
-    const cleaned = stripEmpty(data);
+    const cleaned = stripEmpty(data as unknown as Record<string, unknown>);
     return api.post<Item>('/items', cleaned);
   },
 
@@ -148,7 +148,7 @@ export const itemService = {
    * Update existing item
    */
   async update(id: string, data: UpdateItemRequest): Promise<Item> {
-    const cleaned = stripEmpty(data);
+    const cleaned = stripEmpty(data as unknown as Record<string, unknown>);
     return api.put<Item>(`/items/${id}`, cleaned);
   },
 
