@@ -54,7 +54,7 @@ export default function DashboardScreen() {
     totalItems: activeItems.length,
     outOfStockCount: outOfStockItems.length,
     lowStockCount: lowStockItems.length,
-    pendingOrdersCount: orders.filter(o => o.status === 'pending' || o.status === 'received').length,
+    pendingOrdersCount: orders.filter(o => o.status === 'pending' || o.status === 'ordered' || o.status === 'received').length,
   }), [activeItems, outOfStockItems, lowStockItems, orders]);
 
   // Logout handler

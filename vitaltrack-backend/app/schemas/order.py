@@ -70,6 +70,7 @@ class OrderCreate(BaseModel):
     applied_at: Optional[datetime] = Field(None, alias="appliedAt")
     declined_at: Optional[datetime] = Field(None, alias="declinedAt")
     local_id: Optional[str] = Field(None, alias="localId")
+    notes: Optional[str] = None
     # Include items for creation
     items: List[OrderItemCreate] = Field(default_factory=list)
 
