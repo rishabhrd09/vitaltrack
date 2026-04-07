@@ -16,7 +16,7 @@ import { categoryService } from '@/services/categories';
 import { itemService } from '@/services/items';
 import { SEED_DATA, ESSENTIAL_ITEM_KEYWORDS } from '@/data/seedData';
 import { queryKeys } from './useServerData';
-import type { Item } from '@/types';
+import type { Item, Category } from '@/types';
 
 interface SeedProgress {
   total: number;
@@ -66,17 +66,31 @@ export function useSeedInventory() {
     };
 
     try {
-      // Fetch existing categories once so we can skip duplicates
-      let existingCategories = (await categoryService.getAll()).categories;
+      // Fetch existing categories AND items once so we can skip duplicates
+      const [existingCategoriesResp, existingItemsResp] = await Promise.all([
+        categoryService.getAll(),
+        itemService.getAll({ limit: 999 }),
+      ]);
+      const existingCategories: Category[] = [...existingCategoriesResp.categories];
+      const existingItems: Item[] = [...existingItemsResp.items];
+
+      // Build a (categoryId, lowercased name) → item map for O(1) dedup checks
+      const existingItemKey = (categoryId: string, name: string) =>
+        `${categoryId}::${name.toLowerCase().trim()}`;
+      const existingItemKeys = new Set(
+        existingItems.map((i) => existingItemKey(i.categoryId, i.name))
+      );
 
       for (let catIdx = 0; catIdx < SEED_DATA.length; catIdx++) {
         const seedCat = SEED_DATA[catIdx];
-        updateProgress(`Creating category: ${seedCat.name}`);
+        updateProgress(`Checking category: ${seedCat.name}`);
 
         let categoryId: string;
 
-        // Skip if this category already exists
-        const existing = existingCategories.find((c) => c.name === seedCat.name);
+        // Skip if this category already exists (case-insensitive)
+        const existing = existingCategories.find(
+          (c) => c.name.toLowerCase().trim() === seedCat.name.toLowerCase().trim()
+        );
         if (existing) {
           categoryId = existing.id;
           completed++;
@@ -100,11 +114,17 @@ export function useSeedInventory() {
           }
         }
 
-        // Create items under this category
+        // Create items under this category — skip if name already exists in this category
         for (const seedItem of seedCat.items) {
+          const key = existingItemKey(categoryId, seedItem.name);
+          if (existingItemKeys.has(key)) {
+            updateProgress(`Skipping existing: ${seedItem.name}`);
+            completed++;
+            continue;
+          }
           updateProgress(`Creating item: ${seedItem.name}`);
           try {
-            await itemService.create({
+            const created = await itemService.create({
               categoryId,
               name: seedItem.name,
               description: seedItem.description,
@@ -113,6 +133,8 @@ export function useSeedInventory() {
               minimumStock: seedItem.minimumStock,
               isCritical: isCriticalSeedItem(seedItem.name),
             });
+            existingItemKeys.add(key);
+            existingItems.push(created);
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             errors.push(`Item "${seedItem.name}": ${msg}`);
@@ -146,6 +168,73 @@ export function useSeedInventory() {
 export function isEssentialItem(item: Item): boolean {
   const name = item.name.toLowerCase();
   return ESSENTIAL_ITEM_KEYWORDS.some((keyword) => name.includes(keyword));
+}
+
+/**
+ * Set of protected category names (the 10 default medical domains from seedData.ts).
+ * These represent the structural backbone of a home ICU and cannot be deleted by
+ * Start Fresh or by the trash button in Build Inventory.
+ */
+const PROTECTED_CATEGORY_NAMES_LOWER = new Set(
+  SEED_DATA.map((c) => c.name.toLowerCase().trim())
+);
+
+export function isProtectedCategory(name: string): boolean {
+  return PROTECTED_CATEGORY_NAMES_LOWER.has(name.toLowerCase().trim());
+}
+
+/**
+ * For a given category name, return the seed items that belong to it
+ * but are NOT yet present in the user's existing items.
+ *
+ * Used by Build Inventory to show "Suggested Items" beneath existing ones.
+ */
+export function getSuggestedItemsForCategory(
+  categoryName: string,
+  existingItems: Item[]
+): Array<{ name: string; unit: string; minimumStock: number; description?: string; isCritical: boolean }> {
+  const seedCat = SEED_DATA.find(
+    (c) => c.name.toLowerCase().trim() === categoryName.toLowerCase().trim()
+  );
+  if (!seedCat) return [];
+
+  const existingNamesLower = new Set(
+    existingItems.map((i) => i.name.toLowerCase().trim())
+  );
+
+  return seedCat.items
+    .filter((s) => !existingNamesLower.has(s.name.toLowerCase().trim()))
+    .map((s) => ({
+      name: s.name,
+      unit: s.unit,
+      minimumStock: s.minimumStock,
+      description: s.description,
+      isCritical: isCriticalSeedItem(s.name),
+    }));
+}
+
+/**
+ * Silent auto-backup — writes a JSON snapshot to the app's document directory
+ * and returns the file path. No share dialog. Used before destructive actions
+ * like Start Fresh so the user can recover their data.
+ */
+export async function createAutoBackup(
+  categories: Category[],
+  items: Item[]
+): Promise<string> {
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    categories,
+    items,
+  };
+  const json = JSON.stringify(backup, null, 2);
+  const FileSystem = await import('expo-file-system/legacy');
+  const dir = FileSystem.documentDirectory || '';
+  const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const fileUri = `${dir}VitalTrack-AutoBackup-${dateStr}.json`;
+  await FileSystem.writeAsStringAsync(fileUri, json);
+  return fileUri;
 }
 
 /**
