@@ -56,18 +56,6 @@ export default function BuildInventoryScreen() {
 
     // ========== DATA MANAGEMENT HANDLERS ==========
 
-    const handleBackup = () => {
-        Alert.alert('Info', 'Backup is no longer needed — all data is stored on the server.');
-    };
-
-    const handleRestore = () => {
-        Alert.alert('Info', 'Restore is no longer needed — all data is stored on the server.');
-    };
-
-    const handleStartFresh = () => {
-        Alert.alert('Info', 'This feature has been removed in the server-first architecture.');
-    };
-
     const handleExportPDF = async () => {
         // Filter to only active items (matching ExportModal logic)
         const activeItems = items.filter(i => i.isActive);
@@ -423,37 +411,14 @@ export default function BuildInventoryScreen() {
             </View>
 
             <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
-                {/* Data Management Cards */}
+                {/* Export Action */}
                 <View style={styles.cardsContainer}>
-                    <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>DATA MANAGEMENT</Text>
+                    <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>ACTIONS</Text>
                     <View style={styles.cardsRow}>
-                        <ActionCard
-                            icon="cloud-upload-outline"
-                            label="Backup"
-                            subtitle="Save current state"
-                            onPress={handleBackup}
-                            color={colors.accentBlue}
-                        />
-                        <ActionCard
-                            icon="refresh-outline"
-                            label="Restore"
-                            subtitle="From last backup"
-                            onPress={handleRestore}
-                            color={colors.statusGreen}
-                        />
-                    </View>
-                    <View style={styles.cardsRow}>
-                        <ActionCard
-                            icon="flash-outline"
-                            label="Start Fresh"
-                            subtitle="Keep essentials only"
-                            onPress={handleStartFresh}
-                            color={mutedRed}
-                        />
                         <ActionCard
                             icon="document-text-outline"
                             label="Export PDF"
-                            subtitle="Share inventory"
+                            subtitle="Share inventory report"
                             onPress={handleExportPDF}
                             color={colors.statusYellow}
                         />

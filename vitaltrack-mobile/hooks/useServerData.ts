@@ -2,13 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import { itemService } from '@/services/items';
 import { categoryService } from '@/services/categories';
 import { orderService } from '@/services/orders';
-import type { Item, Category, SavedOrder, DashboardStats } from '@/types';
+import { api } from '@/services/api';
+import type { Item, Category, SavedOrder, DashboardStats, ActivityLog } from '@/types';
 
 export const queryKeys = {
   items: ['items'] as const,
   categories: ['categories'] as const,
   orders: ['orders'] as const,
   stats: ['items', 'stats'] as const,
+  activities: ['activities'] as const,
   item: (id: string) => ['items', id] as const,
 };
 
@@ -46,5 +48,17 @@ export function useStats() {
   return useQuery({
     queryKey: queryKeys.stats,
     queryFn: (): Promise<DashboardStats> => itemService.getStats(),
+  });
+}
+
+export function useActivities(limit = 50) {
+  return useQuery({
+    queryKey: queryKeys.activities,
+    queryFn: async (): Promise<ActivityLog[]> => {
+      const response = await api.get<{ activities: ActivityLog[]; total: number }>(
+        `/activities?limit=${limit}`
+      );
+      return response.activities;
+    },
   });
 }
