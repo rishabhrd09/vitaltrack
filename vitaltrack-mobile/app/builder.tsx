@@ -3,7 +3,7 @@
  * Premium Groww/Claude-inspired UI with comprehensive data management
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -30,6 +30,7 @@ import { useItems, useCategories } from '@/hooks/useServerData';
 import { useDeleteItem, useDeleteCategory, useCreateCategory, useToggleItemCritical } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { handleMutationError } from '@/utils/serverErrors';
+import { useSeedInventory, useStartFresh } from '@/hooks/useSeedInventory';
 
 export default function BuildInventoryScreen() {
     const router = useRouter();
@@ -37,12 +38,14 @@ export default function BuildInventoryScreen() {
     const scrollRef = useRef<ScrollView>(null);
     const { isOnline } = useNetworkStatus();
 
-    const { data: categories = [] } = useCategories();
-    const { data: items = [] } = useItems();
+    const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+    const { data: items = [], isLoading: itemsLoading } = useItems();
     const deleteItemMutation = useDeleteItem();
     const deleteCategoryMutation = useDeleteCategory();
     const createCategoryMutation = useCreateCategory();
     const toggleItemCriticalMutation = useToggleItemCritical();
+    const { seed, isSeeding, progress: seedProgress } = useSeedInventory();
+    const { startFresh } = useStartFresh();
 
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
         categories.length > 0 ? categories[0].id : null
@@ -50,11 +53,116 @@ export default function BuildInventoryScreen() {
     const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newCategoryDesc, setNewCategoryDesc] = useState('');
+    const [seedPromptShown, setSeedPromptShown] = useState(false);
+
+    // Keep selectedCategoryId in sync when categories load or change
+    useEffect(() => {
+        if (!selectedCategoryId && categories.length > 0) {
+            setSelectedCategoryId(categories[0].id);
+        }
+    }, [categories, selectedCategoryId]);
+
+    // Auto-prompt new users (empty inventory) to seed 32 default items
+    useEffect(() => {
+        if (categoriesLoading || itemsLoading || seedPromptShown) return;
+        if (categories.length === 0 && items.length === 0) {
+            setSeedPromptShown(true);
+            Alert.alert(
+                'Welcome to VitalTrack',
+                'Your inventory is empty. Would you like to add the default Home ICU inventory (10 categories, 32 items)?',
+                [
+                    { text: 'No, start empty', style: 'cancel' },
+                    { text: 'Yes, add defaults', onPress: () => handleSeed() },
+                ]
+            );
+        }
+    }, [categoriesLoading, itemsLoading, categories.length, items.length, seedPromptShown]);
 
     const categoryItems = items.filter((item) => item.categoryId === selectedCategoryId);
     const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
 
     // ========== DATA MANAGEMENT HANDLERS ==========
+
+    const handleSeed = async () => {
+        if (!isOnline) {
+            Alert.alert('Offline', 'Connect to WiFi to add default inventory.');
+            return;
+        }
+        try {
+            const result = await seed();
+            if (result.errors.length === 0) {
+                Alert.alert('Done', `Added ${result.completed} categories and items to your inventory.`);
+            } else {
+                Alert.alert(
+                    'Partial success',
+                    `Added ${result.completed} of ${result.total} entries.\n\n${result.errors.length} failed:\n${result.errors.slice(0, 3).join('\n')}${result.errors.length > 3 ? '\n…' : ''}`
+                );
+            }
+        } catch (err) {
+            handleMutationError(err, 'Seed Inventory');
+        }
+    };
+
+    const handleBackup = async () => {
+        if (items.length === 0 && categories.length === 0) {
+            Alert.alert('Nothing to back up', 'Add some items first.');
+            return;
+        }
+        try {
+            const backup = {
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                categories,
+                items,
+            };
+            const json = JSON.stringify(backup, null, 2);
+            const FileSystem = await import('expo-file-system/legacy');
+            const dir = FileSystem.documentDirectory || '';
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const fileUri = `${dir}VitalTrack-Backup-${dateStr}.json`;
+            await FileSystem.writeAsStringAsync(fileUri, json);
+            if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(fileUri, {
+                    mimeType: 'application/json',
+                    dialogTitle: 'VitalTrack Backup',
+                });
+            } else {
+                Alert.alert('Saved', `Backup written to ${fileUri}`);
+            }
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            Alert.alert('Backup Failed', msg);
+        }
+    };
+
+    const handleStartFresh = () => {
+        if (!isOnline) {
+            Alert.alert('Offline', 'Connect to WiFi to reset inventory.');
+            return;
+        }
+        Alert.alert(
+            'Start Fresh',
+            'This will delete all non-essential items from the server. Critical life-support equipment (ventilator, oxygen, suction, nebulizer, ambu bag) will be kept. This cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Start Fresh',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const result = await startFresh(items);
+                            Alert.alert(
+                                'Done',
+                                `Deleted ${result.deleted} items. Kept ${result.kept} essential items.${result.errors.length > 0 ? `\n\n${result.errors.length} failed.` : ''}`
+                            );
+                        } catch (err) {
+                            handleMutationError(err, 'Start Fresh');
+                        }
+                    },
+                },
+            ]
+        );
+    };
 
     const handleExportPDF = async () => {
         // Filter to only active items (matching ExportModal logic)
@@ -411,16 +519,54 @@ export default function BuildInventoryScreen() {
             </View>
 
             <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
-                {/* Export Action */}
+                {/* Seeding progress banner */}
+                {isSeeding && seedProgress && (
+                    <View style={[styles.seedingBanner, { backgroundColor: colors.accentBlueBg, borderColor: colors.accentBlue }]}>
+                        <Ionicons name="cloud-upload-outline" size={18} color={colors.accentBlue} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.seedingTitle, { color: colors.accentBlue }]}>
+                                Seeding inventory ({seedProgress.completed}/{seedProgress.total})
+                            </Text>
+                            <Text style={[styles.seedingSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+                                {seedProgress.currentAction}
+                            </Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* Data Management Cards */}
                 <View style={styles.cardsContainer}>
-                    <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>ACTIONS</Text>
+                    <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>DATA MANAGEMENT</Text>
                     <View style={styles.cardsRow}>
+                        <ActionCard
+                            icon="cloud-upload-outline"
+                            label="Backup"
+                            subtitle="Export as JSON"
+                            onPress={handleBackup}
+                            color={colors.accentBlue}
+                        />
                         <ActionCard
                             icon="document-text-outline"
                             label="Export PDF"
                             subtitle="Share inventory report"
                             onPress={handleExportPDF}
                             color={colors.statusYellow}
+                        />
+                    </View>
+                    <View style={styles.cardsRow}>
+                        <ActionCard
+                            icon="sparkles-outline"
+                            label={items.length === 0 && categories.length === 0 ? 'Seed Defaults' : 'Add Defaults'}
+                            subtitle="32 Home ICU items"
+                            onPress={handleSeed}
+                            color={colors.statusGreen}
+                        />
+                        <ActionCard
+                            icon="flash-outline"
+                            label="Start Fresh"
+                            subtitle="Keep essentials only"
+                            onPress={handleStartFresh}
+                            color={mutedRed}
                         />
                     </View>
                 </View>
@@ -636,6 +782,18 @@ const styles = StyleSheet.create({
     headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
     headerSubtitle: { fontSize: fontSize.xs, marginTop: 2 },
 
+    seedingBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        marginHorizontal: spacing.md,
+        marginTop: spacing.md,
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        borderWidth: 1,
+    },
+    seedingTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
+    seedingSubtitle: { fontSize: fontSize.xs, marginTop: 2 },
     cardsContainer: { padding: spacing.md },
     sectionLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.medium, marginBottom: spacing.sm, marginLeft: spacing.xs },
     cardsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
