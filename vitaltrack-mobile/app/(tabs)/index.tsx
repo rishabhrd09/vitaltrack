@@ -3,7 +3,7 @@
  * Shows stats overview, needs attention items, and recent activity
  */
 
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -26,10 +26,7 @@ import StatsCard from '@/components/dashboard/StatsCard';
 import NeedsAttention from '@/components/dashboard/NeedsAttention';
 import ActivityList from '@/components/dashboard/ActivityList';
 import OfflineBanner from '@/components/common/OfflineBanner';
-import { useItems, useOrders, useActivities, useCategories } from '@/hooks/useServerData';
-import { useSeedInventory } from '@/hooks/useSeedInventory';
-import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { handleMutationError } from '@/utils/serverErrors';
+import { useItems, useOrders, useActivities } from '@/hooks/useServerData';
 import { isOutOfStock, isLowStock } from '@/types';
 
 export default function DashboardScreen() {
@@ -47,45 +44,8 @@ export default function DashboardScreen() {
 
   // Server data via React Query
   const { data: items = [], isLoading, error, refetch } = useItems();
-  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { data: orders = [] } = useOrders();
   const { data: activityLogs = [] } = useActivities(20);
-  const { seed, isSeeding, progress: seedProgress } = useSeedInventory();
-  const { isOnline } = useNetworkStatus();
-  const [seedPromptShown, setSeedPromptShown] = useState(false);
-
-  // Auto-prompt brand-new users to seed 32 default items
-  useEffect(() => {
-    if (isLoading || categoriesLoading || seedPromptShown) return;
-    if (items.length === 0 && categories.length === 0 && isOnline) {
-      setSeedPromptShown(true);
-      Alert.alert(
-        'Welcome to VitalTrack',
-        'Your inventory is empty. Add the default Home ICU inventory (10 categories, 32 items) to get started?',
-        [
-          { text: 'Not now', style: 'cancel' },
-          {
-            text: 'Add defaults',
-            onPress: async () => {
-              try {
-                const result = await seed();
-                if (result.errors.length === 0) {
-                  Alert.alert('Done', `Added ${result.completed} items to your inventory.`);
-                } else {
-                  Alert.alert(
-                    'Partial success',
-                    `Added ${result.completed} of ${result.total}. ${result.errors.length} failed.`
-                  );
-                }
-              } catch (err) {
-                handleMutationError(err, 'Seed Inventory');
-              }
-            },
-          },
-        ]
-      );
-    }
-  }, [isLoading, categoriesLoading, items.length, categories.length, seedPromptShown, isOnline, seed]);
 
   const activeItems = useMemo(() => items.filter(i => i.isActive), [items]);
   const outOfStockItems = useMemo(() => activeItems.filter(isOutOfStock), [activeItems]);
@@ -143,15 +103,6 @@ export default function DashboardScreen() {
       />
 
       <OfflineBanner />
-
-      {isSeeding && seedProgress && (
-        <View style={[styles.seedingBanner, { backgroundColor: colors.accentBlueBg, borderColor: colors.accentBlue }]}>
-          <Ionicons name="cloud-upload-outline" size={16} color={colors.accentBlue} />
-          <Text style={[styles.seedingText, { color: colors.accentBlue }]} numberOfLines={1}>
-            Seeding inventory {seedProgress.completed}/{seedProgress.total} — {seedProgress.currentAction}
-          </Text>
-        </View>
-      )}
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -286,22 +237,6 @@ const createDynamicStyles = (colors: any) => StyleSheet.create({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  seedingBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-  },
-  seedingText: {
-    flex: 1,
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.medium,
   },
   loadingContainer: {
     flex: 1,

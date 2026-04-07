@@ -27,10 +27,16 @@ import { formatDate, now } from '@/utils/helpers';
 import { escapeHtml } from '@/utils/sanitize';
 import { isOutOfStock, isLowStock } from '@/types';
 import { useItems, useCategories } from '@/hooks/useServerData';
-import { useDeleteItem, useDeleteCategory, useCreateCategory, useToggleItemCritical } from '@/hooks/useServerMutations';
+import { useDeleteItem, useDeleteCategory, useCreateCategory, useToggleItemCritical, useCreateItem } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { handleMutationError } from '@/utils/serverErrors';
-import { useSeedInventory, useStartFresh } from '@/hooks/useSeedInventory';
+import {
+    useSeedInventory,
+    useStartFresh,
+    createAutoBackup,
+    isProtectedCategory,
+    getSuggestedItemsForCategory,
+} from '@/hooks/useSeedInventory';
 
 export default function BuildInventoryScreen() {
     const router = useRouter();
@@ -43,6 +49,7 @@ export default function BuildInventoryScreen() {
     const deleteItemMutation = useDeleteItem();
     const deleteCategoryMutation = useDeleteCategory();
     const createCategoryMutation = useCreateCategory();
+    const createItemMutation = useCreateItem();
     const toggleItemCriticalMutation = useToggleItemCritical();
     const { seed, isSeeding, progress: seedProgress } = useSeedInventory();
     const { startFresh } = useStartFresh();
@@ -53,7 +60,9 @@ export default function BuildInventoryScreen() {
     const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newCategoryDesc, setNewCategoryDesc] = useState('');
-    const [seedPromptShown, setSeedPromptShown] = useState(false);
+    // Use a ref so the prompt fires exactly once per mount, even if state updates
+    // re-trigger the effect before Alert is dismissed.
+    const seedPromptFiredRef = useRef(false);
 
     // Keep selectedCategoryId in sync when categories load or change
     useEffect(() => {
@@ -62,11 +71,13 @@ export default function BuildInventoryScreen() {
         }
     }, [categories, selectedCategoryId]);
 
-    // Auto-prompt new users (empty inventory) to seed 32 default items
+    // Auto-prompt new users (empty inventory) to seed 32 default items.
+    // Fires exactly once per screen mount.
     useEffect(() => {
-        if (categoriesLoading || itemsLoading || seedPromptShown) return;
+        if (categoriesLoading || itemsLoading) return;
+        if (seedPromptFiredRef.current) return;
         if (categories.length === 0 && items.length === 0) {
-            setSeedPromptShown(true);
+            seedPromptFiredRef.current = true;
             Alert.alert(
                 'Welcome to VitalTrack',
                 'Your inventory is empty. Would you like to add the default Home ICU inventory (10 categories, 32 items)?',
@@ -76,14 +87,19 @@ export default function BuildInventoryScreen() {
                 ]
             );
         }
-    }, [categoriesLoading, itemsLoading, categories.length, items.length, seedPromptShown]);
+    }, [categoriesLoading, itemsLoading, categories.length, items.length]);
 
     const categoryItems = items.filter((item) => item.categoryId === selectedCategoryId);
     const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+    // Suggestions: seed items that belong to this category but aren't yet in inventory
+    const suggestedItems = selectedCategory
+        ? getSuggestedItemsForCategory(selectedCategory.name, categoryItems)
+        : [];
 
     // ========== DATA MANAGEMENT HANDLERS ==========
 
-    const handleSeed = async () => {
+    // Actually run the seed (called after confirmation)
+    const runSeed = async () => {
         if (!isOnline) {
             Alert.alert('Offline', 'Connect to WiFi to add default inventory.');
             return;
@@ -91,7 +107,7 @@ export default function BuildInventoryScreen() {
         try {
             const result = await seed();
             if (result.errors.length === 0) {
-                Alert.alert('Done', `Added ${result.completed} categories and items to your inventory.`);
+                Alert.alert('Done', `Added ${result.completed} entries to your inventory.`);
             } else {
                 Alert.alert(
                     'Partial success',
@@ -103,11 +119,21 @@ export default function BuildInventoryScreen() {
         }
     };
 
-    const handleBackup = async () => {
-        if (items.length === 0 && categories.length === 0) {
-            Alert.alert('Nothing to back up', 'Add some items first.');
-            return;
-        }
+    // Show confirmation, then seed. Used by both manual button and auto-prompt.
+    const handleSeed = () => {
+        const hasExisting = items.length > 0 || categories.length > 0;
+        Alert.alert(
+            'Add Default Inventory',
+            `This will add ${hasExisting ? 'any missing ' : ''}default Home ICU items (10 categories, 32 items). Existing categories and items will NOT be duplicated.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Add Defaults', onPress: () => runSeed() },
+            ]
+        );
+    };
+
+    // Actually export the JSON backup (called after confirmation)
+    const runBackup = async () => {
         try {
             const backup = {
                 version: 1,
@@ -135,25 +161,54 @@ export default function BuildInventoryScreen() {
         }
     };
 
+    const handleBackup = () => {
+        if (items.length === 0 && categories.length === 0) {
+            Alert.alert('Nothing to back up', 'Add some items first.');
+            return;
+        }
+        Alert.alert(
+            'Export Backup',
+            'This will create a JSON backup of your entire inventory (categories, items, quantities). You can share or save the file.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Export', onPress: () => runBackup() },
+            ]
+        );
+    };
+
     const handleStartFresh = () => {
         if (!isOnline) {
             Alert.alert('Offline', 'Connect to WiFi to reset inventory.');
             return;
         }
+        if (items.length === 0) {
+            Alert.alert('Nothing to reset', 'Your inventory is already empty.');
+            return;
+        }
         Alert.alert(
-            'Start Fresh',
-            'This will delete all non-essential items from the server. Critical life-support equipment (ventilator, oxygen, suction, nebulizer, ambu bag) will be kept. This cannot be undone.',
+            'Start Fresh — Are you sure?',
+            'This will:\n\n• Auto-backup your current inventory to a JSON file\n• Delete all non-essential items from the server\n• Keep life-support equipment (ventilator, oxygen, suction, nebulizer, ambu bag, BiPAP)\n\nThis action cannot be undone.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Start Fresh',
+                    text: 'Backup & Start Fresh',
                     style: 'destructive',
                     onPress: async () => {
+                        let backupPath = '';
                         try {
+                            // Step 1: Auto-backup silently
+                            backupPath = await createAutoBackup(categories, items);
+                        } catch (err) {
+                            const msg = err instanceof Error ? err.message : String(err);
+                            Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nStart Fresh aborted to protect your data.`);
+                            return;
+                        }
+                        try {
+                            // Step 2: Delete non-essential items
                             const result = await startFresh(items);
                             Alert.alert(
                                 'Done',
-                                `Deleted ${result.deleted} items. Kept ${result.kept} essential items.${result.errors.length > 0 ? `\n\n${result.errors.length} failed.` : ''}`
+                                `Deleted ${result.deleted} items. Kept ${result.kept} essential items.${result.errors.length > 0 ? `\n\n${result.errors.length} failed.` : ''}\n\nAuto-backup saved at:\n${backupPath}`
                             );
                         } catch (err) {
                             handleMutationError(err, 'Start Fresh');
@@ -164,7 +219,8 @@ export default function BuildInventoryScreen() {
         );
     };
 
-    const handleExportPDF = async () => {
+    // Internal: actually generate and share the PDF.
+    const runExportPDF = async () => {
         // Filter to only active items (matching ExportModal logic)
         const activeItems = items.filter(i => i.isActive);
 
@@ -445,6 +501,21 @@ export default function BuildInventoryScreen() {
         }
     };
 
+    const handleExportPDF = () => {
+        if (items.length === 0 && categories.length === 0) {
+            Alert.alert('Nothing to export', 'Add some items first.');
+            return;
+        }
+        Alert.alert(
+            'Export PDF',
+            'This will generate a PDF report of your full inventory with stock levels, suppliers, and critical-equipment flags. You can share or save the file.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Generate PDF', onPress: () => runExportPDF() },
+            ]
+        );
+    };
+
     const handleDeleteItem = (itemId: string, itemName: string) => {
         if (!isOnline) { Alert.alert('Offline', 'Connect to WiFi to delete items.'); return; }
         Alert.alert('Delete Item', `Remove "${itemName}"?`, [
@@ -461,23 +532,59 @@ export default function BuildInventoryScreen() {
     const handleDeleteCategory = () => {
         if (!selectedCategory) return;
         if (!isOnline) { Alert.alert('Offline', 'Connect to WiFi to delete categories.'); return; }
+
+        // Protect the 10 default medical-domain categories — they represent the
+        // structural backbone of a Home ICU and cannot be deleted.
+        if (isProtectedCategory(selectedCategory.name)) {
+            Alert.alert(
+                'Default Category',
+                `"${selectedCategory.name}" is a default medical category and cannot be deleted. You can remove individual items from it instead.`
+            );
+            return;
+        }
+
         if (categoryItems.length > 0) {
             Alert.alert('Cannot Delete', `"${selectedCategory.name}" has ${categoryItems.length} items. Remove items first.`);
             return;
         }
-        Alert.alert('Delete Category', `Remove "${selectedCategory.name}"?`, [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: async () => {
-                    try {
-                        await deleteCategoryMutation.mutateAsync(selectedCategory.id);
-                        setSelectedCategoryId(categories.length > 1 ? categories[0].id : null);
-                    } catch (error) { handleMutationError(error, 'Delete Category'); }
+        Alert.alert(
+            'Delete Category',
+            `Delete category "${selectedCategory.name}"? This cannot be undone.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await deleteCategoryMutation.mutateAsync(selectedCategory.id);
+                            setSelectedCategoryId(categories.length > 1 ? categories[0].id : null);
+                        } catch (error) { handleMutationError(error, 'Delete Category'); }
+                    },
                 },
-            },
-        ]);
+            ]
+        );
+    };
+
+    // Add a single suggested item from the seed catalog (one tap → POST /items)
+    const handleAddSuggested = async (
+        suggestion: { name: string; unit: string; minimumStock: number; description?: string; isCritical: boolean }
+    ) => {
+        if (!isOnline) { Alert.alert('Offline', 'Connect to WiFi to add items.'); return; }
+        if (!selectedCategoryId) return;
+        try {
+            await createItemMutation.mutateAsync({
+                categoryId: selectedCategoryId,
+                name: suggestion.name,
+                description: suggestion.description,
+                quantity: 0,
+                unit: suggestion.unit,
+                minimumStock: suggestion.minimumStock,
+                isCritical: suggestion.isCritical,
+            });
+        } catch (err) {
+            handleMutationError(err, 'Add Suggested Item');
+        }
     };
 
     const handleAddCategory = async () => {
@@ -692,6 +799,59 @@ export default function BuildInventoryScreen() {
                             </View>
                         ))
                     )}
+
+                    {/* Suggested items from the seed catalog (for this category) */}
+                    {suggestedItems.length > 0 && (
+                        <>
+                            <View style={[styles.suggestedHeader, { borderTopColor: colors.borderPrimary }]}>
+                                <Ionicons name="bulb-outline" size={14} color={colors.textTertiary} />
+                                <Text style={[styles.suggestedHeaderText, { color: colors.textTertiary }]}>
+                                    SUGGESTED ITEMS
+                                </Text>
+                            </View>
+                            {suggestedItems.map((sugg, idx) => (
+                                <View
+                                    key={`sugg-${sugg.name}`}
+                                    style={[
+                                        styles.suggestedRow,
+                                        idx > 0 && { borderTopWidth: 1, borderTopColor: colors.borderPrimary },
+                                    ]}
+                                >
+                                    <View style={styles.itemInfo}>
+                                        <Text
+                                            style={[styles.itemName, styles.suggestedName, { color: colors.textSecondary }]}
+                                            numberOfLines={1}
+                                        >
+                                            {sugg.name}
+                                        </Text>
+                                        <View style={styles.itemMeta}>
+                                            <Text style={[styles.itemStock, { color: colors.textMuted }]}>
+                                                {sugg.unit}
+                                            </Text>
+                                            <Text style={[styles.itemDot, { color: colors.textMuted }]}>·</Text>
+                                            <Text style={[styles.itemMin, { color: colors.textMuted }]}>
+                                                Min: {sugg.minimumStock}
+                                            </Text>
+                                            {sugg.isCritical && (
+                                                <>
+                                                    <Text style={[styles.itemDot, { color: colors.textMuted }]}>·</Text>
+                                                    <Text style={[styles.itemMin, { color: '#FAB005' }]}>critical</Text>
+                                                </>
+                                            )}
+                                        </View>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={[styles.suggestedAddBtn, { borderColor: colors.accentBlue }]}
+                                        onPress={() => handleAddSuggested(sugg)}
+                                        disabled={createItemMutation.isPending}
+                                    >
+                                        <Ionicons name="add" size={14} color={colors.accentBlue} />
+                                        <Text style={[styles.suggestedAddText, { color: colors.accentBlue }]}>Add</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </>
+                    )}
                 </View>
 
                 {/* Bottom space for FAB */}
@@ -782,6 +942,43 @@ const styles = StyleSheet.create({
     headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
     headerSubtitle: { fontSize: fontSize.xs, marginTop: 2 },
 
+    suggestedHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.md,
+        paddingBottom: spacing.sm,
+        marginTop: spacing.sm,
+        borderTopWidth: 1,
+    },
+    suggestedHeaderText: {
+        fontSize: fontSize.xs,
+        fontWeight: fontWeight.semibold,
+        letterSpacing: 0.5,
+    },
+    suggestedRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+    },
+    suggestedName: {
+        fontStyle: 'italic',
+    },
+    suggestedAddBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.xs,
+        borderWidth: 1,
+        borderRadius: borderRadius.full,
+    },
+    suggestedAddText: {
+        fontSize: fontSize.xs,
+        fontWeight: fontWeight.semibold,
+    },
     seedingBanner: {
         flexDirection: 'row',
         alignItems: 'center',
