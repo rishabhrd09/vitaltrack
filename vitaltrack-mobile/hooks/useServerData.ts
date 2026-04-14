@@ -41,6 +41,7 @@ export function useOrders() {
       const response = await orderService.getAll();
       return response.orders;
     },
+    staleTime: 0,
   });
 }
 

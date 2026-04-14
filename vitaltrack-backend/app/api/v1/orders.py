@@ -76,6 +76,9 @@ async def list_orders(
     return OrderListResponse(
         orders=[OrderResponse.model_validate(order) for order in orders],
         total=total,
+        page=page,
+        page_size=page_size,
+        has_more=(offset + page_size) < total,
     )
 
 

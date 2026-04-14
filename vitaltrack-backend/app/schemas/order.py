@@ -84,6 +84,7 @@ class OrderUpdate(BaseModel):
     received_at: Optional[datetime] = Field(None, alias="receivedAt")
     applied_at: Optional[datetime] = Field(None, alias="appliedAt")
     declined_at: Optional[datetime] = Field(None, alias="declinedAt")
+    notes: Optional[str] = None
 
     model_config = {"populate_by_name": True}
 
@@ -126,7 +127,7 @@ class OrderListResponse(BaseModel):
     orders: List[OrderResponse]
     total: int
     page: int = 1
-    page_size: int = Field(serialization_alias="pageSize")
+    page_size: int = Field(default=20, serialization_alias="pageSize")
     has_more: bool = Field(default=False, serialization_alias="hasMore")
 
     model_config = {"populate_by_name": True}
