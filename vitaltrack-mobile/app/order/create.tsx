@@ -455,8 +455,12 @@ export default function CreateOrderScreen() {
         supplierName: ci.item.supplierName,
       }));
       await createOrderMutation.mutateAsync({ items: orderItems });
-      router.back();
-      Alert.alert("Order Created", "Your order has been saved and exported.");
+      Alert.alert("Order Created", "Your order has been saved and exported.", [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
     } catch (error) {
       handleMutationError(error, 'Create Order');
     }

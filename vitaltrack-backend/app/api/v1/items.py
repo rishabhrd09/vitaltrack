@@ -275,6 +275,20 @@ async def create_item(
             detail="Category not found",
         )
     
+    # Check for duplicate item name (case-insensitive) within this user's items
+    from sqlalchemy import func as sa_func
+    dup_result = await db.execute(
+        select(Item).where(
+            Item.user_id == current_user.id,
+            sa_func.lower(Item.name) == data.name.strip().lower(),
+        )
+    )
+    if dup_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"An item named '{data.name}' already exists",
+        )
+    
     item = Item(
         user_id=current_user.id,
         category_id=data.category_id,
