@@ -47,7 +47,8 @@ export const categoryService = {
    * Get all categories with item counts
    */
   async getWithCounts(): Promise<CategoriesWithCountsResponse> {
-    return api.get<CategoriesWithCountsResponse>('/categories/with-counts');
+    const categories = await api.get<CategoryWithCount[]>('/categories/with-counts');
+    return { categories, total: categories.length };
   },
 
   /**

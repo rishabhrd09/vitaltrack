@@ -24,10 +24,15 @@ interface ItemsQueryParams {
   categoryId?: string;
   search?: string;
   isActive?: boolean;
-  lowStock?: boolean;
-  outOfStock?: boolean;
-  skip?: number;
-  limit?: number;
+  isCritical?: boolean;
+  lowStock?: boolean; // Legacy alias for lowStockOnly
+  outOfStock?: boolean; // Legacy alias for outOfStockOnly
+  lowStockOnly?: boolean;
+  outOfStockOnly?: boolean;
+  page?: number;
+  pageSize?: number;
+  skip?: number; // Legacy offset, converted to page when limit/pageSize is present
+  limit?: number; // Legacy alias for pageSize; values over 100 fetch all pages
 }
 
 // Create item request
@@ -88,18 +93,33 @@ function stripEmpty<T extends Record<string, unknown>>(data: T): Partial<T> {
 }
 
 // Build query string from params
+const MAX_PAGE_SIZE = 100;
+
 function buildQueryString(params?: ItemsQueryParams): string {
   if (!params) return '';
   
   const queryParts: string[] = [];
+  const requestedPageSize = params.pageSize ?? params.limit;
+  const pageSize =
+    requestedPageSize !== undefined
+      ? Math.max(1, Math.min(MAX_PAGE_SIZE, requestedPageSize))
+      : undefined;
+  const page =
+    params.page ??
+    (params.skip !== undefined && pageSize !== undefined
+      ? Math.floor(params.skip / pageSize) + 1
+      : undefined);
+  const lowStockOnly = params.lowStockOnly ?? params.lowStock;
+  const outOfStockOnly = params.outOfStockOnly ?? params.outOfStock;
   
-  if (params.categoryId) queryParts.push(`category_id=${encodeURIComponent(params.categoryId)}`);
+  if (params.categoryId) queryParts.push(`categoryId=${encodeURIComponent(params.categoryId)}`);
   if (params.search) queryParts.push(`search=${encodeURIComponent(params.search)}`);
-  if (params.isActive !== undefined) queryParts.push(`is_active=${params.isActive}`);
-  if (params.lowStock !== undefined) queryParts.push(`low_stock=${params.lowStock}`);
-  if (params.outOfStock !== undefined) queryParts.push(`out_of_stock=${params.outOfStock}`);
-  if (params.skip !== undefined) queryParts.push(`skip=${params.skip}`);
-  if (params.limit !== undefined) queryParts.push(`limit=${params.limit}`);
+  if (params.isActive !== undefined) queryParts.push(`isActive=${params.isActive}`);
+  if (params.isCritical !== undefined) queryParts.push(`isCritical=${params.isCritical}`);
+  if (lowStockOnly !== undefined) queryParts.push(`lowStockOnly=${lowStockOnly}`);
+  if (outOfStockOnly !== undefined) queryParts.push(`outOfStockOnly=${outOfStockOnly}`);
+  if (page !== undefined) queryParts.push(`page=${page}`);
+  if (pageSize !== undefined) queryParts.push(`pageSize=${pageSize}`);
   
   return queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
 }
@@ -109,6 +129,35 @@ export const itemService = {
    * Get all items with optional filters
    */
   async getAll(params?: ItemsQueryParams): Promise<ItemsListResponse> {
+    if (
+      params?.limit !== undefined &&
+      params.limit > MAX_PAGE_SIZE &&
+      params.page === undefined &&
+      params.skip === undefined
+    ) {
+      const items: Item[] = [];
+      let total = 0;
+      let page = 1;
+
+      while (true) {
+        const queryString = buildQueryString({
+          ...params,
+          limit: undefined,
+          skip: undefined,
+          page,
+          pageSize: MAX_PAGE_SIZE,
+        });
+        const response = await api.get<ItemsListResponse>(`/items${queryString}`);
+        items.push(...response.items);
+        total = response.total;
+
+        if (items.length >= total || response.items.length === 0) break;
+        page += 1;
+      }
+
+      return { items, total };
+    }
+
     const queryString = buildQueryString(params);
     return api.get<ItemsListResponse>(`/items${queryString}`);
   },

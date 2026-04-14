@@ -4,10 +4,11 @@ CRUD operations for purchase orders
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Union
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import DB, CurrentUser
 from app.models import ActivityActionType, ActivityLog, Item, Order, OrderItem, OrderStatus
@@ -29,6 +30,42 @@ def generate_order_id(existing_count: int) -> str:
     date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
     sequence = str(existing_count + 1).zfill(4)
     return f"ORD-{date_str}-{sequence}"
+
+
+def _normalize_order_status(status_value: Optional[Union[str, OrderStatus]]) -> OrderStatus:
+    """Convert DB/client status values into the canonical enum."""
+    if status_value is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Status is required",
+        )
+
+    try:
+        return OrderStatus(status_value)
+    except ValueError:
+        member = OrderStatus.__members__.get(str(status_value).upper())
+        if member:
+            return member
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid order status",
+        )
+
+
+def _status_text(status_value: Optional[Union[str, OrderStatus]]) -> str:
+    """Render a status safely whether SQLAlchemy returned a string or enum."""
+    if status_value is None:
+        return "unknown"
+
+    if isinstance(status_value, OrderStatus):
+        return status_value.name.lower()
+
+    raw_status = str(status_value)
+    try:
+        return OrderStatus(raw_status).name.lower()
+    except ValueError:
+        member = OrderStatus.__members__.get(raw_status.upper())
+        return member.name.lower() if member else raw_status
 
 
 # =============================================================================
@@ -59,10 +96,12 @@ async def list_orders(
     # Order by most recent first
     query = query.order_by(Order.exported_at.desc())
     
-    # Get total count
-    count_query = select(func.count()).select_from(
-        select(Order.id).where(Order.user_id == current_user.id).subquery()
+    # Get total count with the same filters as the list query
+    count_query = select(func.count()).select_from(Order).where(
+        Order.user_id == current_user.id
     )
+    if status_filter:
+        count_query = count_query.where(Order.status == status_filter)
     count_result = await db.execute(count_query)
     total = count_result.scalar() or 0
     
@@ -135,70 +174,82 @@ async def create_order(
     - **items**: List of items to order
     - **notes**: Optional notes
     """
-    # Count existing orders today for ID generation
+    # Count existing orders today globally for ID generation
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     count_result = await db.execute(
         select(func.count()).where(
-            Order.user_id == current_user.id,
             Order.exported_at >= today_start,
         )
     )
     today_count = count_result.scalar() or 0
-    
-    # Generate order ID
-    order_id = generate_order_id(today_count)
-    
+
     # Calculate totals
     total_items = len(data.items)
     total_units = sum(item.quantity for item in data.items)
-    
-    now = datetime.now(timezone.utc)
-    
-    # Create order
-    order = Order(
-        user_id=current_user.id,
-        order_id=order_id,
-        total_items=total_items,
-        total_units=total_units,
-        status=OrderStatus.PENDING,
-        exported_at=now,
-        notes=data.notes,
-        local_id=data.local_id,
-    )
-    db.add(order)
-    await db.flush()
-    
-    # Create order items
-    for item_data in data.items:
-        order_item = OrderItem(
-            order_id=order.id,
-            item_id=item_data.item_id,
-            name=item_data.name,
-            brand=item_data.brand,
-            unit=item_data.unit,
-            quantity=item_data.quantity,
-            current_stock=item_data.current_stock,
-            minimum_stock=item_data.minimum_stock,
-            image_uri=item_data.image_uri,
-            supplier_name=item_data.supplier_name,
-            purchase_link=item_data.purchase_link,
+
+    for attempt in range(3):
+        order_id = generate_order_id(today_count + attempt)
+        now = datetime.now(timezone.utc)
+
+        # Create order
+        order = Order(
+            user_id=current_user.id,
+            order_id=order_id,
+            total_items=total_items,
+            total_units=total_units,
+            status=OrderStatus.PENDING,
+            exported_at=now,
+            notes=data.notes,
+            local_id=data.local_id,
         )
-        db.add(order_item)
-    
-    # Log activity
-    activity = ActivityLog(
-        user_id=current_user.id,
-        action=ActivityActionType.ORDER_CREATED,
-        item_name=f"Order {order_id}",
-        order_id=order_id,
-        details=f"{total_items} items, {total_units} units",
+        db.add(order)
+
+        try:
+            await db.flush()
+
+            # Create order items
+            for item_data in data.items:
+                order_item = OrderItem(
+                    order_id=order.id,
+                    item_id=item_data.item_id,
+                    name=item_data.name,
+                    brand=item_data.brand,
+                    unit=item_data.unit,
+                    quantity=item_data.quantity,
+                    current_stock=item_data.current_stock,
+                    minimum_stock=item_data.minimum_stock,
+                    image_uri=item_data.image_uri,
+                    supplier_name=item_data.supplier_name,
+                    purchase_link=item_data.purchase_link,
+                )
+                db.add(order_item)
+
+            # Log activity
+            activity = ActivityLog(
+                user_id=current_user.id,
+                action=ActivityActionType.ORDER_CREATED,
+                item_name=f"Order {order_id}",
+                order_id=order_id,
+                details=f"{total_items} items, {total_units} units",
+            )
+            db.add(activity)
+
+            await db.commit()
+            await db.refresh(order)
+
+            return OrderResponse.model_validate(order)
+        except IntegrityError:
+            await db.rollback()
+            if attempt == 2:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Order ID conflict. Please try again.",
+                )
+
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="Order ID conflict. Please try again.",
     )
-    db.add(activity)
-    
-    await db.commit()
-    await db.refresh(order)
-    
-    return OrderResponse.model_validate(order)
 
 
 # =============================================================================
@@ -239,17 +290,18 @@ async def update_order_status(
     
     now = datetime.now(timezone.utc)
     old_status = order.status
+    new_status = _normalize_order_status(data.status)
     
     # Update status and timestamp
-    order.status = data.status
+    order.status = new_status
     
-    if data.status == OrderStatus.ORDERED:
+    if new_status == OrderStatus.ORDERED:
         order.ordered_at = now
-    elif data.status == OrderStatus.RECEIVED:
+    elif new_status == OrderStatus.RECEIVED:
         order.received_at = now
-    elif data.status == OrderStatus.STOCK_UPDATED:
+    elif new_status == OrderStatus.STOCK_UPDATED:
         order.applied_at = now
-    elif data.status == OrderStatus.DECLINED:
+    elif new_status == OrderStatus.DECLINED:
         order.declined_at = now
     
     if data.notes:
@@ -260,14 +312,14 @@ async def update_order_status(
         OrderStatus.RECEIVED: ActivityActionType.ORDER_RECEIVED,
         OrderStatus.DECLINED: ActivityActionType.ORDER_DECLINED,
         OrderStatus.STOCK_UPDATED: ActivityActionType.ORDER_APPLIED,
-    }.get(data.status, ActivityActionType.ITEM_UPDATE)
+    }.get(new_status, ActivityActionType.ITEM_UPDATE)
     
     activity = ActivityLog(
         user_id=current_user.id,
         action=action_type,
         item_name=f"Order {order.order_id}",
         order_id=order.order_id,
-        details=f"Status: {old_status.value} → {data.status.value}",
+        details=f"Status: {_status_text(old_status)} -> {_status_text(new_status)}",
     )
     db.add(activity)
     
@@ -311,14 +363,22 @@ async def apply_order_to_stock(
             detail="Order not found",
         )
     
-    if order.status != OrderStatus.RECEIVED:
+    if _normalize_order_status(order.status) != OrderStatus.RECEIVED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Order must be in 'received' status to apply to stock",
         )
+
+    if not order.items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order has no items to apply",
+        )
     
-    # Update stock for each item — atomic transaction
-    updated_items = []
+    # Resolve all inventory items before mutating so missing items don't cause
+    # a partial stock application.
+    items_to_update = []
+    missing_items = []
     for order_item in order.items:
         item_result = await db.execute(
             select(Item).where(
@@ -328,22 +388,38 @@ async def apply_order_to_stock(
         )
         item = item_result.scalar_one_or_none()
 
-        if item:
-            old_qty = item.quantity
-            item.quantity += order_item.quantity
-            item.version += 1
-            updated_items.append({"id": item.id, "name": item.name, "old_qty": old_qty, "new_qty": item.quantity})
+        if not item:
+            missing_items.append(order_item.name)
+        else:
+            items_to_update.append((order_item, item))
 
-            # Audit each stock update
-            await log_audit(
-                db,
-                user_id=current_user.id,
-                entity_type="item",
-                entity_id=item.id,
-                action="stock_update",
-                old_values={"quantity": old_qty},
-                new_values={"quantity": item.quantity, "source": f"order:{order.order_id}"},
-            )
+    if missing_items:
+        missing_preview = ", ".join(missing_items[:3])
+        if len(missing_items) > 3:
+            missing_preview += ", ..."
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot apply order because inventory items are missing: {missing_preview}",
+        )
+
+    # Update stock for each item in one transaction.
+    updated_items = []
+    for order_item, item in items_to_update:
+        old_qty = item.quantity
+        item.quantity += order_item.quantity
+        item.version += 1
+        updated_items.append({"id": item.id, "name": item.name, "old_qty": old_qty, "new_qty": item.quantity})
+
+        # Audit each stock update
+        await log_audit(
+            db,
+            user_id=current_user.id,
+            entity_type="item",
+            entity_id=item.id,
+            action="stock_update",
+            old_values={"quantity": old_qty},
+            new_values={"quantity": item.quantity, "source": f"order:{order.order_id}"},
+        )
 
     # Update order status
     order.status = OrderStatus.STOCK_UPDATED
@@ -397,7 +473,7 @@ async def delete_order(
             detail="Order not found",
         )
     
-    if order.status not in [OrderStatus.PENDING, OrderStatus.DECLINED]:
+    if _normalize_order_status(order.status) not in [OrderStatus.PENDING, OrderStatus.DECLINED]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only pending or declined orders can be deleted",

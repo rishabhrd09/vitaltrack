@@ -25,7 +25,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import { formatDate, now } from '@/utils/helpers';
 import { escapeHtml } from '@/utils/sanitize';
-import { isOutOfStock, isLowStock } from '@/types';
+import { isOutOfStock, isLowStock, type Category } from '@/types';
 import { useItems, useCategories } from '@/hooks/useServerData';
 import { useDeleteItem, useDeleteCategory, useCreateCategory, useToggleItemCritical, useCreateItem } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -529,27 +529,28 @@ export default function BuildInventoryScreen() {
         ]);
     };
 
-    const handleDeleteCategory = () => {
-        if (!selectedCategory) return;
+    const handleDeleteCategory = (categoryToDelete: Category | undefined = selectedCategory) => {
+        if (!categoryToDelete) return;
         if (!isOnline) { Alert.alert('Offline', 'Connect to WiFi to delete categories.'); return; }
+        const itemsInCategory = items.filter((item) => item.categoryId === categoryToDelete.id);
 
         // Protect the 10 default medical-domain categories — they represent the
         // structural backbone of a Home ICU and cannot be deleted.
-        if (isProtectedCategory(selectedCategory.name)) {
+        if (isProtectedCategory(categoryToDelete.name)) {
             Alert.alert(
                 'Default Category',
-                `"${selectedCategory.name}" is a default medical category and cannot be deleted. You can remove individual items from it instead.`
+                `"${categoryToDelete.name}" is a default medical category and cannot be deleted. You can remove individual items from it instead.`
             );
             return;
         }
 
-        if (categoryItems.length > 0) {
-            Alert.alert('Cannot Delete', `"${selectedCategory.name}" has ${categoryItems.length} items. Remove items first.`);
+        if (itemsInCategory.length > 0) {
+            Alert.alert('Cannot Delete', `"${categoryToDelete.name}" has ${itemsInCategory.length} items. Remove items first.`);
             return;
         }
         Alert.alert(
             'Delete Category',
-            `Delete category "${selectedCategory.name}"? This cannot be undone.`,
+            `Delete category "${categoryToDelete.name}"? This cannot be undone.`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -557,8 +558,8 @@ export default function BuildInventoryScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await deleteCategoryMutation.mutateAsync(selectedCategory.id);
-                            setSelectedCategoryId(categories.length > 1 ? categories[0].id : null);
+                            await deleteCategoryMutation.mutateAsync(categoryToDelete.id);
+                            setSelectedCategoryId(categories.find((c) => c.id !== categoryToDelete.id)?.id ?? null);
                         } catch (error) { handleMutationError(error, 'Delete Category'); }
                     },
                 },
@@ -707,7 +708,7 @@ export default function BuildInventoryScreen() {
                                     onPress={() => setSelectedCategoryId(cat.id)}
                                     onLongPress={() => {
                                         setSelectedCategoryId(cat.id);
-                                        handleDeleteCategory();
+                                        handleDeleteCategory(cat);
                                     }}
                                 >
                                     <Text style={[
@@ -733,7 +734,7 @@ export default function BuildInventoryScreen() {
                     {selectedCategory && (
                         <View style={[styles.listHeader, { borderBottomColor: colors.borderPrimary }]}>
                             <Text style={[styles.listTitle, { color: colors.textPrimary }]}>{selectedCategory.name}</Text>
-                            <TouchableOpacity onPress={handleDeleteCategory}>
+                            <TouchableOpacity onPress={() => handleDeleteCategory()}>
                                 <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
                             </TouchableOpacity>
                         </View>

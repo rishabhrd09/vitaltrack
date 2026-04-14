@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy.exc import IntegrityError
 
 from app.api.v1 import router as api_v1_router
 from app.core.config import settings
@@ -162,6 +163,22 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         )
+
+    @app.exception_handler(IntegrityError)
+    async def integrity_error_handler(
+        request: Request,
+        exc: IntegrityError,
+    ) -> JSONResponse:
+        """Handle database conflicts without exposing SQL details."""
+        logger.exception("Database integrity error")
+
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={
+                "detail": "A conflict occurred. Please try again.",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
     
     @app.exception_handler(Exception)
     async def general_exception_handler(
@@ -169,18 +186,12 @@ def register_exception_handlers(app: FastAPI) -> None:
         exc: Exception,
     ) -> JSONResponse:
         """Handle unexpected errors."""
-        # Log the error in production
-        if settings.ENVIRONMENT == "production":
-            # In production, you would log to an error tracking service
-            pass
-        else:
-            logger.exception("Unhandled exception")
+        logger.exception("Unhandled exception")
         
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
-                "error": "Internal Server Error",
-                "message": "An unexpected error occurred" if settings.ENVIRONMENT == "production" else str(exc),
+                "detail": "An unexpected error occurred. Please try again.",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         )
