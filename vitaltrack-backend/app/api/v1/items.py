@@ -7,7 +7,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 
 from app.api.deps import DB, CurrentUser
 from app.models import ActivityActionType, ActivityLog, Category, Item
@@ -89,14 +89,14 @@ async def list_items(
             )
         )
     
+    # Get total count with the same filters as the list query
+    count_result = await db.execute(
+        select(func.count()).select_from(query.order_by(None).subquery())
+    )
+    total = count_result.scalar() or 0
+
     # Order by name
     query = query.order_by(Item.name)
-    
-    # Get total count
-    count_result = await db.execute(
-        select(Item.id).where(Item.user_id == current_user.id)
-    )
-    total = len(count_result.all())
     
     # Apply pagination
     offset = (page - 1) * page_size
@@ -276,11 +276,10 @@ async def create_item(
         )
     
     # Check for duplicate item name (case-insensitive) within this user's items
-    from sqlalchemy import func as sa_func
     dup_result = await db.execute(
         select(Item).where(
             Item.user_id == current_user.id,
-            sa_func.lower(Item.name) == data.name.strip().lower(),
+            func.lower(Item.name) == data.name.strip().lower(),
         )
     )
     if dup_result.scalar_one_or_none():
@@ -394,6 +393,21 @@ async def update_item(
 
     # Track changes for activity log
     changes = []
+
+    # Check for duplicate item name if renaming
+    if data.name is not None and data.name.strip().lower() != item.name.strip().lower():
+        dup_result = await db.execute(
+            select(Item).where(
+                Item.user_id == current_user.id,
+                Item.id != item_id,
+                func.lower(Item.name) == data.name.strip().lower(),
+            )
+        )
+        if dup_result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"An item named '{data.name}' already exists",
+            )
 
     # Verify category if changing
     if data.category_id and data.category_id != item.category_id:

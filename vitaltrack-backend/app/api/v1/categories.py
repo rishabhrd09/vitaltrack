@@ -152,7 +152,7 @@ async def create_category(
     result = await db.execute(
         select(Category).where(
             Category.user_id == current_user.id,
-            Category.name == data.name,
+            func.lower(Category.name) == data.name.strip().lower(),
         )
     )
     if result.scalar_one_or_none():
@@ -222,11 +222,11 @@ async def update_category(
         )
     
     # Check for duplicate name if changing
-    if data.name and data.name != category.name:
+    if data.name and data.name.strip().lower() != category.name.strip().lower():
         name_check = await db.execute(
             select(Category).where(
                 Category.user_id == current_user.id,
-                Category.name == data.name,
+                func.lower(Category.name) == data.name.strip().lower(),
                 Category.id != category_id,
             )
         )

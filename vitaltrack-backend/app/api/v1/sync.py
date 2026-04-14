@@ -133,13 +133,13 @@ async def sync_push(
             else:
                 error_count += 1
                 logger.error(f"Operation failed: {op.id} - {result.error}")
-        except Exception as e:
-            logger.error(f"Operation exception: {op.id} - {str(e)}")
+        except Exception:
+            logger.exception("Sync operation exception: %s", op.id)
             results.append(
                 SyncOperationResult(
                     operation_id=op.id,
                     success=False,
-                    error=str(e),
+                    error="Sync operation failed. Please try again.",
                 )
             )
             error_count += 1
