@@ -79,12 +79,12 @@ export default function VitalTrackTopBar({
                 <View style={styles.leftSection}>
                     {/* Logo */}
                     <View style={[styles.logo, { backgroundColor: colors.accentBlue }]}>
-                        <Text style={[styles.logoText, { color: colors.white }]}>V</Text>
+                        <Text style={[styles.logoText, { color: colors.white }]}>C</Text>
                     </View>
 
                     {/* App Name */}
                     <View style={styles.appNameContainer}>
-                        <Text style={[styles.appName, { color: colors.textPrimary }]}>VitalTrack</Text>
+                        <Text style={[styles.appName, { color: colors.textPrimary }]}>CareKosh</Text>
                         <Text style={[styles.appSubtitle, { color: colors.textTertiary }]}>My Home ICU</Text>
                     </View>
                 </View>

@@ -232,7 +232,7 @@ export async function createAutoBackup(
   const FileSystem = await import('expo-file-system/legacy');
   const dir = FileSystem.documentDirectory || '';
   const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const fileUri = `${dir}VitalTrack-AutoBackup-${dateStr}.json`;
+  const fileUri = `${dir}CareKosh-AutoBackup-${dateStr}.json`;
   await FileSystem.writeAsStringAsync(fileUri, json);
   return fileUri;
 }

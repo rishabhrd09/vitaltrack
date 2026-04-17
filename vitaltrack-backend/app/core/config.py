@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     )
 
     # Application
-    APP_NAME: str = "VitalTrack API"
+    APP_NAME: str = "CareKosh API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "development"  # development, staging, production

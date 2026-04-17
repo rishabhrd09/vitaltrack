@@ -182,7 +182,7 @@ export default function RegisterScreen() {
                     <Ionicons name="medical" size={50} color={colors.primary} />
                     <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                        Join VitalTrack to manage your inventory
+                        Join CareKosh to manage your inventory
                     </Text>
                 </View>
 

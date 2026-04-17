@@ -1,0 +1,52 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#ffffff"/>
+
+  <!-- House outline: roof + body -->
+  <path d="M256,62 L406,178 L406,440 C406,456 394,468 378,468 L134,468 C118,468 106,456 106,440 L106,178 Z"
+    fill="rgba(140,100,40,.03)" stroke="#8a6830" stroke-width="6" stroke-opacity=".42" stroke-linejoin="round"/>
+
+  <!-- Chimney -->
+  <rect x="340" y="90" width="30" height="70" rx="4" fill="#ffffff" stroke="#8a6830" stroke-width="4" stroke-opacity=".2"/>
+
+  <!-- Roof ridge line -->
+  <line x1="140" y1="178" x2="372" y2="178" stroke="#8a6830" stroke-width="2" stroke-opacity=".1"/>
+
+  <!-- Medical cross in roof gable -->
+  <rect x="230" y="110" width="52" height="12" rx="6" fill="#8a6830" opacity=".4"/>
+  <rect x="250" y="96" width="12" height="42" rx="6" fill="#8a6830" opacity=".4"/>
+
+  <!-- Shelf dividers -->
+  <line x1="130" y1="268" x2="382" y2="268" stroke="#8a6830" stroke-width="3" stroke-opacity=".12"/>
+  <line x1="130" y1="358" x2="382" y2="358" stroke="#8a6830" stroke-width="3" stroke-opacity=".12"/>
+
+  <!-- ROW 1: medicine bottle, syringe, IV bag, O2 cylinder -->
+  <rect x="140" y="196" width="40" height="62" rx="7" fill="#8a6830" opacity=".08"/>
+  <rect x="145" y="184" width="30" height="16" rx="4" fill="#8a6830" opacity=".06"/>
+  <rect x="152" y="177" width="16" height="10" rx="3" fill="#8a6830" opacity=".09"/>
+  <rect x="200" y="190" width="18" height="70" rx="5" fill="#8a6830" opacity=".07"/>
+  <rect x="204" y="178" width="10" height="16" rx="3" fill="#8a6830" opacity=".08"/>
+  <line x1="196" y1="258" x2="222" y2="258" stroke="#8a6830" stroke-width="2" stroke-opacity=".07"/>
+  <path d="M260,184 L316,184 L310,254 L266,254 Z" fill="#8a6830" opacity=".06"/>
+  <line x1="288" y1="254" x2="288" y2="266" stroke="#8a6830" stroke-width="2" stroke-opacity=".08"/>
+  <circle cx="288" cy="180" r="3.5" fill="#8a6830" opacity=".07"/>
+  <rect x="338" y="196" width="26" height="64" rx="13" fill="#8a6830" opacity=".06"/>
+  <rect x="344" y="182" width="14" height="18" rx="4" fill="#8a6830" opacity=".08"/>
+
+  <!-- ROW 2: gauze roll, catheter pack, nebulizer mask, vials -->
+  <circle cx="162" cy="314" r="24" fill="none" stroke="#8a6830" stroke-width="3.5" stroke-opacity=".07"/>
+  <circle cx="162" cy="314" r="10" fill="#8a6830" opacity=".05"/>
+  <rect x="210" y="294" width="56" height="38" rx="8" fill="#8a6830" opacity=".06"/>
+  <line x1="218" y1="304" x2="256" y2="304" stroke="#8a6830" stroke-width="1.8" stroke-opacity=".05"/>
+  <line x1="218" y1="314" x2="252" y2="314" stroke="#8a6830" stroke-width="1.8" stroke-opacity=".04"/>
+  <line x1="218" y1="324" x2="248" y2="324" stroke="#8a6830" stroke-width="1.8" stroke-opacity=".04"/>
+  <ellipse cx="310" cy="314" rx="22" ry="26" fill="#8a6830" opacity=".06"/>
+  <ellipse cx="310" cy="314" rx="12" ry="16" fill="#8a6830" opacity=".03"/>
+  <rect x="350" y="294" width="14" height="36" rx="5" fill="#8a6830" opacity=".07"/>
+  <rect x="368" y="300" width="12" height="30" rx="4" fill="#8a6830" opacity=".05"/>
+
+  <!-- ROW 3: heartbeat line + door -->
+  <polyline points="135,400 165,400 175,382 188,418 198,390 210,400 260,400"
+    fill="none" stroke="#8a6830" stroke-width="2.5" stroke-opacity=".1"/>
+  <rect x="290" y="380" width="60" height="80" rx="6" fill="rgba(140,100,40,.04)" stroke="#8a6830" stroke-width="2.5" stroke-opacity=".15"/>
+  <circle cx="340" cy="424" r="4" fill="#8a6830" opacity=".2"/>
+</svg>
