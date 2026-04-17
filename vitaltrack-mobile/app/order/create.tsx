@@ -234,20 +234,61 @@ export default function CreateOrderScreen() {
         'Export PDF',
         'Include product photos in the PDF?',
         [
-          { text: 'Table Only', onPress: () => generateTablePDF(false) },
-          { text: 'With Photos', onPress: () => generateTablePDF(true) },
+          { text: 'Table Only', onPress: () => handleCreateAndExport(false) },
+          { text: 'With Photos', onPress: () => handleCreateAndExport(true) },
         ]
       );
     } else {
-      generateTablePDF(false);
+      handleCreateAndExport(false);
+    }
+  };
+
+  const handleCreateAndExport = async (includePhotos: boolean) => {
+    if (!isOnline) {
+      Alert.alert('Offline', 'Connect to WiFi to create orders.');
+      return;
+    }
+    if (cartItems.length === 0) {
+      Alert.alert('No Items', 'Add items to the order first.');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      // STEP 1: Save to server FIRST — get real order ID
+      const orderItems = cartItems.map(ci => ({
+        itemId: ci.item.id,
+        name: ci.item.name,
+        quantity: ci.quantity,
+        currentStock: ci.item.quantity,
+        minimumStock: ci.item.minimumStock,
+        unit: ci.item.unit,
+        brand: ci.item.brand,
+        imageUri: ci.item.imageUri,
+        purchaseLink: ci.item.purchaseLink,
+        supplierName: ci.item.supplierName,
+      }));
+
+      const createdOrder: any = await createOrderMutation.mutateAsync({ items: orderItems });
+      const serverOrderId = createdOrder.orderId || createdOrder.order_id || createdOrder.id || 'ORD-UNKNOWN';
+
+      // STEP 2: Generate PDF with the REAL server order ID
+      await generateTablePDF(includePhotos, serverOrderId);
+
+      // STEP 3: Show success
+      Alert.alert("Order Created", `Order ${serverOrderId} saved and exported.`, [
+        { text: "OK", onPress: () => router.back() }
+      ]);
+    } catch (error) {
+      handleMutationError(error, 'Create Order');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   // Combined Table + optional Photo Reference PDF
-  const generateTablePDF = async (includePhotos: boolean) => {
-    setIsGenerating(true);
+  const generateTablePDF = async (includePhotos: boolean, orderId: string) => {
     try {
-      const orderId = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 9999).toString().padStart(4, '0')}`;
       const currentDate = formatDate(now());
 
       // Only process images if user wants photos
@@ -426,43 +467,9 @@ export default function CreateOrderScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(newUri, { UTI: 'com.adobe.pdf', mimeType: 'application/pdf', dialogTitle: `CareKosh Order ${orderId}` });
       }
-      saveOrderToStore(orderId);
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to generate PDF");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  // Helper to save order to server
-  const saveOrderToStore = async (orderId: string) => {
-    if (!isOnline) {
-      Alert.alert('Offline', 'Connect to WiFi to save orders.');
-      return;
-    }
-    try {
-      const orderItems = cartItems.map(ci => ({
-        itemId: ci.item.id,
-        name: ci.item.name,
-        quantity: ci.quantity,
-        currentStock: ci.item.quantity,
-        minimumStock: ci.item.minimumStock,
-        unit: ci.item.unit,
-        brand: ci.item.brand,
-        imageUri: ci.item.imageUri,
-        purchaseLink: ci.item.purchaseLink,
-        supplierName: ci.item.supplierName,
-      }));
-      await createOrderMutation.mutateAsync({ items: orderItems });
-      Alert.alert("Order Created", "Your order has been saved and exported.", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
-    } catch (error) {
-      handleMutationError(error, 'Create Order');
+      Alert.alert("PDF Failed", "Order saved but PDF generation failed. You can export the PDF later from the Orders screen.");
     }
   };
 
