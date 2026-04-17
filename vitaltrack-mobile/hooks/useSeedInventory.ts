@@ -192,7 +192,7 @@ export function isProtectedCategory(name: string): boolean {
 export function getSuggestedItemsForCategory(
   categoryName: string,
   existingItems: Item[]
-): Array<{ name: string; unit: string; minimumStock: number; description?: string; isCritical: boolean }> {
+): { name: string; unit: string; minimumStock: number; description?: string; isCritical: boolean }[] {
   const seedCat = SEED_DATA.find(
     (c) => c.name.toLowerCase().trim() === categoryName.toLowerCase().trim()
   );
