@@ -326,7 +326,7 @@ async def verify_email_html(
             <body style="font-family: Arial; text-align: center; padding: 50px;">
                 <h1 style="color: #00D09C;">Email Verified!</h1>
                 <p>Your email has been successfully verified.</p>
-                <p>You can now return to the VitalTrack app and log in.</p>
+                <p>You can now return to the CareKosh app and log in.</p>
             </body>
         </html>
         """)
@@ -541,7 +541,7 @@ async def reset_password_html(
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Reset Password - VitalTrack</title>
+        <title>Reset Password - CareKosh</title>
         <style>
             * {{ box-sizing: border-box; margin: 0; padding: 0; }}
             body {{
@@ -591,7 +591,7 @@ async def reset_password_html(
     <body>
         <div class="card">
             <div class="logo">
-                <h1>VitalTrack</h1>
+                <h1>CareKosh</h1>
                 <p>Reset Your Password</p>
             </div>
             <div id="form-container">
@@ -638,7 +638,7 @@ async def reset_password_html(
                     if (response.ok) {{
                         document.getElementById('form-container').style.display = 'none';
                         result.className = 'message success';
-                        result.innerHTML = '<strong>Password Reset Successful!</strong><br><br>You can now open the VitalTrack app and log in with your new password.';
+                        result.innerHTML = '<strong>Password Reset Successful!</strong><br><br>You can now open the CareKosh app and log in with your new password.';
                         result.style.display = 'block';
                     }} else {{
                         result.className = 'message error';

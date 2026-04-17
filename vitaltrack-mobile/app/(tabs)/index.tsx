@@ -208,8 +208,8 @@ export default function DashboardScreen() {
         isDarkTheme={isDarkMode}
         onThemeToggle={toggleTheme}
         onSettings={() => Alert.alert('Settings', 'Settings screen coming soon')}
-        onAbout={() => Alert.alert('About VitalTrack', 'Version 2.0.0\n\nMedical inventory management for home ICU.')}
-        onHelp={() => Alert.alert('Help & Support', 'Contact support@vitaltrack.app for assistance.')}
+        onAbout={() => Alert.alert('About CareKosh', 'Version 2.0.0\n\nMedical inventory management for home ICU.')}
+        onHelp={() => Alert.alert('Help & Support', 'Contact support@carekosh.com for assistance.')}
         onLogout={handleLogout}
       />
 

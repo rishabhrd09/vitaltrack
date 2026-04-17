@@ -84,7 +84,7 @@ async def send_email_via_api(to_email: str, to_name: str, subject: str, html_con
     
     payload = {
         "sender": {
-            "name": "VitalTrack",
+            "name": "CareKosh",
             "email": settings.MAIL_FROM
         },
         "to": [
@@ -124,7 +124,7 @@ async def send_verification_email(email: EmailStr, username: str, token: str) ->
     <html>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #00D09C;">Welcome to VitalTrack!</h2>
+            <h2 style="color: #00D09C;">Welcome to CareKosh!</h2>
             <p>Hi {username},</p>
             <p>Please verify your email address to complete your registration.</p>
             <p style="text-align: center; margin: 30px 0;">
@@ -137,7 +137,7 @@ async def send_verification_email(email: EmailStr, username: str, token: str) ->
     </html>
     """
     
-    return await send_email_via_api(email, username, "Verify your VitalTrack account", html_content)
+    return await send_email_via_api(email, username, "Verify your CareKosh account", html_content)
 
 
 async def send_password_reset_email(email: EmailStr, username: str, token: str) -> bool:
@@ -162,7 +162,7 @@ async def send_password_reset_email(email: EmailStr, username: str, token: str) 
     </html>
     """
     
-    return await send_email_via_api(email, username, "Reset your VitalTrack password", html_content)
+    return await send_email_via_api(email, username, "Reset your CareKosh password", html_content)
 
 
 async def send_password_changed_notification(email: EmailStr, username: str) -> bool:
@@ -181,4 +181,4 @@ async def send_password_changed_notification(email: EmailStr, username: str) -> 
     </html>
     """
     
-    return await send_email_via_api(email, username, "Your VitalTrack password was changed", html_content)
+    return await send_email_via_api(email, username, "Your CareKosh password was changed", html_content)

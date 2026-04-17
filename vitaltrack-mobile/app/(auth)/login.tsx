@@ -105,7 +105,7 @@ export default function LoginScreen() {
                 {/* Logo/Header */}
                 <View style={styles.header}>
                     <Ionicons name="medical" size={60} color={colors.primary} />
-                    <Text style={[styles.title, { color: colors.text }]}>VitalTrack</Text>
+                    <Text style={[styles.title, { color: colors.text }]}>CareKosh</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                         Home ICU Inventory Management
                     </Text>

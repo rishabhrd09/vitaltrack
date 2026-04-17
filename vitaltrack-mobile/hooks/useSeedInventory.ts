@@ -192,7 +192,7 @@ export function isProtectedCategory(name: string): boolean {
 export function getSuggestedItemsForCategory(
   categoryName: string,
   existingItems: Item[]
-): Array<{ name: string; unit: string; minimumStock: number; description?: string; isCritical: boolean }> {
+): { name: string; unit: string; minimumStock: number; description?: string; isCritical: boolean }[] {
   const seedCat = SEED_DATA.find(
     (c) => c.name.toLowerCase().trim() === categoryName.toLowerCase().trim()
   );
@@ -232,7 +232,7 @@ export async function createAutoBackup(
   const FileSystem = await import('expo-file-system/legacy');
   const dir = FileSystem.documentDirectory || '';
   const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const fileUri = `${dir}VitalTrack-AutoBackup-${dateStr}.json`;
+  const fileUri = `${dir}CareKosh-AutoBackup-${dateStr}.json`;
   await FileSystem.writeAsStringAsync(fileUri, json);
   return fileUri;
 }

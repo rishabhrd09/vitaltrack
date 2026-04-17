@@ -112,7 +112,7 @@ export default function ProfileMenuSheet({
 
                     <MenuItem
                         icon="information-circle-outline"
-                        title="About VitalTrack"
+                        title="About CareKosh"
                         subtitle="Version 2.0.0"
                         onPress={() => {
                             onAbout?.();
