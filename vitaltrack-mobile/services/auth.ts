@@ -92,6 +92,21 @@ export const authService = {
     },
 
     /**
+     * Request account deletion — sends confirmation email.
+     * Account is only deleted after user clicks the email link.
+     */
+    async requestAccountDeletion(): Promise<{ message: string }> {
+        return api.delete<{ message: string }>('/auth/me');
+    },
+
+    /**
+     * Cancel a pending account deletion request.
+     */
+    async cancelAccountDeletion(): Promise<{ message: string }> {
+        return api.post<{ message: string }>('/auth/cancel-delete');
+    },
+
+    /**
      * Check if user is authenticated (has valid token)
      */
     async isAuthenticated(): Promise<boolean> {
