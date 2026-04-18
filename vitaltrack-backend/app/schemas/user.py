@@ -14,13 +14,13 @@ import re
 # REQUEST SCHEMAS
 # =============================================================================
 class UserRegister(BaseModel):
-    """User registration request - supports email OR username."""
-    
-    email: Optional[EmailStr] = Field(None, description="Email address (optional if username provided)")
+    """User registration request - email required, username optional."""
+
+    email: EmailStr = Field(..., description="Email address for account verification and recovery")
     username: Optional[str] = Field(
-        None, 
-        min_length=3, 
-        max_length=50, 
+        None,
+        min_length=3,
+        max_length=50,
         pattern=r'^[a-z0-9_]+$',
         description="Username: lowercase letters, numbers, underscores only"
     )
@@ -62,11 +62,6 @@ class UserRegister(BaseModel):
         v = re.sub(r"<[^>]*>", "", v)
         v = re.sub(r"[<>'\";]", "", v)
         return v.strip()
-
-    def model_post_init(self, __context) -> None:
-        """Validate that at least email or username is provided."""
-        if not self.email and not self.username:
-            raise ValueError("Either email or username is required")
 
 
 class UserLogin(BaseModel):
