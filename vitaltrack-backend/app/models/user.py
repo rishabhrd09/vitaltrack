@@ -94,6 +94,18 @@ class User(UUIDMixin, TimestampMixin, Base):
         nullable=True,
     )
 
+    # Account Deletion Confirmation
+    deletion_token: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+        default=None,
+    )
+    deletion_token_expires: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
+    )
+
     # Tracking
     last_login: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),

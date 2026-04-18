@@ -95,6 +95,13 @@ function RootLayoutContent() {
             animation: 'slide_from_bottom',
           }}
         />
+        <Stack.Screen
+          name="profile"
+          options={{
+            presentation: 'card',
+            animation: 'slide_from_right',
+          }}
+        />
       </Stack>
     </>
   );

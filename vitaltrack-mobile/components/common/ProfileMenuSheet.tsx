@@ -3,7 +3,8 @@
  * Displays user info, theme toggle, and menu options
  */
 
-import { View, Text, TouchableOpacity, StyleSheet, Switch, Modal, Pressable } from 'react-native';
+import { useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Switch, Modal, Pressable, PanResponder, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
@@ -16,6 +17,7 @@ interface ProfileMenuSheetProps {
     photoUrl?: string | null;
     isDarkTheme: boolean;
     onThemeToggle: () => void;
+    onEditProfile?: () => void;
     onSettings?: () => void;
     onAbout?: () => void;
     onHelp?: () => void;
@@ -29,12 +31,45 @@ export default function ProfileMenuSheet({
     userEmail,
     isDarkTheme,
     onThemeToggle,
+    onEditProfile,
     onSettings,
     onAbout,
     onHelp,
     onLogout,
 }: ProfileMenuSheetProps) {
     const { colors } = useTheme();
+
+    const translateY = useRef(new Animated.Value(0)).current;
+
+    const panResponder = useRef(
+        PanResponder.create({
+            // Only claim the gesture when there's a clear downward movement,
+            // so taps on menu items are never intercepted.
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, gs) => gs.dy > 5,
+            onPanResponderMove: (_, gs) => {
+                if (gs.dy > 0) translateY.setValue(gs.dy);
+            },
+            onPanResponderRelease: (_, gs) => {
+                if (gs.dy > 80) {
+                    Animated.timing(translateY, {
+                        toValue: 600,
+                        duration: 200,
+                        useNativeDriver: true,
+                    }).start(() => {
+                        translateY.setValue(0);
+                        onDismiss();
+                    });
+                } else {
+                    Animated.spring(translateY, {
+                        toValue: 0,
+                        bounciness: 4,
+                        useNativeDriver: true,
+                    }).start();
+                }
+            },
+        })
+    ).current;
 
     const getInitials = (name: string) => {
         return name
@@ -55,9 +90,12 @@ export default function ProfileMenuSheet({
             onRequestClose={onDismiss}
         >
             <Pressable style={[styles.overlay, { backgroundColor: colors.overlayDark }]} onPress={onDismiss}>
+                <Animated.View style={{ transform: [{ translateY }] }}>
                 <Pressable style={[styles.sheet, { backgroundColor: colors.bgCard }]} onPress={(e) => e.stopPropagation()}>
-                    {/* Drag Handle */}
-                    <View style={[styles.dragHandle, { backgroundColor: colors.borderSecondary }]} />
+                    {/* Drag Handle — attach PanResponder here for swipe-down-to-dismiss */}
+                    <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
+                        <View style={[styles.dragHandle, { backgroundColor: colors.borderSecondary }]} />
+                    </View>
 
                     {/* Profile Header */}
                     <View style={styles.profileHeader}>
@@ -101,6 +139,16 @@ export default function ProfileMenuSheet({
 
                     {/* Menu Items */}
                     <MenuItem
+                        icon="person-outline"
+                        title="Edit Profile"
+                        subtitle="View and manage your account"
+                        onPress={() => {
+                            onEditProfile?.();
+                            onDismiss();
+                        }}
+                    />
+
+                    <MenuItem
                         icon="settings-outline"
                         title="Settings"
                         subtitle="App preferences and configuration"
@@ -113,7 +161,7 @@ export default function ProfileMenuSheet({
                     <MenuItem
                         icon="information-circle-outline"
                         title="About CareKosh"
-                        subtitle="Version 2.0.0"
+                        subtitle="Home ICU Inventory Management · v2.0.0"
                         onPress={() => {
                             onAbout?.();
                             onDismiss();
@@ -148,6 +196,7 @@ export default function ProfileMenuSheet({
                     {/* Bottom Spacing */}
                     <View style={{ height: spacing.xl }} />
                 </Pressable>
+            </Animated.View>
             </Pressable>
         </Modal>
     );
@@ -189,12 +238,14 @@ const styles = StyleSheet.create({
         paddingTop: spacing.md,
         maxHeight: '80%',
     },
+    dragHandleContainer: {
+        alignItems: 'center',
+        paddingVertical: spacing.md,
+    },
     dragHandle: {
         width: 40,
         height: 4,
         borderRadius: 2,
-        alignSelf: 'center',
-        marginBottom: spacing.lg,
     },
     profileHeader: {
         flexDirection: 'row',

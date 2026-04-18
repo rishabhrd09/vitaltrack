@@ -207,8 +207,9 @@ export default function DashboardScreen() {
         userEmail={user?.email || user?.username || 'Not signed in'}
         isDarkTheme={isDarkMode}
         onThemeToggle={toggleTheme}
+        onEditProfile={() => router.push('/profile')}
         onSettings={() => Alert.alert('Settings', 'Settings screen coming soon')}
-        onAbout={() => Alert.alert('About CareKosh', 'Version 2.0.0\n\nMedical inventory management for home ICU.')}
+        onAbout={() => Alert.alert('About CareKosh', 'CareKosh helps family caregivers manage critical medical supplies at home.\n\nDesigned for families caring for loved ones with ALS, MND, stroke recovery, and other conditions requiring home ICU setups.')}
         onHelp={() => Alert.alert('Help & Support', 'Contact support@carekosh.com for assistance.')}
         onLogout={handleLogout}
       />
