@@ -67,6 +67,19 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str = "CHANGE-THIS-IN-PRODUCTION-MIN-32-CHARS-LONG-RANDOM-STRING"
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def reject_weak_secret_in_production(cls, v, info):
+        env = info.data.get("ENVIRONMENT", "development")
+        if env == "production" and v.startswith("CHANGE-THIS"):
+            raise ValueError(
+                "SECRET_KEY must be set to a strong random value in production. "
+                'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
+            )
+        if len(v) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters")
+        return v
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -102,14 +115,22 @@ class Settings(BaseSettings):
     # Email Configuration
     MAIL_USERNAME: str = ""
     MAIL_PASSWORD: str = ""
-    MAIL_FROM: str = "noreply@vitaltrack.app"
+    MAIL_FROM: str = "noreply@carekosh.com"
     MAIL_PORT: int = 587
     MAIL_SERVER: str = "sandbox.smtp.mailtrap.io"
     MAIL_STARTTLS: bool = True
     MAIL_SSL_TLS: bool = False
 
     # Frontend URL for email links (Points to Backend HTML View)
-    FRONTEND_URL: str = "http://127.0.0.1:8000/api/v1/auth"
+    FRONTEND_URL: str = ""
+
+    @field_validator("FRONTEND_URL")
+    @classmethod
+    def require_frontend_url_in_production(cls, v, info):
+        env = info.data.get("ENVIRONMENT", "development")
+        if env == "production" and not v:
+            raise ValueError("FRONTEND_URL must be set in production")
+        return v or "http://127.0.0.1:8000/api/v1/auth"
 
     # Token Expiry
     EMAIL_VERIFICATION_EXPIRY_HOURS: int = 24
