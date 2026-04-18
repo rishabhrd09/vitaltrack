@@ -94,11 +94,12 @@ async def register_user(
     email: str | None = None,
     password: str = "TestPass1",
 ) -> dict:
-    payload = {"name": name, "password": password}
+    if not email:
+        identifier = username or name.lower().replace(" ", "")
+        email = f"{identifier}@test.com"
+    payload = {"name": name, "email": email, "password": password}
     if username:
         payload["username"] = username
-    if email:
-        payload["email"] = email
     resp = await client.post("/api/v1/auth/register", json=payload)
     assert resp.status_code in [200, 201], (
         f"Registration failed for {username or email}: {resp.text}"

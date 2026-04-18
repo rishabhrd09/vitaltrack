@@ -430,7 +430,7 @@ async def resend_verification_email(
     # Check if already verified
     if user.is_email_verified:
         return MessageResponse(
-            message="Email is already verified.",
+            message="If an account exists with this email, a verification link will be sent.",
         )
     
     # Generate new token
@@ -954,10 +954,16 @@ async def change_password(
         )
     
     current_user.hashed_password = hash_password(data.new_password)
-    
+
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == current_user.id)
+        .values(is_revoked=True)
+    )
+
     await db.commit()
-    
-    return MessageResponse(message="Password changed successfully")
+
+    return MessageResponse(message="Password changed successfully. Please log in again on your other devices.")
 
 
 # =============================================================================

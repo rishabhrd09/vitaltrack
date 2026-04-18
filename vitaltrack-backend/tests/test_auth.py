@@ -30,7 +30,7 @@ class TestRegistrationUsername:
         assert data["token_type"] == "bearer"
         assert data["user"]["username"] == "frank"
         assert data["user"]["name"] == "Frank"
-        assert data["user"]["email"] is None
+        assert data["user"]["email"] == "frank@test.com"
         assert data["user"]["isActive"] is True
 
     @pytest.mark.asyncio
@@ -81,7 +81,7 @@ class TestRegistrationErrors:
         """auth.py returns 400 for duplicate username."""
         await register_user(client, name="First", username="frank")
         resp = await client.post("/api/v1/auth/register", json={
-            "name": "Imposter", "username": "frank", "password": "TestPass1",
+            "name": "Imposter", "email": "imposter@test.com", "username": "frank", "password": "TestPass1",
         })
         assert resp.status_code == 400
 
@@ -153,42 +153,42 @@ class TestPasswordValidation:
     @pytest.mark.asyncio
     async def test_too_short(self, client: AsyncClient):
         resp = await client.post("/api/v1/auth/register", json={
-            "name": "X", "username": "shortpw", "password": "Ab1",
+            "name": "X", "email": "shortpw@test.com", "username": "shortpw", "password": "Ab1",
         })
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
     async def test_no_uppercase(self, client: AsyncClient):
         resp = await client.post("/api/v1/auth/register", json={
-            "name": "X", "username": "noup", "password": "testpass1",
+            "name": "X", "email": "noup@test.com", "username": "noup", "password": "testpass1",
         })
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
     async def test_no_lowercase(self, client: AsyncClient):
         resp = await client.post("/api/v1/auth/register", json={
-            "name": "X", "username": "nolow", "password": "TESTPASS1",
+            "name": "X", "email": "nolow@test.com", "username": "nolow", "password": "TESTPASS1",
         })
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
     async def test_no_digit(self, client: AsyncClient):
         resp = await client.post("/api/v1/auth/register", json={
-            "name": "X", "username": "nodig", "password": "TestPass",
+            "name": "X", "email": "nodig@test.com", "username": "nodig", "password": "TestPass",
         })
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
     async def test_valid_password(self, client: AsyncClient):
         resp = await client.post("/api/v1/auth/register", json={
-            "name": "X", "username": "goodpw", "password": "MyPass99",
+            "name": "X", "email": "goodpw@test.com", "username": "goodpw", "password": "MyPass99",
         })
         assert resp.status_code in [200, 201]
 
     @pytest.mark.asyncio
     async def test_boundary_exactly_8_chars(self, client: AsyncClient):
         resp = await client.post("/api/v1/auth/register", json={
-            "name": "X", "username": "eight", "password": "Abcdef1x",
+            "name": "X", "email": "eight@test.com", "username": "eight", "password": "Abcdef1x",
         })
         assert resp.status_code in [200, 201]
 
