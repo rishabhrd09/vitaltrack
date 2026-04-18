@@ -3,6 +3,7 @@ VitalTrack Backend - Authentication Routes
 User registration, login, token refresh, logout, email verification, and password reset
 """
 
+import logging
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -48,6 +49,8 @@ from app.utils.rate_limiter import limiter
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+logger = logging.getLogger("carekosh.auth")
 
 
 # =============================================================================
@@ -925,8 +928,46 @@ async def update_profile(
     
     await db.commit()
     await db.refresh(current_user)
-    
+
     return UserResponse.model_validate(current_user)
+
+
+@router.delete(
+    "/me",
+    response_model=MessageResponse,
+    summary="Delete current user account and all associated data",
+)
+async def delete_account(
+    db: DB,
+    current_user: CurrentUser,
+) -> MessageResponse:
+    """
+    Permanently delete the authenticated user's account.
+
+    Cascades to delete ALL user data:
+    categories, items, orders, order items, activity logs, refresh tokens.
+
+    This action is irreversible.
+    """
+    user_email = current_user.email or "no-email"
+    user_name = current_user.username or current_user.name or "unknown"
+    user_id = str(current_user.id)
+
+    # Log BEFORE deleting — forensics record
+    logger.warning(
+        f"Account deletion requested: user_id={user_id} email={user_email} username={user_name}"
+    )
+
+    await db.delete(current_user)
+    await db.commit()
+
+    logger.warning(
+        f"Account deletion completed: user_id={user_id} email={user_email}"
+    )
+
+    return MessageResponse(
+        message="Your account and all associated data have been permanently deleted."
+    )
 
 
 # =============================================================================
