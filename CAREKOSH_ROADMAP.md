@@ -17,6 +17,8 @@ CareKosh is a home-ICU medical inventory app for family caregivers. This documen
 | Rebrand (VitalTrack → CareKosh) | ✅ shipped PR #10/#11 |
 | Auth hardening | ✅ shipped PR #12 |
 | Account deletion (Play Store compliance) | ✅ shipped PR #13 |
+| Loading UX — skeleton screens | ✅ shipped PR #15 |
+| Loading UX — cache persistence + cold-start retry | ✅ shipped PR #16 |
 | Domain + privacy policy hosted | 🟡 in progress |
 | Play Console account + closed testing | 🟡 in progress |
 | Launch on Google Play | 🔴 not yet |
@@ -52,6 +54,13 @@ Renamed the product from VitalTrack to CareKosh across user-visible surfaces: ap
 - `POST /auth/change-password` and `POST /auth/reset-password` revoke **all** refresh tokens for the user.
 - Config validators refuse production startup if `SECRET_KEY` matches the placeholder, `CORS_ORIGINS` is `*`, or `FRONTEND_URL` is empty.
 
+### Phase 7 — Loading UX (PRs #15, #16)
+
+Two-PR effort to close the "blank-screen while loading" gap without reintroducing offline-first:
+
+- **PR #15 — Skeleton screens.** `components/common/SkeletonLoader.tsx` provides themed, animated placeholder shapes (pulse from opacity 0.3 → 0.7) for three variants: `dashboard`, `inventory`, `orders`. Each tab screen (`app/(tabs)/index.tsx`, `inventory.tsx`, `orders.tsx`) now renders `<SkeletonLoader variant="…" />` while `isLoading` is true, keeping the header and SafeAreaView intact.
+- **PR #16 — Cache persistence + cold-start auto-retry.** `providers/QueryProvider.tsx` now wraps children in `PersistQueryClientProvider`, persisting successful inventory/order/category/activity queries to `AsyncStorage` under key `carekosh-query-cache`. `staleTime` stays at 30 s (medical freshness requirement); `gcTime` raised to 24 h; schema `buster` tied to `Constants.expoConfig.version`; auth query keys excluded from disk via `shouldDehydrateQuery`. `focusManager.setEventListener` now wires `AppState` so `refetchOnWindowFocus` actually works in React Native. An `ENABLE_CACHE_PERSISTENCE` kill switch at the top of the file disables everything with one line. `useAuthStore.logout()` and successful `login()` both clear the cache (memory + disk) for shared-device privacy. On login, an `isColdStart` flag is set when `ApiClientError.status` is `0 / 502 / 503 / 504`; the login screen starts a `/health` auto-retry loop (5 s interval, 12 attempts max, Cancel button, `AbortController`-based timeout — no `AbortSignal.timeout` for Hermes compat). Old static "Server is starting up…" text removed.
+
 ### Phase 6 — Account deletion + Profile screen (PR #13)
 Google Play policy requires in-app account deletion with full data erasure:
 - `DELETE /auth/me` → generates a `deletion_token` (24 h TTL), emails confirmation link.
@@ -77,6 +86,9 @@ Google Play policy requires in-app account deletion with full data erasure:
 | #11 | `feature/rebrand-carekosh` | Rebrand polish: app icon safe zone + order-ID mismatch in PDF |
 | #12 | `fix/auth-hardening` | Email required, session-revoke on password change, prod config validators |
 | #13 | `fix/account-deletion` | Email-confirmed account deletion + Profile screen + swipe-down menu |
+| #14 | `docs/carekosh-docs-overhaul` | Documentation overhaul — complete guide refresh for PRs #1–#13 |
+| #15 | `fix/skeleton-loading` | Skeleton loading screens for dashboard, inventory, orders tabs |
+| #16 | `fix/cache-persistence-cold-start` | TanStack Query cache persistence + cold-start auto-retry on login + focusManager wiring |
 
 (PR #3 was rolled into #4 during review and does not appear as its own merge commit.)
 

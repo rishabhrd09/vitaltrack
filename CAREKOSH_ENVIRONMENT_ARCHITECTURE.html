@@ -336,6 +336,11 @@ deploy-backend job
     <span class="callout-label">Quirk 7 · Render shell migrations on a bad branch</span>
     <p>Running <code>alembic upgrade head</code> manually on Render shell when the code is pre-migration will happily apply the migration, potentially leaving the DB ahead of the code. Always let <code>docker-entrypoint.sh</code> run migrations on deploy — don't trigger them by hand unless you're recovering from a failure.</p>
   </div>
+
+  <div class="callout info">
+    <span class="callout-label">Quirk 8 · Mobile cache persistence lives in AsyncStorage (PR #16)</span>
+    <p>TanStack Query's cache is persisted to AsyncStorage under key <code>carekosh-query-cache</code> by <code>providers/QueryProvider.tsx</code>. Two knobs matter operationally: (1) <code>ENABLE_CACHE_PERSISTENCE</code> is a top-of-file boolean kill switch — flip to <code>false</code> to restore pre-PR-#16 behavior without a rebuild. (2) The <code>buster</code> is bound to <code>Constants.expoConfig.version</code> — bumping <code>app.json</code>'s <code>version</code> auto-invalidates every persisted cache on first launch after upgrade, so you don't ship stale shapes when response schemas change. Auth queries are excluded from dehydration via <code>shouldDehydrateQuery</code>; cache is cleared on both logout and login for shared-device privacy. Auth tokens continue to live in SecureStore — they are never persisted through TanStack Query.</p>
+  </div>
 </div>
 
 <hr>
@@ -351,7 +356,7 @@ deploy-backend job
 </div>
 
 <div class="footer">
-  CareKosh · Environment Architecture · April 2026 · PRs #4–#13
+  CareKosh · Environment Architecture · April 2026 · PRs #4–#16
 </div>
 
 </div>
