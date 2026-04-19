@@ -1,9 +1,11 @@
 # Phase 2: Account Deletion — Change Summary
 
 **Branch:** `fix/account-deletion`
-**Date:** 2026-04-19
+**Merged:** PR #13 (2026-04-19)
 **Author:** rishabhrd09
-**Status:** Complete — pending merge
+**Status:** Shipped — currently running on staging + production
+
+> Predecessor: [PHASE1_AUTH_HARDENING.md](PHASE1_AUTH_HARDENING.md) (PR #12). For the end-user-facing flow and curl recipes, see the repo-root `CAREKOSH_E2E_VERIFICATION_GUIDE.html` (Phase 5).
 
 ---
 

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh — Build &amp; Deploy Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf9f7;--card:#fff;--card2:#f4f3f0;--border:#e5e3de;--text:#1a1a18;--muted:#6b6a65;--accent:#1d6b52;--accent-bg:#e8f5ef;--amber:#8a6830;--amber-bg:#fef8e8;--danger:#8b1a1a;--danger-bg:#fef0f0;--info:#1a4a8b;--info-bg:#eef4fc;--code-bg:#f0efeb;--done:#059669;--done-bg:#d1fae5}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e12;--card:#161619;--card2:#1c1c21;--border:#2a2a30;--text:#e4e4ec;--muted:#8a8a95;--accent:#5eead4;--accent-bg:#0d2626;--amber:#d4a574;--amber-bg:#1a1510;--danger:#e88;--danger-bg:#1a1010;--info:#7ab4f5;--info-bg:#0f1a2a;--code-bg:#1a1a20;--done:#34d399;--done-bg:#0a1a14}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.75;font-size:15px}
+.page{max-width:860px;margin:0 auto;padding:32px 24px 80px}
+.hero{text-align:center;padding:40px 0 36px;border-bottom:1px solid var(--border);margin-bottom:40px}
+.hero h1{font-family:'Instrument Serif',serif;font-size:2.4rem;font-weight:400;letter-spacing:-.02em;line-height:1.15;margin-bottom:10px}
+.hero h1 em{font-style:italic;color:var(--accent)}
+.hero .sub{color:var(--muted);font-size:.9rem;max-width:620px;margin:0 auto 8px}
+.hero .meta{color:var(--muted);font-size:.76rem}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--code-bg);padding:2px 6px;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:14px 0;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.65}
+pre code{background:none;padding:0}
+.section{margin-bottom:48px}
+.section h2{font-family:'Sora',sans-serif;font-size:1.35rem;font-weight:700;margin-bottom:10px}
+.section h3{font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;margin-top:22px;margin-bottom:8px}
+.section p{margin-bottom:12px}
+.section ul,.section ol{margin-bottom:14px;padding-left:22px}.section li{margin-bottom:6px;font-size:.93rem}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.86rem}
+th{text-align:left;font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:2px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+td:first-child{font-weight:600}
+.callout{border-radius:10px;padding:14px 18px;margin:18px 0;border-left:4px solid}
+.callout p{margin-bottom:6px;font-size:.9rem}.callout p:last-child{margin-bottom:0}
+.callout-label{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;display:block}
+.callout.info{background:var(--info-bg);border-left-color:var(--info)}.callout.info .callout-label{color:var(--info)}
+.callout.warn{background:var(--amber-bg);border-left-color:var(--amber)}.callout.warn .callout-label{color:var(--amber)}
+.callout.danger{background:var(--danger-bg);border-left-color:var(--danger)}.callout.danger .callout-label{color:var(--danger)}
+.callout.success{background:var(--accent-bg);border-left-color:var(--accent)}.callout.success .callout-label{color:var(--accent)}
+.qa{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px 26px;margin:18px 0}
+.qa .q{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.qa h4{font-family:'Sora',sans-serif;font-size:1.05rem;font-weight:700;margin-bottom:10px;line-height:1.35}
+.qa .a{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);margin-top:14px;margin-bottom:6px}
+.qa p{margin-bottom:10px;font-size:.92rem}
+.qa ul{margin-bottom:10px}
+.arch{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:18px;margin:14px 0;font-family:'JetBrains Mono',monospace;font-size:.72rem;line-height:1.6;overflow-x:auto;white-space:pre}
+.tag{display:inline-block;font-family:'Sora',sans-serif;font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:4px;margin-right:6px;margin-bottom:4px}
+.tag.good{background:var(--accent-bg);color:var(--accent)}
+.tag.warn{background:var(--amber-bg);color:var(--amber)}
+.tag.off{background:var(--danger-bg);color:var(--danger)}
+.tag.info{background:var(--info-bg);color:var(--info)}
+hr{border:none;border-top:1px solid var(--border);margin:40px 0}
+.footer{text-align:center;padding:28px 0;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;margin-top:40px}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="hero">
+  <h1>Build &amp; <em>Deploy</em> Flow</h1>
+  <p class="sub">A plain-English textbook for what happens every time you push, open a PR, merge, or build a mobile artifact. If you're about to do one of these, read the matching Q first.</p>
+  <p class="meta">CareKosh · Home ICU Inventory · Render + Neon + EAS Build · April 2026</p>
+</div>
+
+<!-- MASTER TRIGGER MATRIX -->
+<div class="section">
+  <h2>Master trigger matrix</h2>
+  <p>What each action produces. Everything below is the detail.</p>
+  <table>
+    <thead><tr><th>Trigger</th><th>CI runs?</th><th>Backend deploys?</th><th>Mobile builds?</th><th>Who sees it?</th></tr></thead>
+    <tbody>
+      <tr><td>Push to <code>feature/*</code></td><td>No</td><td>No</td><td>No</td><td>Only you</td></tr>
+      <tr><td>Open PR → <code>main</code></td><td><span class="tag good">Yes</span></td><td>No</td><td>No</td><td>Reviewers</td></tr>
+      <tr><td>PR + label <code>build-apk</code></td><td><span class="tag good">Yes</span></td><td>No</td><td><span class="tag info">Preview APK</span></td><td>Reviewers can sideload</td></tr>
+      <tr><td>Merge PR to <code>main</code></td><td><span class="tag good">Yes</span></td><td><span class="tag good">Both Render services</span></td><td>No</td><td>All environments</td></tr>
+      <tr><td>Manual <code>eas build --profile production</code></td><td>No</td><td>No</td><td><span class="tag warn">AAB</span></td><td>Play Console upload</td></tr>
+      <tr><td><code>workflow_dispatch</code> (Run workflow)</td><td><span class="tag good">Yes</span></td><td>—</td><td>—</td><td>Same as PR</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    <span class="callout-label">Note</span>
+    <p>The production AAB job (<code>build-production</code>) is currently gated by <code>if: false</code> in <code>.github/workflows/ci.yml</code>. Until that flips, all AAB builds are manual. Plan: flip to <code>if: github.ref == 'refs/heads/main'</code> when Play Store production track is live.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- Q1 -->
+<div class="section">
+  <h2>The questions</h2>
+
+  <div class="qa">
+    <div class="q">Question 1</div>
+    <h4>I pushed to my feature branch. What just happened?</h4>
+    <div class="a">Answer</div>
+    <p>Nothing on GitHub. Nothing on Render. Nothing on EAS. CI only triggers on <em>pull_request</em>, <em>push to main</em>, or <em>workflow_dispatch</em> — not on arbitrary branch pushes.</p>
+    <p>The only side effects of a feature-branch push are: the commits land on GitHub, and if your branch is being compared in an open PR, the PR's CI re-runs.</p>
+    <div class="callout warn">
+      <span class="callout-label">Misconception</span>
+      <p>"Render deploys every push" — no. Render watches <code>main</code> only. Until you merge, your code is not running anywhere except your laptop.</p>
+    </div>
+  </div>
+
+  <!-- Q2 -->
+  <div class="qa">
+    <div class="q">Question 2</div>
+    <h4>I opened a PR. What runs?</h4>
+    <div class="a">Answer</div>
+    <p>Four jobs run in <code>.github/workflows/ci.yml</code>, in parallel where possible:</p>
+    <table>
+      <thead><tr><th>Job</th><th>Does</th><th>~Time</th></tr></thead>
+      <tbody>
+        <tr><td><code>test-backend</code></td><td>pytest (postgres:16 service), ruff lint, mypy</td><td>1–2 min</td></tr>
+        <tr><td><code>test-frontend</code></td><td>TypeScript check, ESLint, <code>expo-doctor</code></td><td>30–60 s</td></tr>
+        <tr><td><code>security-scan</code></td><td>Trivy filesystem scan (CRITICAL + HIGH)</td><td>~1 min</td></tr>
+        <tr><td><code>pr-check</code></td><td>Merge gate — succeeds only if backend + frontend pass</td><td>instant</td></tr>
+      </tbody>
+    </table>
+    <p>Neither <code>build-preview</code> nor <code>build-production</code> runs by default. The first needs the <code>build-apk</code> label; the second is disabled.</p>
+  </div>
+
+  <!-- Q3 -->
+  <div class="qa">
+    <div class="q">Question 3</div>
+    <h4>How do I get a preview APK from a PR?</h4>
+    <div class="a">Answer</div>
+    <p>Add the label <code>build-apk</code> to the PR.</p>
+    <p>The <code>build-preview</code> job is gated on this label. Once applied, it runs <code>eas build --profile preview --platform android</code> against the PR branch. Artifact: an APK bound to the <strong>staging</strong> backend (<code>https://vitaltrack-api-staging.onrender.com</code>), because <code>EXPO_PUBLIC_API_URL</code> is baked into the binary at build time.</p>
+    <div class="callout info">
+      <span class="callout-label">Why label-based</span>
+      <p>EAS build credits are finite. Running a build on every PR push burns them. A label makes each build an explicit reviewer decision.</p>
+    </div>
+  </div>
+
+  <!-- Q4 -->
+  <div class="qa">
+    <div class="q">Question 4</div>
+    <h4>I merged the PR. Now what?</h4>
+    <div class="a">Answer — two things happen in sequence</div>
+    <p><strong>1. CI re-runs on <code>main</code>.</strong> Same four jobs. If any fails, the deploy is skipped.</p>
+    <p><strong>2. <code>deploy-backend</code> runs.</strong> It POSTs to the Render deploy hook URL (stored as the <code>RENDER_DEPLOY_HOOK</code> repository secret). Render pulls the new image and starts a rolling deploy of <em>both</em> the production and staging services — both watch <code>main</code>; their only difference is env vars.</p>
+    <div class="arch">TIMELINE FOR A TYPICAL MERGE
+
+t+0    merge button clicked
+t+0.1  GitHub creates merge commit on main
+t+0.2  CI triggers on push event
+t+2m   backend/frontend/security pass on main
+t+2m   deploy-backend POSTs Render hook
+t+2.5m Render pulls image
+t+3m   docker-entrypoint.sh: waits for DB, runs alembic upgrade head
+t+4m   Gunicorn replaces old workers; health check passes
+t+4m   production + staging both live on new code</div>
+    <p>No mobile build is kicked off by merging. Mobile releases are a separate manual step (Q6).</p>
+  </div>
+
+  <!-- Q5 -->
+  <div class="qa">
+    <div class="q">Question 5</div>
+    <h4>What exactly does the backend server do on startup?</h4>
+    <div class="a">Answer — <code>docker-entrypoint.sh</code> is the whole story</div>
+    <ol>
+      <li>Parse <code>DATABASE_URL</code> into host/port/user/db (handles <code>postgresql://</code> and <code>postgresql+asyncpg://</code>)</li>
+      <li>Wait for DB with <code>pg_isready</code> (up to 30 retries × 2 s = 60 s)</li>
+      <li>Run <code>alembic upgrade head</code> — idempotent; skips already-applied migrations</li>
+      <li><code>exec</code> the <code>CMD</code>: <code>gunicorn -k uvicorn.workers.UvicornWorker -w 4 app.main:app</code></li>
+      <li>Gunicorn binds on <code>0.0.0.0:$PORT</code> (Render injects <code>$PORT</code>); health check at <code>/health</code></li>
+    </ol>
+    <div class="callout warn">
+      <span class="callout-label">Quirk you'll see in Render logs</span>
+      <p>The entrypoint first tries <code>localhost:5432</code> before falling through to the real <code>DATABASE_URL</code>. You'll see ~30 failed connection attempts in the first minute of every deploy. <strong>This is harmless</strong> — it's the local-dev fallback running before the Neon URL takes over.</p>
+    </div>
+  </div>
+
+  <!-- Q6 -->
+  <div class="qa">
+    <div class="q">Question 6</div>
+    <h4>How does a mobile release actually happen?</h4>
+    <div class="a">Answer — manual, from your laptop, today</div>
+    <pre><code># Prep
+cd vitaltrack-mobile
+npx expo-doctor                              # sanity check
+
+# Build AAB (production profile bakes in carekosh-api.onrender.com)
+eas build --profile production --platform android
+
+# Upload to Play Console internal track
+eas submit --profile production --platform android</code></pre>
+    <p>The <code>production</code> EAS profile sets <code>channel: production</code> and <code>autoIncrement: true</code> (bumps <code>versionCode</code> automatically). Submit target is <code>track: internal</code>.</p>
+    <div class="callout info">
+      <span class="callout-label">Planned change</span>
+      <p>The CI file has a disabled <code>build-production</code> job ready to automate this. When Play Console production is active, flip <code>if: false</code> to <code>if: github.ref == 'refs/heads/main'</code> and wire the EAS robot token as a secret.</p>
+    </div>
+  </div>
+
+  <!-- Q7 -->
+  <div class="qa">
+    <div class="q">Question 7</div>
+    <h4>Why does the same code produce different behavior in staging vs production?</h4>
+    <div class="a">Answer — env vars, not artifacts</div>
+    <p>Render runs the <em>same Docker image</em> in both environments. The differences are injected via env vars on the Render service:</p>
+    <table>
+      <thead><tr><th>Var</th><th>Staging</th><th>Production</th></tr></thead>
+      <tbody>
+        <tr><td><code>ENVIRONMENT</code></td><td><code>staging</code></td><td><code>production</code></td></tr>
+        <tr><td><code>DATABASE_URL</code></td><td>Neon branch <code>vitaltrack_staging</code></td><td>Neon branch <code>neondb</code></td></tr>
+        <tr><td><code>FRONTEND_URL</code></td><td>staging domain</td><td>carekosh.com</td></tr>
+        <tr><td><code>CORS_ORIGINS</code></td><td>staging domain</td><td>production domain</td></tr>
+        <tr><td><code>REQUIRE_EMAIL_VERIFICATION</code></td><td><code>true</code></td><td><code>true</code></td></tr>
+        <tr><td><code>MAIL_PASSWORD</code></td><td>Brevo staging key</td><td>Brevo production key</td></tr>
+        <tr><td><code>SECRET_KEY</code></td><td>distinct 32+ char value</td><td>distinct 32+ char value</td></tr>
+      </tbody>
+    </table>
+    <div class="callout info">
+      <span class="callout-label">12-factor</span>
+      <p>This is the orthodox 12-factor split: one immutable artifact, per-environment configuration. Data never crosses; a staging DB wipe touches zero production rows.</p>
+    </div>
+  </div>
+
+  <!-- Q8 -->
+  <div class="qa">
+    <div class="q">Question 8</div>
+    <h4>Which backend does a given APK talk to?</h4>
+    <div class="a">Answer — whichever URL was baked in at build time</div>
+    <p><code>EXPO_PUBLIC_API_URL</code> is a compile-time constant. Once an APK/AAB is built, its backend is fixed — changing a Render URL later won't redirect existing installs.</p>
+    <table>
+      <thead><tr><th>EAS profile</th><th>Artifact</th><th>Points at</th></tr></thead>
+      <tbody>
+        <tr><td><code>development</code></td><td>APK</td><td><code>http://localhost:8000</code></td></tr>
+        <tr><td><code>preview</code></td><td>APK</td><td><code>https://vitaltrack-api-staging.onrender.com</code></td></tr>
+        <tr><td><code>production</code></td><td>AAB (Play Store internal)</td><td><code>https://vitaltrack-api.onrender.com</code></td></tr>
+      </tbody>
+    </table>
+    <div class="callout danger">
+      <span class="callout-label">Sharp edge</span>
+      <p>If a teammate gets confused test data on "preview APK," the fix is a rebuild, not a server config change. Always verify which URL an APK is pointed at before blaming the backend.</p>
+    </div>
+  </div>
+
+  <!-- Q9 -->
+  <div class="qa">
+    <div class="q">Question 9</div>
+    <h4>What does the backend actually serve for non-JSON requests?</h4>
+    <div class="a">Answer — a few HTML pages, rendered server-side</div>
+    <p>Most endpoints return JSON, but three return HTML because the user arrives via an email link:</p>
+    <table>
+      <thead><tr><th>Endpoint</th><th>Who hits it</th><th>Response</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /api/v1/auth/verify-email</code></td><td>Browser clicking email verification link</td><td>HTML page — "email verified"</td></tr>
+        <tr><td><code>GET /api/v1/auth/reset-password</code></td><td>Browser clicking reset link</td><td>HTML form — submit to <code>POST /reset-password</code></td></tr>
+        <tr><td><code>GET /api/v1/auth/confirm-delete/{token}</code></td><td>Browser clicking deletion confirmation link (PR #13)</td><td>HTML page — "account deleted" (cascade runs server-side)</td></tr>
+      </tbody>
+    </table>
+    <p>The JSON API variants (<code>GET /verify-email/{token}</code>, <code>POST /reset-password</code>, <code>POST /cancel-delete</code>) exist for in-app flows.</p>
+  </div>
+
+  <!-- Q10 -->
+  <div class="qa">
+    <div class="q">Question 10</div>
+    <h4>The first request after idle is slow. Why?</h4>
+    <div class="a">Answer — Render free-tier cold start</div>
+    <p>Free Render web services sleep after 15 min of inactivity. The first request wakes them — container start, Alembic check, Gunicorn boot — which can take 30–60 s.</p>
+    <p>Mitigation options (none shipped yet):</p>
+    <ul>
+      <li>UptimeRobot pinging <code>/health</code> every 14 min keeps the service warm</li>
+      <li>Upgrading to a paid Render tier removes the sleep behavior</li>
+      <li>Client-side: a loading state on the first request after app open, with timeout &gt; 60 s</li>
+    </ul>
+  </div>
+
+  <!-- Q11 -->
+  <div class="qa">
+    <div class="q">Question 11</div>
+    <h4>My PR says "2 commits behind main." Should I rebase?</h4>
+    <div class="a">Answer — usually no</div>
+    <p>GitHub counts the merge commits of other PRs against your branch. After every merge on <code>main</code>, every open PR goes up by 1. Rebase only if you have actual merge conflicts, not because of the count.</p>
+    <div class="callout success">
+      <span class="callout-label">When to rebase anyway</span>
+      <p>(1) You want a recent fix from main that your work depends on. (2) Your branch is weeks old and ancestors matter for review. (3) CI is failing because of a main-side change that your branch doesn't include.</p>
+    </div>
+  </div>
+
+  <!-- Q12 -->
+  <div class="qa">
+    <div class="q">Question 12</div>
+    <h4>How do I verify a deploy actually worked?</h4>
+    <div class="a">Answer — the E2E verification guide</div>
+    <p>Short version:</p>
+    <pre><code># 1. Health
+curl https://vitaltrack-api-staging.onrender.com/health
+curl https://vitaltrack-api.onrender.com/health
+# expected: {"status":"healthy"}
+
+# 2. Recent deploy check (in Render dashboard)
+#    Events tab → latest entry should say "Deploy live"
+
+# 3. Alembic head
+#    Render shell → alembic current
+#    → should match the latest file in alembic/versions/
+
+# 4. Smoke: register → login → create item → delete item</code></pre>
+    <p>Full step-by-step with expected responses: <strong>CAREKOSH_E2E_VERIFICATION_GUIDE.html</strong>.</p>
+  </div>
+
+  <!-- Q13 -->
+  <div class="qa">
+    <div class="q">Question 13</div>
+    <h4>Which device is the golden reference for manual QA?</h4>
+    <div class="a">Answer</div>
+    <p>Pixel 9 Pro XL · Android 16. Install APKs via <code>adb install -r app.apk</code> or sideload directly. Expo Go works for dev iteration but does not exercise the EAS-built binary path.</p>
+  </div>
+</div>
+
+<div class="footer">
+  CareKosh · Build &amp; Deploy Flow · April 2026 · PRs #4–#13
+</div>
+
+</div>
+</body>
+</html>

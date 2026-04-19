@@ -1,13 +1,17 @@
 # Technical Challenges & Solutions
 
-> **Lessons learned** during VitalTrack development. Reference for debugging similar issues.
+> **Lessons learned** during CareKosh (formerly VitalTrack) development. A debugging reference for future-us hitting the same wall.
+
+Entries are in rough chronological order. The "Architecture Decisions" section at the bottom captures rationale for choices that are still live.
+
+> **Heads-up on historical entries:** challenges 1–3, 7, 8, 15, 17 describe problems from the **offline-first era** (pre-PR #8). The server-first refactor in PR #8 removed the offline-first architecture — CareKosh is now a React Query + Zustand-UI-only app, not a Zustand-persist + AsyncStorage + custom sync app. Those entries stay here because the root-cause reasoning is still educational.
 
 ---
 
 ## Challenge 1: Critical Items Not Showing Emergency Backup
 
 ### Symptom
-BiPAP machine with `qty=1` showed as "Normal" instead of "Low Stock" + "Emergency Backup Required"
+BiPAP machine with `qty=1` showed as "Normal" instead of "Low Stock" + "Emergency Backup Required".
 
 ### Root Cause
 Original logic only checked if quantity was below minimum:
@@ -22,113 +26,84 @@ Critical items with only 1 unit MUST be flagged as low stock:
 // FIXED: types/index.ts
 export const isLowStock = (item: Item): boolean => {
   if (item.quantity <= 0) return false;  // Out of stock, not low
-  
-  // CRITICAL FIX: Critical equipment with only 1 unit = ALWAYS LOW STOCK
+
+  // Critical equipment with only 1 unit = ALWAYS low stock
   if (isCriticalEquipment(item) && item.quantity === 1) {
     return true;
   }
-  
-  // Standard: below minimum
+
   if (item.quantity < item.minimumStock) {
     return true;
   }
-  
+
   return false;
 };
 ```
 
 ### Files Changed
-- `vitaltrack-mobile/types/index.ts` (lines 125-148)
+- `vitaltrack-mobile/types/index.ts`
 
 ---
 
-## Challenge 2: Activity Logs Disappearing After Login
+## Challenge 2 (historical, offline-first era): Activity Logs Disappearing After Login
 
 ### Symptom
-User makes changes → logs out → logs back in → Activity logs empty
+User makes changes → logs out → logs back in → Activity logs empty.
 
 ### Root Cause
-`loadUserData()` was resetting `activityLogs` to `[]` every login without preserving saved logs.
+`loadUserData()` reset `activityLogs` to `[]` on every login without restoring the per-user persisted copy.
 
 ### Solution
-1. Store activity logs **per-user** in AsyncStorage
-2. Load saved logs **before** clearing state
-3. Persist logs on every change
-
-```typescript
-// FIXED: store/useAppStore.ts
-
-// Save per-user (called on every activity)
-export async function saveUserActivityLogs(userId: string, logs: ActivityLog[]) {
-  const key = `vitaltrack_activity_${userId}`;
-  await AsyncStorage.setItem(key, JSON.stringify(logs.slice(0, 100)));
-}
-
-// Load on login (called in loadUserData)
-export async function loadUserActivityLogs(userId: string): Promise<ActivityLog[]> {
-  const key = `vitaltrack_activity_${userId}`;
-  const data = await AsyncStorage.getItem(key);
-  return data ? JSON.parse(data) : [];
-}
-
-// In loadUserData():
-const savedActivityLogs = await loadUserActivityLogs(userId);  // Load FIRST
-set({
-  categories: [],
-  items: [],
-  activityLogs: savedActivityLogs,  // Preserve, don't reset!
-  // ...
-});
-```
+Persist logs per user key in AsyncStorage, and load the saved copy **before** clearing in-memory state.
 
 ### Files Changed
-- `vitaltrack-mobile/store/useAppStore.ts` (lines 47-78, 855-969)
+- `vitaltrack-mobile/store/useAppStore.ts`
+
+### Status
+Obsolete after PR #8. Activity logs are now server-side; the client reads them via React Query and never mutates a persisted local copy.
 
 ---
 
-## Challenge 3: Emergency Backup Missing Out-of-Stock Items
+## Challenge 3 (historical): Emergency Backup Missing Out-of-Stock Items
 
 ### Symptom
-Emergency Backup section only showed critical items at qty=1, not qty=0
+Emergency Backup section only showed critical items at `qty=1`, not `qty=0`.
 
 ### Root Cause
-Only filtering from `lowStockItems`, which excludes qty=0 items.
+Only filtering from `lowStockItems`, which excludes `qty=0` items.
 
 ### Solution
-Combine both low-stock AND out-of-stock critical items:
+Combine low-stock + out-of-stock critical items:
 ```typescript
-// FIXED: components/dashboard/NeedsAttention.tsx
-const lowStockEmergencyItems = lowStockItems.filter(item => needsEmergencyBackup(item));
-const outOfStockCriticalItems = outOfStockItems.filter(item => isCriticalEquipment(item));
-
-// Combine: critical items at qty=0 OR qty=1 need emergency backup
+const lowStockEmergencyItems = lowStockItems.filter(needsEmergencyBackup);
+const outOfStockCriticalItems = outOfStockItems.filter(isCriticalEquipment);
 const emergencyBackupItems = [...lowStockEmergencyItems, ...outOfStockCriticalItems];
 ```
 
 ### Files Changed
-- `vitaltrack-mobile/components/dashboard/NeedsAttention.tsx` (lines 42-48)
+- `vitaltrack-mobile/components/dashboard/NeedsAttention.tsx`
 
 ---
 
-## Challenge 4: Phone Can't Connect to Backend (WiFi)
+## Challenge 4: Phone Can't Connect to Backend (Wi-Fi)
 
 ### Symptoms
 - "Network request failed" in app
-- Phone browser times out on PC IP
+- Phone browser times out against PC IP
 
-### Root Causes (in order of likelihood)
-1. **Windows Firewall** blocking port 8000
-2. **Wrong IP** in `.env` file
-3. **Phone on different WiFi** network
-4. **Backend not running**
+### Root Causes (likelihood order)
+1. Windows Firewall blocking port 8000
+2. Wrong IP in `.env`
+3. Phone on a different Wi-Fi network (guest SSID, AP isolation)
+4. Backend not running
 
 ### Solution
-See [LOCAL_TESTING_COMPLETE_GUIDE.md](LOCAL_TESTING_COMPLETE_GUIDE.md) Section E
-
-**Quick fix (Windows):**
+See `docs/LOCAL_TESTING_COMPLETE_GUIDE.md` §E. Fast Windows fix:
 ```powershell
 netsh advfirewall firewall add rule name="FastAPI Dev" dir=in action=allow protocol=tcp localport=8000
 ```
+
+Fallback: USB + `adb reverse` — see `docs/USB_ADB_REVERSE_GUIDE.md`. Bypasses the network entirely.
 
 ---
 
@@ -140,42 +115,43 @@ Error: port 5432 already in use
 ```
 
 ### Root Cause
-Local PostgreSQL service running on same port
+A local PostgreSQL service is bound to the same port.
 
 ### Solution
+
 **Windows:**
 ```cmd
 net stop postgresql-x64-16
 ```
 
-**Mac:**
+**macOS:**
 ```bash
 brew services stop postgresql
 ```
 
-**Alternative:** Change port in `docker-compose.dev.yml`:
+**Alternative:** remap the external port in `docker-compose.dev.yml`:
 ```yaml
 ports:
-  - "5433:5432"  # Use 5433 externally
+  - "5433:5432"
 ```
 
 ---
 
-## Challenge 6: Expo Cache Causing Stale Code
+## Challenge 6: Expo Cache Serves Stale Code
 
 ### Symptom
-Changes to `.env` or code not reflected in app
+`.env` or code changes don't show up in the app.
 
 ### Root Cause
-Metro bundler caches aggressively
+Metro bundler caches aggressively.
 
 ### Solution
-**ALWAYS use `--clear` after `.env` changes:**
+Always use `--clear` after `.env` changes:
 ```bash
 npx expo start --clear
 ```
 
-**For stubborn issues:**
+Stubborn case:
 ```bash
 rm -rf node_modules .expo
 npm install --legacy-peer-deps
@@ -184,177 +160,159 @@ npx expo start --clear
 
 ---
 
-## Challenge 7: Sync Data Loss on Logout
+## Challenge 7 (historical, offline-first era): Sync Data Loss on Logout
 
 ### Symptom
-User makes changes → logs out → changes lost
+User makes changes → logs out → changes lost.
 
 ### Root Cause
-Logout was clearing local state before syncing to backend
+Logout cleared local state before pushing changes to the backend.
 
-### Solution
-Implemented **sync-before-logout** pattern:
+### Solution at the time
+Sync-before-logout pattern:
 ```typescript
-// In logout flow:
-await get().syncToBackend();  // Push all data FIRST
-await get().clearStore();      // Then clear local state
+await get().syncToBackend();
+await get().clearStore();
 ```
 
-### Files Changed
-- `vitaltrack-mobile/store/useAuthStore.ts`
-- `vitaltrack-mobile/store/useAppStore.ts`
+### Status
+Obsolete after PR #8. Every mutation now flushes to the server immediately via `useServerMutations`, so logout has nothing pending to sync.
 
 ---
 
-## Challenge 8: API Schema Mismatch
+## Challenge 8 (historical): API Schema Mismatch
 
 ### Symptom
-Sync operations failing with validation errors
+Sync operations failing with validation errors.
 
 ### Root Cause
-Frontend using camelCase, backend expecting snake_case
+Frontend used camelCase; backend expected snake_case.
 
 ### Solution
-Used Pydantic aliases for bidirectional mapping:
+Pydantic aliases for bidirectional mapping:
 ```python
-# Backend: schemas/sync.py
 class SyncOperation(BaseModel):
     entity_id: str = Field(..., alias="entityId")
     local_id: str = Field(..., alias="localId")
-    
-    model_config = {"populate_by_name": True}  # Accept both formats
+    model_config = {"populate_by_name": True}
 ```
+
+### Status
+The legacy `/sync/*` endpoints still exist in `app/api/v1/sync.py` but are unused by the current mobile app. Main REST endpoints (items, orders, categories) use snake_case on the wire.
 
 ---
 
 ## Challenge 9: Expo Go "Unable to Download Remote Update" (SDK 54)
 
 ### Symptom
-App loads in Expo Go but immediately crashes with: `Something went wrong. Fatal error: failed to download remote update`
+App loads in Expo Go but immediately crashes with *"Something went wrong. Fatal error: failed to download remote update"*.
 
 ### Root Cause
-`expo-updates` package was installed as a dependency but **no `updates` configuration existed in `app.json`**. Expo Go tried to fetch OTA updates from Expo's servers, found no update URL configured, and crashed before the app could even render.
+`expo-updates` is installed as a dependency, but no `updates` configuration exists in `app.json`. Expo Go tries to fetch OTA updates on launch, finds nothing configured, and crashes before the app can render.
 
 ### Solution
-Disable OTA updates in `app.json`:
+Disable OTA in `app.json`:
 ```json
 {
   "expo": {
-    "updates": {
-      "enabled": false
-    }
+    "updates": { "enabled": false }
   }
 }
 ```
 
-### Why This Works
-The `expo-updates` package is needed for production OTA update support, but in development with Expo Go, it tries to check for remote updates on app launch. Disabling it tells Expo Go to skip the update check and load the JavaScript bundle directly from Metro.
-
 ### Files Changed
-- `vitaltrack-mobile/app.json` (added `updates.enabled: false`)
+- `vitaltrack-mobile/app.json`
 
 ---
 
 ## Challenge 10: ADB Reverse Port Mapping Corruption
 
 ### Symptom
-App loads, UI renders, but all API calls return **404**. Login and registration fail with `[API] Status: 404`.
+App loads, UI renders, but every API call returns **404**. Login/register fail with `[API] Status: 404`.
 
 ### Root Cause
-Running `adb reverse` with incorrect port mapping. The actual state was:
+`adb reverse` had the wrong mapping:
 ```
-tcp:8000 → tcp:8081   ← WRONG! Backend port mapped to Metro bundler
-tcp:8081 → tcp:8081   ← Correct
+tcp:8000 → tcp:8081   WRONG — backend port mapped to Metro bundler
+tcp:8081 → tcp:8081   correct
 ```
-Port 8000 on the phone was routing to Metro (8081) instead of the FastAPI backend (8000). Every API call hit Metro's HTTP server which returned 404.
+Phone port 8000 was routing to Metro (8081) — Metro's HTTP server returned 404 for every API path.
 
-### How to Diagnose
+### Diagnose
 ```bash
 adb reverse --list
 ```
-Check that `tcp:8000` maps to `tcp:8000` (not `tcp:8081`).
 
-### Solution
+### Fix
 ```bash
 adb reverse --remove-all
 adb reverse tcp:8000 tcp:8000
 adb reverse tcp:8081 tcp:8081
 adb reverse --list
-# Verify: tcp:8000 → tcp:8000, tcp:8081 → tcp:8081
 ```
 
 ### Prevention
-Always run `adb reverse --remove-all` before setting up new mappings. Stale or incorrect mappings persist across Expo restarts.
+Always `adb reverse --remove-all` before setting up new mappings.
 
 ---
 
-## Challenge 11: Expo Go Auto-Update Uninstalls Itself (Phone Storage Full)
+## Challenge 11: Expo Go Auto-Update Uninstalls Itself (phone storage full)
 
 ### Symptom
-Pressing `a` in Expo terminal triggers: `Install the recommended Expo Go version?` → Accept → Expo Go uninstalled → New version fails to install with `java.io.IOException: not enough space`.
-
-Now the phone has NO Expo Go at all.
+Pressing `a` in Expo terminal → "Install the recommended Expo Go version?" → Accept → old Expo Go uninstalled → new install fails with `java.io.IOException: not enough space`. Phone now has no Expo Go at all.
 
 ### Root Cause
-Expo CLI auto-detected a minor version mismatch (54.0.6 on phone vs 54.0.7 recommended), uninstalled the old version first, then failed to install the new one due to insufficient storage.
+Expo CLI auto-detected a minor version mismatch, uninstalled first, then failed to reinstall due to full storage.
 
 ### Solution
-1. Free up phone storage (delete unused apps, clear cache)
-2. Reinstall Expo Go from Play Store manually
-3. When Expo asks to update, say **NO** — minor patch differences (54.0.6 vs 54.0.7) are compatible
-
-### Prevention
-Always decline Expo Go auto-updates if phone storage is low. Minor version differences within the same SDK (54.x) are compatible.
+1. Free storage.
+2. Reinstall Expo Go from Play Store.
+3. When Expo offers the auto-update, decline — minor patches within the same SDK (54.x) are compatible.
 
 ---
 
-## Challenge 12: Windows Firewall Blocks Phone-to-PC Connection
+## Challenge 12: Windows Firewall Blocks Phone-to-PC
 
 ### Symptom
-Phone browser cannot reach `http://192.168.x.x:8000/health` — shows "Site unreachable". Same Wi-Fi confirmed.
+Phone browser can't reach `http://192.168.x.x:8000/health`. Same Wi-Fi confirmed.
 
-### Root Cause
-Windows Firewall blocks inbound connections to port 8000 and 8081 by default.
-
-### Solution
-Run in **PowerShell as Administrator**:
+### Solution (Run PowerShell as Admin)
 ```powershell
-New-NetFirewallRule -DisplayName "VitalTrack Backend 8000" -Direction Inbound -Port 8000 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "CareKosh Backend 8000" -Direction Inbound -Port 8000 -Protocol TCP -Action Allow
 New-NetFirewallRule -DisplayName "Expo Metro 8081" -Direction Inbound -Port 8081 -Protocol TCP -Action Allow
 ```
 
-### Alternative: USB Method
-If firewall rules don't help (corporate networks, AP isolation on router), use USB debugging with `adb reverse` — bypasses network entirely.
+### Alternative
+USB + `adb reverse` — see Challenge 10 and `docs/USB_ADB_REVERSE_GUIDE.md`.
 
 ---
 
 ## Challenge 13: Ngrok Tunnel Service Down
 
 ### Symptom
-`npx expo start --tunnel` fails with `CommandError: failed to start tunnel — remote gone away`
+`npx expo start --tunnel` fails with `CommandError: failed to start tunnel — remote gone away`.
 
 ### Root Cause
-Ngrok's relay service was experiencing an outage. Tunnel mode routes Metro traffic through Ngrok's servers — if they're down, it can't work.
+Ngrok's relay was in outage. Tunnel mode routes through Ngrok.
 
 ### Solution
-Use LAN mode (`npx expo start --lan`) or USB mode (`npx expo start --localhost` with `adb reverse`) instead. Tunnel mode is a convenience, not a requirement.
+Use LAN (`--lan`) or USB + `adb reverse` (`--localhost`) instead.
 
-### When to Use Each Mode
-| Mode | Command | When to Use |
-|------|---------|-------------|
-| LAN | `npx expo start --lan` | Phone and PC on same Wi-Fi, no firewall issues |
-| Localhost + USB | `npx expo start --localhost` | Wi-Fi doesn't work, USB cable available |
-| Tunnel | `npx expo start --tunnel` | Different networks, no USB cable |
+| Mode | Command | When |
+|------|---------|------|
+| LAN | `npx expo start --lan` | Same Wi-Fi, no firewall issues |
+| Localhost + USB | `npx expo start --localhost` | Wi-Fi blocked, cable available |
+| Tunnel | `npx expo start --tunnel` | Different networks, no cable |
 
 ---
 
-## Challenge 14: Rate Limiter 500 Error Behind Cloudflare/Render Proxy
+## Challenge 14: Rate Limiter 500 Error Behind Render Proxy
 
 ### Symptom
-All rate-limited endpoints (register, login) returned `500 Internal Server Error` on Render. Non-rate-limited endpoints worked fine.
+All rate-limited endpoints (register, login) returned 500 Internal Server Error on Render. Non-rate-limited endpoints worked.
 
 ### Root Cause
-The `slowapi` rate limiter's default `get_remote_address` function got the proxy IP instead of the real client IP. Behind Render's Cloudflare proxy, `request.client.host` returns the proxy's IP. The `swallow_errors=False` default meant any storage issue crashed the request.
+`slowapi`'s default `get_remote_address` reads `request.client.host`, which returns the proxy IP behind Render's edge. The default `swallow_errors=False` meant a storage blip crashed the request.
 
 ### Solution
 ```python
@@ -374,65 +332,59 @@ limiter = Limiter(
 )
 ```
 
-### Key Insight
-Always test rate-limited endpoints behind the actual production proxy, not just locally.
+### Lesson
+Always test rate-limited endpoints behind the real proxy, not just locally.
 
 ---
 
-## Challenge 15: Data Loss on App Reopen (P0)
+## Challenge 15 (historical, offline-first era): Data Loss on App Reopen (P0)
 
 ### Symptom
-User adds items, edits quantities → closes app → reopens → everything reset to default seed data.
+User adds items → closes app → reopens → everything reset to seed data.
 
 ### Root Cause
-`loadUserData()` in `useAppStore.ts` called `clearAllUserData()` on EVERY app open (line 866), destroying the locally persisted Zustand state BEFORE fetching from the server. If the server was slow (Render cold start) or returned empty data, local changes were permanently gone.
+`loadUserData()` in `useAppStore.ts` called `clearAllUserData()` on every app open, destroying persisted Zustand state **before** the server fetch. If the server was slow (Render cold start) or returned empty, changes were gone.
 
-### Solution
-- Only call `clearAllUserData()` when switching between different users
-- If server returns empty but local data exists, preserve local data and push it to server
-- On network error, preserve existing local state instead of overwriting with seed data
+### Solution at the time
+- Only clear when the signed-in user actually changed.
+- If server returned empty but local had data, push local to server.
+- On network error, preserve local state.
 
-### Key Insight
-Never destroy local data before confirming server has a complete copy. Merge, don't replace.
+### Status
+Obsolete after PR #8. The server is now authoritative. React Query caches are rebuilt from the server on every login; there is no persisted domain state to destroy in the first place.
 
 ---
 
 ## Challenge 16: Stale Error State Across Auth Screens
 
 ### Symptom
-"An error occurred" banner showing on login/register/forgot-password screens before user does anything.
+"An error occurred" banner appearing on login/register/forgot-password screens before the user does anything.
 
 ### Root Cause
-Zustand `error` field is shared across all auth screens. When one screen sets an error, navigating to another screen doesn't clear it. The error renders immediately on mount.
+`useAuthStore`'s `error` field is shared across screens. Setting it in one screen persists when navigating to another.
 
 ### Solution
-Added `useFocusEffect` with `clearError()` to all three auth screens:
+Clear the error on focus in every auth screen:
 ```typescript
 useFocusEffect(
-    useCallback(() => {
-        clearError();
-    }, [clearError])
+  useCallback(() => { clearError(); }, [clearError])
 );
 ```
 
-### Key Insight
-Shared global error state needs explicit cleanup on screen transitions. Use `useFocusEffect` (fires on every focus), not `useEffect` (fires only on mount).
+### Lesson
+Shared global error state needs explicit cleanup on screen transitions. `useFocusEffect` (every focus) beats `useEffect` (only on mount).
 
 ---
 
 ## Challenge 17: Logout Requires Double-Tap / Does Nothing
 
 ### Symptom
-Tapping logout sometimes does nothing. Confirmation dialog appears but after "OK", nothing happens.
+Tapping Logout sometimes did nothing. Confirmation dialog appeared, OK, nothing happens.
 
-### Root Cause
-The logout function ran a long sync-before-logout sequence. If sync took too long or `isLoading` was already true from a previous operation, the state update didn't trigger re-render.
+### Root Cause (offline-first era)
+The logout function ran a long sync-before-logout sequence. If sync took too long or `isLoading` was already true from another operation, the state update didn't trigger a re-render.
 
 ### Solution
-1. Added `isLoggingOut` guard to prevent double-tap
-2. Wrapped sync in `Promise.race` with 5-second timeout
-3. Used `finally` block to ALWAYS reset state, even if sync fails
-
 ```typescript
 logout: async () => {
     if (get().isLoggingOut) return;
@@ -446,79 +398,79 @@ logout: async () => {
 }
 ```
 
+### Current State
+The sync-before-logout step is gone (server-first — nothing to flush), but the `isLoggingOut` guard was kept to prevent double-tap while the token storage / React Query reset runs.
+
 ---
 
 ## Challenge 18: Unit Dropdown Can't Scroll on Android
 
 ### Symptom
-The unit picker dropdown in item edit shows only 3-4 options. Cannot scroll to see 30+ available units.
+Unit picker in item edit shows only 3–4 options. Can't scroll to see all 30+.
 
 ### Root Cause
-Nested `ScrollView` inside another `ScrollView`. On Android, the inner ScrollView doesn't scroll without `nestedScrollEnabled={true}`.
+Nested `ScrollView` inside another `ScrollView`. Android doesn't scroll the inner one without `nestedScrollEnabled={true}`.
 
 ### Solution
 ```tsx
-<ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
+<ScrollView
+  style={{ maxHeight: 200 }}
+  nestedScrollEnabled={true}
+  showsVerticalScrollIndicator={true}
+>
 ```
 
-### Key Insight
-Android requires explicit `nestedScrollEnabled` for nested ScrollViews. iOS handles this automatically.
+### Lesson
+Android needs explicit `nestedScrollEnabled` for nested ScrollViews. iOS handles it implicitly.
 
 ---
 
 ## Challenge 19: Email Verification Not Working End-to-End
 
 ### Symptom
-Register with email → verify-email-pending screen flashes briefly → goes straight to dashboard. No verification email arrives. User can never be blocked.
+Register with email → verify-email-pending screen flashes → dashboard. No email arrives. User never blocked.
 
-### Root Cause (Multiple Issues)
-1. `MAIL_PASSWORD` (Brevo API key) wasn't configured on Render → emails never sent
-2. Frontend set `isAuthenticated: true` for ALL registrations → route guard kicked user to dashboard
-3. `REQUIRE_EMAIL_VERIFICATION` defaulted to `True` in code but wasn't set on Render
-4. Route guard timing: `useEffect` fired before navigation to verify screen settled
+### Root Causes
+1. `MAIL_PASSWORD` missing on Render → emails never sent.
+2. Frontend set `isAuthenticated: true` for all registrations → route guard punted to dashboard.
+3. `REQUIRE_EMAIL_VERIFICATION` not set on Render.
+4. Route guard fired before navigation settled.
 
-### Solution (4-Part Fix)
-1. **Brevo configured on Render**: `MAIL_PASSWORD`, `MAIL_FROM`, `REQUIRE_EMAIL_VERIFICATION=true`
-2. **Auth store**: Email registrations set `isAuthenticated: false` — user stays in auth group
-3. **Register screen**: Uses `router.replace` (not push) to verify-email-pending — no escape
-4. **Verify screen**: Removed "Continue to App" — must verify first, then "Go to Login"
-5. **Backend guard**: Login blocked with `EMAIL_NOT_VERIFIED` only when `MAIL_PASSWORD` is configured
-6. **Backend email.py**: `is_email_configured()` check prevents silent email failures
+### Solution
+1. Brevo configured on Render (`MAIL_PASSWORD`, `MAIL_FROM`, `REQUIRE_EMAIL_VERIFICATION=true`).
+2. Auth store: email registrations set `isAuthenticated: false`.
+3. Register screen uses `router.replace` (not `push`) to verify-email-pending.
+4. Verify screen has no "Continue to App" — must verify then "Go to Login".
+5. Backend login blocks with `EMAIL_NOT_VERIFIED` only when `MAIL_PASSWORD` is set AND user has an email AND not yet verified.
+6. `is_email_configured()` helper prevents silent email failures.
 
-### Auth Flow After Fix
-```
-Email registration → isAuthenticated=false → verify-email-pending (blocked)
-  → User clicks email link → verified in DB
-  → User taps "Go to Login" → login succeeds → dashboard
-
-Username registration → isAuthenticated=true → dashboard immediately
-```
+### Related
+See `docs/EMAIL_VERIFICATION_GUIDE.md` for the full flow and `docs/PHASE1_AUTH_HARDENING.md` for the enumeration leak fix shipped later in PR #12.
 
 ---
 
 ## Challenge 20: Generic "An Error Occurred" Messages
 
 ### Symptom
-Every API error showed "An error occurred" — no distinction between wrong password, server down, rate limit, etc.
-
-### Root Cause
-`api.ts` had a single fallback: `let message = 'An error occurred'`. No HTTP status code differentiation.
+Every API error showed "An error occurred" — no distinction between wrong password, server down, rate limit.
 
 ### Solution
-Replaced with status-specific messages:
+Status-specific copy in `services/api.ts`:
 ```typescript
 switch (response.status) {
     case 401: message = 'Incorrect email/username or password.'; break;
     case 429: message = 'Too many attempts. Please wait a moment.'; break;
-    case 500: case 502: case 503:
+    case 500:
+    case 502:
+    case 503:
         message = 'Server temporarily unavailable.'; break;
     // ... etc
 }
 ```
 
-Also improved network error for Render cold starts:
-```typescript
-'Unable to connect to server. The server may be starting up — please wait a moment and try again.'
+Network error copy tuned for Render cold starts:
+```
+"Unable to connect to server. The server may be starting up — please wait a moment and try again."
 ```
 
 ---
@@ -526,20 +478,20 @@ Also improved network error for Render cold starts:
 ## Challenge 21: Auth Initialize Clears State on Network Failure
 
 ### Symptom
-Open app after it's been closed → long wait (Render cold start) → user logged out with all data gone.
+Open app after a long idle → long wait (cold start) → user is logged out with everything gone.
 
 ### Root Cause
-`initialize()` called `tokenStorage.clearTokens()` on ANY error, including network timeouts. This logged the user out even though their token was still valid.
+`initialize()` called `tokenStorage.clearTokens()` on ANY error, including a network timeout. The token was still valid, but we threw it away.
 
 ### Solution
-Only clear tokens on explicit 401 (token actually invalid). On network errors, preserve cached auth state:
+Only clear tokens on explicit 401; preserve cached auth on network errors:
 ```typescript
 } catch (error) {
     const apiError = error as { status?: number };
     if (apiError.status === 401) {
-        await tokenStorage.clearTokens(); // Token invalid
+        await tokenStorage.clearTokens();
     } else {
-        // Network error — keep existing state
+        // Network / timeout — keep existing state
         set({ isLoading: false, isInitialized: true });
     }
 }
@@ -547,128 +499,166 @@ Only clear tokens on explicit 401 (token actually invalid). On network errors, p
 
 ---
 
+## Challenge 22: 409 Conflict on Concurrent Item Updates (PR #9 era)
+
+### Symptom
+Two rapid updates to the same item — second one silently won, overwriting the first.
+
+### Root Cause
+No optimistic concurrency control. Last-write-wins is unsafe for inventory quantities.
+
+### Solution
+Added a `version` column to `items` (migration `20260406_add_version_audit_log_quantity_check.py`). Updates now assert the `version` they expected and bump it. Conflicting updates return **409 Conflict** with `{server_version, server_quantity}` so the client can reconcile. Same migration also added an `audit_log` table and a `CHECK (quantity >= 0)` constraint.
+
+---
+
+## Challenge 23: Authentication Hardening (PR #12)
+
+### What changed
+- **Config validators** — `SECRET_KEY` must be ≥32 chars; in production rejects anything starting with `"CHANGE-THIS"`.
+- **FRONTEND_URL validator** — required in production, otherwise emails contain broken links.
+- **CORS_ORIGINS validator** — rejects `"*"` in production (prevents accidental open-CORS on a rebrand deploy).
+- **Session revocation on password change** — `change_password` now revokes all refresh tokens, same as `reset_password`. The response message tells the user their other devices will need to re-login.
+- **Email required at registration** — `UserRegister.email` is no longer optional. Username-only accounts have no recovery path and are a support liability; Play Store requires account recovery. Username remains optional.
+- **Enumeration-safe resend** — `POST /auth/resend-verification` returns identical text whether the email exists, is already verified, or doesn't exist.
+
+### Tests
+Made email required broke tests that registered with username only. `conftest.py`'s `register_user` helper now auto-generates `<identifier>@test.com` when the caller doesn't pass an email. See `docs/PHASE1_AUTH_HARDENING.md`.
+
+---
+
+## Challenge 24: Play-Store-Compliant Account Deletion (PR #13)
+
+### What it is
+Google Play requires an in-app path to delete an account and all its data. The naive approach — delete immediately on button tap — is both policy-risky (missclicks) and token-hijack-risky (a stolen access token can wipe an account).
+
+### Solution — two-step, email-confirmed deletion
+1. `DELETE /auth/me` — generate a raw token (`secrets.token_urlsafe(32)`), store `SHA-256(raw)` with a 24-hour expiry on the user row, send the raw token in a confirmation email via `BackgroundTask`. **No data deleted yet.**
+2. `GET /auth/confirm-delete/{token}` — user clicks email link. Backend hashes the incoming token, verifies the DB hash + expiry, then `db.delete(user)`. DB-level `ondelete="CASCADE"` on every FK tears down categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
+3. `POST /auth/cancel-delete` — authenticated nullifier for `deletion_token` and `deletion_token_expires`. Pending email link becomes invalid.
+
+Schema change: migration `20260419_add_account_deletion_token_fields.py` adds two nullable columns to `users`. Safe on a live DB with zero downtime.
+
+See `docs/PHASE2_ACCOUNT_DELETION.md` for the full walkthrough including the cascade audit, token pattern reasoning, and the mobile Profile screen work.
+
+---
+
 ## Architecture Decisions
 
-### Why Offline-First?
-Medical caregivers **cannot depend on internet** during emergencies. Data must be available locally, synced when possible. This is non-negotiable for a medical app.
+### Why server-first (post PR #8)?
 
-### Why Per-User Activity Logs?
-- Activity logs are **personal audit trails**
-- Not synced to server (reduces payload, preserves privacy)
-- Stored separately from main Zustand store (avoids sync issues)
+The original design was offline-first with AsyncStorage + a hand-rolled sync queue. It was **wrong for this app**:
+- Medical inventory data is already small (hundreds of items, not thousands).
+- Data consistency matters more than offline edit capability — a nurse adding a phantom BiPAP because a sync queue replayed a stale op is worse than briefly not being able to edit during a 10-second Render cold start.
+- Sync code is a perpetual source of edge cases (Challenges 15, 17 above). Eliminating it eliminated an entire bug category.
 
-### Why AsyncStorage for Activity Logs?
-- Survives app restarts
-- Survives logout/login cycles
-- Separate from Zustand persistence (different lifecycle)
+React Query + Zustand-UI-only gives us: server is the truth, the cache is read-through, mutations round-trip to the server before we update the UI. Error cases are the network's problem, handled once in `services/api.ts`, not in every screen.
 
-### Why UPSERT for Sync?
-- Idempotent operations (safe to retry)
-- Handles both create and update with single endpoint
-- Orphan cleanup handles deletes
+### Why per-user isolation in queries?
 
-### Why Orphan Cleanup?
-When user deletes item locally:
-1. Local state removes item
-2. Push sends all existing items
-3. Backend compares: "What's in DB but not in push?"
-4. Those orphans are deleted
+Every domain table (`categories`, `items`, `orders`, `activity_logs`) has a `user_id` FK. Every list query filters by the authenticated user. A compromised access token can't read another tenant's data — the SQL physically cannot return rows for a different `user_id`.
 
-### Why Images Are NOT Stored in the Database
-Images added to items are stored as **local file paths** on the phone's filesystem (e.g., `file:///data/user/0/com.vitaltrack.mobile/cache/photo.jpg`). The Neon database only stores the path string (`imageUri`), not the image binary.
+### Why UUIDs?
 
-**Consequence:** When the app is uninstalled and reinstalled, the image files are deleted by Android but the path strings persist in the database. The app tries to load the old paths → files don't exist → images appear blank. All other data (items, quantities, categories, orders) is preserved via the database.
+- Offline-created IDs (historical reason — no longer needed post-PR #8) wouldn't collide with server-assigned ones.
+- Even now, UUIDs make debugging easier (no ordered IDs leaking aggregate counts; logs can be grepped precisely).
+- The overhead vs. bigint is negligible for this dataset size.
+
+### Images as local file paths, not blobs
+
+Item photos are stored as `file://...` paths on the device. The DB column `imageUri` stores the string, not the binary.
+
+**Consequence:** uninstall → reinstall wipes the photos (OS-owned cache folder deleted) while structured data (items, quantities, categories, orders) is preserved via the DB.
 
 **Why this tradeoff:**
-- Neon free tier has 0.5 GB storage — storing images as base64 would exhaust it quickly
-- Syncing image binaries on every pull/push would be extremely slow on mobile networks
-- Images are supplementary (item reference photos), not critical medical data
-- This is the same pattern used by WhatsApp ("media not included in backup"), Instagram, and most inventory apps
+- Neon free tier has 0.5 GB storage; storing images as base64 in the DB would exhaust it quickly.
+- Syncing image binaries on every query would be slow over mobile networks.
+- Photos are supplementary (reference snapshots), not clinical data.
+- Same pattern as WhatsApp, Instagram, most inventory tools.
 
-**Future upgrade path (if needed):**
-1. **Cloud storage** (S3, Cloudinary, Supabase Storage) — upload images to a URL, store URL in database. Best solution for persistence across installs.
-2. **Base64 in database** — simple but heavy, not recommended at scale.
-3. **Accept the tradeoff** — current approach is fine for a medical supply tracker where photos are optional reference images.
+**Future upgrade path if needed:**
+1. Cloud object storage (S3, Cloudinary, Supabase Storage) — upload to URL, store URL.
+2. Base64 in DB — not recommended.
+3. Accept the tradeoff — current default.
 
-### Why No Permission Popup When Picking Photos
-On Android 13+, `expo-image-picker` uses the **system Photo Picker API** — an OS-level UI that runs outside the app's process. The user selects a photo, and the OS gives the app access to **only that specific file**. No permission is needed because the app never accesses the full gallery.
+### Android 13+ photo picker and permissions
 
-**Permission behavior by action:**
+On Android 13+, `expo-image-picker` uses the **system Photo Picker API** — an OS-level UI that runs outside the app's process. The user picks a photo, the OS hands back that one file, and no permission is required because the app never sees the rest of the gallery.
 
-| Action | Permission Needed? | Why |
-|--------|-------------------|-----|
-| Pick photo via system picker | **No** | OS mediates access, gives only the selected file |
-| Access full gallery / all photos | **Yes** (`READ_MEDIA_IMAGES`) | App wants to browse everything |
-| Take a new photo with camera | **Yes** (`CAMERA`) | Direct hardware access |
-| Save file to shared storage | **Yes** (`WRITE_EXTERNAL_STORAGE`) | Writing outside app sandbox |
+| Action | Permission? | Why |
+|--------|------------|-----|
+| Pick via system picker | **No** | OS mediates access |
+| Access full gallery | Yes (`READ_MEDIA_IMAGES`) | App browses everything |
+| Take a photo (camera) | Yes (`CAMERA`) | Direct hardware |
+| Write to shared storage | Yes (`WRITE_EXTERNAL_STORAGE`) | Outside sandbox |
 
-**Our `app.json` declares permissions:**
-```json
-"permissions": ["android.permission.CAMERA", "android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE"]
-```
-
-But on Android 13+, `READ_EXTERNAL_STORAGE` is ignored — the OS uses the photo picker instead. `CAMERA` permission is requested at runtime only when the user taps "Take Photo". Permissions are declared in the manifest but only prompted **at the moment they're needed**, not on install. This is standard Android behavior — same as Instagram, WhatsApp, etc.
+Our `app.json` declares `CAMERA`, `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`. On Android 13+, `READ_EXTERNAL_STORAGE` is ignored in favour of the picker. `CAMERA` is prompted at first tap of "Take Photo", not at install.
 
 ---
 
 ## Performance Optimizations
 
-### 1. Sync Queue Persistence
-Operations queued to AsyncStorage survive app crashes:
-```typescript
-const SYNC_QUEUE_KEY = 'vitaltrack_sync_queue';
-// Operations persisted immediately on queue
-```
-
-### 2. Activity Log Limit
-Capped at 100 entries to prevent storage bloat:
-```typescript
-const logsToSave = logs.slice(0, 100);
-```
-
-### 3. Eager Loading for Orders
-Prevents N+1 queries:
+### Eager loading for orders
+Prevents N+1 queries when listing orders with their items:
 ```python
 select(Order).options(selectinload(Order.items))
 ```
+
+### React Query stale/garbage time
+Short `staleTime` for dashboards (15 s) so refreshes feel live; longer `gcTime` (5 min) to avoid refetching when switching tabs.
+
+### Rate limiter in-memory fallback
+`swallow_errors=True` + `in_memory_fallback_enabled=True` — auth endpoints degrade gracefully if the limiter storage hiccups (Challenge 14).
 
 ---
 
 ## Security Implementations
 
-### Password Hashing
-Using Argon2 (OWASP recommended):
+### Password hashing
+Argon2 (OWASP-recommended) with bcrypt fallback for legacy rows:
 ```python
 pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 ```
 
-### Token Rotation
-Refresh tokens rotated on use (prevents replay):
+### JWT
+HS256 (symmetric), 30-minute access tokens, 30-day refresh tokens. Refresh tokens rotate on every use — the old one is marked revoked, a new JTI is issued.
+
+### Token revocation on password/reset change (PR #12)
 ```python
-stored_token.is_revoked = True  # Old token
-new_refresh_token = RefreshToken(jti=new_jti, ...)  # New token
+await db.execute(
+    update(RefreshToken)
+    .where(RefreshToken.user_id == current_user.id)
+    .values(is_revoked=True)
+)
+```
+Every device must re-login after the password changes. Response message says so.
+
+### Rate limiting
+```
+register           3/hour
+login              5/min
+forgot-password    3/hour
+resend-verify      3/hour
+reset-password     5/hour
 ```
 
-### Rate Limiting
-Protects auth endpoints:
-```python
-@limiter.limit("3/hour")  # Registration
-@limiter.limit("5/minute")  # Login
-```
+### Account deletion (PR #13)
+Hash-on-server + 24 h expiry + email out-of-band confirmation + DB cascade. Plaintext token exists only in the email.
 
 ---
 
 ## Testing Checklist
 
-After any sync-related changes:
+After domain-data changes:
 ```
-□ Create item locally → verify appears in inventory
-□ Edit item → verify changes persist after app restart
-□ Delete item → verify removed after sync
-□ Logout → login → verify all data preserved
-□ Create on device A → verify appears on device B
-□ Offline edit → go online → verify syncs
-□ Critical item at qty=1 → verify Emergency Backup shows
+[ ] Create item → appears in inventory
+[ ] Edit item → changes persist after app restart
+[ ] Delete item → gone after app restart
+[ ] Logout → login → data unchanged
+[ ] Create on device A → appears on device B after pull-to-refresh
+[ ] Go to airplane mode → read still works (React Query cache) → recover
+[ ] Critical item at qty=1 → Emergency Backup shows it
+[ ] Out-of-stock critical item → Emergency Backup shows it
 ```
 
 ---
@@ -676,18 +666,22 @@ After any sync-related changes:
 ## Common Debug Commands
 
 ```bash
-# Check backend logs
-docker-compose -f docker-compose.dev.yml logs -f api
+# Backend logs
+docker compose -f docker-compose.dev.yml logs -f api
 
-# Check database directly
-docker-compose exec db psql -U postgres -d vitaltrack
-SELECT name, quantity, local_id FROM items WHERE user_id = 'xxx';
+# Postgres shell
+docker compose -f docker-compose.dev.yml exec db psql -U postgres -d carekosh
+# then: SELECT name, quantity, version FROM items WHERE user_id = 'xxx';
 
-# Check sync worked
+# Recently-touched items (sanity after a migration)
 SELECT COUNT(*) FROM items WHERE updated_at > NOW() - INTERVAL '5 minutes';
 
-# Test API endpoint
+# Smoke one endpoint
 curl -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"identifier":"test@example.com","password":"Test123!"}'
 ```
+
+---
+
+*Last updated 2026-04-19 · tracks changes through PR #13.*

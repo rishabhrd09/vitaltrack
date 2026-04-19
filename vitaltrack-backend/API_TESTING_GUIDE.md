@@ -1,6 +1,14 @@
-# API Testing Guide
+# CareKosh API Testing Guide
 
-> Complete guide for testing VitalTrack API endpoints.
+> curl recipes for the CareKosh backend. Same endpoints work against local, staging, and production — only the base URL changes.
+
+| Environment | Base URL |
+|---|---|
+| Local | `http://localhost:8000` |
+| Staging | `https://vitaltrack-api-staging.onrender.com` |
+| Production | `https://vitaltrack-api.onrender.com` |
+
+All examples below use `http://localhost:8000`. Substitute the base URL for staging/prod.
 
 ---
 
@@ -9,7 +17,7 @@
 ### 1. Start Backend
 ```bash
 cd vitaltrack-backend
-docker-compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.dev.yml up --build -d
 ```
 
 ### 2. Access Swagger UI
@@ -273,10 +281,11 @@ curl -X PATCH http://localhost:8000/api/v1/orders/ORDER_ID/status \
 **Valid statuses:**
 - `pending` - Order created
 - `ordered` - Order placed with supplier
-- `partially_received` - Some items received
-- `received` - All items received
-- `stock_updated` - Stock levels updated
 - `declined` - Order cancelled
+- `received` - All items received
+- `stock_updated` - Received order applied to inventory (via `POST /orders/{id}/apply`)
+
+Status flow: `pending → ordered/declined → received → stock_updated`
 
 ### Apply Order to Stock
 ```bash
@@ -292,7 +301,34 @@ curl -X DELETE http://localhost:8000/api/v1/orders/ORDER_ID \
 
 ---
 
-## Sync Endpoints
+## Account Deletion (PR #13)
+
+Play Store–compliant two-step deletion flow.
+
+### Step 1: Request deletion (authenticated)
+```bash
+curl -X DELETE http://localhost:8000/api/v1/auth/me \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+Response: `{"message": "Deletion confirmation email sent"}`. Server generates `deletion_token` (24 h TTL) and emails a confirmation link.
+
+### Step 2a: Confirm via email link
+```bash
+curl http://localhost:8000/api/v1/auth/confirm-delete/DELETION_TOKEN
+```
+HTML success page rendered. User row is deleted; CASCADE unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
+
+### Step 2b (alternative): Cancel pending deletion
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/cancel-delete \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+---
+
+## Legacy Sync Endpoints (unused by mobile)
+
+> **These endpoints are from the pre-server-first era.** The mobile app stopped calling them in PR #8 (`refactor/server-first-architecture`). The routes remain in `app/api/v1/sync.py` for backward compatibility but are not exercised by the client. Do not build new features against them.
 
 ### Push Local Changes
 ```bash
@@ -478,11 +514,9 @@ curl -X PATCH http://localhost:8000/api/v1/items/$ITEM_ID/stock \
 curl http://localhost:8000/api/v1/items/stats \
   -H "Authorization: Bearer $TOKEN"
 
-# 7. Sync pull
-curl -X POST http://localhost:8000/api/v1/sync/pull \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"lastSyncAt":null}'
+# 7. Fetch activity log
+curl http://localhost:8000/api/v1/activities?limit=10 \
+  -H "Authorization: Bearer $TOKEN"
 
 echo "All tests passed!"
 ```
@@ -496,7 +530,7 @@ Import this JSON into Postman for a complete collection:
 ```json
 {
   "info": {
-    "name": "VitalTrack API",
+    "name": "CareKosh API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -509,7 +543,8 @@ Import this JSON into Postman for a complete collection:
       "item": [
         {"name": "Register", "request": {"method": "POST", "url": "{{baseUrl}}/api/v1/auth/register"}},
         {"name": "Login", "request": {"method": "POST", "url": "{{baseUrl}}/api/v1/auth/login"}},
-        {"name": "Me", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/auth/me"}}
+        {"name": "Me", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/auth/me"}},
+        {"name": "Delete Account", "request": {"method": "DELETE", "url": "{{baseUrl}}/api/v1/auth/me"}}
       ]
     },
     {
@@ -517,14 +552,15 @@ Import this JSON into Postman for a complete collection:
       "item": [
         {"name": "List", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/items"}},
         {"name": "Create", "request": {"method": "POST", "url": "{{baseUrl}}/api/v1/items"}},
-        {"name": "Stats", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/items/stats"}}
+        {"name": "Stats", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/items/stats"}},
+        {"name": "Needs Attention", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/items/needs-attention"}}
       ]
     },
     {
-      "name": "Sync",
+      "name": "Orders",
       "item": [
-        {"name": "Push", "request": {"method": "POST", "url": "{{baseUrl}}/api/v1/sync/push"}},
-        {"name": "Pull", "request": {"method": "POST", "url": "{{baseUrl}}/api/v1/sync/pull"}}
+        {"name": "List", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/orders"}},
+        {"name": "Apply to Stock", "request": {"method": "POST", "url": "{{baseUrl}}/api/v1/orders/:id/apply"}}
       ]
     }
   ]

@@ -1,6 +1,6 @@
 # 📚 Complete Docker Conceptual Guide
 
-A comprehensive guide explaining Docker concepts for the VitalTrack backend.
+A comprehensive guide explaining Docker concepts for the CareKosh backend. (Container and image names still use the legacy `vitaltrack-*` prefix — they match the directory name, which we deliberately did not rename during the CareKosh rebrand.)
 
 ---
 
@@ -271,7 +271,7 @@ docker compose up -d
 
 ---
 
-## ✅ VitalTrack Setup Checklist
+## ✅ CareKosh Setup Checklist
 
 After running `docker compose up -d`, you should have:
 

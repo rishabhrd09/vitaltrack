@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh — Server-First vs Offline-First Architecture (Interview Guide)</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #fdfaf5; --card: #fffcf7; --card2: #f7f3eb; --border: #e8e2d5;
+  --text: #2c2418; --muted: #7a6e5e; --subtle: #c5bca8;
+  --amber: #8a6830; --amber-bg: #fef8ee; --amber-light: #f2e8cc; --amber-dark: #6b5020;
+  --teal: #2a6e5a; --teal-bg: #eef7f2; --teal-light: #c8e8d8;
+  --rose: #8a3a3a; --rose-bg: #faf0ee; --rose-light: #f0d4cc;
+  --blue: #3a5a8a; --blue-bg: #eef3fa; --blue-light: #c8d8ec;
+  --plum: #6a3a6e; --plum-bg: #f8f0fa; --plum-light: #e0d0e4;
+  --sage: #4a6a3a; --sage-bg: #f0f5ee; --sage-light: #d0e0c8;
+  --code-bg: #f5f2ea; --code-border: #e4dfd4;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#14120e;--card:#1c1a14;--card2:#22201a;--border:#342e24;--text:#e8e0d0;--muted:#a09080;--subtle:#504838;
+  --amber:#d4a854;--amber-bg:#1e1808;--amber-light:#2e2410;--amber-dark:#d4a854;
+  --teal:#60d4a8;--teal-bg:#0c1e16;--teal-light:#102e20;
+  --rose:#d08080;--rose-bg:#201410;--rose-light:#2e1a18;
+  --blue:#80b0e0;--blue-bg:#101a24;--blue-light:#1a2430;
+  --plum:#c0a0c8;--plum-bg:#1e1420;--plum-light:#281e2c;
+  --sage:#90c080;--sage-bg:#121a10;--sage-light:#1a2618;
+  --code-bg:#1e1c16;--code-border:#342e24;
+}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.75;font-size:15px}
+.page{max-width:920px;margin:0 auto;padding:40px 28px 80px}
+
+/* Hero */
+.hero{text-align:center;padding:60px 0 50px;margin-bottom:56px;border-bottom:1px solid var(--border);position:relative}
+.hero .kicker{font-family:'JetBrains Mono',monospace;font-size:.56rem;letter-spacing:.4em;text-transform:uppercase;color:var(--amber);margin-bottom:16px;display:block}
+.hero h1{font-family:'Cormorant Garamond',serif;font-size:2.9rem;font-weight:300;letter-spacing:-.02em;line-height:1.08;margin-bottom:14px}
+.hero h1 em{font-style:italic;color:var(--amber)}
+.hero h1 .vs{font-family:'Sora',sans-serif;font-size:1rem;font-weight:800;color:var(--rose);letter-spacing:.12em;text-transform:uppercase;display:block;margin:8px 0}
+.hero .sub{color:var(--muted);font-size:.9rem;max-width:580px;margin:0 auto}
+
+/* TOC */
+.toc{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 32px;margin-bottom:56px}
+.toc h2{font-family:'Sora',sans-serif;font-size:.85rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--amber);margin-bottom:14px}
+.toc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px}
+.toc a{color:var(--text);text-decoration:none;font-size:.88rem;padding:4px 0;display:block;border-bottom:1px solid transparent;transition:all .15s}
+.toc a:hover{color:var(--amber);border-bottom-color:var(--amber-light)}
+.toc a .num{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--amber);margin-right:8px;font-weight:600}
+
+/* Section */
+.section{margin-bottom:60px}
+.section-label{font-family:'JetBrains Mono',monospace;font-size:.56rem;letter-spacing:.35em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+.section h2{font-family:'Sora',sans-serif;font-size:1.45rem;font-weight:800;margin-bottom:12px;letter-spacing:-.01em}
+.section h3{font-family:'Sora',sans-serif;font-size:1.05rem;font-weight:700;margin-top:28px;margin-bottom:10px}
+.section p{margin-bottom:14px;font-size:.93rem}
+hr{border:none;border-top:1px solid var(--border);margin:56px 0}
+
+/* Code */
+code{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:var(--code-bg);border:1px solid var(--code-border);padding:2px 7px;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--code-border);border-radius:10px;padding:18px 20px;overflow-x:auto;margin:16px 0;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.65}
+pre code{background:none;border:none;padding:0}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;margin:18px 0;font-size:.87rem}
+th{text-align:left;font-family:'Sora',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:12px 14px;border-bottom:2px solid var(--border)}
+td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+
+/* Compare */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0}
+.compare-card{border-radius:14px;padding:24px;border:2px solid}
+.compare-card h3{font-family:'Sora',sans-serif;font-size:.95rem;font-weight:800;margin-bottom:10px}
+.compare-card p{font-size:.86rem;margin-bottom:8px}
+.compare-card table{font-size:.82rem}
+.compare-card td:first-child{font-weight:600;color:var(--muted);width:38%}
+@media(max-width:700px){.compare{grid-template-columns:1fr}.toc-grid{grid-template-columns:1fr}}
+
+/* Callout */
+.callout{border-radius:12px;padding:18px 22px;margin:22px 0;border-left:4px solid}
+.callout p{margin-bottom:5px;font-size:.88rem}.callout p:last-child{margin:0}
+.callout-label{font-family:'Sora',sans-serif;font-size:.73rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+.callout.amber{background:var(--amber-bg);border-color:var(--amber)}.callout.amber .callout-label{color:var(--amber)}
+.callout.teal{background:var(--teal-bg);border-color:var(--teal)}.callout.teal .callout-label{color:var(--teal)}
+.callout.rose{background:var(--rose-bg);border-color:var(--rose)}.callout.rose .callout-label{color:var(--rose)}
+.callout.blue{background:var(--blue-bg);border-color:var(--blue)}.callout.blue .callout-label{color:var(--blue)}
+.callout.sage{background:var(--sage-bg);border-color:var(--sage)}.callout.sage .callout-label{color:var(--sage)}
+
+/* Arch diagram */
+.arch{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:22px;margin:18px 0;font-family:'JetBrains Mono',monospace;font-size:.72rem;line-height:1.6;overflow-x:auto;white-space:pre}
+
+/* Interview Q&A */
+.qa{border:2px solid var(--border);border-radius:14px;margin:20px 0;overflow:hidden}
+.qa-q{background:var(--card);padding:18px 22px;border-bottom:1px solid var(--border);cursor:default}
+.qa-q h4{font-family:'Sora',sans-serif;font-size:.92rem;font-weight:700;color:var(--amber);display:flex;align-items:center;gap:10px}
+.qa-q h4::before{content:'Q';font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:800;background:var(--amber);color:#fff;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.qa-a{padding:18px 22px}
+.qa-a p{font-size:.9rem;margin-bottom:10px}
+.qa-a p:last-child{margin:0}
+.qa-tag{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
+.qa-tag.concept{background:var(--blue-light);color:var(--blue)}
+.qa-tag.behavioral{background:var(--sage-light);color:var(--sage)}
+.qa-tag.system{background:var(--plum-light);color:var(--plum)}
+.qa-tag.tradeoff{background:var(--amber-light);color:var(--amber-dark)}
+
+/* Timeline */
+.timeline{position:relative;padding-left:28px;margin:20px 0}
+.timeline::before{content:'';position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:var(--amber-light)}
+.timeline-item{position:relative;margin-bottom:20px}
+.timeline-item::before{content:'';position:absolute;left:-24px;top:6px;width:12px;height:12px;border-radius:50%;border:2px solid var(--amber);background:var(--bg)}
+.timeline-item.bad::before{border-color:var(--rose);background:var(--rose-light)}
+.timeline-item.good::before{border-color:var(--teal);background:var(--teal-light)}
+.timeline-item h4{font-family:'Sora',sans-serif;font-size:.88rem;font-weight:700;margin-bottom:4px}
+.timeline-item p{font-size:.84rem;color:var(--muted);margin:0}
+
+.footer{text-align:center;padding:36px 0;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;margin-top:56px}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ═══════════════════════════════════ HERO -->
+<div class="hero">
+  <span class="kicker">Interview-Ready Architecture Guide</span>
+  <h1>
+    Server-First
+    <span class="vs">vs</span>
+    <em>Offline-First</em>
+  </h1>
+  <p class="sub">A real-world case study from CareKosh — how a data corruption bug in a medical inventory app forced a complete architecture migration, and what it teaches about state management, data integrity, and production engineering.</p>
+</div>
+
+<!-- ═══════════════════════════════════ TOC -->
+<div class="toc">
+  <h2>Contents</h2>
+  <div class="toc-grid">
+    <a href="#s1"><span class="num">01</span>The Incident — What Went Wrong</a>
+    <a href="#s2"><span class="num">02</span>Offline-First Architecture (Before)</a>
+    <a href="#s3"><span class="num">03</span>Server-First Architecture (After)</a>
+    <a href="#s4"><span class="num">04</span>Side-by-Side Comparison</a>
+    <a href="#s5"><span class="num">05</span>The Root Cause — Deep Dive</a>
+    <a href="#s6"><span class="num">06</span>Why Not Just Fix the Sync?</a>
+    <a href="#s7"><span class="num">07</span>Data Integrity Mechanisms Added</a>
+    <a href="#s8"><span class="num">08</span>When to Use Each Architecture</a>
+    <a href="#s9"><span class="num">09</span>Key Concepts for Interviews</a>
+    <a href="#s10"><span class="num">10</span>Interview Questions &amp; Answers</a>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ SECTION 1: THE INCIDENT -->
+<div class="section" id="s1">
+  <span class="section-label">Chapter 1</span>
+  <h2>The Incident — What Went Wrong</h2>
+
+  <p>CareKosh is a home ICU medical inventory management app for family caregivers. It tracks life-critical supplies — oxygen cylinders, suction machines, ventilator filters, medications. Running out of stock is not an inconvenience; it's a medical emergency.</p>
+
+  <p>The app originally used an <strong>offline-first</strong> architecture: all data lived locally on the phone in Zustand stores persisted to AsyncStorage, with a background sync engine pushing changes to the PostgreSQL server. This worked well in development. Then it destroyed production data.</p>
+
+  <div class="callout rose">
+    <p class="callout-label">The Data Corruption Event</p>
+    <p>After a user logged out and logged back in, <strong>31 out of 33 inventory items had their quantities reset to zero</strong>. The suction machine showed 0 units. The oxygen cylinder showed 0 units. The ventilator filter showed 0 units. For a caregiver managing a home ICU, this is catastrophic — the app told them they had nothing.</p>
+  </div>
+
+  <h3>Timeline of the Bug</h3>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <h4>User builds inventory</h4>
+      <p>32 items created with correct stock quantities. Server has accurate data.</p>
+    </div>
+    <div class="timeline-item">
+      <h4>User creates and receives order</h4>
+      <p>Stock quantities updated. Server still accurate.</p>
+    </div>
+    <div class="timeline-item bad">
+      <h4>User logs out and logs back in</h4>
+      <p>Zustand persist middleware rehydrates stale local state from AsyncStorage — all quantities show 0.</p>
+    </div>
+    <div class="timeline-item bad">
+      <h4>Sync engine fires automatically</h4>
+      <p>scheduleSyncToBackend() pushes local state (with 0 quantities) to server via blind UPSERT. Server data overwritten.</p>
+    </div>
+    <div class="timeline-item bad">
+      <h4>Server now has all zeros</h4>
+      <p>31 of 33 items: quantity = 0. All with identical timestamps proving a bulk overwrite event.</p>
+    </div>
+  </div>
+
+  <p>The root cause was a <strong>rehydration race condition</strong>: Zustand's persist middleware loaded stale data from AsyncStorage before the server fetch completed, and the sync engine treated local data as authoritative, pushing zeros to the server.</p>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════ SECTION 2: OFFLINE-FIRST (BEFORE) -->
+<div class="section" id="s2">
+  <span class="section-label">Chapter 2</span>
+  <h2>Offline-First Architecture (Before)</h2>
+
+  <p>The original architecture followed the offline-first pattern. Every piece of data existed in three places simultaneously, creating a tri-state consistency problem.</p>
+
+  <div class="arch">CareKosh v1 — OFFLINE-FIRST ARCHITECTURE
+══════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────┐
+│ MOBILE APP                                              │
+│                                                         │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ Zustand Store (useAppStore.ts — 1,100 lines)     │   │
+│  │                                                   │   │
+│  │ items[], categories[], orders[]                   │   │
+│  │ syncQueue[], lastSyncTimestamp                    │   │
+│  │ loadUserData(), scheduleSyncToBackend()           │   │
+│  │                                                   │   │
+│  │ ┌──────────────────────────────────────────────┐  │   │
+│  │ │ persist middleware (AsyncStorage)             │  │   │
+│  │ │ Rehydrates ALL state on app start            │  │   │
+│  │ │ ⚠️ FIRES BEFORE server fetch completes       │  │   │
+│  │ └──────────────────────────────────────────────┘  │   │
+│  └──────────────────────────────────────────────────┘   │
+│                         │                               │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ sync.ts (611 lines)                              │   │
+│  │                                                   │   │
+│  │ scheduleSyncToBackend() — debounced 2 seconds    │   │
+│  │ syncToBackend() — blind UPSERT all local data    │   │
+│  │ syncFromServer() — pull, but local wins ties     │   │
+│  │ resolveConflicts() — last-write-wins by local ts │   │
+│  │                                                   │   │
+│  │ ⚠️ No guard: fires on ANY Zustand mutation       │   │
+│  │ ⚠️ No timestamp comparison with server           │   │
+│  │ ⚠️ Pushes even when local data is stale          │   │
+│  └──────────────────────────────────────────────────┘   │
+│                         │ POST /sync/push               │
+│                         │ GET  /sync/pull               │
+│                         ▼                               │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│ SERVER (FastAPI + PostgreSQL)                           │
+│                                                         │
+│ Receives UPSERT from sync — overwrites unconditionally │
+│ No version checking, no conflict detection              │
+│ No audit trail of what changed                          │
+└─────────────────────────────────────────────────────────┘
+
+DATA FLOWS IN BOTH DIRECTIONS:
+  Local ←→ Server (bidirectional sync)
+  Local state is treated as authoritative
+  Server is a "backup" that gets overwritten</div>
+
+  <h3>The Three Fatal Flaws</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="border-bottom-color:var(--rose)">Flaw</th>
+        <th>What Happened</th>
+        <th>Why It's Dangerous</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Rehydration race</strong></td>
+        <td>Zustand's persist loads stale data from AsyncStorage before server fetch completes</td>
+        <td>Stale data (quantity=0) becomes "current" state, triggering sync</td>
+      </tr>
+      <tr>
+        <td><strong>2. Blind UPSERT</strong></td>
+        <td>sync.ts pushes ALL local data to server without comparing timestamps or versions</td>
+        <td>Server's correct data gets overwritten by stale local data</td>
+      </tr>
+      <tr>
+        <td><strong>3. No sync guard</strong></td>
+        <td>scheduleSyncToBackend() fires on ANY Zustand mutation, including rehydration</td>
+        <td>The act of loading stale data triggers pushing it to server — a self-reinforcing corruption loop</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════ SECTION 3: SERVER-FIRST (AFTER) -->
+<div class="section" id="s3">
+  <span class="section-label">Chapter 3</span>
+  <h2>Server-First Architecture (After)</h2>
+
+  <p>The migration (PR #4) replaced the entire data flow. The server is now the single source of truth. Local state is ephemeral — it exists only for the current session's UI rendering.</p>
+
+  <div class="arch">CareKosh v2 — SERVER-FIRST ARCHITECTURE
+══════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────┐
+│ MOBILE APP                                              │
+│                                                         │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ TanStack Query (ALL server state)                │   │
+│  │                                                   │   │
+│  │ useQuery('items')     → GET /items               │   │
+│  │ useQuery('categories')→ GET /categories          │   │
+│  │ useQuery('orders')    → GET /orders              │   │
+│  │                                                   │   │
+│  │ useMutation(createItem) → POST /items            │   │
+│  │ useMutation(updateItem) → PUT  /items/{id}       │   │
+│  │ useMutation(deleteItem) → DELETE /items/{id}     │   │
+│  │                                                   │   │
+│  │ queryClient.invalidateQueries() on mutation      │   │
+│  │ Auto-refetch on window focus / network reconnect │   │
+│  │                                                   │   │
+│  │ ✅ No local persistence of inventory data         │   │
+│  │ ✅ No sync engine                                 │   │
+│  │ ✅ No rehydration race possible                   │   │
+│  └──────────────────────────────────────────────────┘   │
+│                                                         │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ Zustand (useAppStore.ts — 61 lines, UI only)     │   │
+│  │                                                   │   │
+│  │ theme, selectedTab, searchQuery, menuOpen         │   │
+│  │ ✅ No inventory data, no persist middleware       │   │
+│  └──────────────────────────────────────────────────┘   │
+│                         │ Direct HTTP (CRUD)            │
+│                         ▼                               │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│ SERVER (FastAPI + PostgreSQL)                           │
+│                                                         │
+│ Optimistic Concurrency Control (version column)        │
+│ Audit log (JSONB before/after on every write)          │
+│ CHECK(quantity >= 0) at database level                 │
+│ Atomic apply-stock endpoint (single transaction)       │
+│                                                         │
+│ ✅ Server data can NEVER be overwritten by stale local │
+│ ✅ Every change is traceable via audit log              │
+│ ✅ Concurrent edits detected via version mismatch      │
+└─────────────────────────────────────────────────────────┘
+
+DATA FLOWS ONE DIRECTION:
+  User action → Server mutation → Server responds → UI updates
+  Server is authoritative. Always.
+  Local cache is ephemeral, read-only for display.</div>
+
+  <h3>What Got Deleted</h3>
+
+  <table>
+    <thead><tr><th>Component</th><th>Before</th><th>After</th></tr></thead>
+    <tbody>
+      <tr><td><code>useAppStore.ts</code></td><td>1,100 lines (all inventory data + sync logic)</td><td>61 lines (theme, selectedTab, searchQuery)</td></tr>
+      <tr><td><code>sync.ts</code></td><td>611 lines (bidirectional sync engine)</td><td>Deleted entirely</td></tr>
+      <tr><td>AsyncStorage persist</td><td>All inventory data persisted locally</td><td>No inventory persistence. Tokens only (SecureStore)</td></tr>
+      <tr><td>Conflict resolution</td><td>Local-wins last-write in sync.ts</td><td>Server-side OCC with version column</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════ SECTION 4: SIDE-BY-SIDE -->
+<div class="section" id="s4">
+  <span class="section-label">Chapter 4</span>
+  <h2>Side-by-Side Comparison</h2>
+
+  <div class="compare">
+    <div class="compare-card" style="border-color:var(--rose);background:var(--rose-bg)">
+      <h3 style="color:var(--rose)">Offline-First (v1)</h3>
+      <table>
+        <tr><td>Source of truth</td><td>Local (phone)</td></tr>
+        <tr><td>Server role</td><td>Backup / sync target</td></tr>
+        <tr><td>State manager</td><td>Zustand + persist (1,100 lines)</td></tr>
+        <tr><td>Data sync</td><td>Bidirectional via sync.ts (611 lines)</td></tr>
+        <tr><td>Conflict resolution</td><td>Local timestamp wins</td></tr>
+        <tr><td>Works offline?</td><td>Yes — full CRUD without internet</td></tr>
+        <tr><td>Data integrity</td><td>No version checking, no audit log</td></tr>
+        <tr><td>Failure mode</td><td>Silent data corruption</td></tr>
+        <tr><td>Complexity</td><td>~1,711 lines of state + sync code</td></tr>
+      </table>
+    </div>
+    <div class="compare-card" style="border-color:var(--teal);background:var(--teal-bg)">
+      <h3 style="color:var(--teal)">Server-First (v2)</h3>
+      <table>
+        <tr><td>Source of truth</td><td>Server (PostgreSQL)</td></tr>
+        <tr><td>Server role</td><td>Authoritative data store</td></tr>
+        <tr><td>State manager</td><td>TanStack Query + Zustand (61 lines UI)</td></tr>
+        <tr><td>Data sync</td><td>None — direct CRUD HTTP calls</td></tr>
+        <tr><td>Conflict resolution</td><td>Server-side OCC (version column, 409)</td></tr>
+        <tr><td>Works offline?</td><td>Read cached data — mutations need server</td></tr>
+        <tr><td>Data integrity</td><td>OCC + audit log + CHECK constraints</td></tr>
+        <tr><td>Failure mode</td><td>Explicit error shown to user (409, 500)</td></tr>
+        <tr><td>Complexity</td><td>~61 lines of UI state, TanStack handles the rest</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout teal">
+    <p class="callout-label">The Tradeoff</p>
+    <p>The offline-first version let users create and edit inventory items without internet. The server-first version requires connectivity for mutations. For CareKosh, this tradeoff was correct: caregivers managing home ICU supplies are in homes with WiFi. They are not in remote areas without connectivity. <strong>Data accuracy matters more than offline editing for medical inventory.</strong></p>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════ SECTION 5: ROOT CAUSE DEEP DIVE -->
+<div class="section" id="s5">
+  <span class="section-label">Chapter 5</span>
+  <h2>The Root Cause — Deep Dive</h2>
+
+  <p>The bug was a <strong>rehydration race condition</strong> — a class of problem specific to offline-first architectures that use persist middleware with background sync.</p>
+
+  <h3>The Race Condition (step by step)</h3>
+
+  <pre><code>TIMELINE OF A LOGIN (what happened in v1):
+════════════════════════════════════════════
+
+t=0ms    User enters credentials, taps Login
+t=50ms   Server authenticates, returns JWT tokens
+t=51ms   App stores tokens in SecureStore
+t=52ms   App navigates to Dashboard
+
+t=53ms   ⚠️ Zustand persist middleware REHYDRATES from AsyncStorage
+         → Loads items[], categories[], orders[] from PREVIOUS session
+         → Previous session had stale data (quantity = 0 for most items)
+         → Zustand state is now populated with stale zeros
+
+t=54ms   ⚠️ Zustand mutation detected (rehydration counts as mutation)
+         → scheduleSyncToBackend() fires (debounced 2 seconds)
+
+t=100ms  Server fetch begins: GET /items
+         → This will return CORRECT data from PostgreSQL
+
+t=2054ms ⚠️ SYNC FIRES before server fetch response arrives
+         → POST /sync/push with ALL local items (quantity = 0)
+         → Server receives 33 items, all with quantity = 0
+         → Server does UPSERT — overwrites correct quantities with zeros
+
+t=2200ms Server fetch response arrives with... zeros
+         → Because the sync ALREADY overwrote the server data
+         → UI shows zeros. Server has zeros. Backup has zeros.
+         → Data is irreversibly corrupted.</code></pre>
+
+  <div class="callout rose">
+    <p class="callout-label">Why this is a CLASS of problem, not a one-off bug</p>
+    <p>This wasn't a coding mistake that could be fixed with a null check. It's an <strong>architectural inevitability</strong> when you combine: (1) a persist middleware that rehydrates state, (2) a sync engine that treats local state as authoritative, and (3) no version checking on the server. Any offline-first app with these three properties will eventually hit this bug. The fix was to eliminate the architecture, not patch the symptoms.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════ SECTION 6: WHY NOT FIX THE SYNC -->
+<div class="section" id="s6">
+  <span class="section-label">Chapter 6</span>
+  <h2>Why Not Just Fix the Sync?</h2>
+
+  <p>A reasonable question. Why delete 1,711 lines of code instead of adding a sync guard? Six reasons:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="border-bottom-color:var(--rose)">Proposed Fix</th>
+        <th>Why It's Insufficient</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Add isInitialSyncComplete flag</strong></td>
+        <td>Prevents the rehydration race but doesn't fix timestamp-based conflicts, orphan data, or concurrent edits from multiple devices</td>
+      </tr>
+      <tr>
+        <td><strong>Compare timestamps before UPSERT</strong></td>
+        <td>Requires clock synchronization between phone and server. Mobile device clocks drift. Timezone bugs are ubiquitous. Timestamp comparison is unreliable across devices</td>
+      </tr>
+      <tr>
+        <td><strong>Add version column and check on sync</strong></td>
+        <td>This IS the right approach — but now you've reinvented server-side OCC while still maintaining 1,711 lines of sync code. Why not just call the server directly?</td>
+      </tr>
+      <tr>
+        <td><strong>Queue mutations and replay them</strong></td>
+        <td>CRDTs (Conflict-free Replicated Data Types) solve this properly but add enormous complexity. Overkill for an app where users have WiFi</td>
+      </tr>
+      <tr>
+        <td><strong>Disable persist middleware</strong></td>
+        <td>Fixes the rehydration race but removes the core benefit of offline-first (data survives app restart). Now you have sync code that serves no purpose</td>
+      </tr>
+      <tr>
+        <td><strong>Server-wins conflict resolution</strong></td>
+        <td>Fixes corruption but means offline edits are silently discarded. User makes changes offline, comes back online — changes gone. Bad UX</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout amber">
+    <p class="callout-label">The Engineering Decision</p>
+    <p>Every proposed fix either partially solved the problem while adding complexity, or fully solved it by effectively becoming server-first with extra steps. The cleanest solution was to acknowledge that <strong>CareKosh users always have internet</strong> (home WiFi) and eliminate the entire sync layer, replacing it with direct CRUD calls via TanStack Query — an industry-standard library that handles caching, refetching, and optimistic updates out of the box.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════ SECTION 7: DATA INTEGRITY MECHANISMS -->
+<div class="section" id="s7">
+  <span class="section-label">Chapter 7</span>
+  <h2>Data Integrity Mechanisms Added</h2>
+
+  <p>The migration didn't just swap the data flow — it added four layers of data protection that didn't exist before.</p>
+
+  <h3>1. Optimistic Concurrency Control (OCC)</h3>
+
+  <p>Every table has a <code>version</code> integer column. On every UPDATE, the backend checks <code>WHERE version = expected_version</code>. If another client modified the row since you read it, the version won't match and you get a 409 Conflict instead of silently overwriting.</p>
+
+  <pre><code># Backend: items.py
+async def update_item(item_id, update_data, expected_version, db):
+    result = await db.execute(
+        update(Item)
+        .where(Item.id == item_id, Item.version == expected_version)
+        .values(**update_data, version=Item.version + 1)
+    )
+    if result.rowcount == 0:
+        raise HTTPException(409, "Item was modified by another session")
+    return await get_item(item_id, db)</code></pre>
+
+  <h3>2. Audit Log (JSONB Snapshots)</h3>
+
+  <p>Every write operation logs a before/after JSONB snapshot to the <code>activity_log</code> table. If data ever looks wrong, you can trace exactly what changed, when, and what the previous values were.</p>
+
+  <pre><code># Audit entry example:
+{
+  "entity_type": "item",
+  "entity_id": "uuid-...",
+  "action": "update",
+  "before_snapshot": {"name": "Suction Machine", "quantity": 2, "version": 3},
+  "after_snapshot":  {"name": "Suction Machine", "quantity": 5, "version": 4},
+  "created_at": "2026-04-19T14:30:00Z"
+}</code></pre>
+
+  <h3>3. Database-Level CHECK Constraint</h3>
+
+  <pre><code>-- Migration 0004:
+ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
+    CHECK (quantity >= 0);</code></pre>
+
+  <p>Even if application code has a bug that tries to set quantity to -1, PostgreSQL will reject it. Defense in depth.</p>
+
+  <h3>4. Atomic Apply-Stock Endpoint</h3>
+
+  <p>When a purchase order is received and stock needs updating across multiple items, the <code>POST /orders/{id}/apply-stock</code> endpoint wraps all item updates in a single database transaction. Either all items update successfully, or none do. No partial stock updates.</p>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════ SECTION 8: WHEN TO USE EACH -->
+<div class="section" id="s8">
+  <span class="section-label">Chapter 8</span>
+  <h2>When to Use Each Architecture</h2>
+
+  <p>Neither architecture is universally better. The choice depends on your specific constraints.</p>
+
+  <div class="compare">
+    <div class="compare-card" style="border-color:var(--amber);background:var(--amber-bg)">
+      <h3 style="color:var(--amber)">Use Offline-First When</h3>
+      <p>Users are genuinely offline for extended periods: field workers, rural areas, subway commuters, airplane mode</p>
+      <p>Data conflicts are rare or easily resolvable (e.g., personal notes, local preferences)</p>
+      <p>Eventual consistency is acceptable (data can be temporarily wrong)</p>
+      <p>You have resources to implement CRDTs or operational transforms</p>
+      <p><strong>Examples:</strong> Google Docs (OT), Notion (offline blocks), Todoist (task sync), git (distributed VCS)</p>
+    </div>
+    <div class="compare-card" style="border-color:var(--teal);background:var(--teal-bg)">
+      <h3 style="color:var(--teal)">Use Server-First When</h3>
+      <p>Users have reliable connectivity (home WiFi, office, mobile data)</p>
+      <p>Data accuracy is critical (financial, medical, legal)</p>
+      <p>Multiple users may edit the same data (collaboration)</p>
+      <p>Audit trail and regulatory compliance required</p>
+      <p>You're a solo developer or small team (simpler to maintain)</p>
+      <p><strong>Examples:</strong> Banking apps, medical records, e-commerce inventory, SaaS dashboards, CareKosh</p>
+    </div>
+  </div>
+
+  <div class="callout sage">
+    <p class="callout-label">The Middle Ground: Stale-While-Revalidate</p>
+    <p>TanStack Query supports <strong>cache persistence</strong> via <code>@tanstack/query-async-storage-persister</code>. This lets you show cached data instantly on app launch while fetching fresh data in the background. The cache is <strong>read-only for display</strong> — mutations always go to the server first. This gives "instant load" UX without the data corruption risks of offline-first. It's the approach CareKosh plans to adopt in v1.1.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════ SECTION 9: KEY CONCEPTS -->
+<div class="section" id="s9">
+  <span class="section-label">Chapter 9</span>
+  <h2>Key Concepts for Interviews</h2>
+
+  <h3>Optimistic Concurrency Control (OCC)</h3>
+  <p>A strategy where you don't lock rows during reads. Instead, each row has a version number. When you write, you include the version you read. If someone else modified the row in between (version changed), the write fails with a conflict error. The client can then re-read, re-apply their change, and retry. Used by: DynamoDB (conditional writes), Kubernetes (resourceVersion), HTTP (ETag/If-Match), CareKosh (version column).</p>
+
+  <h3>Pessimistic Concurrency Control (PCC)</h3>
+  <p>Lock the row when you read it. Nobody else can modify it until you release the lock. Prevents conflicts entirely but reduces throughput. Used by: traditional banking systems, database <code>SELECT ... FOR UPDATE</code>. CareKosh doesn't use this — OCC is sufficient for a single-user-per-account app.</p>
+
+  <h3>CQRS (Command Query Responsibility Segregation)</h3>
+  <p>Separate read models from write models. Reads can hit caches or denormalized views; writes go through validation and business logic. TanStack Query naturally implements this: <code>useQuery</code> = read side, <code>useMutation</code> = write side. CareKosh follows this pattern implicitly.</p>
+
+  <h3>Event Sourcing vs Audit Log</h3>
+  <p>Event sourcing stores every change as an immutable event and rebuilds state by replaying events. CareKosh uses a simpler approach: JSONB before/after snapshots in an audit log. This gives traceability without the complexity of event replay. It's not event sourcing — it's change capture.</p>
+
+  <h3>Stale-While-Revalidate</h3>
+  <p>A caching strategy where stale cached data is served immediately while fresh data is fetched in the background. When the fresh data arrives, it replaces the stale cache. TanStack Query does this by default when cached data exists. The key: stale data is only used for <strong>display</strong>, never for server mutations.</p>
+
+  <h3>12-Factor App</h3>
+  <p>A methodology for building SaaS apps. CareKosh follows Factor III (Config) rigorously: the same Docker image runs in development, staging, and production with only environment variables changing (DATABASE_URL, ENVIRONMENT, SECRET_KEY). Zero code changes needed to switch environments.</p>
+
+  <h3>Idempotency</h3>
+  <p>An operation is idempotent if calling it multiple times has the same effect as calling it once. CareKosh's OCC provides natural idempotency for updates: if you retry a failed update with the same version, it will either succeed (first try) or fail with 409 (already updated) — never corrupt data by applying the change twice.</p>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════ SECTION 10: INTERVIEW Q&A -->
+<div class="section" id="s10">
+  <span class="section-label">Chapter 10</span>
+  <h2>Interview Questions &amp; Answers</h2>
+
+  <p>These are real questions you might face when discussing CareKosh's architecture in an SDE interview. Each answer references the actual codebase.</p>
+
+  <!-- Q1 -->
+  <div class="qa">
+    <div class="qa-q"><h4>Tell me about a time you had to make a significant architectural change. What drove the decision?</h4></div>
+    <div class="qa-a">
+      <span class="qa-tag behavioral">Behavioral</span>
+      <p>CareKosh originally used offline-first architecture with Zustand persist middleware syncing to PostgreSQL. A user logged out and back in, and the Zustand rehydration loaded stale data with zero quantities from AsyncStorage. The sync engine then pushed these zeros to the server, overwriting correct data for 31 of 33 medical inventory items. I confirmed this by querying the server directly — all items had identical timestamps proving a bulk overwrite.</p>
+      <p>I migrated to server-first architecture using TanStack Query. The Zustand store went from 1,100 lines to 61 (UI state only). The 611-line sync engine was deleted entirely. I added Optimistic Concurrency Control with a version column and JSONB audit logging. The entire class of rehydration-race bugs was eliminated because local state is never persisted or pushed to the server — the server is always authoritative.</p>
+      <p><strong>Key result:</strong> Zero data corruption incidents since the migration. Codebase reduced by ~1,650 lines of state management code.</p>
+    </div>
+  </div>
+
+  <!-- Q2 -->
+  <div class="qa">
+    <div class="qa-q"><h4>How do you handle concurrent modifications to the same resource?</h4></div>
+    <div class="qa-a">
+      <span class="qa-tag concept">Concept — OCC</span>
+      <p>Every mutable entity (items, categories, orders) has a <code>version</code> integer column. When the mobile app reads an item (e.g., version=3), it includes that version in the update request. The backend's UPDATE query has <code>WHERE id = :id AND version = 3</code> and increments to version=4. If another client already updated it to version=4, the WHERE clause matches zero rows and we return 409 Conflict. The client then re-fetches, shows the updated data, and lets the user retry.</p>
+      <p>This is Optimistic Concurrency Control — we don't lock anything during reads, we just detect conflicts at write time. It's the same pattern DynamoDB uses for conditional writes and Kubernetes uses for resourceVersion.</p>
+    </div>
+  </div>
+
+  <!-- Q3 -->
+  <div class="qa">
+    <div class="qa-q"><h4>Why did you choose server-first over offline-first? What are you giving up?</h4></div>
+    <div class="qa-a">
+      <span class="qa-tag tradeoff">Tradeoff Analysis</span>
+      <p>I'm giving up the ability to create and edit inventory items without internet connectivity. In return, I get guaranteed data integrity, a simpler codebase (1,650 fewer lines), and audit traceability for every change.</p>
+      <p>This tradeoff is correct for CareKosh's domain: the target users are family caregivers managing home ICU setups — they're in homes with WiFi, not in remote areas. The cost of incorrect medical inventory data (thinking you have zero oxygen cylinders when you actually have five) is far higher than the cost of needing WiFi to update stock levels.</p>
+      <p>For the "instant load" UX benefit of offline-first, I plan to add TanStack Query cache persistence — it shows cached data immediately on app launch while fetching fresh data in the background. The cache is read-only for display and never pushed to the server, so the data corruption risk is zero.</p>
+    </div>
+  </div>
+
+  <!-- Q4 -->
+  <div class="qa">
+    <div class="qa-q"><h4>What is a rehydration race condition? How did you solve it?</h4></div>
+    <div class="qa-a">
+      <span class="qa-tag concept">Concept — Race Condition</span>
+      <p>When a React Native app with Zustand persist middleware starts up, it asynchronously loads saved state from AsyncStorage. This "rehydration" restores the previous session's data — including potentially stale inventory quantities. The problem: Zustand's persist fires a state mutation when rehydration completes, and if you have a sync engine that triggers on mutations, it will push the stale rehydrated data to the server before the actual server fetch completes.</p>
+      <p>The timing: rehydration completes at ~53ms, sync fires at ~2054ms (debounced 2s), server fetch response arrives at ~2200ms. The sync pushes zeros to the server 150ms before the server could tell the app the real values.</p>
+      <p>I solved it by eliminating the architecture that made it possible: no persist middleware for inventory data, no sync engine, no local-to-server push. TanStack Query fetches from the server on mount, caches in memory, and never persists inventory data to AsyncStorage. The race condition cannot occur because there's nothing to rehydrate.</p>
+    </div>
+  </div>
+
+  <!-- Q5 -->
+  <div class="qa">
+    <div class="qa-q"><h4>How do you ensure data consistency in a mobile app where the network is unreliable?</h4></div>
+    <div class="qa-a">
+      <span class="qa-tag system">System Design</span>
+      <p>Four layers: (1) Server-side OCC prevents concurrent overwrites — version column + 409 Conflict. (2) JSONB audit log captures before/after snapshots for every write, enabling forensic analysis. (3) Database-level CHECK constraint (<code>quantity >= 0</code>) prevents invalid states even if application code has bugs. (4) Atomic transactions for multi-item operations (apply-stock endpoint wraps all item updates in a single transaction — all succeed or all rollback).</p>
+      <p>For network unreliability: TanStack Query retries failed requests automatically (configurable), shows stale cached data while retrying, and surfaces errors to the user explicitly rather than silently corrupting data. The app shows a clear "Unable to connect — server may be starting up" message with auto-retry on cold starts.</p>
+    </div>
+  </div>
+
+  <!-- Q6 -->
+  <div class="qa">
+    <div class="qa-q"><h4>What's the difference between TanStack Query and Zustand? Why use both?</h4></div>
+    <div class="qa-a">
+      <span class="qa-tag concept">Concept — State Management</span>
+      <p><strong>TanStack Query</strong> manages <em>server state</em> — data that lives on the server and is fetched via HTTP. It handles caching, background refetching, stale-while-revalidate, retry logic, and cache invalidation. In CareKosh: items, categories, orders, activity log.</p>
+      <p><strong>Zustand</strong> manages <em>client state</em> — data that exists only on the device and has no server representation. In CareKosh: current theme (dark/light), selected tab, search query text, whether the profile menu is open.</p>
+      <p>Using both is the industry-standard pattern. They solve different problems. Putting server data in Zustand (like v1 did) forces you to build caching, invalidation, and sync logic yourself — poorly reimplementing what TanStack Query does out of the box.</p>
+    </div>
+  </div>
+
+  <!-- Q7 -->
+  <div class="qa">
+    <div class="qa-q"><h4>How did you handle the migration without data loss?</h4></div>
+    <div class="qa-a">
+      <span class="qa-tag behavioral">Behavioral</span>
+      <p>The migration (PR #4) was executed across multiple sessions with strict principles: change only the data flow plumbing, not the features. I ran the Alembic migration (<code>0004_version_audit_log</code>) on staging first, verified via Neon console that the version and audit columns were added correctly, then tested all CRUD operations via curl against staging before merging.</p>
+      <p>A frustration during the process: the initial migration accidentally removed working features (seed data restore, backup/export, Build Inventory prompts). I explicitly established the principle that "architectural migrations must preserve existing functionality" and spent PRs #5–#9 restoring every feature that was lost. Lesson learned: migration PRs should have a pre/post feature checklist.</p>
+    </div>
+  </div>
+
+  <!-- Q8 -->
+  <div class="qa">
+    <div class="qa-q"><h4>Explain the 12-Factor App principle and how your project follows it.</h4></div>
+    <div class="qa-a">
+      <span class="qa-tag concept">Concept — 12-Factor</span>
+      <p>The 12-Factor App is a methodology for building SaaS apps that are portable, scalable, and deployable. CareKosh follows several factors rigorously:</p>
+      <p><strong>Factor III (Config):</strong> All configuration is in environment variables (DATABASE_URL, SECRET_KEY, ENVIRONMENT, REQUIRE_EMAIL_VERIFICATION). The same Docker image runs on development (localhost), staging (Render Singapore), and production (Render Singapore) — zero code changes. When we migrated from Railway to Render, zero Python code changed because config was already externalized via pydantic-settings.</p>
+      <p><strong>Factor IV (Backing Services):</strong> PostgreSQL (Neon), email (Brevo) are attached resources configured via URLs. Swapping Neon for local Docker PostgreSQL is just changing DATABASE_URL.</p>
+      <p><strong>Factor X (Dev/Prod Parity):</strong> Same Docker image, same Alembic migrations, same FastAPI code in all environments. Only env vars differ.</p>
+    </div>
+  </div>
+
+  <!-- Q9 -->
+  <div class="qa">
+    <div class="qa-q"><h4>What would you do differently if you were starting this project from scratch?</h4></div>
+    <div class="qa-a">
+      <span class="qa-tag behavioral">Behavioral</span>
+      <p>Three things: (1) Start with server-first from day one. The offline-first architecture was premature complexity for a use case where users have WiFi. It added 1,711 lines of sync code that ultimately caused data corruption. (2) Write tests before features. The test gap is the single largest portfolio weakness — 40 of 53 tests are currently failing because they were written for the pre-migration architecture. Interviewers check tests first. (3) Set up Sentry on day one. We had no observability when the data corruption happened — I had to diagnose it by manually querying the database with curl commands.</p>
+    </div>
+  </div>
+
+  <!-- Q10 -->
+  <div class="qa">
+    <div class="qa-q"><h4>How do you handle account deletion in compliance with data protection regulations?</h4></div>
+    <div class="qa-a">
+      <span class="qa-tag system">System Design — GDPR/DPDP</span>
+      <p>Two-step email-confirmed deletion flow: (1) User taps "Delete Account" → app calls <code>DELETE /auth/me</code> → backend generates a SHA-256 hashed token, stores it with 24-hour expiry, sends confirmation email via Brevo with a link containing the raw token. (2) User clicks the email link → <code>GET /auth/confirm-delete/{token}</code> → backend hashes the incoming token, queries DB for a matching hash that hasn't expired, cascade-deletes the user and ALL associated data (categories, items, orders, activity log, refresh tokens), returns an HTML confirmation page.</p>
+      <p>This prevents accidental deletion (requires email confirmation), gives a 24-hour window to cancel (<code>POST /auth/cancel-delete</code>), and ensures complete data removal (PostgreSQL CASCADE). The confirmation page is a server-rendered HTML response — no mobile app needed to complete deletion, which satisfies Play Store requirements for account deletion being accessible outside the app.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════ FOOTER -->
+<div class="footer">
+  <p>CareKosh — Server-First vs Offline-First Architecture · Interview Guide · April 2026</p>
+  <p>Based on real engineering decisions from PRs #4–#13 · github.com/rishabhrd09/vitaltrack</p>
+  <p>Offline-first → Server-first migration · Zustand 1,100→61 lines · sync.ts deleted · TanStack Query adopted · OCC + Audit Log added</p>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh — Deployment Strategy</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf9f7;--card:#fff;--card2:#f4f3f0;--border:#e5e3de;--text:#1a1a18;--muted:#6b6a65;--accent:#1d6b52;--accent-bg:#e8f5ef;--amber:#8a6830;--amber-bg:#fef8e8;--danger:#8b1a1a;--danger-bg:#fef0f0;--info:#1a4a8b;--info-bg:#eef4fc;--code-bg:#f0efeb;--gold:#b8860b;--gold-bg:#fef7df}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e12;--card:#161619;--card2:#1c1c21;--border:#2a2a30;--text:#e4e4ec;--muted:#8a8a95;--accent:#5eead4;--accent-bg:#0d2626;--amber:#d4a574;--amber-bg:#1a1510;--danger:#e88;--danger-bg:#1a1010;--info:#7ab4f5;--info-bg:#0f1a2a;--code-bg:#1a1a20;--gold:#e8c868;--gold-bg:#1a1710}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.75;font-size:15px}
+.page{max-width:880px;margin:0 auto;padding:32px 24px 80px}
+.hero{text-align:center;padding:48px 0 40px;border-bottom:1px solid var(--border);margin-bottom:44px}
+.hero h1{font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:500;letter-spacing:-.02em;line-height:1.05;margin-bottom:12px}
+.hero h1 em{font-style:italic;color:var(--accent);font-weight:600}
+.hero .sub{color:var(--muted);font-size:.95rem;max-width:600px;margin:0 auto 10px}
+.hero .meta{color:var(--muted);font-size:.76rem}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--code-bg);padding:2px 6px;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:14px 0;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.65}
+pre code{background:none;padding:0}
+.section{margin-bottom:48px}
+.section h2{font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:600;margin-bottom:12px;letter-spacing:-.01em}
+.section h3{font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;margin-top:22px;margin-bottom:8px}
+.section p{margin-bottom:12px}
+.section ul,.section ol{margin-bottom:14px;padding-left:22px}.section li{margin-bottom:6px;font-size:.93rem}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.86rem}
+th{text-align:left;font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:2px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.callout{border-radius:10px;padding:14px 18px;margin:18px 0;border-left:4px solid}
+.callout p{margin-bottom:6px;font-size:.9rem}.callout p:last-child{margin-bottom:0}
+.callout-label{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;display:block}
+.callout.info{background:var(--info-bg);border-left-color:var(--info)}.callout.info .callout-label{color:var(--info)}
+.callout.warn{background:var(--amber-bg);border-left-color:var(--amber)}.callout.warn .callout-label{color:var(--amber)}
+.callout.danger{background:var(--danger-bg);border-left-color:var(--danger)}.callout.danger .callout-label{color:var(--danger)}
+.callout.success{background:var(--accent-bg);border-left-color:var(--accent)}.callout.success .callout-label{color:var(--accent)}
+.strategy{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:26px 28px;margin:22px 0;position:relative}
+.strategy.recommended{border-color:var(--accent);border-width:2px;background:var(--accent-bg)}
+.strategy .rank{position:absolute;top:-14px;left:24px;background:var(--bg);padding:2px 12px;font-family:'Sora',sans-serif;font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border:1px solid var(--border);border-radius:20px}
+.strategy.recommended .rank{background:var(--accent);color:#fff;border-color:var(--accent)}
+.strategy h3{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:600;margin-bottom:6px;letter-spacing:-.01em;margin-top:0}
+.strategy .tagline{font-size:.88rem;color:var(--muted);margin-bottom:14px;font-style:italic}
+.strategy .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:12px 0}
+.strategy .grid .col h4{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;color:var(--muted)}
+.strategy .grid .col ul{margin:0;padding-left:18px}
+.strategy .grid .col li{font-size:.86rem;margin-bottom:3px}
+.strategy .pro{color:var(--accent)}.strategy .con{color:var(--danger)}
+@media(max-width:640px){.strategy .grid{grid-template-columns:1fr}}
+.arch{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:18px;margin:14px 0;font-family:'JetBrains Mono',monospace;font-size:.72rem;line-height:1.6;overflow-x:auto;white-space:pre}
+hr{border:none;border-top:1px solid var(--border);margin:40px 0}
+.footer{text-align:center;padding:28px 0;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;margin-top:40px}
+.score{display:inline-block;padding:3px 8px;border-radius:4px;font-family:'Sora',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.05em}
+.score.a{background:var(--accent-bg);color:var(--accent)}
+.score.b{background:var(--gold-bg);color:var(--gold)}
+.score.c{background:var(--amber-bg);color:var(--amber)}
+.score.d{background:var(--danger-bg);color:var(--danger)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="hero">
+  <h1>Deployment <em>Strategy</em></h1>
+  <p class="sub">Four ways to ship a CareKosh change to staging and production. Ranked, with the trade-offs the ranking hides.</p>
+  <p class="meta">CareKosh · April 2026 · Current reference for PRs #4–#13</p>
+</div>
+
+<!-- INTRO -->
+<div class="section">
+  <h2>The four strategies, briefly</h2>
+  <p>Every backend change ends up on Render. Every mobile change ends up on a phone. The only question is the <em>path</em>. There are four realistic paths. We picked one as the default; the rest have their moments.</p>
+  <table>
+    <thead><tr><th>Strategy</th><th>What it means</th><th>Default?</th></tr></thead>
+    <tbody>
+      <tr><td>A — Branch-gated merge</td><td>Feature branch → PR → CI + preview APK on label → merge → Render auto-deploys both environments</td><td><span class="score a">Yes — default</span></td></tr>
+      <tr><td>B — Staging-only service per PR</td><td>Each PR gets its own Render preview environment</td><td><span class="score b">Only if needed</span></td></tr>
+      <tr><td>C — Manual stepped rollout</td><td>Merge to staging branch first, verify, then merge staging → main</td><td><span class="score c">Rarely</span></td></tr>
+      <tr><td>D — Direct push to main</td><td>No PR, no review, push and pray</td><td><span class="score d">Never, except hotfix</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<hr>
+
+<!-- STRATEGY A -->
+<div class="section">
+  <h2>Ranked — with why, not just "recommended"</h2>
+
+  <div class="strategy recommended">
+    <span class="rank">Rank 1 · Default</span>
+    <h3>A. Branch-gated merge with label-based APK</h3>
+    <div class="tagline">One artifact, two environments, gates on automation not humans.</div>
+    <div class="arch">feature branch
+    │
+    ▼
+PR to main  ──► CI (backend + frontend + security + pr-check)
+    │               │
+    │               └── label: build-apk  ──► EAS preview APK → sideload → staging backend
+    │
+    ▼ merge
+main  ──► CI re-runs  ──► deploy-backend job  ──► Render hook fires
+                                                      │
+                                                      ├── vitaltrack-api (prod, neondb)
+                                                      └── vitaltrack-api-staging (staging branch)
+                                                      │
+                                                      └── alembic upgrade head on both</div>
+    <div class="grid">
+      <div class="col">
+        <h4 class="pro">Wins</h4>
+        <ul>
+          <li>One green merge = both environments updated, zero manual Render interaction</li>
+          <li>CI gates every change; no way to ship a type error or trivy critical</li>
+          <li>Preview APK on a PR label — reviewers exercise the real binary on a real device</li>
+          <li>Alembic runs before Gunicorn serves, so schema and code deploy atomically</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h4 class="con">Costs</h4>
+        <ul>
+          <li>Prod and staging always on the same commit — no "soak in staging for 48h" window</li>
+          <li>A bad merge takes both environments down until the fix lands</li>
+          <li>Render free-tier cold starts happen on both services independently</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout success">
+      <span class="callout-label">Why this is the default</span>
+      <p>For a two-person project with a disabled production AAB build, the operational cost of per-environment gating exceeds its benefit. The merge-to-main rule is enforceable via branch protection; everything else is review-by-human, which is the bottleneck we want.</p>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="strategy">
+    <span class="rank">Rank 2</span>
+    <h3>B. Per-PR Render preview environment</h3>
+    <div class="tagline">Each PR gets its own isolated backend + DB branch.</div>
+    <p>Render supports preview environments where each PR spawns a short-lived service that's torn down on close. Combined with Neon branches (one per PR), every PR has its own end-to-end sandbox.</p>
+    <div class="grid">
+      <div class="col">
+        <h4 class="pro">Wins</h4>
+        <ul>
+          <li>Reviewers can exercise the PR without sharing staging</li>
+          <li>Destructive migrations can be trialled without touching the shared staging DB</li>
+          <li>Cleanup is automatic on PR close</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h4 class="con">Costs</h4>
+        <ul>
+          <li>Requires Render + Neon plans that support branching previews (costs money)</li>
+          <li>Mobile APK still has <code>EXPO_PUBLIC_API_URL</code> baked in — needs either per-PR EAS builds or a runtime switcher</li>
+          <li>Overhead unused while there's one reviewer</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout info">
+      <span class="callout-label">Graduate to this when</span>
+      <p>Team size &gt; 3, or a backend PR involves a destructive migration that shouldn't touch shared staging until reviewed.</p>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="strategy">
+    <span class="rank">Rank 3</span>
+    <h3>C. Stepped rollout via staging branch</h3>
+    <div class="tagline">A long-lived <code>staging</code> branch that feeds <code>main</code>.</div>
+    <p>Feature branches merge into <code>staging</code>; <code>staging</code> periodically merges into <code>main</code>. Render staging service watches <code>staging</code>; production service watches <code>main</code>. Adds a "soak period" between staging and production.</p>
+    <div class="grid">
+      <div class="col">
+        <h4 class="pro">Wins</h4>
+        <ul>
+          <li>True time separation — production lags staging by hours or days</li>
+          <li>Gives regression bugs a window to surface before real users see them</li>
+          <li>Cleaner hotfix story (branch off <code>main</code>, merge back into both)</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h4 class="con">Costs</h4>
+        <ul>
+          <li>Two branches to keep in sync — merge-debt accumulates fast on small teams</li>
+          <li>Requires changing both Render services' watched-branch config</li>
+          <li>Doesn't buy much over Strategy A until you have a test suite worth trusting (CareKosh's test suite is currently 40/53 failing)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout warn">
+      <span class="callout-label">Prerequisite</span>
+      <p>Strategy C's value comes from <em>time in staging</em>. Without automated regression tests running hourly, all you get is "there could be a bug and we might find it." Fix the test suite before adopting this.</p>
+    </div>
+  </div>
+
+  <!-- D -->
+  <div class="strategy">
+    <span class="rank">Rank 4</span>
+    <h3>D. Direct push to main</h3>
+    <div class="tagline">For hotfixes only. Even then, think twice.</div>
+    <p>Push commits straight to <code>main</code>, bypassing PR and review. CI still runs (it's a push trigger), so syntax errors are caught. Everything else is on you.</p>
+    <div class="grid">
+      <div class="col">
+        <h4 class="pro">Wins</h4>
+        <ul>
+          <li>Fastest possible path to a live fix when production is on fire</li>
+          <li>No waiting for reviewer availability at 2 am</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h4 class="con">Costs</h4>
+        <ul>
+          <li>No second pair of eyes — mistakes compound</li>
+          <li>Rebuilds history of a protected branch (if branch protection is off)</li>
+          <li>Writes a bad norm — one direct push becomes two becomes ten</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout danger">
+      <span class="callout-label">Allowed only if</span>
+      <p>(1) Production is down and users are affected, (2) the fix is &lt;20 lines and surgical, (3) you open a retroactive PR within 24 h with a post-mortem.</p>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- DECISION MATRIX -->
+<div class="section">
+  <h2>Decision matrix</h2>
+  <table>
+    <thead><tr><th>Scenario</th><th>Use</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Normal backend feature (e.g. new endpoint)</td><td>A</td><td>Default works. Label PR with <code>build-apk</code> if reviewer needs a binary.</td></tr>
+      <tr><td>Normal mobile feature (UI only, no API change)</td><td>A</td><td>Same. APK label gives reviewer a real device test.</td></tr>
+      <tr><td>Auth hardening / security refactor (e.g. PR #12)</td><td>A</td><td>Merge once both services are updated. Verify with E2E curl suite.</td></tr>
+      <tr><td>Account deletion + Profile UI (e.g. PR #13)</td><td>A</td><td>Backend endpoints new + mobile new screen — one PR, one merge, both environments move together.</td></tr>
+      <tr><td>Destructive migration (DROP column, backfill)</td><td>B or C</td><td>Don't use Strategy A — staging DB wipe risk is real.</td></tr>
+      <tr><td>Production incident</td><td>D, then retroactive PR</td><td>Fire > process.</td></tr>
+      <tr><td>Large multi-PR refactor (e.g. original #4 server-first)</td><td>A, with feature flag if possible</td><td>Ship in small merges; keep a revert path in each.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- IDEAL WORKFLOW -->
+<div class="section">
+  <h2>Your ideal workflow — end-to-end</h2>
+  <div class="arch">1. git checkout -b feature/something-useful
+2. work, commit frequently
+3. push branch
+4. open PR → main (title in Conventional Commits format)
+5. CI goes green (3–4 min)
+6. if reviewer needs a binary: add label "build-apk" → APK sideloaded
+7. reviewer approves
+8. merge (squash or merge, your call — both work)
+9. CI re-runs on main; deploy-backend POSTs Render hook
+10. BOTH Render services redeploy; Alembic runs on both DBs
+11. verify deploy:
+    ├── curl https://vitaltrack-api-staging.onrender.com/health
+    ├── curl https://vitaltrack-api.onrender.com/health
+    ├── Render dashboard → Events tab → "Deploy live"
+    └── alembic current (via Render shell) = latest migration filename
+12. if change touches Play Store surface: eas build --profile production
+    → eas submit --profile production (manual, for now)
+13. smoke test on real device (Pixel 9 Pro XL · Android 16)</div>
+  <div class="callout success">
+    <span class="callout-label">Backend-only changes</span>
+    <p>For PRs like #12 (auth hardening) and #13 (account deletion), Strategy A is essential: both Render services must deploy together because staging needs to receive the same email-verification + cascade-delete semantics before users test on it. Mobile changes are minimal but backend endpoints must be live on staging before the PR is considered "verified."</p>
+  </div>
+</div>
+
+<!-- ROLLBACK -->
+<div class="section">
+  <h2>Rollback — the part people forget</h2>
+  <p>Every strategy needs an exit. Here's what actually works on this stack.</p>
+  <table>
+    <thead><tr><th>Problem</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>Bad deploy, production broken</td><td>Render dashboard → Deploys tab → "Rollback" on the last known-good deploy. ~1 min.</td></tr>
+      <tr><td>Bad migration committed + auto-applied</td><td><strong>Hard.</strong> Either <code>alembic downgrade -1</code> from Render shell (if reversible), or write a forward-fix migration. Never edit an applied migration file.</td></tr>
+      <tr><td>Bad mobile release (APK in the wild)</td><td>Ship a fix + rebuild + re-submit. Cannot "rollback" a Play Store release — users on the bad version need the update to land.</td></tr>
+      <tr><td>Secret leaked in commit</td><td>Rotate the secret <em>first</em>. Then rewrite history if feasible. Consider the secret compromised regardless.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout danger">
+    <span class="callout-label">Design for reversibility</span>
+    <p>Prefer additive migrations (<code>ADD COLUMN NULL</code>) over destructive ones (<code>DROP COLUMN</code>). Prefer feature flags over big-bang cutovers. PR #4 (server-first migration) was one big-bang PR — it worked, but only because <code>sync.ts</code> was already dead code and the risk was mobile-side, not data-side.</p>
+  </div>
+</div>
+
+<div class="footer">
+  CareKosh · Deployment Strategy · April 2026 · PRs #4–#13
+</div>
+
+</div>
+</body>
+</html>

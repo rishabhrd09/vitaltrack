@@ -1,122 +1,143 @@
 # Git Workflow Guide
 
-> **Professional PR-based workflow** for both collaborators and fork contributors.
+> The end-to-end PR-based workflow for CareKosh, for both collaborators and fork contributors.
+
+Branch naming, commit conventions, and PR requirements are also documented in [../CAREKOSH_DEVELOPER_GUIDE.md §12](../CAREKOSH_DEVELOPER_GUIDE.md#12-contribution-workflow). This file expands on the daily git mechanics.
 
 ---
 
-## Workflow Overview
+## Workflow overview
 
 ```
-                    VITALTRACK GIT WORKFLOW
+                    CAREKOSH GIT WORKFLOW
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│   1. Create Branch    2. Make Changes    3. Push Branch        │
-│   ─────────────────   ──────────────────   ─────────────────   │
-│   feature/my-feature  Edit, test, commit   git push origin      │
+│   1. Branch from main  2. Make changes    3. Push branch        │
+│   ───────────────────  ──────────────────  ──────────────────   │
+│   feature/my-feature   Edit, test, commit  git push origin      │
 │                                                                 │
-│                            ↓                                    │
+│                            │                                    │
+│                            ▼                                    │
 │                                                                 │
-│   4. Open PR          5. CI Tests         6. Code Review       │
-│   ─────────────────   ──────────────────   ─────────────────   │
-│   GitHub UI           Automatic           Team approval         │
+│   4. Open PR           5. CI runs          6. Review            │
+│   ───────────────────  ──────────────────  ──────────────────   │
+│   GitHub UI            backend/frontend/   Team approval        │
+│                        security/pr-check                        │
 │                                                                 │
-│                            ↓                                    │
+│                            │                                    │
+│                            ▼                                    │
 │                                                                 │
-│   7. Merge            8. Auto Deploy      9. Celebrate! 🎉     │
-│   ─────────────────   ──────────────────   ─────────────────   │
-│   Squash & merge      Railway + EAS       Feature live!        │
+│   7. Merge             8. Auto-deploy      9. Verify            │
+│   ───────────────────  ──────────────────  ──────────────────   │
+│   squash or merge      Render (both svcs)  curl /health, smoke  │
+│                        EAS: manual AAB                          │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## For Collaborators (Direct Access)
+## For collaborators (direct repo access)
 
-### Initial Setup (Once)
+### One-time setup
+
 ```bash
 git clone https://github.com/rishabhrd09/vitaltrack.git
 cd vitaltrack
 ```
 
-### Daily Workflow
+### Daily flow
 
-#### Step 1: Update main branch
+#### 1. Update `main`
 ```bash
 git checkout main
 git pull origin main
 ```
 
-#### Step 2: Create feature branch
+#### 2. Create a feature branch
 ```bash
 git checkout -b feature/add-export-button
 ```
 
-**Branch naming convention:**
-| Prefix | Use Case |
-|--------|----------|
-| `feature/` | New features |
-| `fix/` | Bug fixes |
-| `hotfix/` | Urgent production fixes |
-| `docs/` | Documentation updates |
-| `refactor/` | Code refactoring |
+**Naming**
 
-#### Step 3: Make changes
+| Prefix | Use |
+|---|---|
+| `feature/` | new feature |
+| `fix/` | bug fix |
+| `hotfix/` | urgent prod fix |
+| `docs/` | documentation |
+| `refactor/` | code refactor |
+| `test/` | test-only |
+| `chore/` | maintenance |
+
+#### 3. Make changes, commit in meaningful chunks
 ```bash
-# Edit files...
-# Test locally...
-
-git add .
-git commit -m "feat: add export button to inventory screen"
+# edit, test
+git add <specific files>
+git commit -m "feat(inventory): add export button"
 ```
 
-**Commit message format:**
+**Conventional Commits:**
 ```
-type: short description
+<type>(<scope>): <short imperative>
 
-- feat: new feature
-- fix: bug fix
-- docs: documentation
-- refactor: code change (no feature/fix)
-- test: adding tests
-- chore: maintenance
+type ∈ { feat, fix, docs, style, refactor, test, chore, perf, ci }
 ```
 
-#### Step 4: Push branch
+Examples:
+- `feat(auth): add biometric login`
+- `fix(items): handle negative quantity edge case`
+- `refactor(mobile): extract api client`
+- `docs: update deployment guide for Render`
+
+Prefer many small commits over one big one — reviewers can jump between them.
+
+#### 4. Push the branch
 ```bash
 git push origin feature/add-export-button
 ```
 
-#### Step 5: Open Pull Request
-1. Go to GitHub repository
-2. Click "Compare & pull request" (appears automatically)
-3. Fill in PR template
-4. Request reviewers
-5. Submit PR
+#### 5. Open the PR
 
-#### Step 6: Wait for CI
-CI automatically runs:
-- Backend tests (Python)
-- Frontend tests (TypeScript)
-- Security scan
+1. Browse to the repo on GitHub.
+2. Click **Compare & pull request** (appears after push).
+3. Fill in the template (below).
+4. Assign reviewers.
+5. Submit.
 
-All checks must pass before merge.
+**Optional:** add the `build-apk` label. This triggers the CI job `build-preview` which runs `eas build --profile preview --platform android` and posts the APK link back to the PR — reviewers can sideload a real binary pointed at the staging backend.
 
-#### Step 7: Address review feedback
+#### 6. Wait for CI (3–5 min)
+
+Four jobs run in parallel:
+
+| Job | Does |
+|---|---|
+| `test-backend` | pytest, ruff, mypy (postgres:16 service) |
+| `test-frontend` | `tsc`, ESLint, `expo-doctor` |
+| `security-scan` | Trivy (CRITICAL + HIGH) |
+| `pr-check` | Merge gate — succeeds only if backend + frontend pass |
+
+All four must be green before merge.
+
+#### 7. Address review
 ```bash
-# Make requested changes
-git add .
-git commit -m "fix: address review feedback"
+# make requested changes
+git add <files>
+git commit -m "fix: address review"
 git push origin feature/add-export-button
 ```
 
-#### Step 8: Merge
-Once approved:
-1. Click "Squash and merge"
-2. Confirm merge
-3. Delete branch (GitHub prompts this)
+#### 8. Merge
 
-#### Step 9: Clean up locally
+Once approved + green:
+
+1. **Squash and merge** (default) or **Merge** — both work. Use squash for tidy history; use merge when the commit-by-commit story matters.
+2. Confirm.
+3. Delete the branch (GitHub prompts).
+
+#### 9. Clean up locally
 ```bash
 git checkout main
 git pull origin main
@@ -125,296 +146,269 @@ git branch -d feature/add-export-button
 
 ---
 
-## For Fork Contributors (External)
+## After merge — what the platform does
 
-### Initial Setup (Once)
+1. **CI re-runs on `main`** (push trigger).
+2. **`deploy-backend` job** POSTs to the Render deploy hook (secret `RENDER_DEPLOY_HOOK`).
+3. **Both Render services** (`vitaltrack-api` and `vitaltrack-api-staging`) pull the new image and restart.
+4. `docker-entrypoint.sh` runs `alembic upgrade head` on both DBs, then boots Gunicorn.
+5. Health check at `/health` must pass before traffic flips.
+6. **No mobile build is triggered** by merge. Production AAB is manual:
+   ```bash
+   cd vitaltrack-mobile
+   eas build --profile production --platform android
+   eas submit --profile production --platform android
+   ```
+   The CI `build-production` job exists but is gated off (`if: false`) until Play Console production is live.
 
-#### Step 1: Fork the repository
-Click "Fork" on GitHub (top right)
+Full trigger taxonomy: repo-root `CAREKOSH_BUILD_DEPLOY_FLOW.html`.
 
-#### Step 2: Clone your fork
+---
+
+## For fork contributors (external)
+
+### One-time setup
+
+1. **Fork** on GitHub (top-right).
+2. Clone your fork:
+   ```bash
+   git clone https://github.com/YOUR-USERNAME/vitaltrack.git
+   cd vitaltrack
+   ```
+3. Add the upstream remote:
+   ```bash
+   git remote add upstream https://github.com/rishabhrd09/vitaltrack.git
+   git remote -v
+   # origin    https://github.com/YOUR-USERNAME/vitaltrack.git (fetch/push)
+   # upstream  https://github.com/rishabhrd09/vitaltrack.git  (fetch/push)
+   ```
+
+### Contribution flow
+
 ```bash
-git clone https://github.com/YOUR-USERNAME/vitaltrack.git
-cd vitaltrack
-```
-
-#### Step 3: Add upstream remote
-```bash
-git remote add upstream https://github.com/rishabhrd09/vitaltrack.git
-```
-
-#### Step 4: Verify remotes
-```bash
-git remote -v
-# Should show:
-# origin    https://github.com/YOUR-USERNAME/vitaltrack.git (fetch)
-# origin    https://github.com/YOUR-USERNAME/vitaltrack.git (push)
-# upstream  https://github.com/rishabhrd09/vitaltrack.git (fetch)
-# upstream  https://github.com/rishabhrd09/vitaltrack.git (push)
-```
-
-### Contributing Workflow
-
-#### Step 1: Sync with upstream
-```bash
+# 1. Sync with upstream
 git checkout main
 git fetch upstream
 git merge upstream/main
 git push origin main
-```
 
-#### Step 2: Create feature branch
-```bash
+# 2. Feature branch
 git checkout -b feature/my-contribution
-```
 
-#### Step 3: Make changes and commit
-```bash
-# Edit files...
-git add .
-git commit -m "feat: description of changes"
-```
+# 3. Work, commit
+git add . && git commit -m "feat: ..."
 
-#### Step 4: Push to your fork
-```bash
+# 4. Push to your fork
 git push origin feature/my-contribution
-```
 
-#### Step 5: Open PR to upstream
-1. Go to **original** repository (not your fork)
-2. Click "New pull request"
-3. Click "compare across forks"
-4. Select your fork and branch
-5. Fill in PR template
-6. Submit PR
+# 5. Open PR: original repo → "New pull request" → "compare across forks"
+#    Select your fork + branch.
 
-#### Step 6: Keep PR updated
-If main has changed:
-```bash
+# 6. Keep PR fresh if main moves
 git checkout feature/my-contribution
 git fetch upstream
 git rebase upstream/main
-git push origin feature/my-contribution --force
+git push origin feature/my-contribution --force-with-lease
 ```
+
+Prefer `--force-with-lease` over `--force` — it fails if someone else pushed to your branch in the meantime, preventing accidental overwrites.
 
 ---
 
-## Troubleshooting Decision Tree
+## Troubleshooting
 
+### Can't push to `origin`
+
+| Error | Fix |
+|---|---|
+| `Permission denied` | Not a collaborator — use the fork workflow |
+| `Updates were rejected` | Someone pushed to the branch since your last pull. `git pull --rebase origin <branch>`, then push |
+| `Remote not found` | `git remote -v` to check; `git remote add origin <url>` if missing |
+
+### Merge conflicts
+```bash
+git pull origin main           # pull latest main into feature branch
+# resolve conflicts in editor
+git add <resolved files>
+git commit                     # or git rebase --continue if mid-rebase
+git push
 ```
-PROBLEM: Can't push to origin
-│
-├─► "Permission denied"
-│   └─► Are you a collaborator? If not, use Fork workflow
-│
-├─► "Updates were rejected"
-│   └─► Pull first: git pull origin branch-name
-│
-└─► "Remote not found"
-    └─► Check remote: git remote -v
 
-PROBLEM: Merge conflicts
-│
-├─► Small conflict
-│   └─► Fix in editor → git add . → git commit
-│
-└─► Complex conflict
-    └─► Ask for help or start fresh branch
+### Wrong branch
 
-PROBLEM: Need to undo commit
-│
-├─► Last commit only
-│   └─► git reset HEAD~1 (keeps changes)
-│
-└─► Multiple commits
-    └─► git rebase -i HEAD~N (interactive)
+```bash
+# Committed to main by accident
+git log -1                                # grab commit hash
+git checkout -b feature/x                 # create branch at current HEAD
+git checkout main
+git reset --hard HEAD~1                   # pop the commit off main
+git checkout feature/x                    # your commit is here
 
-PROBLEM: Wrong branch
-│
-├─► Committed to main by accident
-│   └─► git checkout -b correct-branch
-│       git checkout main
-│       git reset HEAD~1 --hard
-│       git checkout correct-branch
-│
-└─► Forgot to create branch
-    └─► git stash
-        git checkout -b new-branch
-        git stash pop
+# Forgot to branch before editing
+git stash
+git checkout -b new-branch
+git stash pop
 ```
+
+### Undo the last commit
+```bash
+# Keep changes staged
+git reset --soft HEAD~1
+
+# Keep changes unstaged
+git reset HEAD~1
+
+# Discard changes (destructive)
+git reset --hard HEAD~1
+```
+
+### Branch is "N commits behind main"
+
+Normal — every merge to `main` bumps every open branch's count. Rebase only if you have conflicts, not because of the number.
 
 ---
 
-## Branch Protection Rules
-
-The `main` branch has these protections:
+## Branch protection on `main`
 
 | Rule | Purpose |
-|------|---------|
+|---|---|
 | Require PR | No direct pushes |
-| Require CI pass | Tests must pass |
-| Require review | At least 1 approval |
-| No force push | History is sacred |
+| Require CI pass | `pr-check` must be green |
+| Require review | ≥1 approval from a code owner |
+| No force push | History on `main` is sacred |
+
+Exception: production hotfix. If prod is on fire and the fix is ≤20 surgical lines, you can push directly — open a retroactive PR + post-mortem within 24 h. See `CAREKOSH_DEPLOYMENT_STRATEGY.html` Strategy D.
 
 ---
 
-## PR Template
+## PR template
 
-When you open a PR, fill in this template:
+Paste this in the PR description:
 
 ```markdown
 ## Description
-Brief description of changes
+Brief description of changes.
 
-## Type of Change
+## Type
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Documentation
 
 ## Testing
-- [ ] Tested locally
-- [ ] Added/updated tests
-- [ ] All tests pass
+- [ ] Tested locally (Docker + Expo Go)
+- [ ] Added / updated tests
+- [ ] All CI checks green
 
-## Screenshots (if UI change)
-[Add screenshots here]
+## Screenshots (if UI)
+<!-- paste screenshots -->
 
 ## Checklist
-- [ ] Code follows style guidelines
-- [ ] Self-review completed
-- [ ] Comments added for complex code
-- [ ] Documentation updated
+- [ ] Self-review done
+- [ ] Comments added for non-obvious code
+- [ ] Documentation updated (repo-root docs or this folder)
 ```
+
+If your PR needs a preview APK for hands-on review, add the `build-apk` label after opening.
 
 ---
 
-## Common Git Commands
+## Common commands
 
-### Daily Use
+### Daily use
 ```bash
-# Update main
-git checkout main && git pull
-
-# Create branch
-git checkout -b feature/name
-
-# Stage and commit
-git add .
-git commit -m "type: message"
-
-# Push branch
-git push origin feature/name
-
-# Delete local branch
-git branch -d feature/name
-
-# Delete remote branch
-git push origin --delete feature/name
+git checkout main && git pull                    # update
+git checkout -b feature/name                     # branch
+git add <files> && git commit -m "type: msg"     # stage + commit
+git push origin feature/name                     # push
+git branch -d feature/name                       # delete local
+git push origin --delete feature/name            # delete remote
 ```
 
-### Viewing History
+### Viewing history
 ```bash
-# View log (pretty)
-git log --oneline --graph
-
-# View specific file history
-git log --follow -p -- filename
-
-# View changes in commit
-git show commit-hash
+git log --oneline --graph                        # pretty tree
+git log --follow -p -- <file>                    # file history
+git show <sha>                                   # diff of one commit
+git blame <file>                                 # who changed what
 ```
 
-### Undoing Things
+### Undoing
 ```bash
-# Undo unstaged changes
-git checkout -- filename
-
-# Undo staged changes
-git reset HEAD filename
-
-# Undo last commit (keep changes)
-git reset HEAD~1
-
-# Undo last commit (discard changes)
-git reset HEAD~1 --hard
+git checkout -- <file>                           # discard unstaged edit
+git reset HEAD <file>                            # unstage
+git reset --soft HEAD~1                          # undo last commit, keep staged
+git reset --hard HEAD~1                          # destructive: undo + discard
+git revert <sha>                                 # safe: new commit that reverses <sha>
 ```
 
 ### Stashing
 ```bash
-# Save work temporarily
-git stash
-
-# Restore stashed work
-git stash pop
-
-# List stashes
-git stash list
-
-# Apply specific stash
-git stash apply stash@{0}
+git stash                                        # save WIP
+git stash pop                                    # restore
+git stash list                                   # see all
+git stash apply stash@{0}                        # restore but keep in stash
 ```
 
-### Syncing (Fork)
+### Fork sync
 ```bash
-# Fetch upstream changes
 git fetch upstream
-
-# Merge upstream into local main
 git checkout main
 git merge upstream/main
-
-# Push to your fork
 git push origin main
 ```
 
 ---
 
-## Quick Reference Card
+## Quick reference
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│                    GIT QUICK REFERENCE                      │
+│                    CAREKOSH GIT QUICK REF                   │
 ├────────────────────────────────────────────────────────────┤
 │                                                            │
 │  NEW FEATURE:                                              │
-│  git checkout main && git pull                             │
-│  git checkout -b feature/name                              │
-│  # ... make changes ...                                    │
-│  git add . && git commit -m "feat: description"            │
-│  git push origin feature/name                              │
-│  # ... open PR on GitHub ...                               │
+│    git checkout main && git pull                           │
+│    git checkout -b feature/name                            │
+│    # edit/test                                             │
+│    git add <files> && git commit -m "feat: …"              │
+│    git push origin feature/name                            │
+│    # open PR — add build-apk label if APK needed           │
 │                                                            │
-│  AFTER PR MERGED:                                          │
-│  git checkout main && git pull                             │
-│  git branch -d feature/name                                │
+│  AFTER MERGE:                                              │
+│    git checkout main && git pull                           │
+│    git branch -d feature/name                              │
 │                                                            │
 │  SYNC FORK:                                                │
-│  git fetch upstream                                        │
-│  git checkout main                                         │
-│  git merge upstream/main                                   │
-│  git push origin main                                      │
+│    git fetch upstream                                      │
+│    git checkout main && git merge upstream/main            │
+│    git push origin main                                    │
 │                                                            │
-│  OOPS, WRONG BRANCH:                                       │
-│  git stash                                                 │
-│  git checkout correct-branch                               │
-│  git stash pop                                             │
+│  WRONG BRANCH:                                             │
+│    git stash                                               │
+│    git checkout correct-branch                             │
+│    git stash pop                                           │
+│                                                            │
+│  CLEAN LAST COMMIT AFTER A HOOK FAIL:                      │
+│    # NEVER amend — the hook blocked the commit,            │
+│    # so amending would edit the PREVIOUS commit.           │
+│    # Instead: fix the issue, re-stage, commit again.       │
 │                                                            │
 └────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Best Practices
+## Best practices
 
-1. **Keep PRs small** - Easier to review, faster to merge
-2. **One feature per PR** - Don't mix unrelated changes
-3. **Write good commit messages** - Future you will thank you
-4. **Test before pushing** - CI is a safety net, not a test suite
-5. **Respond to reviews promptly** - Keep momentum going
-6. **Update your branch often** - Avoid merge conflicts
-7. **Never force push to main** - Seriously, never
+1. **Small PRs.** Easier to review, faster to merge.
+2. **One feature per PR.** Don't mix unrelated changes.
+3. **Commit messages are durable.** "Future you" reads them during a 3 AM debug.
+4. **Local test before push.** CI is a safety net, not a test suite.
+5. **Update often.** Long-lived branches accumulate merge debt.
+6. **Never force-push `main`.** Not even once.
+7. **Don't `git push --no-verify`.** Hooks exist for a reason; if one fails, investigate the cause.
 
 ---
 
-**Questions?** Ask in PR comments or open a discussion on GitHub.
+Questions? Comment on the PR or open a discussion on GitHub.
