@@ -310,6 +310,11 @@ code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--co
     <span class="callout-label">Why server-first for medical inventory</span>
     <p>Offline editing of life-critical stock counts creates merge conflicts with real-world consequences — two caregivers silently overwriting each other's updates can result in running out of oxygen. Server-first eliminates the whole conflict class; OCC handles the last remaining race.</p>
   </div>
+
+  <div class="callout teal">
+    <span class="callout-label">Mobile cache persistence layer (PR #16)</span>
+    <p>Between the mobile app and the server, TanStack Query now keeps a <strong>read-only snapshot</strong> of inventory/order/category/activity data in AsyncStorage (<code>@tanstack/react-query-persist-client</code> + <code>@tanstack/query-async-storage-persister</code>, key <code>carekosh-query-cache</code>). On app launch, the last-seen data renders instantly while fresh data refetches in the background (<code>staleTime: 30s</code>, <code>gcTime: 24h</code>). <strong>Mutations bypass the cache and go direct to the server</strong> — the cache is never pushed back, so the data-corruption failure mode of the old offline-first architecture is structurally impossible. Cache is cleared on both logout and login for shared-device privacy; a schema <code>buster</code> tied to <code>app.json</code>'s <code>version</code> auto-invalidates on upgrade; and a <code>ENABLE_CACHE_PERSISTENCE</code> kill switch in <code>providers/QueryProvider.tsx</code> disables the whole layer with one line. <code>focusManager</code> is wired to React Native's <code>AppState</code> so returning to the foreground triggers a refetch.</p>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════

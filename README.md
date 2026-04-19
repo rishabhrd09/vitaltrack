@@ -28,9 +28,10 @@ Family caregivers running a home ICU for a chronically ill relative juggle dozen
 | Layer | Technology |
 |---|---|
 | Mobile | React Native · Expo SDK 54 · TypeScript · `expo-router` |
-| Server state | `@tanstack/react-query` |
+| Server state | `@tanstack/react-query` + `@tanstack/react-query-persist-client` (AsyncStorage-backed cache persistence) |
 | UI state | `zustand` (UI-only, no persistence) |
 | Secure storage | `expo-secure-store` |
+| Loading UX | Skeleton screens · cache-backed instant launches · cold-start auto-retry on login |
 | Backend | FastAPI · SQLAlchemy 2.0 (async) · Alembic · Argon2 |
 | Database | PostgreSQL 16 on [Neon](https://neon.tech) |
 | Hosting | [Render](https://render.com) (backend) · [EAS Build](https://expo.dev/eas) (mobile) |
@@ -114,6 +115,8 @@ Feature-complete for v1; preparing for Play Store closed testing. See [CAREKOSH_
 ## Key technical decisions
 
 - **Migrated from offline-first to server-first (PRs #4–#8).** Offline editing of life-critical inventory creates merge conflicts with real-world consequences. A server-first design eliminates the conflict class; OCC handles the last remaining race.
+- **Cache persistence stores a read-only snapshot of TanStack Query data to AsyncStorage (PR #16).** Unlike the old offline-first architecture, cached data is never pushed to the server — mutations always go server-first. Cache is cleared on both logout and login for shared-device privacy, and a schema `buster` tied to the app version auto-invalidates stale snapshots on upgrade. Kill switch (`ENABLE_CACHE_PERSISTENCE`) in `providers/QueryProvider.tsx` for instant rollback.
+- **Skeleton screens + cold-start auto-retry (PRs #15, #16).** First-launch and post-idle waits are covered by animated skeleton placeholders (matching each screen's layout) and, on login, an auto-retry loop that health-checks the server every 5 s (max 12 attempts) with a Cancel button — replacing the static "server is starting up" text.
 - **Migrated hosting from Railway to Render (PR #1).** Render's Docker web services, zero-cost PR previews via deploy hooks, and Neon integration were a better fit than Railway's per-service pricing.
 - **Rebranded VitalTrack → CareKosh (PRs #10, #11) without renaming directories.** User-visible only — internal paths kept stable to avoid breaking Render service URLs, EAS config references, and historical PR links.
 - **Kept backend `/sync/*` endpoints after deleting mobile sync.** Dead code behind unused routes; not worth a dedicated removal PR.

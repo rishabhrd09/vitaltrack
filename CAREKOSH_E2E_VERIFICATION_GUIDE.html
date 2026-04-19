@@ -460,6 +460,53 @@ eas build --profile preview --platform android</code></pre>
 
 <hr>
 
+<!-- PHASE 8: LOADING UX (PRs #15, #16) -->
+<div class="section">
+  <h2 style="color:var(--accent)"><span class="tag" style="background:var(--accent);color:#fff">Phase 8</span> Loading UX — skeletons, cache persistence, cold-start retry (PRs #15, #16)</h2>
+</div>
+
+<div class="section">
+  <div class="step">
+    <div class="step-num">Step 22</div>
+    <h4>Skeleton loading verification</h4>
+    <ul class="checklist">
+      <li>Clear app data (<code>adb shell pm clear com.vitaltrack.mobile</code>) or first install → login</li>
+      <li>Dashboard tab → animated skeleton placeholders visible during initial fetch</li>
+      <li>Inventory tab → skeleton placeholders (list-shaped)</li>
+      <li>Orders tab → skeleton placeholders (card-shaped)</li>
+      <li>After data loads, skeletons replaced by real content (header/SafeAreaView stays stable — no layout jump)</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 23</div>
+    <h4>Cache persistence verification</h4>
+    <ul class="checklist">
+      <li>Open app with logged-in session, browse dashboard/inventory/orders (populates cache)</li>
+      <li>Kill app from recents; wait 1 minute; re-open → cached data visible <strong>instantly</strong>, then refreshes within 30 s (<code>staleTime</code>)</li>
+      <li>Toggle airplane mode on; re-open app → cached data still visible (read-only snapshot)</li>
+      <li>Logout → login as a different user → previous user's inventory must NOT appear (cache cleared on both sides for shared-device privacy)</li>
+      <li>Optional — flip <code>ENABLE_CACHE_PERSISTENCE</code> to <code>false</code> in <code>providers/QueryProvider.tsx</code>, restart Metro → app behaves as before PR #16 (no persistence, no instant load)</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 24</div>
+    <h4>Cold-start auto-retry verification</h4>
+    <ul class="checklist">
+      <li>Wait 15+ minutes with no staging activity so Render sleeps the service</li>
+      <li>Open app, go to login, enter valid credentials, tap Sign In</li>
+      <li>"CareKosh server is waking up..." card appears with spinner + "Attempt X of 12" + Cancel button</li>
+      <li>After ~4 attempts, copy changes to "Still connecting... This can take up to 60 seconds after inactivity."</li>
+      <li>When server wakes, auto-login completes and dashboard loads — no manual re-tap required</li>
+      <li>Repeat with a deliberately <strong>wrong password</strong> → immediate "Incorrect password or account not found" error; <strong>no retry loop</strong> (auth errors must never trigger retry)</li>
+      <li>Tap Cancel during a retry → interval stops, form re-enables, state resets cleanly</li>
+    </ul>
+  </div>
+</div>
+
+<hr>
+
 <!-- TROUBLESHOOTING -->
 <div class="section">
   <h2>When something fails</h2>
@@ -478,7 +525,7 @@ eas build --profile preview --platform android</code></pre>
 </div>
 
 <div class="footer">
-  CareKosh · End-to-End Verification Guide · April 2026 · PRs #4–#13
+  CareKosh · End-to-End Verification Guide · April 2026 · PRs #4–#16
 </div>
 
 </div>

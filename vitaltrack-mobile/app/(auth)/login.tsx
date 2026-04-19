@@ -20,6 +20,13 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
+// Use the same base URL the API client uses so /health hits the right server.
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+
+const MAX_RETRY_ATTEMPTS = 12; // 12 attempts × 5s = 60s window, matches Render's cold-start worst case
+const RETRY_INTERVAL_MS = 5000;
+const HEALTH_CHECK_TIMEOUT_MS = 8000;
+
 // Map backend error messages to user-friendly text
 const getFriendlyError = (error: string): string => {
     const errorMap: Record<string, string> = {
@@ -37,33 +44,130 @@ const getFriendlyError = (error: string): string => {
 
 export default function LoginScreen() {
     const theme = useTheme();
-    const { login, isLoading, error, clearError } = useAuthStore();
+    const { login, isLoading, error, isColdStart, clearError, clearColdStart } = useAuthStore();
 
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [coldStartHint, setColdStartHint] = useState(false);
-    const coldStartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Auto-retry state — ReturnType<typeof setInterval>, not NodeJS.Timeout (doesn't exist in RN)
+    const retryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [retryState, setRetryState] = useState<{
+        isRetrying: boolean;
+        attempt: number;
+        message: string;
+        exhausted: boolean;
+    }>({ isRetrying: false, attempt: 0, message: '', exhausted: false });
 
     // Clear stale errors when screen gains focus
     useFocusEffect(
         useCallback(() => {
             clearError();
-        }, [clearError])
+            clearColdStart();
+        }, [clearError, clearColdStart])
     );
 
-    // Show "server starting up" hint after 8s of waiting (cold start on Render free tier)
-    useEffect(() => {
-        if (isLoading) {
-            coldStartTimer.current = setTimeout(() => setColdStartHint(true), 8000);
-        } else {
-            if (coldStartTimer.current) clearTimeout(coldStartTimer.current);
-            setColdStartHint(false);
+    const stopRetry = useCallback(() => {
+        if (retryIntervalRef.current) {
+            clearInterval(retryIntervalRef.current);
+            retryIntervalRef.current = null;
         }
+    }, []);
+
+    const cancelRetry = useCallback(() => {
+        stopRetry();
+        setRetryState({ isRetrying: false, attempt: 0, message: '', exhausted: false });
+        clearColdStart();
+        clearError();
+    }, [stopRetry, clearColdStart, clearError]);
+
+    // Cleanup on unmount — prevents memory leak from orphaned interval
+    useEffect(() => {
         return () => {
-            if (coldStartTimer.current) clearTimeout(coldStartTimer.current);
+            stopRetry();
         };
-    }, [isLoading]);
+    }, [stopRetry]);
+
+    // When login succeeds and we were retrying, stop the retry loop
+    useEffect(() => {
+        if (!isColdStart && retryIntervalRef.current) {
+            stopRetry();
+            setRetryState({ isRetrying: false, attempt: 0, message: '', exhausted: false });
+        }
+    }, [isColdStart, stopRetry]);
+
+    const startAutoRetry = useCallback((loginIdentifier: string, loginPassword: string) => {
+        setRetryState({
+            isRetrying: true,
+            attempt: 1,
+            message: 'CareKosh server is waking up...',
+            exhausted: false,
+        });
+
+        const tick = async () => {
+            // Health check with manual timeout (AbortSignal.timeout not reliable on Hermes)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT_MS);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    // Server is awake — stop retrying and attempt login once
+                    stopRetry();
+                    setRetryState({
+                        isRetrying: false,
+                        attempt: 0,
+                        message: 'Server ready! Logging in...',
+                        exhausted: false,
+                    });
+
+                    const success = await login(loginIdentifier, loginPassword);
+                    if (success) {
+                        router.replace('/(tabs)');
+                    }
+                    return;
+                }
+                // Non-ok response — count as a failed attempt
+                throw new Error(`Health check returned ${response.status}`);
+            } catch {
+                clearTimeout(timeoutId);
+                setRetryState(prev => {
+                    const nextAttempt = prev.attempt + 1;
+                    if (nextAttempt > MAX_RETRY_ATTEMPTS) {
+                        stopRetry();
+                        return {
+                            isRetrying: false,
+                            attempt: prev.attempt,
+                            message: 'Unable to connect. Please check your internet and try again.',
+                            exhausted: true,
+                        };
+                    }
+                    return {
+                        isRetrying: true,
+                        attempt: nextAttempt,
+                        message: nextAttempt >= 4
+                            ? 'Still connecting... This can take up to 60 seconds after inactivity.'
+                            : 'CareKosh server is waking up...',
+                        exhausted: false,
+                    };
+                });
+            }
+        };
+
+        retryIntervalRef.current = setInterval(tick, RETRY_INTERVAL_MS);
+    }, [login, stopRetry]);
+
+    // When login() flags a cold-start error, kick off the auto-retry
+    useEffect(() => {
+        if (isColdStart && !retryIntervalRef.current && !retryState.exhausted) {
+            startAutoRetry(identifier.trim(), password);
+        }
+        // Intentionally only trigger on isColdStart transitions — credentials are
+        // captured at the time of the failed login attempt, not on every render.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isColdStart]);
 
     const handleLogin = async () => {
         if (!identifier.trim() || !password.trim()) {
@@ -71,6 +175,8 @@ export default function LoginScreen() {
         }
 
         clearError();
+        clearColdStart();
+        setRetryState({ isRetrying: false, attempt: 0, message: '', exhausted: false });
 
         try {
             const success = await login(identifier.trim(), password);
@@ -78,6 +184,8 @@ export default function LoginScreen() {
             if (success) {
                 router.replace('/(tabs)');
             }
+            // On failure, useAuthStore sets `error` and possibly `isColdStart`.
+            // The isColdStart effect above handles retry dispatch.
         } catch (err) {
             // Handle email not verified error
             const error = err as Error;
@@ -92,6 +200,10 @@ export default function LoginScreen() {
     };
 
     const colors = theme.colors;
+
+    const isRetrying = retryState.isRetrying;
+    const retryExhausted = retryState.exhausted;
+    const signInButtonDisabled = isLoading || isRetrying;
 
     return (
         <KeyboardAvoidingView
@@ -113,8 +225,8 @@ export default function LoginScreen() {
 
                 {/* Login Form */}
                 <View style={styles.form}>
-                    {/* Error Message */}
-                    {error && (
+                    {/* Error Message — hide when we're in an active retry (retry box shows instead) */}
+                    {error && !isRetrying && !retryExhausted && !isColdStart && (
                         <View style={[styles.errorBox, { backgroundColor: colors.error + '20' }]}>
                             <Ionicons name="alert-circle" size={20} color={colors.error} />
                             <Text style={[styles.errorText, { color: colors.error }]}>{getFriendlyError(error)}</Text>
@@ -137,6 +249,7 @@ export default function LoginScreen() {
                                 autoCapitalize="none"
                                 autoCorrect={false}
                                 keyboardType="email-address"
+                                editable={!isRetrying}
                             />
                         </View>
                     </View>
@@ -156,8 +269,9 @@ export default function LoginScreen() {
                                 onChangeText={setPassword}
                                 secureTextEntry={!showPassword}
                                 autoCapitalize="none"
+                                editable={!isRetrying}
                             />
-                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} disabled={isRetrying}>
                                 <Ionicons
                                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                                     size={20}
@@ -169,7 +283,7 @@ export default function LoginScreen() {
 
                     {/* Forgot Password Link */}
                     <Link href="/(auth)/forgot-password" asChild>
-                        <TouchableOpacity style={styles.forgotPassword}>
+                        <TouchableOpacity style={styles.forgotPassword} disabled={isRetrying}>
                             <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
                                 Forgot Password?
                             </Text>
@@ -181,22 +295,40 @@ export default function LoginScreen() {
                         style={[
                             styles.button,
                             { backgroundColor: colors.primary },
-                            isLoading && styles.buttonDisabled,
+                            signInButtonDisabled && styles.buttonDisabled,
                         ]}
                         onPress={handleLogin}
-                        disabled={isLoading}
+                        disabled={signInButtonDisabled}
                     >
-                        {isLoading ? (
+                        {isLoading || isRetrying ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
-                            <Text style={styles.buttonText}>Sign In</Text>
+                            <Text style={styles.buttonText}>{retryExhausted ? 'Try Again' : 'Sign In'}</Text>
                         )}
                     </TouchableOpacity>
 
-                    {/* Cold start hint */}
-                    {coldStartHint && (
+                    {/* Retry in progress */}
+                    {isRetrying && (
+                        <View style={[styles.retryBox, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '40' }]}>
+                            <View style={styles.retryHeader}>
+                                <ActivityIndicator size="small" color={colors.primary} />
+                                <Text style={[styles.retryTitle, { color: colors.text }]}>
+                                    {retryState.message}
+                                </Text>
+                            </View>
+                            <Text style={[styles.retrySubtext, { color: colors.textSecondary }]}>
+                                Attempt {retryState.attempt} of {MAX_RETRY_ATTEMPTS}
+                            </Text>
+                            <TouchableOpacity onPress={cancelRetry} style={styles.cancelButton}>
+                                <Text style={[styles.cancelButtonText, { color: colors.primary }]}>Cancel</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* Retry exhausted */}
+                    {retryExhausted && (
                         <Text style={[styles.coldStartHint, { color: colors.textSecondary }]}>
-                            Server is starting up. This can take 30–60 seconds on the first login of the day.
+                            {retryState.message}
                         </Text>
                     )}
 
@@ -206,7 +338,7 @@ export default function LoginScreen() {
                             Don't have an account?{' '}
                         </Text>
                         <Link href="/(auth)/register" asChild>
-                            <TouchableOpacity>
+                            <TouchableOpacity disabled={isRetrying}>
                                 <Text style={[styles.registerLink, { color: colors.primary }]}>
                                     Sign Up
                                 </Text>
@@ -301,10 +433,40 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
+    retryBox: {
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginBottom: 16,
+        alignItems: 'center',
+        gap: 8,
+    },
+    retryHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    retryTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        flexShrink: 1,
+    },
+    retrySubtext: {
+        fontSize: 13,
+    },
+    cancelButton: {
+        marginTop: 4,
+        paddingVertical: 6,
+        paddingHorizontal: 16,
+    },
+    cancelButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
     coldStartHint: {
         fontSize: 13,
         textAlign: 'center',
-        marginTop: -12,
+        marginTop: -8,
         marginBottom: 16,
         paddingHorizontal: 16,
         lineHeight: 18,

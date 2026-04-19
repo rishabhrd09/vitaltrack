@@ -51,9 +51,10 @@ CareKosh is **server-first**. The mobile app treats the backend as the source of
 
 **What this means in practice:**
 - Mobile needs network for any write. The app surfaces errors explicitly rather than queuing.
-- `@tanstack/react-query` handles caching, revalidation, and optimistic UI. No `redux-persist`, no AsyncStorage-based persistence of domain data.
+- `@tanstack/react-query` handles caching, revalidation, and optimistic UI. The cache is now persisted to AsyncStorage via `@tanstack/query-async-storage-persister` so subsequent app launches show cached data instantly while fresh data loads in the background (PR #16). This is **not** the old offline-first architecture — the cache is strictly read-only for display. Mutations always go server-first; cache is never pushed to the server. Flow: `server → cache → screen`.
 - `zustand` holds **UI state only** (current modal, initialized flag). `store/useAppStore.ts` is intentionally ~61 lines.
 - Auth tokens live in `expo-secure-store` (hardware-backed keystore on Android), not AsyncStorage.
+- Kill switch: `ENABLE_CACHE_PERSISTENCE` in `providers/QueryProvider.tsx` disables persistence with a one-line change — no rebuild. When false, the app reverts to pure in-memory TanStack Query behaviour.
 
 ### Legacy sync endpoints
 
@@ -68,6 +69,7 @@ CareKosh is **server-first**. The mobile app treats the backend as the source of
 | Mobile runtime | React Native + Expo SDK 54 | `expo-router` v6 (file-based) |
 | Mobile language | TypeScript 5 | strict mode |
 | Server state | `@tanstack/react-query` ^5.60 | all API calls |
+| Cache persistence | `@tanstack/react-query-persist-client` + `@tanstack/query-async-storage-persister` | AsyncStorage-backed; `staleTime: 30s`, `gcTime: 24h`; kill switch in `QueryProvider.tsx`; buster tied to app version |
 | UI state | `zustand` ^4.5 | UI-only, no persistence |
 | Secure storage | `expo-secure-store` | refresh + access tokens |
 | Backend runtime | Python 3.12 + FastAPI 0.115 | `gunicorn` + `uvicorn.workers.UvicornWorker`, 4 workers |
@@ -392,6 +394,8 @@ Both DB-level `ondelete="CASCADE"` and ORM `cascade="all, delete-orphan"` are se
 - `POST /auth/reset-password`
 - `DELETE /auth/me` (when deletion completes)
 
+**Cache isolation on auth transitions (PR #16):** Both `logout()` and successful `login()` clear the TanStack Query cache from memory (`queryClient.clear()`) and from disk (`AsyncStorage.removeItem('carekosh-query-cache')`). This is belt-and-suspenders for shared family devices — if logout's clear failed (crash, force-quit), login starts fresh anyway. An `isColdStart` flag on `useAuthStore` is set when `ApiClientError.status` is `0 / 502 / 503 / 504` and drives the login screen's auto-retry loop (health-check every 5 s, max 12 attempts, cancellable). 401 / 403 never trigger retry.
+
 **Email verification** (PR #12 hardening):
 - Registration requires email (username alone is no longer accepted).
 - If `REQUIRE_EMAIL_VERIFICATION=True`, unverified users can't log in.
@@ -410,7 +414,13 @@ Mobile surfaces this at `app/profile.tsx` with a swipe-down dismissable popup me
 ## 11. Troubleshooting
 
 **Render cold starts (~30s)**
-The free Render tier sleeps after 15 min of inactivity. First request after idle takes up to 30s. Not a bug; expected. Use `/health` to warm it before demos.
+The free Render tier sleeps after 15 min of inactivity. First request after idle takes up to 30s. Not a bug; expected. Use `/health` to warm it before demos. The login screen now detects cold starts (`ApiClientError.status === 0 | 502 | 503 | 504`) and auto-retries `/health` every 5 s until the server wakes — no more dead "Sign In" button during the wait.
+
+**Dashboard shows stale data briefly on app launch**
+Expected behavior from PR #16 cache persistence. The previous session's data displays instantly while TanStack Query refetches in the background; the cache is replaced within `staleTime` (30 s). If this is unwanted, set `ENABLE_CACHE_PERSISTENCE = false` in `providers/QueryProvider.tsx` (one-line, no rebuild).
+
+**Cache not clearing on logout**
+Check that both `queryClient.clear()` (memory) and `AsyncStorage.removeItem('carekosh-query-cache')` (disk) are called in the logout flow in `store/useAuthStore.ts`. Without both, data can linger on shared family devices until the next successful login's clear runs. Cached data is also auto-invalidated when `Constants.expoConfig.version` (the schema `buster`) changes, so bumping the app version is a nuclear option.
 
 **`docker-entrypoint.sh` says "waiting for database" forever**
 `DATABASE_URL` parse failure. The script splits `postgresql://user:pass@host:port/db?query` manually — if you have unescaped `@` in your password, it breaks. URL-encode the password.

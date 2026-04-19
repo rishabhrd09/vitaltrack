@@ -39,12 +39,15 @@ CareKosh was migrated from an offline-first architecture to **server-first** in 
 | Concern | How it's handled |
 |---|---|
 | Server reads | [`@tanstack/react-query`](https://tanstack.com/query) — caching, revalidation, background refresh |
+| Cache persistence | `@tanstack/react-query-persist-client` + `@tanstack/query-async-storage-persister` — read-only snapshot in AsyncStorage for instant launches; cleared on logout/login; kill switch in `providers/QueryProvider.tsx` (PR #16) |
 | Server writes | TanStack mutations — optimistic UI + rollback on error |
 | Concurrent edits | Optimistic concurrency: `items.version` column, HTTP 409 on stale updates, client re-fetches and retries |
+| Loading UX | `components/common/SkeletonLoader.tsx` animated placeholders (variants: `dashboard`, `inventory`, `orders`) while first fetch runs |
+| Cold start on login | Auto-retry loop against `/health` — 5 s interval, max 12 attempts, Cancel button; triggered when `ApiClientError.status` is `0 / 502 / 503 / 504`; 401/403 never retry |
 | UI state | `zustand` — intentionally minimal (~61 lines in `useAppStore.ts`) |
 | Auth tokens | `expo-secure-store` (hardware-backed keystore on Android) |
 
-No `redux-persist`, no AsyncStorage-backed domain state, no `services/sync.ts`, no `useSyncStore`. These were all removed in PRs #4–#8.
+No `redux-persist`, no AsyncStorage-backed domain state, no `services/sync.ts`, no `useSyncStore`. These were all removed in PRs #4–#8. Cache persistence (PR #16) is a **display-only snapshot** — mutations always go server-first and the cache is never pushed back, making it categorically different from the deleted offline-first architecture.
 
 ---
 
@@ -72,9 +75,12 @@ vitaltrack-mobile/
 │   └── profile.tsx               # account info, change password, delete account (PR #13)
 ├── components/                   # UI components
 │   ├── common/
+│   │   └── SkeletonLoader.tsx    # animated placeholders (dashboard/inventory/orders variants)
 │   ├── dashboard/
 │   ├── inventory/
 │   └── orders/
+├── providers/
+│   └── QueryProvider.tsx         # QueryClient + PersistQueryClientProvider + focusManager + kill switch
 ├── services/
 │   ├── api.ts                    # fetch-based HTTP client with token injection
 │   └── auth.ts                   # register / login / logout / requestAccountDeletion / cancelAccountDeletion
@@ -224,6 +230,8 @@ eas submit --profile production --platform android   # uploads to Play Console i
 | Changes not reflecting | Restart Metro with `--clear` |
 | 409 Conflict toast on stock update | OCC working — another device edited the item; the app re-fetches, you retry |
 | "Verify email before login" | PR #12 hardening — complete the verification email; `/auth/resend-verification` available |
+| "CareKosh server is waking up…" on login | Render free-tier cold start (PR #16). Auto-retry will poll `/health` every 5 s for up to 12 attempts, then auto-login. Tap Cancel to abort. |
+| Dashboard briefly shows old data on launch | Expected — PR #16 cache persistence. Fresh data arrives within `staleTime` (30 s). Disable by flipping `ENABLE_CACHE_PERSISTENCE` to `false` in `providers/QueryProvider.tsx`. |
 
 ---
 

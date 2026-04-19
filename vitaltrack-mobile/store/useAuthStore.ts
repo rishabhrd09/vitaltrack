@@ -7,9 +7,10 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User, RegisterRequest } from '@/types';
 import { authService } from '@/services/auth';
-import { tokenStorage } from '@/services/api';
+import { tokenStorage, ApiClientError } from '@/services/api';
 
 // ============================================================================
 // SECURE STORAGE ADAPTER
@@ -50,6 +51,7 @@ interface AuthState {
   isLoggingOut: boolean;
   error: string | null;
   isInitialized: boolean;
+  isColdStart: boolean;
 }
 
 interface AuthActions {
@@ -61,6 +63,7 @@ interface AuthActions {
   resetPassword: (token: string, newPassword: string) => Promise<boolean>;
   updateUser: (data: Partial<User>) => void;
   clearError: () => void;
+  clearColdStart: () => void;
   setLoading: (loading: boolean) => void;
 }
 
@@ -80,6 +83,7 @@ export const useAuthStore = create<AuthStore>()(
       isLoggingOut: false,
       error: null,
       isInitialized: false,
+      isColdStart: false,
       // =====================================================================
       // INITIALIZE - Check for existing session
       // =====================================================================
@@ -186,7 +190,7 @@ export const useAuthStore = create<AuthStore>()(
       // =====================================================================
       login: async (identifier: string, password: string) => {
         console.log('[Auth] Login attempt:', identifier);
-        set({ isLoading: true, error: null });
+        set({ isLoading: true, error: null, isColdStart: false });
 
         try {
           const response = await authService.login({ identifier, password });
@@ -197,7 +201,19 @@ export const useAuthStore = create<AuthStore>()(
             isAuthenticated: true,
             isLoading: false,
             error: null,
+            isColdStart: false,
           });
+
+          // SECURITY: Clear any stale cache from a previous user session on this device
+          // before fetching fresh data for the new user. Belt-and-suspenders in case
+          // logout's cache clear failed (crash, force-quit).
+          try {
+            const { queryClient, CACHE_STORAGE_KEY } = await import('@/providers/QueryProvider');
+            queryClient.clear();
+            try { await AsyncStorage.removeItem(CACHE_STORAGE_KEY); } catch { /* non-critical */ }
+          } catch (err) {
+            console.warn('[Auth] Failed to clear cache on login:', err);
+          }
 
           // Invalidate React Query cache for the new user
           setTimeout(async () => {
@@ -220,11 +236,20 @@ export const useAuthStore = create<AuthStore>()(
             throw err;
           }
 
+          // Detect cold-start: network failure (status 0) or upstream gateway errors.
+          // The login screen watches isColdStart to kick off auto-retry.
+          const isColdStart =
+            error instanceof ApiClientError &&
+            (error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504);
+
           set({
             isLoading: false,
-            error: err.message || 'Login failed. Please try again.',
+            error: isColdStart
+              ? 'CareKosh server is waking up...'
+              : err.message || 'Login failed. Please try again.',
             isAuthenticated: false,
             user: null,
+            isColdStart,
           });
           return false;
         }
@@ -291,10 +316,12 @@ export const useAuthStore = create<AuthStore>()(
           // Logout from backend
           try { await authService.logout(); } catch { /* ignore */ }
 
-          // Clear React Query cache
+          // SECURITY: Clear React Query cache (memory + disk) so the next user on
+          // a shared family device cannot see the previous user's inventory data.
           try {
-            const { queryClient } = await import('@/providers/QueryProvider');
+            const { queryClient, CACHE_STORAGE_KEY } = await import('@/providers/QueryProvider');
             queryClient.clear();
+            try { await AsyncStorage.removeItem(CACHE_STORAGE_KEY); } catch { /* non-critical — buster will invalidate */ }
           } catch { /* ignore */ }
 
           // Reset UI state
@@ -316,6 +343,7 @@ export const useAuthStore = create<AuthStore>()(
             isLoading: false,
             isLoggingOut: false,
             error: null,
+            isColdStart: false,
           });
           console.log('[Auth] ========== LOGOUT COMPLETE ==========');
         }
@@ -332,6 +360,8 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       clearError: () => set({ error: null }),
+
+      clearColdStart: () => set({ isColdStart: false }),
 
       setLoading: (loading: boolean) => set({ isLoading: loading }),
 

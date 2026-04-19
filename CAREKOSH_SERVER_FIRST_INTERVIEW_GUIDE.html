@@ -384,7 +384,7 @@ DATA FLOWS ONE DIRECTION:
         <tr><td>State manager</td><td>TanStack Query + Zustand (61 lines UI)</td></tr>
         <tr><td>Data sync</td><td>None — direct CRUD HTTP calls</td></tr>
         <tr><td>Conflict resolution</td><td>Server-side OCC (version column, 409)</td></tr>
-        <tr><td>Works offline?</td><td>Read cached data — mutations need server</td></tr>
+        <tr><td>Works offline?</td><td>Yes, for reads — persisted TanStack Query cache (PR #16) shows last-seen data instantly on launch; mutations need server</td></tr>
         <tr><td>Data integrity</td><td>OCC + audit log + CHECK constraints</td></tr>
         <tr><td>Failure mode</td><td>Explicit error shown to user (409, 500)</td></tr>
         <tr><td>Complexity</td><td>~61 lines of UI state, TanStack handles the rest</td></tr>
@@ -575,8 +575,8 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
   </div>
 
   <div class="callout sage">
-    <p class="callout-label">The Middle Ground: Stale-While-Revalidate</p>
-    <p>TanStack Query supports <strong>cache persistence</strong> via <code>@tanstack/query-async-storage-persister</code>. This lets you show cached data instantly on app launch while fetching fresh data in the background. The cache is <strong>read-only for display</strong> — mutations always go to the server first. This gives "instant load" UX without the data corruption risks of offline-first. It's the approach CareKosh plans to adopt in v1.1.</p>
+    <p class="callout-label">The Middle Ground: Stale-While-Revalidate — implemented (PR #16)</p>
+    <p>TanStack Query cache persistence is now live in CareKosh via <code>@tanstack/query-async-storage-persister</code> and <code>@tanstack/react-query-persist-client</code>. Successful inventory/order/category/activity queries are snapshotted to AsyncStorage under key <code>carekosh-query-cache</code>, giving instant-load UX on subsequent app launches while fresh data loads in the background. The cache is <strong>read-only for display</strong> — mutations always go to the server first, and cached data is never pushed back. This categorically rules out the data-corruption failure mode of the old offline-first architecture. Cache is cleared on both logout and login (shared-device privacy), and a schema <code>buster</code> tied to the app version auto-invalidates stale snapshots on upgrade.</p>
   </div>
 </div>
 
@@ -600,7 +600,7 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
   <p>Event sourcing stores every change as an immutable event and rebuilds state by replaying events. CareKosh uses a simpler approach: JSONB before/after snapshots in an audit log. This gives traceability without the complexity of event replay. It's not event sourcing — it's change capture.</p>
 
   <h3>Stale-While-Revalidate</h3>
-  <p>A caching strategy where stale cached data is served immediately while fresh data is fetched in the background. When the fresh data arrives, it replaces the stale cache. TanStack Query does this by default when cached data exists. The key: stale data is only used for <strong>display</strong>, never for server mutations.</p>
+  <p>A caching strategy where stale cached data is served immediately while fresh data is fetched in the background. When the fresh data arrives, it replaces the stale cache. TanStack Query does this by default when cached data exists. The key: stale data is only used for <strong>display</strong>, never for server mutations. In CareKosh this is implemented end-to-end (PR #16) — cache is persisted to AsyncStorage between sessions (<code>gcTime: 24h</code>), freshness enforced at 30 s (<code>staleTime</code>), and <code>focusManager</code> is wired to React Native's <code>AppState</code> so returning to the foreground kicks off a refetch.</p>
 
   <h3>12-Factor App</h3>
   <p>A methodology for building SaaS apps. CareKosh follows Factor III (Config) rigorously: the same Docker image runs in development, staging, and production with only environment variables changing (DATABASE_URL, ENVIRONMENT, SECRET_KEY). Zero code changes needed to switch environments.</p>
@@ -646,7 +646,7 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
       <span class="qa-tag tradeoff">Tradeoff Analysis</span>
       <p>I'm giving up the ability to create and edit inventory items without internet connectivity. In return, I get guaranteed data integrity, a simpler codebase (1,650 fewer lines), and audit traceability for every change.</p>
       <p>This tradeoff is correct for CareKosh's domain: the target users are family caregivers managing home ICU setups — they're in homes with WiFi, not in remote areas. The cost of incorrect medical inventory data (thinking you have zero oxygen cylinders when you actually have five) is far higher than the cost of needing WiFi to update stock levels.</p>
-      <p>For the "instant load" UX benefit of offline-first, I plan to add TanStack Query cache persistence — it shows cached data immediately on app launch while fetching fresh data in the background. The cache is read-only for display and never pushed to the server, so the data corruption risk is zero.</p>
+      <p>For the "instant load" UX benefit of offline-first, I've implemented TanStack Query cache persistence (PR #16) — it shows cached data immediately on app launch while fetching fresh data in the background. The cache is read-only for display and never pushed to the server, so the data corruption risk is zero. It's wired through <code>PersistQueryClientProvider</code> with a 30-second <code>staleTime</code> (medical freshness), a 24-hour <code>gcTime</code> (survives between sessions), an app-version <code>buster</code> (upgrades auto-invalidate), and a kill switch for instant rollback.</p>
     </div>
   </div>
 
@@ -713,7 +713,17 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
     </div>
   </div>
 
-  <!-- Q10 -->
+  <!-- Q10 — Loading UX -->
+  <div class="qa">
+    <div class="qa-q"><h4>How do you handle the UX gap where the screen is blank while waiting for server data?</h4></div>
+    <div class="qa-a">
+      <span class="qa-tag concept">Concept — Loading UX</span>
+      <p>Three layers: (1) <strong>Skeleton loading screens</strong> — animated placeholder shapes that mirror the actual layout, shown during first load when no cache exists. (2) <strong>Cache persistence</strong> — TanStack Query's cache is persisted to AsyncStorage via <code>@tanstack/query-async-storage-persister</code>, so subsequent app launches show cached data instantly. The cache is read-only for display — mutations always go to server first. (3) <strong>Stale-while-revalidate</strong> — after showing cached data, TanStack Query silently fetches fresh data from the server and replaces the cache when it arrives.</p>
+      <p>The cache is cleared on both logout AND login to prevent data leakage between users on shared family devices — which is common in our target demographic of home ICU caregivers. For cold starts (Render free tier sleeps after 15 min), the login screen detects network failures (<code>ApiClientError.status</code> of <code>0</code>, <code>502</code>, <code>503</code>, or <code>504</code>) and auto-retries the <code>/health</code> endpoint every 5 seconds for up to 12 attempts, then logs the user in once the server wakes — with a Cancel button and friendly progressive copy. Auth errors (401/403) never trigger retry.</p>
+    </div>
+  </div>
+
+  <!-- Q11 -->
   <div class="qa">
     <div class="qa-q"><h4>How do you handle account deletion in compliance with data protection regulations?</h4></div>
     <div class="qa-a">
