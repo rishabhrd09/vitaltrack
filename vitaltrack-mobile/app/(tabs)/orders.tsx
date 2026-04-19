@@ -11,6 +11,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import OrderCard from '@/components/orders/OrderCard';
 import OfflineBanner from '@/components/common/OfflineBanner';
+import { SkeletonLoader } from '@/components/common/SkeletonLoader';
 import { useOrders } from '@/hooks/useServerData';
 import { useUpdateOrderStatus, useApplyOrderToStock, useDeleteOrder } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -93,9 +94,7 @@ export default function OrdersScreen() {
 
       {/* Content */}
       {isLoading ? (
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color={colors.accentBlue} />
-        </View>
+        <SkeletonLoader variant="orders" />
       ) : savedOrders.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconContainer}>

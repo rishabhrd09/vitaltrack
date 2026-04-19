@@ -23,6 +23,7 @@ import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import CategoryHeader from '@/components/inventory/CategoryHeader';
 import ItemRow from '@/components/inventory/ItemRow';
 import OfflineBanner from '@/components/common/OfflineBanner';
+import { SkeletonLoader } from '@/components/common/SkeletonLoader';
 import { useItems, useCategories } from '@/hooks/useServerData';
 
 type ViewMode = 'categories' | 'all';
@@ -152,9 +153,7 @@ export default function InventoryScreen() {
 
       {/* Content */}
       {isLoading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.accentBlue} />
-        </View>
+        <SkeletonLoader variant="inventory" />
       ) : (
       <ScrollView
         style={styles.scrollView}
