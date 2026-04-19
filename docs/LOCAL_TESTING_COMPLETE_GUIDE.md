@@ -1,456 +1,461 @@
 # Complete Local Testing Guide
 
-> **The definitive reference** for running VitalTrack locally. Everything from architecture to troubleshooting.
+> The definitive reference for running CareKosh locally — from architecture to the long tail of troubleshooting.
+
+For a 30-minute onramp, start with [NEW_DEVELOPER_QUICKSTART.md](NEW_DEVELOPER_QUICKSTART.md). This guide goes wider and deeper.
+
+Companion docs:
+- USB debugging: [USB_ADB_REVERSE_GUIDE.md](USB_ADB_REVERSE_GUIDE.md)
+- Architecture: [../CAREKOSH_DEVELOPER_GUIDE.md §1](../CAREKOSH_DEVELOPER_GUIDE.md#1-architecture-overview)
+- Environment wiring (dev/staging/prod): repo-root `CAREKOSH_ENVIRONMENT_ARCHITECTURE.html`
 
 ---
 
-## Section A: Architecture Overview
+## A · Architecture of a local setup
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                           LOCAL DEVELOPMENT SETUP                             │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                               │
-│    YOUR PHONE (Expo Go)              YOUR PC (Development Machine)           │
+│    YOUR PHONE (Expo Go)              YOUR PC                                  │
 │    ┌─────────────────┐               ┌─────────────────────────────┐         │
 │    │                 │               │                             │         │
-│    │   VitalTrack    │◄─────────────►│   Expo Metro Bundler        │         │
-│    │   Mobile App    │   WiFi/USB    │   Port: 8081                │         │
-│    │                 │               │                             │         │
+│    │   CareKosh app  │◄─────────────►│   Expo Metro bundler         │         │
+│    │   (JS bundle    │   Wi-Fi / USB │   port 8081                  │         │
+│    │    from Metro)  │               │                             │         │
 │    └────────┬────────┘               │   ┌─────────────────────┐   │         │
 │             │                        │   │                     │   │         │
-│             │  API Requests          │   │   FastAPI Backend   │   │         │
-│             └───────────────────────►│   │   Port: 8000        │   │         │
+│             │  HTTPS API             │   │   FastAPI backend   │   │         │
+│             └───────────────────────►│   │   port 8000         │   │         │
 │                                      │   │                     │   │         │
 │                                      │   └──────────┬──────────┘   │         │
 │                                      │              │              │         │
 │                                      │   ┌──────────▼──────────┐   │         │
-│                                      │   │                     │   │         │
-│                                      │   │   PostgreSQL 16     │   │         │
-│                                      │   │   Port: 5432        │   │         │
-│                                      │   │                     │   │         │
+│                                      │   │  postgres:16        │   │         │
+│                                      │   │  port 5432          │   │         │
 │                                      │   └─────────────────────┘   │         │
-│                                      │         (Docker)            │         │
+│                                      │   (both in Docker)          │         │
 │                                      └─────────────────────────────┘         │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key Points:**
-- Backend (FastAPI + PostgreSQL) runs in Docker containers
-- Frontend (Expo) runs natively on your PC
-- Phone connects to PC via WiFi or USB
+**Key facts:**
+- Backend (FastAPI + Postgres 16) runs in two Docker containers via `docker-compose.dev.yml`.
+- Metro bundler runs natively on your PC on port 8081.
+- Expo Go on the phone loads the JS bundle over Metro and talks to the API over HTTPS.
+- In dev, `REQUIRE_EMAIL_VERIFICATION` defaults to `false` — you can register and log in without an email round-trip.
+- The mobile app is **server-first** (TanStack Query). No offline queue, no AsyncStorage-backed domain data. If the backend is down, writes error out — they do not silently queue.
 
 ---
 
-## Section B: Connection Method Decision Tree
+## B · Connection method — pick one
 
 ```
 How is your phone connecting to your PC?
 │
-├─► Same WiFi network (most common)
-│   └─► Use: http://YOUR_PC_IP:8000
-│       └─► Go to: Section C
+├─► Same Wi-Fi (most common)
+│     use: http://YOUR_PC_IP:8000      → go to §C
 │
-├─► USB Cable (ADB Reverse)
-│   └─► Use: http://localhost:8000
-│       └─► Go to: docs/USB_ADB_REVERSE_GUIDE.md
+├─► USB cable (ADB reverse)
+│     use: http://localhost:8000       → see USB_ADB_REVERSE_GUIDE.md
 │
-└─► Different network / Firewall issues
-    └─► Use: npx expo start --tunnel
-        └─► Go to: Section D
+└─► Different network / aggressive firewall
+      use: npx expo start --tunnel     → go to §D
 ```
 
 ---
 
-## Section B.1: Flexible Environment Switching (The "Pro" Way)
+### B.1 Switching backends easily
 
-Instead of editing files manually, you can use these **Magic Commands**:
+CareKosh's `package.json` ships scripts that set the right `EXPO_PUBLIC_API_URL` for you, so you don't have to edit `.env` every time you switch targets.
 
-| Command | Connects To... | Use Case |
-| :--- | :--- | :--- |
-| **`npm run start:local`** | **Local Docker** | Building features, debugging, working offline. |
-| **`npm run start:prod`** | **Railway Cloud** | Testing connection to live server, checking production bugs. |
+| Command | Target | When |
+|---|---|---|
+| `npm run start:local` | Local Docker (`http://localhost:8000`) | Day-to-day dev |
+| `npm run start:staging` | Render staging | Reproduce a staging bug against real Neon data |
+| `npm run start` | `.env` setting | When you want manual control |
 
-### ⚡ Setup Requirement
-You must install one small tool for this to work on Windows:
+**One-time setup on Windows** (cross-platform env var syntax):
 ```bash
+cd vitaltrack-mobile
 npm install --save-dev cross-env
 ```
 
-Now you never have to edit `.env` again! Just run the command you need.
-
 ---
 
-## Section C: WiFi Method (Complete Steps)
+## C · Wi-Fi method
 
-### Step 1: Find Your PC's IP Address
+### Step 1 — Find your PC's IP
 
-**Windows (PowerShell):**
+**Windows (PowerShell)**
 ```powershell
 ipconfig | Select-String "IPv4"
+# IPv4 Address. . . . . . . . . . . : 192.168.X.X
 ```
-Look for: `IPv4 Address. . . . . . . . . . . : 192.168.X.X`
 
-**Mac:**
+**macOS**
 ```bash
 ipconfig getifaddr en0
 ```
 
-**Linux:**
+**Linux**
 ```bash
 hostname -I | awk '{print $1}'
 ```
 
-✅ **Write down your IP:** `_______________`
+### Step 2 — Confirm phone can reach PC
 
-### Step 2: Verify Phone Can Reach PC
-
-On your **phone's browser**, navigate to:
-```
-http://YOUR_IP:8000/health
+Open `http://YOUR_IP:8000/health` in the **phone's browser**. Expect:
+```json
+{"status":"healthy"}
 ```
 
-✅ **Expected:** `{"status":"healthy"}`
+- Timeout → firewall is blocking (see §E).
+- "Connection refused" → backend isn't actually running.
+- Browser loads, but the app fails → check the `.env` value matches the IP exactly.
 
-❌ **If timeout:** Check firewall (Section E)  
-❌ **If refused:** Backend not running (restart Docker)
+### Step 3 — Point the app at your backend
 
-### Step 3: Choose Your Backend
+**Recommended — use the npm scripts** (see §B.1):
+```bash
+npm run start:local
+```
 
-**Option A: The Automatic Way (Recommended)**
-Skip editing the `.env` file entirely. Just use the commands from **Section B.1**:
-- `npm run start:local` (Connects to Localhub/USB)
-- `npm run start:prod` (Connects to Railway)
-
-**Option B: The Manual Way**
-Edit `vitaltrack-mobile/.env` manually:
+**Manual — edit `vitaltrack-mobile/.env`:**
 ```env
-# Uncomment ONE line:
-
-# For Local (USB/Emulator):
-# EXPO_PUBLIC_API_URL=http://localhost:8000
-
-# For Production (Railway):
-EXPO_PUBLIC_API_URL=https://vitaltrack-production.up.railway.app
+EXPO_PUBLIC_API_URL=http://192.168.X.X:8000
 ```
 
-### Step 4: Restart Expo (Required!)
+Note: `EXPO_PUBLIC_API_URL` is read at **build/launch** time. After a change you must restart Metro with `--clear`.
 
+### Step 4 — Restart Metro
 ```bash
 npx expo start --clear
 ```
 
-The `--clear` flag is **REQUIRED** after `.env` changes.
+`--clear` flushes the Metro cache so the new env var is picked up.
 
-### Step 5: Test Connection
+### Step 5 — Test
 
-1. Scan QR code with Expo Go
-2. Create an account or login
-3. If dashboard loads with data → **Success!**
+1. Scan the QR code in Expo Go.
+2. Register an account (dev defaults skip email verification).
+3. Dashboard loads → you're in.
 
 ---
 
-## Section D: Tunnel Method (Fallback)
+## D · Tunnel method (fallback)
 
-**When to use:**
-- Corporate WiFi with isolation
-- Firewall blocking ports
-- Phone and PC on different networks
+Use when: corporate Wi-Fi with client isolation, strict firewalls, phone on a different network.
 
 ```bash
+cd vitaltrack-mobile
 npx expo start --tunnel
 ```
 
-This creates a public URL that bypasses local network issues.
+Expo creates a public URL and routes Metro traffic through it. The app still hits whatever `EXPO_PUBLIC_API_URL` points at, so your phone must be able to reach that URL — typically this means setting `EXPO_PUBLIC_API_URL=https://vitaltrack-api-staging.onrender.com` and letting the phone hit staging directly.
 
-**Tradeoffs:**
-- ✅ Works through firewalls
-- ❌ Slower than direct connection
-- ❌ Requires internet
+**Trade-offs**
+
+- ✅ Works behind firewalls and on split networks.
+- ❌ Slower than direct.
+- ❌ Requires internet on both sides.
+- ❌ Won't help you hit a local backend unless you also tunnel that (see `ngrok`).
 
 ---
 
-## Section E: Firewall Troubleshooting (Windows)
+## E · Windows firewall
 
-### Symptom
-Phone can't reach PC even on same WiFi
+### Triage
 
-### Quick Fix: Test with Firewall Disabled
+Temporarily disable the firewall:
 ```
-Settings → Windows Security → Firewall & network protection → Turn off (temporarily)
+Settings → Privacy & security → Windows Security → Firewall & network protection → turn OFF the active profile
 ```
 
-If this fixes it, proceed to add permanent rules below.
+- If the phone now reaches the PC → firewall was the cause; add permanent rules below.
+- If it still fails → router isolation or Wi-Fi AP client-isolation.
 
-### Permanent Fix: Add Firewall Rules
+### Permanent rules (PowerShell as admin)
 
-**PowerShell (Run as Administrator):**
 ```powershell
-# Allow Expo Metro Bundler
-netsh advfirewall firewall add rule name="Expo Metro" dir=in action=allow protocol=tcp localport=8081
-
-# Allow FastAPI Backend
-netsh advfirewall firewall add rule name="FastAPI Dev" dir=in action=allow protocol=tcp localport=8000
-
-# Allow PostgreSQL (optional, for external tools)
-netsh advfirewall firewall add rule name="PostgreSQL Dev" dir=in action=allow protocol=tcp localport=5432
+netsh advfirewall firewall add rule name="Expo Metro"    dir=in action=allow protocol=tcp localport=8081
+netsh advfirewall firewall add rule name="CareKosh API"  dir=in action=allow protocol=tcp localport=8000
+# Optional, only if you want external DB clients:
+netsh advfirewall firewall add rule name="Postgres Dev"  dir=in action=allow protocol=tcp localport=5432
 ```
 
-### Allow Docker Through Firewall
-```
-Settings → Windows Security → Firewall → Allow an app through firewall
-→ Find "Docker Desktop" → Check both Private and Public
-```
+### Docker through the firewall
+
+`Settings → Windows Security → Firewall → Allow an app through firewall` → find **Docker Desktop** → check both **Private** and **Public**.
 
 ---
 
-## Section F: Docker Troubleshooting
+## F · Docker troubleshooting
 
-### Problem: "Cannot connect to Docker daemon"
-**Cause:** Docker Desktop not running
+### "Cannot connect to the Docker daemon"
+Docker Desktop is not running. Start it, wait 1–2 min for the tray icon to go steady, then:
+```bash
+docker ps
+```
 
-**Fix:**
-1. Start Docker Desktop
-2. Wait for it to fully load (1-2 minutes)
-3. Verify: `docker ps` should work
+### "Port 5432 already in use"
+A local Postgres is holding the port.
 
-### Problem: "Port 5432 already in use"
-**Cause:** Local PostgreSQL running
-
-**Fix (Windows):**
+**Windows**
 ```cmd
 net stop postgresql-x64-16
 ```
 
-**Fix (Mac):**
+**macOS**
 ```bash
 brew services stop postgresql
 ```
 
-**Alternative:** Change port in `docker-compose.dev.yml`
+Alternative: change the host-side port in `docker-compose.dev.yml` (e.g. `5433:5432`).
 
-### Problem: "Database tables don't exist"
-**Cause:** Migrations didn't run
-
-**Fix:**
+### "Database tables don't exist"
+`docker-entrypoint.sh` is supposed to run `alembic upgrade head` on startup. If you bypassed it:
 ```bash
-docker-compose exec api alembic upgrade head
+docker compose -f docker-compose.dev.yml exec api alembic upgrade head
 ```
 
-### Problem: Container keeps restarting
-**Debug:**
+### Container keeps restarting
 ```bash
-docker-compose -f docker-compose.dev.yml logs -f api
+docker compose -f docker-compose.dev.yml logs -f api
 ```
 
-**Common causes:**
-- `DATABASE_URL` incorrect in `.env`
-- `SECRET_KEY` missing or too short
-- Python syntax error
+Common causes:
+- `DATABASE_URL` malformed in `.env` (passwords with `@` must be URL-encoded)
+- `SECRET_KEY` missing or < 32 chars (production validator — development is lenient)
+- Python syntax error in your last edit
 
-### Problem: Need fresh start
-**Nuclear option (deletes all data):**
+### "Can't locate revision" in Alembic logs
+Your local DB is on a revision that the current code doesn't know about.
 ```bash
-docker-compose -f docker-compose.dev.yml down -v
-docker-compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.dev.yml down -v    # WIPES dev DB
+docker compose -f docker-compose.dev.yml up --build
 ```
+
+**Never do this on staging or production.**
+
+### Fresh-start nuclear option
+```bash
+cd vitaltrack-backend
+docker compose -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.dev.yml up --build -d
+docker compose -f docker-compose.dev.yml logs -f api
+```
+
+### "localhost:5432 failed, retrying…" × 30 at startup
+Harmless. `docker-entrypoint.sh` probes a local-dev fallback before using the real `DATABASE_URL`. The Render logs show the same thing. Not a bug.
 
 ---
 
-## Section G: Expo Troubleshooting
+## G · Expo / Metro troubleshooting
 
-### Problem: "Network request failed" in app
+### "Network request failed" inside the app
 
-**Debug Steps (in order):**
-1. Verify backend: `curl http://localhost:8000/health`
-2. Verify from phone: open `http://YOUR_IP:8000/health` in phone browser
-3. Check `.env` has correct IP (no typos!)
-4. Restart Expo: `npx expo start --clear`
-5. Check firewall (Section E)
+Debug in order:
+1. Backend up on PC: `curl http://localhost:8000/health` → `{"status":"healthy"}`
+2. Phone can reach PC: `http://YOUR_IP:8000/health` in the phone browser works
+3. `.env` exactly matches that IP (no typos, no trailing slash)
+4. Metro restarted with `--clear` **after** the `.env` change
+5. Windows firewall rules in place (§E)
 
-### Problem: App stuck on splash screen
+### App stuck on splash
 ```bash
-# Clear all caches
+cd vitaltrack-mobile
 rm -rf node_modules/.cache
 npx expo start --clear
 ```
 
-### Problem: "Unable to resolve module"
+### "Unable to resolve module" on some new package
 ```bash
 rm -rf node_modules
 npm install --legacy-peer-deps
 npx expo start --clear
 ```
 
-### Problem: QR code not scanning
-- Ensure phone and PC on same WiFi
-- Try pressing `w` in terminal (opens web)
-- Try tunnel mode: `npx expo start --tunnel`
+### QR code won't scan
+- Phone + PC on same Wi-Fi?
+- Try `w` in the Metro terminal to open web-preview and confirm Metro is up.
+- Try `npx expo start --tunnel` — tunnels bypass network discovery.
 
-### Problem: Changes not reflecting
+### Edits not reflecting
 ```bash
-# Clear Metro cache
 npx expo start --clear
+```
 
-# If still not working, full reset
+If still not reflecting after a clear:
+```bash
 rm -rf node_modules .expo
 npm install --legacy-peer-deps
 npx expo start --clear
 ```
 
+### "Unable to download remote update" after install
+`expo-updates` is installed but `app.json` has no `updates` block. For dev, make sure `app.json` has:
+```json
+"updates": { "enabled": false }
+```
+This shipped in the Railway → Render migration (PR #1).
+
 ---
 
-## Section H: Complete Command Reference
+## H · Command reference
 
-### Backend Commands
+### Backend
+
 ```bash
 cd vitaltrack-backend
 
-# Start (first time or after changes)
-docker-compose -f docker-compose.dev.yml up --build
+# start (first time, or after Dockerfile change)
+docker compose -f docker-compose.dev.yml up --build -d
 
-# Start (quick, no rebuild)
-docker-compose -f docker-compose.dev.yml up
+# start (fast, no rebuild)
+docker compose -f docker-compose.dev.yml up -d
 
-# Start (background)
-docker-compose -f docker-compose.dev.yml up -d
+# stop (keep volume)
+docker compose -f docker-compose.dev.yml down
 
-# Stop
-docker-compose -f docker-compose.dev.yml down
+# stop + wipe DB (fresh start)
+docker compose -f docker-compose.dev.yml down -v
 
-# Stop + delete data (fresh start)
-docker-compose -f docker-compose.dev.yml down -v
+# tail logs
+docker compose -f docker-compose.dev.yml logs -f api
 
-# View logs (real-time)
-docker-compose -f docker-compose.dev.yml logs -f api
+# run migrations manually
+docker compose -f docker-compose.dev.yml exec api alembic upgrade head
 
-# Run migrations manually
-docker-compose exec api alembic upgrade head
+# psql into the dev DB
+docker compose -f docker-compose.dev.yml exec db psql -U postgres -d vitaltrack
 
-# Access database directly
-docker-compose exec db psql -U postgres -d vitaltrack
-
-# Check container status
+# container status
 docker ps
 ```
 
-### Frontend Commands
+### Mobile
+
 ```bash
 cd vitaltrack-mobile
 
-# Install dependencies
-npm install --legacy-peer-deps
+npm install --legacy-peer-deps          # install deps
 
-# Start (normal)
-npx expo start
+npx expo start                          # normal
+npx expo start --clear                  # flush Metro cache (use after .env)
+npx expo start --tunnel                 # public tunnel (firewall bypass)
+npx expo start --lan                    # force LAN mode
 
-# Start (clear cache - use after .env changes)
-npx expo start --clear
+npx tsc --noEmit                        # type check
+npm run lint                            # ESLint
+npx expo-doctor                         # Expo config sanity
 
-# Start (tunnel mode - firewall bypass)
-npx expo start --tunnel
-
-# Start (LAN mode - explicit)
-npx expo start --lan
-
-# Reset everything
+# full reset
 rm -rf node_modules .expo
 npm install --legacy-peer-deps
 npx expo start --clear
-
-# TypeScript check
-npx tsc --noEmit
-
-# Lint check
-npm run lint
 ```
 
-### Environment Setup
+### Environment setup
+
 ```bash
-# Run setup script
-./setup-local-dev.sh      # Mac/Linux
+# One-shot helper that writes .env with your LAN IP
+./setup-local-dev.sh      # macOS / Linux
 setup-local-dev.bat       # Windows
+```
 
-# Manual .env creation (if script fails)
-# Backend: vitaltrack-backend/.env
+Manual `.env` contents:
+
+**Backend — `vitaltrack-backend/.env`**
+```env
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/vitaltrack
-SECRET_KEY=your-secret-key-at-least-32-characters-long
+SECRET_KEY=<at-least-32-chars>
 ENVIRONMENT=development
+```
 
-# Frontend: vitaltrack-mobile/.env
-EXPO_PUBLIC_API_URL=http://YOUR_IP:8000
+**Mobile — `vitaltrack-mobile/.env`**
+```env
+EXPO_PUBLIC_API_URL=http://YOUR_LAN_IP:8000
 ```
 
 ---
 
-## Section I: Verification Checklist
+## I · Verification checklist
 
-### Backend Verification
+### Backend
 ```
 □ Docker Desktop is running
-□ docker ps shows 2 containers (vitaltrack-backend-api-1, vitaltrack-backend-db-1)
-□ Both containers status is "Up"
-□ http://localhost:8000/health returns {"status":"healthy"}
+□ docker ps shows 2 containers (api + db)
+□ Both containers status: Up
+□ http://localhost:8000/health → {"status":"healthy"}
 □ http://localhost:8000/docs loads Swagger UI
-□ No errors in docker-compose logs
+□ docker compose logs api has no ERROR/CRITICAL lines
+□ alembic current matches the newest migration filename
+    (as of PR #13: 20260419_add_account_deletion_token_fields)
 ```
 
-### Frontend Verification
+### Mobile
 ```
-□ npm install completed without errors
-□ npx expo start shows QR code
-□ No red error messages in terminal
-□ Terminal shows "Metro waiting on..."
-```
-
-### Connection Verification
-```
-□ Found PC's IP address: _______________
-□ Phone browser can reach http://IP:8000/health
-□ .env file has correct IP (no typos)
-□ Expo restarted with --clear after .env change
+□ npm install completed cleanly (with --legacy-peer-deps)
+□ npx expo start shows QR
+□ Metro says "Waiting on exp://…"
+□ No red error banners in the terminal
 ```
 
-### App Verification
+### Connection
 ```
-□ Expo Go scans QR successfully
-□ App loads (not stuck on splash screen)
-□ Login/Register screen appears
-□ Can create new account
-□ Dashboard loads with categories
-□ Can create new item
-□ Item appears in inventory
+□ Found PC IP: _______________
+□ http://IP:8000/health works from the PHONE browser
+□ .env has that exact IP (no typos, no trailing slash)
+□ Metro restarted with --clear after any .env change
+```
+
+### App
+```
+□ Expo Go scans the QR and loads the bundle
+□ Not stuck on splash
+□ Auth screen appears
+□ Can register a new account
+□ Dashboard loads
+□ Can create an item → appears in Inventory
+□ Activity log shows the item_created entry
+□ Profile screen (top-right menu) opens, shows user info
 ```
 
 ---
 
-## Quick Reference Card
+## Quick reference
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│                    QUICK REFERENCE                          │
+│             CAREKOSH LOCAL DEV QUICK REFERENCE              │
 ├────────────────────────────────────────────────────────────┤
 │                                                            │
 │  START BACKEND:                                            │
-│  cd vitaltrack-backend                                     │
-│  docker-compose -f docker-compose.dev.yml up --build       │
+│    cd vitaltrack-backend                                   │
+│    docker compose -f docker-compose.dev.yml up --build -d  │
 │                                                            │
-│  START FRONTEND:                                           │
-│  cd vitaltrack-mobile                                      │
-│  npx expo start --clear                                    │
+│  START MOBILE:                                             │
+│    cd vitaltrack-mobile                                    │
+│    npx expo start --clear                                  │
 │                                                            │
 │  FIND YOUR IP:                                             │
-│  Windows: ipconfig | findstr "IPv4"                        │
-│  Mac: ipconfig getifaddr en0                               │
+│    Windows: ipconfig | findstr "IPv4"                      │
+│    macOS:   ipconfig getifaddr en0                         │
+│    Linux:   hostname -I | awk '{print $1}'                 │
 │                                                            │
 │  VERIFY BACKEND:                                           │
-│  curl http://localhost:8000/health                         │
+│    curl http://localhost:8000/health                       │
 │                                                            │
 │  PHONE CAN'T CONNECT?                                      │
-│  1. Check .env has correct IP                              │
-│  2. Restart: npx expo start --clear                        │
-│  3. Try USB: adb reverse tcp:8000 tcp:8000                 │
-│  4. Try tunnel: npx expo start --tunnel                    │
+│    1. .env has correct IP                                  │
+│    2. npx expo start --clear                               │
+│    3. USB: adb reverse tcp:8000 tcp:8000                   │
+│    4. Tunnel: npx expo start --tunnel                      │
+│                                                            │
+│  FRESH DB:                                                 │
+│    docker compose down -v && docker compose up --build     │
 │                                                            │
 └────────────────────────────────────────────────────────────┘
 ```

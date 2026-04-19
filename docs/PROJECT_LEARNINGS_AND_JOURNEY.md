@@ -1,275 +1,316 @@
-# VitalTrack — Complete Project Learnings & Journey
+# CareKosh — Project Learnings & Journey
 
-> **Everything learned during the Railway-to-Render migration, APK testing, and production hardening. Written for the developer's future reference.**
+> Everything learned during the Railway→Render migration, the offline-first→server-first migration, APK testing, auth hardening, account deletion, and the CareKosh rebrand. A durable reference for what went wrong, what we fixed, and why.
 
----
-
-## Timeline of Events
-
-| Date | What Happened |
-|------|--------------|
-| March 2026 | Railway free trial expired |
-| March 24 | Started migration branch, made all code changes |
-| March 24 | Local Docker + Expo Go testing (USB debugging) |
-| March 24 | Pushed branch, built first preview APK |
-| March 24 | Created Neon DB + Render service + UptimeRobot |
-| March 24 | Discovered rate limiter 500 error on Render |
-| March 24 | Fixed rate limiter, created PR, merged to main |
-| March 25 | APK testing round 1 — found auth flow bugs |
-| March 25 | Fixed auth system (10 fixes across frontend + backend) |
-| March 25 | APK testing round 2 — found data loss, logout, PDF bugs |
-| March 25 | Fixed data persistence, logout, unit dropdown, PDF export |
-| March 25 | Configured Brevo email on Render |
-| March 25 | Implemented strict email verification |
+The project shipped under the name **VitalTrack** through PR #9, then rebranded to **CareKosh** in PRs #10–#11. References to "VitalTrack" in this document are historical.
 
 ---
 
-## Part 1: Infrastructure Migration (Railway to Render + Neon)
+## Timeline
 
-### What Changed
-- **3 frontend files**: URL replacements (Railway → Render)
-- **3 backend files**: Neon SSL compatibility (`connect_args`)
-- **1 infrastructure file**: `render.yaml` with correct env var names
-- **1 CI/CD file**: Railway CLI → Render deploy hook
-- **Zero business logic changes**
+| Date | What happened | PR |
+|---|---|---|
+| Mar 2026 | Railway free trial expired; hosting migration planned | — |
+| Mar 24 | Migration branch `migrate/railway-to-render`; Neon, Render, UptimeRobot wired up | #1 |
+| Mar 24 | Discovered rate limiter 500 on Render (proxy-aware fix) | #1 |
+| Mar 24 | First preview APK built against Render staging | — |
+| Mar 25 | APK round 1 — found auth flow bugs, fixed (10 fixes) | — |
+| Mar 25 | APK round 2 — data loss on reopen, logout hang, PDF bugs | — |
+| Mar 25 | Brevo email wired on Render; strict verification implemented | — |
+| Apr 2 | Staging + production database split via Neon branches | #2 |
+| Apr 4 | Incident: item quantity reset during concurrent edits (motivated server-first) | — |
+| Apr 6 | Server-first refactor shipped — TanStack Query, OCC, audit log | #4–#8 |
+| Apr 8 | Order mutation hardening + global ID collision fix | #9 |
+| Apr 10 | VitalTrack → CareKosh rebrand (user-visible surfaces) | #10, #11 |
+| Apr 14 | Auth hardening — email required, session revoke, prod config validators | #12 |
+| Apr 19 | Account deletion (Play Store compliance) + Profile screen + swipe-down menu | #13 |
 
-### Why It Was Almost Zero Changes
-VitalTrack follows the **12-Factor App** pattern. All configuration comes from environment variables via `pydantic-settings`. The `config.py` validator handles any PostgreSQL URL format. The only non-trivial change was Neon SSL compatibility — `asyncpg` doesn't accept `?sslmode=require` as a URL parameter.
+---
 
-### Neon SSL Fix Pattern (Reusable)
+## Part 1 — Infrastructure migration (Railway → Render + Neon)
+
+### What actually changed
+
+- **3 frontend files**: URL replacements (Railway → Render).
+- **3 backend files**: Neon SSL compatibility via `connect_args`.
+- **1 infra file**: `render.yaml` with correct env var names.
+- **1 CI/CD file**: Railway CLI → Render deploy hook.
+- **Zero business logic changes.**
+
+### Why it was almost zero changes
+
+CareKosh follows the **12-factor app** pattern. All configuration comes from env vars via `pydantic-settings`. The `config.py` validator handles any Postgres URL format. The only non-trivial change was Neon SSL compatibility — `asyncpg` doesn't accept `?sslmode=require` as a URL parameter.
+
+### Neon SSL fix pattern (reusable)
+
 ```python
-# config.py — strip query params from DATABASE_URL
+# app/core/config.py — strip query params from DATABASE_URL
 if "?" in v:
     v = v.split("?")[0]
 
-# database.py — pass SSL via connect_args
-_connect_args = {"ssl": True} if settings.ENVIRONMENT == "production" else {}
+# app/core/database.py — pass SSL via connect_args
+_connect_args = {"ssl": True} if settings.ENVIRONMENT in ("staging", "production") else {}
 engine = create_async_engine(..., connect_args=_connect_args)
 ```
-This pattern works for ANY managed PostgreSQL provider that requires SSL.
+
+Works for any managed Postgres that requires SSL.
 
 ---
 
-## Part 2: Local Development Testing
+## Part 2 — Local development: what finally worked
 
-### The Setup That Actually Worked
-After many failed attempts with Wi-Fi and tunnel modes, **USB debugging** was the only reliable method:
+After several failed Wi-Fi and tunnel attempts, **USB debugging via `adb reverse`** was the only reliable method on our network:
 
 ```bash
-adb reverse --remove-all          # Clear stale mappings FIRST
-adb reverse tcp:8000 tcp:8000     # Backend
-adb reverse tcp:8081 tcp:8081     # Metro bundler
+adb reverse --remove-all
+adb reverse tcp:8000 tcp:8000     # backend
+adb reverse tcp:8081 tcp:8081     # Metro
 echo EXPO_PUBLIC_API_URL=http://localhost:8000 > .env
 npx expo start --localhost --clear
 ```
 
-### What Failed and Why
+### What failed and why
 
 | Method | Problem |
-|--------|---------|
+|---|---|
 | Wi-Fi (LAN mode) | Windows Firewall blocked ports 8000/8081 |
-| Tunnel mode | Ngrok service was down |
+| Tunnel mode | Ngrok service outage |
 | Expo Go auto-update | Phone storage full → uninstalled Expo Go |
-| ADB with stale device | `ZD2225Y8DK` device not found error |
-| ADB wrong port mapping | `tcp:8000 → tcp:8081` (Metro instead of backend) |
+| Stale ADB device record | `ZD2225Y8DK` device-not-found error |
+| Wrong ADB port mapping | `tcp:8000 → tcp:8081` (Metro instead of backend) |
 
-### Critical Expo Go Fix
-`expo-updates` package with no `updates` config in `app.json` caused "unable to download remote update" crash. Fix: `"updates": { "enabled": false }` in `app.json`.
+### Critical Expo Go fix
+
+`expo-updates` installed without an `updates` block in `app.json` caused "unable to download remote update" crashes. Fix: `"updates": { "enabled": false }` in `app.json` for the dev profile.
+
+Full walkthrough: [USB_ADB_REVERSE_GUIDE.md](USB_ADB_REVERSE_GUIDE.md).
 
 ---
 
-## Part 3: Authentication System — The Hard Way
+## Part 3 — Authentication: the hard way
 
-### The Journey
-1. **First attempt**: Set `isAuthenticated: true` for all registrations → email users bypassed verification
-2. **Second attempt**: Removed email verification entirely → user didn't want that
-3. **Third attempt**: Made it conditional based on `isEmailVerified` field → field was missing from User type
-4. **Fourth attempt**: Added field, fixed route guard → verify screen flashed and disappeared
-5. **Fifth attempt**: Added delay hack → fragile, timing-dependent
-6. **Final solution**: `isAuthenticated: false` for email registrations, strict blocking, no escape
+### The journey
 
-### The Correct Architecture
+1. First attempt: set `isAuthenticated: true` for all registrations → email users bypassed verification.
+2. Removed verification entirely → not acceptable for production.
+3. Conditional logic on `isEmailVerified` → field missing from User type.
+4. Added the field, fixed route guard → verify screen flashed then disappeared.
+5. Added a timing hack → fragile.
+6. **Final:** `isAuthenticated: false` on email registration, strict backend blocking, frontend mirrors backend's decision.
+
+### Final architecture
+
 ```
-REGISTRATION:
-  Email provided → isAuthenticated = false → verify-email-pending (blocked)
-  Username only  → isAuthenticated = true  → dashboard
+REGISTRATION
+  Email provided      → isAuthenticated = false → verify-email-pending (blocked)
+  Username only       → isAuthenticated = true  → dashboard
 
-LOGIN:
-  Backend checks REQUIRE_EMAIL_VERIFICATION + MAIL_PASSWORD + is_email_verified
+LOGIN
+  Backend checks REQUIRE_EMAIL_VERIFICATION + MAIL_PASSWORD set + is_email_verified
   If all conditions met and email not verified → 403 EMAIL_NOT_VERIFIED
-  Frontend catches this → redirects to verify-email-pending
+  Frontend catches 403 → redirects to verify-email-pending
 
-ROUTE GUARD:
+ROUTE GUARD
   !isAuthenticated && !inAuthGroup → redirect to login
-  isAuthenticated && inAuthGroup → redirect to tabs
-  !isAuthenticated && inAuthGroup → stay (login, register, verify screens)
+  isAuthenticated && inAuthGroup   → redirect to tabs
+  !isAuthenticated && inAuthGroup  → stay (login, register, verify screens)
 ```
 
-### Key Lesson
-The backend should be the **single source of truth** for auth rules. The frontend should just follow the backend's response. Don't duplicate auth logic in the frontend — let the backend decide what's allowed.
+### Later hardening (PR #12)
+
+- **Email is now required at registration** — username-only signup removed.
+- `/resend-verification` returns a uniform response regardless of account state (no user enumeration).
+- Password change and password reset revoke **all** refresh tokens.
+- Config validators refuse production startup if `SECRET_KEY` is the placeholder, `CORS_ORIGINS` is `*`, or `FRONTEND_URL` is empty.
+
+### Key lesson
+
+The backend is the **single source of truth** for auth rules. The frontend follows the backend's response. Don't duplicate auth logic — let the backend decide.
 
 ---
 
-## Part 4: Production Bugs Found During APK Testing
+## Part 4 — Production bugs that taught us the lessons
 
-### P0: Data Loss on App Reopen
-**Root cause**: `loadUserData()` called `clearAllUserData()` on every app open, before fetching from server. If server was slow (Render cold start), data was gone.
+### P0 · Data loss on app reopen (pre-server-first)
 
-**Lesson**: Never destroy local data before confirming the server has it. The pattern should be:
-1. Read local state
-2. Try to fetch from server
-3. If server has newer data → update local
-4. If server is empty but local has data → push local to server
-5. If both empty → seed with defaults
+**Root cause:** `loadUserData()` called `clearAllUserData()` on every app open, before fetching from server. On a Render cold start (30–60 s), data was gone.
 
-### P0: Auth Init Clears Session on Network Error
-**Root cause**: `initialize()` cleared tokens on ANY error, including network timeouts.
+**Lesson:** never destroy local data before confirming the server has it.
 
-**Lesson**: Distinguish between "token is invalid" (401) and "can't reach server" (network error). Only clear auth on 401.
+**Root fix:** the server-first migration (PR #4) eliminated the local-cache-of-domain-data problem entirely. TanStack Query treats the server as truth; there is no local inventory store to accidentally wipe.
 
-### P1: Rate Limiter Behind Proxy
-**Root cause**: `slowapi` with `get_remote_address` gets the proxy IP behind Cloudflare.
+### P0 · Auth init clears session on network error
 
-**Lesson**: Always use proxy-aware IP detection in production. Check `CF-Connecting-IP` and `X-Forwarded-For` headers.
+**Root cause:** `initialize()` cleared tokens on **any** error, including network timeouts.
 
-### P1: Logout Hangs
-**Root cause**: Sync-before-logout took too long, no timeout.
+**Lesson:** distinguish "token is invalid" (401) from "can't reach server" (network error). Only clear auth on 401.
 
-**Lesson**: Any pre-action (sync before logout, save before close) needs a timeout. Use `Promise.race` with a deadline. Always put state cleanup in `finally`.
+### P0 · Quantity reset during concurrent edits (April 4 incident)
+
+Two caregivers editing the same item silently overwrote each other's updates. Root of why server-first was worth the rewrite.
+
+**Fix:** optimistic concurrency — `version` column on items, UPDATE checks `WHERE version = :expected`, returns HTTP 409 with `{server_version, server_quantity}` if stale (PR #4).
+
+### P1 · Rate limiter behind proxy
+
+**Root cause:** `slowapi` with `get_remote_address` was getting the Render proxy IP, so every user looked the same.
+
+**Fix:** proxy-aware IP detection (CF-Connecting-IP, X-Forwarded-For).
+
+### P1 · Logout hangs
+
+**Root cause:** a pre-logout sync took too long with no timeout. (This ship-jettisoned with the sync layer in PR #4.)
+
+**Lesson:** any pre-action (save before close, sync before logout) needs a deadline via `Promise.race`, and state cleanup belongs in `finally`.
+
+### P1 · Order ID mismatch in PDF (PR #11)
+
+**Root cause:** PDF renderer used a local order ID that no longer existed after the server-first migration.
+
+**Fix:** PDF reads the server-assigned `order_number`.
 
 ---
 
-## Part 5: Email System (Brevo)
+## Part 5 — Email system (Brevo)
 
-### Configuration
-Brevo uses HTTP API (not SMTP) — bypasses port blocking on Render. The code at `app/utils/email.py` sends emails via `POST https://api.brevo.com/v3/smtp/email`.
+### Why Brevo's SMTP works on Render
 
-### Render Environment Variables for Email
-| Key | Value |
-|-----|-------|
-| `MAIL_PASSWORD` | Brevo API key (starts with `xkeysib-`) |
-| `MAIL_FROM` | Verified sender email |
+Render's outbound traffic allows SMTP over STARTTLS on port 587. We use Brevo SMTP via `fastapi-mail` + `aiosmtplib`. In development we use Mailtrap's sandbox.
+
+### Render env vars for email (both services)
+
+| Var | Example |
+|---|---|
+| `MAIL_SERVER` | `smtp-relay.brevo.com` |
+| `MAIL_USERNAME` | Brevo SMTP login |
+| `MAIL_PASSWORD` | Brevo SMTP key |
+| `MAIL_FROM` | `noreply@carekosh.com` |
+| `MAIL_PORT` | `587` |
+| `MAIL_STARTTLS` | `True` |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` |
 
-### Safety Guards in Code
-- `is_email_configured()` checks if `MAIL_PASSWORD` is set before trying to send
-- Login verification only enforced if BOTH `REQUIRE_EMAIL_VERIFICATION=true` AND `MAIL_PASSWORD` is set
-- If email service isn't configured, users can register and use app without verification
+### Safety guards in code
+
+- `is_email_configured()` checks `MAIL_PASSWORD` is set before sending.
+- Login verification enforced only if `REQUIRE_EMAIL_VERIFICATION=true` AND email service is configured AND the user actually has an email.
+- If email isn't configured, registration still works — used for local dev.
+
+See [EMAIL_VERIFICATION_GUIDE.md](EMAIL_VERIFICATION_GUIDE.md) for the full flow.
 
 ---
 
-## Part 6: PDF Export System
+## Part 6 — PDF export
 
 ### Architecture
-- Shared utility at `utils/orderPdfExport.ts`
-- Used by both order creation screen and order list (OrderCard)
-- Two formats: Table PDF (no images) and Card PDF (with images)
-- Images converted to base64 for embedding in HTML → PDF
 
-### Image Handling
-```typescript
-const base64 = await readAsStringAsync(fileUri, { encoding: 'base64' });
-return `data:${mimeType};base64,${base64}`;
-```
+- Shared utility at `vitaltrack-mobile/utils/orderPdfExport.ts`.
+- Used from the order-create screen and from `components/orders/OrderCard`.
+- Two formats: compact table, card-with-images.
+- Images read via `readAsStringAsync({ encoding: 'base64' })`, embedded as `data:` URIs in the HTML that is rendered to PDF.
 
 ---
 
-## Part 7: Free Tier Infrastructure
+## Part 7 — Free-tier infrastructure
 
-### Monthly Cost: $0
+### Monthly cost: $0 (so far)
 
-| Service | Purpose | Free Tier |
-|---------|---------|-----------|
-| **Render** | Backend hosting | 750 hrs/month, sleeps after 15 min |
-| **Neon** | PostgreSQL database | 0.5 GB, 100 compute-hrs/month |
-| **UptimeRobot** | Keep-alive pings | 50 monitors, 5-min interval |
-| **Expo EAS** | APK/AAB builds | 30 builds/month |
-| **Brevo** | Transactional email | 300 emails/day |
-| **GitHub Actions** | CI/CD pipeline | 2000 min/month |
+| Service | Purpose | Free tier |
+|---|---|---|
+| Render | Backend hosting | 750 hrs/month, sleeps after 15 min idle |
+| Neon | Postgres | 0.5 GB, 100 compute-hrs/month |
+| UptimeRobot | Keep-alive pings | 50 monitors, 5-min interval |
+| Expo EAS | APK/AAB builds | 30 builds/month |
+| Brevo | Transactional email | 300 emails/day |
+| GitHub Actions | CI/CD | 2000 min/month |
 
-### Render Cold Start Workaround
-UptimeRobot pings `/health` every 5 minutes, preventing sleep. Without it, first request takes ~60 seconds.
+### Render cold-start mitigation
+
+UptimeRobot pings `/health` every ~5 min. Without it, the first request after 15 min idle takes ~60 s. With it, effectively zero cold starts during active hours.
 
 ---
 
-## Part 8: Key Technical Decisions
+## Part 8 — Key technical decisions (and why)
 
 | Decision | Why |
-|----------|-----|
-| `asyncpg` over `psycopg2` | Async support for FastAPI |
-| SSL via `connect_args` not URL params | `asyncpg` doesn't accept `?sslmode=require` |
-| `useFocusEffect` over `useEffect` | Clears errors on every screen focus, not just mount |
+|---|---|
+| `asyncpg` over `psycopg2` | Native async for FastAPI |
+| SSL via `connect_args`, not URL params | `asyncpg` doesn't accept `?sslmode=require` |
+| **Server-first over offline-first** | Life-critical inventory + concurrent caregivers = merge conflicts with real consequences (PR #4) |
+| **TanStack Query over rolling our own cache** | Query keys, staleness, refetch-on-focus, mutation rollback — all solved problems |
+| **Zustand stays** | 61 lines for UI-only state is correct; no need to yank a dependency |
+| `expo-secure-store` for tokens | Hardware-backed keystore on Android; AsyncStorage is not appropriate for auth material |
+| `useFocusEffect` over `useEffect` on auth screens | Clears errors on every screen focus, not just mount |
 | `isLoggingOut` separate from `isLoading` | Prevents logout from being blocked by other loading states |
-| `REQUIRE_EMAIL_VERIFICATION` default `False` | Safe default — prevents lock-out if email not configured |
-| Brevo HTTP API over SMTP | Port 587 blocked on some platforms; HTTPS always works |
-| `Promise.race` for sync timeout | Prevents sync from blocking logout indefinitely |
-| Preserve local data on network error | Render cold starts shouldn't cause data loss |
+| `REQUIRE_EMAIL_VERIFICATION` default `False` | Safe default — prevents lockout if email isn't configured |
+| HS256 JWT (not RS256) | Single server; RS256 buys nothing at our scale |
+| Argon2 password hashing | OWASP-recommended, replaces legacy bcrypt (kept as fallback verifier) |
+| Both Render services auto-deploy from `main` | One merge = both environments updated; simpler than a long-lived staging branch |
+| `build-production` in CI disabled (`if: false`) | Until Play Console is live, manual AAB keeps the control loop tight |
+| Account deletion is two-step email-confirmed | Play Store + DPDP Act; one-click deletion is attractive for attackers with stolen access tokens (PR #13) |
 
 ---
 
-## Part 9: Files Modified Across All Sessions
+## Part 9 — Major files modified (by theme)
 
-### Migration (Branch: migrate/railway-to-render)
+### Migration (PR #1 · `migrate/railway-to-render`)
 ```
-.github/workflows/ci.yml            — Railway CLI → Render deploy hook
-vitaltrack-backend/render.yaml       — Fixed env var names
-vitaltrack-backend/app/core/config.py — Query param stripping + SSL
-vitaltrack-backend/app/core/database.py — SSL connect_args
-vitaltrack-backend/alembic/env.py    — SSL connect_args for migrations
-vitaltrack-mobile/eas.json           — 2 URLs: Railway → Render
-vitaltrack-mobile/package.json       — 1 URL + expo version bumps
-vitaltrack-mobile/app.json           — updates.enabled: false
-```
-
-### Auth System Fixes (Direct to main)
-```
-vitaltrack-mobile/store/useAuthStore.ts — Register flow, logout, init
-vitaltrack-mobile/app/(auth)/login.tsx  — Error clearing, friendly messages
-vitaltrack-mobile/app/(auth)/register.tsx — Conditional verify redirect
-vitaltrack-mobile/app/(auth)/forgot-password.tsx — Error clearing, hints
-vitaltrack-mobile/app/(auth)/verify-email-pending.tsx — Strict blocking
-vitaltrack-mobile/app/(auth)/_layout.tsx — Registered verify screen
-vitaltrack-mobile/app/_layout.tsx       — Route guard fixes
-vitaltrack-mobile/types/index.ts        — Added isEmailVerified
-vitaltrack-mobile/services/api.ts       — Status-specific error messages
-vitaltrack-backend/app/api/v1/auth.py   — MAIL_PASSWORD guard, is_email_configured
-vitaltrack-backend/app/utils/email.py   — is_email_configured() helper
-vitaltrack-backend/app/utils/rate_limiter.py — Proxy-aware, swallow_errors
+.github/workflows/ci.yml                         Railway CLI → Render deploy hook
+vitaltrack-backend/render.yaml                   env var names
+vitaltrack-backend/app/core/config.py            strip query params
+vitaltrack-backend/app/core/database.py          SSL connect_args
+vitaltrack-backend/alembic/env.py                SSL for migrations
+vitaltrack-mobile/eas.json                       URLs: Railway → Render
+vitaltrack-mobile/app.json                       updates.enabled: false
 ```
 
-### Bug Fixes (Direct to main)
+### Server-first (PRs #4–#8 · `refactor/server-first-architecture`)
 ```
-vitaltrack-mobile/store/useAppStore.ts  — Data persistence fix
-vitaltrack-mobile/app/item/[id].tsx     — nestedScrollEnabled
-vitaltrack-mobile/utils/orderPdfExport.ts — NEW: shared PDF utility
-vitaltrack-mobile/components/orders/OrderCard.tsx — Export PDF button
+vitaltrack-mobile/services/sync.ts               DELETED (611 lines)
+vitaltrack-mobile/store/useAppStore.ts           1100 lines → 61 lines
+vitaltrack-mobile/hooks/useServerData.ts         NEW — TanStack queries
+vitaltrack-mobile/hooks/useServerMutations.ts    NEW — mutations + OCC handling
+vitaltrack-backend/app/api/v1/items.py           version column + 409 on stale
+vitaltrack-backend/app/models/audit_log.py       NEW
+vitaltrack-backend/alembic/versions/20260406_... version + audit + CHECK
 ```
 
-### Documentation
+### Auth hardening (PR #12 · `fix/auth-hardening`)
 ```
-docs/RAILWAY_TO_RENDER_MIGRATION.md    — NEW: migration guide
-docs/BRANCH_MIGRATE_RAILWAY_TO_RENDER.md — NEW: branch changelog
-docs/TECHNICAL_CHALLENGES.md           — Added challenges 9-21
-docs/PROJECT_LEARNINGS_AND_JOURNEY.md  — NEW: this document
-docs/DEPLOYMENT_GUIDE.md               — Migration notice
-docs/DEVOPS_AND_ARCHITECTURE.md        — Migration notice
+vitaltrack-backend/app/core/config.py            production validators
+vitaltrack-backend/app/schemas/user.py           email required in UserRegister
+vitaltrack-backend/app/api/v1/auth.py            session revoke on password change
+                                                 uniform /resend-verification response
+```
+
+### Account deletion (PR #13 · `fix/account-deletion`)
+```
+vitaltrack-backend/app/models/user.py            deletion_token, deletion_token_expires
+vitaltrack-backend/app/api/v1/auth.py            DELETE /me, GET /confirm-delete/{t}, POST /cancel-delete
+vitaltrack-backend/alembic/versions/20260419_... migration
+vitaltrack-mobile/app/profile.tsx                NEW — Profile screen
+vitaltrack-mobile/services/auth.ts               requestAccountDeletion, cancelAccountDeletion
+components/common/ProfileMenuSheet.tsx           NEW — swipe-down dismiss
 ```
 
 ---
 
-## Part 10: What's Left To Do
+## Part 10 — What's left (as of 2026-04-19)
 
 | Task | Priority | Status |
-|------|----------|--------|
-| Test strict email verification on APK | P0 | APK building |
-| Test forgot password with Brevo | P1 | Needs testing |
-| Build production AAB for Play Store | P1 | After APK verified |
-| Submit to Play Store | P2 | After AAB built |
-| Set up Brevo sender domain verification | P2 | Improves deliverability |
-| Monitor Neon storage usage | P3 | Check monthly |
-| Upgrade Node.js 20 actions before June 2026 | P3 | GitHub warnings |
+|---|---|---|
+| Host privacy policy at a stable URL | P0 | Drafted, not hosted |
+| Play Console identity verification | P0 | In review |
+| Play Store listing assets (screenshots, feature graphic) | P0 | WIP |
+| Closed testing (≥12 testers, 14 days) | P1 | Not started |
+| Data Safety form in Play Console | P1 | Not started |
+| Flip `build-production` CI job from `if: false` | P2 | Ready; pending listing complete |
+| Fix the test suite (40/53 failing) | P2 | Largest portfolio gap |
+| Sentry error monitoring (mobile + backend) | P3 | Planned v1.1 |
+| Sender domain verification in Brevo | P3 | Improves deliverability |
+| DPDP Act grievance endpoint | P3 | Required for India launch per DPDP Act |
+
+See [../CAREKOSH_ROADMAP.md](../CAREKOSH_ROADMAP.md) for the live version.
 
 ---
 
-*Created: March 25, 2026*
-*Covers: Railway migration + APK testing + production hardening*
+*Original: March 25, 2026 · Updated for PRs #4–#13 through April 2026.*

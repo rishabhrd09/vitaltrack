@@ -1,8 +1,9 @@
-# VitalTrack — Environment Split Documentation
+# CareKosh — Environment Split (Staging vs Production)
 
-> **Last updated:** April 2, 2026
-> **Branch:** `feature/production_staging_database`
-> **Author:** VitalTrack team
+> **Companion to `CAREKOSH_ENVIRONMENT_ARCHITECTURE.html`** at the repo root. This markdown version goes deeper on the operational side: Neon console walkthroughs, Render env var matrix, verification commands, and troubleshooting.
+>
+> **Last updated:** 2026-04-19
+> **Originating branch:** `feature/production_staging_database` (PR #2)
 
 ---
 
@@ -12,8 +13,8 @@
 2. [Architecture Diagram](#2-architecture-diagram)
 3. [Environment Matrix](#3-environment-matrix)
 4. [How It Works — Technical Flow](#4-how-it-works--technical-flow)
-5. [What Changed (Code)](#5-what-changed-code)
-6. [Platform Configuration (Manual Steps Done)](#6-platform-configuration-manual-steps-done)
+5. [What Changed in the Code](#5-what-changed-in-the-code)
+6. [Platform Configuration (Render + Neon)](#6-platform-configuration-render--neon)
 7. [Verification Commands](#7-verification-commands)
 8. [Troubleshooting](#8-troubleshooting)
 9. [FAQ](#9-faq)
@@ -22,56 +23,53 @@
 
 ## 1. Overview & Purpose
 
-### What is the environment split?
+### What the split is
 
-The environment split separates **staging** (testing) and **production** (real users) into completely independent pipelines. Each environment has its own:
+Staging and production run as **independent pipelines**. Each has:
 
-- Backend API service (separate Render service)
-- Database (separate Neon database)
-- Secret key (tokens from one environment cannot work on the other)
+- Its own Render Web Service
+- Its own Neon database (on the same Neon project)
+- Its own `SECRET_KEY` (so JWTs from one environment cannot authenticate on the other)
+- Its own `CORS_ORIGINS`, `FRONTEND_URL`, and email config
 
-This ensures that **test data never pollutes real user data** and that **untested changes never reach real users**.
+The mobile preview APK hits staging; the Play Store AAB hits production. Test data cannot pollute production; untested migrations can't destroy real user data.
 
-### Why was this needed before Play Store submission?
+### Why it mattered before Play Store submission
 
-Before submitting to Google Play, we need confidence that:
+Pre-split, everything pointed at one database. Three risks:
 
-1. The production database contains only real user data
-2. Beta testing and Google reviewer activity stays isolated
-3. Database migrations can be tested safely before running on production
+| # | Risk | Scenario |
+|---|------|----------|
+| 1 | Google reviewer pollution | Play Store reviewers register fake accounts during review → junk rows in the same DB as real users |
+| 2 | Beta tester data corruption | Internal testers exercising edge cases (delete all, create thousands of orders) → performance regressions affect real users |
+| 3 | Untested migration damage | A migration with a bug (wrong column type, dropped table) destroys prod data with no way to test first |
 
-### Three risks of a single environment
-
-| # | Risk | What could happen |
-|---|------|-------------------|
-| 1 | **Google reviewer pollution** | Google Play reviewers create test accounts and fake inventory data during review. With a single environment, this junk data pollutes the same database real users see. |
-| 2 | **Beta tester data corruption** | Internal testers experimenting with edge cases (deleting all items, creating thousands of orders) could corrupt data or cause performance issues that affect real users. |
-| 3 | **Untested migration damage** | A database migration with a bug (wrong column type, dropped table) would destroy production data with no way to test it first. With staging, migrations run there first — if they break, production is untouched. |
+The split addresses all three at the same time.
 
 ---
 
 ## 2. Architecture Diagram
 
-### BEFORE: Single environment (dangerous)
+### Before (single environment — dangerous)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        BEFORE (Single Environment)                  │
 │                                                                     │
 │  Preview APK (testers)  ──┐                                         │
-│                           ├──►  vitaltrack-api.onrender.com         │
-│  Production AAB (users) ──┘    (ENVIRONMENT=production)             │
-│                                        │                            │
-│                                        ▼                            │
-│                                   Neon: neondb                      │
-│                              (all data mixed together)              │
+│                           ├──▶  vitaltrack-api.onrender.com         │
+│  Production AAB (users) ──┘     (ENVIRONMENT=production)            │
+│                                          │                          │
+│                                          ▼                          │
+│                                    Neon: neondb                     │
+│                                (test + real data mixed)             │
 │                                                                     │
-│  ⚠ Test data + real data in the same database                       │
-│  ⚠ Broken migration = production down                               │
+│  Test data and real data share the same rows.                       │
+│  A broken migration takes prod down.                                │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### AFTER: Split environments (safe)
+### After (split — safe)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -84,9 +82,9 @@ Before submitting to Google Play, we need confidence that:
 │  (ENVIRONMENT=staging)                                              │
 │       │                                                             │
 │       ▼                                                             │
-│  Neon: vitaltrack_staging          ← Test data lives here           │
+│  Neon DB: vitaltrack_staging          ← Test data lives here        │
 │                                                                     │
-│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │
+│  ───────────────────────────────────────────────────────────────── │
 │                                                                     │
 │  Production AAB (real users)                                        │
 │       │                                                             │
@@ -95,9 +93,9 @@ Before submitting to Google Play, we need confidence that:
 │  (ENVIRONMENT=production)                                           │
 │       │                                                             │
 │       ▼                                                             │
-│  Neon: neondb                      ← Real user data lives here     │
+│  Neon DB: neondb                      ← Real data lives here        │
 │                                                                     │
-│  ✅ Complete isolation between test and production data              │
+│  Complete isolation between test and production data.               │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -110,14 +108,12 @@ Before submitting to Google Play, we need confidence that:
 │  Expo Go (developer's phone)                                        │
 │       │                                                             │
 │       ▼                                                             │
-│  localhost:8000 (Docker container)                                   │
+│  localhost:8000 (Docker container)                                  │
 │  (ENVIRONMENT=development)                                          │
 │       │                                                             │
 │       ▼                                                             │
-│  Local Docker PostgreSQL                                            │
-│  (no SSL needed — connection never leaves your machine)             │
-│                                                                     │
-│  ✅ Fast iteration, no cloud dependency                             │
+│  Local Docker PostgreSQL 16                                         │
+│  (no SSL — the connection never leaves your machine)                │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -125,135 +121,128 @@ Before submitting to Google Play, we need confidence that:
 
 ## 3. Environment Matrix
 
-| Environment | Backend URL | Database | Mobile Build | SSL | Email Verify | ENV Value |
+| Environment | Backend URL | Database | Mobile build | SSL | Email verify | `ENVIRONMENT` |
 |---|---|---|---|---|---|---|
-| Development | `localhost:8000` | Local Docker PostgreSQL | Expo Go | OFF | OFF | `development` |
-| Testing (CI) | GitHub Actions runner | Temporary PostgreSQL | N/A | OFF | N/A | `testing` |
-| Staging | `vitaltrack-api-staging.onrender.com` | Neon: `vitaltrack_staging` | Preview APK | ON | OFF | `staging` |
+| Development | `localhost:8000` (Docker) | Local Postgres 16 (Docker) | Expo Go | OFF | OFF | `development` |
+| Testing (CI) | GitHub Actions runner | Postgres 16 service container | N/A | OFF | N/A | `testing` |
+| Staging | `vitaltrack-api-staging.onrender.com` | Neon: `vitaltrack_staging` | Preview APK | ON | OFF (by default) | `staging` |
 | Production | `vitaltrack-api.onrender.com` | Neon: `neondb` | Production AAB | ON | ON | `production` |
+
+Both `staging` and `production` live on Neon in Singapore and use TLS. Both Render services watch `main` and auto-deploy on push.
 
 ---
 
 ## 4. How It Works — Technical Flow
 
-### 4.1 pydantic-settings and config.py
+### 4.1 `pydantic-settings` and `config.py`
 
-The backend reads **all configuration from environment variables** automatically. There is no hardcoded config file with database passwords or URLs. Here's a simplified view of how it works:
+The backend reads all configuration from environment variables — no hardcoded secrets, no per-env config files. Simplified:
 
 ```python
-# app/core/config.py (simplified)
+# vitaltrack-backend/app/core/config.py
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
+    APP_NAME: str = "CareKosh API"
     ENVIRONMENT: str = "development"
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/vitaltrack"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/carekosh"
     SECRET_KEY: str = "dev-secret-key-change-in-production"
     REQUIRE_EMAIL_VERIFICATION: bool = False
-    # ... other settings
-
-    class Config:
-        env_file = ".env"  # Optional: read from .env file locally
-
-settings = Settings()
+    MAIL_FROM: str = "noreply@carekosh.com"
+    # … plus production validators added in PR #12
 ```
 
-**How it works:** When the app starts, `pydantic-settings` automatically reads every field from the system environment variables. If `DATABASE_URL` is set in the environment, it overrides the default. This means the same code runs everywhere — only the environment variables change.
+At startup, `pydantic-settings` reads every field from the process environment. The same image runs in every environment — only the env vars differ.
 
-### 4.2 eas.json build-time configuration
+### 4.2 `eas.json` build-time configuration
 
-In `eas.json`, each build profile (development, preview, production) can specify environment variables under the `"env"` key:
+`EXPO_PUBLIC_API_URL` is **baked into the JS bundle at compile time**. You cannot change it at runtime — a new build is required.
 
 ```json
-"preview": {
-  "env": {
-    "EXPO_PUBLIC_API_URL": "https://vitaltrack-api-staging.onrender.com"
-  }
+{
+  "development": { "env": { "EXPO_PUBLIC_API_URL": "http://localhost:8000" } },
+  "preview":     { "env": { "EXPO_PUBLIC_API_URL": "https://vitaltrack-api-staging.onrender.com" } },
+  "production":  { "env": { "EXPO_PUBLIC_API_URL": "https://vitaltrack-api.onrender.com" } }
 }
 ```
 
-**Critical concept:** `EXPO_PUBLIC_API_URL` is **baked into the APK at compile time**. When EAS Build creates the preview APK, it hardcodes this URL into the JavaScript bundle. The URL **cannot be changed at runtime** — you would need to create a new build.
+Consequences:
+- Preview APK → always staging
+- Production AAB → always production
+- Impossible to accidentally mix them after build
 
-This is why:
-- Preview APK → always talks to staging backend
-- Production AAB → always talks to production backend
-- There is zero chance of mixing them up after the build
-
-### 4.3 docker-entrypoint.sh auto-migration
-
-The `docker-entrypoint.sh` script runs Alembic migrations automatically on every container start:
+### 4.3 `docker-entrypoint.sh` auto-migration
 
 ```bash
-# Inside docker-entrypoint.sh (simplified)
-alembic upgrade head   # Apply all pending migrations
-uvicorn app.main:app   # Then start the server
+# vitaltrack-backend/docker-entrypoint.sh (simplified)
+# 1. Parse DATABASE_URL → extract host + port
+# 2. pg_isready loop (30× retries)
+# 3. alembic upgrade head
+# 4. exec gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
 ```
 
-**What this means for staging:** When the staging Render service starts (or restarts), it automatically runs `alembic upgrade head` against the `vitaltrack_staging` database. This creates all tables and applies all migrations — you don't need to manually run any SQL.
+When the staging service first boots with `DATABASE_URL` pointed at `vitaltrack_staging`, Alembic sees an empty DB and runs every migration from scratch, creating all tables automatically. No manual SQL required.
 
-The first time the staging service started after DATABASE_URL was pointed at the new `vitaltrack_staging` database, Alembic saw an empty database and applied every migration from the beginning, creating all tables automatically.
+> **Known quirk.** If `DATABASE_URL` resolves late, `pg_isready` spends its first ~30 attempts polling `localhost:5432` before the real Neon URL takes over. Cosmetic; the container still comes up healthy. Don't alarm on it.
 
-### 4.4 12-Factor App principle
+### 4.4 Twelve-Factor compliance
 
-The [12-Factor App](https://12factor.net/) methodology states:
+Per [12factor.net](https://12factor.net/): *"Same codebase, same image runs everywhere. Only environment variables change."*
 
-> **Same codebase, same Docker image runs everywhere. Only environment variables change.**
-
-VitalTrack follows this principle:
-- The **exact same Docker image** deployed to production is also deployed to staging
-- The only difference is the environment variables (DATABASE_URL, SECRET_KEY, ENVIRONMENT, etc.)
-- Adding a new environment (e.g., QA, demo) requires zero code changes — just set up a new Render service with appropriate env vars
+CareKosh follows the pattern:
+- Identical Docker image deployed to both environments
+- Only env vars differ
+- Adding a new environment (QA, demo, etc.) requires zero code changes — just a new Render service with appropriate env vars
 
 ### 4.5 SSL toggle pattern
 
 ```python
-# OLD (allowlist — dangerous):
+# Before — allowlist (fragile)
 _connect_args = {"ssl": True} if settings.ENVIRONMENT == "production" else {}
 
-# NEW (denylist — safe):
+# After — denylist (safe default)
 _connect_args = {"ssl": True} if settings.ENVIRONMENT not in ("development", "testing") else {}
 ```
 
 **Why the change matters:**
+- **Allowlist:** only `production` gets SSL. Any new environment (e.g., `staging`) accidentally connects without SSL — credentials travel plain-text over the internet.
+- **Denylist:** SSL is on by default. Only explicitly local environments (`development`, `testing`) skip it. A future `qa` or `demo` environment gets SSL automatically.
 
-- **Allowlist (`== "production"`):** Only production gets SSL. If you add a new environment like "staging", you must remember to update this line. Forgetting means staging connects without SSL — credentials travel unencrypted over the internet.
-- **Denylist (`not in ("development", "testing")`):** SSL is ON by default for everything. Only explicitly local environments (development on your machine, testing in CI) skip it. If you add a "qa" or "demo" environment tomorrow, it automatically gets SSL with no code changes.
+Same toggle is applied in `app/core/database.py` and `alembic/env.py`.
 
-The denylist pattern is **safer by default** — new environments are protected automatically.
+### 4.6 JWT and `SECRET_KEY`
 
-### 4.6 JWT and SECRET_KEY
+`SECRET_KEY` signs and verifies the HS256 JWT. Think of it as a stamp:
 
-The `SECRET_KEY` is used to **sign and verify JWT (JSON Web Token) authentication tokens**. Think of it as a stamp:
+1. **Login** — backend creates a JWT and stamps it with `SECRET_KEY`.
+2. **Request** — backend decodes the JWT and verifies the stamp matches.
+3. **Cross-environment protection** — staging and production have **different** `SECRET_KEY`s. A token from staging cannot authenticate on production.
 
-1. **Login:** When a user logs in, the backend creates a JWT token and "stamps" it with the SECRET_KEY
-2. **API requests:** On every subsequent request, the user sends this token. The backend checks the stamp — if the SECRET_KEY matches, the token is valid
-3. **Cross-environment protection:** Staging and production have **different** SECRET_KEYs. This means:
-   - A token created on staging **cannot** authenticate on production (wrong stamp)
-   - A token created on production **cannot** authenticate on staging (wrong stamp)
-   - Even if someone intercepts a staging token, it's useless on production
+```
+staging SECRET_KEY   ≠   production SECRET_KEY
+       │                        │
+       └─ signs staging JWT     └─ signs production JWT
+           (rejected on prod)       (rejected on staging)
+```
 
-**Where the key lives:**
-- Set as an environment variable in Render dashboard → Environment Variables → `SECRET_KEY`
-- Read automatically by `pydantic-settings` into `settings.SECRET_KEY`
-- Used by the auth code (`app/core/auth.py`) to encode/decode JWTs
-- You never type it in code — it only exists in the Render dashboard
+Store it only in the Render dashboard env vars. Never commit it. Never type it in code.
 
 ### 4.7 Why Neon requires SSL
 
-Neon databases are hosted in the cloud and accessed **over the public internet**. Without SSL:
+Neon runs in the public cloud and you access it over the public internet. Without SSL:
+- Password travels in plain text
+- Query data (emails, inventory) is visible to anyone on the path
+- MITM can inject or modify queries
 
-- Your database password travels in plain text across the internet
-- Query data (user emails, inventory records) is visible to anyone monitoring the network
-- A man-in-the-middle could intercept and modify queries
-
-**Local Docker PostgreSQL doesn't need SSL** because the connection goes from your app container to the database container on the same machine — the data never leaves `localhost`. There is no network to eavesdrop on.
+Local Docker PostgreSQL doesn't need SSL because the connection goes from app container to DB container on the same host — never leaves `localhost`.
 
 ---
 
-## 5. What Changed (Code)
+## 5. What Changed in the Code
 
-### Files changed
+### Files changed in PR #2
 
-#### 1. `vitaltrack-mobile/eas.json` — Preview URL → staging
+#### `vitaltrack-mobile/eas.json` — preview URL → staging
 
 ```diff
  "preview": {
@@ -264,84 +253,97 @@ Neon databases are hosted in the cloud and accessed **over the public internet**
  }
 ```
 
-The production profile remains unchanged at `https://vitaltrack-api.onrender.com`.
-
-#### 2. `vitaltrack-backend/app/core/database.py` — SSL toggle fix
+#### `vitaltrack-backend/app/core/database.py` — SSL toggle
 
 ```diff
--# SSL is required for Neon (production) but not for local Docker PostgreSQL
+-# SSL required for Neon (production) but not for local Docker
 -_connect_args = {"ssl": True} if settings.ENVIRONMENT == "production" else {}
 +# SSL required for Neon (staging + production) but not for local Docker or CI
 +_connect_args = {"ssl": True} if settings.ENVIRONMENT not in ("development", "testing") else {}
 ```
 
-#### 3. `vitaltrack-backend/alembic/env.py` — Same SSL toggle fix
+#### `vitaltrack-backend/alembic/env.py` — same toggle
 
-```diff
--    # SSL is required for Neon (production) but not for local Docker PostgreSQL
--    _connect_args = {"ssl": True} if settings.ENVIRONMENT == "production" else {}
-+    # SSL required for Neon (staging + production) but not for local Docker or CI
-+    _connect_args = {"ssl": True} if settings.ENVIRONMENT not in ("development", "testing") else {}
-```
+(Identical change.)
 
-#### 4. `vitaltrack-mobile/package.json` — Added `start:staging` convenience script
+#### `vitaltrack-mobile/package.json` — convenience script
 
 ```diff
  "start:prod": "cross-env EXPO_PUBLIC_API_URL=https://vitaltrack-api.onrender.com expo start --clear",
 +"start:staging": "cross-env EXPO_PUBLIC_API_URL=https://vitaltrack-api-staging.onrender.com expo start --clear",
 ```
 
-### Files NOT changed (and why)
+### Files deliberately NOT changed
 
-| File | Why no changes needed |
-|------|----------------------|
-| `app/core/config.py` | Already reads `ENVIRONMENT` from env vars — no hardcoded values |
+| File | Why |
+|------|-----|
+| `app/core/config.py` | Already reads `ENVIRONMENT` from env — no hardcoded values |
 | `Dockerfile` | Same image for all environments (12-Factor) |
-| `docker-compose.yml` | Only used for local development — unaffected |
-| `docker-entrypoint.sh` | Already runs `alembic upgrade head` generically — works for any database |
-| All models (`app/models/`) | Database schema is environment-agnostic |
-| All schemas (`app/schemas/`) | Request/response shapes don't change per environment |
-| All API routes (`app/api/`) | Business logic is environment-agnostic |
-| Migration files (`alembic/versions/`) | Migrations are applied to whatever database is configured — no changes needed |
-| CI workflow (`.github/workflows/`) | CI uses `ENVIRONMENT=testing` which was already handled |
-| All mobile source code (`app/`, `components/`, etc.) | The app reads `EXPO_PUBLIC_API_URL` at runtime — no source changes needed |
+| `docker-compose.yml` | Local development only |
+| `docker-entrypoint.sh` | `alembic upgrade head` is generic |
+| `app/models/*` | Schema is environment-agnostic |
+| `app/schemas/*` | Payload shapes don't vary by env |
+| `app/api/*` | Business logic is env-agnostic |
+| `alembic/versions/*` | Migrations apply to whatever DB is configured |
+| `.github/workflows/*` | CI already set `ENVIRONMENT=testing` |
+| Mobile `app/`, `components/`, etc. | Reads `EXPO_PUBLIC_API_URL` at runtime |
 
 ---
 
-## 6. Platform Configuration (Manual Steps Done)
+## 6. Platform Configuration (Render + Neon)
 
-These steps were completed manually via web dashboards. They are documented here for reference.
+These steps were done manually via the web dashboards; documented here so they can be reproduced.
 
-### 6.1 Neon — Created staging database
+### 6.1 Neon — create staging database
 
-1. Opened the Neon dashboard → SQL Editor
-2. Ran:
+1. Neon dashboard → SQL Editor (on the existing project).
+2. Run:
    ```sql
    CREATE DATABASE vitaltrack_staging OWNER neondb_owner;
    ```
-3. The new database is on the same Neon project/branch, so it shares the same connection endpoint but uses a different database name in the connection string
+3. The new DB shares the same Neon project/branch, so the connection host is identical — only the database name in the connection string changes.
 
-### 6.2 Render — Created staging service
+### 6.2 Render — create staging service
 
-1. Created a new **Web Service** named `vitaltrack-api-staging`
-2. Connected to the same GitHub repo, same branch
-3. Same Dockerfile, same build/start commands
-4. Set **8 environment variables:**
+1. New **Web Service** named `vitaltrack-api-staging`.
+2. Connect to the same GitHub repo, same `main` branch.
+3. Same Dockerfile, same default build/start commands (entrypoint does the work).
+4. Set env vars (see table below).
+
+#### Render env vars — staging
 
 | Variable | Value | Notes |
-|----------|-------|-------|
-| `DATABASE_URL` | `postgresql+asyncpg://...@.../vitaltrack_staging` | Points to `vitaltrack_staging` database (NOT `neondb`) |
-| `SECRET_KEY` | *(unique random value)* | **Different from production** — ensures JWT isolation |
-| `ENVIRONMENT` | `staging` | Triggers SSL, but not email verification |
-| `CORS_ORIGINS` | `["*"]` | Wildcard is fine for a mobile app (no browser CORS concerns) |
+|---|---|---|
+| `ENVIRONMENT` | `staging` | Triggers SSL on Neon; not prod guardrails |
+| `DATABASE_URL` | `postgresql+asyncpg://...@.../vitaltrack_staging` | DB name is `vitaltrack_staging`, NOT `neondb` |
+| `SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(32))"` output | **Must differ from production** |
+| `CORS_ORIGINS` | `["*"]` | Wildcard is fine for a mobile-only API (no browser CORS concerns) |
 | `REQUIRE_EMAIL_VERIFICATION` | `false` | Allows testers to register without email verification |
-| `MAIL_PASSWORD` | *(app password)* | For sending emails if needed |
-| `MAIL_FROM` | `noreply@vitaltrack.app` | Sender address |
-| `FRONTEND_URL` | *(staging URL)* | Used in email templates for links |
+| `MAIL_USERNAME` | Brevo SMTP user | Optional in staging if email flows aren't being tested |
+| `MAIL_PASSWORD` | Brevo API key | |
+| `MAIL_FROM` | `noreply@carekosh.com` | |
+| `MAIL_SERVER` | `smtp-relay.brevo.com` | |
+| `MAIL_PORT` | `587` | |
+| `MAIL_STARTTLS` | `true` | |
+| `MAIL_SSL_TLS` | `false` | |
+| `FRONTEND_URL` | `https://vitaltrack-api-staging.onrender.com/api/v1/auth` | Used in email link templates |
 
-### 6.3 Expo/EAS — No dashboard changes needed
+#### Render env vars — production
 
-EAS Build reads the `env` block from `eas.json` at build time. No changes are needed in the Expo dashboard.
+Same set. Differences:
+
+| Variable | Production value |
+|---|---|
+| `ENVIRONMENT` | `production` |
+| `DATABASE_URL` | `postgresql+asyncpg://...@.../neondb` |
+| `SECRET_KEY` | A **different** 32+ char random value (not starting with `CHANGE-THIS`) |
+| `CORS_ORIGINS` | `["https://carekosh.com","https://app.carekosh.com"]` — PR #12 validator rejects `"*"` in prod |
+| `REQUIRE_EMAIL_VERIFICATION` | `true` |
+| `FRONTEND_URL` | `https://vitaltrack-api.onrender.com/api/v1/auth` — PR #12 validator requires non-empty in prod |
+
+### 6.3 Expo/EAS — no dashboard changes needed
+
+EAS Build reads the `env` block from `eas.json` in the repo at build time. No action in the Expo dashboard.
 
 ---
 
@@ -350,141 +352,145 @@ EAS Build reads the `env` block from `eas.json` at build time. No changes are ne
 ### Health checks
 
 ```bash
-# Staging health check
+# Staging
 curl -s https://vitaltrack-api-staging.onrender.com/health | python -m json.tool
-
-# Expected output:
+# Expected:
 # {
-#     "status": "healthy",
-#     "environment": "staging",
-#     "database": "connected"
+#   "status": "healthy",
+#   "environment": "staging",
+#   "database": "connected"
 # }
 
-# Production health check
+# Production
 curl -s https://vitaltrack-api.onrender.com/health | python -m json.tool
-
-# Expected output:
+# Expected:
 # {
-#     "status": "healthy",
-#     "environment": "production",
-#     "database": "connected"
+#   "status": "healthy",
+#   "environment": "production",
+#   "database": "connected"
 # }
 ```
 
-### Registration test (staging only)
+### Registration smoke test (staging only)
 
 ```bash
-# Register a test user on staging
 curl -s -X POST https://vitaltrack-api-staging.onrender.com/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "testuser@example.com",
     "password": "TestPass123!",
-    "full_name": "Test User"
+    "name": "Test User"
   }' | python -m json.tool
 ```
 
-### Database isolation proof
+### Isolation proof
 
-After registering a test user on staging, verify it does NOT exist on production:
+After registering a test user on staging, confirm it does NOT exist on production:
 
 ```bash
-# Try to login with the staging test user on production — should fail
 curl -s -X POST https://vitaltrack-api.onrender.com/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "testuser@example.com",
+    "identifier": "testuser@example.com",
     "password": "TestPass123!"
   }'
-
-# Expected: 401 Unauthorized (user doesn't exist on production)
+# Expected: 401 — user doesn't exist on production
 ```
 
 ---
 
 ## 8. Troubleshooting
 
-### "database": "disconnected" in health check
+### `"database": "disconnected"` in `/health`
 
-**Cause:** The `DATABASE_URL` environment variable is wrong or the Neon database is unavailable.
+- Check Render → service → Environment Variables → `DATABASE_URL`.
+- Verify the DB name matches (`vitaltrack_staging` for staging, `neondb` for production).
+- Verify the Neon project is not suspended due to inactivity.
+- Verify the password in the connection string matches Neon's current one (rotating the Neon password requires updating Render).
 
-**Fix:**
-1. Check Render dashboard → Environment Variables → `DATABASE_URL`
-2. Verify the connection string has the correct database name (`vitaltrack_staging` for staging, `neondb` for production)
-3. Verify the Neon project is active (not suspended due to inactivity)
-4. Check that the password in the connection string matches the Neon dashboard
+### Wrong `environment` value in `/health`
 
-### Wrong environment name shown in health check
+- `ENVIRONMENT` is misspelled or missing. Must be exactly `staging` or `production` (lowercase, no quotes, no spaces).
+- Trigger a manual deploy after fixing.
 
-**Cause:** The `ENVIRONMENT` variable is misspelled or not set.
+### A staging JWT authenticates on production
 
-**Fix:**
-1. Check Render dashboard → Environment Variables → `ENVIRONMENT`
-2. Must be exactly `staging` or `production` (lowercase, no quotes, no spaces)
-3. After fixing, trigger a manual deploy in Render
+**Should never happen.** If it does:
+- Both environments have the same `SECRET_KEY`.
+- Fix: generate a new unique key for staging, set it in Render, redeploy. All existing staging tokens are invalidated.
 
-### JWT token from staging works on production (or vice versa)
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
 
-**This should NOT happen.** If it does:
+### Preview APK is hitting production
 
-**Cause:** Both environments have the same `SECRET_KEY`.
+- The APK was built before the `eas.json` change, or
+- A dev server override (`EXPO_PUBLIC_API_URL` in `.env`) is in play during LAN/tunnel testing.
 
-**Fix:**
-1. Generate a new unique SECRET_KEY for staging: `python -c "import secrets; print(secrets.token_urlsafe(64))"`
-2. Update the SECRET_KEY in the staging Render service
-3. Trigger a manual deploy — all existing staging tokens will be invalidated
+Fix: rebuild with the current `eas.json`:
 
-### Preview APK is hitting production backend
+```bash
+cd vitaltrack-mobile
+npx eas build --profile preview --platform android
+```
 
-**Cause:** The APK was built before the `eas.json` change, or LAN/tunnel mode is overriding the URL.
-
-**Fix:**
-1. Rebuild the preview APK: `eas build --profile preview --platform android`
-2. Install the new APK on the test device
-3. Remember: the URL is baked in at build time — old APKs will forever point to the old URL
+Remember: `EXPO_PUBLIC_API_URL` is compile-time. An old APK will forever hit the URL it was built with.
 
 ### Alembic migration fails on staging
 
-**Cause:** Usually a migration incompatibility or a connection issue.
+- Render → staging service → Logs — look for the Alembic error.
+- Migration bug: fix locally, push, redeploy.
+- Connection bug: see "disconnected" above.
+- Manual apply if needed:
+  ```bash
+  DATABASE_URL="<staging-url>" ENVIRONMENT=staging alembic upgrade head
+  ```
 
-**Fix:**
-1. Check the Render logs for the staging service (Render dashboard → Logs)
-2. Look for the Alembic error message
-3. If it's a migration error, fix the migration locally and push
-4. If it's a connection error, verify DATABASE_URL (see "disconnected" above)
-5. You can run migrations manually against staging if needed:
-   ```bash
-   DATABASE_URL="<staging-url>" ENVIRONMENT=staging alembic upgrade head
-   ```
+### Staging is "up" but all auth returns 401
+
+Likely `SECRET_KEY` was rotated — all existing tokens are now invalid. Expected; users log in again.
 
 ---
 
 ## 9. FAQ
 
-### Will production data be lost?
+### Will production data be lost by this split?
 
-**No.** This change does not touch production at all. The production Render service, database, and env vars are completely unchanged. The only code change affecting production is the SSL toggle, which was already ON for production (`== "production"` → `not in ("development", "testing")` — production is not in either of those, so SSL stays ON).
+No. PR #2 did not touch the production DB. The SSL toggle was already `True` for production (`== "production"` → `not in ("development", "testing")` — production is in neither, so SSL stays on).
 
 ### Does this cost anything?
 
-**$0 additional.** Neon free tier includes multiple databases on the same project. Render free tier allows multiple web services. The staging service uses the same free resources.
+**$0 additional.** Neon free tier allows multiple databases on one project. Render free tier allows multiple web services. Both staging services reuse free quota.
 
-### Do I need to run Alembic manually on the staging database?
+### Do I need to run Alembic manually on staging?
 
-**No.** The `docker-entrypoint.sh` script runs `alembic upgrade head` automatically on every deploy. When the staging service first started with the new `DATABASE_URL`, Alembic ran all migrations and created every table automatically.
+No. `docker-entrypoint.sh` runs `alembic upgrade head` on every deploy. When staging first started with the new `DATABASE_URL`, Alembic applied every migration against the empty `vitaltrack_staging` DB automatically.
 
 ### Is the staging database empty?
 
-**Yes.** The staging database starts completely empty. When Alembic runs, it creates all tables but no data rows. You (or testers) will need to register new accounts and create test data. This is by design — staging should not contain production data copies.
+Yes. It starts empty. You or testers register accounts and populate test data. By design — staging should not contain production data copies.
 
 ### What about cold starts?
 
-Render free-tier services sleep after 15 minutes of inactivity. The first request after sleep will take 30-60 seconds while the container spins up, runs migrations, and starts the server. Subsequent requests are fast. This affects both staging and production independently.
+Render free-tier services sleep after ~15 minutes idle. The first request after sleep takes 30–60 seconds while the container boots + runs migrations + starts gunicorn. Subsequent requests are fast. Staging and production sleep independently.
 
-### Do I need to change anything in the Expo dashboard?
+A keep-alive monitor (UptimeRobot or similar) pointed at `/health` on a 5-minute interval keeps the services warm.
 
-**No.** EAS Build reads configuration from `eas.json` in the repository. The Expo/EAS dashboard does not need any changes for the environment split.
+### Do I need Expo dashboard changes?
 
-### Is CORS `["*"]` (wildcard) safe for the staging backend?
+No. EAS Build reads `eas.json` from the repo. Nothing to change in the Expo dashboard.
 
-**Yes.** CORS (Cross-Origin Resource Sharing) is a browser security feature. Mobile apps (React Native) do not enforce CORS — they make direct HTTP requests. The wildcard CORS setting has zero security impact for a mobile-only API. Even for production, `["*"]` is acceptable when the API is consumed exclusively by a mobile app.
+### Is `CORS_ORIGINS=["*"]` safe for staging?
+
+Yes. CORS is a browser security feature. React Native / native mobile apps do not enforce CORS — they make direct HTTP requests. The wildcard has zero security impact on a mobile-only API.
+
+For **production**, PR #12 rejects `"*"` at startup. The rationale is defence in depth — if anyone ever points a browser-based admin tool at the production API, CORS must be restricted. Staging is explicitly not production and doesn't need the same guardrail.
+
+### How do I add a fourth environment (QA, demo, etc.)?
+
+Zero code changes needed. Create a new Neon DB, a new Render service, set its env vars (ENVIRONMENT, DATABASE_URL, SECRET_KEY, MAIL_*), done. The SSL toggle (§4.5) will pick it up automatically. If you want a mobile build pointing at it, add a new profile to `eas.json`.
+
+---
+
+*Last updated: 2026-04-19.*

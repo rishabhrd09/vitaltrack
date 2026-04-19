@@ -1,275 +1,249 @@
 # USB ADB Reverse Connection Guide
 
-> **Most reliable connection method** when WiFi doesn't work.
+> **Most reliable way** to connect an Android device to your local CareKosh backend when Wi-Fi misbehaves.
+
+The content here is toolchain-level (ADB + Expo), so it is unaffected by the CareKosh rebrand and server-first migration.
 
 ---
 
-## When to Use This Method
+## When to use this
 
-✅ WiFi method not working (firewall, corporate network)  
-✅ Want faster/more stable connection  
-✅ Phone and PC can't be on same network  
-✅ Debugging network issues  
+- Wi-Fi method is failing (router isolation, corporate network, firewall)
+- You want a faster, more stable connection than Wi-Fi
+- Phone and PC are on different networks and can't be joined
+- You are debugging a network-layer issue
+
+Trade-off vs Wi-Fi: the phone is tethered to the PC. For day-to-day dev that tether is fine; for demos to people not sitting at your desk, prefer Wi-Fi or EAS preview APK.
 
 ---
 
 ## Prerequisites
 
-### On Your Android Phone
+### On the Android device
 
-1. **Enable Developer Options:**
-   - Go to `Settings → About Phone`
-   - Tap `Build Number` **7 times**
-   - You'll see "You are now a developer!"
+1. **Enable Developer Options**
+   - `Settings → About Phone → Build Number` — tap 7 times.
+   - "You are now a developer!" appears.
 
-2. **Enable USB Debugging:**
-   - Go to `Settings → Developer Options`
-   - Enable `USB Debugging`
+2. **Enable USB Debugging**
+   - `Settings → Developer Options → USB Debugging` → on.
 
-3. **Connect phone to PC via USB cable**
-   - Use a **data cable** (not charge-only)
-   - Accept "Allow USB debugging?" prompt on phone
+3. **Connect via USB**
+   - Use a **data cable** (not charge-only — many OEM cables are charge-only).
+   - Accept the "Allow USB debugging?" prompt. Tick "Always allow from this computer".
 
-### On Your PC
+### On the PC
 
-**Windows:**
+**Windows**
 1. Download [Android SDK Platform Tools](https://developer.android.com/studio/releases/platform-tools)
-2. Extract to `C:\platform-tools`
-3. Add to PATH or run from that directory
+2. Extract to e.g. `C:\platform-tools`
+3. Add to `PATH` (System Environment Variables → Path → Add `C:\platform-tools`)
 
-**Mac:**
+**macOS**
 ```bash
 brew install android-platform-tools
 ```
 
-**Linux:**
+**Linux**
 ```bash
 sudo apt install adb
 ```
 
 ---
 
-## Setup Steps
+## Setup
 
-### Step 1: Verify Phone Connection
+### 1. Verify the phone is visible
 
 ```bash
 adb devices
 ```
 
-**Expected output:**
+Expected:
 ```
 List of devices attached
 XXXXXXXX    device
 ```
 
-❌ If `unauthorized`: Check phone for "Allow USB debugging" prompt  
-❌ If `no devices`: Check USB cable, try different port, reinstall drivers
+Troubleshooting:
+- `unauthorized` → check the phone for the "Allow USB debugging?" dialog.
+- `no devices` → bad cable, wrong port, or missing driver (see "Troubleshooting" below).
 
-### Step 2: Create Reverse Port Forwarding
+### 2. Forward ports from the phone to the PC
 
 ```bash
-# Forward backend port
-adb reverse tcp:8000 tcp:8000
-
-# Forward Expo Metro port
-adb reverse tcp:8081 tcp:8081
+adb reverse tcp:8000 tcp:8000      # CareKosh backend API
+adb reverse tcp:8081 tcp:8081      # Expo Metro bundler
 ```
 
-**Expected output:** (none, or shows port)
+No output = success.
 
-### Step 3: Verify Forwarding
+### 3. Verify the forwards
 
 ```bash
 adb reverse --list
 ```
 
-**Expected output:**
+Expected:
 ```
 (reverse) tcp:8000 tcp:8000
 (reverse) tcp:8081 tcp:8081
 ```
 
-### Step 4: Update Frontend .env
+### 4. Point the mobile app at `localhost`
 
 Edit `vitaltrack-mobile/.env`:
 ```env
 EXPO_PUBLIC_API_URL=http://localhost:8000
 ```
 
-⚠️ **With ADB reverse, phone accesses PC's localhost directly!**
+With `adb reverse` active, `localhost:8000` on the phone resolves to the PC's `localhost:8000`, i.e. the Docker-hosted backend.
 
-### Step 5: Restart Expo
+### 5. (Re)start Expo
 
 ```bash
+cd vitaltrack-mobile
 npx expo start --clear
 ```
 
-### Step 6: Verify Connection
+`--clear` flushes Metro cache after the `.env` change.
 
-On your phone's browser, go to:
+### 6. Sanity-check from the phone
+
+Open the phone browser and visit:
 ```
 http://localhost:8000/health
 ```
 
-✅ **Expected:** `{"status":"healthy"}`
+Expected: `{"status":"healthy"}`
 
-Now scan the QR code with Expo Go.
+Then scan the QR from Expo Go.
 
 ---
 
 ## Troubleshooting
 
-### Problem: "no devices found"
+### "no devices found"
 
-**Causes & Fixes:**
-1. **Bad USB cable** - Use a data cable, not charge-only
-2. **Wrong USB port** - Try a different port (preferably USB 2.0)
-3. **Driver issues (Windows)** - Install [Google USB Driver](https://developer.android.com/studio/run/win-usb)
-4. **USB debugging off** - Re-enable in Developer Options
+| Cause | Fix |
+|---|---|
+| Charge-only cable | Use a known-good data cable |
+| USB hub / port issues | Plug directly into a USB-2 port on the PC |
+| Windows driver missing | Install the [Google USB Driver](https://developer.android.com/studio/run/win-usb) |
+| USB debugging disabled | Re-enable in Developer Options |
 
-### Problem: "unauthorized"
+### "unauthorized"
 
-**Fix:**
-1. Check phone screen for "Allow USB debugging?" popup
-2. Tap "Always allow from this computer"
-3. Tap "Allow"
+1. Check the phone screen for the auth dialog.
+2. Tick **Always allow from this computer** → **Allow**.
 
-**Still not working:**
-1. Go to `Settings → Developer Options`
-2. Tap "Revoke USB debugging authorizations"
-3. Disconnect and reconnect phone
-4. Accept the new prompt
+Still stuck?
+1. On the phone: Developer Options → **Revoke USB debugging authorizations**.
+2. Disconnect / reconnect. Accept the fresh prompt.
 
-### Problem: adb reverse works but app can't connect
+### `adb reverse` succeeds but the app can't reach the backend
 
-**Debug Steps:**
-1. Verify forwarding: `adb reverse --list`
-2. Check .env says `localhost` not an IP
-3. Restart Expo: `npx expo start --clear`
-4. Verify backend is running: `curl http://localhost:8000/health`
+1. Confirm: `adb reverse --list` shows both ports.
+2. `.env` says `http://localhost:8000`, not an IP.
+3. Expo restarted after the `.env` change (`npx expo start --clear`).
+4. Backend is actually up: `curl http://localhost:8000/health` from the PC.
 
-### Problem: "Connection reset" or "Connection refused"
+### "Connection reset" or "Connection refused"
 
-**Causes:**
-1. ADB reverse expired (reconnect and redo)
-2. Backend not running
-3. Port conflict
+Usually: ADB reverse expired (reboot, unplug, or `adb` server restart).
 
-**Fix:**
 ```bash
-# Re-establish forwarding
 adb reverse tcp:8000 tcp:8000
 adb reverse tcp:8081 tcp:8081
-
-# Verify backend
 curl http://localhost:8000/health
 ```
 
 ---
 
-## Important: Persistence
+## Persistence
 
-**ADB reverse resets when:**
-- Phone is disconnected
-- Phone is restarted
-- PC is restarted
-- ADB server is restarted
+ADB reverse is **not sticky**. It resets when any of these happen:
+- The phone is disconnected or rebooted
+- The PC is rebooted
+- The ADB server restarts (`adb kill-server`)
 
-**After any of these, re-run:**
-```bash
-adb reverse tcp:8000 tcp:8000
-adb reverse tcp:8081 tcp:8081
-```
+Re-run the two `adb reverse` commands after any of these.
 
 ---
 
-## Quick Setup Script
+## Quick setup script
 
-Create `setup-adb.sh` (Mac/Linux) or `setup-adb.bat` (Windows):
+Drop this in the repo root or your shell rc to avoid typing the commands every time.
 
-**Mac/Linux:**
+**macOS / Linux — `setup-adb.sh`**
 ```bash
 #!/bin/bash
-echo "Setting up ADB reverse..."
+set -e
+echo "Setting up ADB reverse for CareKosh…"
 adb reverse tcp:8000 tcp:8000
 adb reverse tcp:8081 tcp:8081
-echo "Done! Forwarding:"
+echo "Active forwards:"
 adb reverse --list
 ```
 
-**Windows:**
+**Windows — `setup-adb.bat`**
 ```batch
 @echo off
-echo Setting up ADB reverse...
+echo Setting up ADB reverse for CareKosh...
 adb reverse tcp:8000 tcp:8000
 adb reverse tcp:8081 tcp:8081
-echo Done! Forwarding:
+echo Active forwards:
 adb reverse --list
 pause
 ```
 
 ---
 
-## Complete Command Reference
+## Command reference
 
 ```bash
-# List connected devices
-adb devices
+adb devices                              # list connected devices
+adb reverse tcp:8000 tcp:8000            # phone localhost:8000 → PC localhost:8000
+adb reverse tcp:8081 tcp:8081            # Metro
+adb reverse --list                       # active forwards
+adb reverse --remove tcp:8000            # remove one
+adb reverse --remove-all                 # remove all
 
-# Create port forwarding (phone → PC)
-adb reverse tcp:8000 tcp:8000
-adb reverse tcp:8081 tcp:8081
+adb kill-server && adb start-server      # reset the ADB server
 
-# List active forwards
-adb reverse --list
-
-# Remove specific forward
-adb reverse --remove tcp:8000
-
-# Remove all forwards
-adb reverse --remove-all
-
-# Restart ADB server (if issues)
-adb kill-server
-adb start-server
-
-# Check ADB version
 adb version
-
-# Get device shell (debugging)
-adb shell
+adb shell                                # device shell (for debugging)
 ```
 
 ---
 
-## WiFi vs USB Comparison
+## Wi-Fi vs USB
 
-| Aspect | WiFi Method | USB Method |
-|--------|-------------|------------|
-| Setup | Easier | Requires ADB |
-| Speed | Network dependent | Faster |
-| Reliability | Can have issues | Very stable |
-| Mobility | Phone can move | Tethered to PC |
-| Firewall | Can be blocked | Bypasses firewall |
-| .env URL | `http://IP:8000` | `http://localhost:8000` |
-
----
-
-## Switching Between Methods
-
-### From WiFi to USB:
-1. Connect phone via USB
-2. Run `adb reverse tcp:8000 tcp:8000`
-3. Change `.env` to `http://localhost:8000`
-4. Run `npx expo start --clear`
-
-### From USB to WiFi:
-1. Find your IP address
-2. Change `.env` to `http://YOUR_IP:8000`
-3. Run `npx expo start --clear`
-4. (Optional) `adb reverse --remove-all`
+| Aspect | Wi-Fi | USB (`adb reverse`) |
+|---|---|---|
+| Setup overhead | Lower | Higher (install ADB) |
+| Speed | Depends on network | Consistently fast |
+| Reliability | Depends on network | Very stable |
+| Mobility | Phone can roam | Tethered |
+| Firewall/router issues | Common | Bypassed |
+| `.env` URL | `http://YOUR_LAN_IP:8000` | `http://localhost:8000` |
 
 ---
 
-**Tip:** Keep USB connected while developing for the most stable experience!
+## Switching methods
+
+**Wi-Fi → USB**
+1. Plug in the phone.
+2. `adb reverse tcp:8000 tcp:8000 && adb reverse tcp:8081 tcp:8081`
+3. `.env` → `EXPO_PUBLIC_API_URL=http://localhost:8000`
+4. `npx expo start --clear`
+
+**USB → Wi-Fi**
+1. Find your PC's LAN IP (`ipconfig` / `ifconfig`).
+2. `.env` → `EXPO_PUBLIC_API_URL=http://YOUR_LAN_IP:8000`
+3. `npx expo start --clear`
+4. Optional: `adb reverse --remove-all`
+
+---
+
+**Pro tip:** keep USB connected while actively developing. You'll save yourself a dozen "why won't my phone connect" detours per week.

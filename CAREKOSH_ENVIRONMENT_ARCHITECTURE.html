@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh — Environment Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf9f7;--card:#fff;--card2:#f4f3f0;--border:#e5e3de;--text:#1a1a18;--muted:#6b6a65;--accent:#1d6b52;--accent-bg:#e8f5ef;--amber:#8a6830;--amber-bg:#fef8e8;--danger:#8b1a1a;--danger-bg:#fef0f0;--info:#1a4a8b;--info-bg:#eef4fc;--code-bg:#f0efeb;--dev:#5a2a6a;--dev-bg:#f5eef8;--stg:#b8860b;--stg-bg:#fef7df;--prd:#1d6b52;--prd-bg:#e8f5ef}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e12;--card:#161619;--card2:#1c1c21;--border:#2a2a30;--text:#e4e4ec;--muted:#8a8a95;--accent:#5eead4;--accent-bg:#0d2626;--amber:#d4a574;--amber-bg:#1a1510;--danger:#e88;--danger-bg:#1a1010;--info:#7ab4f5;--info-bg:#0f1a2a;--code-bg:#1a1a20;--dev:#c88fd8;--dev-bg:#1f1522;--stg:#e8c868;--stg-bg:#1a1710;--prd:#5eead4;--prd-bg:#0d2626}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.75;font-size:15px}
+.page{max-width:900px;margin:0 auto;padding:32px 24px 80px}
+.hero{text-align:center;padding:40px 0 36px;border-bottom:1px solid var(--border);margin-bottom:40px}
+.hero h1{font-family:'Instrument Serif',serif;font-size:2.4rem;font-weight:400;letter-spacing:-.02em;line-height:1.15;margin-bottom:10px}
+.hero h1 em{font-style:italic;color:var(--accent)}
+.hero .sub{color:var(--muted);font-size:.9rem;max-width:640px;margin:0 auto 8px}
+.hero .meta{color:var(--muted);font-size:.76rem}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--code-bg);padding:2px 6px;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:14px 0;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.65}
+pre code{background:none;padding:0}
+.section{margin-bottom:48px}
+.section h2{font-family:'Sora',sans-serif;font-size:1.35rem;font-weight:700;margin-bottom:10px}
+.section h3{font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;margin-top:22px;margin-bottom:8px}
+.section p{margin-bottom:12px}
+.section ul,.section ol{margin-bottom:14px;padding-left:22px}.section li{margin-bottom:6px;font-size:.92rem}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.85rem}
+th{text-align:left;font-family:'Sora',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:2px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+td:first-child{font-weight:600}
+.callout{border-radius:10px;padding:14px 18px;margin:18px 0;border-left:4px solid}
+.callout p{margin-bottom:6px;font-size:.9rem}.callout p:last-child{margin-bottom:0}
+.callout-label{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;display:block}
+.callout.info{background:var(--info-bg);border-left-color:var(--info)}.callout.info .callout-label{color:var(--info)}
+.callout.warn{background:var(--amber-bg);border-left-color:var(--amber)}.callout.warn .callout-label{color:var(--amber)}
+.callout.danger{background:var(--danger-bg);border-left-color:var(--danger)}.callout.danger .callout-label{color:var(--danger)}
+.callout.success{background:var(--accent-bg);border-left-color:var(--accent)}.callout.success .callout-label{color:var(--accent)}
+.env-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:18px 0}
+@media(max-width:720px){.env-grid{grid-template-columns:1fr}}
+.env-card{border-radius:12px;padding:18px 20px;border:2px solid}
+.env-card h3{font-family:'Sora',sans-serif;font-size:.95rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin:0 0 10px;border:none;padding:0}
+.env-card.dev{background:var(--dev-bg);border-color:var(--dev)}.env-card.dev h3{color:var(--dev)}
+.env-card.stg{background:var(--stg-bg);border-color:var(--stg)}.env-card.stg h3{color:var(--stg)}
+.env-card.prd{background:var(--prd-bg);border-color:var(--prd)}.env-card.prd h3{color:var(--prd)}
+.env-card dl{font-size:.82rem;margin:0}
+.env-card dt{font-family:'Sora',sans-serif;font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-top:8px}
+.env-card dd{font-family:'JetBrains Mono',monospace;font-size:.76rem;word-break:break-all;margin:2px 0 0}
+.arch{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:18px;margin:16px 0;font-family:'JetBrains Mono',monospace;font-size:.72rem;line-height:1.6;overflow-x:auto;white-space:pre}
+hr{border:none;border-top:1px solid var(--border);margin:40px 0}
+.footer{text-align:center;padding:28px 0;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;margin-top:40px}
+.env-tag{display:inline-block;font-family:'Sora',sans-serif;font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:4px;margin-right:4px}
+.env-tag.dev{background:var(--dev-bg);color:var(--dev)}
+.env-tag.stg{background:var(--stg-bg);color:var(--stg)}
+.env-tag.prd{background:var(--prd-bg);color:var(--prd)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="hero">
+  <h1>Environment <em>Architecture</em></h1>
+  <p class="sub">How the three CareKosh environments (development, staging, production) are wired — what runs where, what connects to what, and how the same Docker image behaves differently.</p>
+  <p class="meta">CareKosh · Render + Neon + EAS Build · April 2026</p>
+</div>
+
+<!-- SECTION 1: 3 ENVIRONMENTS -->
+<div class="section">
+  <h2>1 · The three environments</h2>
+  <p>Identical code. Different env vars. Different databases. Different email destinations. The only thing that crosses environments is source code — never data.</p>
+
+  <div class="env-grid">
+    <div class="env-card dev">
+      <h3>Development</h3>
+      <dl>
+        <dt>Backend</dt><dd>docker compose (local)</dd>
+        <dt>API URL</dt><dd>http://localhost:8000</dd>
+        <dt>Database</dt><dd>Local postgres:16 (Docker volume)</dd>
+        <dt>Email</dt><dd>Mailtrap sandbox</dd>
+        <dt>Mobile</dt><dd>Expo Go + dev profile</dd>
+        <dt>Lifecycle</dt><dd>docker compose down -v to reset</dd>
+      </dl>
+    </div>
+    <div class="env-card stg">
+      <h3>Staging</h3>
+      <dl>
+        <dt>Backend</dt><dd>vitaltrack-api-staging.onrender.com</dd>
+        <dt>Database</dt><dd>Neon branch: vitaltrack_staging (Singapore)</dd>
+        <dt>Email</dt><dd>Brevo SMTP (staging key)</dd>
+        <dt>Mobile</dt><dd>EAS preview APK (sideload)</dd>
+        <dt>Triggered by</dt><dd>push to main + build-apk label</dd>
+        <dt>Lifecycle</dt><dd>Test data only · safe to wipe</dd>
+      </dl>
+    </div>
+    <div class="env-card prd">
+      <h3>Production</h3>
+      <dl>
+        <dt>Backend</dt><dd>vitaltrack-api.onrender.com</dd>
+        <dt>Database</dt><dd>Neon branch: neondb (Singapore)</dd>
+        <dt>Email</dt><dd>Brevo SMTP (production key)</dd>
+        <dt>Mobile</dt><dd>EAS production AAB (Play Store internal)</dd>
+        <dt>Triggered by</dt><dd>merge to main (backend); manual eas build (mobile)</dd>
+        <dt>Lifecycle</dt><dd>Real user data · never wipe</dd>
+      </dl>
+    </div>
+  </div>
+
+  <h3>How they're wired</h3>
+  <div class="arch">┌────────────────────────────────────────────────────────────────────┐
+│                                                                     │
+│  DEVELOPMENT (your laptop)                                         │
+│    ┌────────────────┐      ┌───────────────┐                      │
+│    │ Expo Go        │ ───► │ localhost:8000│                      │
+│    │ (dev profile)  │      │ Docker        │                      │
+│    └────────────────┘      │ FastAPI       │                      │
+│                            └──────┬────────┘                      │
+│                                   ▼                                │
+│                            postgres:16 (local Docker volume)       │
+│                                                                     │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  STAGING                                                            │
+│    ┌────────────────┐      ┌──────────────────────────────┐       │
+│    │ Preview APK    │ ───► │ vitaltrack-api-staging       │       │
+│    │ (EAS preview)  │      │ .onrender.com                │       │
+│    └────────────────┘      │ ENVIRONMENT=staging          │       │
+│                            └──────┬───────────────────────┘       │
+│                                   ▼                                │
+│                            Neon branch: vitaltrack_staging         │
+│                                   │                                │
+│                                   ▼                                │
+│                            Brevo SMTP (staging key)                │
+│                                                                     │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  PRODUCTION                                                         │
+│    ┌────────────────┐      ┌──────────────────────────────┐       │
+│    │ Production AAB │ ───► │ vitaltrack-api               │       │
+│    │ (Play Store)   │      │ .onrender.com                │       │
+│    └────────────────┘      │ ENVIRONMENT=production       │       │
+│                            └──────┬───────────────────────┘       │
+│                                   ▼                                │
+│                            Neon branch: neondb                     │
+│                                   │                                │
+│                                   ▼                                │
+│                            Brevo SMTP (production key)             │
+│                                                                     │
+└────────────────────────────────────────────────────────────────────┘
+
+Code flows: git push main → GitHub Actions → Render deploy hook
+           → Render pulls same image for BOTH staging + production</div>
+</div>
+
+<hr>
+
+<!-- SECTION 2: ENV VAR MATRIX -->
+<div class="section">
+  <h2>2 · Environment variable matrix</h2>
+  <p>Every backend env var, across all three environments. <code>config.py</code> applies production-only validators — some of these values are not just conventions, they are enforced at startup.</p>
+  <table>
+    <thead><tr><th>Variable</th><th>Development</th><th>Staging</th><th>Production</th></tr></thead>
+    <tbody>
+      <tr><td><code>ENVIRONMENT</code></td><td><code>development</code></td><td><code>staging</code></td><td><code>production</code></td></tr>
+      <tr><td><code>DEBUG</code></td><td><code>True</code></td><td><code>False</code></td><td><code>False</code></td></tr>
+      <tr><td><code>DATABASE_URL</code></td><td>local docker</td><td>Neon <code>vitaltrack_staging</code></td><td>Neon <code>neondb</code></td></tr>
+      <tr><td><code>SECRET_KEY</code></td><td>any 32+ char</td><td>distinct 32+</td><td>distinct 32+ (validator rejects "CHANGE-THIS")</td></tr>
+      <tr><td><code>CORS_ORIGINS</code></td><td><code>*</code></td><td>staging domain</td><td>carekosh.com (validator rejects <code>*</code>)</td></tr>
+      <tr><td><code>FRONTEND_URL</code></td><td>empty</td><td>staging domain</td><td>carekosh.com (validator requires in prod)</td></tr>
+      <tr><td><code>MAIL_SERVER</code></td><td><code>sandbox.smtp.mailtrap.io</code></td><td>Brevo SMTP host</td><td>Brevo SMTP host</td></tr>
+      <tr><td><code>MAIL_USERNAME</code></td><td>Mailtrap user</td><td>Brevo staging user</td><td>Brevo prod user</td></tr>
+      <tr><td><code>MAIL_PASSWORD</code></td><td>Mailtrap key</td><td>Brevo staging key</td><td>Brevo prod key</td></tr>
+      <tr><td><code>MAIL_FROM</code></td><td><code>noreply@carekosh.com</code></td><td><code>noreply@carekosh.com</code></td><td><code>noreply@carekosh.com</code></td></tr>
+      <tr><td><code>REQUIRE_EMAIL_VERIFICATION</code></td><td><code>False</code></td><td><code>True</code></td><td><code>True</code></td></tr>
+      <tr><td><code>ACCESS_TOKEN_EXPIRE_MINUTES</code></td><td>30</td><td>30</td><td>30</td></tr>
+      <tr><td><code>REFRESH_TOKEN_EXPIRE_DAYS</code></td><td>30</td><td>30</td><td>30</td></tr>
+      <tr><td><code>RATE_LIMIT_PER_MINUTE</code></td><td>60</td><td>60</td><td>60</td></tr>
+      <tr><td><code>EMAIL_VERIFICATION_EXPIRY_HOURS</code></td><td>24</td><td>24</td><td>24</td></tr>
+      <tr><td><code>PASSWORD_RESET_EXPIRY_HOURS</code></td><td>1</td><td>1</td><td>1</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <span class="callout-label">Compile-time mobile baking</span>
+    <p><code>EXPO_PUBLIC_API_URL</code> is set per EAS profile in <code>eas.json</code>. Once an APK or AAB is built, this URL is a compile-time constant — you cannot change which backend an installed build hits without rebuilding. A "preview APK hitting production" is not a toggle; it's a new binary.</p>
+  </div>
+
+  <h3>EAS profile values</h3>
+  <table>
+    <thead><tr><th>EAS profile</th><th>Artifact</th><th><code>EXPO_PUBLIC_API_URL</code></th><th>Channel</th></tr></thead>
+    <tbody>
+      <tr><td><code>development</code></td><td>APK</td><td><code>http://localhost:8000</code></td><td>—</td></tr>
+      <tr><td><code>preview</code></td><td>APK</td><td><code>https://vitaltrack-api-staging.onrender.com</code></td><td><code>preview</code></td></tr>
+      <tr><td><code>production</code></td><td>AAB</td><td><code>https://vitaltrack-api.onrender.com</code></td><td><code>production</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<hr>
+
+<!-- SECTION 3: DATA ISOLATION -->
+<div class="section">
+  <h2>3 · Data isolation</h2>
+  <p>Three databases, three concerns, three operating rules.</p>
+  <table>
+    <thead><tr><th>Env</th><th>Database</th><th>What lives there</th><th>When to wipe</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="env-tag dev">Dev</span></td>
+        <td>Local Docker postgres:16</td>
+        <td>Whatever you created last session</td>
+        <td><code>docker compose down -v</code> — any time, no consequence</td>
+      </tr>
+      <tr>
+        <td><span class="env-tag stg">Staging</span></td>
+        <td>Neon branch <code>vitaltrack_staging</code></td>
+        <td>QA test accounts, curl-created inventory, E2E dry runs</td>
+        <td>Any time via Neon Console. Tell teammates first (they may have a test account).</td>
+      </tr>
+      <tr>
+        <td><span class="env-tag prd">Production</span></td>
+        <td>Neon branch <code>neondb</code></td>
+        <td>Real user data — caregivers' medical inventories, orders, activity</td>
+        <td><strong>Never.</strong> Not even "just this one user." Use the account-deletion flow (PR #13).</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="callout danger">
+    <span class="callout-label">There is no cross-environment replica</span>
+    <p>Staging does not replicate production. If a bug only repros with real-looking data, you create a synthetic analog in staging — you do not copy production rows. Copying production to staging would violate both data minimisation principles and likely the privacy policy you'll ship for the Play Store launch.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- SECTION 4: DOCKER + DEPLOY PIPELINE -->
+<div class="section">
+  <h2>4 · Docker + deployment pipeline</h2>
+
+  <h3><code>docker-entrypoint.sh</code> — the first thing Render runs</h3>
+  <div class="arch">#!/usr/bin/env bash
+set -e
+
+1. Parse DATABASE_URL into host/port/user/db
+   (handles postgresql:// and postgresql+asyncpg://)
+   Strips query params (Neon appends ?sslmode=require etc.)
+
+2. Wait for DB:
+     for i in 1..30:
+       pg_isready -h $DB_HOST -p $DB_PORT
+       sleep 2
+     On a fresh Render deploy, tries localhost:5432 first — this is
+     the dev fallback and WILL fail 30 times before falling through
+     to the Neon URL. Harmless; expected.
+
+3. alembic upgrade head
+     Idempotent. Applies any new migrations; skips already-applied.
+
+4. exec "$@"
+     Which resolves to:
+     gunicorn -k uvicorn.workers.UvicornWorker -w 4 \
+              --bind 0.0.0.0:$PORT app.main:app</div>
+
+  <h3>Alembic migration chain</h3>
+  <table>
+    <thead><tr><th>#</th><th>Revision</th><th>What it adds</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><code>20260117_000000_initial</code></td><td>Initial schema: users, categories, items, orders, order_items, refresh_tokens, activity_logs</td></tr>
+      <tr><td>2</td><td><code>20260124_add_username</code></td><td><code>users.username</code> (unique, nullable)</td></tr>
+      <tr><td>3</td><td><code>20260125_add_email_verification</code></td><td>Verification columns on users</td></tr>
+      <tr><td>4</td><td><code>20260406_add_version_audit_log_quantity_check</code></td><td>OCC <code>version</code> column, <code>audit_logs</code> table, CHECK(quantity ≥ 0)</td></tr>
+      <tr><td>5</td><td><code>20260419_add_account_deletion_token_fields</code></td><td>PR #13 deletion tokens on users</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Deploy trigger path</h3>
+  <div class="arch">merge PR → main
+     │
+     ▼
+GitHub Actions: ci.yml (push trigger)
+     │
+     ├── test-backend   (ruff + mypy + pytest)
+     ├── test-frontend  (tsc + eslint + expo-doctor)
+     ├── security-scan  (Trivy CRITICAL+HIGH)
+     │   ↓ all green
+     ▼
+deploy-backend job
+     │
+     └── POST $RENDER_DEPLOY_HOOK   (both services listen)
+                    │
+                    ▼
+       Render: pull image → docker-entrypoint.sh → gunicorn boot
+                    │
+                    ▼
+       Health check: GET /health → 200
+                    │
+                    ▼
+       Traffic shifted from old workers to new</div>
+</div>
+
+<hr>
+
+<!-- SECTION 5: KNOWN QUIRKS -->
+<div class="section">
+  <h2>5 · Known quirks &amp; gotchas</h2>
+
+  <div class="callout info">
+    <span class="callout-label">Quirk 1 · localhost:5432 failures on Render</span>
+    <p><code>docker-entrypoint.sh</code>'s dev fallback tries localhost first. Render logs show ~30 failed attempts in the first minute of every deploy. This is not a bug — it's the script probing the dev path before using <code>DATABASE_URL</code>. Ignore.</p>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-label">Quirk 2 · "Your branch is 2 commits behind main"</span>
+    <p>Merge commits on <code>main</code> tick every open PR up by 1. Unless you have actual conflicts, this count is cosmetic. Rebase only when needed.</p>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-label">Quirk 3 · Render free-tier cold starts</span>
+    <p>15 min idle → sleep. First request after sleep: 30–60 s to wake. Mitigate with UptimeRobot pinging <code>/health</code> every 14 min, or upgrade tier.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-label">Quirk 4 · EXPO_PUBLIC_API_URL is baked, not runtime</span>
+    <p>A "staging APK" and a "production AAB" are two separate binaries. You cannot toggle. Changing the Render URL in <code>eas.json</code> then shipping an app update requires a new build for each environment.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-label">Quirk 5 · Both Render services auto-deploy from main</span>
+    <p>There is no "deploy to staging first, soak, then production" today. Both services watch <code>main</code> and get the same code at the same time. If you need time separation, that's Strategy C in the deployment strategy doc — needs a <code>staging</code> long-lived branch.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-label">Quirk 6 · REQUIRE_EMAIL_VERIFICATION true on staging</span>
+    <p>Historical docs claimed staging had email verification off. It does not — both Render services set this to <code>true</code>. If registration-without-verification behaviour is what you want for quick testing, run locally (<code>REQUIRE_EMAIL_VERIFICATION=False</code>) instead of spinning up staging accounts.</p>
+  </div>
+
+  <div class="callout danger">
+    <span class="callout-label">Quirk 7 · Render shell migrations on a bad branch</span>
+    <p>Running <code>alembic upgrade head</code> manually on Render shell when the code is pre-migration will happily apply the migration, potentially leaving the DB ahead of the code. Always let <code>docker-entrypoint.sh</code> run migrations on deploy — don't trigger them by hand unless you're recovering from a failure.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- SECTION 6: 12-FACTOR SUMMARY -->
+<div class="section">
+  <h2>6 · In one sentence</h2>
+  <p>CareKosh is a 12-factor app: the same immutable Docker image runs in every environment; all environment-specific behaviour is controlled by env vars; configuration is validated at startup; data never crosses environments; deploys are triggered by <code>git push</code> and mediated by a deploy hook; rollbacks are a button in the Render UI.</p>
+  <div class="callout success">
+    <span class="callout-label">What this buys</span>
+    <p>Deterministic behaviour. If staging works and production breaks, the delta is always one of: env vars, DB state, or email provider state — never "staging has a different build."</p>
+  </div>
+</div>
+
+<div class="footer">
+  CareKosh · Environment Architecture · April 2026 · PRs #4–#13
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh — System Architecture Diagrams</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0e1a;
+  --panel:#0f1524;
+  --panel2:#131a2e;
+  --border:#1f2942;
+  --border2:#2a3654;
+  --text:#e4e8f2;
+  --text2:#a8b0c4;
+  --muted:#6b7490;
+  --teal:#5eead4;
+  --teal-dim:#2dd4bf;
+  --teal-bg:#0d2626;
+  --amber:#d4a574;
+  --amber-bg:#1c1810;
+  --rose:#f87171;
+  --rose-bg:#1c1010;
+  --violet:#a78bfa;
+  --violet-bg:#18142a;
+  --code-bg:#0c1220;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.7;font-size:15px;-webkit-font-smoothing:antialiased}
+.page{max-width:960px;margin:0 auto;padding:48px 28px 100px}
+
+/* Cover */
+.cover{text-align:center;padding:60px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px}
+.cover .eyebrow{font-family:'Sora',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--teal);margin-bottom:18px}
+.cover h1{font-family:'Cormorant Garamond',serif;font-size:3.2rem;font-weight:600;letter-spacing:-.02em;line-height:1.05;margin-bottom:10px}
+.cover h1 em{font-style:italic;color:var(--teal);font-weight:700}
+.cover .sub{color:var(--text2);font-size:1rem;max-width:600px;margin:0 auto 12px}
+.cover .meta{color:var(--muted);font-size:.78rem;letter-spacing:.08em}
+
+/* TOC */
+.toc{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:28px 32px;margin-bottom:56px}
+.toc h2{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);margin-bottom:18px}
+.toc ol{list-style:none;padding:0;counter-reset:diag}
+.toc li{counter-increment:diag;border-bottom:1px solid var(--border);padding:14px 0}
+.toc li:last-child{border-bottom:none;padding-bottom:0}
+.toc li:first-child{padding-top:0}
+.toc a{display:flex;align-items:baseline;gap:16px;text-decoration:none;color:var(--text)}
+.toc a::before{content:counter(diag,decimal-leading-zero);font-family:'JetBrains Mono',monospace;font-size:.8rem;font-weight:600;color:var(--teal);flex-shrink:0}
+.toc a .title{font-family:'Sora',sans-serif;font-weight:700;font-size:1rem}
+.toc a .desc{color:var(--muted);font-size:.82rem;margin-left:auto;text-align:right}
+.toc a:hover .title{color:var(--teal)}
+@media(max-width:640px){.toc a{flex-wrap:wrap}.toc a .desc{margin-left:38px;text-align:left;width:100%;margin-top:4px}}
+
+/* Diagram section */
+.diagram{margin-bottom:80px;scroll-margin-top:20px}
+.diag-header{border-top:2px solid var(--teal);padding-top:24px;margin-bottom:24px}
+.diag-num{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:700;color:var(--teal);background:var(--teal-bg);padding:3px 10px;border-radius:4px;margin-bottom:10px;letter-spacing:.08em}
+.diag-header h2{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:600;letter-spacing:-.01em;line-height:1.1;margin-bottom:8px}
+.diag-header h2 em{font-style:italic;color:var(--teal);font-weight:700}
+.diag-header p{color:var(--text2);font-size:.95rem;max-width:700px}
+
+.svg-wrap{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:auto;margin:20px 0;padding:24px}
+.svg-wrap svg{display:block;width:100%;height:auto;min-width:600px}
+
+/* Callout */
+.callout{border-radius:10px;padding:16px 20px;margin:20px 0;border-left:3px solid}
+.callout-label{font-family:'Sora',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;display:block}
+.callout p{font-size:.9rem;color:var(--text2);margin-bottom:6px}.callout p:last-child{margin-bottom:0}
+.callout.teal{background:var(--teal-bg);border-color:var(--teal)}.callout.teal .callout-label{color:var(--teal)}
+.callout.amber{background:var(--amber-bg);border-color:var(--amber)}.callout.amber .callout-label{color:var(--amber)}
+.callout.rose{background:var(--rose-bg);border-color:var(--rose)}.callout.rose .callout-label{color:var(--rose)}
+.callout.violet{background:var(--violet-bg);border-color:var(--violet)}.callout.violet .callout-label{color:var(--violet)}
+
+/* Compare boxes (before/after) */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+.compare-card{border-radius:10px;padding:16px 20px;border:1px solid}
+.compare-card h4{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+.compare-card p,.compare-card li{font-size:.86rem;color:var(--text2)}
+.compare-card ul{list-style:none;padding:0}
+.compare-card li{padding:3px 0}
+.compare-card.bad{background:var(--rose-bg);border-color:var(--rose)}.compare-card.bad h4{color:var(--rose)}
+.compare-card.good{background:var(--teal-bg);border-color:var(--teal)}.compare-card.good h4{color:var(--teal)}
+@media(max-width:640px){.compare{grid-template-columns:1fr}}
+
+/* Table */
+table{width:100%;border-collapse:collapse;margin:18px 0;font-size:.85rem;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+th{text-align:left;font-family:'Sora',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);padding:10px 14px;background:var(--panel2);border-bottom:1px solid var(--border)}
+td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text2)}
+td:first-child{color:var(--text);font-weight:500}
+tr:last-child td{border-bottom:none}
+
+/* Code */
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--code-bg);padding:2px 6px;border-radius:4px;color:var(--teal)}
+
+/* Legend */
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;padding:12px 16px;background:var(--panel2);border-radius:8px;font-size:.78rem}
+.legend-item{display:flex;align-items:center;gap:6px;color:var(--text2)}
+.legend-swatch{width:14px;height:14px;border-radius:3px;flex-shrink:0}
+
+/* PR list */
+.pr-list{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin:28px 0}
+.pr-list h3{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);margin-bottom:16px}
+.pr-list ul{list-style:none;padding:0}
+.pr-list li{padding:8px 0;border-bottom:1px solid var(--border);display:grid;grid-template-columns:60px 1fr;gap:14px;font-size:.86rem}
+.pr-list li:last-child{border-bottom:none}
+.pr-list .pr-num{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--teal)}
+.pr-list .pr-what{color:var(--text2)}
+
+.footer{text-align:center;padding:36px 0 0;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;margin-top:60px}
+.footer em{color:var(--teal);font-style:normal}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- COVER -->
+<div class="cover">
+  <div class="eyebrow">System Architecture · v2.0</div>
+  <h1>CareKosh<br><em>Architecture Diagrams</em></h1>
+  <p class="sub">Five diagrams that together document how a server-first home-ICU inventory app is wired. Written after PR #13, with zero legacy offline-first residue.</p>
+  <p class="meta">Home ICU Inventory · React Native + FastAPI + PostgreSQL · April 2026</p>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#d1"><span class="title">Complete System Architecture</span><span class="desc">Server-first · TanStack Query · OCC</span></a></li>
+    <li><a href="#d2"><span class="title">Auth &amp; Account Lifecycle</span><span class="desc">Register → verify → refresh → delete</span></a></li>
+    <li><a href="#d3"><span class="title">CI/CD &amp; Deployment Pipeline</span><span class="desc">GitHub Actions → Render → EAS</span></a></li>
+    <li><a href="#d4"><span class="title">Data Model &amp; Integrity</span><span class="desc">Schema · OCC · Audit log · CASCADE</span></a></li>
+    <li><a href="#d5"><span class="title">Mobile Screen Map</span><span class="desc">Expo Router file-based navigation</span></a></li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     DIAGRAM 1 · SYSTEM ARCHITECTURE
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="diagram" id="d1">
+  <div class="diag-header">
+    <span class="diag-num">Diagram 01 / 05</span>
+    <h2>Complete <em>System Architecture</em></h2>
+    <p>Three tiers — mobile, backend API, Postgres — joined by a single invariant: the server is the source of truth. Local state is UI-only; server state is TanStack Query.</p>
+  </div>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 960 900" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, sans-serif">
+      <defs>
+        <marker id="arrow-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5eead4"/>
+        </marker>
+        <marker id="arrow-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#d4a574"/>
+        </marker>
+      </defs>
+
+      <!-- MOBILE TIER -->
+      <rect x="30" y="30" width="900" height="260" rx="12" fill="#0f1524" stroke="#2a3654" stroke-width="1.5"/>
+      <text x="50" y="58" fill="#5eead4" font-weight="700" font-size="11" letter-spacing="1.5">TIER 1 · MOBILE APP</text>
+      <text x="50" y="76" fill="#a8b0c4" font-size="12">React Native + Expo SDK 54 · TypeScript · Pixel 9 Pro XL reference</text>
+
+      <!-- Expo Router box -->
+      <rect x="60" y="100" width="230" height="160" rx="8" fill="#131a2e" stroke="#2dd4bf" stroke-width="1.5"/>
+      <text x="75" y="124" fill="#5eead4" font-weight="700" font-size="12">Expo Router (file-based)</text>
+      <text x="75" y="146" fill="#e4e8f2" font-size="11" font-family="JetBrains Mono">app/(auth)/</text>
+      <text x="75" y="164" fill="#e4e8f2" font-size="11" font-family="JetBrains Mono">app/(tabs)/</text>
+      <text x="75" y="182" fill="#e4e8f2" font-size="11" font-family="JetBrains Mono">app/profile.tsx</text>
+      <text x="75" y="200" fill="#e4e8f2" font-size="11" font-family="JetBrains Mono">app/builder.tsx</text>
+      <text x="75" y="218" fill="#e4e8f2" font-size="11" font-family="JetBrains Mono">app/item/[id].tsx</text>
+      <text x="75" y="236" fill="#e4e8f2" font-size="11" font-family="JetBrains Mono">app/order/create.tsx</text>
+
+      <!-- TanStack Query box -->
+      <rect x="315" y="100" width="330" height="160" rx="8" fill="#131a2e" stroke="#5eead4" stroke-width="2"/>
+      <text x="330" y="124" fill="#5eead4" font-weight="700" font-size="12">TanStack Query — ALL server state</text>
+      <text x="330" y="148" fill="#a8b0c4" font-size="11">useQuery → GET</text>
+      <text x="330" y="166" fill="#a8b0c4" font-size="11">useMutation → POST / PUT / PATCH / DELETE</text>
+      <text x="330" y="184" fill="#a8b0c4" font-size="11">queryClient.invalidateQueries</text>
+      <text x="330" y="202" fill="#a8b0c4" font-size="11">Auto-refetch on focus / reconnect</text>
+      <text x="330" y="226" fill="#d4a574" font-size="11" font-style="italic">409 Conflict handler → refetch → retry</text>
+      <text x="330" y="244" fill="#d4a574" font-size="11" font-style="italic">hooks/useServerData.ts · useServerMutations.ts</text>
+
+      <!-- Zustand box -->
+      <rect x="670" y="100" width="230" height="160" rx="8" fill="#131a2e" stroke="#2a3654" stroke-width="1.5"/>
+      <text x="685" y="124" fill="#d4a574" font-weight="700" font-size="12">Zustand — UI only, 61 lines</text>
+      <text x="685" y="148" fill="#a8b0c4" font-size="11">useAppStore.ts</text>
+      <text x="685" y="166" fill="#a8b0c4" font-size="11">  isInitialized</text>
+      <text x="685" y="190" fill="#a8b0c4" font-size="11">useAuthStore.ts (385)</text>
+      <text x="685" y="208" fill="#a8b0c4" font-size="11">  user, isAuthenticated</text>
+      <text x="685" y="232" fill="#a8b0c4" font-size="11">expo-secure-store:</text>
+      <text x="685" y="250" fill="#5eead4" font-size="11">  JWT access + refresh</text>
+
+      <!-- HTTPS arrow down from mobile -->
+      <line x1="480" y1="290" x2="480" y2="330" stroke="#5eead4" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      <text x="490" y="315" fill="#5eead4" font-size="11" font-family="JetBrains Mono">HTTPS / JSON</text>
+
+      <!-- BACKEND TIER -->
+      <rect x="30" y="340" width="900" height="310" rx="12" fill="#0f1524" stroke="#2a3654" stroke-width="1.5"/>
+      <text x="50" y="368" fill="#5eead4" font-weight="700" font-size="11" letter-spacing="1.5">TIER 2 · BACKEND API</text>
+      <text x="50" y="386" fill="#a8b0c4" font-size="12">Render · Singapore · Python 3.12 + FastAPI 0.115 · Docker multi-stage · Gunicorn + 4 Uvicorn workers</text>
+
+      <!-- Auth router -->
+      <rect x="60" y="410" width="210" height="210" rx="8" fill="#131a2e" stroke="#2a3654" stroke-width="1.5"/>
+      <text x="75" y="434" fill="#5eead4" font-weight="700" font-size="12">Auth Router</text>
+      <text x="75" y="456" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">POST /register (3/h)</text>
+      <text x="75" y="474" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">POST /login (5/m)</text>
+      <text x="75" y="492" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">POST /refresh (rotate)</text>
+      <text x="75" y="510" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">GET /verify-email</text>
+      <text x="75" y="528" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">POST /change-password</text>
+      <text x="75" y="546" fill="#d4a574" font-size="11" font-family="JetBrains Mono">DELETE /me (PR #13)</text>
+      <text x="75" y="564" fill="#d4a574" font-size="11" font-family="JetBrains Mono">GET /confirm-delete/{t}</text>
+      <text x="75" y="582" fill="#d4a574" font-size="11" font-family="JetBrains Mono">POST /cancel-delete</text>
+      <text x="75" y="604" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">GET /me, PATCH /me</text>
+
+      <!-- CRUD router -->
+      <rect x="295" y="410" width="210" height="210" rx="8" fill="#131a2e" stroke="#2a3654" stroke-width="1.5"/>
+      <text x="310" y="434" fill="#5eead4" font-weight="700" font-size="12">CRUD + Business</text>
+      <text x="310" y="456" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">/items (incl. OCC)</text>
+      <text x="310" y="474" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">  PUT returns 409</text>
+      <text x="310" y="492" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">  if version stale</text>
+      <text x="310" y="510" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">/categories</text>
+      <text x="310" y="528" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">/orders</text>
+      <text x="310" y="546" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">  POST /{id}/apply</text>
+      <text x="310" y="564" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">  (atomic txn)</text>
+      <text x="310" y="582" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">/activities (read)</text>
+      <text x="310" y="604" fill="#6b7490" font-size="10.5" font-style="italic">/sync/* — legacy, unused</text>
+
+      <!-- Security -->
+      <rect x="530" y="410" width="200" height="210" rx="8" fill="#131a2e" stroke="#2a3654" stroke-width="1.5"/>
+      <text x="545" y="434" fill="#5eead4" font-weight="700" font-size="12">Security Middleware</text>
+      <text x="545" y="456" fill="#a8b0c4" font-size="11">Argon2 password hash</text>
+      <text x="545" y="474" fill="#a8b0c4" font-size="11">JWT HS256 + rotation</text>
+      <text x="545" y="492" fill="#a8b0c4" font-size="11">slowapi rate limit</text>
+      <text x="545" y="510" fill="#a8b0c4" font-size="11">CORS whitelist (prod)</text>
+      <text x="545" y="528" fill="#a8b0c4" font-size="11">Config validators:</text>
+      <text x="545" y="546" fill="#a8b0c4" font-size="10.5">· SECRET_KEY ≥ 32 chars</text>
+      <text x="545" y="562" fill="#a8b0c4" font-size="10.5">· CORS_ORIGINS ≠ "*"</text>
+      <text x="545" y="578" fill="#a8b0c4" font-size="10.5">· FRONTEND_URL set</text>
+      <text x="545" y="594" fill="#d4a574" font-size="11" font-style="italic">(PR #12 hardening)</text>
+
+      <!-- Integrity -->
+      <rect x="755" y="410" width="145" height="210" rx="8" fill="#131a2e" stroke="#d4a574" stroke-width="1.5"/>
+      <text x="770" y="434" fill="#d4a574" font-weight="700" font-size="12">Integrity</text>
+      <text x="770" y="456" fill="#a8b0c4" font-size="10.5">OCC version col</text>
+      <text x="770" y="472" fill="#a8b0c4" font-size="10.5">(items)</text>
+      <text x="770" y="492" fill="#a8b0c4" font-size="10.5">Audit log JSONB</text>
+      <text x="770" y="508" fill="#a8b0c4" font-size="10.5">before/after</text>
+      <text x="770" y="528" fill="#a8b0c4" font-size="10.5">CHECK quantity</text>
+      <text x="770" y="544" fill="#a8b0c4" font-size="10.5">≥ 0</text>
+      <text x="770" y="564" fill="#a8b0c4" font-size="10.5">CASCADE on</text>
+      <text x="770" y="580" fill="#a8b0c4" font-size="10.5">user delete</text>
+      <text x="770" y="600" fill="#a8b0c4" font-size="10.5">Alembic 0001→0005</text>
+
+      <!-- Arrow down to DB -->
+      <line x1="480" y1="650" x2="480" y2="690" stroke="#5eead4" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      <text x="490" y="675" fill="#5eead4" font-size="11" font-family="JetBrains Mono">async SQLAlchemy 2.0 · asyncpg</text>
+
+      <!-- DATABASE TIER -->
+      <rect x="30" y="700" width="900" height="180" rx="12" fill="#0f1524" stroke="#2a3654" stroke-width="1.5"/>
+      <text x="50" y="728" fill="#5eead4" font-weight="700" font-size="11" letter-spacing="1.5">TIER 3 · POSTGRESQL ON NEON</text>
+      <text x="50" y="746" fill="#a8b0c4" font-size="12">Singapore · managed · two branches, one engine</text>
+
+      <!-- Production DB -->
+      <rect x="60" y="770" width="415" height="90" rx="8" fill="#131a2e" stroke="#5eead4" stroke-width="2"/>
+      <text x="75" y="794" fill="#5eead4" font-weight="700" font-size="12">Production</text>
+      <text x="75" y="814" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">Neon branch: neondb</text>
+      <text x="75" y="832" fill="#a8b0c4" font-size="11">Real user data · never wiped</text>
+      <text x="75" y="850" fill="#a8b0c4" font-size="11">vitaltrack-api.onrender.com</text>
+
+      <!-- Staging DB -->
+      <rect x="495" y="770" width="405" height="90" rx="8" fill="#131a2e" stroke="#d4a574" stroke-width="1.5"/>
+      <text x="510" y="794" fill="#d4a574" font-weight="700" font-size="12">Staging</text>
+      <text x="510" y="814" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">Neon branch: vitaltrack_staging</text>
+      <text x="510" y="832" fill="#a8b0c4" font-size="11">Test data only · safe to wipe</text>
+      <text x="510" y="850" fill="#a8b0c4" font-size="11">vitaltrack-api-staging.onrender.com</text>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-swatch" style="background:#5eead4"></span> Primary flow</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#d4a574"></span> PR #12 / #13 addition</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#2a3654;border:1px solid #5eead4"></span> Standard component</div>
+  </div>
+
+  <div class="compare">
+    <div class="compare-card bad">
+      <h4>Before — Offline-first (pre-PR #4)</h4>
+      <ul>
+        <li>Zustand (1,100 lines) + <code>persist</code> middleware</li>
+        <li>AsyncStorage holding inventory rows</li>
+        <li><code>services/sync.ts</code> — 611 lines of push/pull/full</li>
+        <li>Rehydration race: stale local overwrote server → data loss</li>
+        <li>Merge conflicts on life-critical stock counts</li>
+      </ul>
+    </div>
+    <div class="compare-card good">
+      <h4>After — Server-first (PRs #4–#8)</h4>
+      <ul>
+        <li>TanStack Query owns all server state</li>
+        <li>Zustand 61 lines — UI-only</li>
+        <li><code>sync.ts</code> deleted; backend <code>/sync/*</code> unused</li>
+        <li>OCC <code>version</code> column + HTTP 409</li>
+        <li>Single writer wins; loser re-fetches and retries</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout teal">
+    <span class="callout-label">Why server-first for medical inventory</span>
+    <p>Offline editing of life-critical stock counts creates merge conflicts with real-world consequences — two caregivers silently overwriting each other's updates can result in running out of oxygen. Server-first eliminates the whole conflict class; OCC handles the last remaining race.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     DIAGRAM 2 · AUTH LIFECYCLE
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="diagram" id="d2">
+  <div class="diag-header">
+    <span class="diag-num">Diagram 02 / 05</span>
+    <h2>Auth &amp; <em>Account Lifecycle</em></h2>
+    <p>Six flows — register, login, refresh, password change, account delete, cancel delete. Every refresh rotates; every password change revokes all sessions; every deletion cascades.</p>
+  </div>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 960 920" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, sans-serif">
+      <defs>
+        <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5eead4"/>
+        </marker>
+        <marker id="a2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#d4a574"/>
+        </marker>
+        <marker id="a2r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#f87171"/>
+        </marker>
+      </defs>
+
+      <!-- FLOW 1: REGISTER -->
+      <rect x="20" y="20" width="440" height="200" rx="10" fill="#0f1524" stroke="#2a3654"/>
+      <text x="36" y="44" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1">1 · REGISTRATION</text>
+      <rect x="36" y="58" width="160" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
+      <text x="116" y="79" fill="#e4e8f2" font-size="11" text-anchor="middle">User (mobile)</text>
+      <line x1="196" y1="75" x2="276" y2="75" stroke="#5eead4" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="236" y="70" fill="#5eead4" font-size="9.5" text-anchor="middle" font-family="JetBrains Mono">POST /register</text>
+      <rect x="276" y="58" width="168" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
+      <text x="360" y="79" fill="#e4e8f2" font-size="11" text-anchor="middle">Server</text>
+      <text x="36" y="118" fill="#a8b0c4" font-size="10.5">1. email REQUIRED (PR #12), Argon2 hash</text>
+      <text x="36" y="134" fill="#a8b0c4" font-size="10.5">2. INSERT user (is_verified=false)</text>
+      <text x="36" y="150" fill="#a8b0c4" font-size="10.5">3. Send verification email via Brevo (bg)</text>
+      <text x="36" y="166" fill="#a8b0c4" font-size="10.5">4. Return access + refresh tokens</text>
+      <text x="36" y="186" fill="#d4a574" font-size="10.5">→ user clicks link → GET /verify-email/{t}</text>
+      <text x="36" y="202" fill="#d4a574" font-size="10.5">→ SHA-256 compare → set is_verified=true</text>
+
+      <!-- FLOW 2: LOGIN -->
+      <rect x="500" y="20" width="440" height="200" rx="10" fill="#0f1524" stroke="#2a3654"/>
+      <text x="516" y="44" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1">2 · LOGIN</text>
+      <rect x="516" y="58" width="160" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
+      <text x="596" y="79" fill="#e4e8f2" font-size="11" text-anchor="middle">User (mobile)</text>
+      <line x1="676" y1="75" x2="756" y2="75" stroke="#5eead4" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="716" y="70" fill="#5eead4" font-size="9.5" text-anchor="middle" font-family="JetBrains Mono">POST /login</text>
+      <rect x="756" y="58" width="168" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
+      <text x="840" y="79" fill="#e4e8f2" font-size="11" text-anchor="middle">Server</text>
+      <text x="516" y="118" fill="#a8b0c4" font-size="10.5">1. identifier = email OR username</text>
+      <text x="516" y="134" fill="#a8b0c4" font-size="10.5">2. Argon2 verify</text>
+      <text x="516" y="150" fill="#a8b0c4" font-size="10.5">3. If REQUIRE_EMAIL_VERIFICATION=true</text>
+      <text x="530" y="166" fill="#a8b0c4" font-size="10.5">and email exists → must be verified</text>
+      <text x="516" y="186" fill="#a8b0c4" font-size="10.5">4. Generate access (30m) + refresh (30d)</text>
+      <text x="516" y="202" fill="#5eead4" font-size="10.5">→ refresh stored in SecureStore on device</text>
+
+      <!-- FLOW 3: REFRESH (with rotation) -->
+      <rect x="20" y="240" width="440" height="200" rx="10" fill="#0f1524" stroke="#2a3654"/>
+      <text x="36" y="264" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1">3 · TOKEN REFRESH (rotation)</text>
+      <rect x="36" y="278" width="160" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
+      <text x="116" y="299" fill="#e4e8f2" font-size="11" text-anchor="middle">Mobile (on 401)</text>
+      <line x1="196" y1="295" x2="276" y2="295" stroke="#5eead4" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="236" y="290" fill="#5eead4" font-size="9.5" text-anchor="middle" font-family="JetBrains Mono">POST /refresh</text>
+      <rect x="276" y="278" width="168" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
+      <text x="360" y="299" fill="#e4e8f2" font-size="11" text-anchor="middle">Server</text>
+      <text x="36" y="338" fill="#a8b0c4" font-size="10.5">1. Lookup refresh_token hash in DB</text>
+      <text x="36" y="354" fill="#a8b0c4" font-size="10.5">2. DELETE old row (one-time use)</text>
+      <text x="36" y="370" fill="#a8b0c4" font-size="10.5">3. INSERT new refresh_token row</text>
+      <text x="36" y="386" fill="#a8b0c4" font-size="10.5">4. Return new access + new refresh</text>
+      <text x="36" y="406" fill="#f87171" font-size="10.5">Replay protection: old token → 401 forever</text>
+      <text x="36" y="422" fill="#a8b0c4" font-size="10.5">Mobile always writes new refresh to SecureStore</text>
+
+      <!-- FLOW 4: PASSWORD CHANGE -->
+      <rect x="500" y="240" width="440" height="200" rx="10" fill="#0f1524" stroke="#2a3654"/>
+      <text x="516" y="264" fill="#f87171" font-weight="700" font-size="12" letter-spacing="1">4 · PASSWORD CHANGE → SESSION REVOKE</text>
+      <rect x="516" y="278" width="160" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
+      <text x="596" y="299" fill="#e4e8f2" font-size="11" text-anchor="middle">User</text>
+      <line x1="676" y1="295" x2="756" y2="295" stroke="#f87171" stroke-width="1.5" marker-end="url(#a2r)"/>
+      <text x="716" y="290" fill="#f87171" font-size="9.5" text-anchor="middle" font-family="JetBrains Mono">POST /change-password</text>
+      <rect x="756" y="278" width="168" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
+      <text x="840" y="299" fill="#e4e8f2" font-size="11" text-anchor="middle">Server</text>
+      <text x="516" y="338" fill="#a8b0c4" font-size="10.5">1. Verify old password (Argon2)</text>
+      <text x="516" y="354" fill="#a8b0c4" font-size="10.5">2. Hash new password (Argon2)</text>
+      <text x="516" y="370" fill="#f87171" font-size="10.5">3. DELETE ALL refresh_tokens FOR user</text>
+      <text x="516" y="386" fill="#a8b0c4" font-size="10.5">4. Current access token expires naturally (≤30m)</text>
+      <text x="516" y="406" fill="#a8b0c4" font-size="10.5">→ Other devices: next /refresh fails → logout</text>
+      <text x="516" y="422" fill="#d4a574" font-size="10.5">Same pattern for /reset-password (PR #12)</text>
+
+      <!-- FLOW 5: ACCOUNT DELETION -->
+      <rect x="20" y="460" width="920" height="220" rx="10" fill="#0f1524" stroke="#d4a574"/>
+      <text x="36" y="484" fill="#d4a574" font-weight="700" font-size="12" letter-spacing="1">5 · ACCOUNT DELETION (two-step email confirmed · PR #13)</text>
+
+      <!-- step A -->
+      <rect x="36" y="500" width="400" height="80" rx="8" fill="#131a2e" stroke="#d4a574"/>
+      <text x="50" y="522" fill="#d4a574" font-weight="700" font-size="11">STEP A — Request</text>
+      <text x="50" y="544" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">DELETE /auth/me</text>
+      <text x="50" y="560" fill="#a8b0c4" font-size="10.5">→ generate raw token · store SHA-256 · 24h TTL</text>
+      <text x="50" y="574" fill="#a8b0c4" font-size="10.5">→ Brevo: confirmation email (bg task)</text>
+
+      <!-- arrow -->
+      <line x1="445" y1="540" x2="510" y2="540" stroke="#d4a574" stroke-width="2" marker-end="url(#a2a)"/>
+      <text x="477" y="533" fill="#d4a574" font-size="10" text-anchor="middle">email link</text>
+
+      <!-- step B -->
+      <rect x="520" y="500" width="408" height="80" rx="8" fill="#131a2e" stroke="#f87171"/>
+      <text x="534" y="522" fill="#f87171" font-weight="700" font-size="11">STEP B — Confirm (user clicks link)</text>
+      <text x="534" y="544" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">GET /auth/confirm-delete/{raw_token}</text>
+      <text x="534" y="560" fill="#a8b0c4" font-size="10.5">→ SHA-256 compare · check not expired</text>
+      <text x="534" y="574" fill="#f87171" font-size="10.5">→ DELETE FROM users → CASCADE unwinds</text>
+
+      <!-- cascade boxes -->
+      <text x="36" y="608" fill="#a8b0c4" font-size="10.5">Cascade on user_id FK (CASCADE + ORM delete-orphan):</text>
+      <rect x="36" y="618" width="130" height="26" rx="4" fill="#131a2e" stroke="#2a3654"/>
+      <text x="101" y="635" fill="#a8b0c4" font-size="10.5" text-anchor="middle">categories</text>
+      <rect x="172" y="618" width="130" height="26" rx="4" fill="#131a2e" stroke="#2a3654"/>
+      <text x="237" y="635" fill="#a8b0c4" font-size="10.5" text-anchor="middle">items</text>
+      <rect x="308" y="618" width="130" height="26" rx="4" fill="#131a2e" stroke="#2a3654"/>
+      <text x="373" y="635" fill="#a8b0c4" font-size="10.5" text-anchor="middle">orders → order_items</text>
+      <rect x="444" y="618" width="130" height="26" rx="4" fill="#131a2e" stroke="#2a3654"/>
+      <text x="509" y="635" fill="#a8b0c4" font-size="10.5" text-anchor="middle">activity_logs</text>
+      <rect x="580" y="618" width="130" height="26" rx="4" fill="#131a2e" stroke="#2a3654"/>
+      <text x="645" y="635" fill="#a8b0c4" font-size="10.5" text-anchor="middle">refresh_tokens</text>
+      <rect x="716" y="618" width="130" height="26" rx="4" fill="#131a2e" stroke="#2a3654"/>
+      <text x="781" y="635" fill="#a8b0c4" font-size="10.5" text-anchor="middle">audit_logs</text>
+      <text x="36" y="665" fill="#5eead4" font-size="10.5">Next mobile API call → 401 → auth guard → redirect to login screen</text>
+
+      <!-- FLOW 6: CANCEL DELETION -->
+      <rect x="20" y="700" width="440" height="130" rx="10" fill="#0f1524" stroke="#2a3654"/>
+      <text x="36" y="724" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1">6 · CANCEL DELETION</text>
+      <text x="36" y="748" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">POST /auth/cancel-delete</text>
+      <text x="36" y="768" fill="#a8b0c4" font-size="10.5">Must still be logged in (pre-confirmation)</text>
+      <text x="36" y="786" fill="#a8b0c4" font-size="10.5">UPDATE users SET deletion_token = NULL,</text>
+      <text x="50" y="802" fill="#a8b0c4" font-size="10.5">deletion_token_expires = NULL</text>
+      <text x="36" y="820" fill="#d4a574" font-size="10.5">Email link is now inert (hash cleared)</text>
+
+      <!-- Security callout -->
+      <rect x="500" y="700" width="440" height="130" rx="10" fill="#131a2e" stroke="#f87171"/>
+      <text x="520" y="724" fill="#f87171" font-weight="700" font-size="11" letter-spacing="1">SECURITY HARDENING (PR #12)</text>
+      <text x="520" y="746" fill="#a8b0c4" font-size="10.5">• SECRET_KEY validator blocks "CHANGE-THIS" in prod</text>
+      <text x="520" y="762" fill="#a8b0c4" font-size="10.5">• SECRET_KEY minimum 32 chars</text>
+      <text x="520" y="778" fill="#a8b0c4" font-size="10.5">• /resend-verification uniform response (no enum leak)</text>
+      <text x="520" y="794" fill="#a8b0c4" font-size="10.5">• CORS_ORIGINS validator rejects "*" in prod</text>
+      <text x="520" y="810" fill="#a8b0c4" font-size="10.5">• FRONTEND_URL required in production config</text>
+      <text x="520" y="826" fill="#a8b0c4" font-size="10.5">• Email REQUIRED in UserRegister schema</text>
+
+      <!-- Legend -->
+      <rect x="20" y="854" width="920" height="50" rx="8" fill="#0f1524" stroke="#2a3654"/>
+      <circle cx="40" cy="880" r="6" fill="#5eead4"/><text x="54" y="884" fill="#a8b0c4" font-size="11">Normal flow</text>
+      <circle cx="170" cy="880" r="6" fill="#d4a574"/><text x="184" y="884" fill="#a8b0c4" font-size="11">Email / verification</text>
+      <circle cx="340" cy="880" r="6" fill="#f87171"/><text x="354" y="884" fill="#a8b0c4" font-size="11">Destructive (revoke / delete)</text>
+    </svg>
+  </div>
+
+  <div class="callout amber">
+    <span class="callout-label">Why two-step deletion</span>
+    <p>Google Play policy (and GDPR / DPDP Act) require full in-app account deletion. A single-click delete would be attractive for attackers with a stolen access token; a two-step flow that requires email access adds an out-of-band check. The raw token is emailed but never stored — the DB keeps only the SHA-256 hash.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     DIAGRAM 3 · CI/CD
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="diagram" id="d3">
+  <div class="diag-header">
+    <span class="diag-num">Diagram 03 / 05</span>
+    <h2>CI/CD &amp; <em>Deployment Pipeline</em></h2>
+    <p>GitHub Actions on PR and push. Render deploy hook on merge. EAS builds on demand. Production AAB job exists but is disabled pending Play Store launch.</p>
+  </div>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 960 760" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, sans-serif">
+      <defs>
+        <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5eead4"/>
+        </marker>
+        <marker id="a3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#d4a574"/>
+        </marker>
+      </defs>
+
+      <!-- trigger column -->
+      <rect x="20" y="20" width="200" height="720" rx="10" fill="#0f1524" stroke="#2a3654"/>
+      <text x="120" y="50" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1.5" text-anchor="middle">TRIGGERS</text>
+
+      <!-- T1 push feature -->
+      <rect x="36" y="76" width="168" height="62" rx="8" fill="#131a2e" stroke="#6b7490"/>
+      <text x="120" y="96" fill="#6b7490" font-size="11" font-weight="600" text-anchor="middle">push feature/*</text>
+      <text x="120" y="114" fill="#6b7490" font-size="10" text-anchor="middle">— nothing runs —</text>
+      <text x="120" y="130" fill="#6b7490" font-size="10" text-anchor="middle" font-style="italic">(not a CI trigger)</text>
+
+      <!-- T2 PR -->
+      <rect x="36" y="156" width="168" height="80" rx="8" fill="#131a2e" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="120" y="180" fill="#5eead4" font-size="11" font-weight="600" text-anchor="middle">open PR → main</text>
+      <text x="120" y="200" fill="#a8b0c4" font-size="10" text-anchor="middle">pull_request event</text>
+      <text x="120" y="218" fill="#a8b0c4" font-size="10" text-anchor="middle">runs CI</text>
+
+      <!-- T3 label -->
+      <rect x="36" y="254" width="168" height="80" rx="8" fill="#131a2e" stroke="#d4a574" stroke-width="1.5"/>
+      <text x="120" y="278" fill="#d4a574" font-size="11" font-weight="600" text-anchor="middle">+ label: build-apk</text>
+      <text x="120" y="298" fill="#a8b0c4" font-size="10" text-anchor="middle">enables build-preview</text>
+      <text x="120" y="316" fill="#a8b0c4" font-size="10" text-anchor="middle">EAS APK → staging</text>
+
+      <!-- T4 merge -->
+      <rect x="36" y="352" width="168" height="80" rx="8" fill="#131a2e" stroke="#5eead4" stroke-width="2"/>
+      <text x="120" y="376" fill="#5eead4" font-size="11" font-weight="700" text-anchor="middle">merge → main</text>
+      <text x="120" y="396" fill="#a8b0c4" font-size="10" text-anchor="middle">push event on main</text>
+      <text x="120" y="414" fill="#a8b0c4" font-size="10" text-anchor="middle">→ Render deploy</text>
+
+      <!-- T5 manual eas prod -->
+      <rect x="36" y="450" width="168" height="80" rx="8" fill="#131a2e" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="120" y="474" fill="#a78bfa" font-size="11" font-weight="600" text-anchor="middle">manual eas build</text>
+      <text x="120" y="494" fill="#a8b0c4" font-size="10" text-anchor="middle">--profile production</text>
+      <text x="120" y="512" fill="#a8b0c4" font-size="10" text-anchor="middle">produces AAB</text>
+
+      <!-- T6 workflow dispatch -->
+      <rect x="36" y="548" width="168" height="62" rx="8" fill="#131a2e" stroke="#6b7490"/>
+      <text x="120" y="572" fill="#6b7490" font-size="11" font-weight="600" text-anchor="middle">workflow_dispatch</text>
+      <text x="120" y="592" fill="#6b7490" font-size="10" text-anchor="middle">(manual CI run)</text>
+
+      <!-- arrows from triggers to CI column -->
+      <line x1="220" y1="196" x2="280" y2="196" stroke="#5eead4" stroke-width="1.5" marker-end="url(#a3)"/>
+      <line x1="220" y1="294" x2="280" y2="294" stroke="#d4a574" stroke-width="1.5" marker-end="url(#a3a)"/>
+      <line x1="220" y1="392" x2="280" y2="392" stroke="#5eead4" stroke-width="2" marker-end="url(#a3)"/>
+
+      <!-- CI column -->
+      <rect x="290" y="20" width="300" height="720" rx="10" fill="#0f1524" stroke="#2a3654"/>
+      <text x="440" y="50" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1.5" text-anchor="middle">CI — ci.yml (GitHub Actions)</text>
+
+      <rect x="310" y="76" width="260" height="50" rx="6" fill="#131a2e" stroke="#2a3654"/>
+      <text x="440" y="95" fill="#e4e8f2" font-size="11" text-anchor="middle" font-weight="600">test-backend</text>
+      <text x="440" y="113" fill="#a8b0c4" font-size="10" text-anchor="middle">pytest · ruff · mypy · postgres:16 svc</text>
+
+      <rect x="310" y="140" width="260" height="50" rx="6" fill="#131a2e" stroke="#2a3654"/>
+      <text x="440" y="159" fill="#e4e8f2" font-size="11" text-anchor="middle" font-weight="600">test-frontend</text>
+      <text x="440" y="177" fill="#a8b0c4" font-size="10" text-anchor="middle">tsc · eslint · expo-doctor</text>
+
+      <rect x="310" y="204" width="260" height="50" rx="6" fill="#131a2e" stroke="#2a3654"/>
+      <text x="440" y="223" fill="#e4e8f2" font-size="11" text-anchor="middle" font-weight="600">security-scan</text>
+      <text x="440" y="241" fill="#a8b0c4" font-size="10" text-anchor="middle">Trivy (CRITICAL + HIGH)</text>
+
+      <rect x="310" y="268" width="260" height="50" rx="6" fill="#131a2e" stroke="#5eead4"/>
+      <text x="440" y="287" fill="#5eead4" font-size="11" text-anchor="middle" font-weight="600">pr-check (merge gate)</text>
+      <text x="440" y="305" fill="#a8b0c4" font-size="10" text-anchor="middle">requires backend + frontend green</text>
+
+      <rect x="310" y="332" width="260" height="50" rx="6" fill="#131a2e" stroke="#d4a574"/>
+      <text x="440" y="351" fill="#d4a574" font-size="11" text-anchor="middle" font-weight="600">build-preview</text>
+      <text x="440" y="369" fill="#a8b0c4" font-size="10" text-anchor="middle">IF label == "build-apk" · EAS APK</text>
+
+      <rect x="310" y="396" width="260" height="50" rx="6" fill="#131a2e" stroke="#5eead4" stroke-width="2"/>
+      <text x="440" y="415" fill="#5eead4" font-size="11" text-anchor="middle" font-weight="600">deploy-backend</text>
+      <text x="440" y="433" fill="#a8b0c4" font-size="10" text-anchor="middle">push to main · POST Render hook</text>
+
+      <rect x="310" y="460" width="260" height="50" rx="6" fill="#131a2e" stroke="#f87171" stroke-dasharray="4,4"/>
+      <text x="440" y="479" fill="#f87171" font-size="11" text-anchor="middle" font-weight="600">build-production — DISABLED</text>
+      <text x="440" y="497" fill="#a8b0c4" font-size="10" text-anchor="middle" font-style="italic">if: false · flip on for Play Store launch</text>
+
+      <!-- arrows across -->
+      <line x1="590" y1="421" x2="660" y2="421" stroke="#5eead4" stroke-width="2" marker-end="url(#a3)"/>
+      <line x1="590" y1="357" x2="660" y2="630" stroke="#d4a574" stroke-width="1.5" marker-end="url(#a3a)"/>
+
+      <!-- outputs -->
+      <rect x="660" y="20" width="280" height="720" rx="10" fill="#0f1524" stroke="#2a3654"/>
+      <text x="800" y="50" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1.5" text-anchor="middle">OUTPUTS</text>
+
+      <rect x="680" y="76" width="240" height="200" rx="8" fill="#131a2e" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="800" y="100" fill="#5eead4" font-size="11" font-weight="700" text-anchor="middle">Render — both services</text>
+      <text x="800" y="122" fill="#a8b0c4" font-size="10" text-anchor="middle">watch main · auto-redeploy</text>
+      <line x1="700" y1="136" x2="900" y2="136" stroke="#2a3654"/>
+      <text x="694" y="158" fill="#e4e8f2" font-size="10.5">1. docker-entrypoint.sh</text>
+      <text x="694" y="174" fill="#a8b0c4" font-size="10">   parse DATABASE_URL</text>
+      <text x="694" y="190" fill="#a8b0c4" font-size="10">   pg_isready (30×)</text>
+      <text x="694" y="206" fill="#a8b0c4" font-size="10">   alembic upgrade head</text>
+      <text x="694" y="226" fill="#e4e8f2" font-size="10.5">2. gunicorn (4 workers)</text>
+      <text x="694" y="242" fill="#e4e8f2" font-size="10.5">3. /health → 200 → live</text>
+      <text x="694" y="262" fill="#d4a574" font-size="10" font-style="italic">localhost:5432 failures — harmless</text>
+
+      <rect x="680" y="296" width="240" height="150" rx="8" fill="#131a2e" stroke="#d4a574" stroke-width="1.5"/>
+      <text x="800" y="320" fill="#d4a574" font-size="11" font-weight="700" text-anchor="middle">EAS Preview APK</text>
+      <text x="800" y="340" fill="#a8b0c4" font-size="10" text-anchor="middle">channel: preview</text>
+      <text x="694" y="362" fill="#a8b0c4" font-size="10">Bakes in EXPO_PUBLIC_API_URL =</text>
+      <text x="694" y="378" fill="#5eead4" font-size="10" font-family="JetBrains Mono">vitaltrack-api-staging</text>
+      <text x="694" y="394" fill="#5eead4" font-size="10" font-family="JetBrains Mono">.onrender.com</text>
+      <text x="694" y="416" fill="#a8b0c4" font-size="10">Download → sideload → hits staging</text>
+      <text x="694" y="432" fill="#a8b0c4" font-size="10">Reviewer device: Pixel 9 Pro XL · A16</text>
+
+      <rect x="680" y="466" width="240" height="160" rx="8" fill="#131a2e" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="800" y="490" fill="#a78bfa" font-size="11" font-weight="700" text-anchor="middle">EAS Production AAB (manual)</text>
+      <text x="800" y="510" fill="#a8b0c4" font-size="10" text-anchor="middle">channel: production · autoIncrement</text>
+      <text x="694" y="532" fill="#a8b0c4" font-size="10">Bakes in EXPO_PUBLIC_API_URL =</text>
+      <text x="694" y="548" fill="#5eead4" font-size="10" font-family="JetBrains Mono">vitaltrack-api.onrender.com</text>
+      <text x="694" y="570" fill="#a8b0c4" font-size="10">eas submit → Play Console</text>
+      <text x="694" y="586" fill="#a8b0c4" font-size="10">track: internal</text>
+      <text x="694" y="608" fill="#d4a574" font-size="10" font-style="italic">CI automation ready, gated off</text>
+
+      <!-- env matrix mini -->
+      <rect x="680" y="646" width="240" height="80" rx="8" fill="#131a2e" stroke="#2a3654"/>
+      <text x="694" y="668" fill="#5eead4" font-size="10.5" font-weight="700">ENV DELTA (same image)</text>
+      <text x="694" y="686" fill="#a8b0c4" font-size="10">DATABASE_URL · Neon branch</text>
+      <text x="694" y="702" fill="#a8b0c4" font-size="10">FRONTEND_URL · CORS_ORIGINS</text>
+      <text x="694" y="718" fill="#a8b0c4" font-size="10">MAIL_PASSWORD · SECRET_KEY</text>
+    </svg>
+  </div>
+
+  <div class="callout teal">
+    <span class="callout-label">Key invariant</span>
+    <p>The Docker image that runs in staging and production is <em>byte-identical</em>. Every environmental difference is an env var injected by Render. This is what makes "staging works but production doesn't" a tractable question — the delta is always in config or data, never in code.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     DIAGRAM 4 · DATA MODEL
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="diagram" id="d4">
+  <div class="diag-header">
+    <span class="diag-num">Diagram 04 / 05</span>
+    <h2>Data Model &amp; <em>Integrity</em></h2>
+    <p>Seven tables, one aggregate root (<code>users</code>), a <code>version</code> column that makes OCC possible, a JSONB audit log that makes every write traceable, and CASCADE FKs that let an account-deletion touch only one row and unwind cleanly.</p>
+  </div>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 960 820" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, sans-serif">
+      <defs>
+        <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5eead4"/>
+        </marker>
+      </defs>
+
+      <!-- USERS -->
+      <rect x="350" y="20" width="260" height="200" rx="10" fill="#131a2e" stroke="#5eead4" stroke-width="2"/>
+      <rect x="350" y="20" width="260" height="32" rx="10" fill="#0d2626"/>
+      <text x="480" y="42" fill="#5eead4" font-size="13" font-weight="700" text-anchor="middle">users</text>
+      <text x="365" y="70" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">id · UUID · PK</text>
+      <text x="365" y="86" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">name · email (unique) · username</text>
+      <text x="365" y="102" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">hashed_password · Argon2</text>
+      <text x="365" y="118" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">is_verified · is_email_verified</text>
+      <text x="365" y="134" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">email_verification_token (+exp)</text>
+      <text x="365" y="150" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">password_reset_token (+exp)</text>
+      <text x="365" y="166" fill="#d4a574" font-size="10.5" font-family="JetBrains Mono">deletion_token (+exp) ← PR #13</text>
+      <text x="365" y="182" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">last_login · created_at · updated_at</text>
+      <text x="365" y="206" fill="#f87171" font-size="10" font-style="italic">CASCADE DELETE → all children</text>
+
+      <!-- CATEGORIES -->
+      <rect x="40" y="280" width="230" height="130" rx="10" fill="#131a2e" stroke="#2a3654"/>
+      <rect x="40" y="280" width="230" height="32" rx="10" fill="#0f1524"/>
+      <text x="155" y="302" fill="#5eead4" font-size="12" font-weight="700" text-anchor="middle">categories</text>
+      <text x="52" y="328" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">id · user_id (FK)</text>
+      <text x="52" y="344" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">name · icon · color</text>
+      <text x="52" y="360" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">display_order</text>
+      <text x="52" y="376" fill="#d4a574" font-size="10.5" font-family="JetBrains Mono">is_default (client-protected)</text>
+      <text x="52" y="392" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">created_at · updated_at</text>
+
+      <!-- ITEMS -->
+      <rect x="300" y="280" width="360" height="180" rx="10" fill="#131a2e" stroke="#d4a574" stroke-width="2"/>
+      <rect x="300" y="280" width="360" height="32" rx="10" fill="#1c1810"/>
+      <text x="480" y="302" fill="#d4a574" font-size="12" font-weight="700" text-anchor="middle">items  ·  OCC + audit + CHECK</text>
+      <text x="312" y="328" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">id · user_id · category_id (FK)</text>
+      <text x="312" y="344" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">name · unit · notes · is_critical</text>
+      <text x="312" y="360" fill="#5eead4" font-size="10.5" font-family="JetBrains Mono">quantity INT CHECK (quantity ≥ 0)</text>
+      <text x="312" y="376" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">minimum_quantity</text>
+      <text x="312" y="392" fill="#d4a574" font-size="10.5" font-family="JetBrains Mono">version INT ← OCC, incr on UPDATE</text>
+      <text x="312" y="408" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">created_at · updated_at</text>
+      <text x="312" y="430" fill="#5eead4" font-size="10" font-style="italic">UPDATE … WHERE version = :v</text>
+      <text x="312" y="446" fill="#5eead4" font-size="10" font-style="italic">→ 0 rows changed → 409 Conflict</text>
+
+      <!-- ORDERS -->
+      <rect x="690" y="280" width="230" height="180" rx="10" fill="#131a2e" stroke="#2a3654"/>
+      <rect x="690" y="280" width="230" height="32" rx="10" fill="#0f1524"/>
+      <text x="805" y="302" fill="#5eead4" font-size="12" font-weight="700" text-anchor="middle">orders</text>
+      <text x="702" y="328" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">id · user_id (FK)</text>
+      <text x="702" y="344" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">order_number</text>
+      <text x="702" y="360" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">title · notes · supplier</text>
+      <text x="702" y="376" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">status (enum)</text>
+      <text x="702" y="392" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">  pending → ordered</text>
+      <text x="702" y="408" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">  → received → stock_updated</text>
+      <text x="702" y="424" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">  / declined</text>
+      <text x="702" y="446" fill="#d4a574" font-size="10" font-style="italic">POST /{id}/apply — atomic txn</text>
+
+      <!-- ORDER_ITEMS -->
+      <rect x="690" y="490" width="230" height="90" rx="10" fill="#131a2e" stroke="#2a3654"/>
+      <rect x="690" y="490" width="230" height="32" rx="10" fill="#0f1524"/>
+      <text x="805" y="512" fill="#5eead4" font-size="12" font-weight="700" text-anchor="middle">order_items</text>
+      <text x="702" y="538" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">order_id (FK) · item_id (FK)</text>
+      <text x="702" y="554" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">quantity · unit_price</text>
+      <text x="702" y="570" fill="#a8b0c4" font-size="10" font-style="italic">junction · cascades via order</text>
+
+      <!-- AUDIT_LOGS -->
+      <rect x="40" y="490" width="280" height="160" rx="10" fill="#131a2e" stroke="#d4a574" stroke-width="1.5"/>
+      <rect x="40" y="490" width="280" height="32" rx="10" fill="#1c1810"/>
+      <text x="180" y="512" fill="#d4a574" font-size="12" font-weight="700" text-anchor="middle">audit_logs  ·  PR #4</text>
+      <text x="52" y="538" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">id · user_id (FK) · created_at</text>
+      <text x="52" y="554" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">entity_type · entity_id</text>
+      <text x="52" y="570" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">action: create / update / delete</text>
+      <text x="52" y="586" fill="#5eead4" font-size="10.5" font-family="JetBrains Mono">before_snapshot JSONB</text>
+      <text x="52" y="602" fill="#5eead4" font-size="10.5" font-family="JetBrains Mono">after_snapshot  JSONB</text>
+      <text x="52" y="622" fill="#a8b0c4" font-size="10" font-style="italic">Written by app-level hook on every write</text>
+      <text x="52" y="638" fill="#a8b0c4" font-size="10" font-style="italic">DB-level cascade only; no ORM rel on User</text>
+
+      <!-- ACTIVITY_LOGS -->
+      <rect x="340" y="490" width="320" height="120" rx="10" fill="#131a2e" stroke="#2a3654"/>
+      <rect x="340" y="490" width="320" height="32" rx="10" fill="#0f1524"/>
+      <text x="500" y="512" fill="#5eead4" font-size="12" font-weight="700" text-anchor="middle">activity_logs</text>
+      <text x="352" y="538" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">id · user_id · item_id · order_id</text>
+      <text x="352" y="554" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">action (enum) · item_name · details</text>
+      <text x="352" y="570" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">created_at</text>
+      <text x="352" y="592" fill="#a8b0c4" font-size="10" font-style="italic">Human-readable feed (GET /activities)</text>
+
+      <!-- REFRESH_TOKENS -->
+      <rect x="340" y="630" width="320" height="120" rx="10" fill="#131a2e" stroke="#f87171" stroke-width="1.5"/>
+      <rect x="340" y="630" width="320" height="32" rx="10" fill="#1c1010"/>
+      <text x="500" y="652" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">refresh_tokens  ·  rotation + revoke</text>
+      <text x="352" y="678" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">id · user_id (FK) · token_hash</text>
+      <text x="352" y="694" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">expires_at · created_at</text>
+      <text x="352" y="716" fill="#f87171" font-size="10" font-style="italic">DELETE row on /refresh (rotate)</text>
+      <text x="352" y="732" fill="#f87171" font-size="10" font-style="italic">DELETE ALL on /change-password · /reset-password</text>
+
+      <!-- Arrows from users -->
+      <path d="M 380 220 Q 300 250 155 280" stroke="#5eead4" stroke-width="1.5" fill="none" marker-end="url(#a4)"/>
+      <path d="M 480 220 L 480 280" stroke="#5eead4" stroke-width="1.5" fill="none" marker-end="url(#a4)"/>
+      <path d="M 580 220 Q 700 250 805 280" stroke="#5eead4" stroke-width="1.5" fill="none" marker-end="url(#a4)"/>
+      <path d="M 420 220 Q 350 360 180 490" stroke="#5eead4" stroke-width="1.2" fill="none" marker-end="url(#a4)"/>
+      <path d="M 500 220 Q 500 360 500 490" stroke="#5eead4" stroke-width="1.2" fill="none" marker-end="url(#a4)" stroke-dasharray="2,2"/>
+      <path d="M 550 220 Q 600 420 500 630" stroke="#f87171" stroke-width="1.2" fill="none" marker-end="url(#a4)"/>
+      <!-- orders → order_items -->
+      <line x1="805" y1="460" x2="805" y2="490" stroke="#5eead4" stroke-width="1.5" marker-end="url(#a4)"/>
+      <!-- items → order_items (referenced, not cascade) -->
+      <path d="M 660 390 Q 700 440 750 490" stroke="#a8b0c4" stroke-width="1" fill="none" stroke-dasharray="3,3" marker-end="url(#a4)"/>
+
+      <!-- Integrity summary strip -->
+      <rect x="40" y="770" width="880" height="40" rx="8" fill="#0d2626" stroke="#5eead4"/>
+      <text x="54" y="795" fill="#5eead4" font-size="11" font-weight="700">INTEGRITY</text>
+      <text x="140" y="795" fill="#a8b0c4" font-size="10.5">OCC</text>
+      <text x="180" y="795" fill="#e4e8f2" font-size="10.5">·</text>
+      <text x="200" y="795" fill="#a8b0c4" font-size="10.5">Audit log</text>
+      <text x="260" y="795" fill="#e4e8f2" font-size="10.5">·</text>
+      <text x="280" y="795" fill="#a8b0c4" font-size="10.5">CHECK constraint</text>
+      <text x="390" y="795" fill="#e4e8f2" font-size="10.5">·</text>
+      <text x="410" y="795" fill="#a8b0c4" font-size="10.5">Atomic apply-stock</text>
+      <text x="535" y="795" fill="#e4e8f2" font-size="10.5">·</text>
+      <text x="555" y="795" fill="#a8b0c4" font-size="10.5">Unique (user_id, category_id, name)</text>
+      <text x="790" y="795" fill="#e4e8f2" font-size="10.5">·</text>
+      <text x="810" y="795" fill="#a8b0c4" font-size="10.5">CASCADE</text>
+    </svg>
+  </div>
+
+  <table>
+    <thead><tr><th>Mechanism</th><th>Where</th><th>What it prevents</th></tr></thead>
+    <tbody>
+      <tr><td>Optimistic concurrency (<code>version</code>)</td><td><code>items</code> column + 409 response</td><td>Two caregivers silently overwriting each other's stock updates</td></tr>
+      <tr><td>JSONB audit log (<code>before_snapshot</code> / <code>after_snapshot</code>)</td><td><code>audit_logs</code> table</td><td>Untraceable state changes; supports forensic "what happened on April 4 at 3am"</td></tr>
+      <tr><td>CHECK constraint <code>quantity ≥ 0</code></td><td><code>items</code> column</td><td>Negative stock from a bug or manual SQL edit</td></tr>
+      <tr><td>Atomic <code>apply-stock</code></td><td><code>/orders/{id}/apply</code> endpoint</td><td>Partial order application — all items update, or none do</td></tr>
+      <tr><td>Unique <code>(user_id, category_id, name)</code></td><td><code>items</code> index (PR #8)</td><td>Duplicate items created by racing seed prompts</td></tr>
+      <tr><td>CASCADE + ORM delete-orphan</td><td>All user-owned tables</td><td>Orphan data after account deletion (DPDP / GDPR compliance)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     DIAGRAM 5 · SCREEN MAP
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="diagram" id="d5">
+  <div class="diag-header">
+    <span class="diag-num">Diagram 05 / 05</span>
+    <h2>Mobile <em>Screen Map</em></h2>
+    <p>Expo Router's file-based navigation. Two groups — <code>(auth)</code> and <code>(tabs)</code> — plus four top-level modals. The Profile screen and its swipe-down popup menu shipped in PR #13.</p>
+  </div>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 960 720" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, sans-serif">
+      <defs>
+        <marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5eead4"/>
+        </marker>
+      </defs>
+
+      <!-- Root -->
+      <rect x="380" y="20" width="200" height="54" rx="10" fill="#131a2e" stroke="#5eead4" stroke-width="2"/>
+      <text x="480" y="42" fill="#5eead4" font-size="11" font-weight="700" text-anchor="middle">app/_layout.tsx</text>
+      <text x="480" y="60" fill="#a8b0c4" font-size="10" text-anchor="middle">root Stack navigator</text>
+
+      <!-- Branches -->
+      <line x1="480" y1="74" x2="480" y2="100" stroke="#5eead4" stroke-width="1.5"/>
+      <line x1="120" y1="100" x2="840" y2="100" stroke="#5eead4" stroke-width="1.5"/>
+
+      <!-- AUTH group -->
+      <line x1="140" y1="100" x2="140" y2="128" stroke="#5eead4" stroke-width="1.5"/>
+      <rect x="40" y="130" width="200" height="260" rx="10" fill="#131a2e" stroke="#a78bfa"/>
+      <rect x="40" y="130" width="200" height="28" rx="10" fill="#18142a"/>
+      <text x="140" y="149" fill="#a78bfa" font-size="11" font-weight="700" text-anchor="middle">(auth) · unauthenticated</text>
+      <text x="55" y="178" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">login.tsx</text>
+      <text x="55" y="198" fill="#a8b0c4" font-size="9.5">email or username + password</text>
+      <text x="55" y="222" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">register.tsx</text>
+      <text x="55" y="242" fill="#a8b0c4" font-size="9.5">email REQUIRED (PR #12)</text>
+      <text x="55" y="266" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">forgot-password.tsx</text>
+      <text x="55" y="286" fill="#a8b0c4" font-size="9.5">emails a reset link</text>
+      <text x="55" y="310" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">reset-password.tsx</text>
+      <text x="55" y="330" fill="#a8b0c4" font-size="9.5">session-revoke on success</text>
+      <text x="55" y="354" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">verify-email-pending.tsx</text>
+      <text x="55" y="374" fill="#a8b0c4" font-size="9.5">waiting room post-register</text>
+
+      <!-- TABS group -->
+      <line x1="360" y1="100" x2="360" y2="128" stroke="#5eead4" stroke-width="1.5"/>
+      <rect x="260" y="130" width="200" height="260" rx="10" fill="#131a2e" stroke="#5eead4"/>
+      <rect x="260" y="130" width="200" height="28" rx="10" fill="#0d2626"/>
+      <text x="360" y="149" fill="#5eead4" font-size="11" font-weight="700" text-anchor="middle">(tabs) · authenticated</text>
+      <text x="275" y="178" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">index.tsx — Dashboard</text>
+      <text x="275" y="196" fill="#a8b0c4" font-size="9.5">stats cards · needs-attention</text>
+      <text x="275" y="212" fill="#a8b0c4" font-size="9.5">recent activity feed</text>
+      <text x="275" y="228" fill="#a8b0c4" font-size="9.5">"Build Inventory" → /builder</text>
+      <text x="275" y="256" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">inventory.tsx</text>
+      <text x="275" y="274" fill="#a8b0c4" font-size="9.5">category-grouped items</text>
+      <text x="275" y="290" fill="#a8b0c4" font-size="9.5">search · tap → /item/[id]</text>
+      <text x="275" y="318" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">orders.tsx</text>
+      <text x="275" y="336" fill="#a8b0c4" font-size="9.5">status badges</text>
+      <text x="275" y="352" fill="#a8b0c4" font-size="9.5">FAB → /order/create</text>
+
+      <!-- Modals -->
+      <line x1="580" y1="100" x2="580" y2="128" stroke="#5eead4" stroke-width="1.5"/>
+      <rect x="480" y="130" width="200" height="260" rx="10" fill="#131a2e" stroke="#d4a574"/>
+      <rect x="480" y="130" width="200" height="28" rx="10" fill="#1c1810"/>
+      <text x="580" y="149" fill="#d4a574" font-size="11" font-weight="700" text-anchor="middle">modals (top-level)</text>
+      <text x="495" y="178" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">item/[id].tsx</text>
+      <text x="495" y="196" fill="#a8b0c4" font-size="9.5">detail + editor · OCC-aware</text>
+      <text x="495" y="222" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">order/create.tsx</text>
+      <text x="495" y="240" fill="#a8b0c4" font-size="9.5">new order · low-stock picker</text>
+      <text x="495" y="266" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">builder.tsx</text>
+      <text x="495" y="284" fill="#a8b0c4" font-size="9.5">bulk seed · category mgmt</text>
+      <text x="495" y="300" fill="#a8b0c4" font-size="9.5">seed prompt (first-run)</text>
+      <text x="495" y="330" fill="#d4a574" font-size="10.5" font-family="JetBrains Mono">profile.tsx · PR #13</text>
+      <text x="495" y="348" fill="#a8b0c4" font-size="9.5">account info</text>
+      <text x="495" y="364" fill="#a8b0c4" font-size="9.5">change password · delete</text>
+
+      <!-- Profile menu sheet -->
+      <line x1="820" y1="100" x2="820" y2="128" stroke="#d4a574" stroke-width="1.5"/>
+      <rect x="720" y="130" width="200" height="260" rx="10" fill="#131a2e" stroke="#d4a574" stroke-width="1.5"/>
+      <rect x="720" y="130" width="200" height="28" rx="10" fill="#1c1810"/>
+      <text x="820" y="149" fill="#d4a574" font-size="11" font-weight="700" text-anchor="middle">Profile menu sheet</text>
+      <text x="735" y="176" fill="#a8b0c4" font-size="10" font-style="italic">bottom sheet · swipe-down dismiss</text>
+      <text x="735" y="192" fill="#a8b0c4" font-size="10" font-style="italic">(PR #13)</text>
+      <text x="735" y="216" fill="#e4e8f2" font-size="10.5">· User info (name, email)</text>
+      <text x="735" y="234" fill="#e4e8f2" font-size="10.5">· Appearance (dark/light)</text>
+      <text x="735" y="252" fill="#e4e8f2" font-size="10.5">· Edit Profile → /profile</text>
+      <text x="735" y="270" fill="#e4e8f2" font-size="10.5">· Settings</text>
+      <text x="735" y="288" fill="#e4e8f2" font-size="10.5">· About CareKosh (alert)</text>
+      <text x="735" y="306" fill="#e4e8f2" font-size="10.5">· Help &amp; Support</text>
+      <text x="735" y="324" fill="#e4e8f2" font-size="10.5">· Logout</text>
+
+      <!-- Account deletion flow callout -->
+      <rect x="40" y="420" width="880" height="110" rx="10" fill="#0f1524" stroke="#f87171"/>
+      <text x="56" y="446" fill="#f87171" font-size="11" font-weight="700" letter-spacing="1">ACCOUNT DELETION NAV (PR #13)</text>
+      <text x="56" y="470" fill="#a8b0c4" font-size="10.5">1. Top-right avatar tap → Profile menu sheet slides up</text>
+      <text x="56" y="488" fill="#a8b0c4" font-size="10.5">2. Swipe down to dismiss, OR tap Edit Profile → /profile</text>
+      <text x="56" y="506" fill="#a8b0c4" font-size="10.5">3. Profile screen → "Delete Account" danger zone → confirm dialog → DELETE /auth/me → email sent</text>
+      <text x="56" y="524" fill="#d4a574" font-size="10.5">4. Email link opens browser → GET /confirm-delete/{token} → HTML confirmation → mobile next API call 401 → logout</text>
+
+      <!-- Auth redirect diagram -->
+      <rect x="40" y="560" width="880" height="140" rx="10" fill="#0f1524" stroke="#2a3654"/>
+      <text x="56" y="586" fill="#5eead4" font-size="11" font-weight="700" letter-spacing="1">AUTH GUARD / REDIRECT BEHAVIOR</text>
+
+      <rect x="70" y="610" width="150" height="60" rx="8" fill="#131a2e" stroke="#2a3654"/>
+      <text x="145" y="632" fill="#e4e8f2" font-size="10.5" text-anchor="middle">app launch</text>
+      <text x="145" y="650" fill="#a8b0c4" font-size="10" text-anchor="middle">_layout.tsx checks</text>
+      <text x="145" y="666" fill="#a8b0c4" font-size="10" text-anchor="middle">SecureStore token</text>
+
+      <line x1="220" y1="640" x2="280" y2="640" stroke="#5eead4" stroke-width="1.5" marker-end="url(#a5)"/>
+
+      <rect x="280" y="610" width="150" height="60" rx="8" fill="#131a2e" stroke="#a78bfa"/>
+      <text x="355" y="632" fill="#a78bfa" font-size="10.5" text-anchor="middle">no token</text>
+      <text x="355" y="652" fill="#a8b0c4" font-size="10" text-anchor="middle">→ (auth)/login</text>
+
+      <rect x="460" y="610" width="150" height="60" rx="8" fill="#131a2e" stroke="#5eead4"/>
+      <text x="535" y="632" fill="#5eead4" font-size="10.5" text-anchor="middle">valid token</text>
+      <text x="535" y="652" fill="#a8b0c4" font-size="10" text-anchor="middle">→ (tabs) dashboard</text>
+
+      <rect x="640" y="610" width="150" height="60" rx="8" fill="#131a2e" stroke="#d4a574"/>
+      <text x="715" y="632" fill="#d4a574" font-size="10.5" text-anchor="middle">stale token (401)</text>
+      <text x="715" y="652" fill="#a8b0c4" font-size="10" text-anchor="middle">→ /refresh or login</text>
+
+      <rect x="810" y="610" width="110" height="60" rx="8" fill="#131a2e" stroke="#f87171"/>
+      <text x="865" y="632" fill="#f87171" font-size="10.5" text-anchor="middle">account gone</text>
+      <text x="865" y="652" fill="#a8b0c4" font-size="10" text-anchor="middle">→ login</text>
+    </svg>
+  </div>
+
+  <div class="callout violet">
+    <span class="callout-label">Why file-based routing</span>
+    <p>Expo Router's file-to-route mapping is a constraint that doubles as documentation — the <code>app/</code> tree literally <em>is</em> the navigation graph. A new contributor can grep the directory and know every screen the app has. This is worth more than the flexibility a code-based navigator would buy.</p>
+  </div>
+</div>
+
+<!-- PR LIST -->
+<div class="pr-list">
+  <h3>PR history — the thread that runs through every diagram</h3>
+  <ul>
+    <li><span class="pr-num">#1</span><span class="pr-what">Hosting migration: Railway → Render</span></li>
+    <li><span class="pr-num">#2</span><span class="pr-what">Neon branches for staging + production</span></li>
+    <li><span class="pr-num">#4</span><span class="pr-what">Server-first architecture — TanStack Query, OCC, audit log, sync.ts deleted</span></li>
+    <li><span class="pr-num">#5–#7</span><span class="pr-what">Schema fixes, activity endpoint, seed dedup, protected default categories, OrderCreate fixes</span></li>
+    <li><span class="pr-num">#8</span><span class="pr-what">Duplicate item enforcement (unique constraint)</span></li>
+    <li><span class="pr-num">#9</span><span class="pr-what">Order mutation hardening + API error handling</span></li>
+    <li><span class="pr-num">#10–#11</span><span class="pr-what">VitalTrack → CareKosh rebrand (user-visible surfaces only)</span></li>
+    <li><span class="pr-num">#12</span><span class="pr-what">Auth hardening — config validators, enum-leak fix, session revoke, email required</span></li>
+    <li><span class="pr-num">#13</span><span class="pr-what">Account deletion (email-confirmed two-step) + Profile screen + swipe-down popup menu</span></li>
+  </ul>
+</div>
+
+<div class="footer">
+  <em>CareKosh</em> · System Architecture · April 2026 · PRs #4–#13
+</div>
+
+</div>
+</body>
+</html>

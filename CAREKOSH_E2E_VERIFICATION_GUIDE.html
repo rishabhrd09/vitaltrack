@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh — End-to-End Verification Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf9f7;--card:#fff;--card2:#f4f3f0;--border:#e5e3de;--text:#1a1a18;--muted:#6b6a65;--accent:#1d6b52;--accent-bg:#e8f5ef;--warn:#8b5e00;--warn-bg:#fef8e8;--danger:#8b1a1a;--danger-bg:#fef0f0;--info:#1a4a8b;--info-bg:#eef4fc;--code-bg:#f0efeb;--done:#059669;--done-bg:#d1fae5}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e12;--card:#161619;--card2:#1c1c21;--border:#2a2a30;--text:#e4e4ec;--muted:#8a8a95;--accent:#5eead4;--accent-bg:#0d2626;--warn:#d4a574;--warn-bg:#1a1510;--danger:#e88;--danger-bg:#1a1010;--info:#7ab4f5;--info-bg:#0f1a2a;--code-bg:#1a1a20;--done:#34d399;--done-bg:#0a1a14}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.75;font-size:15px}
+.page{max-width:880px;margin:0 auto;padding:32px 24px 80px}
+.hero{text-align:center;padding:40px 0 36px;border-bottom:1px solid var(--border);margin-bottom:40px}
+.hero h1{font-family:'Instrument Serif',serif;font-size:2.4rem;font-weight:400;letter-spacing:-.02em;line-height:1.15;margin-bottom:10px}
+.hero h1 em{font-style:italic;color:var(--accent)}
+.hero .sub{color:var(--muted);font-size:.9rem;max-width:620px;margin:0 auto 8px}
+.hero .meta{color:var(--muted);font-size:.76rem}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--code-bg);padding:2px 6px;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.65}
+pre code{background:none;padding:0}
+.section{margin-bottom:48px}
+.section h2{font-family:'Sora',sans-serif;font-size:1.3rem;font-weight:700;margin-bottom:8px}
+.section h3{font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;margin-top:22px;margin-bottom:8px}
+.section p{margin-bottom:12px}
+.section ul,.section ol{margin-bottom:14px;padding-left:22px}.section li{margin-bottom:6px;font-size:.92rem}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.86rem}
+th{text-align:left;font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:2px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.callout{border-radius:10px;padding:14px 18px;margin:18px 0;border-left:4px solid}
+.callout p{margin-bottom:6px;font-size:.9rem}.callout p:last-child{margin-bottom:0}
+.callout-label{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;display:block}
+.callout.info{background:var(--info-bg);border-left-color:var(--info)}.callout.info .callout-label{color:var(--info)}
+.callout.warn{background:var(--warn-bg);border-left-color:var(--warn)}.callout.warn .callout-label{color:var(--warn)}
+.callout.danger{background:var(--danger-bg);border-left-color:var(--danger)}.callout.danger .callout-label{color:var(--danger)}
+.callout.success{background:var(--accent-bg);border-left-color:var(--accent)}.callout.success .callout-label{color:var(--accent)}
+.step{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin:16px 0}
+.step-num{font-family:'Sora',sans-serif;font-size:.68rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px;color:var(--accent)}
+.step h4{font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;margin-bottom:8px}
+.step p{margin-bottom:10px;font-size:.9rem}
+.expect{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin:8px 0;font-size:.85rem}
+.expect-label{font-family:'Sora',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;display:block}
+.phase-bar{padding:12px 18px;border-radius:10px;margin:28px 0 18px;border:2px solid}
+.phase-bar h2{font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:800;margin:0}
+.phase-bar .tag{font-family:'JetBrains Mono',monospace;font-size:.66rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:4px;margin-right:10px;display:inline-block}
+.checklist{list-style:none;padding-left:0;margin:16px 0}
+.checklist li{padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:.9rem;display:flex;align-items:flex-start;gap:10px}
+.checklist li::before{content:'☐';font-size:1.1rem;flex-shrink:0;margin-top:1px}
+hr{border:none;border-top:1px solid var(--border);margin:40px 0}
+.footer{text-align:center;padding:28px 0;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;margin-top:40px}
+.envs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.env-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.env-card h4{font-family:'Sora',sans-serif;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.env-card .url{font-family:'JetBrains Mono',monospace;font-size:.8rem;margin-bottom:4px}
+.env-card .db{font-size:.8rem;color:var(--muted)}
+@media(max-width:600px){.envs{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="hero">
+  <h1>End-to-End <em>Verification</em> Guide</h1>
+  <p class="sub">Every curl, every expected response, every gate. Run this after a deploy; if a step fails, stop and fix — do not proceed.</p>
+  <p class="meta">CareKosh · Home ICU Inventory · Staging + Production · April 2026</p>
+</div>
+
+<!-- ENVIRONMENTS -->
+<div class="section">
+  <h2>Environments under test</h2>
+  <div class="envs">
+    <div class="env-card">
+      <h4>Staging</h4>
+      <div class="url">vitaltrack-api-staging.onrender.com</div>
+      <div class="db">Neon branch: vitaltrack_staging · Test data only · Safe to wipe</div>
+    </div>
+    <div class="env-card">
+      <h4>Production</h4>
+      <div class="url">vitaltrack-api.onrender.com</div>
+      <div class="db">Neon branch: neondb · Real user data · Never wipe</div>
+    </div>
+  </div>
+  <div class="callout warn">
+    <span class="callout-label">Ground rules</span>
+    <p>1. Run the full flow on staging first. 2. Only hit production with read-only + idempotent requests unless you are intentionally cleaning up your own test account. 3. Do not create real-looking data on production.</p>
+  </div>
+</div>
+
+<!-- PHASE 1 -->
+<div class="phase-bar" style="border-color:var(--info);background:var(--info-bg)">
+  <h2 style="color:var(--info)"><span class="tag" style="background:var(--info);color:#fff">Phase 1</span> Pre-flight</h2>
+</div>
+
+<div class="section">
+  <div class="step">
+    <div class="step-num">Step 1</div>
+    <h4>Both services healthy</h4>
+    <pre><code>curl https://vitaltrack-api-staging.onrender.com/health
+curl https://vitaltrack-api.onrender.com/health</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      <code>{"status":"healthy","environment":"staging"}</code> (or <code>"production"</code>)
+    </div>
+    <div class="callout warn">
+      <span class="callout-label">Cold start</span>
+      <p>Free Render tier sleeps after 15 min idle. The first request takes 30–60 s to wake the container; subsequent calls are fast. If you get a 502 then a 200, that's cold start — not a bug.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 2</div>
+    <h4>Latest deploy is live</h4>
+    <ol>
+      <li>Open <a href="https://dashboard.render.com" target="_blank">dashboard.render.com</a></li>
+      <li>Click <code>vitaltrack-api-staging</code> → <strong>Events</strong> tab → top entry should say "Deploy live"</li>
+      <li>Repeat for <code>vitaltrack-api</code> (production)</li>
+      <li>Check commit hash matches the last merge on <code>main</code></li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 3</div>
+    <h4>Alembic head matches code</h4>
+    <p>In Render shell for each service:</p>
+    <pre><code>alembic current</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      Latest revision id, matching the filename of the newest file in <code>vitaltrack-backend/alembic/versions/</code>. As of PR #13: <code>20260419_add_account_deletion_token_fields</code>.
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- PHASE 2 -->
+<div class="phase-bar" style="border-color:var(--accent);background:var(--accent-bg)">
+  <h2 style="color:var(--accent)"><span class="tag" style="background:var(--accent);color:#fff">Phase 2</span> Auth flow — register through refresh</h2>
+</div>
+
+<div class="section">
+  <div class="step">
+    <div class="step-num">Step 4</div>
+    <h4>Register a test user</h4>
+    <pre><code>BASE=https://vitaltrack-api-staging.onrender.com
+
+curl -X POST $BASE/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "E2E Test",
+    "email": "e2e+'$(date +%s)'@example.com",
+    "username": "e2etest",
+    "password": "TestPass123!"
+  }'</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected (201)</span>
+      <code>{"access_token":"...","refresh_token":"...","token_type":"bearer","expires_in":1800,"user":{...}}</code>
+    </div>
+    <div class="callout info">
+      <span class="callout-label">PR #12</span>
+      <p><code>email</code> is required (was optional pre-PR-#12). Registering without it returns <code>422</code>.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 5</div>
+    <h4>Verify-email gate (if REQUIRE_EMAIL_VERIFICATION=true)</h4>
+    <p>Without clicking the verification link in the email first, login should fail:</p>
+    <pre><code>curl -X POST $BASE/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"identifier":"e2e+...@example.com","password":"TestPass123!"}'</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected (403)</span>
+      <code>{"detail":"Email not verified"}</code>
+    </div>
+    <p>Click the verification link in the email sandbox (Mailtrap dev, Brevo staging/prod), then retry login — it should now succeed.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 6</div>
+    <h4>Login + extract token</h4>
+    <pre><code>LOGIN=$(curl -s -X POST $BASE/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"identifier":"e2e+...@example.com","password":"TestPass123!"}')
+ACCESS=$(echo $LOGIN | jq -r '.access_token')
+REFRESH=$(echo $LOGIN | jq -r '.refresh_token')
+echo "ACCESS: ${ACCESS:0:20}..."
+echo "REFRESH: ${REFRESH:0:20}..."</code></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 7</div>
+    <h4>Refresh with rotation</h4>
+    <pre><code>curl -X POST $BASE/api/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d "{\"refresh_token\":\"$REFRESH\"}"</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      New access + refresh tokens. Old <code>$REFRESH</code> is now revoked.
+    </div>
+    <p>Prove the rotation worked — try the old refresh again:</p>
+    <pre><code>curl -X POST $BASE/api/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d "{\"refresh_token\":\"$REFRESH\"}"</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected (401)</span>
+      <code>{"detail":"Invalid refresh token"}</code>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- PHASE 3 -->
+<div class="phase-bar" style="border-color:var(--warn);background:var(--warn-bg)">
+  <h2 style="color:var(--warn)"><span class="tag" style="background:var(--warn);color:#fff">Phase 3</span> CRUD + OCC</h2>
+</div>
+
+<div class="section">
+  <div class="step">
+    <div class="step-num">Step 8</div>
+    <h4>Create category → create item</h4>
+    <pre><code>AUTH="Authorization: Bearer $ACCESS"
+
+CAT=$(curl -s -X POST $BASE/api/v1/categories \
+  -H "$AUTH" -H "Content-Type: application/json" \
+  -d '{"name":"Oxygen","icon":"o2","color":"#1d6b52"}' | jq -r '.id')
+
+ITEM=$(curl -s -X POST $BASE/api/v1/items \
+  -H "$AUTH" -H "Content-Type: application/json" \
+  -d "{
+    \"category_id\":\"$CAT\",
+    \"name\":\"Oxygen Mask (Adult)\",
+    \"quantity\":10,
+    \"minimum_quantity\":5,
+    \"unit\":\"pieces\",
+    \"is_critical\":true
+  }" | jq -r '.id')
+
+echo "CAT=$CAT ITEM=$ITEM"</code></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 9</div>
+    <h4>Read back, confirm version=1</h4>
+    <pre><code>curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{name,quantity,version}'</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      <code>{"name":"Oxygen Mask (Adult)","quantity":10,"version":1}</code>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 10</div>
+    <h4>Update with correct version — version increments</h4>
+    <pre><code>curl -s -X PUT $BASE/api/v1/items/$ITEM \
+  -H "$AUTH" -H "Content-Type: application/json" \
+  -d '{"name":"Oxygen Mask (Adult)","quantity":12,"minimum_quantity":5,"version":1}' \
+  | jq '{name,quantity,version}'</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      <code>{"name":"Oxygen Mask (Adult)","quantity":12,"version":2}</code>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 11</div>
+    <h4>Update with stale version — <strong>409 Conflict</strong> (OCC)</h4>
+    <pre><code>curl -s -w "\nHTTP %{http_code}\n" -X PUT $BASE/api/v1/items/$ITEM \
+  -H "$AUTH" -H "Content-Type: application/json" \
+  -d '{"name":"X","quantity":99,"minimum_quantity":5,"version":1}'</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected (409)</span>
+      <code>{"detail":"Version conflict","server_version":2,"server_quantity":12}</code>
+    </div>
+    <div class="callout success">
+      <span class="callout-label">Why this matters</span>
+      <p>This is the single reason the server-first migration was worth doing. Two caregivers editing the same item at the same second no longer silently overwrite each other.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 12</div>
+    <h4>Quick stock update via PATCH</h4>
+    <pre><code>curl -s -X PATCH $BASE/api/v1/items/$ITEM/stock \
+  -H "$AUTH" -H "Content-Type: application/json" \
+  -d '{"quantity":8,"version":2}' | jq '{quantity,version}'</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      <code>{"quantity":8,"version":3}</code>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- PHASE 4 -->
+<div class="phase-bar" style="border-color:var(--info);background:var(--info-bg)">
+  <h2 style="color:var(--info)"><span class="tag" style="background:var(--info);color:#fff">Phase 4</span> Orders + apply-stock</h2>
+</div>
+
+<div class="section">
+  <div class="step">
+    <div class="step-num">Step 13</div>
+    <h4>Create order, mark received, apply to stock</h4>
+    <pre><code># Create order
+ORDER=$(curl -s -X POST $BASE/api/v1/orders \
+  -H "$AUTH" -H "Content-Type: application/json" \
+  -d "{\"title\":\"Restock\",\"items\":[{\"item_id\":\"$ITEM\",\"quantity\":20}]}" \
+  | jq -r '.id')
+
+# Transition: pending → ordered → received
+curl -s -X PATCH $BASE/api/v1/orders/$ORDER/status \
+  -H "$AUTH" -H "Content-Type: application/json" -d '{"status":"ordered"}' > /dev/null
+curl -s -X PATCH $BASE/api/v1/orders/$ORDER/status \
+  -H "$AUTH" -H "Content-Type: application/json" -d '{"status":"received"}' > /dev/null
+
+# Apply to stock
+curl -s -X POST $BASE/api/v1/orders/$ORDER/apply -H "$AUTH" | jq '.status'
+
+# Verify item quantity increased by 20
+curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{quantity,version}'</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      Order status → <code>"stock_updated"</code>. Item quantity was 8, now 28. Version increments on every update.
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 14</div>
+    <h4>Activity log records every write</h4>
+    <pre><code>curl -s "$BASE/api/v1/activities?limit=10" -H "$AUTH" | jq '.[] | {action,item_name,created_at}'</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      Entries for: category create, item create, item update (×N), order create, order status × 2, apply-stock. Each with <code>created_at</code>.
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- PHASE 5 -->
+<div class="phase-bar" style="border-color:var(--danger);background:var(--danger-bg)">
+  <h2 style="color:var(--danger)"><span class="tag" style="background:var(--danger);color:#fff">Phase 5</span> Account deletion (PR #13)</h2>
+</div>
+
+<div class="section">
+  <div class="step">
+    <div class="step-num">Step 15</div>
+    <h4>Request deletion — email sent</h4>
+    <pre><code>curl -s -X DELETE $BASE/api/v1/auth/me -H "$AUTH"</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      <code>{"message":"Deletion confirmation email sent"}</code>. In the mail sandbox, a confirmation email with a link to <code>GET /api/v1/auth/confirm-delete/{token}</code> (token is raw; DB stores the SHA-256 hash with a 24 h TTL).
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 16</div>
+    <h4>Cancel pending deletion</h4>
+    <pre><code>curl -s -X POST $BASE/api/v1/auth/cancel-delete -H "$AUTH"</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      <code>{"message":"Account deletion cancelled"}</code>. Trying to use the email link after cancel should return an HTML error (hash cleared).
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 17</div>
+    <h4>Confirm deletion (testing only — irreversible)</h4>
+    <p>Request deletion again (Step 15), open the email, click the link:</p>
+    <pre><code>curl -s https://vitaltrack-api-staging.onrender.com/api/v1/auth/confirm-delete/RAW_TOKEN</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      HTML success page. User row is deleted; cascade unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
+    </div>
+    <p>Prove cascade worked — any authenticated call with a saved access token should now 401:</p>
+    <pre><code>curl -s -w "HTTP %{http_code}\n" $BASE/api/v1/items -H "$AUTH"</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      <code>HTTP 401</code>. Access token decodes but the user no longer exists.
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- PHASE 6 -->
+<div class="phase-bar" style="border-color:var(--warn);background:var(--warn-bg)">
+  <h2 style="color:var(--warn)"><span class="tag" style="background:var(--warn);color:#fff">Phase 6</span> Database-side checks</h2>
+</div>
+
+<div class="section">
+  <div class="step">
+    <div class="step-num">Step 18</div>
+    <h4>Row counts + version spot check</h4>
+    <p>Connect to Neon via Neon Console SQL editor (or <code>psql</code> with the connection string) on the <code>vitaltrack_staging</code> branch:</p>
+    <pre><code>SELECT count(*) FROM users;
+SELECT count(*) FROM items;
+SELECT count(*) FROM activity_logs;
+
+-- OCC evidence
+SELECT id, name, quantity, version FROM items ORDER BY updated_at DESC LIMIT 5;
+
+-- Audit log
+SELECT action, entity_type, created_at
+FROM audit_logs
+ORDER BY created_at DESC
+LIMIT 10;</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      Item rows have <code>version &gt;= 1</code>. <code>audit_logs</code> has entries with JSONB <code>before_snapshot</code> / <code>after_snapshot</code> for every recent write.
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 19</div>
+    <h4>Cascade check (post-deletion)</h4>
+    <pre><code>-- After Step 17, should all return 0
+SELECT count(*) FROM categories WHERE user_id = 'DELETED_USER_ID';
+SELECT count(*) FROM items      WHERE user_id = 'DELETED_USER_ID';
+SELECT count(*) FROM orders     WHERE user_id = 'DELETED_USER_ID';
+SELECT count(*) FROM refresh_tokens WHERE user_id = 'DELETED_USER_ID';</code></pre>
+  </div>
+</div>
+
+<hr>
+
+<!-- PHASE 7 -->
+<div class="phase-bar" style="border-color:var(--accent);background:var(--accent-bg)">
+  <h2 style="color:var(--accent)"><span class="tag" style="background:var(--accent);color:#fff">Phase 7</span> Mobile APK</h2>
+</div>
+
+<div class="section">
+  <div class="step">
+    <div class="step-num">Step 20</div>
+    <h4>Build preview APK</h4>
+    <pre><code>cd vitaltrack-mobile
+eas build --profile preview --platform android</code></pre>
+    <p>Or: add the <code>build-apk</code> label to a PR and let CI do it. APK bakes <code>EXPO_PUBLIC_API_URL = https://vitaltrack-api-staging.onrender.com</code>.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 21</div>
+    <h4>Device checklist (Pixel 9 Pro XL · Android 16)</h4>
+    <ul class="checklist">
+      <li>Install APK via <code>adb install -r app.apk</code></li>
+      <li>Register new account → receive verification email → verify</li>
+      <li>Login → dashboard loads</li>
+      <li>Builder → seed inventory → items appear in Inventory tab</li>
+      <li>Create an item → PATCH stock → activity log updates</li>
+      <li>Create an order → mark received → apply to stock → item quantity updates</li>
+      <li>Export order PDF → no "unknown order ID" error (PR #11 fix)</li>
+      <li>Swipe down from top → profile menu opens → tap Edit Profile → profile screen opens (PR #13)</li>
+      <li>Profile screen → "About CareKosh" → alert shows updated description</li>
+      <li>Profile screen → Delete Account → receive email → confirm via link → forced logout</li>
+      <li>Try login with deleted account → 404 "account not found"</li>
+    </ul>
+  </div>
+</div>
+
+<hr>
+
+<!-- TROUBLESHOOTING -->
+<div class="section">
+  <h2>When something fails</h2>
+  <table>
+    <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>502 on first request</td><td>Render cold start</td><td>Retry after 30 s; consider UptimeRobot warmup</td></tr>
+      <tr><td>401 on every authenticated request</td><td>Access token expired (30 min)</td><td>Refresh, or login again</td></tr>
+      <tr><td>403 "Email not verified"</td><td>REQUIRE_EMAIL_VERIFICATION=true and user not verified</td><td>Click verification email; or <code>/resend-verification</code></td></tr>
+      <tr><td>409 on item update</td><td>OCC — stale version</td><td>GET the item, use new version in your next PUT</td></tr>
+      <tr><td>422 on register</td><td>Missing required field (email, password)</td><td>Check JSON body matches <code>UserRegister</code> schema</td></tr>
+      <tr><td>Alembic says "Can't locate revision"</td><td>DB is ahead of code</td><td>Rollback bad deploy first; never edit merged migration files</td></tr>
+      <tr><td>Apply-stock returns 400</td><td>Order status is not <code>received</code></td><td>PATCH status to <code>received</code> first</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  CareKosh · End-to-End Verification Guide · April 2026 · PRs #4–#13
+</div>
+
+</div>
+</body>
+</html>
