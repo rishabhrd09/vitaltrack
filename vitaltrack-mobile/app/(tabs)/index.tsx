@@ -26,6 +26,7 @@ import StatsCard from '@/components/dashboard/StatsCard';
 import NeedsAttention from '@/components/dashboard/NeedsAttention';
 import ActivityList from '@/components/dashboard/ActivityList';
 import OfflineBanner from '@/components/common/OfflineBanner';
+import { SkeletonLoader } from '@/components/common/SkeletonLoader';
 import { useItems, useOrders, useActivities } from '@/hooks/useServerData';
 import { isOutOfStock, isLowStock } from '@/types';
 
@@ -105,9 +106,7 @@ export default function DashboardScreen() {
       <OfflineBanner />
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accentBlue} />
-        </View>
+        <SkeletonLoader variant="dashboard" />
       ) : error ? (
         <View style={styles.loadingContainer}>
           <Text style={[styles.errorText, { color: colors.statusRed }]}>Failed to load data</Text>
