@@ -34,7 +34,7 @@ export default function ProfileScreen() {
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Yes, Send Confirmation',
+                    text: 'Send confirmation email',
                     style: 'destructive',
                     onPress: async () => {
                         setIsRequesting(true);
