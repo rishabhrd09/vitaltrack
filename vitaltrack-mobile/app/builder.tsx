@@ -177,28 +177,47 @@ export default function BuildInventoryScreen() {
                             Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nReplace aborted to protect your data.`);
                             return;
                         }
+                        // Wrap delete+seed so the cache is reconciled whether
+                        // either step throws. seed()'s own finally also resets,
+                        // but if delete throws before seed ever runs, we still
+                        // need UI reconciliation against the server's partial state.
+                        let deleteFailed = false;
                         try {
-                            await deleteAllInventory(items, categories);
-                        } catch (err) {
-                            handleMutationError(err, 'Delete Inventory');
-                            return;
-                        }
-                        // Force a refetch (not just invalidate) so seed()'s pre-fetch
-                        // sees the post-delete state instead of any in-flight cache.
-                        await Promise.all([
-                            queryClient.refetchQueries({ queryKey: queryKeys.items }),
-                            queryClient.refetchQueries({ queryKey: queryKeys.categories }),
-                            queryClient.refetchQueries({ queryKey: queryKeys.activities }),
-                        ]);
-                        try {
-                            await seed();
-                            showBackupDoneAlert(
-                                'Done',
-                                'Your previous inventory was backed up and replaced with defaults.',
-                                backupPath,
-                            );
-                        } catch (err) {
-                            handleMutationError(err, 'Seed Inventory');
+                            try {
+                                await deleteAllInventory(items, categories);
+                            } catch (err) {
+                                deleteFailed = true;
+                                handleMutationError(err, 'Delete Inventory');
+                                return;
+                            }
+                            try {
+                                await seed();
+                                showBackupDoneAlert(
+                                    'Done',
+                                    'Your previous inventory was backed up and replaced with defaults.',
+                                    backupPath,
+                                );
+                            } catch (err) {
+                                handleMutationError(err, 'Seed Inventory');
+                            }
+                        } finally {
+                            // If delete threw, seed never ran and its reconcile
+                            // never fired — do it here so drifted cache is refreshed.
+                            if (deleteFailed) {
+                                try {
+                                    await Promise.all([
+                                        queryClient.resetQueries({ queryKey: queryKeys.items }),
+                                        queryClient.resetQueries({ queryKey: queryKeys.categories }),
+                                        queryClient.resetQueries({ queryKey: queryKeys.activities }),
+                                    ]);
+                                    await Promise.all([
+                                        queryClient.refetchQueries({ queryKey: queryKeys.items }),
+                                        queryClient.refetchQueries({ queryKey: queryKeys.categories }),
+                                    ]);
+                                } catch (reconcileErr) {
+                                    console.warn('[ReplaceAll] Cache reconciliation failed:', reconcileErr);
+                                }
+                            }
                         }
                     },
                 },

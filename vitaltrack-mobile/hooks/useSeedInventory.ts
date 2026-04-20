@@ -224,13 +224,25 @@ export function useSeedInventory() {
         }
       }
 
-      // Refresh everything
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: queryKeys.categories }),
-        qc.invalidateQueries({ queryKey: queryKeys.items }),
-        qc.invalidateQueries({ queryKey: queryKeys.activities }),
-      ]);
     } finally {
+      // Cache MUST be reconciled whether seed succeeded or threw —
+      // a thrown error mid-loop still leaves the server with partial
+      // changes, and the old cache no longer matches either state.
+      // resetQueries drops the cache and shows skeletons; refetch
+      // repopulates from source-of-truth.
+      try {
+        await Promise.all([
+          qc.resetQueries({ queryKey: queryKeys.categories }),
+          qc.resetQueries({ queryKey: queryKeys.items }),
+          qc.resetQueries({ queryKey: queryKeys.activities }),
+        ]);
+        await Promise.all([
+          qc.refetchQueries({ queryKey: queryKeys.categories }),
+          qc.refetchQueries({ queryKey: queryKeys.items }),
+        ]);
+      } catch (reconcileErr) {
+        console.warn('[Seed] Cache reconciliation failed:', reconcileErr);
+      }
       setIsSeeding(false);
       setProgress(null);
     }
@@ -397,11 +409,23 @@ export function useStartFresh() {
         }
       }
 
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: queryKeys.items }),
-        qc.invalidateQueries({ queryKey: queryKeys.activities }),
-      ]);
     } finally {
+      // Reset + refetch so the UI shows skeletons briefly, then renders the
+      // actual post-operation state. invalidateQueries keeps stale data
+      // visible for 30-60s on a cold-starting server — wrong for destructive ops.
+      try {
+        await Promise.all([
+          qc.resetQueries({ queryKey: queryKeys.items }),
+          qc.resetQueries({ queryKey: queryKeys.categories }),
+          qc.resetQueries({ queryKey: queryKeys.activities }),
+        ]);
+        await Promise.all([
+          qc.refetchQueries({ queryKey: queryKeys.items }),
+          qc.refetchQueries({ queryKey: queryKeys.categories }),
+        ]);
+      } catch (reconcileErr) {
+        console.warn('[StartFresh] Cache reconciliation failed:', reconcileErr);
+      }
       setIsResetting(false);
     }
 
