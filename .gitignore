@@ -132,3 +132,6 @@ htmlcov/
 docker-volumes/
 
 docs/development_stories.claude/
+
+# Claude Code local config (per-developer, never committed)
+.claude/
