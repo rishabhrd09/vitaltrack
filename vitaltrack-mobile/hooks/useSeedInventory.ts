@@ -69,7 +69,14 @@ export function useSeedInventory() {
   const [progress, setProgress] = useState<SeedProgress | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
 
-  const seed = async (): Promise<SeedResult> => {
+  const seed = async (
+    onProgress?: (
+      phase: 'categories' | 'items',
+      current: number,
+      total: number,
+      currentName: string
+    ) => void
+  ): Promise<SeedResult> => {
     setIsSeeding(true);
     const totalCategories = SEED_DATA.length;
     const totalItems = SEED_DATA.reduce((sum, c) => sum + c.items.length, 0);
@@ -89,6 +96,7 @@ export function useSeedInventory() {
         phaseTotal: totalCategories,
         currentAction: action,
       });
+      onProgress?.('categories', categoriesHandled, totalCategories, action);
     };
     const updateItemProgress = (action: string) => {
       setProgress({
@@ -97,6 +105,7 @@ export function useSeedInventory() {
         phaseTotal: totalItems,
         currentAction: action,
       });
+      onProgress?.('items', itemsHandled, totalItems, action);
     };
 
     try {

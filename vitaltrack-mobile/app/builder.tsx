@@ -57,7 +57,7 @@ export default function BuildInventoryScreen() {
     const createCategoryMutation = useCreateCategory();
     const createItemMutation = useCreateItem();
     const toggleItemCriticalMutation = useToggleItemCritical();
-    const { seed, isSeeding, progress: seedProgress } = useSeedInventory();
+    const { seed, isSeeding } = useSeedInventory();
     const { startFresh } = useStartFresh();
     const queryClient = useQueryClient();
     const showCreateCategoryPending = useDelayedPending(createCategoryMutation.isPending);
@@ -127,8 +127,18 @@ export default function BuildInventoryScreen() {
             Alert.alert('Offline', 'Connect to WiFi to add default inventory.');
             return;
         }
+        setOverlay({ visible: true, title: 'Adding default inventory...' });
         try {
-            const result = await seed();
+            const result = await seed((phase, current, total, currentName) => {
+                setOverlay({
+                    visible: true,
+                    title: 'Adding default inventory...',
+                    phase: phase === 'categories' ? 'Setting up categories' : 'Adding items',
+                    progress: { current, total },
+                    subtitle: currentName,
+                });
+            });
+            setOverlay(null);
             if (result.status === 'already-seeded') {
                 Alert.alert(
                     'Already set up',
@@ -166,6 +176,7 @@ export default function BuildInventoryScreen() {
                 `${result.createdItems} new items added, ${result.skippedExisting} already in your inventory were kept unchanged.${alreadyLine}`
             );
         } catch (err) {
+            setOverlay(null);
             handleMutationError(err, 'Seed Inventory');
         }
     };
@@ -188,9 +199,11 @@ export default function BuildInventoryScreen() {
                         setIsReplaceAllRunning(true);
                         try {
                             let backupPath = '';
+                            setOverlay({ visible: true, title: 'Creating backup...' });
                             try {
                                 backupPath = await createAutoBackup(categories, items);
                             } catch (err) {
+                                setOverlay(null);
                                 const msg = err instanceof Error ? err.message : String(err);
                                 Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nReplace aborted to protect your data.`);
                                 return;
@@ -201,21 +214,39 @@ export default function BuildInventoryScreen() {
                             // need UI reconciliation against the server's partial state.
                             let deleteFailed = false;
                             try {
+                                setOverlay({
+                                    visible: true,
+                                    title: 'Clearing existing inventory...',
+                                    phase: 'Removing items and categories',
+                                });
                                 try {
                                     await deleteAllInventory();
                                 } catch (err) {
+                                    setOverlay(null);
                                     deleteFailed = true;
                                     handleMutationError(err, 'Delete Inventory');
                                     return;
                                 }
+                                setOverlay({ visible: true, title: 'Syncing with server...' });
                                 try {
-                                    await seed();
+                                    setOverlay({ visible: true, title: 'Adding default inventory...' });
+                                    await seed((phase, current, total, currentName) => {
+                                        setOverlay({
+                                            visible: true,
+                                            title: 'Adding default inventory...',
+                                            phase: phase === 'categories' ? 'Setting up categories' : 'Adding items',
+                                            progress: { current, total },
+                                            subtitle: currentName,
+                                        });
+                                    });
+                                    setOverlay(null);
                                     showBackupDoneAlert(
                                         'Done',
                                         'Your previous inventory was backed up and replaced with defaults.',
                                         backupPath,
                                     );
                                 } catch (err) {
+                                    setOverlay(null);
                                     handleMutationError(err, 'Seed Inventory');
                                 }
                             } finally {
@@ -869,22 +900,8 @@ export default function BuildInventoryScreen() {
             </View>
 
             <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
-                {/* Seeding progress banner */}
-                {isSeeding && seedProgress && (
-                    <View style={[styles.seedingBanner, { backgroundColor: colors.accentBlueBg, borderColor: colors.accentBlue }]}>
-                        <Ionicons name="cloud-upload-outline" size={18} color={colors.accentBlue} />
-                        <View style={{ flex: 1 }}>
-                            <Text style={[styles.seedingTitle, { color: colors.accentBlue }]}>
-                                {seedProgress.phase === 'categories'
-                                    ? `Setting up categories (${seedProgress.phaseCompleted}/${seedProgress.phaseTotal})`
-                                    : `Adding items (${seedProgress.phaseCompleted}/${seedProgress.phaseTotal})`}
-                            </Text>
-                            <Text style={[styles.seedingSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
-                                {seedProgress.currentAction}
-                            </Text>
-                        </View>
-                    </View>
-                )}
+                {/* Inline seed banner removed — BulkOperationOverlay now shows
+                    blocking progress while seeding/replacing/resetting. */}
 
                 {/* Data Management Cards */}
                 <View style={styles.cardsContainer}>
