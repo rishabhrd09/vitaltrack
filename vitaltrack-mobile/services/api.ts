@@ -111,6 +111,33 @@ async function refreshAccessToken(): Promise<string | null> {
     }
 }
 
+// Dedupe noisy "Network request failed" logs. When the device drops WiFi,
+// TanStack Query retries every in-flight query ~5x, producing identical ERROR
+// lines that drown out genuinely useful signal. First failure per URL stays
+// ERROR; repeat failures within 10s are demoted to DEBUG.
+const recentFailures = new Map<string, number>();
+
+function logNetworkFailure(url: string, err: Error): void {
+    const now = Date.now();
+    const last = recentFailures.get(url);
+    const isRetrySpam = last !== undefined && now - last < 10_000;
+
+    recentFailures.set(url, now);
+
+    // Periodic cleanup so the map doesn't grow unbounded in long sessions.
+    if (recentFailures.size > 50) {
+        for (const [k, t] of recentFailures) {
+            if (now - t > 30_000) recentFailures.delete(k);
+        }
+    }
+
+    if (isRetrySpam) {
+        console.debug(`[API] Connection retry failed: ${url}`);
+    } else {
+        console.error(`[API] Connection Failure: ${url} [${err.message}]`);
+    }
+}
+
 // Trigger a store-level logout from the API layer. Lazy require to avoid a
 // circular import (store depends on api.ts for tokenStorage/ApiClientError).
 // Skipped for the login endpoint itself: a wrong password returning 401 must
@@ -161,16 +188,18 @@ class ApiClient {
         try {
             response = await fetch(url, { ...options, headers });
         } catch (error) {
-            console.error(`[API] Connection Failure: ${url}`, error);
             const err = error as Error;
-            // Handle standard "Network request failed"
+            // Handle standard "Network request failed" (device offline / TCP failure)
             if (err.message === 'Network request failed' || err instanceof TypeError) {
+                logNetworkFailure(url, err);
                 throw new ApiClientError(
                     'Unable to connect to server. The server may be starting up — please wait a moment and try again.',
                     0,
                     { url, originalError: err.message }
                 );
             }
+            // Unexpected non-network failure — always log loudly.
+            console.error(`[API] Connection Failure: ${url}`, error);
             throw error;
         }
 
