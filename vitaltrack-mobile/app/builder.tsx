@@ -184,7 +184,7 @@ export default function BuildInventoryScreen() {
                         let deleteFailed = false;
                         try {
                             try {
-                                await deleteAllInventory(items, categories);
+                                await deleteAllInventory();
                             } catch (err) {
                                 deleteFailed = true;
                                 handleMutationError(err, 'Delete Inventory');
@@ -354,7 +354,7 @@ export default function BuildInventoryScreen() {
                         }
                         try {
                             // Step 2: Delete non-essential items
-                            const result = await startFresh(items);
+                            const result = await startFresh();
                             showBackupDoneAlert(
                                 'Done',
                                 `Deleted ${result.deleted} items. Kept ${result.kept} essential items.${result.errors.length > 0 ? `\n\n${result.errors.length} failed.` : ''}`,
