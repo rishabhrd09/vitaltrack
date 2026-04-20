@@ -325,6 +325,79 @@ export default function BuildInventoryScreen() {
         );
     };
 
+    // The actual Start Fresh execution, extracted so the "Try again" button
+    // on partial/full failure dialogs can re-invoke it without re-prompting
+    // through the confirmation dialog.
+    const runStartFresh = async () => {
+        let backupPath = '';
+        try {
+            backupPath = await createAutoBackup(categories, items);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nStart Fresh aborted to protect your data.`);
+            return;
+        }
+        try {
+            const result = await startFresh();
+            showStartFreshResultAlert(result, backupPath);
+        } catch (err) {
+            handleMutationError(err, 'Start Fresh');
+        }
+    };
+
+    // Three-state completion dialog: full success, partial (some failed),
+    // full failure (nothing deleted). The failure copy must be honest —
+    // hiding 23 failures under a "Done" title is a trust problem.
+    const showStartFreshResultAlert = (
+        result: { deleted: number; kept: number; errors: string[] },
+        backupPath: string,
+    ) => {
+        const filename = backupPath.split('/').pop() || backupPath;
+        const shareBackup = async () => {
+            try {
+                if (await Sharing.isAvailableAsync()) {
+                    await Sharing.shareAsync(backupPath, {
+                        mimeType: 'application/json',
+                        dialogTitle: 'CareKosh Backup',
+                    });
+                }
+            } catch {
+                // Sharing cancellation isn't an error worth surfacing.
+            }
+        };
+
+        if (result.errors.length === 0) {
+            Alert.alert(
+                'Done',
+                `Deleted ${result.deleted} items. Kept ${result.kept} essential items.\n\nBackup saved: ${filename}`,
+                [
+                    { text: 'Share backup', onPress: shareBackup },
+                    { text: 'OK', style: 'cancel' },
+                ]
+            );
+        } else if (result.deleted > 0) {
+            Alert.alert(
+                'Partially completed',
+                `⚠ ${result.errors.length} items could not be deleted and remain in your inventory.\n\nSuccessfully deleted: ${result.deleted}\nKept essential: ${result.kept}\n\nBackup saved: ${filename}`,
+                [
+                    { text: 'Share backup', onPress: shareBackup },
+                    { text: 'Try again', onPress: () => runStartFresh() },
+                    { text: 'OK', style: 'cancel' },
+                ]
+            );
+        } else {
+            Alert.alert(
+                'Could not complete',
+                `No items could be deleted. This may be a network issue.\n\nBackup saved: ${filename}\n\nYour inventory is unchanged.`,
+                [
+                    { text: 'Share backup', onPress: shareBackup },
+                    { text: 'Try again', onPress: () => runStartFresh() },
+                    { text: 'OK', style: 'cancel' },
+                ]
+            );
+        }
+    };
+
     const handleStartFresh = () => {
         if (!isOnline) {
             Alert.alert('Offline', 'Connect to WiFi to reset inventory.');
@@ -342,28 +415,7 @@ export default function BuildInventoryScreen() {
                 {
                     text: 'Backup & Start Fresh',
                     style: 'destructive',
-                    onPress: async () => {
-                        let backupPath = '';
-                        try {
-                            // Step 1: Auto-backup silently
-                            backupPath = await createAutoBackup(categories, items);
-                        } catch (err) {
-                            const msg = err instanceof Error ? err.message : String(err);
-                            Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nStart Fresh aborted to protect your data.`);
-                            return;
-                        }
-                        try {
-                            // Step 2: Delete non-essential items
-                            const result = await startFresh();
-                            showBackupDoneAlert(
-                                'Done',
-                                `Deleted ${result.deleted} items. Kept ${result.kept} essential items.${result.errors.length > 0 ? `\n\n${result.errors.length} failed.` : ''}`,
-                                backupPath,
-                            );
-                        } catch (err) {
-                            handleMutationError(err, 'Start Fresh');
-                        }
-                    },
+                    onPress: runStartFresh,
                 },
             ]
         );
