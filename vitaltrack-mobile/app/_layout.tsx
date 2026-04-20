@@ -8,6 +8,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { deactivateKeepAwake } from 'expo-keep-awake';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
@@ -56,6 +57,15 @@ function RootLayoutContent() {
     initializeAuth();
     initializeApp();
   }, [initializeAuth, initializeApp]);
+
+  useEffect(() => {
+    // Expo Go on Android 16 fails the default keep-awake activation with an
+    // uncaught "Unable to activate keep awake" rejection. Explicitly
+    // deactivating short-circuits that path and keeps the Metro log clean.
+    deactivateKeepAwake().catch(() => {
+      // Best effort — silently ignore if the module is unavailable.
+    });
+  }, []);
 
   // Show loading while initializing
   if (!isAppInitialized || !isAuthInitialized) {
