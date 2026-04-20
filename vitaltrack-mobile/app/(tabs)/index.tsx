@@ -29,6 +29,7 @@ import NeedsAttention from '@/components/dashboard/NeedsAttention';
 import ActivityList from '@/components/dashboard/ActivityList';
 import { SkeletonLoader } from '@/components/common/SkeletonLoader';
 import { useItems, useOrders, useActivities } from '@/hooks/useServerData';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useForceSync } from '@/hooks/useForceSync';
 import { isOutOfStock, isLowStock } from '@/types';
 
@@ -36,6 +37,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const { isDarkMode, toggleTheme, colors } = useTheme();
+  const { isOnline } = useNetworkStatus();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfileSheet, setShowProfileSheet] = useState(false);
@@ -156,6 +158,12 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
       ) : (
+      <>
+      {!isOnline && items.length > 0 && (
+        <Text style={[styles.lastSyncedText, { color: colors.textMuted }]}>
+          Showing last synced data
+        </Text>
+      )}
       <ScrollView
         ref={scrollRef}
         style={styles.scrollView}
@@ -237,6 +245,7 @@ export default function DashboardScreen() {
           <ActivityList activities={activityLogs} />
         </View>
       </ScrollView>
+      </>
       )}
 
       {/* Profile Menu Sheet */}
@@ -303,6 +312,12 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  lastSyncedText: {
+    fontSize: 12,
+    paddingHorizontal: spacing.lg,
+    marginTop: 8,
+    marginBottom: 8,
   },
   content: {
     padding: spacing.lg,

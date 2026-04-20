@@ -113,7 +113,13 @@ export default function OrdersScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView
+        <>
+          {!isOnline && (
+            <Text style={[styles.lastSyncedText, { color: colors.textMuted }]}>
+              Showing last synced data
+            </Text>
+          )}
+          <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
@@ -129,6 +135,7 @@ export default function OrdersScreen() {
             />
           ))}
         </ScrollView>
+        </>
       )}
 
       {/* FAB */}
@@ -185,6 +192,12 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
   },
   scrollView: { flex: 1 },
+  lastSyncedText: {
+    fontSize: 12,
+    paddingHorizontal: spacing.lg,
+    marginTop: 8,
+    marginBottom: 8,
+  },
   content: {
     padding: spacing.lg,
     paddingBottom: 130,
