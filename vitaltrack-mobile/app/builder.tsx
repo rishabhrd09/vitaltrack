@@ -42,6 +42,7 @@ import {
 } from '@/hooks/useSeedInventory';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/hooks/useServerData';
+import BulkOperationOverlay, { type BulkOperationOverlayProps } from '@/components/common/BulkOperationOverlay';
 
 export default function BuildInventoryScreen() {
     const router = useRouter();
@@ -75,6 +76,9 @@ export default function BuildInventoryScreen() {
     // Use a ref so the prompt fires exactly once per mount, even if state updates
     // re-trigger the effect before Alert is dismissed.
     const seedPromptFiredRef = useRef(false);
+    // Blocking overlay shown during destructive bulk ops. Null when no op is running.
+    // The overlay swallows touches so the user can't queue a second op mid-flight.
+    const [overlay, setOverlay] = useState<BulkOperationOverlayProps | null>(null);
 
     // Keep selectedCategoryId in sync when categories load or change
     useEffect(() => {
@@ -347,17 +351,34 @@ export default function BuildInventoryScreen() {
     // through the confirmation dialog.
     const runStartFresh = async () => {
         let backupPath = '';
+        setOverlay({ visible: true, title: 'Creating backup...' });
         try {
             backupPath = await createAutoBackup(categories, items);
         } catch (err) {
+            setOverlay(null);
             const msg = err instanceof Error ? err.message : String(err);
             Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nStart Fresh aborted to protect your data.`);
             return;
         }
+        setOverlay({
+            visible: true,
+            title: 'Clearing inventory...',
+            phase: 'Removing non-essential items',
+        });
         try {
-            const result = await startFresh();
+            const result = await startFresh((current, total, currentName) => {
+                setOverlay({
+                    visible: true,
+                    title: 'Clearing inventory...',
+                    phase: 'Removing non-essential items',
+                    progress: { current, total },
+                    subtitle: currentName,
+                });
+            });
+            setOverlay(null);
             showStartFreshResultAlert(result, backupPath);
         } catch (err) {
+            setOverlay(null);
             handleMutationError(err, 'Start Fresh');
         }
     };
@@ -1091,6 +1112,9 @@ export default function BuildInventoryScreen() {
                 <Ionicons name="add" size={24} color={colors.white} />
                 <Text style={styles.fabText}>Add Item</Text>
             </TouchableOpacity>
+
+            {/* Blocking overlay for destructive bulk ops (Start Fresh, Seed, Replace-all) */}
+            {overlay && <BulkOperationOverlay {...overlay} />}
 
             {/* Add Category Modal */}
             <Modal visible={showAddCategoryModal} transparent animationType="fade" onRequestClose={() => setShowAddCategoryModal(false)}>

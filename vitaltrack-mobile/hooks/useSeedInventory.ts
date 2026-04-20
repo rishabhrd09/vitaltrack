@@ -399,7 +399,9 @@ export function useStartFresh() {
   const qc = useQueryClient();
   const [isResetting, setIsResetting] = useState(false);
 
-  const startFresh = async (): Promise<{ deleted: number; kept: number; errors: string[] }> => {
+  const startFresh = async (
+    onProgress?: (current: number, total: number, currentName: string) => void
+  ): Promise<{ deleted: number; kept: number; errors: string[] }> => {
     setIsResetting(true);
     const errors: string[] = [];
     let deleted = 0;
@@ -410,12 +412,12 @@ export function useStartFresh() {
       // in the React Query snapshot would issue DELETEs for phantom IDs.
       const serverItemsResp = await itemService.getAll({ limit: 999 });
       const allItems = serverItemsResp.items;
+      const nonEssential = allItems.filter((i) => !isEssentialItem(i));
+      kept = allItems.length - nonEssential.length;
 
-      for (const item of allItems) {
-        if (isEssentialItem(item)) {
-          kept++;
-          continue;
-        }
+      for (let i = 0; i < nonEssential.length; i++) {
+        const item = nonEssential[i];
+        onProgress?.(i, nonEssential.length, item.name);
         try {
           await itemService.delete(item.id);
           deleted++;
