@@ -8,6 +8,10 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useAppStore } from '@/store/useAppStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
+import { QueryProvider } from '@/providers/QueryProvider';
 
 // In non-dev builds (EAS preview/production APKs) the LogBox dev overlay
 // shouldn't surface warnings to end users — the UI already handles errors
@@ -15,10 +19,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 if (!__DEV__) {
   LogBox.ignoreAllLogs();
 }
-import { useAppStore } from '@/store/useAppStore';
-import { useAuthStore } from '@/store/useAuthStore';
-import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
-import { QueryProvider } from '@/providers/QueryProvider';
 
 function useProtectedRoute() {
   const segments = useSegments();
