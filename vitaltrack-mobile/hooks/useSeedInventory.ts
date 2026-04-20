@@ -33,7 +33,8 @@ export type SeedResult =
       createdCategories: number;
       createdItems: number;
       skippedExisting: number;
-      skippedExistingNames: string[];
+      skippedItemNames: string[];
+      skippedCategoryNames: string[];
       trueFailures: string[];
     };
 
@@ -77,7 +78,8 @@ export function useSeedInventory() {
     let createdCategories = 0;
     let createdItems = 0;
     let skippedExisting = 0;
-    const skippedExistingNames: string[] = [];
+    const skippedCategoryNames: string[] = [];
+    const skippedItemNames: string[] = [];
     const trueFailures: string[] = [];
 
     const updateCategoryProgress = (action: string) => {
@@ -151,7 +153,7 @@ export function useSeedInventory() {
         if (existing) {
           categoryId = existing.id;
           skippedExisting++;
-          skippedExistingNames.push(seedCat.name);
+          skippedCategoryNames.push(seedCat.name);
         } else {
           try {
             const created = await categoryService.create({
@@ -166,7 +168,7 @@ export function useSeedInventory() {
             if (isDuplicateNameError(err)) {
               // Race condition — another client created it; treat as skipped.
               skippedExisting++;
-              skippedExistingNames.push(seedCat.name);
+              skippedCategoryNames.push(seedCat.name);
               categoriesHandled++;
               itemsHandled += seedCat.items.length;
               continue;
@@ -189,7 +191,7 @@ export function useSeedInventory() {
           if (existingItemKeys.has(key)) {
             updateItemProgress(`Skipping existing: ${seedItem.name}`);
             skippedExisting++;
-            skippedExistingNames.push(seedItem.name);
+            skippedItemNames.push(seedItem.name);
             itemsHandled++;
             continue;
           }
@@ -211,7 +213,7 @@ export function useSeedInventory() {
             if (isDuplicateNameError(err)) {
               existingItemKeys.add(key);
               skippedExisting++;
-              skippedExistingNames.push(seedItem.name);
+              skippedItemNames.push(seedItem.name);
             } else {
               const msg = err instanceof Error ? err.message : String(err);
               trueFailures.push(`Item "${seedItem.name}": ${msg}`);
@@ -238,7 +240,8 @@ export function useSeedInventory() {
       createdCategories,
       createdItems,
       skippedExisting,
-      skippedExistingNames,
+      skippedItemNames,
+      skippedCategoryNames,
       trueFailures,
     };
   };
@@ -337,15 +340,12 @@ export async function createAutoBackup(
 export async function deleteAllInventory(
   items: Item[],
   categories: Category[]
-): Promise<{ itemsDeleted: number; categoriesDeleted: number; errors: string[] }> {
+): Promise<void> {
   const errors: string[] = [];
-  let itemsDeleted = 0;
-  let categoriesDeleted = 0;
 
   for (const item of items) {
     try {
       await itemService.delete(item.id);
-      itemsDeleted++;
     } catch (err) {
       errors.push(`Item "${item.name}": ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -354,14 +354,18 @@ export async function deleteAllInventory(
   for (const cat of categories) {
     try {
       await categoryService.delete(cat.id);
-      categoriesDeleted++;
     } catch (err) {
-      // Backend may still protect defaults — seed() will find them and skip.
       errors.push(`Category "${cat.name}": ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
-  return { itemsDeleted, categoriesDeleted, errors };
+  if (errors.length > 0) {
+    throw new Error(
+      `Failed to delete ${errors.length} of ${items.length + categories.length} entries. ` +
+        `First error: ${errors[0]}. ` +
+        `Inventory may be in a partial state — please try Replace-all again.`
+    );
+  }
 }
 
 /**

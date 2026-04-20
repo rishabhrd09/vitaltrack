@@ -131,17 +131,20 @@ export default function BuildInventoryScreen() {
                 );
                 return;
             }
-            // Some or all already existed — classify "already had" line without naming too many
-            const names = result.skippedExistingNames;
+            // Some or all already existed — name only the items (skipped categories
+            // share the same count but their names belong to a different sentence).
+            const itemNames = result.skippedItemNames;
             let alreadyLine = '';
-            if (names.length <= 6) {
-                alreadyLine = `Already had: ${names.join(', ')}`;
+            if (itemNames.length === 0) {
+                alreadyLine = '';
+            } else if (itemNames.length <= 6) {
+                alreadyLine = `\n\nAlready had: ${itemNames.join(', ')}`;
             } else {
-                alreadyLine = `Already had: ${names.slice(0, 3).join(', ')}, and ${names.length - 3} more`;
+                alreadyLine = `\n\nAlready had: ${itemNames.slice(0, 3).join(', ')}, and ${itemNames.length - 3} more`;
             }
             Alert.alert(
                 'Default inventory added',
-                `${result.createdItems} new items added, ${result.skippedExisting} already in your inventory were kept unchanged.\n\n${alreadyLine}`
+                `${result.createdItems} new items added, ${result.skippedExisting} already in your inventory were kept unchanged.${alreadyLine}`
             );
         } catch (err) {
             handleMutationError(err, 'Seed Inventory');
@@ -177,12 +180,12 @@ export default function BuildInventoryScreen() {
                             handleMutationError(err, 'Delete Inventory');
                             return;
                         }
-                        // Invalidate so the subsequent seed's pre-fetch (via services,
-                        // not React Query) aligns with what the UI will show on completion.
+                        // Force a refetch (not just invalidate) so seed()'s pre-fetch
+                        // sees the post-delete state instead of any in-flight cache.
                         await Promise.all([
-                            queryClient.invalidateQueries({ queryKey: queryKeys.items }),
-                            queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
-                            queryClient.invalidateQueries({ queryKey: queryKeys.activities }),
+                            queryClient.refetchQueries({ queryKey: queryKeys.items }),
+                            queryClient.refetchQueries({ queryKey: queryKeys.categories }),
+                            queryClient.refetchQueries({ queryKey: queryKeys.activities }),
                         ]);
                         try {
                             await seed();
