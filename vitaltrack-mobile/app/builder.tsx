@@ -186,9 +186,10 @@ export default function BuildInventoryScreen() {
                         ]);
                         try {
                             await seed();
-                            Alert.alert(
+                            showBackupDoneAlert(
                                 'Done',
-                                `Your previous inventory was backed up and replaced with defaults.\n\nBackup: ${backupPath}`
+                                'Your previous inventory was backed up and replaced with defaults.',
+                                backupPath,
                             );
                         } catch (err) {
                             handleMutationError(err, 'Seed Inventory');
@@ -268,6 +269,37 @@ export default function BuildInventoryScreen() {
         );
     };
 
+    // After a destructive flow finishes, surface the auto-backup through the
+    // system share sheet so the user can move it off the app's sandboxed dir
+    // (Drive, WhatsApp, email). Showing a raw file:// URI in an Alert is
+    // useless — the user can't navigate to it, can't recover it if they wipe
+    // the app, and arguably defeats the point of "backup before destructive".
+    const showBackupDoneAlert = (title: string, body: string, backupPath: string) => {
+        const filename = backupPath.split('/').pop() || backupPath;
+        Alert.alert(
+            title,
+            `${body}\n\nBackup saved: ${filename}`,
+            [
+                {
+                    text: 'Share backup',
+                    onPress: async () => {
+                        try {
+                            if (await Sharing.isAvailableAsync()) {
+                                await Sharing.shareAsync(backupPath, {
+                                    mimeType: 'application/json',
+                                    dialogTitle: 'CareKosh Backup',
+                                });
+                            }
+                        } catch {
+                            // Sharing cancellation isn't an error worth surfacing.
+                        }
+                    },
+                },
+                { text: 'OK', style: 'cancel' },
+            ]
+        );
+    };
+
     const handleStartFresh = () => {
         if (!isOnline) {
             Alert.alert('Offline', 'Connect to WiFi to reset inventory.');
@@ -298,9 +330,10 @@ export default function BuildInventoryScreen() {
                         try {
                             // Step 2: Delete non-essential items
                             const result = await startFresh(items);
-                            Alert.alert(
+                            showBackupDoneAlert(
                                 'Done',
-                                `Deleted ${result.deleted} items. Kept ${result.kept} essential items.${result.errors.length > 0 ? `\n\n${result.errors.length} failed.` : ''}\n\nAuto-backup saved at:\n${backupPath}`
+                                `Deleted ${result.deleted} items. Kept ${result.kept} essential items.${result.errors.length > 0 ? `\n\n${result.errors.length} failed.` : ''}`,
+                                backupPath,
                             );
                         } catch (err) {
                             handleMutationError(err, 'Start Fresh');
