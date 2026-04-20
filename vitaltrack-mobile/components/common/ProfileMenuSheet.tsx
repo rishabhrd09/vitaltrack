@@ -5,6 +5,7 @@
 
 import { useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Switch, Modal, Pressable, PanResponder, Animated } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
@@ -38,6 +39,7 @@ export default function ProfileMenuSheet({
     onLogout,
 }: ProfileMenuSheetProps) {
     const { colors } = useTheme();
+    const insets = useSafeAreaInsets();
 
     const translateY = useRef(new Animated.Value(0)).current;
 
@@ -91,7 +93,7 @@ export default function ProfileMenuSheet({
         >
             <Pressable style={[styles.overlay, { backgroundColor: colors.overlayDark }]} onPress={onDismiss}>
                 <Animated.View style={{ transform: [{ translateY }] }}>
-                <Pressable style={[styles.sheet, { backgroundColor: colors.bgCard }]} onPress={(e) => e.stopPropagation()}>
+                <Pressable style={[styles.sheet, { backgroundColor: colors.bgCard, paddingBottom: insets.bottom }]} onPress={(e) => e.stopPropagation()}>
                     {/* Drag Handle — attach PanResponder here for swipe-down-to-dismiss */}
                     <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
                         <View style={[styles.dragHandle, { backgroundColor: colors.borderSecondary }]} />
