@@ -3,6 +3,7 @@ import { itemService } from '@/services/items';
 import { categoryService } from '@/services/categories';
 import { orderService } from '@/services/orders';
 import { api } from '@/services/api';
+import { groupBulkActivities } from '@/utils/activityGrouping';
 import type { Item, Category, SavedOrder, DashboardStats, ActivityLog } from '@/types';
 
 export const queryKeys = {
@@ -59,7 +60,7 @@ export function useActivities(limit = 50) {
       const response = await api.get<{ activities: ActivityLog[]; total: number }>(
         `/activities?limit=${limit}`
       );
-      return response.activities;
+      return groupBulkActivities(response.activities);
     },
   });
 }
