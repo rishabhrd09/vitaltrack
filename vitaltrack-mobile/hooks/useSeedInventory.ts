@@ -288,6 +288,48 @@ export async function createAutoBackup(
 }
 
 /**
+ * Replace-all delete — wipes every item and every category, including the
+ * 10 "protected" default categories. The user reaches this only by tapping
+ * through two confirmation dialogs, so the protection (which exists to stop
+ * accidental long-press deletions from the Build Inventory screen) is
+ * intentionally bypassed here. The subsequent seed step re-creates the
+ * defaults, so any category whose delete fails server-side (e.g., backend
+ * also enforces protection) will still be present and get merged correctly.
+ *
+ * Item-before-category ordering matters because of the FK from items to
+ * categories; categories with items cannot be deleted.
+ */
+export async function deleteAllInventory(
+  items: Item[],
+  categories: Category[]
+): Promise<{ itemsDeleted: number; categoriesDeleted: number; errors: string[] }> {
+  const errors: string[] = [];
+  let itemsDeleted = 0;
+  let categoriesDeleted = 0;
+
+  for (const item of items) {
+    try {
+      await itemService.delete(item.id);
+      itemsDeleted++;
+    } catch (err) {
+      errors.push(`Item "${item.name}": ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  for (const cat of categories) {
+    try {
+      await categoryService.delete(cat.id);
+      categoriesDeleted++;
+    } catch (err) {
+      // Backend may still protect defaults — seed() will find them and skip.
+      errors.push(`Category "${cat.name}": ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  return { itemsDeleted, categoriesDeleted, errors };
+}
+
+/**
  * Start Fresh hook — deletes all non-essential items from the server.
  * Categories are preserved. Essential items (ventilator, oxygen, etc.) stay.
  */

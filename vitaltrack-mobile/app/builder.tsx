@@ -34,9 +34,12 @@ import {
     useSeedInventory,
     useStartFresh,
     createAutoBackup,
+    deleteAllInventory,
     isProtectedCategory,
     getSuggestedItemsForCategory,
 } from '@/hooks/useSeedInventory';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/hooks/useServerData';
 
 export default function BuildInventoryScreen() {
     const router = useRouter();
@@ -53,6 +56,7 @@ export default function BuildInventoryScreen() {
     const toggleItemCriticalMutation = useToggleItemCritical();
     const { seed, isSeeding, progress: seedProgress } = useSeedInventory();
     const { startFresh } = useStartFresh();
+    const queryClient = useQueryClient();
 
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
         categories.length > 0 ? categories[0].id : null
@@ -137,15 +141,78 @@ export default function BuildInventoryScreen() {
         }
     };
 
+    // Replace-all flow: auto-backup, wipe everything, re-seed defaults.
+    const confirmReplaceAll = () => {
+        Alert.alert(
+            'Replace all inventory?',
+            'This will:\n\n• Auto-backup your current inventory to a JSON file\n• Delete all your current items and categories\n• Replace them with the 10 default categories and 32 default items\n\nStock quantities and any custom items will be lost. This cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Backup & Replace',
+                    style: 'destructive',
+                    onPress: async () => {
+                        if (!isOnline) {
+                            Alert.alert('Offline', 'Connect to WiFi to replace inventory.');
+                            return;
+                        }
+                        let backupPath = '';
+                        try {
+                            backupPath = await createAutoBackup(categories, items);
+                        } catch (err) {
+                            const msg = err instanceof Error ? err.message : String(err);
+                            Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nReplace aborted to protect your data.`);
+                            return;
+                        }
+                        try {
+                            await deleteAllInventory(items, categories);
+                        } catch (err) {
+                            handleMutationError(err, 'Delete Inventory');
+                            return;
+                        }
+                        // Invalidate so the subsequent seed's pre-fetch (via services,
+                        // not React Query) aligns with what the UI will show on completion.
+                        await Promise.all([
+                            queryClient.invalidateQueries({ queryKey: queryKeys.items }),
+                            queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
+                            queryClient.invalidateQueries({ queryKey: queryKeys.activities }),
+                        ]);
+                        try {
+                            await seed();
+                            Alert.alert(
+                                'Done',
+                                `Your previous inventory was backed up and replaced with defaults.\n\nBackup: ${backupPath}`
+                            );
+                        } catch (err) {
+                            handleMutationError(err, 'Seed Inventory');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
     // Show confirmation, then seed. Used by both manual button and auto-prompt.
     const handleSeed = () => {
         const hasExisting = items.length > 0 || categories.length > 0;
+        if (!hasExisting) {
+            Alert.alert(
+                'Add Default Inventory',
+                'This will add the default Home ICU items (10 categories, 32 items).',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Add Defaults', onPress: () => runSeed() },
+                ]
+            );
+            return;
+        }
         Alert.alert(
             'Add Default Inventory',
-            `This will add ${hasExisting ? 'any missing ' : ''}default Home ICU items (10 categories, 32 items). Existing categories and items will NOT be duplicated.`,
+            'You already have items in your inventory. How would you like to add the default Home ICU items?',
             [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'Add Defaults', onPress: () => runSeed() },
+                { text: 'Merge', onPress: () => runSeed() },
+                { text: 'Replace all', style: 'destructive', onPress: () => confirmReplaceAll() },
             ]
         );
     };
