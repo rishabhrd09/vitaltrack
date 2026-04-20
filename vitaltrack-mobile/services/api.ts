@@ -255,14 +255,28 @@ class ApiClient {
                 }
             }
 
-            // 5xx / network-level problems are unexpected; 4xx is caller-handleable.
-            const level: 'error' | 'warn' =
-                response.status >= 500 || response.status === 0 ? 'error' : 'warn';
-            console[level](
-                `[API] ${options.method || 'GET'} ${endpoint} → ${response.status} ${message}`
-            );
-            if (__DEV__) {
-                console[level]('[API] body:', JSON.stringify(data).substring(0, 500));
+            // DELETE is idempotent by HTTP spec — a 404 means the end state
+            // (resource gone) is already achieved. Caller-side services treat
+            // it as success, so emitting a WARN from the client interceptor
+            // creates misleading noise during bulk delete operations (dozens
+            // of 404s look like failures in the log). Demote to debug.
+            const method = options.method || 'GET';
+            const isIdempotentDeleteGone = method === 'DELETE' && response.status === 404;
+
+            if (isIdempotentDeleteGone) {
+                if (__DEV__) {
+                    console.debug(`[API] DELETE ${endpoint} → 404 (idempotent — nothing to delete)`);
+                }
+            } else {
+                // 5xx / network-level problems are unexpected; 4xx is caller-handleable.
+                const level: 'error' | 'warn' =
+                    response.status >= 500 || response.status === 0 ? 'error' : 'warn';
+                console[level](
+                    `[API] ${method} ${endpoint} → ${response.status} ${message}`
+                );
+                if (__DEV__) {
+                    console[level]('[API] body:', JSON.stringify(data).substring(0, 500));
+                }
             }
 
             throw new ApiClientError(message, response.status, data);
