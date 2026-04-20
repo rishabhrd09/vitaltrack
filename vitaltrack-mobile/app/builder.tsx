@@ -878,6 +878,11 @@ export default function BuildInventoryScreen() {
     };
 
     const mutedRed = '#A65D5D';
+    // Disable action triggers defensively while a bulk op is running. The
+    // BulkOperationOverlay already blocks touches via its Modal backdrop, but
+    // there's a ~100ms window between setState and the Modal engaging — a
+    // fast double-tap in that window can queue a second destructive op.
+    const isBulkBusy = overlay?.visible === true;
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
@@ -913,6 +918,7 @@ export default function BuildInventoryScreen() {
                             subtitle="Export as JSON"
                             onPress={handleBackup}
                             color={colors.accentBlue}
+                            disabled={isBulkBusy}
                         />
                         <ActionCard
                             icon="document-text-outline"
@@ -920,6 +926,7 @@ export default function BuildInventoryScreen() {
                             subtitle="Share inventory report"
                             onPress={handleExportPDF}
                             color={colors.statusYellow}
+                            disabled={isBulkBusy}
                         />
                     </View>
                     <View style={styles.cardsRow}>
@@ -929,6 +936,7 @@ export default function BuildInventoryScreen() {
                             subtitle="10 categories · 32 items"
                             onPress={handleSeed}
                             color={colors.statusGreen}
+                            disabled={isBulkBusy}
                         />
                         <ActionCard
                             icon="flash-outline"
@@ -936,6 +944,7 @@ export default function BuildInventoryScreen() {
                             subtitle="Keep essentials only"
                             onPress={handleStartFresh}
                             color={mutedRed}
+                            disabled={isBulkBusy}
                         />
                     </View>
                 </View>
@@ -995,7 +1004,7 @@ export default function BuildInventoryScreen() {
                     {selectedCategory && (
                         <View style={[styles.listHeader, { borderBottomColor: colors.borderPrimary }]}>
                             <Text style={[styles.listTitle, { color: colors.textPrimary }]}>{selectedCategory.name}</Text>
-                            <TouchableOpacity onPress={() => handleDeleteCategory()}>
+                            <TouchableOpacity onPress={() => handleDeleteCategory()} disabled={isBulkBusy} style={{ opacity: isBulkBusy ? 0.5 : 1 }}>
                                 <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
                             </TouchableOpacity>
                         </View>
@@ -1051,8 +1060,9 @@ export default function BuildInventoryScreen() {
                                             />
                                         </TouchableOpacity>
                                         <TouchableOpacity
-                                            style={[styles.iconButton, { backgroundColor: `${mutedRed}15` }]}
+                                            style={[styles.iconButton, { backgroundColor: `${mutedRed}15`, opacity: isBulkBusy ? 0.5 : 1 }]}
                                             onPress={() => handleDeleteItem(item.id, item.name)}
+                                            disabled={isBulkBusy}
                                         >
                                             <Ionicons name="trash-outline" size={18} color={mutedRed} />
                                         </TouchableOpacity>
@@ -1122,9 +1132,10 @@ export default function BuildInventoryScreen() {
 
             {/* Floating Add Button with Label */}
             <TouchableOpacity
-                style={[styles.fab, { backgroundColor: colors.accentBlue }]}
+                style={[styles.fab, { backgroundColor: colors.accentBlue, opacity: isBulkBusy ? 0.5 : 1 }]}
                 onPress={() => router.push(`/item/new?categoryId=${selectedCategoryId}` as any)}
                 activeOpacity={0.8}
+                disabled={isBulkBusy}
             >
                 <Ionicons name="add" size={24} color={colors.white} />
                 <Text style={styles.fabText}>Add Item</Text>
@@ -1177,19 +1188,21 @@ export default function BuildInventoryScreen() {
 }
 
 // Action Card Component
-function ActionCard({ icon, label, subtitle, onPress, color }: {
+function ActionCard({ icon, label, subtitle, onPress, color, disabled }: {
     icon: keyof typeof Ionicons.glyphMap;
     label: string;
     subtitle: string;
     onPress: () => void;
     color: string;
+    disabled?: boolean;
 }) {
     const { colors } = useTheme();
     return (
         <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary }]}
+            style={[styles.actionCard, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary, opacity: disabled ? 0.5 : 1 }]}
             onPress={onPress}
             activeOpacity={0.7}
+            disabled={disabled}
         >
             <View style={[styles.actionCardIcon, { backgroundColor: `${color}15` }]}>
                 <Ionicons name={icon} size={20} color={color} />
