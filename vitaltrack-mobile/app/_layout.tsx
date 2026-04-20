@@ -12,7 +12,6 @@ import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
-import NetworkBanner from '@/components/common/NetworkBanner';
 
 // In non-dev builds (EAS preview/production APKs) the LogBox dev overlay
 // shouldn't surface warnings to end users — the UI already handles errors
@@ -70,7 +69,6 @@ function RootLayoutContent() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} backgroundColor={colors.bgPrimary} />
-      <NetworkBanner />
       <Stack
         screenOptions={{
           headerShown: false,
