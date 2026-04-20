@@ -26,13 +26,16 @@ interface SeedProgress {
   currentAction: string;
 }
 
-export interface SeedResult {
-  createdCategories: number;
-  createdItems: number;
-  skippedExisting: number;
-  skippedExistingNames: string[];
-  trueFailures: string[];
-}
+export type SeedResult =
+  | { status: 'already-seeded' }
+  | {
+      status: 'seeded';
+      createdCategories: number;
+      createdItems: number;
+      skippedExisting: number;
+      skippedExistingNames: string[];
+      trueFailures: string[];
+    };
 
 // A duplicate-name collision that slipped past the pre-fetch is NOT a failure —
 // it's an expected outcome. Classify by status code first (409 once Task 9 ships)
@@ -102,6 +105,31 @@ export function useSeedInventory() {
       ]);
       const existingCategories: Category[] = [...existingCategoriesResp.categories];
       const existingItems: Item[] = [...existingItemsResp.items];
+
+      // Short-circuit: if the defaults are already in place, skip the 42-op loop.
+      // Tolerance of ≤4 missing items covers the case where the user intentionally
+      // deleted a few seed items — in that case we still run the loop so the missing
+      // ones get re-POSTed, and per-item dedup prevents the 28+ present ones from
+      // being touched.
+      const defaultCategoryNamesLower = SEED_DATA.map((c) => c.name.toLowerCase().trim());
+      const defaultItemNamesLower = SEED_DATA.flatMap((c) =>
+        c.items.map((i) => i.name.toLowerCase().trim())
+      );
+      const existingCatNamesLower = new Set(
+        existingCategories.map((c) => c.name.toLowerCase().trim())
+      );
+      const existingItemNamesLower = new Set(
+        existingItems.map((i) => i.name.toLowerCase().trim())
+      );
+      const allCategoriesPresent = defaultCategoryNamesLower.every((n) =>
+        existingCatNamesLower.has(n)
+      );
+      const seedItemsPresent = defaultItemNamesLower.filter((n) =>
+        existingItemNamesLower.has(n)
+      ).length;
+      if (allCategoriesPresent && seedItemsPresent >= 28) {
+        return { status: 'already-seeded' };
+      }
 
       // Build a (categoryId, lowercased name) → item map for O(1) dedup checks
       const existingItemKey = (categoryId: string, name: string) =>
@@ -205,7 +233,14 @@ export function useSeedInventory() {
       setProgress(null);
     }
 
-    return { createdCategories, createdItems, skippedExisting, skippedExistingNames, trueFailures };
+    return {
+      status: 'seeded',
+      createdCategories,
+      createdItems,
+      skippedExisting,
+      skippedExistingNames,
+      trueFailures,
+    };
   };
 
   return { seed, progress, isSeeding };

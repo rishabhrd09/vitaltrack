@@ -110,6 +110,13 @@ export default function BuildInventoryScreen() {
         }
         try {
             const result = await seed();
+            if (result.status === 'already-seeded') {
+                Alert.alert(
+                    'Already set up',
+                    'Your inventory already has the default Home ICU items. Nothing to add.'
+                );
+                return;
+            }
             if (result.trueFailures.length > 0) {
                 Alert.alert(
                     "Some items couldn't be added",
