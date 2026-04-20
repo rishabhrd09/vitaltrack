@@ -67,6 +67,11 @@ export default function BuildInventoryScreen() {
     const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newCategoryDesc, setNewCategoryDesc] = useState('');
+    // Tracks whether Replace-all is currently executing. Replace-all has a
+    // brief window between delete and seed where both items and categories
+    // are empty on the server — without this guard, the auto-seed prompt
+    // useEffect below fires during the operation and stacks a modal on top.
+    const [isReplaceAllRunning, setIsReplaceAllRunning] = useState(false);
     // Use a ref so the prompt fires exactly once per mount, even if state updates
     // re-trigger the effect before Alert is dismissed.
     const seedPromptFiredRef = useRef(false);
@@ -80,9 +85,16 @@ export default function BuildInventoryScreen() {
 
     // Auto-prompt new users (empty inventory) to seed 32 default items.
     // Fires exactly once per screen mount.
+    //
+    // Guards against concurrent seed / replace-all: during replace-all there's
+    // a window where the server really is empty (between delete and seed), and
+    // during a fresh seed the transient pre-write state also looks empty.
+    // Firing the prompt in either case stacks a second modal on top of the
+    // in-progress operation.
     useEffect(() => {
         if (categoriesLoading || itemsLoading) return;
         if (seedPromptFiredRef.current) return;
+        if (isSeeding || isReplaceAllRunning) return;
         if (categories.length === 0 && items.length === 0) {
             seedPromptFiredRef.current = true;
             Alert.alert(
@@ -94,7 +106,7 @@ export default function BuildInventoryScreen() {
                 ]
             );
         }
-    }, [categoriesLoading, itemsLoading, categories.length, items.length]);
+    }, [categoriesLoading, itemsLoading, categories.length, items.length, isSeeding, isReplaceAllRunning]);
 
     const categoryItems = items.filter((item) => item.categoryId === selectedCategoryId);
     const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
@@ -169,55 +181,60 @@ export default function BuildInventoryScreen() {
                             Alert.alert('Offline', 'Connect to WiFi to replace inventory.');
                             return;
                         }
-                        let backupPath = '';
+                        setIsReplaceAllRunning(true);
                         try {
-                            backupPath = await createAutoBackup(categories, items);
-                        } catch (err) {
-                            const msg = err instanceof Error ? err.message : String(err);
-                            Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nReplace aborted to protect your data.`);
-                            return;
-                        }
-                        // Wrap delete+seed so the cache is reconciled whether
-                        // either step throws. seed()'s own finally also resets,
-                        // but if delete throws before seed ever runs, we still
-                        // need UI reconciliation against the server's partial state.
-                        let deleteFailed = false;
-                        try {
+                            let backupPath = '';
                             try {
-                                await deleteAllInventory();
+                                backupPath = await createAutoBackup(categories, items);
                             } catch (err) {
-                                deleteFailed = true;
-                                handleMutationError(err, 'Delete Inventory');
+                                const msg = err instanceof Error ? err.message : String(err);
+                                Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nReplace aborted to protect your data.`);
                                 return;
                             }
+                            // Wrap delete+seed so the cache is reconciled whether
+                            // either step throws. seed()'s own finally also resets,
+                            // but if delete throws before seed ever runs, we still
+                            // need UI reconciliation against the server's partial state.
+                            let deleteFailed = false;
                             try {
-                                await seed();
-                                showBackupDoneAlert(
-                                    'Done',
-                                    'Your previous inventory was backed up and replaced with defaults.',
-                                    backupPath,
-                                );
-                            } catch (err) {
-                                handleMutationError(err, 'Seed Inventory');
-                            }
-                        } finally {
-                            // If delete threw, seed never ran and its reconcile
-                            // never fired — do it here so drifted cache is refreshed.
-                            if (deleteFailed) {
                                 try {
-                                    await Promise.all([
-                                        queryClient.resetQueries({ queryKey: queryKeys.items }),
-                                        queryClient.resetQueries({ queryKey: queryKeys.categories }),
-                                        queryClient.resetQueries({ queryKey: queryKeys.activities }),
-                                    ]);
-                                    await Promise.all([
-                                        queryClient.refetchQueries({ queryKey: queryKeys.items }),
-                                        queryClient.refetchQueries({ queryKey: queryKeys.categories }),
-                                    ]);
-                                } catch (reconcileErr) {
-                                    console.warn('[ReplaceAll] Cache reconciliation failed:', reconcileErr);
+                                    await deleteAllInventory();
+                                } catch (err) {
+                                    deleteFailed = true;
+                                    handleMutationError(err, 'Delete Inventory');
+                                    return;
+                                }
+                                try {
+                                    await seed();
+                                    showBackupDoneAlert(
+                                        'Done',
+                                        'Your previous inventory was backed up and replaced with defaults.',
+                                        backupPath,
+                                    );
+                                } catch (err) {
+                                    handleMutationError(err, 'Seed Inventory');
+                                }
+                            } finally {
+                                // If delete threw, seed never ran and its reconcile
+                                // never fired — do it here so drifted cache is refreshed.
+                                if (deleteFailed) {
+                                    try {
+                                        await Promise.all([
+                                            queryClient.resetQueries({ queryKey: queryKeys.items }),
+                                            queryClient.resetQueries({ queryKey: queryKeys.categories }),
+                                            queryClient.resetQueries({ queryKey: queryKeys.activities }),
+                                        ]);
+                                        await Promise.all([
+                                            queryClient.refetchQueries({ queryKey: queryKeys.items }),
+                                            queryClient.refetchQueries({ queryKey: queryKeys.categories }),
+                                        ]);
+                                    } catch (reconcileErr) {
+                                        console.warn('[ReplaceAll] Cache reconciliation failed:', reconcileErr);
+                                    }
                                 }
                             }
+                        } finally {
+                            setIsReplaceAllRunning(false);
                         }
                     },
                 },
