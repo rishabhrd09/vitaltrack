@@ -18,7 +18,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
-import ConnectionStatusPill from './ConnectionStatusPill';
 
 interface VitalTrackTopBarProps {
     searchQuery: string;
@@ -89,9 +88,6 @@ export default function VitalTrackTopBar({
                         <Text style={[styles.appSubtitle, { color: colors.textTertiary }]}>My Home ICU</Text>
                     </View>
                 </View>
-
-                {/* Connection status pill — renders null when online */}
-                <ConnectionStatusPill />
 
                 {/* Right Section: Actions */}
                 <View style={styles.rightSection}>

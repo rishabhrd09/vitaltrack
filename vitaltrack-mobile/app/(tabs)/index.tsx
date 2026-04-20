@@ -20,6 +20,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import VitalTrackTopBar from '@/components/common/VitalTrackTopBar';
+import ConnectionStatusPill from '@/components/common/ConnectionStatusPill';
 import ProfileMenuSheet from '@/components/common/ProfileMenuSheet';
 import ExportModal from '@/components/common/ExportModal';
 import HelpSupportDialog from '@/components/common/HelpSupportDialog';
@@ -142,6 +143,8 @@ export default function DashboardScreen() {
         onProfileClick={() => setShowProfileSheet(true)}
         userName={user?.name || 'User'}
       />
+
+      <ConnectionStatusPill />
 
       {isLoading ? (
         <SkeletonLoader variant="dashboard" />
