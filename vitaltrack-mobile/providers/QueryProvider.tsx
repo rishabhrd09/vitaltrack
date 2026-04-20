@@ -1,6 +1,6 @@
 import React from 'react';
-import { AppState } from 'react-native';
-import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
+import { Alert, AppState } from 'react-native';
+import { MutationCache, QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -37,6 +37,15 @@ const ENABLE_CACHE_PERSISTENCE = true;
 const CACHE_STORAGE_KEY = 'carekosh-query-cache';
 
 const queryClient = new QueryClient({
+  // Surface mutation errors that the caller didn't already handle, so a failed
+  // optimistic update doesn't silently roll back without user feedback.
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      if (mutation.options.onError) return;
+      const msg = error instanceof Error ? error.message : String(error);
+      Alert.alert('Could not save', msg);
+    },
+  }),
   defaultOptions: {
     queries: {
       // 30 seconds — medical inventory needs fresh data. Two caregivers on two

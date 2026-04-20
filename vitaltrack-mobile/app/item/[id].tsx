@@ -15,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,7 @@ import type { Item } from '@/types';
 import { useItems, useCategories } from '@/hooks/useServerData';
 import { useCreateItem, useUpdateItem, useDeleteItem } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useDelayedPending } from '@/hooks/useDelayedPending';
 import { handleMutationError } from '@/utils/serverErrors';
 
 export default function ItemFormScreen() {
@@ -42,6 +44,9 @@ export default function ItemFormScreen() {
   const createItemMutation = useCreateItem();
   const updateItemMutation = useUpdateItem();
   const deleteItemMutation = useDeleteItem();
+  const showSavePending = useDelayedPending(
+    createItemMutation.isPending || updateItemMutation.isPending
+  );
 
   const existingItem = !isNew ? items.find(i => i.id === id) : undefined;
 
@@ -184,8 +189,16 @@ export default function ItemFormScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>{isNew ? 'Add Item' : 'Edit Item'}</Text>
-        <TouchableOpacity onPress={handleSave} style={[styles.saveButton, { backgroundColor: colors.accentBlue }]}>
-          <Text style={[styles.saveButtonText, { color: colors.white }]}>Save</Text>
+        <TouchableOpacity
+          onPress={handleSave}
+          style={[styles.saveButton, { backgroundColor: colors.accentBlue }]}
+          disabled={createItemMutation.isPending || updateItemMutation.isPending}
+        >
+          {showSavePending ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <Text style={[styles.saveButtonText, { color: colors.white }]}>Save</Text>
+          )}
         </TouchableOpacity>
       </View>
 

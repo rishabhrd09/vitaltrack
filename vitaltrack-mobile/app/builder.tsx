@@ -15,6 +15,7 @@ import {
     TextInput,
     KeyboardAvoidingView,
     Platform,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +30,7 @@ import { isOutOfStock, isLowStock, type Category } from '@/types';
 import { useItems, useCategories } from '@/hooks/useServerData';
 import { useDeleteItem, useDeleteCategory, useCreateCategory, useToggleItemCritical, useCreateItem } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useDelayedPending } from '@/hooks/useDelayedPending';
 import { handleMutationError } from '@/utils/serverErrors';
 import {
     useSeedInventory,
@@ -57,6 +59,7 @@ export default function BuildInventoryScreen() {
     const { seed, isSeeding, progress: seedProgress } = useSeedInventory();
     const { startFresh } = useStartFresh();
     const queryClient = useQueryClient();
+    const showCreateCategoryPending = useDelayedPending(createCategoryMutation.isPending);
 
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
         categories.length > 0 ? categories[0].id : null
@@ -1026,8 +1029,16 @@ export default function BuildInventoryScreen() {
                             value={newCategoryDesc}
                             onChangeText={setNewCategoryDesc}
                         />
-                        <TouchableOpacity style={[styles.modalButton, { backgroundColor: colors.accentBlue }]} onPress={handleAddCategory}>
-                            <Text style={styles.modalButtonText}>Create Category</Text>
+                        <TouchableOpacity
+                            style={[styles.modalButton, { backgroundColor: colors.accentBlue }]}
+                            onPress={handleAddCategory}
+                            disabled={createCategoryMutation.isPending}
+                        >
+                            {showCreateCategoryPending ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                                <Text style={styles.modalButtonText}>Create Category</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </KeyboardAvoidingView>
