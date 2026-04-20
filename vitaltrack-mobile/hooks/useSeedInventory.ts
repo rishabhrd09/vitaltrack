@@ -20,8 +20,9 @@ import { queryKeys } from './useServerData';
 import type { Item, Category } from '@/types';
 
 interface SeedProgress {
-  total: number;
-  completed: number;
+  phase: 'categories' | 'items';
+  phaseCompleted: number;
+  phaseTotal: number;
   currentAction: string;
 }
 
@@ -66,19 +67,31 @@ export function useSeedInventory() {
 
   const seed = async (): Promise<SeedResult> => {
     setIsSeeding(true);
-    const totalSteps = SEED_DATA.reduce(
-      (sum, cat) => sum + 1 + cat.items.length,
-      0
-    );
-    let completed = 0;
+    const totalCategories = SEED_DATA.length;
+    const totalItems = SEED_DATA.reduce((sum, c) => sum + c.items.length, 0);
+    let categoriesHandled = 0;
+    let itemsHandled = 0;
     let createdCategories = 0;
     let createdItems = 0;
     let skippedExisting = 0;
     const skippedExistingNames: string[] = [];
     const trueFailures: string[] = [];
 
-    const updateProgress = (action: string) => {
-      setProgress({ total: totalSteps, completed, currentAction: action });
+    const updateCategoryProgress = (action: string) => {
+      setProgress({
+        phase: 'categories',
+        phaseCompleted: categoriesHandled,
+        phaseTotal: totalCategories,
+        currentAction: action,
+      });
+    };
+    const updateItemProgress = (action: string) => {
+      setProgress({
+        phase: 'items',
+        phaseCompleted: itemsHandled,
+        phaseTotal: totalItems,
+        currentAction: action,
+      });
     };
 
     try {
@@ -99,7 +112,7 @@ export function useSeedInventory() {
 
       for (let catIdx = 0; catIdx < SEED_DATA.length; catIdx++) {
         const seedCat = SEED_DATA[catIdx];
-        updateProgress(`Checking category: ${seedCat.name}`);
+        updateCategoryProgress(seedCat.name);
 
         let categoryId: string;
 
@@ -111,7 +124,6 @@ export function useSeedInventory() {
           categoryId = existing.id;
           skippedExisting++;
           skippedExistingNames.push(seedCat.name);
-          completed++;
         } else {
           try {
             const created = await categoryService.create({
@@ -122,35 +134,38 @@ export function useSeedInventory() {
             categoryId = created.id;
             existingCategories.push(created);
             createdCategories++;
-            completed++;
           } catch (err) {
             if (isDuplicateNameError(err)) {
               // Race condition — another client created it; treat as skipped.
               skippedExisting++;
               skippedExistingNames.push(seedCat.name);
-              completed += 1 + seedCat.items.length;
+              categoriesHandled++;
+              itemsHandled += seedCat.items.length;
               continue;
             }
             const msg = err instanceof Error ? err.message : String(err);
             trueFailures.push(`Category "${seedCat.name}": ${msg}`);
             console.warn('[Seed] Category create failed:', seedCat.name, msg);
             // Skip items for this category since we have no categoryId
-            completed += seedCat.items.length;
+            categoriesHandled++;
+            itemsHandled += seedCat.items.length;
             continue;
           }
         }
+        categoriesHandled++;
+        updateCategoryProgress(seedCat.name);
 
         // Create items under this category — skip if name already exists in this category
         for (const seedItem of seedCat.items) {
           const key = existingItemKey(categoryId, seedItem.name);
           if (existingItemKeys.has(key)) {
-            updateProgress(`Skipping existing: ${seedItem.name}`);
+            updateItemProgress(`Skipping existing: ${seedItem.name}`);
             skippedExisting++;
             skippedExistingNames.push(seedItem.name);
-            completed++;
+            itemsHandled++;
             continue;
           }
-          updateProgress(`Creating item: ${seedItem.name}`);
+          updateItemProgress(seedItem.name);
           try {
             const created = await itemService.create({
               categoryId,
@@ -175,7 +190,7 @@ export function useSeedInventory() {
               console.warn('[Seed] Item create failed:', seedItem.name, msg);
             }
           }
-          completed++;
+          itemsHandled++;
         }
       }
 

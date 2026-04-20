@@ -651,7 +651,9 @@ export default function BuildInventoryScreen() {
                         <Ionicons name="cloud-upload-outline" size={18} color={colors.accentBlue} />
                         <View style={{ flex: 1 }}>
                             <Text style={[styles.seedingTitle, { color: colors.accentBlue }]}>
-                                Seeding inventory ({seedProgress.completed}/{seedProgress.total})
+                                {seedProgress.phase === 'categories'
+                                    ? `Setting up categories (${seedProgress.phaseCompleted}/${seedProgress.phaseTotal})`
+                                    : `Adding items (${seedProgress.phaseCompleted}/${seedProgress.phaseTotal})`}
                             </Text>
                             <Text style={[styles.seedingSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
                                 {seedProgress.currentAction}
@@ -683,7 +685,7 @@ export default function BuildInventoryScreen() {
                         <ActionCard
                             icon="sparkles-outline"
                             label={items.length === 0 && categories.length === 0 ? 'Seed Defaults' : 'Add Defaults'}
-                            subtitle="32 Home ICU items"
+                            subtitle="10 categories · 32 items"
                             onPress={handleSeed}
                             color={colors.statusGreen}
                         />
