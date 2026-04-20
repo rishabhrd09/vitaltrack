@@ -11,6 +11,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import OrderCard from '@/components/orders/OrderCard';
 import { SkeletonLoader } from '@/components/common/SkeletonLoader';
+import ConnectionStatusPill from '@/components/common/ConnectionStatusPill';
 import { useOrders } from '@/hooks/useServerData';
 import { useUpdateOrderStatus, useApplyOrderToStock, useDeleteOrder } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -88,6 +89,8 @@ export default function OrdersScreen() {
           <Text style={[styles.subtitle, { color: colors.textTertiary }]}>Track your orders and stock updates</Text>
         </View>
       </View>
+
+      <ConnectionStatusPill />
 
       {/* Content */}
       {isLoading ? (

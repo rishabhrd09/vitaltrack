@@ -36,31 +36,42 @@ export default function ConnectionStatusPill() {
   const isOffline = status === 'offline';
 
   return (
-    <View
-      style={[
-        styles.pill,
-        {
-          backgroundColor: isOffline
-            ? 'rgba(245, 158, 11, 0.15)'
-            : 'rgba(255, 255, 255, 0.06)',
-        },
-      ]}
-      accessibilityRole="text"
-      accessibilityLabel={isOffline ? 'Offline' : 'Connecting to server'}
-    >
-      {isOffline ? (
-        <View style={styles.dot} />
-      ) : (
-        <ActivityIndicator size="small" color={colors.textMuted} />
-      )}
-      <Text style={[styles.label, { color: colors.textMuted }]}>
-        {isOffline ? 'Offline' : 'Connecting…'}
-      </Text>
+    <View style={styles.row}>
+      <View
+        style={[
+          styles.pill,
+          {
+            backgroundColor: isOffline
+              ? 'rgba(245, 158, 11, 0.15)'
+              : 'rgba(255, 255, 255, 0.06)',
+          },
+        ]}
+        accessibilityRole="text"
+        accessibilityLabel={isOffline ? 'Offline' : 'Connecting to server'}
+      >
+        {isOffline ? (
+          <View style={styles.dot} />
+        ) : (
+          <ActivityIndicator size="small" color={colors.textMuted} />
+        )}
+        <Text style={[styles.label, { color: colors.textMuted }]}>
+          {isOffline ? 'Offline' : 'Connecting…'}
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Outer row keeps the pill left-aligned under the top bar, with a little
+  // breathing room above the content. When online the whole component
+  // returns null so this row contributes zero space — no content shift.
+  row: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 2,
+  },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',

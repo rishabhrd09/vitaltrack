@@ -23,6 +23,7 @@ import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import CategoryHeader from '@/components/inventory/CategoryHeader';
 import ItemRow from '@/components/inventory/ItemRow';
 import { SkeletonLoader } from '@/components/common/SkeletonLoader';
+import ConnectionStatusPill from '@/components/common/ConnectionStatusPill';
 import { useItems, useCategories } from '@/hooks/useServerData';
 
 type ViewMode = 'categories' | 'all';
@@ -138,6 +139,8 @@ export default function InventoryScreen() {
           </Text>
         </View>
       </View>
+
+      <ConnectionStatusPill />
 
       {/* Search Results Banner */}
       {localSearch.trim() && (
