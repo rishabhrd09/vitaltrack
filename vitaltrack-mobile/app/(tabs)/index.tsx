@@ -25,7 +25,6 @@ import ExportModal from '@/components/common/ExportModal';
 import StatsCard from '@/components/dashboard/StatsCard';
 import NeedsAttention from '@/components/dashboard/NeedsAttention';
 import ActivityList from '@/components/dashboard/ActivityList';
-import OfflineBanner from '@/components/common/OfflineBanner';
 import { SkeletonLoader } from '@/components/common/SkeletonLoader';
 import { useItems, useOrders, useActivities } from '@/hooks/useServerData';
 import { useForceSync } from '@/hooks/useForceSync';
@@ -149,8 +148,6 @@ export default function DashboardScreen() {
         onProfileClick={() => setShowProfileSheet(true)}
         userName={user?.name || 'User'}
       />
-
-      <OfflineBanner />
 
       {isLoading ? (
         <SkeletonLoader variant="dashboard" />

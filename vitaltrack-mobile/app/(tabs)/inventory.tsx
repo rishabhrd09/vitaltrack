@@ -22,7 +22,6 @@ import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import CategoryHeader from '@/components/inventory/CategoryHeader';
 import ItemRow from '@/components/inventory/ItemRow';
-import OfflineBanner from '@/components/common/OfflineBanner';
 import { SkeletonLoader } from '@/components/common/SkeletonLoader';
 import { useItems, useCategories } from '@/hooks/useServerData';
 
@@ -139,8 +138,6 @@ export default function InventoryScreen() {
           </Text>
         </View>
       </View>
-
-      <OfflineBanner />
 
       {/* Search Results Banner */}
       {localSearch.trim() && (
