@@ -702,9 +702,11 @@ export default function BuildInventoryScreen() {
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>
                     <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Build Inventory</Text>
-                    <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>
-                        {items.length} items · {categories.length} categories
-                    </Text>
+                    {!isSeeding && (
+                        <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>
+                            {items.length} items · {categories.length} categories
+                        </Text>
+                    )}
                 </View>
                 <TouchableOpacity onPress={handleExportPDF} style={styles.headerButton}>
                     <Ionicons name="share-outline" size={22} color={colors.accentBlue} />
