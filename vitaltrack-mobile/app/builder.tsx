@@ -106,14 +106,32 @@ export default function BuildInventoryScreen() {
         }
         try {
             const result = await seed();
-            if (result.errors.length === 0) {
-                Alert.alert('Done', `Added ${result.completed} entries to your inventory.`);
-            } else {
+            if (result.trueFailures.length > 0) {
                 Alert.alert(
-                    'Partial success',
-                    `Added ${result.completed} of ${result.total} entries.\n\n${result.errors.length} failed:\n${result.errors.slice(0, 3).join('\n')}${result.errors.length > 3 ? '\n…' : ''}`
+                    "Some items couldn't be added",
+                    `${result.trueFailures.length} failed:\n${result.trueFailures.slice(0, 3).join('\n')}${result.trueFailures.length > 3 ? '\n…' : ''}`
                 );
+                return;
             }
+            if (result.skippedExisting === 0) {
+                Alert.alert(
+                    'Default inventory added',
+                    '10 categories and 32 items are ready.'
+                );
+                return;
+            }
+            // Some or all already existed — classify "already had" line without naming too many
+            const names = result.skippedExistingNames;
+            let alreadyLine = '';
+            if (names.length <= 6) {
+                alreadyLine = `Already had: ${names.join(', ')}`;
+            } else {
+                alreadyLine = `Already had: ${names.slice(0, 3).join(', ')}, and ${names.length - 3} more`;
+            }
+            Alert.alert(
+                'Default inventory added',
+                `${result.createdItems} new items added, ${result.skippedExisting} already in your inventory were kept unchanged.\n\n${alreadyLine}`
+            );
         } catch (err) {
             handleMutationError(err, 'Seed Inventory');
         }

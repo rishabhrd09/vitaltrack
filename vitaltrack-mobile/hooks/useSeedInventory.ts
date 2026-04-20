@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { categoryService } from '@/services/categories';
 import { itemService } from '@/services/items';
+import { ApiClientError } from '@/services/api';
 import { SEED_DATA, ESSENTIAL_ITEM_KEYWORDS } from '@/data/seedData';
 import { queryKeys } from './useServerData';
 import type { Item, Category } from '@/types';
@@ -22,13 +23,24 @@ interface SeedProgress {
   total: number;
   completed: number;
   currentAction: string;
-  errors: string[];
 }
 
 export interface SeedResult {
-  completed: number;
-  total: number;
-  errors: string[];
+  createdCategories: number;
+  createdItems: number;
+  skippedExisting: number;
+  skippedExistingNames: string[];
+  trueFailures: string[];
+}
+
+// A duplicate-name collision that slipped past the pre-fetch is NOT a failure —
+// it's an expected outcome. Classify by status code first (409 once Task 9 ships)
+// and fall back to detail-string matching while the backend still returns 400.
+function isDuplicateNameError(err: unknown): boolean {
+  if (!(err instanceof ApiClientError)) return false;
+  if (err.status === 409) return true;
+  if (err.status === 400 && /already exists/i.test(err.message)) return true;
+  return false;
 }
 
 // Matches the original Kotlin/React Native isCritical logic
@@ -59,10 +71,14 @@ export function useSeedInventory() {
       0
     );
     let completed = 0;
-    const errors: string[] = [];
+    let createdCategories = 0;
+    let createdItems = 0;
+    let skippedExisting = 0;
+    const skippedExistingNames: string[] = [];
+    const trueFailures: string[] = [];
 
     const updateProgress = (action: string) => {
-      setProgress({ total: totalSteps, completed, currentAction: action, errors });
+      setProgress({ total: totalSteps, completed, currentAction: action });
     };
 
     try {
@@ -93,6 +109,8 @@ export function useSeedInventory() {
         );
         if (existing) {
           categoryId = existing.id;
+          skippedExisting++;
+          skippedExistingNames.push(seedCat.name);
           completed++;
         } else {
           try {
@@ -103,10 +121,18 @@ export function useSeedInventory() {
             });
             categoryId = created.id;
             existingCategories.push(created);
+            createdCategories++;
             completed++;
           } catch (err) {
+            if (isDuplicateNameError(err)) {
+              // Race condition — another client created it; treat as skipped.
+              skippedExisting++;
+              skippedExistingNames.push(seedCat.name);
+              completed += 1 + seedCat.items.length;
+              continue;
+            }
             const msg = err instanceof Error ? err.message : String(err);
-            errors.push(`Category "${seedCat.name}": ${msg}`);
+            trueFailures.push(`Category "${seedCat.name}": ${msg}`);
             console.warn('[Seed] Category create failed:', seedCat.name, msg);
             // Skip items for this category since we have no categoryId
             completed += seedCat.items.length;
@@ -119,6 +145,8 @@ export function useSeedInventory() {
           const key = existingItemKey(categoryId, seedItem.name);
           if (existingItemKeys.has(key)) {
             updateProgress(`Skipping existing: ${seedItem.name}`);
+            skippedExisting++;
+            skippedExistingNames.push(seedItem.name);
             completed++;
             continue;
           }
@@ -135,10 +163,17 @@ export function useSeedInventory() {
             });
             existingItemKeys.add(key);
             existingItems.push(created);
+            createdItems++;
           } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            errors.push(`Item "${seedItem.name}": ${msg}`);
-            console.warn('[Seed] Item create failed:', seedItem.name, msg);
+            if (isDuplicateNameError(err)) {
+              existingItemKeys.add(key);
+              skippedExisting++;
+              skippedExistingNames.push(seedItem.name);
+            } else {
+              const msg = err instanceof Error ? err.message : String(err);
+              trueFailures.push(`Item "${seedItem.name}": ${msg}`);
+              console.warn('[Seed] Item create failed:', seedItem.name, msg);
+            }
           }
           completed++;
         }
@@ -155,7 +190,7 @@ export function useSeedInventory() {
       setProgress(null);
     }
 
-    return { completed, total: totalSteps, errors };
+    return { createdCategories, createdItems, skippedExisting, skippedExistingNames, trueFailures };
   };
 
   return { seed, progress, isSeeding };
