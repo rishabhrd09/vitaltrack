@@ -22,10 +22,10 @@ import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import VitalTrackTopBar from '@/components/common/VitalTrackTopBar';
 import ProfileMenuSheet from '@/components/common/ProfileMenuSheet';
 import ExportModal from '@/components/common/ExportModal';
+import HelpSupportDialog from '@/components/common/HelpSupportDialog';
 import StatsCard from '@/components/dashboard/StatsCard';
 import NeedsAttention from '@/components/dashboard/NeedsAttention';
 import ActivityList from '@/components/dashboard/ActivityList';
-import OfflineBanner from '@/components/common/OfflineBanner';
 import { SkeletonLoader } from '@/components/common/SkeletonLoader';
 import { useItems, useOrders, useActivities } from '@/hooks/useServerData';
 import { useForceSync } from '@/hooks/useForceSync';
@@ -39,6 +39,7 @@ export default function DashboardScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showHelpDialog, setShowHelpDialog] = useState(false);
 
   // Auth state
   const user = useAuthStore((state) => state.user);
@@ -102,24 +103,16 @@ export default function DashboardScreen() {
   };
 
   const handleHelpAndSupport = () => {
+    setShowHelpDialog(true);
+  };
+
+  const handleRefreshFromServerFromHelp = () => {
     Alert.alert(
-      'Help & Support',
-      'Contact support@carekosh.com for assistance.\n\nIf your inventory looks out of sync, use Refresh from server to reload everything from your account.',
+      'Refresh from server?',
+      'This reloads all your inventory from your account on the server. Any unsynced local changes will be lost.',
       [
-        {
-          text: 'Refresh from server',
-          onPress: () => {
-            Alert.alert(
-              'Refresh from server?',
-              'This will discard any unsaved changes and reload your inventory from the server. Continue?',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Refresh', onPress: runRefreshFromServer },
-              ],
-            );
-          },
-        },
-        { text: 'OK', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Refresh', style: 'destructive', onPress: runRefreshFromServer },
       ],
     );
   };
@@ -149,8 +142,6 @@ export default function DashboardScreen() {
         onProfileClick={() => setShowProfileSheet(true)}
         userName={user?.name || 'User'}
       />
-
-      <OfflineBanner />
 
       {isLoading ? (
         <SkeletonLoader variant="dashboard" />
@@ -264,6 +255,13 @@ export default function DashboardScreen() {
       <ExportModal
         visible={showExportModal}
         onClose={() => setShowExportModal(false)}
+      />
+
+      {/* Help & Support dialog — inline Refresh link + confirmation */}
+      <HelpSupportDialog
+        visible={showHelpDialog}
+        onDismiss={() => setShowHelpDialog(false)}
+        onRefreshFromServer={handleRefreshFromServerFromHelp}
       />
     </SafeAreaView>
   );

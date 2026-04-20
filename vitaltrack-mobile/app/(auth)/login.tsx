@@ -15,6 +15,7 @@ import {
     ScrollView,
     ActivityIndicator,
     Alert,
+    Image,
 } from 'react-native';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -217,6 +218,11 @@ export default function LoginScreen() {
             >
                 {/* Logo/Header */}
                 <View style={styles.header}>
+                    <Image
+                        source={require('../../assets/carekosh-logo-transparent.png')}
+                        style={styles.logo}
+                        resizeMode="contain"
+                    />
                     <Text style={[styles.title, { color: colors.text }]}>CareKosh</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                         Home ICU Inventory Management
@@ -379,6 +385,11 @@ const styles = StyleSheet.create({
     header: {
         alignItems: 'center',
         marginBottom: 40,
+    },
+    logo: {
+        width: 96,
+        height: 96,
+        marginBottom: 16,
     },
     title: {
         fontSize: 48,

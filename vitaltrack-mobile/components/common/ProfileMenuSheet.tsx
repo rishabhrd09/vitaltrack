@@ -4,11 +4,13 @@
  */
 
 import { useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Switch, Modal, Pressable, PanResponder, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Switch, Modal, Pressable, PanResponder, Animated, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 interface ProfileMenuSheetProps {
     visible: boolean;
@@ -53,9 +55,12 @@ export default function ProfileMenuSheet({
                 if (gs.dy > 0) translateY.setValue(gs.dy);
             },
             onPanResponderRelease: (_, gs) => {
-                if (gs.dy > 80) {
+                // Dismiss on distance OR velocity — matches iOS/Material bottom-sheet
+                // behavior where a short, fast flick also closes.
+                const shouldDismiss = gs.dy > 100 || gs.vy > 0.5;
+                if (shouldDismiss) {
                     Animated.timing(translateY, {
-                        toValue: 600,
+                        toValue: SCREEN_HEIGHT,
                         duration: 200,
                         useNativeDriver: true,
                     }).start(() => {

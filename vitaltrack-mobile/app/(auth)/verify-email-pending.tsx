@@ -3,7 +3,7 @@
  * Shown when user tries to login without verifying email
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -24,9 +24,18 @@ export default function VerifyEmailPendingScreen() {
     const [isResending, setIsResending] = useState(false);
     const [resendSuccess, setResendSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // Cooldown in seconds — prevents hammering the resend endpoint and gives
+    // Brevo enough time to actually deliver the previous message.
+    const [resendCooldown, setResendCooldown] = useState(0);
+
+    useEffect(() => {
+        if (resendCooldown <= 0) return;
+        const t = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+        return () => clearTimeout(t);
+    }, [resendCooldown]);
 
     const handleResendVerification = async () => {
-        if (!email) return;
+        if (!email || resendCooldown > 0) return;
 
         setIsResending(true);
         setError(null);
@@ -35,6 +44,7 @@ export default function VerifyEmailPendingScreen() {
         try {
             await authService.resendVerification(email);
             setResendSuccess(true);
+            setResendCooldown(60);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to resend verification email');
         } finally {
@@ -69,6 +79,12 @@ export default function VerifyEmailPendingScreen() {
                 <Text style={[styles.description, { color: colors.textSecondary }]}>
                     Please check your inbox and click the link to verify your account.
                 </Text>
+                <Text style={[styles.subtext, { color: colors.textSecondary }]}>
+                    Emails usually arrive within 1 minute. On slow connections, it may take up to 5 minutes.
+                </Text>
+                <Text style={[styles.subtext, { color: colors.textSecondary }]}>
+                    Don't see it? Check your spam folder first.
+                </Text>
 
                 {/* Success Message */}
                 {resendSuccess && (
@@ -95,10 +111,10 @@ export default function VerifyEmailPendingScreen() {
                     style={[
                         styles.resendButton,
                         { borderColor: colors.primary },
-                        isResending && styles.buttonDisabled,
+                        (isResending || resendCooldown > 0) && styles.buttonDisabled,
                     ]}
                     onPress={handleResendVerification}
-                    disabled={isResending || !email}
+                    disabled={isResending || !email || resendCooldown > 0}
                 >
                     {isResending ? (
                         <ActivityIndicator color={colors.primary} />
@@ -106,7 +122,9 @@ export default function VerifyEmailPendingScreen() {
                         <>
                             <Ionicons name="refresh" size={20} color={colors.primary} />
                             <Text style={[styles.resendButtonText, { color: colors.primary }]}>
-                                Resend Verification Email
+                                {resendCooldown > 0
+                                    ? `Resend in ${resendCooldown}s`
+                                    : 'Resend Verification Email'}
                             </Text>
                         </>
                     )}
@@ -182,6 +200,13 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         marginBottom: 16,
+    },
+    subtext: {
+        fontSize: 13,
+        textAlign: 'center',
+        marginBottom: 6,
+        paddingHorizontal: 16,
+        lineHeight: 18,
     },
     successBox: {
         flexDirection: 'row',
