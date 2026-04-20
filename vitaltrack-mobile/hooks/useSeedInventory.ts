@@ -224,13 +224,25 @@ export function useSeedInventory() {
         }
       }
 
-      // Refresh everything
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: queryKeys.categories }),
-        qc.invalidateQueries({ queryKey: queryKeys.items }),
-        qc.invalidateQueries({ queryKey: queryKeys.activities }),
-      ]);
     } finally {
+      // Cache MUST be reconciled whether seed succeeded or threw —
+      // a thrown error mid-loop still leaves the server with partial
+      // changes, and the old cache no longer matches either state.
+      // resetQueries drops the cache and shows skeletons; refetch
+      // repopulates from source-of-truth.
+      try {
+        await Promise.all([
+          qc.resetQueries({ queryKey: queryKeys.categories }),
+          qc.resetQueries({ queryKey: queryKeys.items }),
+          qc.resetQueries({ queryKey: queryKeys.activities }),
+        ]);
+        await Promise.all([
+          qc.refetchQueries({ queryKey: queryKeys.categories }),
+          qc.refetchQueries({ queryKey: queryKeys.items }),
+        ]);
+      } catch (reconcileErr) {
+        console.warn('[Seed] Cache reconciliation failed:', reconcileErr);
+      }
       setIsSeeding(false);
       setProgress(null);
     }
@@ -336,22 +348,33 @@ export async function createAutoBackup(
  *
  * Item-before-category ordering matters because of the FK from items to
  * categories; categories with items cannot be deleted.
+ *
+ * Fetches server state directly instead of trusting caller-supplied arrays.
+ * The React Query cache can drift (phantom IDs locally, shadow records on
+ * server), and issuing DELETEs for phantom IDs burns round-trips and
+ * corrupts partial-failure accounting.
  */
-export async function deleteAllInventory(
-  items: Item[],
-  categories: Category[]
-): Promise<void> {
+export async function deleteAllInventory(): Promise<void> {
+  // Source-of-truth reconciliation, not the React cache.
+  const [serverItemsResp, serverCategoriesResp] = await Promise.all([
+    itemService.getAll({ limit: 999 }),
+    categoryService.getAll(),
+  ]);
+  const serverItems = serverItemsResp.items;
+  const serverCategories = serverCategoriesResp.categories;
+
   const errors: string[] = [];
 
-  for (const item of items) {
+  for (const item of serverItems) {
     try {
       await itemService.delete(item.id);
     } catch (err) {
+      // 404 is already swallowed in itemService.delete; this catches real failures.
       errors.push(`Item "${item.name}": ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
-  for (const cat of categories) {
+  for (const cat of serverCategories) {
     try {
       await categoryService.delete(cat.id);
     } catch (err) {
@@ -361,7 +384,7 @@ export async function deleteAllInventory(
 
   if (errors.length > 0) {
     throw new Error(
-      `Failed to delete ${errors.length} of ${items.length + categories.length} entries. ` +
+      `Failed to delete ${errors.length} of ${serverItems.length + serverCategories.length} entries. ` +
         `First error: ${errors[0]}. ` +
         `Inventory may be in a partial state — please try Replace-all again.`
     );
@@ -376,13 +399,18 @@ export function useStartFresh() {
   const qc = useQueryClient();
   const [isResetting, setIsResetting] = useState(false);
 
-  const startFresh = async (allItems: Item[]): Promise<{ deleted: number; kept: number; errors: string[] }> => {
+  const startFresh = async (): Promise<{ deleted: number; kept: number; errors: string[] }> => {
     setIsResetting(true);
     const errors: string[] = [];
     let deleted = 0;
     let kept = 0;
 
     try {
+      // Fetch server state directly — the cache may have drifted and passing
+      // in the React Query snapshot would issue DELETEs for phantom IDs.
+      const serverItemsResp = await itemService.getAll({ limit: 999 });
+      const allItems = serverItemsResp.items;
+
       for (const item of allItems) {
         if (isEssentialItem(item)) {
           kept++;
@@ -397,11 +425,23 @@ export function useStartFresh() {
         }
       }
 
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: queryKeys.items }),
-        qc.invalidateQueries({ queryKey: queryKeys.activities }),
-      ]);
     } finally {
+      // Reset + refetch so the UI shows skeletons briefly, then renders the
+      // actual post-operation state. invalidateQueries keeps stale data
+      // visible for 30-60s on a cold-starting server — wrong for destructive ops.
+      try {
+        await Promise.all([
+          qc.resetQueries({ queryKey: queryKeys.items }),
+          qc.resetQueries({ queryKey: queryKeys.categories }),
+          qc.resetQueries({ queryKey: queryKeys.activities }),
+        ]);
+        await Promise.all([
+          qc.refetchQueries({ queryKey: queryKeys.items }),
+          qc.refetchQueries({ queryKey: queryKeys.categories }),
+        ]);
+      } catch (reconcileErr) {
+        console.warn('[StartFresh] Cache reconciliation failed:', reconcileErr);
+      }
       setIsResetting(false);
     }
 

@@ -67,6 +67,11 @@ export default function BuildInventoryScreen() {
     const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newCategoryDesc, setNewCategoryDesc] = useState('');
+    // Tracks whether Replace-all is currently executing. Replace-all has a
+    // brief window between delete and seed where both items and categories
+    // are empty on the server — without this guard, the auto-seed prompt
+    // useEffect below fires during the operation and stacks a modal on top.
+    const [isReplaceAllRunning, setIsReplaceAllRunning] = useState(false);
     // Use a ref so the prompt fires exactly once per mount, even if state updates
     // re-trigger the effect before Alert is dismissed.
     const seedPromptFiredRef = useRef(false);
@@ -80,9 +85,16 @@ export default function BuildInventoryScreen() {
 
     // Auto-prompt new users (empty inventory) to seed 32 default items.
     // Fires exactly once per screen mount.
+    //
+    // Guards against concurrent seed / replace-all: during replace-all there's
+    // a window where the server really is empty (between delete and seed), and
+    // during a fresh seed the transient pre-write state also looks empty.
+    // Firing the prompt in either case stacks a second modal on top of the
+    // in-progress operation.
     useEffect(() => {
         if (categoriesLoading || itemsLoading) return;
         if (seedPromptFiredRef.current) return;
+        if (isSeeding || isReplaceAllRunning) return;
         if (categories.length === 0 && items.length === 0) {
             seedPromptFiredRef.current = true;
             Alert.alert(
@@ -94,7 +106,7 @@ export default function BuildInventoryScreen() {
                 ]
             );
         }
-    }, [categoriesLoading, itemsLoading, categories.length, items.length]);
+    }, [categoriesLoading, itemsLoading, categories.length, items.length, isSeeding, isReplaceAllRunning]);
 
     const categoryItems = items.filter((item) => item.categoryId === selectedCategoryId);
     const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
@@ -169,36 +181,60 @@ export default function BuildInventoryScreen() {
                             Alert.alert('Offline', 'Connect to WiFi to replace inventory.');
                             return;
                         }
-                        let backupPath = '';
+                        setIsReplaceAllRunning(true);
                         try {
-                            backupPath = await createAutoBackup(categories, items);
-                        } catch (err) {
-                            const msg = err instanceof Error ? err.message : String(err);
-                            Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nReplace aborted to protect your data.`);
-                            return;
-                        }
-                        try {
-                            await deleteAllInventory(items, categories);
-                        } catch (err) {
-                            handleMutationError(err, 'Delete Inventory');
-                            return;
-                        }
-                        // Force a refetch (not just invalidate) so seed()'s pre-fetch
-                        // sees the post-delete state instead of any in-flight cache.
-                        await Promise.all([
-                            queryClient.refetchQueries({ queryKey: queryKeys.items }),
-                            queryClient.refetchQueries({ queryKey: queryKeys.categories }),
-                            queryClient.refetchQueries({ queryKey: queryKeys.activities }),
-                        ]);
-                        try {
-                            await seed();
-                            showBackupDoneAlert(
-                                'Done',
-                                'Your previous inventory was backed up and replaced with defaults.',
-                                backupPath,
-                            );
-                        } catch (err) {
-                            handleMutationError(err, 'Seed Inventory');
+                            let backupPath = '';
+                            try {
+                                backupPath = await createAutoBackup(categories, items);
+                            } catch (err) {
+                                const msg = err instanceof Error ? err.message : String(err);
+                                Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nReplace aborted to protect your data.`);
+                                return;
+                            }
+                            // Wrap delete+seed so the cache is reconciled whether
+                            // either step throws. seed()'s own finally also resets,
+                            // but if delete throws before seed ever runs, we still
+                            // need UI reconciliation against the server's partial state.
+                            let deleteFailed = false;
+                            try {
+                                try {
+                                    await deleteAllInventory();
+                                } catch (err) {
+                                    deleteFailed = true;
+                                    handleMutationError(err, 'Delete Inventory');
+                                    return;
+                                }
+                                try {
+                                    await seed();
+                                    showBackupDoneAlert(
+                                        'Done',
+                                        'Your previous inventory was backed up and replaced with defaults.',
+                                        backupPath,
+                                    );
+                                } catch (err) {
+                                    handleMutationError(err, 'Seed Inventory');
+                                }
+                            } finally {
+                                // If delete threw, seed never ran and its reconcile
+                                // never fired — do it here so drifted cache is refreshed.
+                                if (deleteFailed) {
+                                    try {
+                                        await Promise.all([
+                                            queryClient.resetQueries({ queryKey: queryKeys.items }),
+                                            queryClient.resetQueries({ queryKey: queryKeys.categories }),
+                                            queryClient.resetQueries({ queryKey: queryKeys.activities }),
+                                        ]);
+                                        await Promise.all([
+                                            queryClient.refetchQueries({ queryKey: queryKeys.items }),
+                                            queryClient.refetchQueries({ queryKey: queryKeys.categories }),
+                                        ]);
+                                    } catch (reconcileErr) {
+                                        console.warn('[ReplaceAll] Cache reconciliation failed:', reconcileErr);
+                                    }
+                                }
+                            }
+                        } finally {
+                            setIsReplaceAllRunning(false);
                         }
                     },
                 },
@@ -306,6 +342,79 @@ export default function BuildInventoryScreen() {
         );
     };
 
+    // The actual Start Fresh execution, extracted so the "Try again" button
+    // on partial/full failure dialogs can re-invoke it without re-prompting
+    // through the confirmation dialog.
+    const runStartFresh = async () => {
+        let backupPath = '';
+        try {
+            backupPath = await createAutoBackup(categories, items);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nStart Fresh aborted to protect your data.`);
+            return;
+        }
+        try {
+            const result = await startFresh();
+            showStartFreshResultAlert(result, backupPath);
+        } catch (err) {
+            handleMutationError(err, 'Start Fresh');
+        }
+    };
+
+    // Three-state completion dialog: full success, partial (some failed),
+    // full failure (nothing deleted). The failure copy must be honest —
+    // hiding 23 failures under a "Done" title is a trust problem.
+    const showStartFreshResultAlert = (
+        result: { deleted: number; kept: number; errors: string[] },
+        backupPath: string,
+    ) => {
+        const filename = backupPath.split('/').pop() || backupPath;
+        const shareBackup = async () => {
+            try {
+                if (await Sharing.isAvailableAsync()) {
+                    await Sharing.shareAsync(backupPath, {
+                        mimeType: 'application/json',
+                        dialogTitle: 'CareKosh Backup',
+                    });
+                }
+            } catch {
+                // Sharing cancellation isn't an error worth surfacing.
+            }
+        };
+
+        if (result.errors.length === 0) {
+            Alert.alert(
+                'Done',
+                `Deleted ${result.deleted} items. Kept ${result.kept} essential items.\n\nBackup saved: ${filename}`,
+                [
+                    { text: 'Share backup', onPress: shareBackup },
+                    { text: 'OK', style: 'cancel' },
+                ]
+            );
+        } else if (result.deleted > 0) {
+            Alert.alert(
+                'Partially completed',
+                `⚠ ${result.errors.length} items could not be deleted and remain in your inventory.\n\nSuccessfully deleted: ${result.deleted}\nKept essential: ${result.kept}\n\nBackup saved: ${filename}`,
+                [
+                    { text: 'Share backup', onPress: shareBackup },
+                    { text: 'Try again', onPress: () => runStartFresh() },
+                    { text: 'OK', style: 'cancel' },
+                ]
+            );
+        } else {
+            Alert.alert(
+                'Could not complete',
+                `No items could be deleted. This may be a network issue.\n\nBackup saved: ${filename}\n\nYour inventory is unchanged.`,
+                [
+                    { text: 'Share backup', onPress: shareBackup },
+                    { text: 'Try again', onPress: () => runStartFresh() },
+                    { text: 'OK', style: 'cancel' },
+                ]
+            );
+        }
+    };
+
     const handleStartFresh = () => {
         if (!isOnline) {
             Alert.alert('Offline', 'Connect to WiFi to reset inventory.');
@@ -323,28 +432,7 @@ export default function BuildInventoryScreen() {
                 {
                     text: 'Backup & Start Fresh',
                     style: 'destructive',
-                    onPress: async () => {
-                        let backupPath = '';
-                        try {
-                            // Step 1: Auto-backup silently
-                            backupPath = await createAutoBackup(categories, items);
-                        } catch (err) {
-                            const msg = err instanceof Error ? err.message : String(err);
-                            Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nStart Fresh aborted to protect your data.`);
-                            return;
-                        }
-                        try {
-                            // Step 2: Delete non-essential items
-                            const result = await startFresh(items);
-                            showBackupDoneAlert(
-                                'Done',
-                                `Deleted ${result.deleted} items. Kept ${result.kept} essential items.${result.errors.length > 0 ? `\n\n${result.errors.length} failed.` : ''}`,
-                                backupPath,
-                            );
-                        } catch (err) {
-                            handleMutationError(err, 'Start Fresh');
-                        }
-                    },
+                    onPress: runStartFresh,
                 },
             ]
         );

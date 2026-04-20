@@ -3,7 +3,7 @@
  * CRUD operations for items with filtering and stats
  */
 
-import { api } from './api';
+import { api, ApiClientError } from './api';
 import type { Item, DashboardStats } from '@/types';
 
 // Response types
@@ -209,10 +209,20 @@ export const itemService = {
   },
 
   /**
-   * Delete item
+   * Delete item. HTTP DELETE is idempotent by spec, so a 404 means the
+   * desired end-state (item gone) is already achieved — treat as success
+   * instead of surfacing it as an error up through bulk-delete flows.
    */
   async delete(id: string): Promise<{ message: string }> {
-    return api.delete<{ message: string }>(`/items/${id}`);
+    try {
+      return await api.delete<{ message: string }>(`/items/${id}`);
+    } catch (err) {
+      if (err instanceof ApiClientError && err.status === 404) {
+        console.info(`[itemService] DELETE ${id}: already gone (404 treated as success)`);
+        return { message: 'Item already deleted' };
+      }
+      throw err;
+    }
   },
 };
 

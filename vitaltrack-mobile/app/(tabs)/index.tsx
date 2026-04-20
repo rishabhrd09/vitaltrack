@@ -28,6 +28,7 @@ import ActivityList from '@/components/dashboard/ActivityList';
 import OfflineBanner from '@/components/common/OfflineBanner';
 import { SkeletonLoader } from '@/components/common/SkeletonLoader';
 import { useItems, useOrders, useActivities } from '@/hooks/useServerData';
+import { useForceSync } from '@/hooks/useForceSync';
 import { isOutOfStock, isLowStock } from '@/types';
 
 export default function DashboardScreen() {
@@ -42,6 +43,8 @@ export default function DashboardScreen() {
   // Auth state
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const forceSync = useForceSync();
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Server data via React Query
   const { data: items = [], isLoading, error, refetch } = useItems();
@@ -74,6 +77,50 @@ export default function DashboardScreen() {
           },
         },
       ]
+    );
+  };
+
+  // Recovery path for cache drift. qc.clear() drops every cached query
+  // and the follow-up fetch repopulates from the server, so even if
+  // future bugs or migration hiccups leave the client desynced the user
+  // can recover without reinstalling or logging out.
+  const runRefreshFromServer = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const result = await forceSync();
+      Alert.alert(
+        'Synced with server',
+        `You have ${result.itemCount} items and ${result.categoryCount} categories.`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      Alert.alert('Sync failed', msg);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleHelpAndSupport = () => {
+    Alert.alert(
+      'Help & Support',
+      'Contact support@carekosh.com for assistance.\n\nIf your inventory looks out of sync, use Refresh from server to reload everything from your account.',
+      [
+        {
+          text: 'Refresh from server',
+          onPress: () => {
+            Alert.alert(
+              'Refresh from server?',
+              'This will discard any unsaved changes and reload your inventory from the server. Continue?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Refresh', onPress: runRefreshFromServer },
+              ],
+            );
+          },
+        },
+        { text: 'OK', style: 'cancel' },
+      ],
     );
   };
 
@@ -209,7 +256,7 @@ export default function DashboardScreen() {
         onEditProfile={() => router.push('/profile')}
         onSettings={() => Alert.alert('Settings', 'Settings screen coming soon')}
         onAbout={() => Alert.alert('About CareKosh', 'CareKosh helps family caregivers manage critical medical supplies at home.\n\nDesigned for families caring for loved ones with ALS, MND, stroke recovery, and other conditions requiring home ICU setups.')}
-        onHelp={() => Alert.alert('Help & Support', 'Contact support@carekosh.com for assistance.')}
+        onHelp={handleHelpAndSupport}
         onLogout={handleLogout}
       />
 

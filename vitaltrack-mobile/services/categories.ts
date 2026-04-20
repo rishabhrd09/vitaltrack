@@ -3,7 +3,7 @@
  * CRUD operations for categories
  */
 
-import { api } from './api';
+import { api, ApiClientError } from './api';
 import type { Category } from '@/types';
 
 // Response types
@@ -84,10 +84,19 @@ export const categoryService = {
   },
 
   /**
-   * Delete category
+   * Delete category. Same idempotent-404 treatment as items — a missing
+   * record is the desired end-state, not an error.
    */
   async delete(id: string): Promise<{ message: string }> {
-    return api.delete<{ message: string }>(`/categories/${id}`);
+    try {
+      return await api.delete<{ message: string }>(`/categories/${id}`);
+    } catch (err) {
+      if (err instanceof ApiClientError && err.status === 404) {
+        console.info(`[categoryService] DELETE ${id}: already gone (404 treated as success)`);
+        return { message: 'Category already deleted' };
+      }
+      throw err;
+    }
   },
 };
 
