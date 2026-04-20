@@ -284,7 +284,7 @@ async def create_item(
     )
     if dup_result.scalar_one_or_none():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail=f"An item named '{data.name}' already exists",
         )
     
@@ -405,7 +405,7 @@ async def update_item(
         )
         if dup_result.scalar_one_or_none():
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT,
                 detail=f"An item named '{data.name}' already exists",
             )
 

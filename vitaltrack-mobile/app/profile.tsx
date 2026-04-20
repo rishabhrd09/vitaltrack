@@ -34,7 +34,7 @@ export default function ProfileScreen() {
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Yes, Send Confirmation',
+                    text: 'Send confirmation email',
                     style: 'destructive',
                     onPress: async () => {
                         setIsRequesting(true);
@@ -121,9 +121,8 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
-                {/* Danger Zone Card */}
+                {/* Account deletion card — red border signals destructive intent without alarmist copy */}
                 <View style={[dynamicStyles.card, dynamicStyles.dangerCard, { borderColor: colors.statusRed }]}>
-                    <Text style={[styles.dangerTitle, { color: colors.statusRed }]}>Danger Zone</Text>
                     <Text style={[styles.dangerDescription, { color: colors.textSecondary }]}>
                         Deleting your account will permanently remove all your data including inventory
                         items, categories, orders, and activity history. A confirmation email will be
@@ -234,31 +233,19 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     field: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         paddingVertical: spacing.md,
         borderBottomWidth: 1,
     },
     fieldLast: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         paddingTop: spacing.md,
     },
     fieldLabel: {
-        fontSize: fontSize.md,
+        fontSize: fontSize.sm,
+        marginBottom: 4,
     },
     fieldValue: {
         fontSize: fontSize.md,
         fontWeight: fontWeight.medium,
-        maxWidth: '60%',
-        textAlign: 'right',
-    },
-    dangerTitle: {
-        fontSize: fontSize.md,
-        fontWeight: fontWeight.semibold,
-        marginBottom: spacing.sm,
     },
     dangerDescription: {
         fontSize: fontSize.sm,

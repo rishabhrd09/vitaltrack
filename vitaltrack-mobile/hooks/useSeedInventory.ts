@@ -14,21 +14,37 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { categoryService } from '@/services/categories';
 import { itemService } from '@/services/items';
+import { ApiClientError } from '@/services/api';
 import { SEED_DATA, ESSENTIAL_ITEM_KEYWORDS } from '@/data/seedData';
 import { queryKeys } from './useServerData';
 import type { Item, Category } from '@/types';
 
 interface SeedProgress {
-  total: number;
-  completed: number;
+  phase: 'categories' | 'items';
+  phaseCompleted: number;
+  phaseTotal: number;
   currentAction: string;
-  errors: string[];
 }
 
-export interface SeedResult {
-  completed: number;
-  total: number;
-  errors: string[];
+export type SeedResult =
+  | { status: 'already-seeded' }
+  | {
+      status: 'seeded';
+      createdCategories: number;
+      createdItems: number;
+      skippedExisting: number;
+      skippedExistingNames: string[];
+      trueFailures: string[];
+    };
+
+// A duplicate-name collision that slipped past the pre-fetch is NOT a failure —
+// it's an expected outcome. Classify by status code first (409 once Task 9 ships)
+// and fall back to detail-string matching while the backend still returns 400.
+function isDuplicateNameError(err: unknown): boolean {
+  if (!(err instanceof ApiClientError)) return false;
+  if (err.status === 409) return true;
+  if (err.status === 400 && /already exists/i.test(err.message)) return true;
+  return false;
 }
 
 // Matches the original Kotlin/React Native isCritical logic
@@ -54,15 +70,31 @@ export function useSeedInventory() {
 
   const seed = async (): Promise<SeedResult> => {
     setIsSeeding(true);
-    const totalSteps = SEED_DATA.reduce(
-      (sum, cat) => sum + 1 + cat.items.length,
-      0
-    );
-    let completed = 0;
-    const errors: string[] = [];
+    const totalCategories = SEED_DATA.length;
+    const totalItems = SEED_DATA.reduce((sum, c) => sum + c.items.length, 0);
+    let categoriesHandled = 0;
+    let itemsHandled = 0;
+    let createdCategories = 0;
+    let createdItems = 0;
+    let skippedExisting = 0;
+    const skippedExistingNames: string[] = [];
+    const trueFailures: string[] = [];
 
-    const updateProgress = (action: string) => {
-      setProgress({ total: totalSteps, completed, currentAction: action, errors });
+    const updateCategoryProgress = (action: string) => {
+      setProgress({
+        phase: 'categories',
+        phaseCompleted: categoriesHandled,
+        phaseTotal: totalCategories,
+        currentAction: action,
+      });
+    };
+    const updateItemProgress = (action: string) => {
+      setProgress({
+        phase: 'items',
+        phaseCompleted: itemsHandled,
+        phaseTotal: totalItems,
+        currentAction: action,
+      });
     };
 
     try {
@@ -74,6 +106,31 @@ export function useSeedInventory() {
       const existingCategories: Category[] = [...existingCategoriesResp.categories];
       const existingItems: Item[] = [...existingItemsResp.items];
 
+      // Short-circuit: if the defaults are already in place, skip the 42-op loop.
+      // Tolerance of ≤4 missing items covers the case where the user intentionally
+      // deleted a few seed items — in that case we still run the loop so the missing
+      // ones get re-POSTed, and per-item dedup prevents the 28+ present ones from
+      // being touched.
+      const defaultCategoryNamesLower = SEED_DATA.map((c) => c.name.toLowerCase().trim());
+      const defaultItemNamesLower = SEED_DATA.flatMap((c) =>
+        c.items.map((i) => i.name.toLowerCase().trim())
+      );
+      const existingCatNamesLower = new Set(
+        existingCategories.map((c) => c.name.toLowerCase().trim())
+      );
+      const existingItemNamesLower = new Set(
+        existingItems.map((i) => i.name.toLowerCase().trim())
+      );
+      const allCategoriesPresent = defaultCategoryNamesLower.every((n) =>
+        existingCatNamesLower.has(n)
+      );
+      const seedItemsPresent = defaultItemNamesLower.filter((n) =>
+        existingItemNamesLower.has(n)
+      ).length;
+      if (allCategoriesPresent && seedItemsPresent >= 28) {
+        return { status: 'already-seeded' };
+      }
+
       // Build a (categoryId, lowercased name) → item map for O(1) dedup checks
       const existingItemKey = (categoryId: string, name: string) =>
         `${categoryId}::${name.toLowerCase().trim()}`;
@@ -83,7 +140,7 @@ export function useSeedInventory() {
 
       for (let catIdx = 0; catIdx < SEED_DATA.length; catIdx++) {
         const seedCat = SEED_DATA[catIdx];
-        updateProgress(`Checking category: ${seedCat.name}`);
+        updateCategoryProgress(seedCat.name);
 
         let categoryId: string;
 
@@ -93,7 +150,8 @@ export function useSeedInventory() {
         );
         if (existing) {
           categoryId = existing.id;
-          completed++;
+          skippedExisting++;
+          skippedExistingNames.push(seedCat.name);
         } else {
           try {
             const created = await categoryService.create({
@@ -103,26 +161,39 @@ export function useSeedInventory() {
             });
             categoryId = created.id;
             existingCategories.push(created);
-            completed++;
+            createdCategories++;
           } catch (err) {
+            if (isDuplicateNameError(err)) {
+              // Race condition — another client created it; treat as skipped.
+              skippedExisting++;
+              skippedExistingNames.push(seedCat.name);
+              categoriesHandled++;
+              itemsHandled += seedCat.items.length;
+              continue;
+            }
             const msg = err instanceof Error ? err.message : String(err);
-            errors.push(`Category "${seedCat.name}": ${msg}`);
+            trueFailures.push(`Category "${seedCat.name}": ${msg}`);
             console.warn('[Seed] Category create failed:', seedCat.name, msg);
             // Skip items for this category since we have no categoryId
-            completed += seedCat.items.length;
+            categoriesHandled++;
+            itemsHandled += seedCat.items.length;
             continue;
           }
         }
+        categoriesHandled++;
+        updateCategoryProgress(seedCat.name);
 
         // Create items under this category — skip if name already exists in this category
         for (const seedItem of seedCat.items) {
           const key = existingItemKey(categoryId, seedItem.name);
           if (existingItemKeys.has(key)) {
-            updateProgress(`Skipping existing: ${seedItem.name}`);
-            completed++;
+            updateItemProgress(`Skipping existing: ${seedItem.name}`);
+            skippedExisting++;
+            skippedExistingNames.push(seedItem.name);
+            itemsHandled++;
             continue;
           }
-          updateProgress(`Creating item: ${seedItem.name}`);
+          updateItemProgress(seedItem.name);
           try {
             const created = await itemService.create({
               categoryId,
@@ -135,12 +206,19 @@ export function useSeedInventory() {
             });
             existingItemKeys.add(key);
             existingItems.push(created);
+            createdItems++;
           } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            errors.push(`Item "${seedItem.name}": ${msg}`);
-            console.warn('[Seed] Item create failed:', seedItem.name, msg);
+            if (isDuplicateNameError(err)) {
+              existingItemKeys.add(key);
+              skippedExisting++;
+              skippedExistingNames.push(seedItem.name);
+            } else {
+              const msg = err instanceof Error ? err.message : String(err);
+              trueFailures.push(`Item "${seedItem.name}": ${msg}`);
+              console.warn('[Seed] Item create failed:', seedItem.name, msg);
+            }
           }
-          completed++;
+          itemsHandled++;
         }
       }
 
@@ -155,7 +233,14 @@ export function useSeedInventory() {
       setProgress(null);
     }
 
-    return { completed, total: totalSteps, errors };
+    return {
+      status: 'seeded',
+      createdCategories,
+      createdItems,
+      skippedExisting,
+      skippedExistingNames,
+      trueFailures,
+    };
   };
 
   return { seed, progress, isSeeding };
@@ -235,6 +320,48 @@ export async function createAutoBackup(
   const fileUri = `${dir}CareKosh-AutoBackup-${dateStr}.json`;
   await FileSystem.writeAsStringAsync(fileUri, json);
   return fileUri;
+}
+
+/**
+ * Replace-all delete — wipes every item and every category, including the
+ * 10 "protected" default categories. The user reaches this only by tapping
+ * through two confirmation dialogs, so the protection (which exists to stop
+ * accidental long-press deletions from the Build Inventory screen) is
+ * intentionally bypassed here. The subsequent seed step re-creates the
+ * defaults, so any category whose delete fails server-side (e.g., backend
+ * also enforces protection) will still be present and get merged correctly.
+ *
+ * Item-before-category ordering matters because of the FK from items to
+ * categories; categories with items cannot be deleted.
+ */
+export async function deleteAllInventory(
+  items: Item[],
+  categories: Category[]
+): Promise<{ itemsDeleted: number; categoriesDeleted: number; errors: string[] }> {
+  const errors: string[] = [];
+  let itemsDeleted = 0;
+  let categoriesDeleted = 0;
+
+  for (const item of items) {
+    try {
+      await itemService.delete(item.id);
+      itemsDeleted++;
+    } catch (err) {
+      errors.push(`Item "${item.name}": ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  for (const cat of categories) {
+    try {
+      await categoryService.delete(cat.id);
+      categoriesDeleted++;
+    } catch (err) {
+      // Backend may still protect defaults — seed() will find them and skip.
+      errors.push(`Category "${cat.name}": ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  return { itemsDeleted, categoriesDeleted, errors };
 }
 
 /**

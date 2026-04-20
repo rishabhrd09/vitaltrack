@@ -10,7 +10,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from app.api.deps import DB, CurrentUser
 from app.core.config import settings
@@ -196,18 +196,19 @@ async def login(
     Rate limited: 5 login attempts per minute per IP.
     Returns access and refresh tokens on success.
     """
-    identifier = data.identifier  # Already normalized to lowercase
-    
-    # Auto-detect: email contains @, username doesn't
+    identifier = data.identifier  # Schema validator already lowercased + stripped
+
+    # Auto-detect: email contains @, username doesn't.
+    # Compare with func.lower() on the column side so the lookup works even if
+    # a legacy row still has a mixed-case email/username (from before the
+    # normalisation was added on register).
     if "@" in identifier:
-        # Login by email
         result = await db.execute(
-            select(User).where(User.email == identifier)
+            select(User).where(func.lower(User.email) == identifier)
         )
     else:
-        # Login by username
         result = await db.execute(
-            select(User).where(User.username == identifier)
+            select(User).where(func.lower(User.username) == identifier)
         )
     
     user = result.scalar_one_or_none()

@@ -14,6 +14,8 @@ import {
     Platform,
     ScrollView,
     ActivityIndicator,
+    Alert,
+    Image,
 } from 'react-native';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -216,7 +218,11 @@ export default function LoginScreen() {
             >
                 {/* Logo/Header */}
                 <View style={styles.header}>
-                    <Ionicons name="medical" size={60} color={colors.primary} />
+                    <Image
+                        source={require('@/assets/icon.png')}
+                        style={styles.logo}
+                        resizeMode="contain"
+                    />
                     <Text style={[styles.title, { color: colors.text }]}>CareKosh</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                         Home ICU Inventory Management
@@ -227,10 +233,26 @@ export default function LoginScreen() {
                 <View style={styles.form}>
                     {/* Error Message — hide when we're in an active retry (retry box shows instead) */}
                     {error && !isRetrying && !retryExhausted && !isColdStart && (
-                        <View style={[styles.errorBox, { backgroundColor: colors.error + '20' }]}>
-                            <Ionicons name="alert-circle" size={20} color={colors.error} />
-                            <Text style={[styles.errorText, { color: colors.error }]}>{getFriendlyError(error)}</Text>
-                        </View>
+                        <>
+                            <View style={[styles.errorBox, { backgroundColor: colors.error + '20' }]}>
+                                <Ionicons name="alert-circle" size={20} color={colors.error} />
+                                <Text style={[styles.errorText, { color: colors.error }]}>{getFriendlyError(error)}</Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() =>
+                                    Alert.alert(
+                                        'Account deleted',
+                                        'If you recently confirmed an account deletion email, your account has been removed. You can register a new account with the same email.',
+                                        [{ text: 'OK' }]
+                                    )
+                                }
+                                style={styles.deletedHelpLink}
+                            >
+                                <Text style={[styles.deletedHelpText, { color: colors.textSecondary }]}>
+                                    Recently deleted your account?
+                                </Text>
+                            </TouchableOpacity>
+                        </>
                     )}
 
                     {/* Email/Username Input */}
@@ -364,10 +386,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 40,
     },
+    logo: {
+        width: 112,
+        height: 112,
+    },
     title: {
         fontSize: 32,
         fontWeight: 'bold',
-        marginTop: 16,
+        marginTop: 8,
     },
     subtitle: {
         fontSize: 16,
@@ -387,6 +413,16 @@ const styles = StyleSheet.create({
     errorText: {
         flex: 1,
         fontSize: 14,
+    },
+    deletedHelpLink: {
+        alignSelf: 'flex-end',
+        marginTop: -8,
+        marginBottom: 16,
+        paddingVertical: 4,
+    },
+    deletedHelpText: {
+        fontSize: 13,
+        textDecorationLine: 'underline',
     },
     inputContainer: {
         marginBottom: 16,

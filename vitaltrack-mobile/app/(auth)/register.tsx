@@ -19,6 +19,7 @@ import {
     Platform,
     ScrollView,
     ActivityIndicator,
+    Image,
 } from 'react-native';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -179,7 +180,11 @@ export default function RegisterScreen() {
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    <Ionicons name="medical" size={50} color={colors.primary} />
+                    <Image
+                        source={require('@/assets/icon.png')}
+                        style={styles.logo}
+                        resizeMode="contain"
+                    />
                     <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                         Join CareKosh to manage your inventory
@@ -347,6 +352,10 @@ const styles = StyleSheet.create({
     header: {
         alignItems: 'center',
         marginBottom: 32,
+    },
+    logo: {
+        width: 96,
+        height: 96,
     },
     title: {
         fontSize: 28,

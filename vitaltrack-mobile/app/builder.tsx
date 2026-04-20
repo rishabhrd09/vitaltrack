@@ -34,9 +34,12 @@ import {
     useSeedInventory,
     useStartFresh,
     createAutoBackup,
+    deleteAllInventory,
     isProtectedCategory,
     getSuggestedItemsForCategory,
 } from '@/hooks/useSeedInventory';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/hooks/useServerData';
 
 export default function BuildInventoryScreen() {
     const router = useRouter();
@@ -53,6 +56,7 @@ export default function BuildInventoryScreen() {
     const toggleItemCriticalMutation = useToggleItemCritical();
     const { seed, isSeeding, progress: seedProgress } = useSeedInventory();
     const { startFresh } = useStartFresh();
+    const queryClient = useQueryClient();
 
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
         categories.length > 0 ? categories[0].id : null
@@ -106,28 +110,117 @@ export default function BuildInventoryScreen() {
         }
         try {
             const result = await seed();
-            if (result.errors.length === 0) {
-                Alert.alert('Done', `Added ${result.completed} entries to your inventory.`);
-            } else {
+            if (result.status === 'already-seeded') {
                 Alert.alert(
-                    'Partial success',
-                    `Added ${result.completed} of ${result.total} entries.\n\n${result.errors.length} failed:\n${result.errors.slice(0, 3).join('\n')}${result.errors.length > 3 ? '\n…' : ''}`
+                    'Already set up',
+                    'Your inventory already has the default Home ICU items. Nothing to add.'
                 );
+                return;
             }
+            if (result.trueFailures.length > 0) {
+                Alert.alert(
+                    "Some items couldn't be added",
+                    `${result.trueFailures.length} failed:\n${result.trueFailures.slice(0, 3).join('\n')}${result.trueFailures.length > 3 ? '\n…' : ''}`
+                );
+                return;
+            }
+            if (result.skippedExisting === 0) {
+                Alert.alert(
+                    'Default inventory added',
+                    '10 categories and 32 items are ready.'
+                );
+                return;
+            }
+            // Some or all already existed — classify "already had" line without naming too many
+            const names = result.skippedExistingNames;
+            let alreadyLine = '';
+            if (names.length <= 6) {
+                alreadyLine = `Already had: ${names.join(', ')}`;
+            } else {
+                alreadyLine = `Already had: ${names.slice(0, 3).join(', ')}, and ${names.length - 3} more`;
+            }
+            Alert.alert(
+                'Default inventory added',
+                `${result.createdItems} new items added, ${result.skippedExisting} already in your inventory were kept unchanged.\n\n${alreadyLine}`
+            );
         } catch (err) {
             handleMutationError(err, 'Seed Inventory');
         }
     };
 
+    // Replace-all flow: auto-backup, wipe everything, re-seed defaults.
+    const confirmReplaceAll = () => {
+        Alert.alert(
+            'Replace all inventory?',
+            'This will:\n\n• Auto-backup your current inventory to a JSON file\n• Delete all your current items and categories\n• Replace them with the 10 default categories and 32 default items\n\nStock quantities and any custom items will be lost. This cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Backup & Replace',
+                    style: 'destructive',
+                    onPress: async () => {
+                        if (!isOnline) {
+                            Alert.alert('Offline', 'Connect to WiFi to replace inventory.');
+                            return;
+                        }
+                        let backupPath = '';
+                        try {
+                            backupPath = await createAutoBackup(categories, items);
+                        } catch (err) {
+                            const msg = err instanceof Error ? err.message : String(err);
+                            Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nReplace aborted to protect your data.`);
+                            return;
+                        }
+                        try {
+                            await deleteAllInventory(items, categories);
+                        } catch (err) {
+                            handleMutationError(err, 'Delete Inventory');
+                            return;
+                        }
+                        // Invalidate so the subsequent seed's pre-fetch (via services,
+                        // not React Query) aligns with what the UI will show on completion.
+                        await Promise.all([
+                            queryClient.invalidateQueries({ queryKey: queryKeys.items }),
+                            queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
+                            queryClient.invalidateQueries({ queryKey: queryKeys.activities }),
+                        ]);
+                        try {
+                            await seed();
+                            showBackupDoneAlert(
+                                'Done',
+                                'Your previous inventory was backed up and replaced with defaults.',
+                                backupPath,
+                            );
+                        } catch (err) {
+                            handleMutationError(err, 'Seed Inventory');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
     // Show confirmation, then seed. Used by both manual button and auto-prompt.
     const handleSeed = () => {
         const hasExisting = items.length > 0 || categories.length > 0;
+        if (!hasExisting) {
+            Alert.alert(
+                'Add Default Inventory',
+                'This will add the default Home ICU items (10 categories, 32 items).',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Add Defaults', onPress: () => runSeed() },
+                ]
+            );
+            return;
+        }
         Alert.alert(
             'Add Default Inventory',
-            `This will add ${hasExisting ? 'any missing ' : ''}default Home ICU items (10 categories, 32 items). Existing categories and items will NOT be duplicated.`,
+            'You already have items in your inventory. How would you like to add the default Home ICU items?',
             [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'Add Defaults', onPress: () => runSeed() },
+                { text: 'Merge', onPress: () => runSeed() },
+                { text: 'Replace all', style: 'destructive', onPress: () => confirmReplaceAll() },
             ]
         );
     };
@@ -176,6 +269,37 @@ export default function BuildInventoryScreen() {
         );
     };
 
+    // After a destructive flow finishes, surface the auto-backup through the
+    // system share sheet so the user can move it off the app's sandboxed dir
+    // (Drive, WhatsApp, email). Showing a raw file:// URI in an Alert is
+    // useless — the user can't navigate to it, can't recover it if they wipe
+    // the app, and arguably defeats the point of "backup before destructive".
+    const showBackupDoneAlert = (title: string, body: string, backupPath: string) => {
+        const filename = backupPath.split('/').pop() || backupPath;
+        Alert.alert(
+            title,
+            `${body}\n\nBackup saved: ${filename}`,
+            [
+                {
+                    text: 'Share backup',
+                    onPress: async () => {
+                        try {
+                            if (await Sharing.isAvailableAsync()) {
+                                await Sharing.shareAsync(backupPath, {
+                                    mimeType: 'application/json',
+                                    dialogTitle: 'CareKosh Backup',
+                                });
+                            }
+                        } catch {
+                            // Sharing cancellation isn't an error worth surfacing.
+                        }
+                    },
+                },
+                { text: 'OK', style: 'cancel' },
+            ]
+        );
+    };
+
     const handleStartFresh = () => {
         if (!isOnline) {
             Alert.alert('Offline', 'Connect to WiFi to reset inventory.');
@@ -206,9 +330,10 @@ export default function BuildInventoryScreen() {
                         try {
                             // Step 2: Delete non-essential items
                             const result = await startFresh(items);
-                            Alert.alert(
+                            showBackupDoneAlert(
                                 'Done',
-                                `Deleted ${result.deleted} items. Kept ${result.kept} essential items.${result.errors.length > 0 ? `\n\n${result.errors.length} failed.` : ''}\n\nAuto-backup saved at:\n${backupPath}`
+                                `Deleted ${result.deleted} items. Kept ${result.kept} essential items.${result.errors.length > 0 ? `\n\n${result.errors.length} failed.` : ''}`,
+                                backupPath,
                             );
                         } catch (err) {
                             handleMutationError(err, 'Start Fresh');
@@ -617,9 +742,11 @@ export default function BuildInventoryScreen() {
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>
                     <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Build Inventory</Text>
-                    <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>
-                        {items.length} items · {categories.length} categories
-                    </Text>
+                    {!isSeeding && (
+                        <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>
+                            {items.length} items · {categories.length} categories
+                        </Text>
+                    )}
                 </View>
                 <TouchableOpacity onPress={handleExportPDF} style={styles.headerButton}>
                     <Ionicons name="share-outline" size={22} color={colors.accentBlue} />
@@ -633,7 +760,9 @@ export default function BuildInventoryScreen() {
                         <Ionicons name="cloud-upload-outline" size={18} color={colors.accentBlue} />
                         <View style={{ flex: 1 }}>
                             <Text style={[styles.seedingTitle, { color: colors.accentBlue }]}>
-                                Seeding inventory ({seedProgress.completed}/{seedProgress.total})
+                                {seedProgress.phase === 'categories'
+                                    ? `Setting up categories (${seedProgress.phaseCompleted}/${seedProgress.phaseTotal})`
+                                    : `Adding items (${seedProgress.phaseCompleted}/${seedProgress.phaseTotal})`}
                             </Text>
                             <Text style={[styles.seedingSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
                                 {seedProgress.currentAction}
@@ -665,7 +794,7 @@ export default function BuildInventoryScreen() {
                         <ActionCard
                             icon="sparkles-outline"
                             label={items.length === 0 && categories.length === 0 ? 'Seed Defaults' : 'Add Defaults'}
-                            subtitle="32 Home ICU items"
+                            subtitle="10 categories · 32 items"
                             onPress={handleSeed}
                             color={colors.statusGreen}
                         />
