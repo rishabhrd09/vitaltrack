@@ -3,7 +3,7 @@
  * Displays user info and provides account deletion with email confirmation.
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -21,11 +21,65 @@ import { authService } from '@/services/auth';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 
+const DELETION_POLL_INTERVAL_MS = 5000;
+const DELETION_POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
 export default function ProfileScreen() {
     const router = useRouter();
     const { colors } = useTheme();
     const user = useAuthStore((state) => state.user);
     const [isRequesting, setIsRequesting] = useState(false);
+
+    // Interval for polling /auth/me after deletion email is sent. When the
+    // backend deletes the account, the next poll returns 401/404 → the api.ts
+    // interceptor triggers auto-logout → route guard redirects to /login.
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (pollRef.current) {
+                clearInterval(pollRef.current);
+                pollRef.current = null;
+            }
+        };
+    }, []);
+
+    const startDeletionPolling = () => {
+        if (pollRef.current) return;
+        const pollStart = Date.now();
+        console.info('[Auth] Account deletion polling started');
+
+        pollRef.current = setInterval(async () => {
+            if (Date.now() - pollStart > DELETION_POLL_TIMEOUT_MS) {
+                if (pollRef.current) {
+                    clearInterval(pollRef.current);
+                    pollRef.current = null;
+                }
+                console.info('[Auth] Deletion poll timed out after 10 minutes');
+                return;
+            }
+            try {
+                await authService.getProfile();
+                console.info('[Auth] Polling /auth/me — account still alive');
+            } catch (err) {
+                const status = (err as { status?: number }).status;
+                if (status === 401 || status === 404) {
+                    if (pollRef.current) {
+                        clearInterval(pollRef.current);
+                        pollRef.current = null;
+                    }
+                    console.info('[Auth] 401/404 detected — account deleted');
+                    Alert.alert(
+                        'Account Deleted',
+                        'Your CareKosh account has been permanently deleted.',
+                        [{ text: 'OK' }]
+                    );
+                    // api.ts interceptor already triggered logout() on the 401;
+                    // the route guard handles navigation back to /login.
+                }
+            }
+        }, DELETION_POLL_INTERVAL_MS);
+    };
 
     const handleDeleteAccount = () => {
         Alert.alert(
@@ -40,11 +94,14 @@ export default function ProfileScreen() {
                         setIsRequesting(true);
                         try {
                             const response = await authService.requestAccountDeletion();
+                            console.info('[Auth] Account deletion requested');
                             Alert.alert(
-                                'Check Your Email',
-                                response.message,
-                                [{ text: 'OK', onPress: () => router.back() }]
+                                'Check your email',
+                                response.message ||
+                                    'Tap the confirmation link in your email to complete deletion. You will be signed out automatically.',
+                                [{ text: 'OK' }]
                             );
+                            startDeletionPolling();
                         } catch (error) {
                             const err = error as Error;
                             Alert.alert(

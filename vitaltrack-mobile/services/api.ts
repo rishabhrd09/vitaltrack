@@ -111,6 +111,24 @@ async function refreshAccessToken(): Promise<string | null> {
     }
 }
 
+// Trigger a store-level logout from the API layer. Lazy require to avoid a
+// circular import (store depends on api.ts for tokenStorage/ApiClientError).
+// Skipped for the login endpoint itself: a wrong password returning 401 must
+// NOT log the user out — they aren't authenticated in the first place.
+async function triggerAutoLogout(endpoint: string): Promise<void> {
+    if (endpoint.includes('/auth/login')) return;
+    try {
+        const { useAuthStore } = await import('@/store/useAuthStore');
+        const state = useAuthStore.getState();
+        if (state.isAuthenticated) {
+            console.info('[Auth] 401 on authenticated request — auto-logout');
+            await state.logout();
+        }
+    } catch (err) {
+        console.warn('[Auth] Auto-logout failed:', err);
+    }
+}
+
 // Main API client
 class ApiClient {
     private baseUrl: string;
@@ -169,6 +187,11 @@ class ApiClient {
                     (headers as Record<string, string>)['Authorization'] = `Bearer ${newToken}`;
                     response = await fetch(url, { ...options, headers });
                 } else {
+                    // Refresh failed — session is dead (token revoked, account
+                    // deleted server-side, etc). Trigger auto-logout so the
+                    // route guard redirects to /login. Guard against the login
+                    // endpoint itself to avoid weird loops on mistyped passwords.
+                    await triggerAutoLogout(endpoint);
                     throw new ApiClientError('Session expired. Please log in again.', 401);
                 }
             } else {
@@ -180,6 +203,13 @@ class ApiClient {
                     });
                 });
                 response = await fetch(url, { ...options, headers });
+            }
+
+            // Retry may still return 401 if the refreshed token was immediately
+            // invalidated (e.g. account deleted between refresh and retry).
+            if (response.status === 401) {
+                await triggerAutoLogout(endpoint);
+                throw new ApiClientError('Session expired. Please log in again.', 401);
             }
         }
 
