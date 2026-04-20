@@ -121,9 +121,8 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
-                {/* Danger Zone Card */}
+                {/* Account deletion card — red border signals destructive intent without alarmist copy */}
                 <View style={[dynamicStyles.card, dynamicStyles.dangerCard, { borderColor: colors.statusRed }]}>
-                    <Text style={[styles.dangerTitle, { color: colors.statusRed }]}>Danger Zone</Text>
                     <Text style={[styles.dangerDescription, { color: colors.textSecondary }]}>
                         Deleting your account will permanently remove all your data including inventory
                         items, categories, orders, and activity history. A confirmation email will be
@@ -254,11 +253,6 @@ const styles = StyleSheet.create({
         fontWeight: fontWeight.medium,
         maxWidth: '60%',
         textAlign: 'right',
-    },
-    dangerTitle: {
-        fontSize: fontSize.md,
-        fontWeight: fontWeight.semibold,
-        marginBottom: spacing.sm,
     },
     dangerDescription: {
         fontSize: fontSize.sm,
