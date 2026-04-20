@@ -92,8 +92,17 @@ export default function ProfileMenuSheet({
             onRequestClose={onDismiss}
         >
             <Pressable style={[styles.overlay, { backgroundColor: colors.overlayDark }]} onPress={onDismiss}>
-                <Animated.View style={{ transform: [{ translateY }] }}>
-                <Pressable style={[styles.sheet, { backgroundColor: colors.bgCard, paddingBottom: insets.bottom }]} onPress={(e) => e.stopPropagation()}>
+                <Animated.View
+                    style={[
+                        styles.sheetWrapper,
+                        {
+                            backgroundColor: colors.bgCard,
+                            paddingBottom: insets.bottom + spacing.md,
+                            transform: [{ translateY }],
+                        },
+                    ]}
+                >
+                <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
                     {/* Drag Handle — attach PanResponder here for swipe-down-to-dismiss */}
                     <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
                         <View style={[styles.dragHandle, { backgroundColor: colors.borderSecondary }]} />
@@ -194,11 +203,8 @@ export default function ProfileMenuSheet({
                         <Ionicons name="log-out-outline" size={20} color={colors.statusRed} />
                         <Text style={[styles.logoutText, { color: colors.statusRed }]}>Logout</Text>
                     </TouchableOpacity>
-
-                    {/* Bottom Spacing */}
-                    <View style={{ height: spacing.xl }} />
                 </Pressable>
-            </Animated.View>
+                </Animated.View>
             </Pressable>
         </Modal>
     );
@@ -233,12 +239,14 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'flex-end',
     },
-    sheet: {
+    sheetWrapper: {
         borderTopLeftRadius: borderRadius.xl,
         borderTopRightRadius: borderRadius.xl,
+        maxHeight: '80%',
+    },
+    sheet: {
         paddingHorizontal: spacing.xl,
         paddingTop: spacing.md,
-        maxHeight: '80%',
     },
     dragHandleContainer: {
         alignItems: 'center',

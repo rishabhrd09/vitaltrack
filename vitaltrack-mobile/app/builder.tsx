@@ -15,6 +15,7 @@ import {
     TextInput,
     KeyboardAvoidingView,
     Platform,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +30,7 @@ import { isOutOfStock, isLowStock, type Category } from '@/types';
 import { useItems, useCategories } from '@/hooks/useServerData';
 import { useDeleteItem, useDeleteCategory, useCreateCategory, useToggleItemCritical, useCreateItem } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useDelayedPending } from '@/hooks/useDelayedPending';
 import { handleMutationError } from '@/utils/serverErrors';
 import {
     useSeedInventory,
@@ -57,6 +59,7 @@ export default function BuildInventoryScreen() {
     const { seed, isSeeding, progress: seedProgress } = useSeedInventory();
     const { startFresh } = useStartFresh();
     const queryClient = useQueryClient();
+    const showCreateCategoryPending = useDelayedPending(createCategoryMutation.isPending);
 
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
         categories.length > 0 ? categories[0].id : null
@@ -131,17 +134,20 @@ export default function BuildInventoryScreen() {
                 );
                 return;
             }
-            // Some or all already existed — classify "already had" line without naming too many
-            const names = result.skippedExistingNames;
+            // Some or all already existed — name only the items (skipped categories
+            // share the same count but their names belong to a different sentence).
+            const itemNames = result.skippedItemNames;
             let alreadyLine = '';
-            if (names.length <= 6) {
-                alreadyLine = `Already had: ${names.join(', ')}`;
+            if (itemNames.length === 0) {
+                alreadyLine = '';
+            } else if (itemNames.length <= 6) {
+                alreadyLine = `\n\nAlready had: ${itemNames.join(', ')}`;
             } else {
-                alreadyLine = `Already had: ${names.slice(0, 3).join(', ')}, and ${names.length - 3} more`;
+                alreadyLine = `\n\nAlready had: ${itemNames.slice(0, 3).join(', ')}, and ${itemNames.length - 3} more`;
             }
             Alert.alert(
                 'Default inventory added',
-                `${result.createdItems} new items added, ${result.skippedExisting} already in your inventory were kept unchanged.\n\n${alreadyLine}`
+                `${result.createdItems} new items added, ${result.skippedExisting} already in your inventory were kept unchanged.${alreadyLine}`
             );
         } catch (err) {
             handleMutationError(err, 'Seed Inventory');
@@ -177,12 +183,12 @@ export default function BuildInventoryScreen() {
                             handleMutationError(err, 'Delete Inventory');
                             return;
                         }
-                        // Invalidate so the subsequent seed's pre-fetch (via services,
-                        // not React Query) aligns with what the UI will show on completion.
+                        // Force a refetch (not just invalidate) so seed()'s pre-fetch
+                        // sees the post-delete state instead of any in-flight cache.
                         await Promise.all([
-                            queryClient.invalidateQueries({ queryKey: queryKeys.items }),
-                            queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
-                            queryClient.invalidateQueries({ queryKey: queryKeys.activities }),
+                            queryClient.refetchQueries({ queryKey: queryKeys.items }),
+                            queryClient.refetchQueries({ queryKey: queryKeys.categories }),
+                            queryClient.refetchQueries({ queryKey: queryKeys.activities }),
                         ]);
                         try {
                             await seed();
@@ -1023,8 +1029,16 @@ export default function BuildInventoryScreen() {
                             value={newCategoryDesc}
                             onChangeText={setNewCategoryDesc}
                         />
-                        <TouchableOpacity style={[styles.modalButton, { backgroundColor: colors.accentBlue }]} onPress={handleAddCategory}>
-                            <Text style={styles.modalButtonText}>Create Category</Text>
+                        <TouchableOpacity
+                            style={[styles.modalButton, { backgroundColor: colors.accentBlue }]}
+                            onPress={handleAddCategory}
+                            disabled={createCategoryMutation.isPending}
+                        >
+                            {showCreateCategoryPending ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                                <Text style={styles.modalButtonText}>Create Category</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </KeyboardAvoidingView>
