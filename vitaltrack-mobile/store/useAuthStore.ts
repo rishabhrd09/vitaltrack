@@ -52,6 +52,11 @@ interface AuthState {
   error: string | null;
   isInitialized: boolean;
   isColdStart: boolean;
+  // True while the backend is believed to be waking from a Render cold
+  // start after session init fell back to cached auth. Separate from
+  // isColdStart, which is tied to login-failure UX. The NetworkBanner
+  // reads this to show an amber "Server is starting up..." strip.
+  isBackendColdStarting: boolean;
 }
 
 interface AuthActions {
@@ -84,6 +89,7 @@ export const useAuthStore = create<AuthStore>()(
       error: null,
       isInitialized: false,
       isColdStart: false,
+      isBackendColdStarting: false,
       // =====================================================================
       // INITIALIZE - Check for existing session
       // =====================================================================
@@ -124,14 +130,19 @@ export const useAuthStore = create<AuthStore>()(
                 isAuthenticated: true,
                 isLoading: false,
                 isInitialized: true,
+                // Flip on the amber banner so the user understands why
+                // subsequent mutations may take 30-60s.
+                isBackendColdStarting: true,
               });
               // Retry in background after server wakes
               setTimeout(async () => {
                 try {
                   const freshUser = await authService.getProfile();
-                  set({ user: freshUser });
+                  set({ user: freshUser, isBackendColdStarting: false });
                   console.log('[Auth] Background profile refresh succeeded');
                 } catch {
+                  // Leave the flag set — the backend may still be warming
+                  // and the next successful API call will clear it.
                   console.warn('[Auth] Background profile refresh failed');
                 }
               }, 5000);
@@ -344,6 +355,7 @@ export const useAuthStore = create<AuthStore>()(
             isLoggingOut: false,
             error: null,
             isColdStart: false,
+            isBackendColdStarting: false,
           });
           console.log('[Auth] ========== LOGOUT COMPLETE ==========');
         }
