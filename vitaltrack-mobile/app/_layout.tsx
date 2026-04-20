@@ -6,8 +6,15 @@
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+// In non-dev builds (EAS preview/production APKs) the LogBox dev overlay
+// shouldn't surface warnings to end users — the UI already handles errors
+// gracefully. __DEV__ is true only in `expo start` / Metro.
+if (!__DEV__) {
+  LogBox.ignoreAllLogs();
+}
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';

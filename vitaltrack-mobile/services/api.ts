@@ -255,11 +255,15 @@ class ApiClient {
                 }
             }
 
-            // Log detailed error info
-            console.error(`[API] Request failed: ${options.method || 'GET'} ${endpoint}`);
-            console.error(`[API] Status: ${response.status}`);
-            console.error(`[API] Error: ${message}`);
-            console.error(`[API] Data:`, JSON.stringify(data).substring(0, 500));
+            // 5xx / network-level problems are unexpected; 4xx is caller-handleable.
+            const level: 'error' | 'warn' =
+                response.status >= 500 || response.status === 0 ? 'error' : 'warn';
+            console[level](
+                `[API] ${options.method || 'GET'} ${endpoint} → ${response.status} ${message}`
+            );
+            if (__DEV__) {
+                console[level]('[API] body:', JSON.stringify(data).substring(0, 500));
+            }
 
             throw new ApiClientError(message, response.status, data);
         }
