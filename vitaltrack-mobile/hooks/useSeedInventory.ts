@@ -69,7 +69,14 @@ export function useSeedInventory() {
   const [progress, setProgress] = useState<SeedProgress | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
 
-  const seed = async (): Promise<SeedResult> => {
+  const seed = async (
+    onProgress?: (
+      phase: 'categories' | 'items',
+      current: number,
+      total: number,
+      currentName: string
+    ) => void
+  ): Promise<SeedResult> => {
     setIsSeeding(true);
     const totalCategories = SEED_DATA.length;
     const totalItems = SEED_DATA.reduce((sum, c) => sum + c.items.length, 0);
@@ -89,6 +96,7 @@ export function useSeedInventory() {
         phaseTotal: totalCategories,
         currentAction: action,
       });
+      onProgress?.('categories', categoriesHandled, totalCategories, action);
     };
     const updateItemProgress = (action: string) => {
       setProgress({
@@ -97,6 +105,7 @@ export function useSeedInventory() {
         phaseTotal: totalItems,
         currentAction: action,
       });
+      onProgress?.('items', itemsHandled, totalItems, action);
     };
 
     try {
@@ -399,7 +408,9 @@ export function useStartFresh() {
   const qc = useQueryClient();
   const [isResetting, setIsResetting] = useState(false);
 
-  const startFresh = async (): Promise<{ deleted: number; kept: number; errors: string[] }> => {
+  const startFresh = async (
+    onProgress?: (current: number, total: number, currentName: string) => void
+  ): Promise<{ deleted: number; kept: number; errors: string[] }> => {
     setIsResetting(true);
     const errors: string[] = [];
     let deleted = 0;
@@ -410,12 +421,12 @@ export function useStartFresh() {
       // in the React Query snapshot would issue DELETEs for phantom IDs.
       const serverItemsResp = await itemService.getAll({ limit: 999 });
       const allItems = serverItemsResp.items;
+      const nonEssential = allItems.filter((i) => !isEssentialItem(i));
+      kept = allItems.length - nonEssential.length;
 
-      for (const item of allItems) {
-        if (isEssentialItem(item)) {
-          kept++;
-          continue;
-        }
+      for (let i = 0; i < nonEssential.length; i++) {
+        const item = nonEssential[i];
+        onProgress?.(i, nonEssential.length, item.name);
         try {
           await itemService.delete(item.id);
           deleted++;

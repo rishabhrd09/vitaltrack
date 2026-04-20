@@ -42,6 +42,7 @@ import {
 } from '@/hooks/useSeedInventory';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/hooks/useServerData';
+import BulkOperationOverlay, { type BulkOperationOverlayProps } from '@/components/common/BulkOperationOverlay';
 
 export default function BuildInventoryScreen() {
     const router = useRouter();
@@ -56,7 +57,7 @@ export default function BuildInventoryScreen() {
     const createCategoryMutation = useCreateCategory();
     const createItemMutation = useCreateItem();
     const toggleItemCriticalMutation = useToggleItemCritical();
-    const { seed, isSeeding, progress: seedProgress } = useSeedInventory();
+    const { seed, isSeeding } = useSeedInventory();
     const { startFresh } = useStartFresh();
     const queryClient = useQueryClient();
     const showCreateCategoryPending = useDelayedPending(createCategoryMutation.isPending);
@@ -75,6 +76,9 @@ export default function BuildInventoryScreen() {
     // Use a ref so the prompt fires exactly once per mount, even if state updates
     // re-trigger the effect before Alert is dismissed.
     const seedPromptFiredRef = useRef(false);
+    // Blocking overlay shown during destructive bulk ops. Null when no op is running.
+    // The overlay swallows touches so the user can't queue a second op mid-flight.
+    const [overlay, setOverlay] = useState<BulkOperationOverlayProps | null>(null);
 
     // Keep selectedCategoryId in sync when categories load or change
     useEffect(() => {
@@ -123,8 +127,18 @@ export default function BuildInventoryScreen() {
             Alert.alert('Offline', 'Connect to WiFi to add default inventory.');
             return;
         }
+        setOverlay({ visible: true, title: 'Adding default inventory...' });
         try {
-            const result = await seed();
+            const result = await seed((phase, current, total, currentName) => {
+                setOverlay({
+                    visible: true,
+                    title: 'Adding default inventory...',
+                    phase: phase === 'categories' ? 'Setting up categories' : 'Adding items',
+                    progress: { current, total },
+                    subtitle: currentName,
+                });
+            });
+            setOverlay(null);
             if (result.status === 'already-seeded') {
                 Alert.alert(
                     'Already set up',
@@ -162,6 +176,7 @@ export default function BuildInventoryScreen() {
                 `${result.createdItems} new items added, ${result.skippedExisting} already in your inventory were kept unchanged.${alreadyLine}`
             );
         } catch (err) {
+            setOverlay(null);
             handleMutationError(err, 'Seed Inventory');
         }
     };
@@ -184,9 +199,11 @@ export default function BuildInventoryScreen() {
                         setIsReplaceAllRunning(true);
                         try {
                             let backupPath = '';
+                            setOverlay({ visible: true, title: 'Creating backup...' });
                             try {
                                 backupPath = await createAutoBackup(categories, items);
                             } catch (err) {
+                                setOverlay(null);
                                 const msg = err instanceof Error ? err.message : String(err);
                                 Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nReplace aborted to protect your data.`);
                                 return;
@@ -197,21 +214,39 @@ export default function BuildInventoryScreen() {
                             // need UI reconciliation against the server's partial state.
                             let deleteFailed = false;
                             try {
+                                setOverlay({
+                                    visible: true,
+                                    title: 'Clearing existing inventory...',
+                                    phase: 'Removing items and categories',
+                                });
                                 try {
                                     await deleteAllInventory();
                                 } catch (err) {
+                                    setOverlay(null);
                                     deleteFailed = true;
                                     handleMutationError(err, 'Delete Inventory');
                                     return;
                                 }
+                                setOverlay({ visible: true, title: 'Syncing with server...' });
                                 try {
-                                    await seed();
+                                    setOverlay({ visible: true, title: 'Adding default inventory...' });
+                                    await seed((phase, current, total, currentName) => {
+                                        setOverlay({
+                                            visible: true,
+                                            title: 'Adding default inventory...',
+                                            phase: phase === 'categories' ? 'Setting up categories' : 'Adding items',
+                                            progress: { current, total },
+                                            subtitle: currentName,
+                                        });
+                                    });
+                                    setOverlay(null);
                                     showBackupDoneAlert(
                                         'Done',
                                         'Your previous inventory was backed up and replaced with defaults.',
                                         backupPath,
                                     );
                                 } catch (err) {
+                                    setOverlay(null);
                                     handleMutationError(err, 'Seed Inventory');
                                 }
                             } finally {
@@ -347,17 +382,34 @@ export default function BuildInventoryScreen() {
     // through the confirmation dialog.
     const runStartFresh = async () => {
         let backupPath = '';
+        setOverlay({ visible: true, title: 'Creating backup...' });
         try {
             backupPath = await createAutoBackup(categories, items);
         } catch (err) {
+            setOverlay(null);
             const msg = err instanceof Error ? err.message : String(err);
             Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nStart Fresh aborted to protect your data.`);
             return;
         }
+        setOverlay({
+            visible: true,
+            title: 'Clearing inventory...',
+            phase: 'Removing non-essential items',
+        });
         try {
-            const result = await startFresh();
+            const result = await startFresh((current, total, currentName) => {
+                setOverlay({
+                    visible: true,
+                    title: 'Clearing inventory...',
+                    phase: 'Removing non-essential items',
+                    progress: { current, total },
+                    subtitle: currentName,
+                });
+            });
+            setOverlay(null);
             showStartFreshResultAlert(result, backupPath);
         } catch (err) {
+            setOverlay(null);
             handleMutationError(err, 'Start Fresh');
         }
     };
@@ -826,6 +878,11 @@ export default function BuildInventoryScreen() {
     };
 
     const mutedRed = '#A65D5D';
+    // Disable action triggers defensively while a bulk op is running. The
+    // BulkOperationOverlay already blocks touches via its Modal backdrop, but
+    // there's a ~100ms window between setState and the Modal engaging — a
+    // fast double-tap in that window can queue a second destructive op.
+    const isBulkBusy = overlay?.visible === true;
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
@@ -848,22 +905,8 @@ export default function BuildInventoryScreen() {
             </View>
 
             <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
-                {/* Seeding progress banner */}
-                {isSeeding && seedProgress && (
-                    <View style={[styles.seedingBanner, { backgroundColor: colors.accentBlueBg, borderColor: colors.accentBlue }]}>
-                        <Ionicons name="cloud-upload-outline" size={18} color={colors.accentBlue} />
-                        <View style={{ flex: 1 }}>
-                            <Text style={[styles.seedingTitle, { color: colors.accentBlue }]}>
-                                {seedProgress.phase === 'categories'
-                                    ? `Setting up categories (${seedProgress.phaseCompleted}/${seedProgress.phaseTotal})`
-                                    : `Adding items (${seedProgress.phaseCompleted}/${seedProgress.phaseTotal})`}
-                            </Text>
-                            <Text style={[styles.seedingSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
-                                {seedProgress.currentAction}
-                            </Text>
-                        </View>
-                    </View>
-                )}
+                {/* Inline seed banner removed — BulkOperationOverlay now shows
+                    blocking progress while seeding/replacing/resetting. */}
 
                 {/* Data Management Cards */}
                 <View style={styles.cardsContainer}>
@@ -875,6 +918,7 @@ export default function BuildInventoryScreen() {
                             subtitle="Export as JSON"
                             onPress={handleBackup}
                             color={colors.accentBlue}
+                            disabled={isBulkBusy}
                         />
                         <ActionCard
                             icon="document-text-outline"
@@ -882,6 +926,7 @@ export default function BuildInventoryScreen() {
                             subtitle="Share inventory report"
                             onPress={handleExportPDF}
                             color={colors.statusYellow}
+                            disabled={isBulkBusy}
                         />
                     </View>
                     <View style={styles.cardsRow}>
@@ -891,6 +936,7 @@ export default function BuildInventoryScreen() {
                             subtitle="10 categories · 32 items"
                             onPress={handleSeed}
                             color={colors.statusGreen}
+                            disabled={isBulkBusy}
                         />
                         <ActionCard
                             icon="flash-outline"
@@ -898,6 +944,7 @@ export default function BuildInventoryScreen() {
                             subtitle="Keep essentials only"
                             onPress={handleStartFresh}
                             color={mutedRed}
+                            disabled={isBulkBusy}
                         />
                     </View>
                 </View>
@@ -957,7 +1004,7 @@ export default function BuildInventoryScreen() {
                     {selectedCategory && (
                         <View style={[styles.listHeader, { borderBottomColor: colors.borderPrimary }]}>
                             <Text style={[styles.listTitle, { color: colors.textPrimary }]}>{selectedCategory.name}</Text>
-                            <TouchableOpacity onPress={() => handleDeleteCategory()}>
+                            <TouchableOpacity onPress={() => handleDeleteCategory()} disabled={isBulkBusy} style={{ opacity: isBulkBusy ? 0.5 : 1 }}>
                                 <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
                             </TouchableOpacity>
                         </View>
@@ -1013,8 +1060,9 @@ export default function BuildInventoryScreen() {
                                             />
                                         </TouchableOpacity>
                                         <TouchableOpacity
-                                            style={[styles.iconButton, { backgroundColor: `${mutedRed}15` }]}
+                                            style={[styles.iconButton, { backgroundColor: `${mutedRed}15`, opacity: isBulkBusy ? 0.5 : 1 }]}
                                             onPress={() => handleDeleteItem(item.id, item.name)}
+                                            disabled={isBulkBusy}
                                         >
                                             <Ionicons name="trash-outline" size={18} color={mutedRed} />
                                         </TouchableOpacity>
@@ -1084,13 +1132,17 @@ export default function BuildInventoryScreen() {
 
             {/* Floating Add Button with Label */}
             <TouchableOpacity
-                style={[styles.fab, { backgroundColor: colors.accentBlue }]}
+                style={[styles.fab, { backgroundColor: colors.accentBlue, opacity: isBulkBusy ? 0.5 : 1 }]}
                 onPress={() => router.push(`/item/new?categoryId=${selectedCategoryId}` as any)}
                 activeOpacity={0.8}
+                disabled={isBulkBusy}
             >
                 <Ionicons name="add" size={24} color={colors.white} />
                 <Text style={styles.fabText}>Add Item</Text>
             </TouchableOpacity>
+
+            {/* Blocking overlay for destructive bulk ops (Start Fresh, Seed, Replace-all) */}
+            {overlay && <BulkOperationOverlay {...overlay} />}
 
             {/* Add Category Modal */}
             <Modal visible={showAddCategoryModal} transparent animationType="fade" onRequestClose={() => setShowAddCategoryModal(false)}>
@@ -1136,19 +1188,21 @@ export default function BuildInventoryScreen() {
 }
 
 // Action Card Component
-function ActionCard({ icon, label, subtitle, onPress, color }: {
+function ActionCard({ icon, label, subtitle, onPress, color, disabled }: {
     icon: keyof typeof Ionicons.glyphMap;
     label: string;
     subtitle: string;
     onPress: () => void;
     color: string;
+    disabled?: boolean;
 }) {
     const { colors } = useTheme();
     return (
         <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary }]}
+            style={[styles.actionCard, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary, opacity: disabled ? 0.5 : 1 }]}
             onPress={onPress}
             activeOpacity={0.7}
+            disabled={disabled}
         >
             <View style={[styles.actionCardIcon, { backgroundColor: `${color}15` }]}>
                 <Ionicons name={icon} size={20} color={color} />
