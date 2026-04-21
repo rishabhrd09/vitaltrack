@@ -1,97 +1,39 @@
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <rect width="512" height="512" fill="#ffffff"/>
 
-  <!-- House outline — darker border, no chimney -->
+  <!-- House outline — no chimney, darker border -->
   <path d="M256,105 L382,195 L382,396 C382,408 373,416 362,416 L150,416 C139,416 130,408 130,396 L130,195 Z"
     fill="rgba(110,75,18,.03)" stroke="#604820" stroke-width="5.5" stroke-opacity=".5" stroke-linejoin="round"/>
 
-  <!-- Roof ridge line -->
-  <line x1="148" y1="195" x2="364" y2="195" stroke="#604820" stroke-width="1.5" stroke-opacity=".12"/>
-
-  <!-- Medical cross in roof gable — darker -->
+  <!-- Medical cross in roof gable -->
   <rect x="235" y="137" width="42" height="10" rx="5" fill="#604820" opacity=".5"/>
   <rect x="251" y="126" width="10" height="34" rx="5" fill="#604820" opacity=".5"/>
 
-  <!-- Shelf dividers — darker -->
-  <line x1="148" y1="265" x2="364" y2="265" stroke="#604820" stroke-width="1.5" stroke-opacity=".15"/>
-  <line x1="148" y1="335" x2="364" y2="335" stroke="#604820" stroke-width="1.5" stroke-opacity=".15"/>
+  <!-- Single shelf line separating content from bottom row -->
+  <line x1="148" y1="340" x2="364" y2="340" stroke="#604820" stroke-width="1.5" stroke-opacity=".15"/>
 
-  <!-- ═══ ROW 1 (y=200-260): Monitor · IV bag · Ventilator · O2 · Medicine ═══ -->
+  <!-- ═══ MAIN CONTENT: First-Aid Box (left) + Inventory Checklist (right) ═══ -->
 
-  <!-- Multiparameter monitor -->
-  <rect x="148" y="208" width="56" height="48" rx="5" fill="#604820" opacity=".11"/>
-  <rect x="153" y="213" width="46" height="28" rx="2.5" fill="#604820" opacity=".075"/>
-  <polyline points="158,228 165,218 172,232 179,220 186,230 193,224"
-    fill="none" stroke="#604820" stroke-width="1.5" stroke-opacity=".28"/>
-  <circle cx="159" cy="248" r="2.5" fill="#604820" opacity=".15"/>
-  <circle cx="167" cy="248" r="2.5" fill="#604820" opacity=".11"/>
-  <circle cx="175" cy="248" r="2.5" fill="#604820" opacity=".08"/>
+  <!-- First-aid box with + cross -->
+  <rect x="152" y="210" width="90" height="72" rx="8" fill="#604820" opacity=".12"/>
+  <rect x="170" y="204" width="54" height="10" rx="3" fill="#604820" opacity=".1"/>
+  <rect x="183" y="234" width="26" height="7" rx="3.5" fill="#604820" opacity=".22"/>
+  <rect x="192" y="225" width="8" height="25" rx="3.5" fill="#604820" opacity=".22"/>
 
-  <!-- IV bag -->
-  <path d="M220,202 L268,202 L264,260 L224,260 Z" fill="#604820" opacity=".095"/>
-  <line x1="244" y1="260" x2="244" y2="280" stroke="#604820" stroke-width="1.8" stroke-opacity=".13"/>
-  <circle cx="244" cy="198" r="3.5" fill="#604820" opacity=".13"/>
-  <line x1="236" y1="226" x2="252" y2="226" stroke="#604820" stroke-width="1" stroke-opacity=".08"/>
-  <line x1="238" y1="242" x2="250" y2="242" stroke="#604820" stroke-width="1" stroke-opacity=".06"/>
+  <!-- Inventory checklist -->
+  <rect x="266" y="210" width="88" height="110" rx="8" fill="#604820" opacity=".1"/>
+  <rect x="278" y="226" width="8" height="8" rx="2" fill="#604820" opacity=".14"/>
+  <line x1="292" y1="230" x2="340" y2="230" stroke="#604820" stroke-width="2.5" stroke-opacity=".12"/>
+  <rect x="278" y="248" width="8" height="8" rx="2" fill="#604820" opacity=".14"/>
+  <line x1="292" y1="252" x2="336" y2="252" stroke="#604820" stroke-width="2.5" stroke-opacity=".12"/>
+  <rect x="278" y="270" width="8" height="8" rx="2" fill="#604820" opacity=".14"/>
+  <line x1="292" y1="274" x2="332" y2="274" stroke="#604820" stroke-width="2.5" stroke-opacity=".12"/>
+  <rect x="278" y="292" width="8" height="8" rx="2" fill="#604820" opacity=".12"/>
+  <line x1="292" y1="296" x2="338" y2="296" stroke="#604820" stroke-width="2.5" stroke-opacity=".1"/>
 
-  <!-- Ventilator -->
-  <rect x="282" y="208" width="32" height="56" rx="5" fill="#604820" opacity=".11"/>
-  <rect x="287" y="202" width="22" height="8" rx="2" fill="#604820" opacity=".09"/>
-  <circle cx="298" cy="234" r="12" fill="none" stroke="#604820" stroke-width="1.8" stroke-opacity=".13"/>
-  <path d="M292,234 L298,226 L304,234" fill="none" stroke="#604820" stroke-width="1.2" stroke-opacity=".11"/>
-  <line x1="298" y1="248" x2="298" y2="262" stroke="#604820" stroke-width="2" stroke-opacity=".1"/>
-
-  <!-- O2 cylinder -->
-  <rect x="328" y="218" width="18" height="44" rx="9" fill="#604820" opacity=".11"/>
-  <rect x="332" y="208" width="10" height="12" rx="3.5" fill="#604820" opacity=".13"/>
-  <circle cx="337" cy="206" r="2.5" fill="#604820" opacity=".09"/>
-
-  <!-- Medicine bottle -->
-  <rect x="356" y="228" width="12" height="30" rx="3" fill="#604820" opacity=".11"/>
-  <rect x="357" y="220" width="10" height="10" rx="2.5" fill="#604820" opacity=".1"/>
-  <rect x="360" y="216" width="4" height="6" rx="1.5" fill="#604820" opacity=".11"/>
-
-  <!-- ═══ ROW 2 (y=270-332): Gloves · Catheters · Nebulizer · Suction machine · Sanitizer · Underpads ═══ -->
-
-  <!-- Gloves with finger shapes -->
-  <path d="M150,278 L150,316 C150,320 152,322 156,322 L161,322 L161,308 L167,308 L167,322 L172,322 L172,308 L178,308 L178,322 L184,322 C188,322 190,320 190,316 L190,278 Z"
-    fill="#604820" opacity=".11"/>
-  <rect x="152" y="273" width="38" height="7" rx="2.5" fill="#604820" opacity=".1"/>
-
-  <!-- Suction catheters (3 parallel tubes) -->
-  <rect x="202" y="276" width="7" height="50" rx="3.5" fill="#604820" opacity=".1"/>
-  <rect x="214" y="280" width="7" height="44" rx="3.5" fill="#604820" opacity=".09"/>
-  <rect x="226" y="274" width="7" height="52" rx="3.5" fill="#604820" opacity=".11"/>
-
-  <!-- Nebulizer mask -->
-  <ellipse cx="260" cy="302" rx="18" ry="22" fill="#604820" opacity=".1"/>
-  <ellipse cx="260" cy="302" rx="10" ry="13" fill="#604820" opacity=".055"/>
-  <line x1="260" y1="280" x2="260" y2="270" stroke="#604820" stroke-width="2" stroke-opacity=".11"/>
-  <line x1="260" y1="270" x2="272" y2="264" stroke="#604820" stroke-width="1.5" stroke-opacity=".09"/>
-
-  <!-- Suction machine -->
-  <rect x="290" y="280" width="28" height="34" rx="4" fill="#604820" opacity=".11"/>
-  <rect x="295" y="276" width="10" height="6" rx="2" fill="#604820" opacity=".11"/>
-  <line x1="296" y1="296" x2="312" y2="296" stroke="#604820" stroke-width="1.2" stroke-opacity=".09"/>
-  <circle cx="304" cy="306" r="4" fill="none" stroke="#604820" stroke-width="1.2" stroke-opacity=".1"/>
-
-  <!-- Sanitizer bottle -->
-  <rect x="330" y="282" width="16" height="30" rx="3.5" fill="#604820" opacity=".11"/>
-  <rect x="333" y="278" width="10" height="6" rx="2" fill="#604820" opacity=".09"/>
-  <path d="M336,294 L342,294 L339,300 Z" fill="#604820" opacity=".13"/>
-
-  <!-- Underpads stack (3 layers) -->
-  <rect x="354" y="280" width="18" height="7" rx="2" fill="#604820" opacity=".09"/>
-  <rect x="355" y="289" width="18" height="7" rx="2" fill="#604820" opacity=".08"/>
-  <rect x="356" y="298" width="18" height="7" rx="2" fill="#604820" opacity=".07"/>
-
-  <!-- ═══ ROW 3 (y=345-416): Heartbeat + Door — UNCHANGED ═══ -->
-
-  <!-- Heartbeat/ECG line -->
+  <!-- ═══ BOTTOM ROW: Heartbeat + Door — UNCHANGED ═══ -->
   <polyline points="148,375 172,375 180,360 190,390 198,368 206,375 240,375"
     fill="none" stroke="#8a6830" stroke-width="2" stroke-opacity=".12"/>
-
-  <!-- Door with handle (home feel) -->
   <rect x="280" y="352" width="48" height="62" rx="5"
     fill="rgba(140,100,40,.04)" stroke="#8a6830" stroke-width="2" stroke-opacity=".16"/>
   <circle cx="320" cy="387" r="3.5" fill="#8a6830" opacity=".22"/>

@@ -1,15 +1,23 @@
 /**
- * Regenerate all icon PNGs from assets/icon-source.svg.
+ * Regenerate all icon PNGs from the SVG sources.
+ *
+ * Two SVG sources exist because the launcher icon and the login/register
+ * logo live on different backgrounds:
+ *
+ *   assets/icon-source.svg       — light-variant, white background, dark
+ *                                  amber strokes (#604820). Used for every
+ *                                  launcher / splash / favicon asset.
+ *   assets/logo-source-dark.svg  — dark-variant, transparent background,
+ *                                  warm amber strokes (#c4a060). Used for
+ *                                  the login and register screens so the
+ *                                  glyph reads cleanly on the dark UI.
  *
  * Outputs:
- *   - icon.png (1024)              — generic app icon
- *   - adaptive-icon.png (1024)     — Android adaptive foreground
- *   - splash-icon.png (512)        — splash screen
- *   - favicon.png (48)             — web favicon
- *   - carekosh-logo-transparent.png (512) — login/register screen. Same
- *     artwork as the app icon but rendered with a TRANSPARENT background
- *     (white <rect> stripped) so it composites cleanly on the dark
- *     auth-screen background instead of showing a white rectangle.
+ *   - icon.png (1024)                — generic app icon
+ *   - adaptive-icon.png (1024)       — Android adaptive foreground
+ *   - splash-icon.png (512)          — splash screen
+ *   - favicon.png (48)               — web favicon
+ *   - carekosh-logo-transparent.png  — login/register (dark-variant, 512)
  *
  * Run from vitaltrack-mobile/:
  *     node scripts/generate-icons.js
@@ -18,24 +26,15 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 
-const svgPath = path.join(__dirname, '../assets/icon-source.svg');
-const svgSource = fs.readFileSync(svgPath);
-
-// A parallel SVG used for the login logo: the master artwork with its
-// white background <rect> removed so the PNG has a true alpha channel.
-// The regex targets the specific opening rect we put in the source SVG.
-const transparentSvg = Buffer.from(
-  svgSource
-    .toString('utf8')
-    .replace(/\s*<rect\s+width="512"\s+height="512"\s+fill="#ffffff"\/>\s*/u, '\n  '),
-);
+const lightSvg = fs.readFileSync(path.join(__dirname, '../assets/icon-source.svg'));
+const darkSvg = fs.readFileSync(path.join(__dirname, '../assets/logo-source-dark.svg'));
 
 const renders = [
-  { input: svgSource,     name: 'icon.png',                        size: 1024 },
-  { input: svgSource,     name: 'adaptive-icon.png',               size: 1024 },
-  { input: svgSource,     name: 'splash-icon.png',                 size: 512 },
-  { input: svgSource,     name: 'favicon.png',                     size: 48 },
-  { input: transparentSvg, name: 'carekosh-logo-transparent.png',   size: 512 },
+  { input: lightSvg, name: 'icon.png',                       size: 1024 },
+  { input: lightSvg, name: 'adaptive-icon.png',              size: 1024 },
+  { input: lightSvg, name: 'splash-icon.png',                size: 512 },
+  { input: lightSvg, name: 'favicon.png',                    size: 48 },
+  { input: darkSvg,  name: 'carekosh-logo-transparent.png',  size: 512 },
 ];
 
 async function generate() {
