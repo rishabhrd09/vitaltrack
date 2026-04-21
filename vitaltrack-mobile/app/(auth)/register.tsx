@@ -185,7 +185,6 @@ export default function RegisterScreen() {
                         style={styles.logo}
                         resizeMode="contain"
                     />
-                    <Text style={[styles.brand, { color: colors.primary }]}>CareKosh</Text>
                     <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                         Join CareKosh to manage your inventory
@@ -359,15 +358,10 @@ const styles = StyleSheet.create({
         height: 72,
         marginBottom: 12,
     },
-    brand: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 8,
-    },
     title: {
         fontSize: 24,
         fontWeight: '600',
-        marginTop: 4,
+        marginTop: 8,
     },
     subtitle: {
         fontSize: 14,
