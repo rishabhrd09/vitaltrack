@@ -183,6 +183,7 @@ export default function BuildInventoryScreen() {
 
     // Replace-all flow: auto-backup, wipe everything, re-seed defaults.
     const confirmReplaceAll = () => {
+        if (isBulkBusy) return;
         Alert.alert(
             'Replace all inventory?',
             'This will:\n\n• Auto-backup your current inventory to a JSON file\n• Delete all your current items and categories\n• Replace them with the 10 default categories and 32 default items\n\nStock quantities and any custom items will be lost. This cannot be undone.',
@@ -279,6 +280,10 @@ export default function BuildInventoryScreen() {
 
     // Show confirmation, then seed. Used by both manual button and auto-prompt.
     const handleSeed = () => {
+        // Re-entry guard: if an overlay is already up or an Alert is processing,
+        // ignore repeated taps. `isBulkBusy` becomes true once the overlay mounts;
+        // this extra check also stops Alert stacking in the tap→Alert window.
+        if (isBulkBusy) return;
         const hasExisting = items.length > 0 || categories.length > 0;
         if (!hasExisting) {
             Alert.alert(
@@ -468,6 +473,8 @@ export default function BuildInventoryScreen() {
     };
 
     const handleStartFresh = () => {
+        // Re-entry guard — same rationale as handleSeed.
+        if (isBulkBusy) return;
         if (!isOnline) {
             Alert.alert('Offline', 'Connect to WiFi to reset inventory.');
             return;
