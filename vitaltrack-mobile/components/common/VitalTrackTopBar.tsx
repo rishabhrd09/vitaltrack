@@ -38,7 +38,7 @@ export default function VitalTrackTopBar({
     onProfileClick,
     userName = 'User',
 }: VitalTrackTopBarProps) {
-    const { colors } = useTheme();
+    const { colors, isDarkMode } = useTheme();
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const searchInputRef = useRef<TextInput>(null);
     const searchBarHeight = useRef(new Animated.Value(0)).current;
@@ -79,12 +79,15 @@ export default function VitalTrackTopBar({
                 {/* Left Section: Logo + App Name */}
                 <View style={styles.leftSection}>
                     {/* Brand mark — simplified clipboard+cross glyph optimised for
-                        small rendering. Transparent background composites cleanly on
-                        both light and dark top-bar themes. 44×44 matches the min
-                        touch-target guideline and balances visually with the profile
-                        avatar on the right. */}
+                        small rendering. Theme-aware: dark amber on light, warm gold
+                        on dark so the glyph has enough contrast in both modes. 44×44
+                        matches min touch-target + balances the profile avatar. */}
                     <Image
-                        source={require('../../assets/carekosh-mark.png')}
+                        source={
+                            isDarkMode
+                                ? require('../../assets/carekosh-mark-dark.png')
+                                : require('../../assets/carekosh-mark.png')
+                        }
                         style={styles.logo}
                         resizeMode="contain"
                     />
