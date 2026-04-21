@@ -141,7 +141,7 @@ function buildHtml(opts: {
       ${g.items
         .map(
           (item) => `
-        <tr>
+        <tr class="${isOutOfStock(item) ? 'row-oos' : ''}">
           <td><span class="item-name">${escapeHtml(item.name)}</span>${
             item.brand ? `<div class="item-sub">${escapeHtml(item.brand)}</div>` : ''
           }</td>
@@ -187,19 +187,39 @@ function buildHtml(opts: {
             margin-top: 4px;
         }
 
-        .summary-bar {
-            display: flex;
-            justify-content: center;
-            gap: 28px;
-            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a7b 100%);
-            color: white;
-            padding: 14px 24px;
+        /* Summary card — sits at the TOP, muted two-column layout
+           mirroring the subtle info-card style used in the order PDF. */
+        .summary-card {
+            padding: 18px 22px;
+            background: #fafbfc;
+            border: 1px solid #e2e8f0;
             border-radius: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 22px;
         }
-        .summary-item { text-align: center; }
-        .summary-value { font-size: 24px; font-weight: 700; }
-        .summary-label { font-size: 11px; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.03em; }
+        .summary-card h3 {
+            font-size: 12px;
+            color: #1e3a5f;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #edf2f7;
+        }
+        .summary-card .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            column-gap: 40px;
+            row-gap: 10px;
+        }
+        .summary-card .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 13px;
+        }
+        .summary-card .label { color: #6b6b6b; }
+        .summary-card .value { color: #1e3a5f; font-weight: 700; font-size: 15px; }
+        .summary-card .value.accent { color: #c24646; }
 
         .alert-box {
             border-radius: 8px;
@@ -290,24 +310,9 @@ function buildHtml(opts: {
         .sb-low { background: #f0e8d0; color: #7a6330; }
         .sb-ok { background: #ddeee4; color: #4a7a5a; }
 
-        .summary-block {
-            margin-top: 24px;
-            padding: 16px 20px;
-            background: #fafbfc;
-            border: 1px solid #edf2f7;
-            border-radius: 10px;
-        }
-        .summary-block h3 {
-            font-size: 13px;
-            color: #1e3a5f;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 10px;
-        }
-        .summary-block dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; font-size: 13px; }
-        .summary-block dt { color: #6b6b6b; }
-        .summary-block dd { color: #2d3748; font-weight: 600; text-align: right; }
-        .summary-block dd.accent { color: #a06060; }
+        /* Out-of-stock item rows get a subtle red left-border stripe so
+           critical items are scannable in the middle of a long table. */
+        tr.row-oos td:first-child { box-shadow: inset 3px 0 0 #c24646; }
 
         .footer {
             margin-top: 30px;
@@ -340,22 +345,15 @@ function buildHtml(opts: {
         <div class="meta-row">Generated ${escapeHtml(generatedAt)} · ${activeItems.length} ${activeItems.length === 1 ? 'item' : 'items'} · ${groups.length} ${groups.length === 1 ? 'category' : 'categories'}</div>
     </div>
 
-    <div class="summary-bar">
-        <div class="summary-item">
-            <div class="summary-value">${activeItems.length}</div>
-            <div class="summary-label">Total Items</div>
-        </div>
-        <div class="summary-item">
-            <div class="summary-value">${groups.length}</div>
-            <div class="summary-label">Categories</div>
-        </div>
-        <div class="summary-item">
-            <div class="summary-value">${outOfStock.length}</div>
-            <div class="summary-label">Out of Stock</div>
-        </div>
-        <div class="summary-item">
-            <div class="summary-value">${lowStock.length}</div>
-            <div class="summary-label">Low Stock</div>
+    <div class="summary-card">
+        <h3>Summary</h3>
+        <div class="grid">
+            <div class="row"><span class="label">Total Items</span><span class="value">${activeItems.length}</span></div>
+            <div class="row"><span class="label">Categories</span><span class="value">${groups.length}</span></div>
+            <div class="row"><span class="label">Out of Stock</span><span class="value ${outOfStock.length > 0 ? 'accent' : ''}">${outOfStock.length}</span></div>
+            <div class="row"><span class="label">Critical Equipment</span><span class="value">${criticalCount}</span></div>
+            <div class="row"><span class="label">Low Stock</span><span class="value">${lowStock.length}</span></div>
+            <div class="row"><span class="label">Fully Stocked</span><span class="value">${fullyStocked.length}</span></div>
         </div>
     </div>
 
@@ -393,18 +391,6 @@ function buildHtml(opts: {
             ${groupsHtml}
         </tbody>
     </table>
-
-    <div class="summary-block">
-        <h3>Summary</h3>
-        <dl>
-            <dt>Total Items</dt><dd>${activeItems.length}</dd>
-            <dt>Out of Stock</dt><dd class="${outOfStock.length > 0 ? 'accent' : ''}">${outOfStock.length}</dd>
-            <dt>Low Stock</dt><dd>${lowStock.length}</dd>
-            <dt>Fully Stocked</dt><dd>${fullyStocked.length}</dd>
-            <dt>Categories</dt><dd>${groups.length}</dd>
-            <dt>Critical Equipment</dt><dd>${criticalCount}</dd>
-        </dl>
-    </div>
 
     <div class="footer">Generated by <b>CareKosh</b> · Home ICU Inventory Management</div>
 
