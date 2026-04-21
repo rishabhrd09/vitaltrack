@@ -29,16 +29,19 @@ const path = require('path');
 const lightSvg = fs.readFileSync(path.join(__dirname, '../assets/icon-source.svg'));
 const darkSvg = fs.readFileSync(path.join(__dirname, '../assets/logo-source-dark.svg'));
 const markSvg = fs.readFileSync(path.join(__dirname, '../assets/icon-mark.svg'));
+const markDarkSvg = fs.readFileSync(path.join(__dirname, '../assets/icon-mark-dark.svg'));
 
 const renders = [
-  { input: lightSvg, name: 'icon.png',                       size: 1024 },
-  { input: lightSvg, name: 'adaptive-icon.png',              size: 1024 },
-  { input: lightSvg, name: 'splash-icon.png',                size: 512 },
-  { input: lightSvg, name: 'favicon.png',                    size: 48 },
-  { input: darkSvg,  name: 'carekosh-logo-transparent.png',  size: 512 },
-  // Compact mark for the dashboard top bar — bold glyph on transparent
-  // bg so it reads at 32–48 px on both light and dark themes.
-  { input: markSvg,  name: 'carekosh-mark.png',              size: 256 },
+  { input: lightSvg,    name: 'icon.png',                       size: 1024 },
+  { input: lightSvg,    name: 'adaptive-icon.png',              size: 1024 },
+  { input: lightSvg,    name: 'splash-icon.png',                size: 512 },
+  { input: lightSvg,    name: 'favicon.png',                    size: 48 },
+  { input: darkSvg,     name: 'carekosh-logo-transparent.png',  size: 512 },
+  // Dashboard top bar mark — two theme-specific variants.
+  // Light-mode mark: dark amber strokes (#8a6830), used when !isDarkMode.
+  { input: markSvg,     name: 'carekosh-mark.png',              size: 256 },
+  // Dark-mode mark: warm gold strokes (#d4b670), used when isDarkMode.
+  { input: markDarkSvg, name: 'carekosh-mark-dark.png',         size: 256 },
 ];
 
 async function generate() {
