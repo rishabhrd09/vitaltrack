@@ -1,40 +1,50 @@
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <rect width="512" height="512" fill="#ffffff"/>
 
-  <!-- House outline — SOFT, SUBTLE border -->
-  <path d="M256,105 L382,195 L382,396 C382,408 373,416 362,416 L150,416 C139,416 130,408 130,396 L130,195 Z"
-    fill="rgba(160,120,50,.015)" stroke="#c4a060" stroke-width="4" stroke-opacity=".22" stroke-linejoin="round"/>
+  <!-- Notepad body -->
+  <rect x="96" y="80" width="320" height="380" rx="20"
+    fill="rgba(138,104,48,.04)" stroke="#8a6830" stroke-width="4" stroke-opacity=".3"/>
 
-  <!-- NO ROOF CROSS — removed, only cross is inside med box -->
+  <!-- Notepad clip -->
+  <rect x="186" y="58" width="140" height="44" rx="14"
+    fill="#fff" stroke="#8a6830" stroke-width="3.5" stroke-opacity=".25"/>
+  <rect x="226" y="48" width="60" height="28" rx="14" fill="#8a6830" opacity=".08"/>
 
-  <!-- Shelf line — subtle -->
-  <line x1="148" y1="340" x2="364" y2="340"
-    stroke="#c4a060" stroke-width="1.2" stroke-opacity=".12"/>
+  <!-- Vertical divider -->
+  <line x1="256" y1="120" x2="256" y2="440"
+    stroke="#8a6830" stroke-width="1.5" stroke-opacity=".12"/>
 
-  <!-- ═══ MED BOX with + cross (LEFT) — BOLD brand amber ═══ -->
-  <rect x="152" y="210" width="90" height="72" rx="8" fill="#8a6830" opacity=".2"/>
-  <rect x="170" y="204" width="54" height="10" rx="3" fill="#8a6830" opacity=".16"/>
-  <!-- + cross inside med box — boldest element -->
-  <rect x="183" y="234" width="26" height="7" rx="3.5" fill="#8a6830" opacity=".42"/>
-  <rect x="192" y="225" width="8" height="25" rx="3.5" fill="#8a6830" opacity=".42"/>
+  <!-- Horizontal divider -->
+  <line x1="114" y1="290" x2="398" y2="290"
+    stroke="#8a6830" stroke-width="1.5" stroke-opacity=".12"/>
 
-  <!-- ═══ CHECKLIST (RIGHT) — BOLD brand amber ═══ -->
-  <rect x="266" y="210" width="88" height="110" rx="8" fill="#8a6830" opacity=".16"/>
-  <rect x="278" y="226" width="8" height="8" rx="2" fill="#8a6830" opacity=".3"/>
-  <line x1="292" y1="230" x2="340" y2="230" stroke="#8a6830" stroke-width="2.5" stroke-opacity=".24"/>
-  <rect x="278" y="248" width="8" height="8" rx="2" fill="#8a6830" opacity=".3"/>
-  <line x1="292" y1="252" x2="336" y2="252" stroke="#8a6830" stroke-width="2.5" stroke-opacity=".24"/>
-  <rect x="278" y="270" width="8" height="8" rx="2" fill="#8a6830" opacity=".3"/>
-  <line x1="292" y1="274" x2="332" y2="274" stroke="#8a6830" stroke-width="2.5" stroke-opacity=".24"/>
-  <rect x="278" y="292" width="8" height="8" rx="2" fill="#8a6830" opacity=".24"/>
-  <line x1="292" y1="296" x2="338" y2="296" stroke="#8a6830" stroke-width="2.5" stroke-opacity=".2"/>
+  <!-- Q1: TOP-LEFT — Checklist -->
+  <rect x="124" y="145" width="12" height="12" rx="3" fill="#8a6830" opacity=".3"/>
+  <line x1="146" y1="151" x2="238" y2="151" stroke="#8a6830" stroke-width="3" stroke-opacity=".22"/>
 
-  <!-- ═══ HEARTBEAT ECG line — BOLD brand amber ═══ -->
-  <polyline points="148,375 172,375 180,360 190,390 198,368 206,375 240,375"
-    fill="none" stroke="#8a6830" stroke-width="2.5" stroke-opacity=".26"/>
+  <rect x="124" y="180" width="12" height="12" rx="3" fill="#8a6830" opacity=".3"/>
+  <line x1="146" y1="186" x2="232" y2="186" stroke="#8a6830" stroke-width="3" stroke-opacity=".22"/>
 
-  <!-- ═══ DOOR with handle — BOLD brand amber ═══ -->
-  <rect x="280" y="352" width="48" height="62" rx="5"
-    fill="rgba(138,104,48,.07)" stroke="#8a6830" stroke-width="2.2" stroke-opacity=".3"/>
-  <circle cx="320" cy="387" r="3.5" fill="#8a6830" opacity=".4"/>
+  <rect x="124" y="215" width="12" height="12" rx="3" fill="#8a6830" opacity=".3"/>
+  <line x1="146" y1="221" x2="236" y2="221" stroke="#8a6830" stroke-width="3" stroke-opacity=".22"/>
+
+  <rect x="124" y="250" width="12" height="12" rx="3" fill="#8a6830" opacity=".24"/>
+  <line x1="146" y1="256" x2="228" y2="256" stroke="#8a6830" stroke-width="3" stroke-opacity=".18"/>
+
+  <!-- Q2: TOP-RIGHT — Medical box with + (ONLY) -->
+  <rect x="274" y="136" width="110" height="86" rx="10" fill="#8a6830" opacity=".14"/>
+  <rect x="298" y="128" width="62" height="12" rx="4" fill="#8a6830" opacity=".1"/>
+  <rect x="310" y="168" width="36" height="9" rx="4.5" fill="#8a6830" opacity=".42"/>
+  <rect x="323" y="156" width="10" height="34" rx="5" fill="#8a6830" opacity=".42"/>
+
+  <!-- Q3: BOTTOM-LEFT — ECG heartbeat -->
+  <polyline points="120,370 152,370 164,348 176,394 188,356 198,370 240,370"
+    fill="none" stroke="#8a6830" stroke-width="2.5" stroke-opacity=".28"/>
+
+  <!-- Q4: BOTTOM-RIGHT — House with door (NO + on house) -->
+  <path d="M333,310 L384,340 L384,420 C384,426 380,430 374,430 L292,430 C286,430 282,426 282,420 L282,340 Z"
+    fill="rgba(138,104,48,.04)" stroke="#8a6830" stroke-width="2.2" stroke-opacity=".25"/>
+  <rect x="320" y="382" width="28" height="42" rx="4"
+    fill="rgba(138,104,48,.06)" stroke="#8a6830" stroke-width="1.8" stroke-opacity=".2"/>
+  <circle cx="342" cy="406" r="2.5" fill="#8a6830" opacity=".32"/>
 </svg>
