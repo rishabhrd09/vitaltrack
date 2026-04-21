@@ -28,6 +28,7 @@ const path = require('path');
 
 const lightSvg = fs.readFileSync(path.join(__dirname, '../assets/icon-source.svg'));
 const darkSvg = fs.readFileSync(path.join(__dirname, '../assets/logo-source-dark.svg'));
+const markSvg = fs.readFileSync(path.join(__dirname, '../assets/icon-mark.svg'));
 
 const renders = [
   { input: lightSvg, name: 'icon.png',                       size: 1024 },
@@ -35,6 +36,9 @@ const renders = [
   { input: lightSvg, name: 'splash-icon.png',                size: 512 },
   { input: lightSvg, name: 'favicon.png',                    size: 48 },
   { input: darkSvg,  name: 'carekosh-logo-transparent.png',  size: 512 },
+  // Compact mark for the dashboard top bar — bold glyph on transparent
+  // bg so it reads at 32–48 px on both light and dark themes.
+  { input: markSvg,  name: 'carekosh-mark.png',              size: 256 },
 ];
 
 async function generate() {

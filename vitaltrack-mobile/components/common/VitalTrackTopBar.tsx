@@ -78,9 +78,13 @@ export default function VitalTrackTopBar({
             <View style={styles.mainRow}>
                 {/* Left Section: Logo + App Name */}
                 <View style={styles.leftSection}>
-                    {/* Logo — notepad app icon, matches launcher/splash/login */}
+                    {/* Brand mark — simplified clipboard+cross glyph optimised for
+                        small rendering. Transparent background composites cleanly on
+                        both light and dark top-bar themes. 44×44 matches the min
+                        touch-target guideline and balances visually with the profile
+                        avatar on the right. */}
                     <Image
-                        source={require('../../assets/icon.png')}
+                        source={require('../../assets/carekosh-mark.png')}
                         style={styles.logo}
                         resizeMode="contain"
                     />
@@ -185,9 +189,8 @@ const styles = StyleSheet.create({
         gap: spacing.md,
     },
     logo: {
-        width: 40,
-        height: 40,
-        borderRadius: borderRadius.md,
+        width: 44,
+        height: 44,
     },
     appNameContainer: {
         flexDirection: 'column',

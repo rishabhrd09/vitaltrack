@@ -1,0 +1,28 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    CareKosh compact app mark — rendered small (32–48 px) in the dashboard
+    top bar, anywhere we want the brand glyph without the full notepad
+    detail. Keeps the clipboard silhouette + prominent medical cross (the
+    two most recognizable elements) and drops the 4-quadrant interior,
+    which is illegible below ~64 px anyway.
+
+    Drawn on transparent background with bold full-opacity amber strokes so
+    it composites cleanly on both light and dark top-bar backgrounds.
+  -->
+
+  <!-- Clipboard body -->
+  <rect x="40" y="48" width="176" height="188" rx="18"
+    fill="rgba(138,104,48,.06)" stroke="#8a6830" stroke-width="6" stroke-opacity=".85"/>
+
+  <!-- Clip at top -->
+  <rect x="80" y="28" width="96" height="36" rx="12"
+    fill="rgba(138,104,48,.1)" stroke="#8a6830" stroke-width="5" stroke-opacity=".75"/>
+  <rect x="104" y="20" width="48" height="22" rx="10"
+    fill="#8a6830" fill-opacity=".3"/>
+
+  <!-- Large medical cross centered in the clipboard face -->
+  <rect x="90" y="130" width="76" height="22" rx="10"
+    fill="#8a6830" fill-opacity=".9"/>
+  <rect x="117" y="103" width="22" height="76" rx="10"
+    fill="#8a6830" fill-opacity=".9"/>
+</svg>
