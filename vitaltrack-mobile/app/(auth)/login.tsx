@@ -392,12 +392,12 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     title: {
-        fontSize: 48,
+        fontSize: 28,
         fontWeight: 'bold',
         marginTop: 8,
     },
     subtitle: {
-        fontSize: 16,
+        fontSize: 14,
         marginTop: 8,
     },
     form: {

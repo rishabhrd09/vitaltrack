@@ -1,0 +1,40 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Transparent background — parent (login/register screen) provides the dark bg. -->
+
+  <!-- House outline — warm amber on dark -->
+  <path d="M256,105 L382,195 L382,396 C382,408 373,416 362,416 L150,416 C139,416 130,408 130,396 L130,195 Z"
+    fill="transparent" stroke="#c4a060" stroke-width="5.5" stroke-opacity=".7" stroke-linejoin="round"/>
+
+  <!-- Medical cross in roof gable -->
+  <rect x="235" y="137" width="42" height="10" rx="5" fill="#c4a060" opacity=".6"/>
+  <rect x="251" y="126" width="10" height="34" rx="5" fill="#c4a060" opacity=".6"/>
+
+  <!-- Single shelf line -->
+  <line x1="148" y1="340" x2="364" y2="340" stroke="#c4a060" stroke-width="1.5" stroke-opacity=".3"/>
+
+  <!-- First-aid box with + cross -->
+  <rect x="152" y="210" width="90" height="72" rx="8" fill="#c4a060" opacity=".15"/>
+  <rect x="170" y="204" width="54" height="10" rx="3" fill="#c4a060" opacity=".12"/>
+  <rect x="183" y="234" width="26" height="7" rx="3.5" fill="#c4a060" opacity=".4"/>
+  <rect x="192" y="225" width="8" height="25" rx="3.5" fill="#c4a060" opacity=".4"/>
+
+  <!-- Inventory checklist -->
+  <rect x="266" y="210" width="88" height="110" rx="8" fill="#c4a060" opacity=".12"/>
+  <rect x="278" y="226" width="8" height="8" rx="2" fill="#c4a060" opacity=".3"/>
+  <line x1="292" y1="230" x2="340" y2="230" stroke="#c4a060" stroke-width="2.5" stroke-opacity=".25"/>
+  <rect x="278" y="248" width="8" height="8" rx="2" fill="#c4a060" opacity=".3"/>
+  <line x1="292" y1="252" x2="336" y2="252" stroke="#c4a060" stroke-width="2.5" stroke-opacity=".25"/>
+  <rect x="278" y="270" width="8" height="8" rx="2" fill="#c4a060" opacity=".3"/>
+  <line x1="292" y1="274" x2="332" y2="274" stroke="#c4a060" stroke-width="2.5" stroke-opacity=".25"/>
+  <rect x="278" y="292" width="8" height="8" rx="2" fill="#c4a060" opacity=".25"/>
+  <line x1="292" y1="296" x2="338" y2="296" stroke="#c4a060" stroke-width="2.5" stroke-opacity=".2"/>
+
+  <!-- Heartbeat -->
+  <polyline points="148,375 172,375 180,360 190,390 198,368 206,375 240,375"
+    fill="none" stroke="#c4a060" stroke-width="2" stroke-opacity=".35"/>
+
+  <!-- Door -->
+  <rect x="280" y="352" width="48" height="62" rx="5"
+    fill="rgba(196,160,96,.06)" stroke="#c4a060" stroke-width="2" stroke-opacity=".3"/>
+  <circle cx="320" cy="387" r="3.5" fill="#c4a060" opacity=".4"/>
+</svg>

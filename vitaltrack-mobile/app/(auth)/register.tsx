@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     brand: {
-        fontSize: 36,
+        fontSize: 24,
         fontWeight: 'bold',
         marginBottom: 8,
     },

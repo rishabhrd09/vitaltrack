@@ -56,6 +56,12 @@ const queryClient = new QueryClient({
       retry: 3,
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
+      // Serve cached data when offline instead of failing the query. With the
+      // default ('online') networkMode, TanStack Query pauses and the screen
+      // renders a "Failed to load data" state. 'offlineFirst' returns the last
+      // cached value immediately so users still see their inventory/orders;
+      // a background refetch runs once connectivity returns.
+      networkMode: 'offlineFirst',
     },
     mutations: {
       retry: 0,

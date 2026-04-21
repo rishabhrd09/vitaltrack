@@ -1,63 +1,40 @@
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <rect width="512" height="512" fill="#ffffff"/>
 
-  <!-- House outline: scaled down to fit safe zone -->
-  <!-- Roof peak at y=105, walls from x=130 to x=382, bottom at y=410 -->
+  <!-- House outline — no chimney, darker border -->
   <path d="M256,105 L382,195 L382,396 C382,408 373,416 362,416 L150,416 C139,416 130,408 130,396 L130,195 Z"
-    fill="rgba(140,100,40,.03)" stroke="#8a6830" stroke-width="5.5" stroke-opacity=".42" stroke-linejoin="round"/>
-
-  <!-- Chimney -->
-  <rect x="328" y="128" width="24" height="54" rx="3" fill="#ffffff" stroke="#8a6830" stroke-width="3.5" stroke-opacity=".2"/>
-
-  <!-- Roof ridge line -->
-  <line x1="155" y1="195" x2="357" y2="195" stroke="#8a6830" stroke-width="1.8" stroke-opacity=".1"/>
+    fill="rgba(110,75,18,.03)" stroke="#604820" stroke-width="5.5" stroke-opacity=".5" stroke-linejoin="round"/>
 
   <!-- Medical cross in roof gable -->
-  <rect x="235" y="137" width="42" height="10" rx="5" fill="#8a6830" opacity=".42"/>
-  <rect x="251" y="126" width="10" height="34" rx="5" fill="#8a6830" opacity=".42"/>
+  <rect x="235" y="137" width="42" height="10" rx="5" fill="#604820" opacity=".5"/>
+  <rect x="251" y="126" width="10" height="34" rx="5" fill="#604820" opacity=".5"/>
 
-  <!-- Shelf dividers inside house body -->
-  <line x1="148" y1="265" x2="364" y2="265" stroke="#8a6830" stroke-width="2.5" stroke-opacity=".12"/>
-  <line x1="148" y1="335" x2="364" y2="335" stroke="#8a6830" stroke-width="2.5" stroke-opacity=".12"/>
+  <!-- Single shelf line separating content from bottom row -->
+  <line x1="148" y1="340" x2="364" y2="340" stroke="#604820" stroke-width="1.5" stroke-opacity=".15"/>
 
-  <!-- ROW 1 (y=205-258): medicine bottle, syringe, IV bag, O2 cylinder -->
-  <!-- medicine bottle -->
-  <rect x="152" y="212" width="34" height="46" rx="6" fill="#8a6830" opacity=".08"/>
-  <rect x="156" y="202" width="26" height="13" rx="3" fill="#8a6830" opacity=".06"/>
-  <rect x="162" y="196" width="14" height="9" rx="2.5" fill="#8a6830" opacity=".09"/>
-  <!-- syringe -->
-  <rect x="202" y="208" width="15" height="52" rx="4" fill="#8a6830" opacity=".07"/>
-  <rect x="205" y="198" width="9" height="13" rx="2.5" fill="#8a6830" opacity=".08"/>
-  <line x1="199" y1="258" x2="220" y2="258" stroke="#8a6830" stroke-width="1.8" stroke-opacity=".07"/>
-  <!-- IV bag -->
-  <path d="M252,202 L300,202 L295,248 L257,248 Z" fill="#8a6830" opacity=".06"/>
-  <line x1="276" y1="248" x2="276" y2="263" stroke="#8a6830" stroke-width="1.8" stroke-opacity=".08"/>
-  <circle cx="276" cy="198" r="3" fill="#8a6830" opacity=".07"/>
-  <!-- O2 cylinder -->
-  <rect x="320" y="212" width="22" height="48" rx="11" fill="#8a6830" opacity=".06"/>
-  <rect x="325" y="200" width="12" height="15" rx="3.5" fill="#8a6830" opacity=".08"/>
+  <!-- ═══ MAIN CONTENT: First-Aid Box (left) + Inventory Checklist (right) ═══ -->
 
-  <!-- ROW 2 (y=275-328): gauze roll, catheter pack, nebulizer mask, vials -->
-  <!-- gauze roll -->
-  <circle cx="168" cy="300" r="20" fill="none" stroke="#8a6830" stroke-width="3" stroke-opacity=".07"/>
-  <circle cx="168" cy="300" r="8" fill="#8a6830" opacity=".05"/>
-  <!-- catheter/tube pack -->
-  <rect x="208" y="282" width="46" height="32" rx="6" fill="#8a6830" opacity=".06"/>
-  <line x1="215" y1="291" x2="246" y2="291" stroke="#8a6830" stroke-width="1.5" stroke-opacity=".05"/>
-  <line x1="215" y1="300" x2="242" y2="300" stroke="#8a6830" stroke-width="1.5" stroke-opacity=".04"/>
-  <line x1="215" y1="309" x2="238" y2="309" stroke="#8a6830" stroke-width="1.5" stroke-opacity=".04"/>
-  <!-- nebulizer mask -->
-  <ellipse cx="296" cy="300" rx="18" ry="21" fill="#8a6830" opacity=".06"/>
-  <ellipse cx="296" cy="300" rx="10" ry="13" fill="#8a6830" opacity=".03"/>
-  <!-- vials -->
-  <rect x="332" y="282" width="12" height="30" rx="4" fill="#8a6830" opacity=".07"/>
-  <rect x="348" y="286" width="10" height="25" rx="3.5" fill="#8a6830" opacity=".05"/>
+  <!-- First-aid box with + cross -->
+  <rect x="152" y="210" width="90" height="72" rx="8" fill="#604820" opacity=".12"/>
+  <rect x="170" y="204" width="54" height="10" rx="3" fill="#604820" opacity=".1"/>
+  <rect x="183" y="234" width="26" height="7" rx="3.5" fill="#604820" opacity=".22"/>
+  <rect x="192" y="225" width="8" height="25" rx="3.5" fill="#604820" opacity=".22"/>
 
-  <!-- ROW 3 (y=345-408): heartbeat line + door -->
-  <!-- heartbeat line -->
+  <!-- Inventory checklist -->
+  <rect x="266" y="210" width="88" height="110" rx="8" fill="#604820" opacity=".1"/>
+  <rect x="278" y="226" width="8" height="8" rx="2" fill="#604820" opacity=".14"/>
+  <line x1="292" y1="230" x2="340" y2="230" stroke="#604820" stroke-width="2.5" stroke-opacity=".12"/>
+  <rect x="278" y="248" width="8" height="8" rx="2" fill="#604820" opacity=".14"/>
+  <line x1="292" y1="252" x2="336" y2="252" stroke="#604820" stroke-width="2.5" stroke-opacity=".12"/>
+  <rect x="278" y="270" width="8" height="8" rx="2" fill="#604820" opacity=".14"/>
+  <line x1="292" y1="274" x2="332" y2="274" stroke="#604820" stroke-width="2.5" stroke-opacity=".12"/>
+  <rect x="278" y="292" width="8" height="8" rx="2" fill="#604820" opacity=".12"/>
+  <line x1="292" y1="296" x2="338" y2="296" stroke="#604820" stroke-width="2.5" stroke-opacity=".1"/>
+
+  <!-- ═══ BOTTOM ROW: Heartbeat + Door — UNCHANGED ═══ -->
   <polyline points="148,375 172,375 180,360 190,390 198,368 206,375 240,375"
-    fill="none" stroke="#8a6830" stroke-width="2" stroke-opacity=".1"/>
-  <!-- Door shape (home feel) -->
-  <rect x="280" y="352" width="48" height="62" rx="5" fill="rgba(140,100,40,.04)" stroke="#8a6830" stroke-width="2" stroke-opacity=".15"/>
-  <circle cx="320" cy="387" r="3.5" fill="#8a6830" opacity=".2"/>
+    fill="none" stroke="#8a6830" stroke-width="2" stroke-opacity=".12"/>
+  <rect x="280" y="352" width="48" height="62" rx="5"
+    fill="rgba(140,100,40,.04)" stroke="#8a6830" stroke-width="2" stroke-opacity=".16"/>
+  <circle cx="320" cy="387" r="3.5" fill="#8a6830" opacity=".22"/>
 </svg>

@@ -29,6 +29,7 @@ import NeedsAttention from '@/components/dashboard/NeedsAttention';
 import ActivityList from '@/components/dashboard/ActivityList';
 import { SkeletonLoader } from '@/components/common/SkeletonLoader';
 import { useItems, useOrders, useActivities } from '@/hooks/useServerData';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useForceSync } from '@/hooks/useForceSync';
 import { isOutOfStock, isLowStock } from '@/types';
 
@@ -36,6 +37,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const { isDarkMode, toggleTheme, colors } = useTheme();
+  const { isOnline } = useNetworkStatus();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfileSheet, setShowProfileSheet] = useState(false);
@@ -148,14 +150,26 @@ export default function DashboardScreen() {
 
       {isLoading ? (
         <SkeletonLoader variant="dashboard" />
-      ) : error ? (
+      ) : error && items.length === 0 ? (
+        // Only show the hard error screen when we have NOTHING to display.
+        // If items are cached (even stale), fall through to render the
+        // dashboard and let the "offline — showing last synced data" row
+        // explain the freshness state.
         <View style={styles.loadingContainer}>
-          <Text style={[styles.errorText, { color: colors.statusRed }]}>Failed to load data</Text>
+          <Text style={[styles.errorText, { color: colors.statusRed }]}>
+            {isOnline ? 'Failed to load data' : "You're offline and no cached data is available"}
+          </Text>
           <TouchableOpacity onPress={() => refetch()} style={[styles.retryButton, { backgroundColor: colors.accentBlue }]}>
             <Text style={{ color: colors.white }}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : (
+      <>
+      {!isOnline && items.length > 0 && (
+        <Text style={[styles.lastSyncedText, { color: colors.textMuted }]}>
+          You're offline — showing last synced data
+        </Text>
+      )}
       <ScrollView
         ref={scrollRef}
         style={styles.scrollView}
@@ -237,6 +251,7 @@ export default function DashboardScreen() {
           <ActivityList activities={activityLogs} />
         </View>
       </ScrollView>
+      </>
       )}
 
       {/* Profile Menu Sheet */}
@@ -303,6 +318,12 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  lastSyncedText: {
+    fontSize: 12,
+    paddingHorizontal: spacing.lg,
+    marginTop: 8,
+    marginBottom: 8,
   },
   content: {
     padding: spacing.lg,
