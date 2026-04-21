@@ -14,6 +14,7 @@ import {
     TextInput,
     Animated,
     Keyboard,
+    Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
@@ -77,10 +78,13 @@ export default function VitalTrackTopBar({
             <View style={styles.mainRow}>
                 {/* Left Section: Logo + App Name */}
                 <View style={styles.leftSection}>
-                    {/* Logo */}
-                    <View style={[styles.logo, { backgroundColor: colors.accentBlue }]}>
-                        <Text style={[styles.logoText, { color: colors.white }]}>C</Text>
-                    </View>
+                    {/* Logo — notepad app icon, matches launcher/splash/login */}
+                    <Image
+                        source={require('../../assets/icon.png')}
+                        style={styles.logo}
+                        resizeMode="contain"
+                    />
+
 
                     {/* App Name */}
                     <View style={styles.appNameContainer}>
@@ -184,12 +188,6 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: borderRadius.md,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    logoText: {
-        fontSize: 22,
-        fontWeight: fontWeight.bold,
     },
     appNameContainer: {
         flexDirection: 'column',
