@@ -47,6 +47,16 @@ export default function RegisterScreen() {
         }, [clearError])
     );
 
+    // Cheap client-side gate on the Create Account button. Full validation
+    // still runs in handleRegister — this just prevents obviously-invalid
+    // submissions and gives visual feedback that the form isn't ready.
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const canSubmit =
+        name.trim().length > 0 &&
+        emailRegex.test(email.trim()) &&
+        password.length > 0 &&
+        confirmPassword.length > 0;
+
     const handleRegister = async () => {
         // Prevent double-submit
         if (isSubmitting || isLoading) {
@@ -63,26 +73,23 @@ export default function RegisterScreen() {
             return;
         }
 
-        // Identifier Check (Must have at least one)
-        if (!email.trim() && !username.trim()) {
-            setLocalError('Please provide either an Email or a Username');
+        // Email is now required — verification, password reset, and
+        // account-deletion confirmation all need it.
+        if (!email.trim()) {
+            setLocalError('Email is required for verification and account recovery');
+            return;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            setLocalError('Please enter a valid email address');
             return;
         }
 
-        // Username Validation (Optional but strict if provided)
+        // Username stays optional — reserved for future alternate-login methods.
         if (username.trim()) {
             const usernameRegex = /^[a-z0-9_]{3,50}$/;
             if (!usernameRegex.test(username.trim())) {
                 setLocalError('Username must be 3-50 chars, lowercase letters, numbers, or _');
-                return;
-            }
-        }
-
-        // Email Validation (Only if provided)
-        if (email.trim()) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email.trim())) {
-                setLocalError('Please enter a valid email address');
                 return;
             }
         }
@@ -115,46 +122,17 @@ export default function RegisterScreen() {
             });
 
             if (success) {
-                const isEmailRegistration = !!email.trim();
-
-                if (isEmailRegistration) {
-                    // Try to login immediately to check if backend enforces verification
-                    console.log('[Register] Email registration — checking if verification is enforced');
-                    try {
-                        const { login } = useAuthStore.getState();
-                        const loginSuccess = await login(email.trim(), password);
-                        if (loginSuccess) {
-                            console.log('[Register] Login succeeded — verification not enforced');
-                            router.replace('/(tabs)');
-                            return;
-                        }
-                    } catch (loginErr) {
-                        const loginError = loginErr as Error;
-                        if (loginError.message === 'EMAIL_NOT_VERIFIED') {
-                            console.log('[Register] Verification enforced — showing verify screen');
-                            setTimeout(() => {
-                                router.replace({
-                                    pathname: '/(auth)/verify-email-pending' as const,
-                                    params: { email: email.trim() }
-                                } as never);
-                            }, 100);
-                            return;
-                        }
-                        console.warn('[Register] Post-register login error:', loginError.message);
-                    }
-                    // Fallback: go to verify screen
-                    setTimeout(() => {
-                        router.replace({
-                            pathname: '/(auth)/verify-email-pending' as const,
-                            params: { email: email.trim() }
-                        } as never);
-                    }, 100);
-                } else {
-                    console.log('[Register] Username-only — navigating to app');
-                    setTimeout(() => {
-                        router.replace('/(tabs)');
-                    }, 100);
-                }
+                // Email is required (Task 1) and registration never auto-authenticates
+                // anymore (useAuthStore discards tokens). Always route to the
+                // verify-email screen — the user confirms their email, then logs
+                // in fresh. No probe-login, no conditional branching.
+                console.log('[Register] Registration complete — routing to verify-email');
+                setTimeout(() => {
+                    router.replace({
+                        pathname: '/(auth)/verify-email-pending' as const,
+                        params: { email: email.trim() },
+                    } as never);
+                }, 100);
             } else {
                 console.log('[Register] Registration returned false');
             }
@@ -238,7 +216,7 @@ export default function RegisterScreen() {
 
                     {/* Email Input */}
                     <View style={styles.inputContainer}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>Email (Optional)</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>Email *</Text>
                         <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                             <Ionicons name="mail-outline" size={20} color={colors.textSecondary} />
                             <TextInput
@@ -309,10 +287,10 @@ export default function RegisterScreen() {
                         style={[
                             styles.button,
                             { backgroundColor: colors.primary },
-                            (isLoading || isSubmitting) && styles.buttonDisabled,
+                            (isLoading || isSubmitting || !canSubmit) && styles.buttonDisabled,
                         ]}
                         onPress={handleRegister}
-                        disabled={isLoading || isSubmitting}
+                        disabled={isLoading || isSubmitting || !canSubmit}
                     >
                         {(isLoading || isSubmitting) ? (
                             <ActivityIndicator color="#fff" />
