@@ -82,16 +82,32 @@ export default function ProfileScreen() {
     };
 
     const handleDeleteAccount = () => {
+        // Guard 1: re-entry check — prevents a second Alert from opening while
+        // one is already being processed. Critical during cold starts where
+        // the network request hangs 30-60s and the button is visually active
+        // but still in-flight.
+        if (isRequesting) return;
+
+        // Guard 2: flip the busy flag BEFORE opening the Alert. That keeps
+        // the TouchableOpacity's `disabled` prop true and the spinner visible
+        // for the entire interaction, not just the network wait.
+        setIsRequesting(true);
+
         Alert.alert(
             'Delete Account',
             'This will permanently delete your account and ALL your data — inventory items, categories, orders, and activity history.\n\nA confirmation email will be sent to your registered email address. Your account will only be deleted after you click the confirmation link.\n\nThis action cannot be undone.',
             [
-                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                    // Reset the busy flag if they back out — otherwise the button
+                    // stays permanently disabled until the screen remounts.
+                    onPress: () => setIsRequesting(false),
+                },
                 {
                     text: 'Send confirmation email',
                     style: 'destructive',
                     onPress: async () => {
-                        setIsRequesting(true);
                         try {
                             const response = await authService.requestAccountDeletion();
                             console.info('[Auth] Account deletion requested');
@@ -113,7 +129,10 @@ export default function ProfileScreen() {
                         }
                     },
                 },
-            ]
+            ],
+            // If the user dismisses the Alert by tapping outside (Android),
+            // onDismiss fires without either button's onPress — reset here too.
+            { onDismiss: () => setIsRequesting(false) }
         );
     };
 
@@ -193,7 +212,12 @@ export default function ProfileScreen() {
                         activeOpacity={0.8}
                     >
                         {isRequesting ? (
-                            <ActivityIndicator color={colors.white} size="small" />
+                            <>
+                                <ActivityIndicator color={colors.white} size="small" />
+                                <Text style={[styles.deleteButtonText, { color: colors.white }]}>
+                                    Sending…
+                                </Text>
+                            </>
                         ) : (
                             <>
                                 <Ionicons name="trash-outline" size={18} color={colors.white} />

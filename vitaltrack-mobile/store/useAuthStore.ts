@@ -275,28 +275,22 @@ export const useAuthStore = create<AuthStore>()(
 
         try {
           const response = await authService.register(data);
-
           console.log('[Auth] Registration successful:', response.user.id);
 
-          // Always set authenticated — the register SCREEN handles verification redirect
-          // by attempting a post-registration login to check backend enforcement
-          console.log('[Auth] Registration successful — authenticating');
+          // Registration must NOT authenticate the user. The backend may still
+          // return tokens today for backwards compatibility; we defensively
+          // discard them so the account is unverified-and-logged-out until the
+          // user confirms their email. Flow then:
+          //   register screen → verify-email-pending screen → user clicks email link
+          //   → user logs in fresh → dashboard.
+          // See PR: registration must not persist auth tokens.
+          await tokenStorage.clearTokens();
           set({
-            user: response.user,
-            isAuthenticated: true,
+            user: null,
+            isAuthenticated: false,
             isLoading: false,
             error: null,
           });
-
-          // Invalidate React Query cache for the new user
-          setTimeout(async () => {
-            try {
-              const { queryClient } = await import('@/providers/QueryProvider');
-              queryClient.invalidateQueries();
-            } catch (err) {
-              console.warn('[Auth] Failed to invalidate queries after register:', err);
-            }
-          }, 100);
 
           return true;
         } catch (error) {
