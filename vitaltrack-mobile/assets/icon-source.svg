@@ -1,50 +1,58 @@
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <rect width="512" height="512" fill="#ffffff"/>
 
-  <!-- Notepad body -->
-  <rect x="96" y="80" width="320" height="380" rx="20"
-    fill="rgba(138,104,48,.04)" stroke="#8a6830" stroke-width="4" stroke-opacity=".3"/>
+  <!-- All content wrapped in a scale+translate so the notepad sits inside
+       Android's 66/108 adaptive-icon safe zone. Original coordinates were
+       bounded (96,48)..(416,460); after scale 0.72 + translate(72,72) the
+       bounds become roughly (141,107)..(372,403) — comfortably inside the
+       safe zone so circle, squircle, and teardrop launcher masks won't
+       clip the clip at the top or the door at the bottom. -->
+  <g transform="translate(72, 72) scale(0.72)">
+    <!-- Notepad body -->
+    <rect x="96" y="80" width="320" height="380" rx="20"
+      fill="rgba(138,104,48,.04)" stroke="#8a6830" stroke-width="4" stroke-opacity=".3"/>
 
-  <!-- Notepad clip -->
-  <rect x="186" y="58" width="140" height="44" rx="14"
-    fill="#fff" stroke="#8a6830" stroke-width="3.5" stroke-opacity=".25"/>
-  <rect x="226" y="48" width="60" height="28" rx="14" fill="#8a6830" opacity=".08"/>
+    <!-- Notepad clip -->
+    <rect x="186" y="58" width="140" height="44" rx="14"
+      fill="#fff" stroke="#8a6830" stroke-width="3.5" stroke-opacity=".25"/>
+    <rect x="226" y="48" width="60" height="28" rx="14" fill="#8a6830" opacity=".08"/>
 
-  <!-- Vertical divider -->
-  <line x1="256" y1="120" x2="256" y2="440"
-    stroke="#8a6830" stroke-width="1.5" stroke-opacity=".12"/>
+    <!-- Vertical divider -->
+    <line x1="256" y1="120" x2="256" y2="440"
+      stroke="#8a6830" stroke-width="1.5" stroke-opacity=".12"/>
 
-  <!-- Horizontal divider -->
-  <line x1="114" y1="290" x2="398" y2="290"
-    stroke="#8a6830" stroke-width="1.5" stroke-opacity=".12"/>
+    <!-- Horizontal divider -->
+    <line x1="114" y1="290" x2="398" y2="290"
+      stroke="#8a6830" stroke-width="1.5" stroke-opacity=".12"/>
 
-  <!-- Q1: TOP-LEFT — Checklist -->
-  <rect x="124" y="145" width="12" height="12" rx="3" fill="#8a6830" opacity=".3"/>
-  <line x1="146" y1="151" x2="238" y2="151" stroke="#8a6830" stroke-width="3" stroke-opacity=".22"/>
+    <!-- Q1: TOP-LEFT — Checklist -->
+    <rect x="124" y="145" width="12" height="12" rx="3" fill="#8a6830" opacity=".3"/>
+    <line x1="146" y1="151" x2="238" y2="151" stroke="#8a6830" stroke-width="3" stroke-opacity=".22"/>
 
-  <rect x="124" y="180" width="12" height="12" rx="3" fill="#8a6830" opacity=".3"/>
-  <line x1="146" y1="186" x2="232" y2="186" stroke="#8a6830" stroke-width="3" stroke-opacity=".22"/>
+    <rect x="124" y="180" width="12" height="12" rx="3" fill="#8a6830" opacity=".3"/>
+    <line x1="146" y1="186" x2="232" y2="186" stroke="#8a6830" stroke-width="3" stroke-opacity=".22"/>
 
-  <rect x="124" y="215" width="12" height="12" rx="3" fill="#8a6830" opacity=".3"/>
-  <line x1="146" y1="221" x2="236" y2="221" stroke="#8a6830" stroke-width="3" stroke-opacity=".22"/>
+    <rect x="124" y="215" width="12" height="12" rx="3" fill="#8a6830" opacity=".3"/>
+    <line x1="146" y1="221" x2="236" y2="221" stroke="#8a6830" stroke-width="3" stroke-opacity=".22"/>
 
-  <rect x="124" y="250" width="12" height="12" rx="3" fill="#8a6830" opacity=".24"/>
-  <line x1="146" y1="256" x2="228" y2="256" stroke="#8a6830" stroke-width="3" stroke-opacity=".18"/>
+    <rect x="124" y="250" width="12" height="12" rx="3" fill="#8a6830" opacity=".24"/>
+    <line x1="146" y1="256" x2="228" y2="256" stroke="#8a6830" stroke-width="3" stroke-opacity=".18"/>
 
-  <!-- Q2: TOP-RIGHT — Medical box with + (ONLY) -->
-  <rect x="274" y="136" width="110" height="86" rx="10" fill="#8a6830" opacity=".14"/>
-  <rect x="298" y="128" width="62" height="12" rx="4" fill="#8a6830" opacity=".1"/>
-  <rect x="310" y="168" width="36" height="9" rx="4.5" fill="#8a6830" opacity=".42"/>
-  <rect x="323" y="156" width="10" height="34" rx="5" fill="#8a6830" opacity=".42"/>
+    <!-- Q2: TOP-RIGHT — Medical box with + (ONLY) -->
+    <rect x="274" y="136" width="110" height="86" rx="10" fill="#8a6830" opacity=".14"/>
+    <rect x="298" y="128" width="62" height="12" rx="4" fill="#8a6830" opacity=".1"/>
+    <rect x="310" y="168" width="36" height="9" rx="4.5" fill="#8a6830" opacity=".42"/>
+    <rect x="323" y="156" width="10" height="34" rx="5" fill="#8a6830" opacity=".42"/>
 
-  <!-- Q3: BOTTOM-LEFT — ECG heartbeat -->
-  <polyline points="120,370 152,370 164,348 176,394 188,356 198,370 240,370"
-    fill="none" stroke="#8a6830" stroke-width="2.5" stroke-opacity=".28"/>
+    <!-- Q3: BOTTOM-LEFT — ECG heartbeat -->
+    <polyline points="120,370 152,370 164,348 176,394 188,356 198,370 240,370"
+      fill="none" stroke="#8a6830" stroke-width="2.5" stroke-opacity=".28"/>
 
-  <!-- Q4: BOTTOM-RIGHT — House with door (NO + on house) -->
-  <path d="M333,310 L384,340 L384,420 C384,426 380,430 374,430 L292,430 C286,430 282,426 282,420 L282,340 Z"
-    fill="rgba(138,104,48,.04)" stroke="#8a6830" stroke-width="2.2" stroke-opacity=".25"/>
-  <rect x="320" y="382" width="28" height="42" rx="4"
-    fill="rgba(138,104,48,.06)" stroke="#8a6830" stroke-width="1.8" stroke-opacity=".2"/>
-  <circle cx="342" cy="406" r="2.5" fill="#8a6830" opacity=".32"/>
+    <!-- Q4: BOTTOM-RIGHT — House with door (NO + on house) -->
+    <path d="M333,310 L384,340 L384,420 C384,426 380,430 374,430 L292,430 C286,430 282,426 282,420 L282,340 Z"
+      fill="rgba(138,104,48,.04)" stroke="#8a6830" stroke-width="2.2" stroke-opacity=".25"/>
+    <rect x="320" y="382" width="28" height="42" rx="4"
+      fill="rgba(138,104,48,.06)" stroke="#8a6830" stroke-width="1.8" stroke-opacity=".2"/>
+    <circle cx="342" cy="406" r="2.5" fill="#8a6830" opacity=".32"/>
+  </g>
 </svg>
