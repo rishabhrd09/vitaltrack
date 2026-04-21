@@ -98,6 +98,7 @@ export default function ProfileMenuSheet({
         >
             <Pressable style={[styles.overlay, { backgroundColor: colors.overlayDark }]} onPress={onDismiss}>
                 <Animated.View
+                    {...panResponder.panHandlers}
                     style={[
                         styles.sheetWrapper,
                         {
@@ -107,9 +108,19 @@ export default function ProfileMenuSheet({
                         },
                     ]}
                 >
+                {/*
+                  PanResponder is attached to the ancestor Animated.View (not the
+                  drag-handle View below) so RN's move-phase responder bubbling
+                  can actually reach it. When the inner Pressable holds the
+                  responder after touch-start, onMoveShouldSetPanResponder is
+                  called on the CURRENT responder and its ancestors — not on
+                  descendants. Attaching panHandlers to a descendant View means
+                  the move handler never runs, which is what made swipe-down
+                  silently fail in the previous implementation.
+                */}
                 <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-                    {/* Drag Handle — attach PanResponder here for swipe-down-to-dismiss */}
-                    <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
+                    {/* Drag handle — purely visual now. Users can swipe down from anywhere on the sheet. */}
+                    <View style={styles.dragHandleContainer}>
                         <View style={[styles.dragHandle, { backgroundColor: colors.borderSecondary }]} />
                     </View>
 
