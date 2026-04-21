@@ -150,9 +150,15 @@ export default function DashboardScreen() {
 
       {isLoading ? (
         <SkeletonLoader variant="dashboard" />
-      ) : error ? (
+      ) : error && items.length === 0 ? (
+        // Only show the hard error screen when we have NOTHING to display.
+        // If items are cached (even stale), fall through to render the
+        // dashboard and let the "offline — showing last synced data" row
+        // explain the freshness state.
         <View style={styles.loadingContainer}>
-          <Text style={[styles.errorText, { color: colors.statusRed }]}>Failed to load data</Text>
+          <Text style={[styles.errorText, { color: colors.statusRed }]}>
+            {isOnline ? 'Failed to load data' : "You're offline and no cached data is available"}
+          </Text>
           <TouchableOpacity onPress={() => refetch()} style={[styles.retryButton, { backgroundColor: colors.accentBlue }]}>
             <Text style={{ color: colors.white }}>Retry</Text>
           </TouchableOpacity>
@@ -161,7 +167,7 @@ export default function DashboardScreen() {
       <>
       {!isOnline && items.length > 0 && (
         <Text style={[styles.lastSyncedText, { color: colors.textMuted }]}>
-          Showing last synced data
+          You're offline — showing last synced data
         </Text>
       )}
       <ScrollView
