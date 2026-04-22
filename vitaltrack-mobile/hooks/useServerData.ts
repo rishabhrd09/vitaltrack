@@ -6,6 +6,18 @@ import { api } from '@/services/api';
 import { groupBulkActivities } from '@/utils/activityGrouping';
 import type { Item, Category, SavedOrder, DashboardStats, ActivityLog } from '@/types';
 
+// Auth and sync events are recorded server-side for audit/debugging, but
+// have no actionable value in the user-facing Recent Activity feed — the
+// user already knows they logged in or that a sync ran. Hiding them keeps
+// stock/item/order events from being crowded out.
+const HIDDEN_ACTION_TYPES: ReadonlySet<string> = new Set([
+  'user_login',
+  'user_logout',
+  'user_register',
+  'sync_push',
+  'sync_pull',
+]);
+
 export const queryKeys = {
   items: ['items'] as const,
   categories: ['categories'] as const,
@@ -60,7 +72,10 @@ export function useActivities(limit = 50) {
       const response = await api.get<{ activities: ActivityLog[]; total: number }>(
         `/activities?limit=${limit}`
       );
-      return groupBulkActivities(response.activities);
+      const visible = response.activities.filter(
+        (a) => !HIDDEN_ACTION_TYPES.has(a.action)
+      );
+      return groupBulkActivities(visible);
     },
   });
 }
