@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Staging deployment diagnosis — CareKosh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf7f2;
+    --bg-elev: #ffffff;
+    --ink: #1a1814;
+    --ink-soft: #4a453e;
+    --ink-muted: #8a8278;
+    --rule: #e8e3da;
+    --rule-strong: #cfc7b8;
+    --amber: #8a6830;
+    --amber-soft: #c49a5a;
+    --amber-tint: #f5ecda;
+    --red: #a8432a;
+    --red-tint: #f4dfd6;
+    --green: #4a6d3a;
+    --green-tint: #dfe9d4;
+    --blue-ink: #2a4a6d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(196, 154, 90, 0.04) 0%, transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(42, 74, 109, 0.03) 0%, transparent 45%);
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 80px 32px 120px;
+  }
+
+  @media (max-width: 720px) {
+    .wrap { padding: 48px 20px 80px; }
+  }
+
+  /* Header */
+  .doc-header {
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 32px;
+    margin-bottom: 56px;
+  }
+
+  .doc-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 12px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(2.2rem, 5vw, 3.4rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+    color: var(--ink);
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--amber);
+    font-weight: 400;
+  }
+
+  .doc-subtitle {
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    max-width: 620px;
+    font-weight: 400;
+  }
+
+  .doc-meta {
+    margin-top: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .doc-meta span strong {
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+
+  /* Section heading */
+  section {
+    margin-bottom: 72px;
+  }
+
+  .section-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--amber);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    margin-bottom: 24px;
+    color: var(--ink);
+  }
+
+  h3 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: 1.35rem;
+    line-height: 1.3;
+    margin-top: 36px;
+    margin-bottom: 14px;
+    color: var(--ink);
+  }
+
+  p {
+    margin-bottom: 18px;
+    color: var(--ink-soft);
+  }
+
+  p strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.88em;
+    background: var(--amber-tint);
+    color: var(--amber);
+    padding: 1px 6px;
+    border-radius: 2px;
+  }
+
+  /* TL;DR callout */
+  .tldr {
+    background: var(--bg-elev);
+    border-left: 3px solid var(--amber);
+    padding: 28px 32px;
+    margin-bottom: 48px;
+    border-radius: 2px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+  }
+
+  .tldr-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--amber);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .tldr p {
+    font-size: 1.02rem;
+    line-height: 1.6;
+    color: var(--ink);
+    margin-bottom: 0;
+  }
+
+  .tldr p + p {
+    margin-top: 14px;
+  }
+
+  /* Comparison card */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 28px 0;
+  }
+
+  @media (max-width: 600px) {
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  .compare-cell {
+    background: var(--bg-elev);
+    padding: 24px 26px;
+  }
+
+  .compare-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .compare-label.prod { color: var(--green); }
+  .compare-label.stage { color: var(--red); }
+
+  .compare-service {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ink);
+    margin-bottom: 16px;
+    word-break: break-all;
+  }
+
+  .compare-fact {
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+  }
+
+  .compare-fact strong {
+    color: var(--ink);
+  }
+
+  .compare-fact.emphasis {
+    padding: 10px 12px;
+    background: var(--amber-tint);
+    border-left: 2px solid var(--amber);
+    margin-top: 12px;
+  }
+
+  /* Mechanism diagram */
+  .mechanism {
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 32px;
+    margin: 32px 0;
+  }
+
+  .mech-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .mech-flow {
+    display: grid;
+    gap: 14px;
+  }
+
+  .mech-step {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .mech-marker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--amber);
+    padding-top: 2px;
+  }
+
+  .mech-text {
+    color: var(--ink-soft);
+    font-size: 0.98rem;
+    line-height: 1.55;
+  }
+
+  .mech-text code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+    background: var(--amber-tint);
+    color: var(--amber);
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+
+  .mech-arrow {
+    color: var(--ink-muted);
+    padding: 4px 0 4px 10px;
+    font-size: 14px;
+  }
+
+  /* Timeline of the break */
+  .timeline {
+    position: relative;
+    padding-left: 32px;
+    margin: 32px 0;
+  }
+
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: var(--rule-strong);
+  }
+
+  .t-entry {
+    position: relative;
+    margin-bottom: 28px;
+  }
+
+  .t-entry::before {
+    content: "";
+    position: absolute;
+    left: -30px;
+    top: 8px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--amber-soft);
+  }
+
+  .t-entry.last-ok::before { border-color: var(--green); background: var(--green-tint); }
+  .t-entry.break::before { border-color: var(--red); background: var(--red-tint); }
+
+  .t-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+
+  .t-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .t-body {
+    font-size: 0.94rem;
+    color: var(--ink-soft);
+    line-height: 1.55;
+  }
+
+  /* Verdict box */
+  .verdict {
+    background: var(--green-tint);
+    border: 1px solid rgba(74, 109, 58, 0.25);
+    border-radius: 3px;
+    padding: 28px 32px;
+    margin: 32px 0;
+  }
+
+  .verdict-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .verdict-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.35rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+
+  .verdict p {
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+  }
+
+  .verdict p:last-child { margin-bottom: 0; }
+
+  /* Risk callout */
+  .risk {
+    background: var(--red-tint);
+    border: 1px solid rgba(168, 67, 42, 0.2);
+    border-radius: 3px;
+    padding: 24px 28px;
+    margin: 28px 0;
+  }
+
+  .risk-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--red);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .risk-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+
+  .risk p {
+    font-size: 0.98rem;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+  }
+
+  .risk p:last-child { margin-bottom: 0; }
+
+  /* Action list */
+  .actions {
+    margin: 24px 0;
+  }
+
+  .action {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 18px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--rule);
+    align-items: start;
+  }
+
+  .action:last-child { border-bottom: none; }
+
+  .action-num {
+    font-family: 'Fraunces', serif;
+    font-size: 1.6rem;
+    font-weight: 400;
+    color: var(--amber);
+    line-height: 1;
+    font-style: italic;
+  }
+
+  .action-title {
+    font-size: 1.02rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  .action-body {
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+
+  .action-body code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82em;
+    background: var(--amber-tint);
+    color: var(--amber);
+    padding: 1px 6px;
+    border-radius: 2px;
+  }
+
+  /* Code block */
+  pre {
+    background: var(--ink);
+    color: #e8e3da;
+    padding: 20px 24px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin: 20px 0;
+  }
+
+  pre .comment { color: #8a8278; }
+  pre .ok { color: #a3c48a; }
+  pre .stale { color: #d8a674; }
+
+  /* Glossary */
+  .glossary {
+    border-top: 1px solid var(--rule);
+    padding-top: 40px;
+    margin-top: 48px;
+  }
+
+  .gloss-term {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--amber);
+    margin-top: 20px;
+    margin-bottom: 4px;
+  }
+
+  .gloss-def {
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+
+  /* Footer */
+  .doc-footer {
+    margin-top: 80px;
+    padding-top: 32px;
+    border-top: 1px solid var(--rule);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-muted);
+    letter-spacing: 0.08em;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="doc-header">
+    <div class="doc-kicker">Infrastructure diagnosis · Read-only report · Revised</div>
+    <h1>Why staging looks frozen — and why <em>it's actually correct</em>.</h1>
+    <p class="doc-subtitle">A plain-language walkthrough of how the two Render services deploy, why they diverged in the event log after April 20, and — most importantly — what it means for the mobile testing done in the days since.</p>
+    <div class="doc-meta">
+      <span><strong>Repo:</strong> rishabhrd09/vitaltrack</span>
+      <span><strong>Staging last deployed:</strong> Apr 20, 3:18 PM · PR #17 · <code>de39437</code></span>
+      <span><strong>Production last deployed:</strong> Apr 22, 5:16 AM · PR #31 · <code>7a9c652</code></span>
+      <span><strong>Main HEAD:</strong> <code>7a9c652</code></span>
+    </div>
+  </header>
+
+  <!-- ============================================================ -->
+  <!-- TL;DR -->
+  <!-- ============================================================ -->
+  <div class="tldr">
+    <div class="tldr-label">Bottom line first</div>
+    <p>Nothing is broken. Both Render services are configured identically — same repo, same branch <code>main</code>, same Root Directory <code>vitaltrack-backend</code>, same Auto-Deploy "On Commit." The Root Directory setting tells Render to <strong>only auto-deploy when files inside that directory change</strong>. PRs #18 through #31 are frontend-only, so Auto-Deploy on <em>both</em> services correctly skipped them. Staging sat still. Production would have sat still too — <em>except</em> CI also <code>curl</code>s production's Deploy Hook on every <code>main</code> push, which ignores the Root Directory filter and force-redeploys it anyway.</p>
+    <p><strong>Staging is running the latest backend code.</strong> <code>git log de39437..origin/main -- vitaltrack-backend/</code> returns zero rows, so staging's "frozen" commit and production's current commit contain byte-identical backend code. On-device testing against staging was valid.</p>
+    <p>There is no defect here — only an asymmetry. Production force-redeploys backend Docker images even when the backend didn't change (wasteful but harmless). Staging doesn't. If that asymmetry ever matters (next backend change lands, you want staging to pick it up automatically), the mitigation is either trimming production's over-eager CI hook or adding a symmetric hook for staging. Both are tracked in Section 05.</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Section 1 -->
+  <!-- ============================================================ -->
+  <section>
+    <div class="section-number">01 — CONTEXT</div>
+    <h2>Two backends, one codebase.</h2>
+    <p>CareKosh runs two copies of the FastAPI backend, both served from the same GitHub repo at <code>vitaltrack-backend/</code>:</p>
+
+    <div class="compare">
+      <div class="compare-cell">
+        <div class="compare-label prod">Production</div>
+        <div class="compare-service">vitaltrack-api.onrender.com</div>
+        <div class="compare-fact"><strong>Purpose:</strong> what real users eventually hit</div>
+        <div class="compare-fact"><strong>Database:</strong> production Neon Postgres (real user data)</div>
+        <div class="compare-fact"><strong>Mobile source:</strong> production AAB builds, Play Store releases</div>
+        <div class="compare-fact"><strong>Deploy trigger:</strong> Deploy Hook called by CI on every <code>main</code> push — <em>and</em> Render auto-deploy</div>
+      </div>
+      <div class="compare-cell">
+        <div class="compare-label stage">Staging</div>
+        <div class="compare-service">vitaltrack-api-staging.onrender.com</div>
+        <div class="compare-fact"><strong>Purpose:</strong> what Preview APKs talk to during testing</div>
+        <div class="compare-fact"><strong>Database:</strong> staging Neon Postgres (test data only)</div>
+        <div class="compare-fact"><strong>Mobile source:</strong> Preview APKs built from PRs via the <code>build-apk</code> label</div>
+        <div class="compare-fact"><strong>Deploy trigger:</strong> Render auto-deploy only — no CI hook</div>
+      </div>
+    </div>
+
+    <p>The <strong>mobile app has its backend URL baked in at compile time</strong> via <code>EXPO_PUBLIC_API_URL</code> in <code>eas.json</code>. Preview APKs always point at staging. Production AABs always point at production. So when you install a Preview APK and hit Sign In, the request goes to <em>staging</em>. Whether staging is up-to-date determines whether your testing is valid. Whether production is up-to-date determines what your real (eventual) users hit.</p>
+
+    <p>Both services should run identical <code>vitaltrack-backend/</code> code from <code>main</code>. If they diverge, any code path that changed between them will behave differently on the two surfaces.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- Section 2 -->
+  <!-- ============================================================ -->
+  <section>
+    <div class="section-number">02 — HOW DEPLOYS WORK</div>
+    <h2>Two ways to tell Render "new code is ready."</h2>
+
+    <p>Render is a hosting platform. It promises to rebuild + redeploy whenever new commits land. But it has <em>two separate mechanisms</em> for noticing commits, and they have different failure modes.</p>
+
+    <h3>Mechanism A — Auto-Deploy (Render's built-in)</h3>
+
+    <div class="mechanism">
+      <div class="mech-title">How Render's built-in auto-deploy works</div>
+      <div class="mech-flow">
+        <div class="mech-step">
+          <div class="mech-marker">01</div>
+          <div class="mech-text">The service is configured: "watch branch <code>main</code>, auto-deploy on new commits."</div>
+        </div>
+        <div class="mech-step">
+          <div class="mech-marker">02</div>
+          <div class="mech-text">Render registers a <strong>webhook</strong> on the GitHub repo — a URL GitHub will POST to on every push.</div>
+        </div>
+        <div class="mech-step">
+          <div class="mech-marker">03</div>
+          <div class="mech-text">Someone merges a PR into <code>main</code>. GitHub POSTs to Render's webhook.</div>
+        </div>
+        <div class="mech-step">
+          <div class="mech-marker">04</div>
+          <div class="mech-text">Render pulls the code, rebuilds the Docker image, redeploys. Event: <code>"New commit via Auto-Deploy"</code>.</div>
+        </div>
+      </div>
+    </div>
+
+    <p>This is how <strong>staging</strong> is set up. Simple. No glue code. Entirely dependent on one healthy GitHub → Render webhook.</p>
+
+    <h3>Mechanism B — Deploy Hook (CI-triggered, explicit)</h3>
+
+    <div class="mechanism">
+      <div class="mech-title">How the explicit Deploy Hook works</div>
+      <div class="mech-flow">
+        <div class="mech-step">
+          <div class="mech-marker">01</div>
+          <div class="mech-text">Render generates a secret URL (the "Deploy Hook"). POSTing to it triggers a deploy.</div>
+        </div>
+        <div class="mech-step">
+          <div class="mech-marker">02</div>
+          <div class="mech-text">The URL is stored as a GitHub repo secret: <code>RENDER_DEPLOY_HOOK</code>.</div>
+        </div>
+        <div class="mech-step">
+          <div class="mech-marker">03</div>
+          <div class="mech-text">The <code>deploy-backend</code> job in <code>.github/workflows/ci.yml</code> runs on every <code>main</code> push after tests pass. It runs <code>curl -s "${{ secrets.RENDER_DEPLOY_HOOK }}"</code>.</div>
+        </div>
+        <div class="mech-step">
+          <div class="mech-marker">04</div>
+          <div class="mech-text">Render receives the hook POST, pulls code, rebuilds, redeploys. Event: <code>"Triggered via Deploy Hook"</code>.</div>
+        </div>
+      </div>
+    </div>
+
+    <p>This is how <strong>production</strong> is set up. The single <code>RENDER_DEPLOY_HOOK</code> secret in GitHub points to the production service — confirmed by the deploy summary step logging <code>URL: https://vitaltrack-api.onrender.com</code>. Staging has no equivalent entry in CI.</p>
+
+    <p><strong>Key difference:</strong> Auto-Deploy is "Render listens for GitHub pushes" (via webhook subscription). Deploy Hook is "CI actively tells Render" (via curl). If the GitHub → Render webhook path breaks, Auto-Deploy silently stops. Deploy Hook is unaffected — it's a completely separate channel that goes from GitHub Actions straight to Render.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- Section 3 -->
+  <!-- ============================================================ -->
+  <section>
+    <div class="section-number">03 — WHAT ACTUALLY HAPPENED</div>
+    <h2>Not a break. A Root Directory filter doing its job.</h2>
+
+    <p>The real cause came from the staging service's Settings → Build &amp; Deploy page. Both services have <strong>Root Directory</strong> set to <code>vitaltrack-backend</code>. Render's own description of that field (visible on the dashboard) says:</p>
+
+    <div class="mechanism">
+      <div class="mech-title">Quoted from Render's Root Directory help text</div>
+      <div class="mech-flow">
+        <div class="mech-step">
+          <div class="mech-marker">◆</div>
+          <div class="mech-text">"If set, Render runs commands from this directory instead of the repository root. <strong>Additionally, code changes outside of this directory do not trigger an auto-deploy.</strong> Most commonly used with a monorepo."</div>
+        </div>
+      </div>
+    </div>
+
+    <p>That's exactly what happened. Reading the timeline with that in mind:</p>
+
+    <div class="timeline">
+      <div class="t-entry last-ok">
+        <div class="t-date">APRIL 20 · 3:18 PM</div>
+        <div class="t-title">Last staging Auto-Deploy — PR #17 (backend-touching)</div>
+        <div class="t-body">Deploy live for commit <code>de39437</code>. Label: <em>"New commit via Auto-Deploy."</em> PR #17 touched <code>vitaltrack-backend/</code>, so it matched the Root Directory filter and triggered a build.</div>
+      </div>
+
+      <div class="t-entry">
+        <div class="t-date">APRIL 20 · 6:57 PM</div>
+        <div class="t-title">PR #18 merged — frontend-only — correctly skipped</div>
+        <div class="t-body">PR #18 sits inside <code>vitaltrack-mobile/</code> only. Render's Auto-Deploy on <em>both</em> services correctly ignored it. Production's event log shows "Triggered via Deploy Hook" — CI force-redeployed production's backend even though the backend didn't change. Staging's event log simply shows nothing, because no CI hook is configured for staging.</div>
+      </div>
+
+      <div class="t-entry">
+        <div class="t-date">APRIL 20 – APRIL 22</div>
+        <div class="t-title">PRs #19–#31 — same pattern</div>
+        <div class="t-body">64 commits merged across 14 PRs. <strong>Every one is frontend-only.</strong> Neither service's Auto-Deploy triggered. Production shows 14 "Triggered via Deploy Hook" events (CI-driven, each rebuilding backend code that hadn't changed). Staging shows nothing, which is the correct behavior for its configuration.</div>
+      </div>
+    </div>
+
+    <h3>Evidence that settles the question</h3>
+    <p>Both services' dashboards (Settings → Build) show <strong>Auto-Deploy = "On Commit"</strong> right now. Nobody toggled it off. Nobody broke a webhook. The webhook is firing on every push; Render is correctly matching those pushes against the Root Directory filter; the filter is correctly rejecting non-backend commits for both services. Prod only appears "up to date" because a second, redundant trigger (CI's Deploy Hook) fires unconditionally on every push.</p>
+
+    <h3>What this rules out</h3>
+    <p><strong>✗ Auto-Deploy toggled off.</strong> Both services show "On Commit." Previous hypothesis was wrong.</p>
+    <p><strong>✗ GitHub → Render webhook broken.</strong> If the webhook were broken, production's Auto-Deploy wouldn't fire either (and it didn't, for these commits — CI's hook was the only trigger). But the webhook <em>was</em> evaluated by Render: it just didn't match the Root Directory filter.</p>
+    <p><strong>✗ Branch drift.</strong> Both services point at <code>main</code>. Verified in the screenshots.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- Section 4 -->
+  <!-- ============================================================ -->
+  <section>
+    <div class="section-number">04 — THE CRITICAL QUESTION</div>
+    <h2>Have you been testing against stale code?</h2>
+
+    <p>This is what actually matters. Two days of silent drift could have meant every test session debugging against the wrong backend. The answer depends on one query: <em>what changed in the backend between PR #17 and PR #31?</em></p>
+
+    <pre><span class="comment"># Verification run at current origin/main (7a9c652):</span>
+$ git log --oneline de39437..origin/main -- vitaltrack-backend/
+
+<span class="ok">(no output — zero commits touched vitaltrack-backend/)</span>
+
+$ git diff --shortstat de39437..origin/main -- vitaltrack-backend/
+
+<span class="ok">(no output — zero lines changed in backend)</span>
+
+$ git log --oneline de39437..origin/main | wc -l
+<span class="stale">64</span>
+
+<span class="comment"># 64 commits on main since the last staging deploy.</span>
+<span class="comment"># Zero of them touched the backend. All inside vitaltrack-mobile/.</span></pre>
+
+    <div class="verdict">
+      <div class="verdict-label">Verdict</div>
+      <div class="verdict-title">Your testing has been valid — and staging's behavior is correct by design.</div>
+      <p>Between April 20 (last staging deploy, <code>de39437</code>) and April 22 (current main, <code>7a9c652</code>), <strong>not a single backend file changed.</strong> Every one of the 64 commits in that window sits inside <code>vitaltrack-mobile/</code>: branding, icons, UX polish, PDF restyling, profile-sheet gesture, register screen changes.</p>
+      <p>Staging's Auto-Deploy correctly skipped all of them because of the Root Directory filter. Functionally, staging at <code>de39437</code> runs the <em>byte-identical backend code</em> as production at <code>7a9c652</code>. Any request your Preview APK has made to staging got the same response it would have gotten from production.</p>
+    </div>
+
+    <p>Specifically the client-side changes in this PR window — the 401 interceptor in <code>services/api.ts</code>, the register-without-tokens change in <code>useAuthStore.ts</code>, the email-required gate — all live in the <em>mobile</em> app's code. They change how the app treats API responses, not what the API itself returns. The backend change that would truly matter here (the <code>/register</code> endpoint dropping the token fields from its response) hasn't shipped yet and would need a backend commit to take effect.</p>
+
+    <div class="risk">
+      <div class="risk-label">One thing to keep in mind</div>
+      <div class="risk-title">Staging only rebuilds when backend code changes.</div>
+      <p>Because both services have Root Directory = <code>vitaltrack-backend</code>, staging's Auto-Deploy only fires on commits that touch backend files. The <em>next</em> backend PR you merge will correctly trigger a staging rebuild automatically — no action needed. But if you ever push a mobile-only change that <em>depends</em> on a backend state (e.g. testing against a pre-populated staging DB that got reset), you may want to bump staging manually via "Manual Deploy" even though nothing in <code>vitaltrack-backend/</code> changed. This is a known quirk of the Root Directory filter, not a flaw.</p>
+      <p>Section 05 lists three optional structural tweaks. None are urgent.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- Section 5 -->
+  <!-- ============================================================ -->
+  <section>
+    <div class="section-number">05 — WHAT (IF ANYTHING) TO CHANGE</div>
+    <h2>Nothing urgent. Three optional improvements.</h2>
+
+    <p>Since nothing is broken, there's no mandatory fix. The question is whether the current asymmetry ever bothers you. Three candidate changes, in ascending order of effort and value.</p>
+
+    <div class="actions">
+      <div class="action">
+        <div class="action-num">i</div>
+        <div>
+          <div class="action-title">Do nothing (defensible)</div>
+          <div class="action-body">Staging deploys on backend changes; redundant mobile-only rebuilds are avoided. Production has the safety net of a CI force-deploy. Costs: production wastes Render build minutes rebuilding unchanged backend code; staging has to be manually bumped via "Manual Deploy" the one time you ever need it to match main exactly (e.g. cache warmup testing). If those costs don't hurt, leaving everything as-is is a valid answer.</div>
+        </div>
+      </div>
+      <div class="action">
+        <div class="action-num">ii</div>
+        <div>
+          <div class="action-title">Symmetry: add a staging Deploy Hook to CI (recommended)</div>
+          <div class="action-body">Create a GitHub secret <code>RENDER_DEPLOY_HOOK_STAGING</code> with the staging hook URL (visible on the staging service's Settings → Deploy page). Extend the <code>deploy-backend</code> job in <code>.github/workflows/ci.yml</code> to <code>curl</code> both hooks in sequence whenever it already runs. Staging then mirrors production's "deploy on every merge" behavior. Only worth doing if you ever want staging to auto-rebuild on frontend-only PRs (most relevant for asset changes like new splash PNGs — though those don't actually require a backend redeploy).</div>
+        </div>
+      </div>
+      <div class="action">
+        <div class="action-num">iii</div>
+        <div>
+          <div class="action-title">Efficiency: trim production's redundant redeploys</div>
+          <div class="action-body">The cleaner alternative to option ii: instead of adding a staging hook, add a path filter to the CI <code>deploy-backend</code> job so it only runs when <code>vitaltrack-backend/**</code> changed. Use GitHub Actions' <code>paths</code> filter at the job level. Both services then behave identically: deploy only when the backend actually changes. Builds 14 fewer Docker images per week on production. Most disciplined outcome. (If a rebuild-on-mobile-change ever becomes necessary for staging, add option ii on top.)</div>
+        </div>
+      </div>
+      <div class="action">
+        <div class="action-num">iv</div>
+        <div>
+          <div class="action-title">Long-term: put staging into render.yaml</div>
+          <div class="action-body">The existing <code>vitaltrack-backend/render.yaml</code> defines only the production service. Adding a second <code>services:</code> entry for <code>vitaltrack-api-staging</code> with its own <code>envVars</code> block puts both services' config under version control. Config drift between prod and staging becomes detectable via <code>git diff</code>. Unrelated to the deploy-trigger question above — this is about auditability and disaster recovery.</div>
+        </div>
+      </div>
+      <div class="action">
+        <div class="action-num">v</div>
+        <div>
+          <div class="action-title">When you actually need to force-deploy staging</div>
+          <div class="action-body">If you're about to test something backend-specific and want absolute certainty staging matches <code>main</code> (e.g. reproducing a bug, verifying a migration), click <strong>Manual Deploy → Deploy latest commit</strong> on staging's Render dashboard. Takes 60–90 seconds. This is the pragmatic escape hatch regardless of which of the options above you pick.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- Glossary -->
+  <!-- ============================================================ -->
+  <section class="glossary">
+    <div class="section-number">APPENDIX</div>
+    <h2>Terms used in this report.</h2>
+
+    <div class="gloss-term">Auto-Deploy</div>
+    <div class="gloss-def">Render's built-in feature that watches a Git branch for new commits and automatically rebuilds + redeploys when one arrives. Implemented via a GitHub webhook subscription.</div>
+
+    <div class="gloss-term">Deploy Hook</div>
+    <div class="gloss-def">An explicit HTTPS URL Render generates per service. POSTing to it triggers a deploy. Typically stored as a CI secret and called from a GitHub Actions workflow step.</div>
+
+    <div class="gloss-term">Webhook</div>
+    <div class="gloss-def">A URL one service gives to another so the second can "call back" when something happens. GitHub posts to Render's webhook when you push commits. If that HTTP call fails repeatedly, GitHub pauses future deliveries.</div>
+
+    <div class="gloss-term">Preview APK</div>
+    <div class="gloss-def">An installable Android build produced by EAS (Expo Application Services) from a pull request. Its <code>EXPO_PUBLIC_API_URL</code> is hardcoded at build time to the staging backend URL via the <code>preview</code> profile in <code>eas.json</code>.</div>
+
+    <div class="gloss-term">render.yaml</div>
+    <div class="gloss-def">A YAML file defining Render services as code. In this repo it lives at <code>vitaltrack-backend/render.yaml</code> and currently defines only the production service. Staging is configured through the Render dashboard UI, not in Git.</div>
+
+    <div class="gloss-term">Idle spin-down</div>
+    <div class="gloss-def">Unrelated to this diagnosis, but visible on the dashboard: Render's free tier puts services to sleep after 15 minutes of inactivity. The first request after sleep takes 30–60 seconds to wake the container. Different problem from deploys not firing.</div>
+  </section>
+
+  <footer class="doc-footer">
+    Evidence trail: Render Settings → Build page for both services (Root Directory = <code>vitaltrack-backend</code> on both, Branch = <code>main</code> on both); Render Settings → Deploy page for both services (Auto-Deploy = "On Commit" on both, Deploy Hook configured on both); Render event logs Apr 07 → Apr 22 (prod labels "Triggered via Deploy Hook," staging labels "New commit via Auto-Deploy"); GitHub secrets dashboard (one <code>RENDER_DEPLOY_HOOK</code> secret, pointing to prod per the summary step output in CI); repository at <code>github.com/rishabhrd09/vitaltrack</code> at commit <code>7a9c652</code>; <code>.github/workflows/ci.yml</code> deploy-backend job (lines 215–247); <code>vitaltrack-backend/render.yaml</code>. No infrastructure changes were made during this analysis.
+    <br><br>
+    Revision history: the first draft of this document proposed that staging's Auto-Deploy had been toggled off or its GitHub webhook had broken. The Render Settings screenshots ruled both out — both services show Auto-Deploy "On Commit." The revised diagnosis attributes the behavior to the Root Directory filter skipping frontend-only commits, which is Render behavior working exactly as designed.
+  </footer>
+
+</div>
+</body>
+</html>
