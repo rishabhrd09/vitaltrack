@@ -159,7 +159,11 @@ export default function RegisterScreen() {
                 {/* Header */}
                 <View style={styles.header}>
                     <Image
-                        source={require('../../assets/carekosh-logo-transparent.png')}
+                        source={
+                            theme.isDarkMode
+                                ? require('../../assets/carekosh-logo-transparent.png')
+                                : require('../../assets/carekosh-logo-light.png')
+                        }
                         style={styles.logo}
                         resizeMode="contain"
                     />
