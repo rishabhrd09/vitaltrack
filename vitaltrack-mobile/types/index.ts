@@ -245,7 +245,10 @@ export type ActivityActionType =
   | 'backup_create'
   | 'backup_restore'
   | 'sync_push'
-  | 'sync_pull';
+  | 'sync_pull'
+  | 'user_login'
+  | 'user_logout'
+  | 'user_register';
 
 export interface ActivityLog {
   id: string;

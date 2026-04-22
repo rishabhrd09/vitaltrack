@@ -9,6 +9,37 @@ import * as SecureStore from 'expo-secure-store';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
 const API_VERSION = '/api/v1';
 
+export { API_BASE_URL };
+
+/**
+ * Cheap liveness probe — hits `/health` (not under /api/v1) with a short
+ * timeout. Used before kicking off destructive multi-step operations
+ * (seed, replace-all, start-fresh) so we don't leave the user staring at
+ * a blocking overlay for 2 minutes during a cold start.
+ *
+ * Returns true only if the server responded 2xx within `timeoutMs`.
+ */
+export async function preflightServerCheck(timeoutMs = 5000): Promise<boolean> {
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            // React Native's fetch runtime accepts an AbortSignal, but TS's
+            // lib.dom AbortSignal shape disagrees with RN's — same pattern
+            // used in login.tsx. Runtime works; silence TS with the cast.
+            const response = await fetch(`${API_BASE_URL}/health`, {
+                method: 'GET',
+                signal: controller.signal,
+            } as RequestInit);
+            return response.ok;
+        } finally {
+            clearTimeout(timer);
+        }
+    } catch {
+        return false;
+    }
+}
+
 // Token storage keys
 const ACCESS_TOKEN_KEY = 'vitaltrack_access_token';
 const REFRESH_TOKEN_KEY = 'vitaltrack_refresh_token';

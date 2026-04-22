@@ -43,6 +43,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/hooks/useServerData';
 import BulkOperationOverlay, { type BulkOperationOverlayProps } from '@/components/common/BulkOperationOverlay';
+import { preflightServerCheck } from '@/services/api';
 
 export default function BuildInventoryScreen() {
     const router = useRouter();
@@ -121,12 +122,48 @@ export default function BuildInventoryScreen() {
 
     // ========== DATA MANAGEMENT HANDLERS ==========
 
+    // Preflight-then-run: ping /health before starting any bulk operation.
+    // If the server doesn't respond within 5s we bail early with a clear
+    // alert rather than starting a multi-step op that may get stuck halfway
+    // behind a blocking overlay. Returns true if the op should proceed.
+    const runPreflight = async (contextLabel: string): Promise<boolean> => {
+        setOverlay({ visible: true, title: 'Checking server connection…' });
+        const ok = await preflightServerCheck(5000);
+        if (!ok) {
+            setOverlay(null);
+            Alert.alert(
+                'Server unreachable',
+                `We couldn't reach the server in time to ${contextLabel}. This usually means your internet is down or our server is still waking up. Please wait a minute and try again.`,
+                [{ text: 'OK' }],
+            );
+            return false;
+        }
+        return true;
+    };
+
+    // Escape handler for the bulk-op overlay. The underlying request may
+    // still complete server-side — we just close the blocking UI and
+    // refetch so whatever state the server ends up in is reflected on
+    // next render. Seed/delete logic is idempotent, so retrying is safe.
+    const handleOverlayEscape = () => {
+        setOverlay(null);
+        Alert.alert(
+            'Operation interrupted',
+            'The server is taking too long to respond. Your inventory may be partially updated on the server. Your view will refresh with the latest state — please check before retrying.',
+            [{ text: 'OK' }],
+        );
+        queryClient.refetchQueries({ queryKey: queryKeys.items });
+        queryClient.refetchQueries({ queryKey: queryKeys.categories });
+        queryClient.refetchQueries({ queryKey: queryKeys.activities });
+    };
+
     // Actually run the seed (called after confirmation)
     const runSeed = async () => {
         if (!isOnline) {
             Alert.alert('Offline', 'Connect to WiFi to add default inventory.');
             return;
         }
+        if (!(await runPreflight('add default inventory'))) return;
         setOverlay({ visible: true, title: 'Adding default inventory...' });
         try {
             const result = await seed((phase, current, total, currentName) => {
@@ -197,6 +234,7 @@ export default function BuildInventoryScreen() {
                             Alert.alert('Offline', 'Connect to WiFi to replace inventory.');
                             return;
                         }
+                        if (!(await runPreflight('replace inventory'))) return;
                         setIsReplaceAllRunning(true);
                         try {
                             let backupPath = '';
@@ -386,6 +424,7 @@ export default function BuildInventoryScreen() {
     // on partial/full failure dialogs can re-invoke it without re-prompting
     // through the confirmation dialog.
     const runStartFresh = async () => {
+        if (!(await runPreflight('reset inventory'))) return;
         let backupPath = '';
         setOverlay({ visible: true, title: 'Creating backup...' });
         try {
@@ -1149,7 +1188,7 @@ export default function BuildInventoryScreen() {
             </TouchableOpacity>
 
             {/* Blocking overlay for destructive bulk ops (Start Fresh, Seed, Replace-all) */}
-            {overlay && <BulkOperationOverlay {...overlay} />}
+            {overlay && <BulkOperationOverlay {...overlay} onEscape={handleOverlayEscape} />}
 
             {/* Add Category Modal */}
             <Modal visible={showAddCategoryModal} transparent animationType="fade" onRequestClose={() => setShowAddCategoryModal(false)}>

@@ -3,7 +3,7 @@
  * Shows stats overview, needs attention items, and recent activity
  */
 
-import { useState, useRef, useMemo } from 'react';
+import { useRef, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -39,7 +39,6 @@ export default function DashboardScreen() {
   const { isDarkMode, toggleTheme, colors } = useTheme();
   const { isOnline } = useNetworkStatus();
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showHelpDialog, setShowHelpDialog] = useState(false);
@@ -138,8 +137,6 @@ export default function DashboardScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
       {/* Top Bar */}
       <VitalTrackTopBar
-        searchQuery={searchQuery}
-        onSearchQueryChange={setSearchQuery}
         onExportClick={handleExport}
         onAddItemClick={handleAddItem}
         onProfileClick={() => setShowProfileSheet(true)}
