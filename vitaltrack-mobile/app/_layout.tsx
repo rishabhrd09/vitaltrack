@@ -119,6 +119,13 @@ function RootLayoutContent() {
             animation: 'slide_from_right',
           }}
         />
+        <Stack.Screen
+          name="search"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
       </Stack>
     </View>
   );

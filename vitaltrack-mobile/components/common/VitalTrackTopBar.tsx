@@ -1,28 +1,28 @@
 /**
  * VitalTrack Top Bar
  * Groww-inspired professional top bar with web feature parity
- * 
+ *
  * Layout: [Logo + App Name] [Search Icon] [Export] [Add] [Profile]
+ *
+ * The search icon routes to the full-screen /search experience. The old
+ * inline expand-to-search affordance was removed because no consuming
+ * screen filtered on that query — it was purely cosmetic. /search is a
+ * real in-memory search over items and categories.
  */
 
-import { useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
     TouchableOpacity,
     StyleSheet,
-    TextInput,
-    Animated,
-    Keyboard,
     Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 
 interface VitalTrackTopBarProps {
-    searchQuery: string;
-    onSearchQueryChange: (query: string) => void;
     onExportClick: () => void;
     onAddItemClick: () => void;
     onProfileClick: () => void;
@@ -31,36 +31,16 @@ interface VitalTrackTopBarProps {
 }
 
 export default function VitalTrackTopBar({
-    searchQuery,
-    onSearchQueryChange,
     onExportClick,
     onAddItemClick,
     onProfileClick,
     userName = 'User',
 }: VitalTrackTopBarProps) {
     const { colors, isDarkMode } = useTheme();
-    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-    const searchInputRef = useRef<TextInput>(null);
-    const searchBarHeight = useRef(new Animated.Value(0)).current;
+    const router = useRouter();
 
-    useEffect(() => {
-        Animated.timing(searchBarHeight, {
-            toValue: isSearchExpanded ? 56 : 0,
-            duration: 200,
-            useNativeDriver: false,
-        }).start();
-
-        if (isSearchExpanded) {
-            setTimeout(() => searchInputRef.current?.focus(), 100);
-        }
-    }, [isSearchExpanded, searchBarHeight]);
-
-    const toggleSearch = () => {
-        if (isSearchExpanded) {
-            onSearchQueryChange('');
-            Keyboard.dismiss();
-        }
-        setIsSearchExpanded(!isSearchExpanded);
+    const openSearch = () => {
+        router.push('/search');
     };
 
     const getInitials = (name: string) => {
@@ -102,17 +82,14 @@ export default function VitalTrackTopBar({
 
                 {/* Right Section: Actions */}
                 <View style={styles.rightSection}>
-                    {/* Search Toggle */}
+                    {/* Search — opens full-screen search */}
                     <TouchableOpacity
                         style={styles.iconButton}
-                        onPress={toggleSearch}
+                        onPress={openSearch}
                         activeOpacity={0.7}
+                        accessibilityLabel="Search inventory"
                     >
-                        <Ionicons
-                            name={isSearchExpanded ? 'close' : 'search'}
-                            size={24}
-                            color={colors.textSecondary}
-                        />
+                        <Ionicons name="search" size={24} color={colors.textSecondary} />
                     </TouchableOpacity>
 
                     {/* Export Button */}
@@ -145,27 +122,6 @@ export default function VitalTrackTopBar({
                     </TouchableOpacity>
                 </View>
             </View>
-
-            {/* Expandable Search Bar */}
-            <Animated.View style={[styles.searchBarContainer, { height: searchBarHeight }]}>
-                <View style={[styles.searchBar, { backgroundColor: colors.bgTertiary }]}>
-                    <Ionicons name="search" size={20} color={colors.textTertiary} />
-                    <TextInput
-                        ref={searchInputRef}
-                        style={[styles.searchInput, { color: colors.textPrimary }]}
-                        value={searchQuery}
-                        onChangeText={onSearchQueryChange}
-                        placeholder="Search items..."
-                        placeholderTextColor={colors.textTertiary}
-                        returnKeyType="search"
-                    />
-                    {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => onSearchQueryChange('')}>
-                            <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-            </Animated.View>
         </View>
     );
 }
@@ -241,23 +197,4 @@ const styles = StyleSheet.create({
         fontSize: fontSize.md,
         fontWeight: fontWeight.bold,
     },
-    searchBarContainer: {
-        overflow: 'hidden',
-        paddingHorizontal: spacing.md,
-    },
-    searchBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: borderRadius.md,
-        paddingHorizontal: spacing.md,
-        height: 44,
-        marginBottom: spacing.sm,
-        gap: spacing.sm,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: fontSize.md,
-        padding: 0,
-    },
 });
-
