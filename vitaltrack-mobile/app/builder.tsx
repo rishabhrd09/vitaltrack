@@ -219,99 +219,117 @@ export default function BuildInventoryScreen() {
         }
     };
 
+    // Replace-all execution, extracted so the two-step confirm chain can
+    // invoke it from the final destructive tap without re-nesting logic
+    // inside Alert's onPress.
+    const runReplaceAll = async () => {
+        if (!isOnline) {
+            Alert.alert('Offline', 'Connect to WiFi to replace inventory.');
+            return;
+        }
+        if (!(await runPreflight('replace inventory'))) return;
+        setIsReplaceAllRunning(true);
+        try {
+            let backupPath = '';
+            setOverlay({ visible: true, title: 'Creating backup...' });
+            try {
+                backupPath = await createAutoBackup(categories, items);
+            } catch (err) {
+                setOverlay(null);
+                const msg = err instanceof Error ? err.message : String(err);
+                Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nReplace aborted to protect your data.`);
+                return;
+            }
+            // Wrap delete+seed so the cache is reconciled whether
+            // either step throws. seed()'s own finally also resets,
+            // but if delete throws before seed ever runs, we still
+            // need UI reconciliation against the server's partial state.
+            let deleteFailed = false;
+            try {
+                setOverlay({
+                    visible: true,
+                    title: 'Clearing existing inventory...',
+                    phase: 'Removing items and categories',
+                });
+                try {
+                    await deleteAllInventory();
+                } catch (err) {
+                    setOverlay(null);
+                    deleteFailed = true;
+                    handleMutationError(err, 'Delete Inventory');
+                    return;
+                }
+                setOverlay({ visible: true, title: 'Syncing with server...' });
+                try {
+                    setOverlay({ visible: true, title: 'Adding default inventory...' });
+                    await seed((phase, current, total, currentName) => {
+                        setOverlay({
+                            visible: true,
+                            title: 'Adding default inventory...',
+                            phase: phase === 'categories' ? 'Setting up categories' : 'Adding items',
+                            progress: { current, total },
+                            subtitle: currentName,
+                        });
+                    });
+                    setOverlay(null);
+                    showBackupDoneAlert(
+                        'Done',
+                        'Your previous inventory was backed up and replaced with defaults.',
+                        backupPath,
+                    );
+                } catch (err) {
+                    setOverlay(null);
+                    handleMutationError(err, 'Seed Inventory');
+                }
+            } finally {
+                // If delete threw, seed never ran and its reconcile
+                // never fired — do it here so drifted cache is refreshed.
+                if (deleteFailed) {
+                    try {
+                        await Promise.all([
+                            queryClient.resetQueries({ queryKey: queryKeys.items }),
+                            queryClient.resetQueries({ queryKey: queryKeys.categories }),
+                            queryClient.resetQueries({ queryKey: queryKeys.activities }),
+                        ]);
+                        await Promise.all([
+                            queryClient.refetchQueries({ queryKey: queryKeys.items }),
+                            queryClient.refetchQueries({ queryKey: queryKeys.categories }),
+                        ]);
+                    } catch (reconcileErr) {
+                        console.warn('[ReplaceAll] Cache reconciliation failed:', reconcileErr);
+                    }
+                }
+            }
+        } finally {
+            setIsReplaceAllRunning(false);
+        }
+    };
+
     // Replace-all flow: auto-backup, wipe everything, re-seed defaults.
+    // Two-step confirm — equally destructive as Start Fresh.
     const confirmReplaceAll = () => {
         if (isBulkBusy) return;
         Alert.alert(
-            'Replace all inventory?',
-            'This will:\n\n• Auto-backup your current inventory to a JSON file\n• Delete all your current items and categories\n• Replace them with the 10 default categories and 32 default items\n\nStock quantities and any custom items will be lost. This cannot be undone.',
+            'Replace All Inventory',
+            `This replaces your current inventory (${items.length} items) with the default Home ICU set (32 items across 10 categories).\n\n` +
+            `An automatic backup will be created first.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Continue', onPress: () => showReplaceAllFinalConfirmation() },
+            ]
+        );
+    };
+
+    const showReplaceAllFinalConfirmation = () => {
+        Alert.alert(
+            'Are you sure?',
+            'This removes all your current items and replaces them with the defaults. You can undo only by restoring from the auto-backup.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Backup & Replace',
+                    text: 'Yes, replace all',
                     style: 'destructive',
-                    onPress: async () => {
-                        if (!isOnline) {
-                            Alert.alert('Offline', 'Connect to WiFi to replace inventory.');
-                            return;
-                        }
-                        if (!(await runPreflight('replace inventory'))) return;
-                        setIsReplaceAllRunning(true);
-                        try {
-                            let backupPath = '';
-                            setOverlay({ visible: true, title: 'Creating backup...' });
-                            try {
-                                backupPath = await createAutoBackup(categories, items);
-                            } catch (err) {
-                                setOverlay(null);
-                                const msg = err instanceof Error ? err.message : String(err);
-                                Alert.alert('Backup Failed', `Could not create auto-backup: ${msg}\n\nReplace aborted to protect your data.`);
-                                return;
-                            }
-                            // Wrap delete+seed so the cache is reconciled whether
-                            // either step throws. seed()'s own finally also resets,
-                            // but if delete throws before seed ever runs, we still
-                            // need UI reconciliation against the server's partial state.
-                            let deleteFailed = false;
-                            try {
-                                setOverlay({
-                                    visible: true,
-                                    title: 'Clearing existing inventory...',
-                                    phase: 'Removing items and categories',
-                                });
-                                try {
-                                    await deleteAllInventory();
-                                } catch (err) {
-                                    setOverlay(null);
-                                    deleteFailed = true;
-                                    handleMutationError(err, 'Delete Inventory');
-                                    return;
-                                }
-                                setOverlay({ visible: true, title: 'Syncing with server...' });
-                                try {
-                                    setOverlay({ visible: true, title: 'Adding default inventory...' });
-                                    await seed((phase, current, total, currentName) => {
-                                        setOverlay({
-                                            visible: true,
-                                            title: 'Adding default inventory...',
-                                            phase: phase === 'categories' ? 'Setting up categories' : 'Adding items',
-                                            progress: { current, total },
-                                            subtitle: currentName,
-                                        });
-                                    });
-                                    setOverlay(null);
-                                    showBackupDoneAlert(
-                                        'Done',
-                                        'Your previous inventory was backed up and replaced with defaults.',
-                                        backupPath,
-                                    );
-                                } catch (err) {
-                                    setOverlay(null);
-                                    handleMutationError(err, 'Seed Inventory');
-                                }
-                            } finally {
-                                // If delete threw, seed never ran and its reconcile
-                                // never fired — do it here so drifted cache is refreshed.
-                                if (deleteFailed) {
-                                    try {
-                                        await Promise.all([
-                                            queryClient.resetQueries({ queryKey: queryKeys.items }),
-                                            queryClient.resetQueries({ queryKey: queryKeys.categories }),
-                                            queryClient.resetQueries({ queryKey: queryKeys.activities }),
-                                        ]);
-                                        await Promise.all([
-                                            queryClient.refetchQueries({ queryKey: queryKeys.items }),
-                                            queryClient.refetchQueries({ queryKey: queryKeys.categories }),
-                                        ]);
-                                    } catch (reconcileErr) {
-                                        console.warn('[ReplaceAll] Cache reconciliation failed:', reconcileErr);
-                                    }
-                                }
-                            }
-                        } finally {
-                            setIsReplaceAllRunning(false);
-                        }
-                    },
+                    onPress: runReplaceAll,
                 },
             ]
         );
