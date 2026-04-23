@@ -123,6 +123,29 @@ export default function DashboardScreen() {
     scrollRef.current?.scrollTo({ y: 300, animated: true });
   };
 
+  // Per-section scroll for the Low Stock card. The old shared handler
+  // landed on y: 300, which sits on the Out of Stock sub-card; tapping
+  // the Low Stock overview card looked like it did nothing because the
+  // user was already seeing Out of Stock. Now NeedsAttention reports
+  // the Low Stock card's y-within-its-parent via onLowStockLayout, and
+  // a wrapper around NeedsAttention reports NeedsAttention's own y in
+  // the scroll content. Summing the two gives a scroll offset that
+  // lands on the Low Stock card. Falls back to the old y: 300 if the
+  // layout callbacks haven't fired yet (first render before layout).
+  const lowStockYRef = useRef<number | null>(null);
+  const needsAttentionYRef = useRef<number | null>(null);
+
+  const scrollToLowStock = () => {
+    if (lowStockYRef.current != null && needsAttentionYRef.current != null) {
+      scrollRef.current?.scrollTo({
+        y: needsAttentionYRef.current + lowStockYRef.current,
+        animated: true,
+      });
+    } else {
+      scrollRef.current?.scrollTo({ y: 300, animated: true });
+    }
+  };
+
   const handleExport = () => {
     setShowExportModal(true);
   };
@@ -215,7 +238,7 @@ export default function DashboardScreen() {
               icon="warning-outline"
               iconColor={colors.statusOrange}
               iconBgColor={colors.statusOrangeBg}
-              onPress={scrollToNeedsAttention}
+              onPress={scrollToLowStock}
             />
             <StatsCard
               title="Pending Orders"
@@ -228,19 +251,30 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Needs Attention Section */}
-        <NeedsAttention
-          outOfStockItems={outOfStockItems}
-          lowStockItems={lowStockItems}
-          onOrderNow={() => router.push('/order/create')}
-          onEditItem={(itemId) => router.push(`/item/${itemId}`)}
-          onViewAll={() => router.push('/inventory')}
-          onEmergencyOrder={() => {
-            // In a real app, we might pass specific critical items to order
-            // For now, we direct to Create Order where user can select them
-            router.push('/order/create');
+        {/* Needs Attention Section — wrapped so we can measure its y in the
+            scroll content and combine it with the Low Stock card's
+            within-parent y for accurate section-level scrolling. */}
+        <View
+          onLayout={(e) => {
+            needsAttentionYRef.current = e.nativeEvent.layout.y;
           }}
-        />
+        >
+          <NeedsAttention
+            outOfStockItems={outOfStockItems}
+            lowStockItems={lowStockItems}
+            onOrderNow={() => router.push('/order/create')}
+            onEditItem={(itemId) => router.push(`/item/${itemId}`)}
+            onViewAll={() => router.push('/inventory')}
+            onEmergencyOrder={() => {
+              // In a real app, we might pass specific critical items to order
+              // For now, we direct to Create Order where user can select them
+              router.push('/order/create');
+            }}
+            onLowStockLayout={(y) => {
+              lowStockYRef.current = y;
+            }}
+          />
+        </View>
 
         {/* Recent Activity */}
         <View style={styles.section}>
