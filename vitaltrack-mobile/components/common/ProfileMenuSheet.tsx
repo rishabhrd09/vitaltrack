@@ -3,7 +3,7 @@
  * Displays user info, theme toggle, and menu options
  */
 
-import { useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Switch, Modal, Pressable, PanResponder, Animated, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,6 +45,26 @@ export default function ProfileMenuSheet({
 
     const translateY = useRef(new Animated.Value(0)).current;
 
+    // The sheet has three dismissal paths: swipe gesture completion,
+    // backdrop Pressable onPress, and Modal's onRequestClose (Android
+    // back). They can race — swipe-end can fire onDismiss at the same
+    // frame as a stray backdrop touch — which caused the "close, flash
+    // back open, close" flicker in prior builds. Gate every dismiss
+    // through a ref so the second call is a no-op.
+    const isDismissingRef = useRef(false);
+    const handleDismiss = useCallback(() => {
+        if (isDismissingRef.current) return;
+        isDismissingRef.current = true;
+        onDismiss();
+    }, [onDismiss]);
+
+    // Reset the guard whenever the sheet is freshly opened, so the next
+    // close path can proceed. Paired with the visible prop so we don't
+    // leak state across mount cycles.
+    useEffect(() => {
+        if (visible) isDismissingRef.current = false;
+    }, [visible]);
+
     const panResponder = useRef(
         PanResponder.create({
             // Only claim the gesture when there's a clear downward movement,
@@ -64,8 +84,14 @@ export default function ProfileMenuSheet({
                         duration: 200,
                         useNativeDriver: true,
                     }).start(() => {
-                        translateY.setValue(0);
-                        onDismiss();
+                        // Dismiss first so the parent unmounts the Modal on
+                        // the next render. Only reset the translate after a
+                        // short delay — calling setValue(0) while the Modal
+                        // is still visible snaps the sheet back to its
+                        // resting position for one frame, which is the
+                        // visible flash-back users reported.
+                        handleDismiss();
+                        setTimeout(() => translateY.setValue(0), 50);
                     });
                 } else {
                     Animated.spring(translateY, {
@@ -94,9 +120,9 @@ export default function ProfileMenuSheet({
             visible={visible}
             transparent
             animationType="slide"
-            onRequestClose={onDismiss}
+            onRequestClose={handleDismiss}
         >
-            <Pressable style={[styles.overlay, { backgroundColor: colors.overlayDark }]} onPress={onDismiss}>
+            <Pressable style={[styles.overlay, { backgroundColor: colors.overlayDark }]} onPress={handleDismiss}>
                 <Animated.View
                     {...panResponder.panHandlers}
                     style={[
@@ -171,7 +197,7 @@ export default function ProfileMenuSheet({
                         subtitle="View and manage your account"
                         onPress={() => {
                             onEditProfile?.();
-                            onDismiss();
+                            handleDismiss();
                         }}
                     />
 
@@ -181,7 +207,7 @@ export default function ProfileMenuSheet({
                         subtitle="App preferences and configuration"
                         onPress={() => {
                             onSettings?.();
-                            onDismiss();
+                            handleDismiss();
                         }}
                     />
 
@@ -191,7 +217,7 @@ export default function ProfileMenuSheet({
                         subtitle="Home ICU Inventory Management · v2.0.0"
                         onPress={() => {
                             onAbout?.();
-                            onDismiss();
+                            handleDismiss();
                         }}
                     />
 
@@ -201,7 +227,7 @@ export default function ProfileMenuSheet({
                         subtitle="Get help and contact support"
                         onPress={() => {
                             onHelp?.();
-                            onDismiss();
+                            handleDismiss();
                         }}
                     />
 
@@ -212,7 +238,7 @@ export default function ProfileMenuSheet({
                         style={[styles.logoutButton, { borderColor: colors.statusRed }]}
                         onPress={() => {
                             onLogout?.();
-                            onDismiss();
+                            handleDismiss();
                         }}
                         activeOpacity={0.7}
                     >
