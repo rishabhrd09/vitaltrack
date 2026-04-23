@@ -39,6 +39,7 @@ import {
     deleteAllInventory,
     isProtectedCategory,
     getSuggestedItemsForCategory,
+    isEssentialItem,
 } from '@/hooks/useSeedInventory';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/hooks/useServerData';
@@ -522,13 +523,31 @@ export default function BuildInventoryScreen() {
             Alert.alert('Nothing to reset', 'Your inventory is already empty.');
             return;
         }
+        // Two-step confirm. Start Fresh is destructive — reflexive single-tap
+        // confirmation isn't enough. First Alert previews the consequence;
+        // second demands an explicit destructive tap.
+        const keptCount = items.filter(isEssentialItem).length;
+        const removedCount = items.length - keptCount;
         Alert.alert(
-            'Start Fresh — Are you sure?',
-            'This will:\n\n• Auto-backup your current inventory to a JSON file\n• Delete all non-essential items from the server\n• Keep life-support equipment (ventilator, oxygen, suction, nebulizer, ambu bag, BiPAP)\n\nThis action cannot be undone.',
+            'Start Fresh',
+            `This will remove ${removedCount} non-essential items from your inventory.\n\n` +
+            `${keptCount} life-support items will be kept (ventilator, oxygen, suction, nebulizer, ambu bag, BiPAP).\n\n` +
+            `An automatic backup will be created first, so you can restore if needed.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Continue', onPress: () => showStartFreshFinalConfirmation(removedCount) },
+            ]
+        );
+    };
+
+    const showStartFreshFinalConfirmation = (removedCount: number) => {
+        Alert.alert(
+            'Are you sure?',
+            `This removes ${removedCount} items permanently from the server. You can undo only by restoring from the auto-backup.`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Backup & Start Fresh',
+                    text: 'Yes, start fresh',
                     style: 'destructive',
                     onPress: runStartFresh,
                 },
