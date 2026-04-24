@@ -190,14 +190,24 @@ export default function ProfileMenuSheet({
                         />
                     </TouchableOpacity>
 
-                    {/* Menu Items */}
+                    {/* Menu Items
+                        NOTE: these onPress closures call onDismiss() directly
+                        (not handleDismiss). handleDismiss is the idempotent
+                        wrapper used on the three race-prone dismissal paths
+                        (Modal onRequestClose, backdrop Pressable, swipe-end);
+                        routing it through a single dismisser ref protects
+                        against those specific double-fire races. Menu taps
+                        are serial user intents with no race, so they use the
+                        original prop directly — keeping this path byte-identical
+                        to pre-branch minimises risk of a regression in the
+                        tap-navigate flow. */}
                     <MenuItem
                         icon="person-outline"
                         title="Edit Profile"
                         subtitle="View and manage your account"
                         onPress={() => {
                             onEditProfile?.();
-                            handleDismiss();
+                            onDismiss();
                         }}
                     />
 
@@ -207,7 +217,7 @@ export default function ProfileMenuSheet({
                         subtitle="App preferences and configuration"
                         onPress={() => {
                             onSettings?.();
-                            handleDismiss();
+                            onDismiss();
                         }}
                     />
 
@@ -217,7 +227,7 @@ export default function ProfileMenuSheet({
                         subtitle="Home ICU Inventory Management · v2.0.0"
                         onPress={() => {
                             onAbout?.();
-                            handleDismiss();
+                            onDismiss();
                         }}
                     />
 
@@ -227,18 +237,18 @@ export default function ProfileMenuSheet({
                         subtitle="Get help and contact support"
                         onPress={() => {
                             onHelp?.();
-                            handleDismiss();
+                            onDismiss();
                         }}
                     />
 
                     <View style={[styles.divider, { backgroundColor: colors.borderPrimary }]} />
 
-                    {/* Logout Button */}
+                    {/* Logout Button — same rationale as menu items above. */}
                     <TouchableOpacity
                         style={[styles.logoutButton, { borderColor: colors.statusRed }]}
                         onPress={() => {
                             onLogout?.();
-                            handleDismiss();
+                            onDismiss();
                         }}
                         activeOpacity={0.7}
                     >
