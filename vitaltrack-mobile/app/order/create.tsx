@@ -32,6 +32,7 @@ import { useItems } from '@/hooks/useServerData';
 import { useCreateOrder } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { handleMutationError } from '@/utils/serverErrors';
+import { safeBack } from '@/utils/navigation';
 
 interface CartItem {
   item: Item;
@@ -277,7 +278,7 @@ export default function CreateOrderScreen() {
 
       // STEP 3: Show success
       Alert.alert("Order Created", `Order ${serverOrderId} saved and exported.`, [
-        { text: "OK", onPress: () => router.back() }
+        { text: "OK", onPress: () => safeBack() }
       ]);
     } catch (error) {
       handleMutationError(error, 'Create Order');
@@ -568,7 +569,7 @@ export default function CreateOrderScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
       {/* HEADER */}
       <View style={[styles.header, { backgroundColor: colors.bgSecondary, borderBottomColor: colors.borderPrimary }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+        <TouchableOpacity onPress={() => safeBack()} style={styles.iconBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -641,7 +642,7 @@ export default function CreateOrderScreen() {
 
       {/* FOOTER */}
       <View style={[styles.footer, { backgroundColor: colors.bgCard, borderTopColor: colors.borderPrimary }]}>
-        <TouchableOpacity style={styles.cancelLink} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.cancelLink} onPress={() => safeBack()}>
           <Text style={{ color: colors.textSecondary, fontSize: fontSize.md }}>Cancel</Text>
         </TouchableOpacity>
 

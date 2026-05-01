@@ -31,6 +31,7 @@ import { useCreateItem, useUpdateItem, useDeleteItem } from '@/hooks/useServerMu
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useDelayedPending } from '@/hooks/useDelayedPending';
 import { handleMutationError } from '@/utils/serverErrors';
+import { safeBack } from '@/utils/navigation';
 
 export default function ItemFormScreen() {
   const router = useRouter();
@@ -137,18 +138,18 @@ export default function ItemFormScreen() {
         if (hiddenItem) {
           await updateItemMutation.mutateAsync({ id: hiddenItem.id, ...itemData, isActive: true, version: hiddenItem.version });
           Alert.alert('Success', 'Item restored and updated successfully', [
-            { text: 'OK', onPress: () => router.back() },
+            { text: 'OK', onPress: () => safeBack() },
           ]);
         } else {
           await createItemMutation.mutateAsync(itemData);
           Alert.alert('Success', 'Item created successfully', [
-            { text: 'OK', onPress: () => router.back() },
+            { text: 'OK', onPress: () => safeBack() },
           ]);
         }
       } else {
         await updateItemMutation.mutateAsync({ id, ...itemData, version: existingItem?.version ?? 1 });
         Alert.alert('Success', 'Item updated successfully', [
-          { text: 'OK', onPress: () => router.back() },
+          { text: 'OK', onPress: () => safeBack() },
         ]);
       }
     } catch (error) {
@@ -169,7 +170,7 @@ export default function ItemFormScreen() {
           onPress: async () => {
             try {
               await deleteItemMutation.mutateAsync(id);
-              router.back();
+              safeBack();
             } catch (error) {
               handleMutationError(error, 'Delete Item');
             }
@@ -185,7 +186,7 @@ export default function ItemFormScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.borderPrimary }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => safeBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>{isNew ? 'Add Item' : 'Edit Item'}</Text>

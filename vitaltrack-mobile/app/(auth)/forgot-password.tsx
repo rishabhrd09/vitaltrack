@@ -19,6 +19,7 @@ import { Link, router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { safeBack } from '@/utils/navigation';
 
 export default function ForgotPasswordScreen() {
     const theme = useTheme();
@@ -82,7 +83,7 @@ export default function ForgotPasswordScreen() {
                 {/* Back Button */}
                 <TouchableOpacity
                     style={styles.backButton}
-                    onPress={() => router.back()}
+                    onPress={() => safeBack()}
                 >
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>

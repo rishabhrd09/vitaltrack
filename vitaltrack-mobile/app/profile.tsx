@@ -20,6 +20,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { authService } from '@/services/auth';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
+import { safeBack } from '@/utils/navigation';
 
 const DELETION_POLL_INTERVAL_MS = 5000;
 const DELETION_POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
@@ -142,7 +143,7 @@ export default function ProfileScreen() {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
             {/* Header */}
             <View style={[styles.header, { borderBottomColor: colors.borderPrimary }]}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+                <TouchableOpacity onPress={() => safeBack()} style={styles.backButton} activeOpacity={0.7}>
                     <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Profile</Text>

@@ -26,6 +26,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import { useItems, useCategories } from '@/hooks/useServerData';
 import { isOutOfStock, isLowStock, type Item, type Category } from '@/types';
+import { safeBack } from '@/utils/navigation';
 
 type ResultEntry =
     | { type: 'section-header'; key: string; label: string }
@@ -101,13 +102,13 @@ export default function SearchScreen() {
         // accept a category query param — we drop to the builder and rely on
         // its default selection. Future enhancement: deep-link param.
         Keyboard.dismiss();
-        router.back();
+        safeBack();
         router.push('/builder');
     };
 
     const handleItemPress = (item: Item) => {
         Keyboard.dismiss();
-        router.back();
+        safeBack();
         router.push(`/item/${item.id}`);
     };
 
@@ -192,7 +193,7 @@ export default function SearchScreen() {
                 ]}
             >
                 <TouchableOpacity
-                    onPress={() => router.back()}
+                    onPress={() => safeBack()}
                     hitSlop={10}
                     style={styles.backButton}
                     accessibilityLabel="Back"
