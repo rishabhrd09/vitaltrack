@@ -20,6 +20,11 @@ interface NeedsAttentionProps {
   onEditItem: (itemId: string) => void;
   onEmergencyOrder?: () => void;
   onViewAll?: () => void;
+  // Reports the Low Stock card's y-coordinate relative to its immediate
+  // parent so the dashboard can scroll directly to it. The dashboard
+  // combines this with the NeedsAttention wrapper's y to build a
+  // ScrollView-relative offset.
+  onLowStockLayout?: (y: number) => void;
 }
 
 export default function NeedsAttention({
@@ -29,6 +34,7 @@ export default function NeedsAttention({
   onEditItem,
   onEmergencyOrder,
   onViewAll,
+  onLowStockLayout,
 }: NeedsAttentionProps) {
   const { colors } = useTheme();
   const [isExpanded, setIsExpanded] = useState(true);
@@ -187,7 +193,10 @@ export default function NeedsAttention({
 
           {/* LOW STOCK CARD */}
           {lowStockItems.length > 0 && (
-            <View style={[styles.card, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary }]}>
+            <View
+              style={[styles.card, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary }]}
+              onLayout={(e) => onLowStockLayout?.(e.nativeEvent.layout.y)}
+            >
               <View style={styles.cardHeader}>
                 <View style={styles.cardHeaderLeft}>
                   <View style={[styles.cardIcon, { backgroundColor: colors.statusOrangeBg }]}>
