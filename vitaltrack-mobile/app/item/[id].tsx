@@ -31,7 +31,6 @@ import { useCreateItem, useUpdateItem, useDeleteItem } from '@/hooks/useServerMu
 import { usePendingItemIds } from '@/hooks/usePendingItems';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { useDelayedPending } from '@/hooks/useDelayedPending';
 import { handleMutationError } from '@/utils/serverErrors';
 import { safeBack } from '@/utils/navigation';
 import { toast } from '@/utils/toast';
@@ -48,9 +47,14 @@ export default function ItemFormScreen() {
   const createItemMutation = useCreateItem();
   const updateItemMutation = useUpdateItem();
   const deleteItemMutation = useDeleteItem();
-  const showSavePending = useDelayedPending(
-    createItemMutation.isPending || updateItemMutation.isPending
-  );
+  // Spinner appears the instant the user taps Save — the previous default
+  // 500 ms useDelayedPending window left the button looking like a flat
+  // blue rectangle for the first half-second on a cold-start save (visible
+  // in the May 1 cold_2 recording at t≈19). Immediate feedback is the
+  // right call here because the user just took a deliberate action; flicker
+  // on warm-server saves is preferable to "did anything happen?" silence.
+  const isSavePending =
+    createItemMutation.isPending || updateItemMutation.isPending;
 
   // Detect a previous save for THIS item that is still in flight from
   // another screen instance — happens when the user taps Save, navigates
@@ -225,7 +229,7 @@ export default function ItemFormScreen() {
             hasPendingSaveForThisItem
           }
         >
-          {showSavePending ? (
+          {isSavePending ? (
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <Text style={[styles.saveButtonText, { color: colors.white }]}>Save</Text>
