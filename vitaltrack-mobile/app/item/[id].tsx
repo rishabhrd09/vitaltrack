@@ -29,6 +29,7 @@ import type { Item } from '@/types';
 import { useItems, useCategories } from '@/hooks/useServerData';
 import { useCreateItem, useUpdateItem, useDeleteItem } from '@/hooks/useServerMutations';
 import { usePendingItemIds } from '@/hooks/usePendingItems';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useDelayedPending } from '@/hooks/useDelayedPending';
 import { handleMutationError } from '@/utils/serverErrors';
@@ -59,6 +60,12 @@ export default function ItemFormScreen() {
   const pendingItemIds = usePendingItemIds();
   const hasPendingSaveForThisItem =
     !isNew && typeof id === 'string' && pendingItemIds.has(id);
+
+  // True while session init detected a slow backend (Render free-tier
+  // cold start). Surfaced as a pre-flight expectation-setting banner so
+  // the user knows the next save may sit pending for ~30-60s before the
+  // server confirms — instead of the form looking frozen with no context.
+  const isBackendColdStarting = useAuthStore((s) => s.isBackendColdStarting);
 
   const existingItem = !isNew ? items.find(i => i.id === id) : undefined;
 
@@ -240,6 +247,14 @@ export default function ItemFormScreen() {
               <Ionicons name="time-outline" size={18} color={colors.statusOrange} />
               <Text style={[styles.concurrentBannerText, { color: colors.statusOrange }]}>
                 A previous save for this item is still in progress. Please wait for it to finish before editing again.
+              </Text>
+            </View>
+          )}
+          {isBackendColdStarting && !hasPendingSaveForThisItem && (
+            <View style={[styles.concurrentBanner, { backgroundColor: colors.statusYellowBg, borderColor: colors.statusOrangeBorder }]}>
+              <Ionicons name="cloudy-outline" size={18} color={colors.statusOrange} />
+              <Text style={[styles.concurrentBannerText, { color: colors.statusOrange }]}>
+                Server is waking up — your save may take 30–60 seconds. You can continue using the app while it finishes.
               </Text>
             </View>
           )}
