@@ -32,6 +32,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useDelayedPending } from '@/hooks/useDelayedPending';
 import { handleMutationError } from '@/utils/serverErrors';
 import { safeBack } from '@/utils/navigation';
+import { toast } from '@/utils/toast';
 
 export default function ItemFormScreen() {
   const router = useRouter();
@@ -137,21 +138,18 @@ export default function ItemFormScreen() {
 
         if (hiddenItem) {
           await updateItemMutation.mutateAsync({ id: hiddenItem.id, ...itemData, isActive: true, version: hiddenItem.version });
-          Alert.alert('Success', 'Item restored and updated successfully', [
-            { text: 'OK', onPress: () => safeBack() },
-          ]);
+          toast.success(`${sanitizedName} restored`);
         } else {
           await createItemMutation.mutateAsync(itemData);
-          Alert.alert('Success', 'Item created successfully', [
-            { text: 'OK', onPress: () => safeBack() },
-          ]);
+          toast.success(`${sanitizedName} added`);
         }
       } else {
         await updateItemMutation.mutateAsync({ id, ...itemData, version: existingItem?.version ?? 1 });
-        Alert.alert('Success', 'Item updated successfully', [
-          { text: 'OK', onPress: () => safeBack() },
-        ]);
+        toast.success(`${sanitizedName} updated`);
       }
+      // Success path: bounce back if we're still on the form, no-op otherwise
+      // (user may have navigated away during a slow background save).
+      safeBack();
     } catch (error) {
       handleMutationError(error, isNew ? 'Create Item' : 'Update Item');
     }

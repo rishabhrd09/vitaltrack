@@ -33,6 +33,7 @@ import { useCreateOrder } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { handleMutationError } from '@/utils/serverErrors';
 import { safeBack } from '@/utils/navigation';
+import { toast } from '@/utils/toast';
 
 interface CartItem {
   item: Item;
@@ -276,10 +277,11 @@ export default function CreateOrderScreen() {
       // STEP 2: Generate PDF with the REAL server order ID
       await generateTablePDF(includePhotos, serverOrderId);
 
-      // STEP 3: Show success
-      Alert.alert("Order Created", `Order ${serverOrderId} saved and exported.`, [
-        { text: "OK", onPress: () => safeBack() }
-      ]);
+      // STEP 3: Show success — toast (non-blocking) and bounce back. If
+      // the user navigated away during the slow background save, safeBack
+      // is a no-op and the toast still appears wherever they ended up.
+      toast.success(`Order ${serverOrderId} created`, 'PDF exported');
+      safeBack();
     } catch (error) {
       handleMutationError(error, 'Create Order');
     } finally {
