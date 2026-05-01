@@ -28,6 +28,7 @@ import { sanitizeName, sanitizeString, sanitizeUrl, sanitizeContact, sanitizeNum
 import type { Item } from '@/types';
 import { useItems, useCategories } from '@/hooks/useServerData';
 import { useCreateItem, useUpdateItem, useDeleteItem } from '@/hooks/useServerMutations';
+import { usePendingItemIds } from '@/hooks/usePendingItems';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useDelayedPending } from '@/hooks/useDelayedPending';
 import { handleMutationError } from '@/utils/serverErrors';
@@ -49,6 +50,15 @@ export default function ItemFormScreen() {
   const showSavePending = useDelayedPending(
     createItemMutation.isPending || updateItemMutation.isPending
   );
+
+  // Detect a previous save for THIS item that is still in flight from
+  // another screen instance — happens when the user taps Save, navigates
+  // back during a slow cold-start save, then re-opens the same item.
+  // Without this guard the second save would carry the original `version`
+  // and the server would 409 once the first save lands.
+  const pendingItemIds = usePendingItemIds();
+  const hasPendingSaveForThisItem =
+    !isNew && typeof id === 'string' && pendingItemIds.has(id);
 
   const existingItem = !isNew ? items.find(i => i.id === id) : undefined;
 
@@ -96,6 +106,13 @@ export default function ItemFormScreen() {
   };
 
   const handleSave = async () => {
+    if (hasPendingSaveForThisItem) {
+      // Belt-and-suspenders — the Save button is also disabled in this
+      // state. Surfacing as a toast (not Alert) keeps the screen flow
+      // consistent with the rest of the app's mutation feedback.
+      toast.info('Still saving previous changes', 'Please wait a moment');
+      return;
+    }
     if (!name.trim()) {
       Alert.alert('Error', 'Item name is required');
       return;
@@ -190,8 +207,16 @@ export default function ItemFormScreen() {
         <Text style={[styles.title, { color: colors.textPrimary }]}>{isNew ? 'Add Item' : 'Edit Item'}</Text>
         <TouchableOpacity
           onPress={handleSave}
-          style={[styles.saveButton, { backgroundColor: colors.accentBlue }]}
-          disabled={createItemMutation.isPending || updateItemMutation.isPending}
+          style={[
+            styles.saveButton,
+            { backgroundColor: colors.accentBlue },
+            hasPendingSaveForThisItem && styles.saveButtonDisabled,
+          ]}
+          disabled={
+            createItemMutation.isPending ||
+            updateItemMutation.isPending ||
+            hasPendingSaveForThisItem
+          }
         >
           {showSavePending ? (
             <ActivityIndicator size="small" color={colors.white} />
@@ -210,6 +235,14 @@ export default function ItemFormScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
+          {hasPendingSaveForThisItem && (
+            <View style={[styles.concurrentBanner, { backgroundColor: colors.statusYellowBg, borderColor: colors.statusOrangeBorder }]}>
+              <Ionicons name="time-outline" size={18} color={colors.statusOrange} />
+              <Text style={[styles.concurrentBannerText, { color: colors.statusOrange }]}>
+                A previous save for this item is still in progress. Please wait for it to finish before editing again.
+              </Text>
+            </View>
+          )}
           {/* Image Upload */}
           <TouchableOpacity
             style={[styles.imageContainer, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary }]}
@@ -522,9 +555,27 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
   },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
   saveButtonText: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.medium,
+  },
+  concurrentBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    marginBottom: spacing.lg,
+  },
+  concurrentBannerText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    lineHeight: 18,
   },
   scrollView: { flex: 1 },
   content: {
