@@ -38,17 +38,27 @@ const ENABLE_CACHE_PERSISTENCE = true;
 const CACHE_STORAGE_KEY = 'carekosh-query-cache';
 
 const queryClient = new QueryClient({
-  // Global safety net for mutation errors the caller didn't handle. Toast
-  // (non-blocking) instead of Alert so it doesn't interrupt whichever screen
-  // the user has navigated to during a slow background save. Per-mutation
-  // retry is wired at the call site (see commit "per-item retry" — global
-  // retry isn't reliable here because re-firing a Mutation outside its React
-  // hook bypasses the state machine).
+  // Global safety net for mutation errors the caller didn't handle.
+  // Non-blocking toast (instead of Alert) so it doesn't interrupt whichever
+  // screen the user navigated to during a slow background save. Tapping
+  // the toast re-runs the same mutation through TanStack Query's state
+  // machine via Mutation.execute(variables), so per-item "Updating…"
+  // indicators light up again on retry.
   mutationCache: new MutationCache({
-    onError: (error, _variables, _context, mutation) => {
+    onError: (error, variables, _context, mutation) => {
       if (mutation.options.onError) return;
       const msg = error instanceof Error ? error.message : String(error);
-      toast.error("Couldn't save", { description: msg });
+      toast.error("Couldn't save", {
+        description: `${msg} — Tap to retry`,
+        onRetry: () => {
+          // execute() re-runs the mutationFn through the existing Mutation
+          // instance, so onSuccess / invalidateQueries fire normally. Cast
+          // is needed because MutationCache.onError types variables as
+          // unknown; the runtime contract is that they're the same object
+          // the caller originally passed to mutate().
+          void mutation.execute(variables as never);
+        },
+      });
     },
   }),
   defaultOptions: {
