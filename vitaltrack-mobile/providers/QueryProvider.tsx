@@ -1,10 +1,11 @@
 import React from 'react';
-import { Alert, AppState } from 'react-native';
+import { AppState } from 'react-native';
 import { MutationCache, QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { toast } from '@/utils/toast';
 
 /**
  * Safety notes — why this is different from the old Zustand persist that caused data corruption:
@@ -37,13 +38,17 @@ const ENABLE_CACHE_PERSISTENCE = true;
 const CACHE_STORAGE_KEY = 'carekosh-query-cache';
 
 const queryClient = new QueryClient({
-  // Surface mutation errors that the caller didn't already handle, so a failed
-  // optimistic update doesn't silently roll back without user feedback.
+  // Global safety net for mutation errors the caller didn't handle. Toast
+  // (non-blocking) instead of Alert so it doesn't interrupt whichever screen
+  // the user has navigated to during a slow background save. Per-mutation
+  // retry is wired at the call site (see commit "per-item retry" — global
+  // retry isn't reliable here because re-firing a Mutation outside its React
+  // hook bypasses the state machine).
   mutationCache: new MutationCache({
     onError: (error, _variables, _context, mutation) => {
       if (mutation.options.onError) return;
       const msg = error instanceof Error ? error.message : String(error);
-      Alert.alert('Could not save', msg);
+      toast.error("Couldn't save", { description: msg });
     },
   }),
   defaultOptions: {
