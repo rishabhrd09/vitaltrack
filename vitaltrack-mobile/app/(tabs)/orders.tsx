@@ -11,7 +11,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import OrderCard from '@/components/orders/OrderCard';
 import { SkeletonLoader } from '@/components/common/SkeletonLoader';
-import ConnectionStatusPill from '@/components/common/ConnectionStatusPill';
+import StatusPill from '@/components/common/StatusPill';
 import { useOrders } from '@/hooks/useServerData';
 import { useUpdateOrderStatus, useApplyOrderToStock, useDeleteOrder } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -90,7 +90,7 @@ export default function OrdersScreen() {
         </View>
       </View>
 
-      <ConnectionStatusPill />
+      <StatusPill />
 
       {/* Content */}
       {isLoading ? (

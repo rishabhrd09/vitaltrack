@@ -21,7 +21,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
-import SavingStatusPill from './SavingStatusPill';
 
 interface VitalTrackTopBarProps {
     onExportClick: () => void;
@@ -124,12 +123,10 @@ export default function VitalTrackTopBar({
                 </View>
             </View>
 
-            {/* Ambient saving indicator — renders nothing on fast writes, shows
-                "Saving…" after 3s, upgrades to "server warming up" after 8s.
-                Sits inside the top-bar container so it rides along on every
-                screen that uses VitalTrackTopBar. Returns null when idle, so
-                zero layout impact. */}
-            <SavingStatusPill />
+            {/* The ambient saving / connecting indicator now lives in the
+                consolidated StatusPill mounted by each tab screen — see
+                components/common/StatusPill.tsx. Removed from the top bar
+                so the dashboard doesn't end up with two stacked pills. */}
         </View>
     );
 }

@@ -23,7 +23,7 @@ import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import CategoryHeader from '@/components/inventory/CategoryHeader';
 import ItemRow from '@/components/inventory/ItemRow';
 import { SkeletonLoader } from '@/components/common/SkeletonLoader';
-import ConnectionStatusPill from '@/components/common/ConnectionStatusPill';
+import StatusPill from '@/components/common/StatusPill';
 import { useItems, useCategories } from '@/hooks/useServerData';
 import { usePendingItemIds } from '@/hooks/usePendingItems';
 
@@ -142,7 +142,7 @@ export default function InventoryScreen() {
         </View>
       </View>
 
-      <ConnectionStatusPill />
+      <StatusPill />
 
       {/* Search Results Banner */}
       {localSearch.trim() && (
