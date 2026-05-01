@@ -13,6 +13,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
+import Toast from 'react-native-toast-message';
 
 // In non-dev builds (EAS preview/production APKs) the LogBox dev overlay
 // shouldn't surface warnings to end users — the UI already handles errors
@@ -137,6 +138,10 @@ export default function RootLayout() {
       <ThemeProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <RootLayoutContent />
+          {/* Toast host — sibling of the route Stack so toasts render over
+              any screen, including modal-presentation routes. Mounted once
+              at root; individual screens call utils/toast.ts to show. */}
+          <Toast />
         </GestureHandlerRootView>
       </ThemeProvider>
     </QueryProvider>
