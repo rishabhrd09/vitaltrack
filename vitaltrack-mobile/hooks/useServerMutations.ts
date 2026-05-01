@@ -9,10 +9,15 @@ import type { CreateCategoryRequest, UpdateCategoryRequest } from '@/services/ca
 import type { CreateOrderRequest } from '@/services/orders';
 
 // ─── Items ───
+// Tagged mutationKeys let usePendingItemIds identify in-flight item writes
+// by inspecting the MutationCache. Variables for update/stock/delete/toggle
+// always carry the item id, so a hook can map a mutation back to the row
+// it affects without wrapping the mutation per-id.
 
 export function useCreateItem() {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: ['item-create'],
     mutationFn: (data: CreateItemRequest): Promise<Item> => itemService.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.items });
@@ -24,6 +29,7 @@ export function useCreateItem() {
 export function useUpdateItem() {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: ['item-update'],
     mutationFn: ({ id, ...data }: UpdateItemRequest & { id: string; version: number }): Promise<Item> =>
       itemService.update(id, data),
     onSuccess: () => {
@@ -36,6 +42,7 @@ export function useUpdateItem() {
 export function useUpdateStock() {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: ['item-stock-update'],
     mutationFn: ({ id, quantity, version }: { id: string; quantity: number; version: number }): Promise<Item> =>
       itemService.updateStock(id, quantity, version),
     onSuccess: () => {
@@ -48,6 +55,7 @@ export function useUpdateStock() {
 export function useDeleteItem() {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: ['item-delete'],
     mutationFn: (id: string) => itemService.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.items });
@@ -59,6 +67,7 @@ export function useDeleteItem() {
 export function useToggleItemCritical() {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: ['item-toggle-critical'],
     mutationFn: ({ id, isCritical, version }: { id: string; isCritical: boolean; version: number }): Promise<Item> =>
       itemService.update(id, { isCritical, version }),
     onSuccess: () => {

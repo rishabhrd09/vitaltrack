@@ -3,7 +3,7 @@
  * Expandable item row with status indicators, image preview, and full details
  */
 
-import { View, Text, TouchableOpacity, StyleSheet, Image, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Linking, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
@@ -18,6 +18,9 @@ interface ItemRowProps {
   onToggle: () => void;
   onEdit: () => void;
   showCategory?: boolean;
+  // True while a server mutation for this item is in flight. Renders a
+  // small "Updating…" tag inline; existing layout is preserved.
+  isPending?: boolean;
 }
 
 export default function ItemRow({
@@ -26,6 +29,7 @@ export default function ItemRow({
   onToggle,
   onEdit,
   showCategory = false,
+  isPending = false,
 }: ItemRowProps) {
   const { colors } = useTheme();
   const { data: categories = [] } = useCategories();
@@ -84,9 +88,19 @@ export default function ItemRow({
                 {category.name}
               </Text>
             )}
-            <Text style={[styles.stockText, { color: colors.textTertiary }]}>
-              {item.quantity} / {item.minimumStock} {item.unit}
-            </Text>
+            <View style={styles.stockLine}>
+              <Text style={[styles.stockText, { color: colors.textTertiary }]}>
+                {item.quantity} / {item.minimumStock} {item.unit}
+              </Text>
+              {isPending && (
+                <View style={styles.pendingTag} accessibilityLabel="Updating">
+                  <ActivityIndicator size="small" color={colors.textMuted} />
+                  <Text style={[styles.pendingText, { color: colors.textMuted }]}>
+                    Updating…
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -220,6 +234,22 @@ const styles = StyleSheet.create({
   stockText: {
     fontSize: fontSize.sm,
     marginTop: 2,
+  },
+  stockLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  pendingTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  pendingText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
   },
   rightSection: {
     flexDirection: 'row',

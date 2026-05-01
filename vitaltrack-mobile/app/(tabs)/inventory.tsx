@@ -25,6 +25,7 @@ import ItemRow from '@/components/inventory/ItemRow';
 import { SkeletonLoader } from '@/components/common/SkeletonLoader';
 import ConnectionStatusPill from '@/components/common/ConnectionStatusPill';
 import { useItems, useCategories } from '@/hooks/useServerData';
+import { usePendingItemIds } from '@/hooks/usePendingItems';
 
 type ViewMode = 'categories' | 'all';
 
@@ -38,6 +39,7 @@ export default function InventoryScreen() {
   const { data: allItems = [], isLoading, refetch, isRefetching } = useItems();
   const { data: categories = [] } = useCategories();
   const items = useMemo(() => allItems.filter(i => i.isActive), [allItems]);
+  const pendingItemIds = usePendingItemIds();
 
   // UI state from Zustand
   const expandedCategories = useAppStore((state) => state.expandedCategories);
@@ -194,6 +196,7 @@ export default function InventoryScreen() {
                           isExpanded={expandedItems.includes(item.id)}
                           onToggle={() => toggleItemExpand(item.id)}
                           onEdit={() => router.push(`/item/${item.id}`)}
+                          isPending={pendingItemIds.has(item.id)}
                         />
                       ))
                     )}
@@ -214,6 +217,7 @@ export default function InventoryScreen() {
                   onToggle={() => toggleItemExpand(item.id)}
                   onEdit={() => router.push(`/item/${item.id}`)}
                   showCategory
+                  isPending={pendingItemIds.has(item.id)}
                 />
               ))}
           </View>
