@@ -54,8 +54,8 @@ interface AuthState {
   isColdStart: boolean;
   // True while the backend is believed to be waking from a Render cold
   // start after session init fell back to cached auth. Separate from
-  // isColdStart, which is tied to login-failure UX. The NetworkBanner
-  // reads this to show an amber "Server is starting up..." strip.
+  // isColdStart, which is tied to login-failure UX. ConnectionStatusPill
+  // reads this to render the inline "Connecting…" pill.
   isBackendColdStarting: boolean;
 }
 
