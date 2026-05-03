@@ -265,11 +265,19 @@ export default function CreateOrderScreen() {
       supplierName: ci.item.supplierName,
     }));
 
-    // Fire-and-forget: navigate immediately; PDF generation + feedback
-    // dispatch run from the call-site onSuccess closure when the server
-    // eventually responds — wherever the user has navigated to. The May 2
-    // recording showed the user stuck on "Creating…" for 18+ s with the
-    // old await flow during a cold start; this removes that block entirely.
+    // Fire-and-forget via mutateAsync().then().catch() — see the matching
+    // commit on app/item/[id].tsx for the full root-cause writeup. Short
+    // version: .mutate(vars, { onSuccess, onError }) loses callbacks when
+    // the screen unmounts on safeBack(), because they bind to the
+    // observer rather than the underlying promise. The May 3 v3 audit
+    // caught zero feedback firing for any cold-start save in either Edit
+    // Item or Order Create.
+    //
+    // .then on mutateAsync's returned promise is detached from observer
+    // lifecycle, so PDF generation and dispatcher both fire even after
+    // the Create Order screen has unmounted. The closure captures cart
+    // items, includePhotos, and generateTablePDF at fireOrder definition
+    // time — the values are snapshotted, immune to component teardown.
     //
     // Feedback routes through dispatchMutationSuccess / -Failure:
     //  - Fast warm success     → small bottom toast
@@ -277,10 +285,9 @@ export default function CreateOrderScreen() {
     //  - Connection-failure    → MutationResultDialog with Retry button
     //  - Other server errors   → toast (existing pattern)
     const startedAt = Date.now();
-    const fireOrder = () => createOrderMutation.mutate(
-      { items: orderItems },
-      {
-        onSuccess: async (createdOrder: any) => {
+    const fireOrder = () => {
+      createOrderMutation.mutateAsync({ items: orderItems })
+        .then(async (createdOrder: any) => {
           const serverOrderId =
             createdOrder.orderId ||
             createdOrder.order_id ||
@@ -302,16 +309,15 @@ export default function CreateOrderScreen() {
               : 'created (PDF export failed — re-export from Recent Orders)',
             startedAt,
           });
-        },
-        onError: (error) => dispatchMutationFailure({
+        })
+        .catch((error) => dispatchMutationFailure({
           name: 'Order',
           action: 'create',
           startedAt,
           error,
           onRetry: fireOrder,
-        }),
-      },
-    );
+        }));
+    };
     fireOrder();
     safeBack();
   };
