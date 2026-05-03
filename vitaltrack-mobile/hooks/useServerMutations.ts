@@ -230,11 +230,31 @@ export function useDeleteCategory() {
 
 export function useCreateOrder() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CreateOrderRequest): Promise<SavedOrder> => orderService.create(data),
-    onSuccess: () => {
+  return useMutation<SavedOrder, unknown, CreateOrderRequest, MutationContext>({
+    mutationKey: ['order-create'],
+    mutationFn: (data) => orderService.create(data),
+    onMutate: () => ({ startedAt: Date.now() }),
+    onSuccess: (data, _variables, context) => {
       qc.invalidateQueries({ queryKey: queryKeys.orders });
       qc.invalidateQueries({ queryKey: queryKeys.activities });
+      const orderId =
+        (data as any).orderId ||
+        (data as any).order_id ||
+        (data as any).id ||
+        'ORD-UNKNOWN';
+      dispatchMutationSuccess({
+        name: `Order ${orderId}`,
+        action: 'created',
+        startedAt: context?.startedAt ?? Date.now(),
+      });
+    },
+    onError: (error, _variables, context) => {
+      dispatchMutationFailure({
+        name: 'Order',
+        action: 'create',
+        startedAt: context?.startedAt ?? Date.now(),
+        error,
+      });
     },
   });
 }

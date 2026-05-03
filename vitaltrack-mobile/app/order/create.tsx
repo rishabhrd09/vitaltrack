@@ -32,7 +32,7 @@ import { useItems } from '@/hooks/useServerData';
 import { useCreateOrder } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { safeBack } from '@/utils/navigation';
-import { dispatchMutationSuccess, dispatchMutationFailure } from '@/utils/mutationFeedback';
+import { toast } from '@/utils/toast';
 
 interface CartItem {
   item: Item;
@@ -265,60 +265,38 @@ export default function CreateOrderScreen() {
       supplierName: ci.item.supplierName,
     }));
 
-    // Fire-and-forget via mutateAsync().then().catch() — see the matching
-    // commit on app/item/[id].tsx for the full root-cause writeup. Short
-    // version: .mutate(vars, { onSuccess, onError }) loses callbacks when
-    // the screen unmounts on safeBack(), because they bind to the
-    // observer rather than the underlying promise. The May 3 v3 audit
-    // caught zero feedback firing for any cold-start save in either Edit
-    // Item or Order Create.
+    // Order save feedback (toast / MutationResultDialog) is dispatched
+    // HOOK-LEVEL inside useCreateOrder. See the matching commit on
+    // app/item/[id].tsx for the full root-cause writeup — short version:
+    // hook-level dispatch survives observer death AND suppresses the
+    // duplicate global toast.
     //
-    // .then on mutateAsync's returned promise is detached from observer
-    // lifecycle, so PDF generation and dispatcher both fire even after
-    // the Create Order screen has unmounted. The closure captures cart
-    // items, includePhotos, and generateTablePDF at fireOrder definition
-    // time — the values are snapshotted, immune to component teardown.
-    //
-    // Feedback routes through dispatchMutationSuccess / -Failure:
-    //  - Fast warm success     → small bottom toast
-    //  - Slow cold-start success (>=5 s) → MutationResultDialog summary
-    //  - Connection-failure    → MutationResultDialog with Retry button
-    //  - Other server errors   → toast (existing pattern)
-    const startedAt = Date.now();
-    const fireOrder = () => {
-      createOrderMutation.mutateAsync({ items: orderItems })
-        .then(async (createdOrder: any) => {
-          const serverOrderId =
-            createdOrder.orderId ||
-            createdOrder.order_id ||
-            createdOrder.id ||
-            'ORD-UNKNOWN';
-          let pdfOk = true;
-          try {
-            await generateTablePDF(includePhotos, serverOrderId);
-          } catch {
-            pdfOk = false;
-          }
-          // Compose the success message — different copy depending on
-          // whether the PDF export piece succeeded. Order itself is
-          // already saved server-side either way.
-          dispatchMutationSuccess({
-            name: `Order ${serverOrderId}`,
-            action: pdfOk
-              ? 'created and exported'
-              : 'created (PDF export failed — re-export from Recent Orders)',
-            startedAt,
+    // PDF generation stays here because it requires the server-assigned
+    // orderId from the response and uses the screen's cartItems closure.
+    // We use mutateAsync().then() so the PDF fires when the order resolves,
+    // independent of observer lifecycle. PDF success is silent (the order
+    // dialog already covers that); PDF failure surfaces as a separate
+    // toast pointing at the manual re-export path.
+    createOrderMutation
+      .mutateAsync({ items: orderItems })
+      .then(async (createdOrder: any) => {
+        const serverOrderId =
+          createdOrder.orderId ||
+          createdOrder.order_id ||
+          createdOrder.id ||
+          'ORD-UNKNOWN';
+        try {
+          await generateTablePDF(includePhotos, serverOrderId);
+        } catch {
+          toast.error('PDF export failed', {
+            description: `Order ${serverOrderId} saved — re-export from Recent Orders`,
           });
-        })
-        .catch((error) => dispatchMutationFailure({
-          name: 'Order',
-          action: 'create',
-          startedAt,
-          error,
-          onRetry: fireOrder,
-        }));
-    };
-    fireOrder();
+        }
+      })
+      .catch(() => {
+        // Order save itself failed — the hook-level onError already
+        // dispatched the failure dialog. Nothing more to do here.
+      });
     safeBack();
   };
 
