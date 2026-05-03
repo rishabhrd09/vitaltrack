@@ -34,7 +34,6 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { handleMutationError } from '@/utils/serverErrors';
 import { safeBack } from '@/utils/navigation';
 import { toast } from '@/utils/toast';
-import { dispatchMutationSuccess, dispatchMutationFailure } from '@/utils/mutationFeedback';
 
 export default function ItemFormScreen() {
   const router = useRouter();
@@ -177,53 +176,26 @@ export default function ItemFormScreen() {
       isCritical: isCritical,
     };
 
-    // Fire-and-forget via mutateAsync().then().catch() rather than
-    // mutate(vars, { onSuccess, onError }). The crucial difference: the
-    // call-site onSuccess / onError on .mutate() are bound to the React
-    // Query mutation observer, which is destroyed when this screen
-    // unmounts on safeBack(). The May 2 v3 recording proved this — the
-    // mutation succeeded (cache invalidated, dashboard counts updated)
-    // but no toast and no MutationResultDialog ever fired because the
-    // observer was already gone by the time the server responded.
-    //
-    // mutateAsync() returns a promise that represents the underlying
-    // mutationFn execution, independent of observer lifecycle. .then /
-    // .catch on that promise fire whenever it settles — wherever the
-    // user has navigated to in the meantime. The hook-level onSuccess
-    // (qc.invalidateQueries in useServerMutations) still fires too,
-    // because that one IS bound to the Mutation in the cache, not the
-    // observer.
-    const startedAt = Date.now();
+    // Fire-and-forget. Feedback (toast / MutationResultDialog) is dispatched
+    // HOOK-LEVEL inside useServerMutations.ts, so we don't need .then / .catch
+    // here. Hook-level callbacks survive observer death (this screen unmounts
+    // on safeBack) AND suppress the global MutationCache.onError toast — both
+    // properties the call-site approach lacked. Saw the symptoms in the May 4
+    // screenshots: the dialog fired correctly but a duplicate generic toast
+    // appeared underneath because the global handler had no way to know the
+    // call site already handled it.
     if (isNew) {
       // Check if there's a hidden item with the same name (case-insensitive)
       const hiddenItem = items.find(
         item => !item.isActive && item.name.toLowerCase() === sanitizedName.toLowerCase()
       );
-
       if (hiddenItem) {
-        const restoreVars = { id: hiddenItem.id, ...itemData, isActive: true, version: hiddenItem.version };
-        const fireRestore = () => {
-          updateItemMutation.mutateAsync(restoreVars)
-            .then(() => dispatchMutationSuccess({ name: sanitizedName, action: 'restored', startedAt }))
-            .catch((error) => dispatchMutationFailure({ name: sanitizedName, action: 'restore', startedAt, error, onRetry: fireRestore }));
-        };
-        fireRestore();
+        updateItemMutation.mutate({ id: hiddenItem.id, ...itemData, isActive: true, version: hiddenItem.version });
       } else {
-        const fireCreate = () => {
-          createItemMutation.mutateAsync(itemData)
-            .then(() => dispatchMutationSuccess({ name: sanitizedName, action: 'added', startedAt }))
-            .catch((error) => dispatchMutationFailure({ name: sanitizedName, action: 'add', startedAt, error, onRetry: fireCreate }));
-        };
-        fireCreate();
+        createItemMutation.mutate(itemData);
       }
     } else {
-      const updateVars = { id, ...itemData, version: existingItem?.version ?? 1 };
-      const fireUpdate = () => {
-        updateItemMutation.mutateAsync(updateVars)
-          .then(() => dispatchMutationSuccess({ name: sanitizedName, action: 'updated', startedAt }))
-          .catch((error) => dispatchMutationFailure({ name: sanitizedName, action: 'update', startedAt, error, onRetry: fireUpdate }));
-      };
-      fireUpdate();
+      updateItemMutation.mutate({ id, ...itemData, version: existingItem?.version ?? 1 });
     }
     safeBack();
   };
