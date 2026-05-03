@@ -27,20 +27,16 @@ export default function MutationResultDialog() {
 
   const current = queue[0];
   const visible = !!current;
-
-  // While dismissing, capture the payload so the modal animates out with
-  // its content intact instead of flashing to empty during the fade.
   const payload = current;
 
-  if (!payload) {
-    // Mount the Modal with visible=false so React keeps the host alive
-    // for the next dispatch — avoids first-show animation lag.
-    return (
-      <Modal visible={false} transparent animationType="fade" onRequestClose={() => {}}>
-        <View />
-      </Modal>
-    );
-  }
+  // When the queue is empty we render nothing at all — not even a hidden
+  // Modal. The previous "keep host alive for animation" placeholder was
+  // suspected as a possible source of the May 4 profile-menu touch
+  // interception (handlers fire ripples but onPress doesn't run after a
+  // fresh app launch). React Native Modal with visible=false should not
+  // intercept touches, but mounting it adds layers to the gesture root
+  // we don't actually need; safer to just return null.
+  if (!payload) return null;
 
   const isSuccess = payload.kind === 'success-slow';
   const iconName = isSuccess ? 'checkmark-circle' : 'cloud-offline-outline';

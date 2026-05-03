@@ -184,6 +184,13 @@ async function clearBackendColdStartingFlag(): Promise<void> {
         const state = useAuthStore.getState();
         if (state.isBackendColdStarting) {
             useAuthStore.setState({ isBackendColdStarting: false });
+            // Brief diagnostic so we can verify in the Metro logs that the
+            // auto-clear is firing on real 2xx responses, vs. silently failing
+            // and leaving the StatusPill stuck on "Connecting…". Only logs
+            // when the flag actually transitions, so it's quiet in steady state.
+            if (__DEV__) {
+                console.log('[Auth] isBackendColdStarting cleared by 2xx response');
+            }
         }
     } catch {
         // Lazy import failed — non-fatal.
