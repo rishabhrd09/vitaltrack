@@ -116,7 +116,7 @@ export default function ItemFormScreen() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (hasPendingSaveForThisItem) {
       // Belt-and-suspenders — the Save button is also disabled in this
       // state. Surfacing as a toast (not Alert) keeps the screen flow
@@ -157,30 +157,36 @@ export default function ItemFormScreen() {
       isCritical: isCritical,
     };
 
-    try {
-      if (isNew) {
-        // Check if there's a hidden item with the same name (case-insensitive)
-        const hiddenItem = items.find(
-          item => !item.isActive && item.name.toLowerCase() === sanitizedName.toLowerCase()
-        );
+    // Fire-and-forget: kick off the mutation, navigate immediately, let the
+    // toast appear from the call-site onSuccess closure when the server
+    // eventually responds — wherever the user has navigated to. The per-item
+    // "Updating…" badge from usePendingItemIds covers the in-flight signal.
+    // Failure path is handled by the global MutationCache.onError safety net
+    // in providers/QueryProvider.tsx, which surfaces a tappable retry toast.
+    if (isNew) {
+      // Check if there's a hidden item with the same name (case-insensitive)
+      const hiddenItem = items.find(
+        item => !item.isActive && item.name.toLowerCase() === sanitizedName.toLowerCase()
+      );
 
-        if (hiddenItem) {
-          await updateItemMutation.mutateAsync({ id: hiddenItem.id, ...itemData, isActive: true, version: hiddenItem.version });
-          toast.success(`${sanitizedName} restored`);
-        } else {
-          await createItemMutation.mutateAsync(itemData);
-          toast.success(`${sanitizedName} added`);
-        }
+      if (hiddenItem) {
+        updateItemMutation.mutate(
+          { id: hiddenItem.id, ...itemData, isActive: true, version: hiddenItem.version },
+          { onSuccess: () => toast.success(`${sanitizedName} restored`) },
+        );
       } else {
-        await updateItemMutation.mutateAsync({ id, ...itemData, version: existingItem?.version ?? 1 });
-        toast.success(`${sanitizedName} updated`);
+        createItemMutation.mutate(
+          itemData,
+          { onSuccess: () => toast.success(`${sanitizedName} added`) },
+        );
       }
-      // Success path: bounce back if we're still on the form, no-op otherwise
-      // (user may have navigated away during a slow background save).
-      safeBack();
-    } catch (error) {
-      handleMutationError(error, isNew ? 'Create Item' : 'Update Item');
+    } else {
+      updateItemMutation.mutate(
+        { id, ...itemData, version: existingItem?.version ?? 1 },
+        { onSuccess: () => toast.success(`${sanitizedName} updated`) },
+      );
     }
+    safeBack();
   };
 
   const handleDelete = () => {
