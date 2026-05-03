@@ -61,8 +61,26 @@ export default function ItemFormScreen() {
   // back during a slow cold-start save, then re-opens the same item.
   // Without this guard the second save would carry the original `version`
   // and the server would 409 once the first save lands.
+  //
+  // We split into two flags because the user's OWN save (this screen's
+  // local mutation hook) also briefly shows up in pendingItemIds the
+  // moment they tap Save:
+  //  - The banner should NOT appear in that case — it would read as
+  //    "wait, your save is in progress" right after the user tapped
+  //    Save, which is misleading. So banner gates on "from other
+  //    instance only".
+  //  - The Save button + handleSave early-return should still fire on
+  //    EITHER condition so a rapid double-tap can't fire two mutations
+  //    with the same OCC version.
   const pendingItemIds = usePendingItemIds();
-  const hasPendingSaveForThisItem =
+  const isLocalSavePending =
+    createItemMutation.isPending || updateItemMutation.isPending;
+  const hasPendingSaveFromOtherInstance =
+    !isNew &&
+    typeof id === 'string' &&
+    pendingItemIds.has(id) &&
+    !isLocalSavePending;
+  const hasAnyPendingSaveForThisItem =
     !isNew && typeof id === 'string' && pendingItemIds.has(id);
 
   // True while session init detected a slow backend (Render free-tier
@@ -117,10 +135,11 @@ export default function ItemFormScreen() {
   };
 
   const handleSave = () => {
-    if (hasPendingSaveForThisItem) {
+    if (hasAnyPendingSaveForThisItem) {
       // Belt-and-suspenders — the Save button is also disabled in this
-      // state. Surfacing as a toast (not Alert) keeps the screen flow
-      // consistent with the rest of the app's mutation feedback.
+      // state. Catches both the "stale save from another instance" case
+      // and the rapid-double-tap-on-this-screen case. Toast (not Alert)
+      // keeps the screen flow consistent with the rest of the app.
       toast.info('Still saving previous changes', 'Please wait a moment');
       return;
     }
@@ -227,13 +246,9 @@ export default function ItemFormScreen() {
           style={[
             styles.saveButton,
             { backgroundColor: colors.accentBlue },
-            hasPendingSaveForThisItem && styles.saveButtonDisabled,
+            hasAnyPendingSaveForThisItem && styles.saveButtonDisabled,
           ]}
-          disabled={
-            createItemMutation.isPending ||
-            updateItemMutation.isPending ||
-            hasPendingSaveForThisItem
-          }
+          disabled={hasAnyPendingSaveForThisItem}
         >
           {isSavePending ? (
             <ActivityIndicator size="small" color={colors.white} />
@@ -252,7 +267,7 @@ export default function ItemFormScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {hasPendingSaveForThisItem && (
+          {hasPendingSaveFromOtherInstance && (
             <View style={[styles.concurrentBanner, { backgroundColor: colors.statusYellowBg, borderColor: colors.statusOrangeBorder }]}>
               <Ionicons name="time-outline" size={18} color={colors.statusOrange} />
               <Text style={[styles.concurrentBannerText, { color: colors.statusOrange }]}>
@@ -260,7 +275,7 @@ export default function ItemFormScreen() {
               </Text>
             </View>
           )}
-          {isBackendColdStarting && !hasPendingSaveForThisItem && (
+          {isBackendColdStarting && !hasPendingSaveFromOtherInstance && (
             <View style={[styles.concurrentBanner, { backgroundColor: colors.statusYellowBg, borderColor: colors.statusOrangeBorder }]}>
               <Ionicons name="cloudy-outline" size={18} color={colors.statusOrange} />
               <Text style={[styles.concurrentBannerText, { color: colors.statusOrange }]}>
