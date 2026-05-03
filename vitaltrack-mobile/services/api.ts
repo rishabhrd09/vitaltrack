@@ -169,6 +169,27 @@ function logNetworkFailure(url: string, err: Error): void {
     }
 }
 
+// Clear the auth store's isBackendColdStarting flag once any 2xx response
+// proves the backend is responsive again. The flag is set during session
+// init when the profile fetch times out (Render free-tier cold start) and
+// cleared by a 5-second background retry on success — but if that retry
+// also fails the flag stays stuck on indefinitely. Without this hook the
+// StatusPill would display "Connecting… server warming up" forever even
+// after the user's manual interaction successfully reaches the server
+// (caught in the May 4 test run: pill stuck for 5+ minutes after WiFi
+// recovered, despite all subsequent API calls succeeding).
+async function clearBackendColdStartingFlag(): Promise<void> {
+    try {
+        const { useAuthStore } = await import('@/store/useAuthStore');
+        const state = useAuthStore.getState();
+        if (state.isBackendColdStarting) {
+            useAuthStore.setState({ isBackendColdStarting: false });
+        }
+    } catch {
+        // Lazy import failed — non-fatal.
+    }
+}
+
 // Trigger a store-level logout from the API layer. Lazy require to avoid a
 // circular import (store depends on api.ts for tokenStorage/ApiClientError).
 // Skipped for the login endpoint itself: a wrong password returning 401 must
@@ -371,6 +392,13 @@ class ApiClient {
 
             throw new ApiClientError(message, response.status, data);
         }
+
+        // Reaching here means a 2xx — the server is alive and responding. Clear
+        // the cold-start flag so the StatusPill stops showing "Connecting…
+        // server warming up" once the user's normal traffic proves the server
+        // is up. Fire-and-forget; we don't need to await the store update
+        // before returning the response.
+        void clearBackendColdStartingFlag();
 
         return data as T;
     }
