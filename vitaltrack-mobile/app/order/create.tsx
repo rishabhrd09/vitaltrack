@@ -31,7 +31,6 @@ import { escapeHtml, validateImageUri } from '@/utils/sanitize';
 import { useItems } from '@/hooks/useServerData';
 import { useCreateOrder } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { handleMutationError } from '@/utils/serverErrors';
 import { safeBack } from '@/utils/navigation';
 import { toast } from '@/utils/toast';
 
@@ -52,7 +51,6 @@ export default function CreateOrderScreen() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Initialize Cart based on mode
@@ -245,7 +243,7 @@ export default function CreateOrderScreen() {
     }
   };
 
-  const handleCreateAndExport = async (includePhotos: boolean) => {
+  const handleCreateAndExport = (includePhotos: boolean) => {
     if (!isOnline) {
       Alert.alert('Offline', 'Connect to WiFi to create orders.');
       return;
@@ -255,38 +253,54 @@ export default function CreateOrderScreen() {
       return;
     }
 
-    setIsGenerating(true);
-    try {
-      // STEP 1: Save to server FIRST — get real order ID
-      const orderItems = cartItems.map(ci => ({
-        itemId: ci.item.id,
-        name: ci.item.name,
-        quantity: ci.quantity,
-        currentStock: ci.item.quantity,
-        minimumStock: ci.item.minimumStock,
-        unit: ci.item.unit,
-        brand: ci.item.brand,
-        imageUri: ci.item.imageUri,
-        purchaseLink: ci.item.purchaseLink,
-        supplierName: ci.item.supplierName,
-      }));
+    const orderItems = cartItems.map(ci => ({
+      itemId: ci.item.id,
+      name: ci.item.name,
+      quantity: ci.quantity,
+      currentStock: ci.item.quantity,
+      minimumStock: ci.item.minimumStock,
+      unit: ci.item.unit,
+      brand: ci.item.brand,
+      imageUri: ci.item.imageUri,
+      purchaseLink: ci.item.purchaseLink,
+      supplierName: ci.item.supplierName,
+    }));
 
-      const createdOrder: any = await createOrderMutation.mutateAsync({ items: orderItems });
-      const serverOrderId = createdOrder.orderId || createdOrder.order_id || createdOrder.id || 'ORD-UNKNOWN';
-
-      // STEP 2: Generate PDF with the REAL server order ID
-      await generateTablePDF(includePhotos, serverOrderId);
-
-      // STEP 3: Show success — toast (non-blocking) and bounce back. If
-      // the user navigated away during the slow background save, safeBack
-      // is a no-op and the toast still appears wherever they ended up.
-      toast.success(`Order ${serverOrderId} created`, 'PDF exported');
-      safeBack();
-    } catch (error) {
-      handleMutationError(error, 'Create Order');
-    } finally {
-      setIsGenerating(false);
-    }
+    // Fire-and-forget: navigate immediately; PDF generation + success toast
+    // run from the call-site onSuccess closure when the server eventually
+    // responds — wherever the user has navigated to. The May 2 recording
+    // showed the user stuck on "Creating…" for 18+ s with the old await
+    // flow during a cold start; this removes that block entirely.
+    //
+    // Failure path is handled by the global MutationCache.onError safety
+    // net (toast.error with Tap-to-retry). The retry refires the mutation
+    // through the state machine but won't re-run this onSuccess closure,
+    // so the PDF won't auto-export on a retry — the user can re-export
+    // from Recent Orders. Matches the existing "manual export later" path.
+    createOrderMutation.mutate(
+      { items: orderItems },
+      {
+        onSuccess: async (createdOrder: any) => {
+          const serverOrderId =
+            createdOrder.orderId ||
+            createdOrder.order_id ||
+            createdOrder.id ||
+            'ORD-UNKNOWN';
+          try {
+            await generateTablePDF(includePhotos, serverOrderId);
+            toast.success(`Order ${serverOrderId} created`, 'PDF exported');
+          } catch {
+            // PDF gen failed but the order itself succeeded server-side —
+            // tell the user the order is saved and let them re-export.
+            toast.success(
+              `Order ${serverOrderId} created`,
+              'PDF export failed — re-export from Recent Orders',
+            );
+          }
+        },
+      },
+    );
+    safeBack();
   };
 
   // Combined Table + optional Photo Reference PDF
@@ -651,10 +665,10 @@ export default function CreateOrderScreen() {
         <TouchableOpacity
           style={[styles.exportBtn, { backgroundColor: colors.accentBlue, opacity: totalItems === 0 ? 0.5 : 1 }]}
           onPress={generatePDF}
-          disabled={totalItems === 0 || isGenerating}
+          disabled={totalItems === 0}
         >
           <Ionicons name="cart-outline" size={18} color="white" />
-          <Text style={styles.exportText}>{isGenerating ? 'Creating...' : 'Create Order & Export PDF'}</Text>
+          <Text style={styles.exportText}>Create Order & Export PDF</Text>
         </TouchableOpacity>
       </View>
 
