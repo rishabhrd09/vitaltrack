@@ -14,6 +14,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import Toast from 'react-native-toast-message';
+import MutationResultDialog from '@/components/common/MutationResultDialog';
 
 // In non-dev builds (EAS preview/production APKs) the LogBox dev overlay
 // shouldn't surface warnings to end users — the UI already handles errors
@@ -138,6 +139,11 @@ export default function RootLayout() {
       <ThemeProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <RootLayoutContent />
+          {/* Mutation result dialog — overlays everything when a slow-cold
+              save succeeds or a connection-failure mutation needs explicit
+              user acknowledgement. Subscribes to useResultDialogStore;
+              call sites enqueue via utils/mutationFeedback.ts. */}
+          <MutationResultDialog />
           {/* Toast host — sibling of the route Stack so toasts render over
               any screen, including modal-presentation routes. Mounted once
               at root; individual screens call utils/toast.ts to show. */}
