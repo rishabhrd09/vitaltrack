@@ -32,7 +32,7 @@ import { useItems } from '@/hooks/useServerData';
 import { useCreateOrder } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { safeBack } from '@/utils/navigation';
-import { toast } from '@/utils/toast';
+import { dispatchMutationSuccess, dispatchMutationFailure } from '@/utils/mutationFeedback';
 
 interface CartItem {
   item: Item;
@@ -266,18 +266,19 @@ export default function CreateOrderScreen() {
       supplierName: ci.item.supplierName,
     }));
 
-    // Fire-and-forget: navigate immediately; PDF generation + success toast
-    // run from the call-site onSuccess closure when the server eventually
-    // responds — wherever the user has navigated to. The May 2 recording
-    // showed the user stuck on "Creating…" for 18+ s with the old await
-    // flow during a cold start; this removes that block entirely.
+    // Fire-and-forget: navigate immediately; PDF generation + feedback
+    // dispatch run from the call-site onSuccess closure when the server
+    // eventually responds — wherever the user has navigated to. The May 2
+    // recording showed the user stuck on "Creating…" for 18+ s with the
+    // old await flow during a cold start; this removes that block entirely.
     //
-    // Failure path is handled by the global MutationCache.onError safety
-    // net (toast.error with Tap-to-retry). The retry refires the mutation
-    // through the state machine but won't re-run this onSuccess closure,
-    // so the PDF won't auto-export on a retry — the user can re-export
-    // from Recent Orders. Matches the existing "manual export later" path.
-    createOrderMutation.mutate(
+    // Feedback routes through dispatchMutationSuccess / -Failure:
+    //  - Fast warm success     → small bottom toast
+    //  - Slow cold-start success (>=5 s) → MutationResultDialog summary
+    //  - Connection-failure    → MutationResultDialog with Retry button
+    //  - Other server errors   → toast (existing pattern)
+    const startedAt = Date.now();
+    const fireOrder = () => createOrderMutation.mutate(
       { items: orderItems },
       {
         onSuccess: async (createdOrder: any) => {
@@ -286,20 +287,33 @@ export default function CreateOrderScreen() {
             createdOrder.order_id ||
             createdOrder.id ||
             'ORD-UNKNOWN';
+          let pdfOk = true;
           try {
             await generateTablePDF(includePhotos, serverOrderId);
-            toast.success(`Order ${serverOrderId} created`, 'PDF exported');
           } catch {
-            // PDF gen failed but the order itself succeeded server-side —
-            // tell the user the order is saved and let them re-export.
-            toast.success(
-              `Order ${serverOrderId} created`,
-              'PDF export failed — re-export from Recent Orders',
-            );
+            pdfOk = false;
           }
+          // Compose the success message — different copy depending on
+          // whether the PDF export piece succeeded. Order itself is
+          // already saved server-side either way.
+          dispatchMutationSuccess({
+            name: `Order ${serverOrderId}`,
+            action: pdfOk
+              ? 'created and exported'
+              : 'created (PDF export failed — re-export from Recent Orders)',
+            startedAt,
+          });
         },
+        onError: (error) => dispatchMutationFailure({
+          name: 'Order',
+          action: 'create',
+          startedAt,
+          error,
+          onRetry: fireOrder,
+        }),
       },
     );
+    fireOrder();
     safeBack();
   };
 
