@@ -49,6 +49,34 @@ function lookupItemName(qc: QueryClient, id: string | undefined): string | undef
   return items?.find((i) => i.id === id)?.name;
 }
 
+/**
+ * Find the just-errored Mutation in the cache and produce a callback that
+ * re-executes it with the original variables. Used by hook-level onError
+ * handlers to give the failure dialog a working Retry button.
+ *
+ * Hook-level onError doesn't receive a Mutation reference (only error,
+ * variables, context). The reference equality check on `state.variables`
+ * works because TanStack Query stores the same object the caller passed
+ * to `mutate()`, so we can match the just-failed mutation back to its
+ * Mutation instance and call execute() on it — which re-runs the
+ * full lifecycle (onMutate → mutationFn → onSuccess/onError → cache
+ * callbacks) so feedback dispatch fires again on the retry attempt.
+ */
+function makeRetry(
+  qc: QueryClient,
+  mutationKey: string,
+  variables: unknown,
+): (() => void) | undefined {
+  return () => {
+    const target = qc.getMutationCache().getAll().find((m) =>
+      m.options.mutationKey?.[0] === mutationKey &&
+      m.state.status === 'error' &&
+      m.state.variables === variables,
+    );
+    target?.execute(variables as never);
+  };
+}
+
 export function useCreateItem() {
   const qc = useQueryClient();
   return useMutation<Item, unknown, CreateItemRequest, MutationContext>({
@@ -70,6 +98,7 @@ export function useCreateItem() {
         action: 'add',
         startedAt: context?.startedAt ?? Date.now(),
         error,
+        onRetry: makeRetry(qc, 'item-create', variables),
       });
     },
   });
@@ -99,6 +128,7 @@ export function useUpdateItem() {
         action: isRestoration ? 'restore' : 'update',
         startedAt: context?.startedAt ?? Date.now(),
         error,
+        onRetry: makeRetry(qc, 'item-update', variables),
       });
     },
   });
@@ -126,6 +156,7 @@ export function useUpdateStock() {
         action: 'update stock for',
         startedAt: context?.startedAt ?? Date.now(),
         error,
+        onRetry: makeRetry(qc, 'item-stock-update', variables),
       });
     },
   });
@@ -151,12 +182,13 @@ export function useDeleteItem() {
         startedAt: context?.startedAt ?? Date.now(),
       });
     },
-    onError: (error, _variables, context) => {
+    onError: (error, variables, context) => {
       dispatchMutationFailure({
         name: context?.name || 'this item',
         action: 'delete',
         startedAt: context?.startedAt ?? Date.now(),
         error,
+        onRetry: makeRetry(qc, 'item-delete', variables),
       });
     },
   });
@@ -184,6 +216,7 @@ export function useToggleItemCritical() {
         action: 'update',
         startedAt: context?.startedAt ?? Date.now(),
         error,
+        onRetry: makeRetry(qc, 'item-toggle-critical', variables),
       });
     },
   });
@@ -248,12 +281,13 @@ export function useCreateOrder() {
         startedAt: context?.startedAt ?? Date.now(),
       });
     },
-    onError: (error, _variables, context) => {
+    onError: (error, variables, context) => {
       dispatchMutationFailure({
         name: 'Order',
         action: 'create',
         startedAt: context?.startedAt ?? Date.now(),
         error,
+        onRetry: makeRetry(qc, 'order-create', variables),
       });
     },
   });
