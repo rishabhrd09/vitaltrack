@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
@@ -40,7 +40,6 @@ interface CartItem {
 }
 
 export default function CreateOrderScreen() {
-  const router = useRouter();
   const { colors } = useTheme();
   const { mode } = useLocalSearchParams();
   const { isOnline } = useNetworkStatus();

@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
 import { authService } from '@/services/auth';
 import { useTheme } from '@/theme/ThemeContext';
@@ -26,7 +25,6 @@ const DELETION_POLL_INTERVAL_MS = 5000;
 const DELETION_POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
 export default function ProfileScreen() {
-    const router = useRouter();
     const { colors } = useTheme();
     const user = useAuthStore((state) => state.user);
     const [isRequesting, setIsRequesting] = useState(false);
