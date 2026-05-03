@@ -34,6 +34,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { handleMutationError } from '@/utils/serverErrors';
 import { safeBack } from '@/utils/navigation';
 import { toast } from '@/utils/toast';
+import { dispatchMutationSuccess, dispatchMutationFailure } from '@/utils/mutationFeedback';
 
 export default function ItemFormScreen() {
   const router = useRouter();
@@ -176,12 +177,12 @@ export default function ItemFormScreen() {
       isCritical: isCritical,
     };
 
-    // Fire-and-forget: kick off the mutation, navigate immediately, let the
-    // toast appear from the call-site onSuccess closure when the server
-    // eventually responds — wherever the user has navigated to. The per-item
-    // "Updating…" badge from usePendingItemIds covers the in-flight signal.
-    // Failure path is handled by the global MutationCache.onError safety net
-    // in providers/QueryProvider.tsx, which surfaces a tappable retry toast.
+    // Fire-and-forget: kick off the mutation, navigate immediately, route
+    // success/failure feedback through dispatchMutation* — toast for fast
+    // warm-server outcomes, MutationResultDialog for slow successes
+    // (>=5 s) and connection-failure failures. The per-item "Updating…"
+    // badge from usePendingItemIds covers the in-flight signal regardless.
+    const startedAt = Date.now();
     if (isNew) {
       // Check if there's a hidden item with the same name (case-insensitive)
       const hiddenItem = items.find(
@@ -189,21 +190,26 @@ export default function ItemFormScreen() {
       );
 
       if (hiddenItem) {
-        updateItemMutation.mutate(
-          { id: hiddenItem.id, ...itemData, isActive: true, version: hiddenItem.version },
-          { onSuccess: () => toast.success(`${sanitizedName} restored`) },
-        );
+        const restoreVars = { id: hiddenItem.id, ...itemData, isActive: true, version: hiddenItem.version };
+        const fireRestore = () => updateItemMutation.mutate(restoreVars, {
+          onSuccess: () => dispatchMutationSuccess({ name: sanitizedName, action: 'restored', startedAt }),
+          onError: (error) => dispatchMutationFailure({ name: sanitizedName, action: 'restore', startedAt, error, onRetry: fireRestore }),
+        });
+        fireRestore();
       } else {
-        createItemMutation.mutate(
-          itemData,
-          { onSuccess: () => toast.success(`${sanitizedName} added`) },
-        );
+        const fireCreate = () => createItemMutation.mutate(itemData, {
+          onSuccess: () => dispatchMutationSuccess({ name: sanitizedName, action: 'added', startedAt }),
+          onError: (error) => dispatchMutationFailure({ name: sanitizedName, action: 'add', startedAt, error, onRetry: fireCreate }),
+        });
+        fireCreate();
       }
     } else {
-      updateItemMutation.mutate(
-        { id, ...itemData, version: existingItem?.version ?? 1 },
-        { onSuccess: () => toast.success(`${sanitizedName} updated`) },
-      );
+      const updateVars = { id, ...itemData, version: existingItem?.version ?? 1 };
+      const fireUpdate = () => updateItemMutation.mutate(updateVars, {
+        onSuccess: () => dispatchMutationSuccess({ name: sanitizedName, action: 'updated', startedAt }),
+        onError: (error) => dispatchMutationFailure({ name: sanitizedName, action: 'update', startedAt, error, onRetry: fireUpdate }),
+      });
+      fireUpdate();
     }
     safeBack();
   };
