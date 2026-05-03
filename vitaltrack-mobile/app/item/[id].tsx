@@ -177,11 +177,22 @@ export default function ItemFormScreen() {
       isCritical: isCritical,
     };
 
-    // Fire-and-forget: kick off the mutation, navigate immediately, route
-    // success/failure feedback through dispatchMutation* — toast for fast
-    // warm-server outcomes, MutationResultDialog for slow successes
-    // (>=5 s) and connection-failure failures. The per-item "Updating…"
-    // badge from usePendingItemIds covers the in-flight signal regardless.
+    // Fire-and-forget via mutateAsync().then().catch() rather than
+    // mutate(vars, { onSuccess, onError }). The crucial difference: the
+    // call-site onSuccess / onError on .mutate() are bound to the React
+    // Query mutation observer, which is destroyed when this screen
+    // unmounts on safeBack(). The May 2 v3 recording proved this — the
+    // mutation succeeded (cache invalidated, dashboard counts updated)
+    // but no toast and no MutationResultDialog ever fired because the
+    // observer was already gone by the time the server responded.
+    //
+    // mutateAsync() returns a promise that represents the underlying
+    // mutationFn execution, independent of observer lifecycle. .then /
+    // .catch on that promise fire whenever it settles — wherever the
+    // user has navigated to in the meantime. The hook-level onSuccess
+    // (qc.invalidateQueries in useServerMutations) still fires too,
+    // because that one IS bound to the Mutation in the cache, not the
+    // observer.
     const startedAt = Date.now();
     if (isNew) {
       // Check if there's a hidden item with the same name (case-insensitive)
@@ -191,24 +202,27 @@ export default function ItemFormScreen() {
 
       if (hiddenItem) {
         const restoreVars = { id: hiddenItem.id, ...itemData, isActive: true, version: hiddenItem.version };
-        const fireRestore = () => updateItemMutation.mutate(restoreVars, {
-          onSuccess: () => dispatchMutationSuccess({ name: sanitizedName, action: 'restored', startedAt }),
-          onError: (error) => dispatchMutationFailure({ name: sanitizedName, action: 'restore', startedAt, error, onRetry: fireRestore }),
-        });
+        const fireRestore = () => {
+          updateItemMutation.mutateAsync(restoreVars)
+            .then(() => dispatchMutationSuccess({ name: sanitizedName, action: 'restored', startedAt }))
+            .catch((error) => dispatchMutationFailure({ name: sanitizedName, action: 'restore', startedAt, error, onRetry: fireRestore }));
+        };
         fireRestore();
       } else {
-        const fireCreate = () => createItemMutation.mutate(itemData, {
-          onSuccess: () => dispatchMutationSuccess({ name: sanitizedName, action: 'added', startedAt }),
-          onError: (error) => dispatchMutationFailure({ name: sanitizedName, action: 'add', startedAt, error, onRetry: fireCreate }),
-        });
+        const fireCreate = () => {
+          createItemMutation.mutateAsync(itemData)
+            .then(() => dispatchMutationSuccess({ name: sanitizedName, action: 'added', startedAt }))
+            .catch((error) => dispatchMutationFailure({ name: sanitizedName, action: 'add', startedAt, error, onRetry: fireCreate }));
+        };
         fireCreate();
       }
     } else {
       const updateVars = { id, ...itemData, version: existingItem?.version ?? 1 };
-      const fireUpdate = () => updateItemMutation.mutate(updateVars, {
-        onSuccess: () => dispatchMutationSuccess({ name: sanitizedName, action: 'updated', startedAt }),
-        onError: (error) => dispatchMutationFailure({ name: sanitizedName, action: 'update', startedAt, error, onRetry: fireUpdate }),
-      });
+      const fireUpdate = () => {
+        updateItemMutation.mutateAsync(updateVars)
+          .then(() => dispatchMutationSuccess({ name: sanitizedName, action: 'updated', startedAt }))
+          .catch((error) => dispatchMutationFailure({ name: sanitizedName, action: 'update', startedAt, error, onRetry: fireUpdate }));
+      };
       fireUpdate();
     }
     safeBack();
