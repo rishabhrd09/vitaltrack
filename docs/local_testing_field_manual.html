@@ -1,0 +1,2413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Local Testing Internals — A CareKosh Field Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..800,0..100&family=Inter+Tight:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Paper & ink */
+  --paper: #faf6ed;
+  --paper-dim: #f3eddf;
+  --rule: #e3dac4;
+  --ink: #1a1a1f;
+  --ink-soft: #3d3d44;
+  --ink-mute: #767670;
+  --ink-faint: #a59f8e;
+
+  /* Brand accents (warm, on light) */
+  --teal: #0d6e64;
+  --teal-soft: #d6ebe7;
+  --amber: #b86515;
+  --amber-soft: #f5e6cf;
+  --red: #b3261e;
+  --red-soft: #f4dcd7;
+  --blue: #1e4a87;
+  --blue-soft: #d6e1f4;
+  --plum: #6b3079;
+  --plum-soft: #ecdaef;
+  --green: #3a6b1f;
+  --green-soft: #dde8cf;
+
+  --display: 'Fraunces', Georgia, serif;
+  --body: 'Inter Tight', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  font-family: var(--body);
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.65;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================
+   PAGE FRAME — printable book pages
+   ========================================================== */
+.page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 72px 84px;
+  page-break-after: always;
+  position: relative;
+}
+.page:last-child { page-break-after: auto; }
+
+/* ==========================================================
+   COVER
+   ========================================================== */
+.cover {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 1200px 500px at 50% -100px, rgba(184, 101, 21, 0.08), transparent 60%),
+    radial-gradient(ellipse 800px 400px at 50% 110%, rgba(13, 110, 100, 0.06), transparent 60%),
+    var(--paper);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 72px 84px;
+  page-break-after: always;
+  position: relative;
+  overflow: hidden;
+}
+.cover::before {
+  content: '';
+  position: absolute;
+  inset: 36px;
+  border: 1px solid var(--rule);
+  pointer-events: none;
+}
+.cover::after {
+  content: '';
+  position: absolute;
+  inset: 44px;
+  border: 1px solid var(--rule);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.cover-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 2;
+}
+.publisher {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.edition {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  text-align: right;
+}
+.cover-mid { z-index: 2; padding: 20px 0; }
+.kicker {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+.kicker::before, .kicker::after {
+  content: ''; height: 1px; width: 36px; background: var(--amber); display: block;
+}
+.cover h1 {
+  font-family: var(--display);
+  font-weight: 350;
+  font-size: clamp(3rem, 7vw, 5.4rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin-bottom: 18px;
+  font-variation-settings: "opsz" 144, "SOFT" 30;
+}
+.cover h1 em {
+  font-style: italic;
+  font-weight: 300;
+  font-variation-settings: "opsz" 144, "SOFT" 80;
+  color: var(--teal);
+}
+.cover .subtitle {
+  font-family: var(--display);
+  font-size: 1.4rem;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--ink-soft);
+  max-width: 580px;
+  line-height: 1.4;
+  margin-bottom: 36px;
+}
+.cover .lede {
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+  max-width: 560px;
+  line-height: 1.7;
+}
+.cover .lede strong { color: var(--ink); font-weight: 600; }
+
+.cover-bottom {
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 48px;
+  align-items: end;
+  padding-top: 24px;
+  border-top: 1px solid var(--rule);
+}
+.cover-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cover-meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+.cover-meta-row .label {
+  color: var(--ink-mute);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  width: 90px;
+}
+.cover-meta-row .value { color: var(--ink); }
+.cover-mark {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--ink-mute);
+  text-align: right;
+  line-height: 1.5;
+}
+.cover-mark .glyph {
+  display: block;
+  font-family: var(--display);
+  font-style: normal;
+  font-size: 2.6rem;
+  font-weight: 300;
+  color: var(--amber);
+  line-height: 1;
+  margin-bottom: 8px;
+  font-variation-settings: "opsz" 144;
+}
+
+/* ==========================================================
+   TYPOGRAPHY — body
+   ========================================================== */
+.chap-num {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.chap-num::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
+
+h1.chap-title {
+  font-family: var(--display);
+  font-weight: 350;
+  font-size: 3.4rem;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin-bottom: 12px;
+  font-variation-settings: "opsz" 144, "SOFT" 40;
+}
+h1.chap-title em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--teal);
+  font-variation-settings: "opsz" 144, "SOFT" 80;
+}
+.chap-deck {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 620px;
+  margin-bottom: 48px;
+}
+
+h2 {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.85rem;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin: 56px 0 16px;
+  line-height: 1.2;
+  font-variation-settings: "opsz" 72;
+}
+h2 .num {
+  font-family: var(--mono);
+  font-style: normal;
+  font-weight: 500;
+  font-size: 0.8rem;
+  color: var(--amber);
+  margin-right: 18px;
+  position: relative;
+  top: -6px;
+  letter-spacing: 0.1em;
+}
+
+h3 {
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--ink);
+  margin: 32px 0 10px;
+  letter-spacing: -0.005em;
+}
+h3 .num {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 0.75rem;
+  color: var(--ink-mute);
+  margin-right: 10px;
+}
+
+p {
+  font-size: 1rem;
+  margin-bottom: 14px;
+  color: var(--ink-soft);
+  max-width: 68ch;
+}
+p strong { color: var(--ink); font-weight: 600; }
+p em { font-style: italic; color: var(--ink); }
+
+a {
+  color: var(--teal);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(13, 110, 100, 0.3);
+}
+a:hover { border-bottom-color: var(--teal); }
+
+code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--paper-dim);
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+}
+
+ul, ol { margin-bottom: 16px; padding-left: 22px; max-width: 68ch; }
+li { font-size: 1rem; color: var(--ink-soft); margin-bottom: 6px; }
+li::marker { color: var(--amber); }
+
+/* ==========================================================
+   PRE / CODE BLOCKS
+   ========================================================== */
+pre {
+  background: #2a2620;
+  color: #f3eddf;
+  border-radius: 6px;
+  padding: 18px 22px;
+  font-family: var(--mono);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  overflow-x: auto;
+  margin: 18px 0 22px;
+  border-left: 3px solid var(--amber);
+}
+pre code { background: transparent; border: none; padding: 0; color: inherit; font-size: inherit; }
+pre .c-tok-key { color: #e8b566; }
+pre .c-tok-str { color: #c5c97f; }
+pre .c-tok-cmt { color: #8b8275; font-style: italic; }
+pre .c-tok-fn { color: #79c2b6; }
+pre .c-tok-num { color: #d49bbb; }
+
+/* ==========================================================
+   CALLOUTS
+   ========================================================== */
+.callout {
+  margin: 28px 0;
+  padding: 20px 24px;
+  border-radius: 4px;
+  border-left: 3px solid;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  position: relative;
+}
+.callout .label {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 8px;
+}
+.callout p { max-width: none; margin-bottom: 8px; font-size: 0.95rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+.callout.note { background: var(--blue-soft); border-color: var(--blue); }
+.callout.note .label { color: var(--blue); }
+.callout.tip { background: var(--green-soft); border-color: var(--green); }
+.callout.tip .label { color: var(--green); }
+.callout.warn { background: var(--amber-soft); border-color: var(--amber); }
+.callout.warn .label { color: var(--amber); }
+.callout.danger { background: var(--red-soft); border-color: var(--red); }
+.callout.danger .label { color: var(--red); }
+.callout.key { background: var(--teal-soft); border-color: var(--teal); }
+.callout.key .label { color: var(--teal); }
+
+/* ==========================================================
+   PULL QUOTE
+   ========================================================== */
+.pullquote {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 1.5rem;
+  line-height: 1.4;
+  color: var(--ink);
+  padding: 28px 0 28px 32px;
+  margin: 36px 0;
+  border-left: 2px solid var(--amber);
+  max-width: 70ch;
+  font-variation-settings: "opsz" 72, "SOFT" 40;
+}
+.pullquote .attr {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-style: normal;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-top: 14px;
+  font-weight: 500;
+}
+
+/* ==========================================================
+   FIGURES / DIAGRAMS
+   ========================================================== */
+figure {
+  margin: 36px -20px;
+  padding: 24px;
+  background: var(--paper-dim);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  page-break-inside: avoid;
+}
+figure svg { width: 100%; height: auto; display: block; }
+figcaption {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  text-align: center;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+figcaption .fig-num { color: var(--amber); font-weight: 700; margin-right: 8px; }
+
+/* ==========================================================
+   TABLES
+   ========================================================== */
+.tbl-wrap {
+  margin: 24px 0;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+thead {
+  background: var(--paper-dim);
+  border-bottom: 2px solid var(--ink);
+}
+th {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 700;
+}
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-soft);
+  vertical-align: top;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:nth-child(even) { background: rgba(227, 218, 196, 0.2); }
+td code { font-size: 0.84rem; }
+
+/* ==========================================================
+   TOC
+   ========================================================== */
+.toc {
+  margin: 48px 0;
+}
+.toc-item {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  align-items: baseline;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--rule);
+  gap: 24px;
+}
+.toc-item:first-child { border-top: 1px solid var(--rule); }
+.toc-num {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  font-weight: 500;
+}
+.toc-title {
+  font-family: var(--display);
+  font-size: 1.3rem;
+  color: var(--ink);
+  font-weight: 400;
+  font-variation-settings: "opsz" 72;
+}
+.toc-title .deck {
+  display: block;
+  font-family: var(--body);
+  font-size: 0.88rem;
+  color: var(--ink-mute);
+  font-style: normal;
+  margin-top: 4px;
+  letter-spacing: 0;
+  font-variation-settings: normal;
+}
+.toc-page {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--ink-mute);
+}
+
+/* ==========================================================
+   OPENING ORNAMENT
+   ========================================================== */
+.ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 8px 0 40px;
+  color: var(--amber);
+}
+.ornament .line {
+  flex: 0 1 60px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.5;
+}
+.ornament .glyph {
+  font-family: var(--display);
+  font-size: 1.4rem;
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* ==========================================================
+   DROP CAP (chapter openers)
+   ========================================================== */
+.drop-cap::first-letter {
+  font-family: var(--display);
+  font-weight: 350;
+  font-size: 4.6em;
+  float: left;
+  line-height: 0.85;
+  margin: 8px 12px 0 -2px;
+  color: var(--amber);
+  font-variation-settings: "opsz" 144, "SOFT" 30;
+}
+
+/* ==========================================================
+   PAGE FOOTER (running)
+   ========================================================== */
+.page-foot {
+  position: absolute;
+  bottom: 36px;
+  left: 84px;
+  right: 84px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+@media print {
+  body { background: white; }
+  .page, .cover { padding: 60px 64px; }
+  figure { margin-left: 0; margin-right: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- ======================================================
+     COVER
+     ====================================================== -->
+<div class="cover">
+  <div class="cover-top">
+    <div class="publisher">CareKosh · Engineering Press</div>
+    <div class="edition">Vol. I · Field Manual</div>
+  </div>
+
+  <div class="cover-mid">
+    <div class="kicker">An Internals Companion</div>
+    <h1>The Local Testing<br><em>Field Manual</em></h1>
+    <div class="subtitle">A textbook on what actually happens between your laptop, your phone, and the cloud — when you press <code style="background:rgba(0,0,0,0.04);font-style:normal;">npm run start:staging</code>.</div>
+    <div class="lede">
+      Most React Native developers learn the dev loop as a sequence of incantations: <strong>plug in phone, run <code style="background:rgba(0,0,0,0.04);">adb reverse</code>, run a start script, scan QR code, app appears.</strong> It works most of the time, and when it breaks people don't know where to start because the abstractions are opaque. <em>This book opens the abstractions.</em>
+    </div>
+  </div>
+
+  <div class="cover-bottom">
+    <div class="cover-meta">
+      <div class="cover-meta-row"><span class="label">Subject</span><span class="value">React Native · Expo · Metro · ADB</span></div>
+      <div class="cover-meta-row"><span class="label">Audience</span><span class="value">Developers shipping CareKosh</span></div>
+      <div class="cover-meta-row"><span class="label">Pairs with</span><span class="value">LOCAL_TESTING_COMPLETE_GUIDE.md</span></div>
+      <div class="cover-meta-row"><span class="label">Pairs with</span><span class="value">USB_ADB_REVERSE_GUIDE.md</span></div>
+    </div>
+    <div class="cover-mark">
+      <span class="glyph">§</span>
+      Read once.<br>Debug forever.
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================
+     TABLE OF CONTENTS
+     ====================================================== -->
+<div class="page">
+  <div class="chap-num">Frontmatter <span style="color:var(--ink-mute)">·</span> Contents</div>
+  <h1 class="chap-title">What's <em>inside</em></h1>
+  <p class="chap-deck">Eight chapters and ten diagrams. Read straight through the first time. After that, jump in wherever something breaks.</p>
+
+  <div class="toc">
+    <div class="toc-item">
+      <div class="toc-num">CH 01</div>
+      <div class="toc-title">Why this manual exists<span class="deck">The dev loop is a sequence of abstractions. Each one hides something useful.</span></div>
+      <div class="toc-page">p. 3</div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">CH 02</div>
+      <div class="toc-title">The fundamental problem<span class="deck">React Native isn't a webpage and isn't a regular APK. It's a hybrid — and the hybrid shape dictates the whole dev setup.</span></div>
+      <div class="toc-page">p. 5</div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">CH 03</div>
+      <div class="toc-title">The four actors<span class="deck">Metro, Expo Go, ADB, and the backend. What each one is, and why we need it.</span></div>
+      <div class="toc-page">p. 9</div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">CH 04</div>
+      <div class="toc-title">The three connection modes<span class="deck">LAN, USB, Tunnel. When each works, when each breaks, which to pick.</span></div>
+      <div class="toc-page">p. 17</div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">CH 05</div>
+      <div class="toc-title">End-to-end flow<span class="deck">Cable plug-in to dashboard render — every hop, every protocol, in order.</span></div>
+      <div class="toc-page">p. 23</div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">CH 06</div>
+      <div class="toc-title">The setup, with the <em>why</em><span class="deck">Each command, what it does at the network level, and what would happen without it.</span></div>
+      <div class="toc-page">p. 29</div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">CH 07</div>
+      <div class="toc-title">Three things that confuse everyone<span class="deck">The ambiguity of <code style="font-size:0.95em">localhost</code>, what USB carries, and why Metro and the backend never meet.</span></div>
+      <div class="toc-page">p. 35</div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">CH 08</div>
+      <div class="toc-title">Glossary &amp; troubleshooting<span class="deck">Every term defined; every common breakage matched to its likely layer.</span></div>
+      <div class="toc-page">p. 39</div>
+    </div>
+  </div>
+
+  <div class="ornament" style="margin-top:64px">
+    <div class="line"></div>
+    <div class="glyph">⁂</div>
+    <div class="line"></div>
+  </div>
+
+  <div class="callout key">
+    <span class="label">How to use this book</span>
+    <p>The two operational guides — <code>LOCAL_TESTING_COMPLETE_GUIDE.md</code> and <code>USB_ADB_REVERSE_GUIDE.md</code> — tell you <strong>what to type</strong>. This manual tells you <strong>what's actually happening</strong>. Read this once and the operational guides will read like logical consequences instead of magic incantations. When something breaks, this book helps you locate <em>which layer</em> is broken. The operational guides then help you fix it.</p>
+  </div>
+
+  <div class="page-foot">
+    <span>Local Testing · Field Manual</span>
+    <span>Contents</span>
+    <span>ii</span>
+  </div>
+</div>
+
+<!-- ======================================================
+     CHAPTER 1 — Why this manual exists
+     ====================================================== -->
+<div class="page">
+  <div class="chap-num">Chapter 01</div>
+  <h1 class="chap-title">Why this <em>manual</em> exists</h1>
+  <p class="chap-deck">The dev loop you use every day is a stack of abstractions. Each abstraction is a tiny miracle. Each one hides something useful. When the miracle stops working, you need to see what it hid.</p>
+
+  <p class="drop-cap">Most React Native developers learn the dev loop the same way they learn to drive a car: as a sequence of motions that produce a desired outcome. <em>Plug in phone. Run a magic command. Run another magic command. Scan a QR code. App appears.</em> When the sequence works, nobody asks why. When it doesn't — when the QR code scan hangs, when the bundle never finishes loading, when the app starts but the dashboard is empty — most people Google the symptom and copy whatever fix is on the top Stack Overflow answer. Sometimes that works. Sometimes it makes things worse. Almost always, it leaves you no smarter than before.</p>
+
+  <p>This manual is for the developer who wants the other thing — to actually understand the stack underneath the dev loop, so that debugging becomes a process of <em>localizing the failure</em> rather than guessing in the dark. By the end of this book you will be able to answer, off the top of your head:</p>
+
+  <ul>
+    <li><strong>Why</strong> React Native needs a "native shell" and a separate JavaScript bundle that ship together.</li>
+    <li><strong>What</strong> Expo Go actually is — why it can run any Expo-compatible app, and why some libraries crash inside it.</li>
+    <li><strong>What</strong> Metro is, what it serves, and what it has nothing to do with.</li>
+    <li><strong>What</strong> ADB does, and why we use exactly one of its many features.</li>
+    <li><strong>How</strong> the phone reaches the laptop — three possible paths, with sharply different trade-offs.</li>
+    <li><strong>Why</strong> the word <code>localhost</code> means different things in different places, and why this fact alone explains most "I can't reach the backend" bugs.</li>
+    <li><strong>Step by step</strong>, what happens between the moment you plug in your phone and the moment the dashboard appears.</li>
+  </ul>
+
+  <div class="pullquote">
+    Knowing the model means you can debug <em>anything</em> in this stack — when "Connecting…" hangs, you'll know which of the four hops it could be stuck on, and you'll fix it in minutes instead of hours.
+    <span class="attr">— The thesis of this book</span>
+  </div>
+
+  <h2><span class="num">01.01</span> A note on the operational guides</h2>
+  <p>Two existing documents in <code>docs/</code> cover the operational layer:</p>
+  <ul>
+    <li><code>LOCAL_TESTING_COMPLETE_GUIDE.md</code> — every command, every config, every troubleshooting step.</li>
+    <li><code>USB_ADB_REVERSE_GUIDE.md</code> — USB-specific setup, including driver issues on Windows.</li>
+  </ul>
+  <p>Both are excellent and command-focused. Neither explains the architecture, the abstractions, or the network layer underneath. <strong>That gap is what this manual fills.</strong> Read this manual once; afterwards, every command in those operational guides will read as a logical consequence of the model, not an incantation.</p>
+
+  <h2><span class="num">01.02</span> A note on what we cover</h2>
+  <p>This is a manual about the <em>local development loop</em> — your laptop, your phone, the JS bundle, the backend you choose to talk to. It does not cover production builds (those are in <code>EXPO_AND_PLAY_STORE_GUIDE.md</code>), nor the production architecture itself (that's in <code>CAREKOSH_DEVELOPER_GUIDE.md §1</code>). What this manual covers is the everyday loop you'll run hundreds of times.</p>
+
+  <div class="page-foot">
+    <span>CH 01 · Why this manual exists</span>
+    <span>Local Testing · Field Manual</span>
+    <span>3</span>
+  </div>
+</div>
+
+<!-- ======================================================
+     CHAPTER 2 — The fundamental problem
+     ====================================================== -->
+<div class="page">
+  <div class="chap-num">Chapter 02</div>
+  <h1 class="chap-title">The fundamental <em>problem</em></h1>
+  <p class="chap-deck">React Native is neither a webpage nor a regular Android APK. It is a hybrid. The hybrid shape dictates everything that follows — the existence of Expo Go, the role of Metro, the need for ADB. Understand the hybrid, and the rest is consequence.</p>
+
+  <p class="drop-cap">CareKosh is a React Native app. To explain why our development setup looks the way it does, we have to explain what a React Native app actually is — and the answer is more interesting than the marketing suggests. A React Native app is two halves welded together at runtime, and the welding is the source of nearly every confusion in this book.</p>
+
+  <h2><span class="num">02.01</span> Two halves, welded at runtime</h2>
+
+  <p><strong>The first half is real native Android.</strong> Buttons in your app are <code>android.widget.Button</code>. Text inputs are <code>android.widget.EditText</code>. Scroll views are <code>android.widget.ScrollView</code>. There is no embedded WebView, no headless browser. When you tap a button, you tap a real native widget that responds at native speed. This is what gives React Native apps their "real app" feel — they don't suffer the input lag of HTML rendered inside a Cordova shell.</p>
+
+  <p><strong>The second half is JavaScript.</strong> Your component tree, your state management, your business rules, your API calls — all written in TypeScript and JSX, all run inside a JavaScript engine that's bundled into the app process. Hermes, in our case — a small, fast VM Facebook built specifically for React Native.</p>
+
+  <p>These two halves communicate through a <em>bridge</em> (or in newer React Native versions, JSI — same concept, more direct binding). When JS says "render <code>&lt;Text&gt;Hello&lt;/Text&gt;</code>," the bridge translates that instruction into a real <code>TextView</code> instance with its text set to "Hello".</p>
+
+  <figure>
+    <svg viewBox="0 0 820 360" xmlns="http://www.w3.org/2000/svg" font-family="Inter Tight, sans-serif">
+      <defs>
+        <marker id="arrowAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b86515"/></marker>
+        <marker id="arrowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0d6e64"/></marker>
+        <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="6" stroke="#b86515" stroke-width="0.6" opacity="0.18"/>
+        </pattern>
+        <pattern id="hatch2" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(-45)">
+          <line x1="0" y1="0" x2="0" y2="6" stroke="#0d6e64" stroke-width="0.6" opacity="0.18"/>
+        </pattern>
+      </defs>
+
+      <!-- Phone outline -->
+      <rect x="40" y="20" width="740" height="320" rx="14" fill="none" stroke="#a59f8e" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="60" y="46" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="2" fill="#767670">YOUR PHONE — SINGLE APP PROCESS</text>
+
+      <!-- Native half -->
+      <rect x="60" y="70" width="320" height="240" rx="6" fill="url(#hatch)" stroke="#b86515" stroke-width="1.2"/>
+      <text x="220" y="100" text-anchor="middle" font-family="Fraunces, serif" font-size="20" font-style="italic" fill="#b86515">The native half</text>
+      <text x="220" y="122" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="1.5" fill="#b86515">REAL ANDROID UI · NATIVE C++</text>
+
+      <g font-size="11" fill="#3d3d44">
+        <text x="80" y="160">android.widget.Button</text>
+        <text x="80" y="180">android.widget.EditText</text>
+        <text x="80" y="200">android.widget.ScrollView</text>
+        <text x="80" y="220">android.view.View</text>
+        <text x="80" y="240">Camera, file system, network</text>
+        <text x="80" y="260">Hermes VM (the JS engine)</text>
+        <text x="80" y="280">Bridge / JSI runtime</text>
+      </g>
+
+      <!-- JS half -->
+      <rect x="440" y="70" width="320" height="240" rx="6" fill="url(#hatch2)" stroke="#0d6e64" stroke-width="1.2"/>
+      <text x="600" y="100" text-anchor="middle" font-family="Fraunces, serif" font-size="20" font-style="italic" fill="#0d6e64">The JavaScript half</text>
+      <text x="600" y="122" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="1.5" fill="#0d6e64">YOUR CODE · BUNDLED INTO ~10MB</text>
+
+      <g font-family="JetBrains Mono, monospace" font-size="10" fill="#3d3d44">
+        <text x="460" y="160">app/(tabs)/dashboard.tsx</text>
+        <text x="460" y="180">components/StatusPill.tsx</text>
+        <text x="460" y="200">hooks/useServerMutations.ts</text>
+        <text x="460" y="220">store/useAuthStore.ts</text>
+        <text x="460" y="240">utils/mutationFeedback.ts</text>
+        <text x="460" y="260">node_modules/react-native…</text>
+        <text x="460" y="280">node_modules/@tanstack/react-query…</text>
+      </g>
+
+      <!-- Bridge -->
+      <line x1="380" y1="180" x2="440" y2="180" stroke="#1a1a1f" stroke-width="0.8"/>
+      <line x1="380" y1="200" x2="440" y2="200" stroke="#1a1a1f" stroke-width="0.8"/>
+      <line x1="395" y1="160" x2="395" y2="220" stroke="#1a1a1f" stroke-width="0.8" opacity="0.4"/>
+      <line x1="425" y1="160" x2="425" y2="220" stroke="#1a1a1f" stroke-width="0.8" opacity="0.4"/>
+
+      <text x="410" y="148" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="1.5" fill="#1a1a1f">BRIDGE</text>
+      <text x="410" y="245" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#767670">JSI</text>
+
+      <!-- Bridge directional arrows -->
+      <path d="M 385,184 L 422,184" stroke="#b86515" stroke-width="1.2" fill="none" marker-end="url(#arrowAmber)"/>
+      <path d="M 422,196 L 385,196" stroke="#0d6e64" stroke-width="1.2" fill="none" marker-end="url(#arrowTeal)"/>
+    </svg>
+    <figcaption><span class="fig-num">FIG 2.1</span> The hybrid runtime. Two halves of the same app process, communicating through a bridge.</figcaption>
+  </figure>
+
+  <div class="page-foot">
+    <span>CH 02 · The fundamental problem</span>
+    <span>Local Testing · Field Manual</span>
+    <span>5</span>
+  </div>
+</div>
+
+<div class="page">
+  <h2><span class="num">02.02</span> The two halves must coexist on the phone</h2>
+
+  <p>A complete React Native app therefore has <strong>two parts that need to coexist on the phone at the same time</strong>:</p>
+
+  <ol>
+    <li><strong>The native shell</strong> — an APK that provides UI primitives, navigation, camera, file access, network stack, and the JavaScript engine itself.</li>
+    <li><strong>The JavaScript bundle</strong> — a single large <code>.js</code> file (around 10 MB for our app) containing your component tree, dependencies, and business logic.</li>
+  </ol>
+
+  <p>How these two parts get onto the phone is where production and development diverge — sharply.</p>
+
+  <h2><span class="num">02.03</span> How production ships this</h2>
+
+  <p>For the Play Store, both halves are baked into one binary. EAS Build does the work for us:</p>
+
+  <pre><code><span class="c-tok-cmt"># Run from your laptop after merging to main</span>
+eas build --profile production
+  ↓
+Compiles your JS → bundle ┐
+Packages with native shell┤→ AAB → uploaded to Play Console
+Signs the binary          ┘</code></pre>
+
+  <p>A full production build takes 10–30 minutes. The user downloads the AAB from the Play Store; both halves of the app are already inside, fused; the app just runs. Beautiful for shipping. <em>Disastrous for iteration.</em></p>
+
+  <h2><span class="num">02.04</span> Why we don't do that for development</h2>
+
+  <p>Imagine making a one-line change to a TypeScript file and waiting fifteen minutes for a fresh APK build. Multiply by hundreds of edits per day. Multiply by the number of times you'll get the change wrong on the first try. The math is fatal.</p>
+
+  <p>So for development, we use a clever trick: <strong>a fixed, pre-built native shell that knows how to fetch any compatible JavaScript bundle from a server.</strong> The shell never changes. Only your JS bundle changes. The iteration loop becomes:</p>
+
+  <pre><code>Edit a .tsx file → save in the editor
+        ↓ <span class="c-tok-cmt">(< 1 second)</span>
+Metro re-bundles incrementally
+        ↓ <span class="c-tok-cmt">(< 1 second)</span>
+Expo Go fetches the patch over your USB cable or Wi-Fi
+        ↓
+Hermes hot-reloads the affected modules
+        ↓
+You see the change <span class="c-tok-str">— round trip in seconds, not minutes.</span></code></pre>
+
+  <p>That fixed shell is <strong>Expo Go</strong> — an APK you install once from the Play Store. The server is <strong>Metro</strong> — a Node.js process you run on your laptop. Your JS bundle is the only thing that changes between edits. <em>This is the entire reason this whole setup exists.</em></p>
+
+  <div class="callout key">
+    <span class="label">The thesis of the dev loop</span>
+    <p>Production fuses the native shell and the JS bundle into one APK. Development separates them — fixed shell on the phone (Expo Go), JS bundle served fresh from your laptop (Metro). Everything else in this manual is consequence: how the bundle gets from your laptop to the phone, how the phone reaches the right backend, how the cable and the network divide labor.</p>
+  </div>
+
+  <h2><span class="num">02.05</span> The trade-off this creates</h2>
+
+  <p>Splitting the shell from the bundle is wonderful for iteration speed but it does cost something: <strong>you can only use native modules that Expo Go's shell already contains.</strong> If your code imports a library that depends on its own native code (Swift, Kotlin, C++) — for example, <code>burnt</code>, which provides iOS-style toasts using SwiftUI / Material You APIs — Expo Go's shell will not have those native classes loaded, and the app will crash on the import.</p>
+
+  <p>This is why CareKosh deliberately picks <em>pure-JavaScript</em> dependencies whenever possible. <code>react-native-toast-message</code> instead of <code>burnt</code>. <code>react-native-svg</code> from the Expo SDK rather than a custom drawing library. The constraint of "must work in Expo Go" keeps our development loop fast, at the cost of occasionally picking the second-best library.</p>
+
+  <p>For the rare native dependency we truly need, the escape hatch is a <em>development build</em> — a custom Expo-Go-like shell with our specific native modules baked in. We haven't needed to do this yet. If you're reading this and you're about to add a native dependency, that decision is bigger than it looks; talk it through first.</p>
+
+  <div class="ornament">
+    <div class="line"></div>
+    <div class="glyph">⁂</div>
+    <div class="line"></div>
+  </div>
+
+  <p style="text-align:center;font-family:var(--display);font-style:italic;color:var(--ink-mute);max-width:none;margin-top:24px">Now that you know <em>why</em> the setup looks the way it does, the next chapter introduces the four pieces that make the setup go.</p>
+
+  <div class="page-foot">
+    <span>CH 02 · The fundamental problem</span>
+    <span>Local Testing · Field Manual</span>
+    <span>7</span>
+  </div>
+</div>
+
+<!-- ======================================================
+     CHAPTER 3 — The four actors
+     ====================================================== -->
+<div class="page">
+  <div class="chap-num">Chapter 03</div>
+  <h1 class="chap-title">The four <em>actors</em></h1>
+  <p class="chap-deck">Metro, Expo Go, ADB, and the backend. Three of them live on different machines. Each plays one role. None of them know about each other directly. They talk through specific channels and only those channels.</p>
+
+  <p class="drop-cap">Now that you understand <em>why</em> the development setup splits the shell from the bundle, the cast of characters is short. There are exactly four pieces. Two of them live on your laptop. One lives on your phone. One lives in the cloud. Each plays a single role; none of them know more about the others than they have to. Let's introduce them in the order traffic flows.</p>
+
+  <figure>
+    <svg viewBox="0 0 880 480" xmlns="http://www.w3.org/2000/svg" font-family="Inter Tight, sans-serif">
+      <defs>
+        <marker id="aA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b86515"/></marker>
+        <marker id="aT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0d6e64"/></marker>
+        <marker id="aB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1e4a87"/></marker>
+        <marker id="aP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b3079"/></marker>
+      </defs>
+
+      <!-- ===== ZONES ===== -->
+      <!-- Laptop zone -->
+      <rect x="20" y="50" width="280" height="380" rx="8" fill="#f5e6cf" fill-opacity="0.4" stroke="#b86515" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="160" y="78" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="3" fill="#b86515" font-weight="700">YOUR LAPTOP · WINDOWS</text>
+
+      <!-- Phone zone -->
+      <rect x="320" y="50" width="240" height="380" rx="8" fill="#d6ebe7" fill-opacity="0.45" stroke="#0d6e64" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="440" y="78" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="3" fill="#0d6e64" font-weight="700">YOUR PHONE · ANDROID</text>
+
+      <!-- Cloud zone -->
+      <rect x="580" y="50" width="280" height="380" rx="8" fill="#d6e1f4" fill-opacity="0.45" stroke="#1e4a87" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="720" y="78" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="3" fill="#1e4a87" font-weight="700">CLOUD · RENDER + NEON</text>
+
+      <!-- ===== LAPTOP CONTENTS ===== -->
+      <!-- VS Code -->
+      <rect x="40" y="100" width="240" height="44" rx="4" fill="#fff" stroke="#a59f8e" stroke-width="0.8"/>
+      <text x="160" y="118" text-anchor="middle" font-size="11" font-weight="600" fill="#1a1a1f">📝 VS Code</text>
+      <text x="160" y="134" text-anchor="middle" font-size="9" fill="#767670">your source on disk · .tsx files</text>
+
+      <!-- Metro -->
+      <rect x="40" y="160" width="240" height="78" rx="4" fill="#fff" stroke="#b86515" stroke-width="1.5"/>
+      <text x="160" y="180" text-anchor="middle" font-size="12" font-weight="700" fill="#b86515">⚙ Metro Bundler</text>
+      <text x="160" y="196" text-anchor="middle" font-size="9" fill="#3d3d44">node process · port 8081</text>
+      <text x="160" y="212" text-anchor="middle" font-size="9" fill="#3d3d44">bundles .tsx → JS · serves bundle</text>
+      <text x="160" y="228" text-anchor="middle" font-size="9" fill="#3d3d44">watches files · pushes hot reloads</text>
+
+      <!-- ADB Server -->
+      <rect x="40" y="254" width="240" height="62" rx="4" fill="#fff" stroke="#6b3079" stroke-width="1.5"/>
+      <text x="160" y="274" text-anchor="middle" font-size="12" font-weight="700" fill="#6b3079">🔌 adb server</text>
+      <text x="160" y="290" text-anchor="middle" font-size="9" fill="#3d3d44">background process · port 5037</text>
+      <text x="160" y="306" text-anchor="middle" font-size="9" fill="#3d3d44">multiplexes USB tunnels</text>
+
+      <!-- npm -->
+      <rect x="40" y="332" width="240" height="42" rx="4" fill="#fff" stroke="#a59f8e" stroke-width="0.8"/>
+      <text x="160" y="350" text-anchor="middle" font-size="11" font-weight="600" fill="#1a1a1f">⌨ PowerShell</text>
+      <text x="160" y="366" text-anchor="middle" font-size="9" fill="#767670">npm run start:staging · adb devices</text>
+
+      <!-- Docker (faded, optional) -->
+      <rect x="40" y="386" width="240" height="34" rx="4" fill="#fff" stroke="#a59f8e" stroke-width="0.6" stroke-dasharray="3 3" opacity="0.7"/>
+      <text x="160" y="402" text-anchor="middle" font-size="10" font-weight="500" fill="#767670">🐋 Docker (optional)</text>
+      <text x="160" y="414" text-anchor="middle" font-size="8" fill="#a59f8e">local FastAPI on :8000</text>
+
+      <!-- ===== PHONE CONTENTS ===== -->
+      <!-- Phone bezel -->
+      <rect x="345" y="100" width="190" height="320" rx="20" fill="#fff" stroke="#1a1a1f" stroke-width="1.4"/>
+      <rect x="362" y="118" width="156" height="280" rx="2" fill="#faf6ed"/>
+
+      <!-- Expo Go -->
+      <rect x="372" y="138" width="136" height="78" rx="4" fill="#fff" stroke="#0d6e64" stroke-width="1.5"/>
+      <text x="440" y="158" text-anchor="middle" font-size="12" font-weight="700" fill="#0d6e64">📱 Expo Go</text>
+      <text x="440" y="174" text-anchor="middle" font-size="8.5" fill="#3d3d44">native shell (APK)</text>
+      <text x="440" y="187" text-anchor="middle" font-size="8.5" fill="#3d3d44">Hermes JS engine</text>
+      <text x="440" y="200" text-anchor="middle" font-size="8.5" fill="#3d3d44">loads bundles from Metro</text>
+
+      <!-- Your bundle -->
+      <rect x="380" y="226" width="120" height="44" rx="3" fill="#d6ebe7" stroke="#0d6e64" stroke-width="0.8"/>
+      <text x="440" y="244" text-anchor="middle" font-size="10" font-weight="600" fill="#0d6e64">your JS bundle</text>
+      <text x="440" y="258" text-anchor="middle" font-size="8" fill="#3d3d44">~10 MB · loaded into Hermes</text>
+
+      <!-- adbd -->
+      <rect x="372" y="288" width="136" height="46" rx="4" fill="#fff" stroke="#6b3079" stroke-width="1.4"/>
+      <text x="440" y="305" text-anchor="middle" font-size="11" font-weight="700" fill="#6b3079">adbd</text>
+      <text x="440" y="320" text-anchor="middle" font-size="8.5" fill="#3d3d44">on-phone daemon</text>
+
+      <!-- Phone OS -->
+      <rect x="372" y="346" width="136" height="42" rx="4" fill="#fff" stroke="#a59f8e" stroke-width="0.8"/>
+      <text x="440" y="362" text-anchor="middle" font-size="10" font-weight="600" fill="#1a1a1f">Android OS</text>
+      <text x="440" y="378" text-anchor="middle" font-size="8" fill="#767670">Wi-Fi · LTE · USB stack</text>
+
+      <!-- ===== CLOUD CONTENTS ===== -->
+      <rect x="600" y="100" width="240" height="100" rx="4" fill="#fff" stroke="#1e4a87" stroke-width="1.5"/>
+      <text x="720" y="120" text-anchor="middle" font-size="12" font-weight="700" fill="#1e4a87">☁ FastAPI Backend</text>
+      <text x="720" y="138" text-anchor="middle" font-size="9" fill="#3d3d44">Render · Singapore region</text>
+      <text x="720" y="154" text-anchor="middle" font-size="9" fill="#3d3d44">staging · production · local Docker</text>
+      <text x="720" y="172" text-anchor="middle" font-size="8" fill="#767670" font-family="JetBrains Mono, monospace">vitaltrack-api-staging.onrender.com</text>
+      <text x="720" y="186" text-anchor="middle" font-size="8" fill="#767670" font-family="JetBrains Mono, monospace">vitaltrack-api.onrender.com</text>
+
+      <rect x="600" y="220" width="240" height="80" rx="4" fill="#fff" stroke="#1e4a87" stroke-width="1"/>
+      <text x="720" y="240" text-anchor="middle" font-size="11" font-weight="700" fill="#1e4a87">PostgreSQL</text>
+      <text x="720" y="258" text-anchor="middle" font-size="9" fill="#3d3d44">Neon · serverless Postgres</text>
+      <text x="720" y="276" text-anchor="middle" font-size="8" fill="#767670">JSONB audit log · OCC version columns</text>
+
+      <rect x="600" y="320" width="240" height="62" rx="4" fill="#fff" stroke="#a59f8e" stroke-width="0.8"/>
+      <text x="720" y="338" text-anchor="middle" font-size="10" font-weight="600" fill="#1a1a1f">Brevo SMTP · Sentry</text>
+      <text x="720" y="356" text-anchor="middle" font-size="9" fill="#767670">verification email · error reporting</text>
+
+      <!-- ===== ARROWS ===== -->
+      <!-- Metro → Expo Go (USB or Wi-Fi) -->
+      <path d="M 280,194 L 372,194" stroke="#b86515" stroke-width="1.6" fill="none" marker-end="url(#aA)"/>
+      <text x="326" y="186" text-anchor="middle" font-size="8.5" font-weight="600" fill="#b86515">JS bundle (~10 MB)</text>
+      <text x="326" y="206" text-anchor="middle" font-size="7.5" fill="#b86515" font-family="JetBrains Mono, monospace">via USB or Wi-Fi · port 8081</text>
+
+      <!-- adb server ↔ adbd -->
+      <path d="M 280,283 L 372,300" stroke="#6b3079" stroke-width="1.4" fill="none" marker-end="url(#aP)"/>
+      <text x="326" y="276" text-anchor="middle" font-size="8.5" font-weight="600" fill="#6b3079">USB cable</text>
+      <text x="326" y="296" text-anchor="middle" font-size="7.5" fill="#6b3079" font-family="JetBrains Mono, monospace">adb tunnel</text>
+
+      <!-- Expo Go → Backend -->
+      <path d="M 538,184 L 600,148" stroke="#1e4a87" stroke-width="1.6" fill="none" marker-end="url(#aB)"/>
+      <text x="572" y="155" text-anchor="middle" font-size="8.5" font-weight="600" fill="#1e4a87">HTTPS API</text>
+      <text x="568" y="170" text-anchor="middle" font-size="7.5" fill="#1e4a87" font-family="JetBrains Mono, monospace">via phone's Wi-Fi/LTE</text>
+
+      <!-- Backend ↔ DB -->
+      <path d="M 720,200 L 720,220" stroke="#1e4a87" stroke-width="1.2" fill="none" marker-end="url(#aB)"/>
+
+      <!-- Editor → Metro -->
+      <path d="M 160,144 L 160,160" stroke="#b86515" stroke-width="1" fill="none" stroke-dasharray="2 2" marker-end="url(#aA)"/>
+    </svg>
+    <figcaption><span class="fig-num">FIG 3.1</span> The cast — three machines, four actors. The orange channel carries code. The blue channel carries data. The purple channel is just a tunnel.</figcaption>
+  </figure>
+
+  <div class="page-foot">
+    <span>CH 03 · The four actors</span>
+    <span>Local Testing · Field Manual</span>
+    <span>9</span>
+  </div>
+</div>
+
+<div class="page">
+  <h2><span class="num">03.01</span> Metro — the JavaScript packager</h2>
+
+  <p>Metro is a JavaScript bundler in the same family as Webpack or Vite, but purpose-built for React Native. It knows about <code>.tsx</code> and <code>.jsx</code> files, knows React Native's resolver rules (which platform-specific file to pick, e.g. <code>Foo.android.tsx</code> versus <code>Foo.ios.tsx</code>), and knows how to serve incremental hot-reload patches.</p>
+
+  <p>When you run <code>npm run start:staging</code>, the npm script executes <code>cross-env EXPO_PUBLIC_API_URL=https://… expo start --clear</code>, which boots Metro. From that moment, Metro:</p>
+
+  <ol>
+    <li>Reads everything under <code>vitaltrack-mobile/app/</code>, <code>components/</code>, <code>hooks/</code>, <code>utils/</code>, <code>store/</code>, and the project root.</li>
+    <li>Resolves every <code>import</code> statement — your code <em>and</em> all of <code>node_modules</code>.</li>
+    <li>Transpiles TypeScript and JSX into plain JavaScript.</li>
+    <li>Bundles everything into one large <code>.bundle</code> file — typically around 10 MB for our app.</li>
+    <li>Starts an HTTP server on port 8081 to serve the bundle when asked.</li>
+    <li>Watches the filesystem; on every save, recomputes which parts of the bundle need to change and pushes a patch via WebSocket to whoever's listening (Expo Go, in our case).</li>
+    <li>Prints a QR code to the terminal pointing at itself.</li>
+  </ol>
+
+  <p><strong>Metro never runs your app.</strong> It just packages it. When you press Save in VS Code, Metro recomputes the bundle. When Expo Go asks for the bundle, Metro hands it over. Once the bundle is in Hermes, Metro's job is done — it just sits there waiting for the next file change.</p>
+
+  <div class="callout note">
+    <span class="label">Local-only by design</span>
+    <p>Metro is a development tool. It never ships to production. Your Render-hosted backend has nothing to do with Metro and never talks to it. If your phone can reach the backend but can't reach Metro, the problem is between the phone and your laptop — not between the phone and the cloud.</p>
+  </div>
+
+  <h2><span class="num">03.02</span> Expo Go — the generic native shell</h2>
+
+  <p>Expo Go is a regular Android app. You installed it from the Play Store. Inside that APK, three things sit waiting:</p>
+
+  <ul>
+    <li><strong>The native shell that React Native needs.</strong> The bridge, the React Native runtime, and every native module the Expo SDK ships — camera, file system, secure storage, gestures, async storage, the lot.</li>
+    <li><strong>A JavaScript engine.</strong> Hermes — a small VM Facebook built specifically for React Native. Smaller and faster to start than V8.</li>
+    <li><strong>A bundle loader.</strong> A piece of code that knows how to take a Metro URL, fetch the bundle, hand it to Hermes, and call <code>AppRegistry.registerComponent</code>.</li>
+  </ul>
+
+  <p>When you point Expo Go at <code>exp://localhost:8081</code> (or scan a QR code that contains the same URL), the loader does the following:</p>
+
+  <pre><code><span class="c-tok-num">1.</span> Parse the exp:// URL → host=localhost, port=8081
+<span class="c-tok-num">2.</span> Open HTTP connection to http://localhost:8081/index.bundle?platform=android
+<span class="c-tok-num">3.</span> Receive ~10 MB of JavaScript over the connection
+<span class="c-tok-num">4.</span> Pass the bundle string into Hermes
+<span class="c-tok-num">5.</span> Hermes parses + executes
+<span class="c-tok-num">6.</span> The bundle ends with: AppRegistry.registerComponent(<span class="c-tok-str">'main'</span>, App)
+<span class="c-tok-num">7.</span> Expo Go's native shell sees the registration, mounts your App
+<span class="c-tok-num">8.</span> React reconciler turns the component tree into native Android views
+<span class="c-tok-num">9.</span> Splash screen disappears, your app's first screen appears</code></pre>
+
+  <p>Expo Go is a <em>generic</em> shell. It can load any Expo-compatible JS bundle — CareKosh, a different app, a tutorial demo. They all work because the native APIs they call (camera, file system, etc.) are all already present in Expo Go's shell.</p>
+
+  <div class="callout warn">
+    <span class="label">The cost of generality</span>
+    <p>Expo Go's shell is fixed. <strong>You cannot add new native dependencies</strong> at runtime. If a library requires its own native code that isn't in Expo's SDK, importing it inside Expo Go will crash. This is exactly why CareKosh sticks to pure-JS dependencies — and why we picked <code>react-native-toast-message</code> instead of <code>burnt</code> for the toast UI in commit #3 of the audit branch.</p>
+  </div>
+
+  <div class="page-foot">
+    <span>CH 03 · The four actors</span>
+    <span>Local Testing · Field Manual</span>
+    <span>11</span>
+  </div>
+</div>
+
+<div class="page">
+  <h2><span class="num">03.03</span> ADB — the Android Debug Bridge</h2>
+
+  <p>ADB is a tool from the Android SDK that lets your laptop talk to your Android phone over USB. It has three components, and most confusion about ADB stems from not knowing which component is doing what.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th style="width:20%">Component</th><th style="width:30%">Where it runs</th><th>Role</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>adb</code> (client)</td><td>Your laptop, the <code>adb.exe</code> you type</td><td>Sends commands. Lightweight.</td></tr>
+        <tr><td><code>adb</code> server</td><td>Background process on your laptop, port 5037</td><td>Multiplexes between any number of clients and any number of connected devices.</td></tr>
+        <tr><td><code>adbd</code> (daemon)</td><td>On the phone, runs whenever USB Debugging is on</td><td>Receives commands from the server, executes them on the phone.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>When you type <code>adb devices</code> in PowerShell, here is the actual sequence:</p>
+
+  <figure>
+    <svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" font-family="Inter Tight, sans-serif">
+      <defs>
+        <marker id="aP2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b3079"/></marker>
+        <marker id="aP2L" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="#6b3079"/></marker>
+      </defs>
+
+      <!-- Boxes -->
+      <rect x="40" y="60" width="180" height="80" rx="6" fill="#fff" stroke="#6b3079" stroke-width="1.4"/>
+      <text x="130" y="84" text-anchor="middle" font-size="12" font-weight="700" fill="#6b3079">adb client</text>
+      <text x="130" y="102" text-anchor="middle" font-size="9" fill="#3d3d44">on the laptop</text>
+      <text x="130" y="120" text-anchor="middle" font-size="9" fill="#767670" font-family="JetBrains Mono, monospace">PowerShell &gt; adb devices</text>
+
+      <rect x="320" y="60" width="180" height="80" rx="6" fill="#fff" stroke="#6b3079" stroke-width="1.4"/>
+      <text x="410" y="84" text-anchor="middle" font-size="12" font-weight="700" fill="#6b3079">adb server</text>
+      <text x="410" y="102" text-anchor="middle" font-size="9" fill="#3d3d44">on the laptop</text>
+      <text x="410" y="120" text-anchor="middle" font-size="9" fill="#767670" font-family="JetBrains Mono, monospace">listening on :5037</text>
+
+      <rect x="600" y="60" width="180" height="80" rx="6" fill="#fff" stroke="#6b3079" stroke-width="1.4"/>
+      <text x="690" y="84" text-anchor="middle" font-size="12" font-weight="700" fill="#6b3079">adbd</text>
+      <text x="690" y="102" text-anchor="middle" font-size="9" fill="#3d3d44">on the phone</text>
+      <text x="690" y="120" text-anchor="middle" font-size="9" fill="#767670" font-family="JetBrains Mono, monospace">when USB debugging ON</text>
+
+      <!-- Arrows -->
+      <path d="M 220,90 L 320,90" stroke="#6b3079" stroke-width="1.4" fill="none" marker-end="url(#aP2)"/>
+      <text x="270" y="80" text-anchor="middle" font-size="9" fill="#6b3079">local pipe</text>
+
+      <path d="M 500,90 L 600,90" stroke="#6b3079" stroke-width="1.4" fill="none" marker-end="url(#aP2)"/>
+      <text x="550" y="80" text-anchor="middle" font-size="9" fill="#6b3079">USB cable</text>
+
+      <path d="M 600,115 L 500,115" stroke="#6b3079" stroke-width="1" stroke-dasharray="3 3" fill="none" marker-end="url(#aP2L)"/>
+      <text x="550" y="148" text-anchor="middle" font-size="9" fill="#6b3079" font-style="italic">"I am ABCD1234, status: device"</text>
+
+      <!-- Caption -->
+      <text x="410" y="180" text-anchor="middle" font-size="10" fill="#767670" font-style="italic">Three components. One physical cable. One TCP socket between client and server.</text>
+    </svg>
+    <figcaption><span class="fig-num">FIG 3.2</span> What happens when you type <code>adb devices</code>.</figcaption>
+  </figure>
+
+  <p>ADB can do many things — install APKs, read system logs, run remote shells, push and pull files, forward TCP ports. <strong>For our development setup, we use exactly one feature: port forwarding.</strong> Specifically the <code>adb reverse</code> command, which lets traffic on the phone's <code>localhost</code> get tunneled back to the laptop's <code>localhost</code>. We will explain that command in detail in Chapter 4.</p>
+
+  <div class="callout warn">
+    <span class="label">"Unauthorized" means: trust not yet given</span>
+    <p>If <code>adb devices</code> shows your phone with status <code>unauthorized</code>, the daemon on the phone has not yet been told to trust your laptop's RSA key. The phone shows a dialog containing your laptop's key fingerprint; tapping <em>"Always allow from this computer"</em> stores the key on the phone permanently. From then on <code>adb</code> works without prompting.</p>
+  </div>
+
+  <h2><span class="num">03.04</span> The backend — FastAPI on Render (or Docker)</h2>
+
+  <p>Your backend choice is independent of the dev loop. The mobile app makes HTTPS calls to <em>some</em> URL, and that URL responds with JSON. Which URL is determined by an environment variable, <code>EXPO_PUBLIC_API_URL</code>, which Metro reads when bundling and which gets baked into the JS bundle as a string constant.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Backend choice</th><th>URL</th><th>When you'd use it</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Local Docker</strong></td><td><code>http://localhost:8000</code><br><span style="font-size:0.82em;color:var(--ink-mute)">(with <code>adb reverse tcp:8000 tcp:8000</code>)</span></td><td>Day-to-day dev with simultaneous changes on both ends.</td></tr>
+        <tr><td><strong>Render staging</strong></td><td><code>https://vitaltrack-api-staging.onrender.com</code></td><td>Reproduce a staging-only bug; demo to others; CI parity.</td></tr>
+        <tr><td><strong>Render production</strong></td><td><code>https://vitaltrack-api.onrender.com</code></td><td>Manual smoke test of the live system. Use sparingly.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The <code>package.json</code> npm scripts wire the right URL into the right environment variable:</p>
+
+  <pre><code><span class="c-tok-key">"start:local"</span>:   <span class="c-tok-str">"cross-env EXPO_PUBLIC_API_URL=http://localhost:8000 expo start --clear"</span>
+<span class="c-tok-key">"start:staging"</span>: <span class="c-tok-str">"cross-env EXPO_PUBLIC_API_URL=https://vitaltrack-api-staging.onrender.com expo start --clear"</span>
+<span class="c-tok-key">"start:prod"</span>:    <span class="c-tok-str">"cross-env EXPO_PUBLIC_API_URL=https://vitaltrack-api.onrender.com expo start --clear"</span></code></pre>
+
+  <p>When Metro bundles your code, it reads <code>process.env.EXPO_PUBLIC_API_URL</code> and inlines the value into the bundle as a literal string. The mobile app reads this baked-in value from <code>vitaltrack-mobile/services/api.ts</code>:</p>
+
+  <pre><code><span class="c-tok-key">const</span> <span class="c-tok-fn">API_BASE_URL</span> = process.env.EXPO_PUBLIC_API_URL || <span class="c-tok-str">'http://localhost:8000'</span>;</code></pre>
+
+  <div class="callout danger">
+    <span class="label">Restart matters</span>
+    <p>That value is baked into the bundle <em>at bundle time</em>. Changing the env var requires restarting Metro <strong>with the <code>--clear</code> flag</strong> — otherwise Metro will serve a stale bundle with the old URL still inlined and you'll see traffic going to the wrong backend, with no obvious error message. Most "why is it hitting the wrong backend?" mysteries are solved by <code>npm run start:staging</code> with <code>--clear</code>.</p>
+  </div>
+
+  <div class="page-foot">
+    <span>CH 03 · The four actors</span>
+    <span>Local Testing · Field Manual</span>
+    <span>13</span>
+  </div>
+</div>
+
+<div class="page">
+  <h3><span class="num">03.05</span> The npm-script → bundle → app pipeline</h3>
+
+  <p>Tying the four actors together, here is what happens when you run <code>npm run start:staging</code> and the app eventually makes its first API call:</p>
+
+  <figure>
+    <svg viewBox="0 0 820 380" xmlns="http://www.w3.org/2000/svg" font-family="Inter Tight, sans-serif">
+      <defs>
+        <marker id="aF1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b86515"/></marker>
+        <marker id="aF2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1e4a87"/></marker>
+      </defs>
+
+      <!-- Step 1 -->
+      <rect x="20" y="20" width="160" height="60" rx="6" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="100" y="40" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1f">① npm script runs</text>
+      <text x="100" y="58" text-anchor="middle" font-size="9" font-family="JetBrains Mono, monospace" fill="#3d3d44">npm run start:staging</text>
+      <text x="100" y="72" text-anchor="middle" font-size="8" fill="#767670">in PowerShell</text>
+
+      <path d="M 180,50 L 220,50" stroke="#b86515" stroke-width="1.4" fill="none" marker-end="url(#aF1)"/>
+
+      <!-- Step 2 -->
+      <rect x="220" y="20" width="180" height="60" rx="6" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="310" y="38" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1f">② cross-env sets var</text>
+      <text x="310" y="55" text-anchor="middle" font-size="8" font-family="JetBrains Mono, monospace" fill="#3d3d44">EXPO_PUBLIC_API_URL =</text>
+      <text x="310" y="68" text-anchor="middle" font-size="7.5" font-family="JetBrains Mono, monospace" fill="#0d6e64">https://...staging.onrender.com</text>
+
+      <path d="M 400,50 L 440,50" stroke="#b86515" stroke-width="1.4" fill="none" marker-end="url(#aF1)"/>
+
+      <!-- Step 3 -->
+      <rect x="440" y="20" width="160" height="60" rx="6" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="520" y="40" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1f">③ expo start</text>
+      <text x="520" y="58" text-anchor="middle" font-size="9" fill="#3d3d44">boots Metro on :8081</text>
+      <text x="520" y="72" text-anchor="middle" font-size="8" fill="#767670">--clear flushes cache</text>
+
+      <path d="M 600,50 L 640,50" stroke="#b86515" stroke-width="1.4" fill="none" marker-end="url(#aF1)"/>
+
+      <!-- Step 4 -->
+      <rect x="640" y="20" width="160" height="60" rx="6" fill="#fff" stroke="#b86515" stroke-width="1.5"/>
+      <text x="720" y="40" text-anchor="middle" font-size="10" font-weight="700" fill="#b86515">④ Metro bundles</text>
+      <text x="720" y="58" text-anchor="middle" font-size="9" fill="#3d3d44">reads .tsx, transpiles,</text>
+      <text x="720" y="72" text-anchor="middle" font-size="9" fill="#3d3d44">inlines env var into bundle</text>
+
+      <!-- Down arrow from step 4 to step 5 -->
+      <path d="M 720,80 L 720,120" stroke="#b86515" stroke-width="1.4" fill="none" marker-end="url(#aF1)"/>
+
+      <!-- Step 5 (right side, going down then left) -->
+      <rect x="600" y="125" width="200" height="64" rx="6" fill="#f5e6cf" stroke="#b86515" stroke-width="1.5"/>
+      <text x="700" y="145" text-anchor="middle" font-size="10" font-weight="700" fill="#b86515">⑤ bundle is now ~10MB of JS</text>
+      <text x="700" y="161" text-anchor="middle" font-size="8.5" fill="#3d3d44">with API URL baked in as a</text>
+      <text x="700" y="174" text-anchor="middle" font-size="8.5" font-family="JetBrains Mono, monospace" fill="#3d3d44">literal string constant</text>
+
+      <path d="M 600,157 L 470,157" stroke="#b86515" stroke-width="1.4" fill="none" marker-end="url(#aF1)"/>
+
+      <!-- Step 6 -->
+      <rect x="270" y="125" width="200" height="64" rx="6" fill="#fff" stroke="#0d6e64" stroke-width="1.5"/>
+      <text x="370" y="145" text-anchor="middle" font-size="10" font-weight="700" fill="#0d6e64">⑥ Expo Go fetches & loads</text>
+      <text x="370" y="161" text-anchor="middle" font-size="8.5" fill="#3d3d44">over USB tunnel or Wi-Fi</text>
+      <text x="370" y="176" text-anchor="middle" font-size="8.5" fill="#3d3d44">Hermes executes the bundle</text>
+
+      <path d="M 270,157 L 240,157 Q 210,157 210,180 L 210,210" stroke="#0d6e64" stroke-width="1.4" fill="none" marker-end="url(#aF2)"/>
+
+      <!-- Step 7 -->
+      <rect x="100" y="215" width="220" height="64" rx="6" fill="#fff" stroke="#0d6e64" stroke-width="1.5"/>
+      <text x="210" y="235" text-anchor="middle" font-size="10" font-weight="700" fill="#0d6e64">⑦ App calls fetch()</text>
+      <text x="210" y="252" text-anchor="middle" font-size="8.5" fill="#3d3d44">app reads inlined API_BASE_URL</text>
+      <text x="210" y="266" text-anchor="middle" font-size="8.5" fill="#3d3d44">issues HTTPS request</text>
+
+      <path d="M 320,247 L 360,247" stroke="#1e4a87" stroke-width="1.4" fill="none" marker-end="url(#aF2)"/>
+
+      <!-- Step 8 -->
+      <rect x="360" y="215" width="200" height="64" rx="6" fill="#d6e1f4" stroke="#1e4a87" stroke-width="1.5"/>
+      <text x="460" y="235" text-anchor="middle" font-size="10" font-weight="700" fill="#1e4a87">⑧ Phone's Wi-Fi/LTE</text>
+      <text x="460" y="252" text-anchor="middle" font-size="8.5" fill="#3d3d44">DNS → Render edge</text>
+      <text x="460" y="266" text-anchor="middle" font-size="8.5" fill="#3d3d44">TLS handshake</text>
+
+      <path d="M 560,247 L 600,247" stroke="#1e4a87" stroke-width="1.4" fill="none" marker-end="url(#aF2)"/>
+
+      <!-- Step 9 -->
+      <rect x="600" y="215" width="200" height="64" rx="6" fill="#fff" stroke="#1e4a87" stroke-width="1.5"/>
+      <text x="700" y="235" text-anchor="middle" font-size="10" font-weight="700" fill="#1e4a87">⑨ Render → FastAPI</text>
+      <text x="700" y="252" text-anchor="middle" font-size="8.5" fill="#3d3d44">routes to staging container</text>
+      <text x="700" y="266" text-anchor="middle" font-size="8.5" fill="#3d3d44">queries Postgres, returns JSON</text>
+
+      <!-- Down to dashboard -->
+      <path d="M 700,279 L 700,310" stroke="#1e4a87" stroke-width="1.4" fill="none" marker-end="url(#aF2)"/>
+
+      <!-- Final state -->
+      <rect x="540" y="315" width="260" height="48" rx="6" fill="#dde8cf" stroke="#3a6b1f" stroke-width="1.5"/>
+      <text x="670" y="335" text-anchor="middle" font-size="10" font-weight="700" fill="#3a6b1f">⑩ TanStack Query stores; UI re-renders</text>
+      <text x="670" y="350" text-anchor="middle" font-size="8.5" fill="#3d3d44" font-style="italic">Dashboard appears with real data</text>
+
+      <!-- Channel labels -->
+      <text x="40" y="305" font-size="9" fill="#b86515" font-weight="600">— orange = code (Metro → Expo Go)</text>
+      <text x="40" y="320" font-size="9" fill="#1e4a87" font-weight="600">— blue = data (Expo Go → backend → DB)</text>
+      <text x="40" y="335" font-size="9" fill="#3a6b1f" font-weight="600">— green = the moment of arrival</text>
+    </svg>
+    <figcaption><span class="fig-num">FIG 3.3</span> One command. Two channels. Ten distinct hops. The orange channel happens once at app startup. The blue channel happens on every API call.</figcaption>
+  </figure>
+
+  <div class="callout key">
+    <span class="label">Two channels, one mental model</span>
+    <p>The single most useful thing to internalize: <strong>code travels orange, data travels blue, and the two channels never mix</strong>. The cable carries code. Wi-Fi/LTE carries data. When something breaks, ask which channel is failing — that alone narrows the search by half.</p>
+  </div>
+
+  <div class="page-foot">
+    <span>CH 03 · The four actors</span>
+    <span>Local Testing · Field Manual</span>
+    <span>15</span>
+  </div>
+</div>
+
+<!-- ======================================================
+     CHAPTER 4 — The three connection modes
+     ====================================================== -->
+<div class="page">
+  <div class="chap-num">Chapter 04</div>
+  <h1 class="chap-title">The three <em>connection modes</em></h1>
+  <p class="chap-deck">Once Metro is running on your laptop and Expo Go is installed on your phone, the question becomes: how does Expo Go reach Metro? Three answers exist. Each has sharp trade-offs. Picking the right one is half the battle.</p>
+
+  <p class="drop-cap">The bundle has to get from the laptop to the phone somehow. The internet connection between them — over Wi-Fi, USB, or a public tunnel — determines almost everything else about your dev experience. The decision tree below tells you which mode to pick first; the rest of this chapter explains <em>why</em>.</p>
+
+  <figure>
+    <svg viewBox="0 0 820 380" xmlns="http://www.w3.org/2000/svg" font-family="Inter Tight, sans-serif">
+      <defs>
+        <marker id="aD" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1a1a1f"/></marker>
+      </defs>
+
+      <!-- Question root -->
+      <rect x="280" y="20" width="260" height="56" rx="6" fill="#2a2620" stroke="#1a1a1f" stroke-width="1.4"/>
+      <text x="410" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="#faf6ed">How does the phone reach Metro?</text>
+      <text x="410" y="60" text-anchor="middle" font-size="9" fill="#a59f8e" font-style="italic">three answers · pick one</text>
+
+      <!-- Branch lines -->
+      <path d="M 410,76 L 410,108" stroke="#1a1a1f" stroke-width="1"/>
+      <path d="M 130,108 L 690,108" stroke="#1a1a1f" stroke-width="1"/>
+      <path d="M 130,108 L 130,140" stroke="#1a1a1f" stroke-width="1" marker-end="url(#aD)"/>
+      <path d="M 410,108 L 410,140" stroke="#1a1a1f" stroke-width="1" marker-end="url(#aD)"/>
+      <path d="M 690,108 L 690,140" stroke="#1a1a1f" stroke-width="1" marker-end="url(#aD)"/>
+
+      <!-- LAN box -->
+      <rect x="40" y="148" width="180" height="76" rx="6" fill="#d6ebe7" stroke="#0d6e64" stroke-width="1.6"/>
+      <text x="130" y="168" text-anchor="middle" font-size="13" font-weight="700" fill="#0d6e64">LAN mode</text>
+      <text x="130" y="186" text-anchor="middle" font-size="9.5" fill="#3d3d44">via Wi-Fi · same subnet</text>
+      <text x="130" y="202" text-anchor="middle" font-size="9.5" fill="#3d3d44">phone → laptop's LAN IP</text>
+      <text x="130" y="216" text-anchor="middle" font-size="8.5" font-family="JetBrains Mono, monospace" fill="#0d6e64">exp://192.168.1.5:8081</text>
+
+      <!-- USB box -->
+      <rect x="320" y="148" width="180" height="76" rx="6" fill="#f5e6cf" stroke="#b86515" stroke-width="1.6"/>
+      <text x="410" y="168" text-anchor="middle" font-size="13" font-weight="700" fill="#b86515">USB mode</text>
+      <text x="410" y="186" text-anchor="middle" font-size="9.5" fill="#3d3d44">via cable · adb reverse</text>
+      <text x="410" y="202" text-anchor="middle" font-size="9.5" fill="#3d3d44">phone localhost → laptop</text>
+      <text x="410" y="216" text-anchor="middle" font-size="8.5" font-family="JetBrains Mono, monospace" fill="#b86515">exp://localhost:8081</text>
+
+      <!-- Tunnel box -->
+      <rect x="600" y="148" width="180" height="76" rx="6" fill="#ecdaef" stroke="#6b3079" stroke-width="1.6"/>
+      <text x="690" y="168" text-anchor="middle" font-size="13" font-weight="700" fill="#6b3079">Tunnel mode</text>
+      <text x="690" y="186" text-anchor="middle" font-size="9.5" fill="#3d3d44">via public ngrok-like URL</text>
+      <text x="690" y="202" text-anchor="middle" font-size="9.5" fill="#3d3d44">phone → exp.direct → laptop</text>
+      <text x="690" y="216" text-anchor="middle" font-size="8.5" font-family="JetBrains Mono, monospace" fill="#6b3079">exp://abc-xyz.exp.direct:80</text>
+
+      <!-- When works -->
+      <text x="130" y="252" text-anchor="middle" font-size="9" font-weight="600" fill="#3a6b1f">✓ when phone &amp; laptop on same Wi-Fi</text>
+      <text x="130" y="268" text-anchor="middle" font-size="9" fill="#767670">default for npx expo start</text>
+      <text x="130" y="288" text-anchor="middle" font-size="9" fill="#b3261e">✗ guest networks · client isolation</text>
+      <text x="130" y="302" text-anchor="middle" font-size="9" fill="#b3261e">✗ different subnets · firewall</text>
+
+      <text x="410" y="252" text-anchor="middle" font-size="9" font-weight="600" fill="#3a6b1f">✓ always · most reliable mode</text>
+      <text x="410" y="268" text-anchor="middle" font-size="9" fill="#767670">no Wi-Fi dependency</text>
+      <text x="410" y="288" text-anchor="middle" font-size="9" fill="#b3261e">✗ phone is tethered to laptop</text>
+      <text x="410" y="302" text-anchor="middle" font-size="9" fill="#b3261e">✗ needs USB-debugging authorized</text>
+
+      <text x="690" y="252" text-anchor="middle" font-size="9" font-weight="600" fill="#3a6b1f">✓ universal · works through firewalls</text>
+      <text x="690" y="268" text-anchor="middle" font-size="9" fill="#767670">no LAN, no USB needed</text>
+      <text x="690" y="288" text-anchor="middle" font-size="9" fill="#b3261e">✗ slow · every byte goes via cloud</text>
+      <text x="690" y="302" text-anchor="middle" font-size="9" fill="#b3261e">✗ needs internet on both ends</text>
+
+      <!-- API URL guidance -->
+      <rect x="40" y="320" width="740" height="48" rx="4" fill="#faf6ed" stroke="#a59f8e" stroke-width="0.6" stroke-dasharray="3 3"/>
+      <text x="60" y="338" font-size="9" font-weight="700" fill="#1a1a1f" letter-spacing="2">API URL TO USE WITH EACH MODE</text>
+      <text x="60" y="354" font-size="9" fill="#3d3d44">LAN → <tspan font-family="JetBrains Mono, monospace" fill="#0d6e64">http://YOUR_LAN_IP:8000</tspan> for local Docker · or staging/prod URLs (phone reaches them over its own Wi-Fi).</text>
+      <text x="60" y="364" font-size="9" fill="#3d3d44">USB → <tspan font-family="JetBrains Mono, monospace" fill="#b86515">http://localhost:8000</tspan> for local Docker (with second adb reverse) · or staging/prod URLs (phone uses Wi-Fi/LTE).</text>
+    </svg>
+    <figcaption><span class="fig-num">FIG 4.1</span> The decision tree. Try LAN first. If it hangs, switch to USB. Use Tunnel only as a last resort.</figcaption>
+  </figure>
+
+  <div class="page-foot">
+    <span>CH 04 · The three connection modes</span>
+    <span>Local Testing · Field Manual</span>
+    <span>17</span>
+  </div>
+</div>
+
+<div class="page">
+  <h2><span class="num">04.01</span> LAN mode — over Wi-Fi</h2>
+
+  <p>The default for plain <code>npx expo start</code>. Both devices sit on the same Wi-Fi network. The phone reaches the laptop using the laptop's LAN IP — typically something like <code>192.168.1.5:8081</code>.</p>
+
+  <p>The QR code in your terminal encodes <code>exp://192.168.1.5:8081</code> with whatever your actual LAN IP is. Expo Go scans the code, fetches the bundle directly over Wi-Fi. When this works, it's beautiful — no cable, no fuss.</p>
+
+  <figure>
+    <svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" font-family="Inter Tight, sans-serif">
+      <defs>
+        <marker id="aL1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0d6e64"/></marker>
+      </defs>
+
+      <!-- Laptop -->
+      <rect x="40" y="50" width="180" height="100" rx="6" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="130" y="76" text-anchor="middle" font-size="11" font-weight="700" fill="#1a1a1f">💻 Laptop</text>
+      <text x="130" y="98" text-anchor="middle" font-size="9" fill="#3d3d44">Metro on :8081</text>
+      <text x="130" y="118" text-anchor="middle" font-size="9" fill="#767670" font-family="JetBrains Mono, monospace">192.168.1.5</text>
+      <text x="130" y="135" text-anchor="middle" font-size="8" fill="#a59f8e">listening on all interfaces</text>
+
+      <!-- Wi-Fi cloud -->
+      <ellipse cx="380" cy="100" rx="100" ry="50" fill="#d6ebe7" stroke="#0d6e64" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="380" y="92" text-anchor="middle" font-size="11" font-weight="700" fill="#0d6e64">📶 Wi-Fi router</text>
+      <text x="380" y="110" text-anchor="middle" font-size="9" fill="#3d3d44">same subnet · 192.168.1.0/24</text>
+      <text x="380" y="124" text-anchor="middle" font-size="8" fill="#767670" font-style="italic">no client isolation</text>
+
+      <!-- Phone -->
+      <rect x="540" y="50" width="180" height="100" rx="6" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="630" y="76" text-anchor="middle" font-size="11" font-weight="700" fill="#1a1a1f">📱 Phone</text>
+      <text x="630" y="98" text-anchor="middle" font-size="9" fill="#3d3d44">Expo Go fetches bundle</text>
+      <text x="630" y="118" text-anchor="middle" font-size="9" fill="#767670" font-family="JetBrains Mono, monospace">192.168.1.42</text>
+      <text x="630" y="135" text-anchor="middle" font-size="8" fill="#a59f8e">on the same network</text>
+
+      <!-- Arrows -->
+      <path d="M 220,100 L 280,100" stroke="#0d6e64" stroke-width="1.6" fill="none" marker-end="url(#aL1)"/>
+      <path d="M 480,100 L 540,100" stroke="#0d6e64" stroke-width="1.6" fill="none" marker-end="url(#aL1)"/>
+
+      <text x="380" y="180" text-anchor="middle" font-size="9" fill="#0d6e64" font-style="italic">Phone hits laptop's LAN IP directly. Cable optional. No tunnel.</text>
+    </svg>
+    <figcaption><span class="fig-num">FIG 4.2</span> LAN mode — same Wi-Fi, direct connection.</figcaption>
+  </figure>
+
+  <p><strong>When LAN fails</strong> — and it fails more often than you'd expect — it's almost always one of three reasons:</p>
+
+  <ul>
+    <li>The Wi-Fi access point has <em>client isolation</em> enabled (devices on the same network can't see each other). This is common on guest networks, university Wi-Fi, hotel Wi-Fi, and corporate guest networks.</li>
+    <li>The laptop and phone are on different subnets — wired desktop on <code>192.168.0.x</code>, phone on a separate guest network <code>192.168.10.x</code>. Same physical building, different logical networks.</li>
+    <li>The laptop's firewall (Windows Defender on first run, especially) is blocking inbound TCP on port 8081.</li>
+  </ul>
+
+  <h2><span class="num">04.02</span> USB mode — adb reverse</h2>
+
+  <p>The phone is plugged into the laptop with a USB data cable. The <code>adb reverse</code> command sets up a TCP tunnel: any time the phone tries to connect to its own <code>localhost:8081</code>, the connection is intercepted by <code>adbd</code> and forwarded over USB to the laptop's <code>localhost:8081</code>, where Metro is listening.</p>
+
+  <figure>
+    <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" font-family="Inter Tight, sans-serif">
+      <defs>
+        <marker id="aU1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b86515"/></marker>
+      </defs>
+
+      <!-- On phone box -->
+      <rect x="40" y="20" width="320" height="240" rx="6" fill="#d6ebe7" fill-opacity="0.45" stroke="#0d6e64" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="200" y="42" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="2.5" fill="#0d6e64" font-weight="700">ON THE PHONE</text>
+
+      <rect x="60" y="64" width="280" height="42" rx="4" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="200" y="80" text-anchor="middle" font-size="10" font-weight="600">Expo Go fetches bundle</text>
+      <text x="200" y="96" text-anchor="middle" font-size="9" fill="#767670" font-family="JetBrains Mono, monospace">http://localhost:8081/index.bundle</text>
+
+      <path d="M 200,106 L 200,128" stroke="#b86515" stroke-width="1.4" fill="none" marker-end="url(#aU1)"/>
+
+      <rect x="60" y="130" width="280" height="42" rx="4" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="200" y="146" text-anchor="middle" font-size="10" font-weight="600">Android TCP stack: "localhost:8081"</text>
+      <text x="200" y="162" text-anchor="middle" font-size="9" fill="#767670">checks for local listener…</text>
+
+      <path d="M 200,172 L 200,194" stroke="#b86515" stroke-width="1.4" fill="none" marker-end="url(#aU1)"/>
+
+      <rect x="60" y="196" width="280" height="48" rx="4" fill="#f5e6cf" stroke="#b86515" stroke-width="1.5"/>
+      <text x="200" y="214" text-anchor="middle" font-size="11" font-weight="700" fill="#b86515">adbd intercepts</text>
+      <text x="200" y="230" text-anchor="middle" font-size="9" fill="#3d3d44">"reverse rule says: tunnel to laptop's :8081"</text>
+
+      <!-- USB cable -->
+      <path d="M 360,220 Q 410,220 410,140 Q 410,60 460,60" stroke="#b86515" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <text x="410" y="146" text-anchor="middle" font-size="9" fill="#b86515" font-weight="700" transform="rotate(-90 410 140)">USB</text>
+
+      <!-- On laptop box -->
+      <rect x="460" y="20" width="280" height="240" rx="6" fill="#f5e6cf" fill-opacity="0.45" stroke="#b86515" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="600" y="42" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="2.5" fill="#b86515" font-weight="700">ON THE LAPTOP</text>
+
+      <rect x="480" y="64" width="240" height="42" rx="4" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="600" y="80" text-anchor="middle" font-size="10" font-weight="600">adb server :5037</text>
+      <text x="600" y="96" text-anchor="middle" font-size="9" fill="#767670">receives tunnelled connection</text>
+
+      <path d="M 600,106 L 600,128" stroke="#b86515" stroke-width="1.4" fill="none" marker-end="url(#aU1)"/>
+
+      <rect x="480" y="130" width="240" height="42" rx="4" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="600" y="146" text-anchor="middle" font-size="10" font-weight="600">forwarded to localhost:8081</text>
+      <text x="600" y="162" text-anchor="middle" font-size="9" fill="#767670">where Metro is listening</text>
+
+      <path d="M 600,172 L 600,194" stroke="#b86515" stroke-width="1.4" fill="none" marker-end="url(#aU1)"/>
+
+      <rect x="480" y="196" width="240" height="48" rx="4" fill="#f5e6cf" stroke="#b86515" stroke-width="1.5"/>
+      <text x="600" y="214" text-anchor="middle" font-size="11" font-weight="700" fill="#b86515">Metro answers</text>
+      <text x="600" y="230" text-anchor="middle" font-size="9" fill="#3d3d44">~10 MB JS streams back over the same tunnel</text>
+    </svg>
+    <figcaption><span class="fig-num">FIG 4.3</span> USB mode — adb reverse turns the phone's localhost into a tunnel to the laptop.</figcaption>
+  </figure>
+
+  <p>The same trick can forward the API port: <code>adb reverse tcp:8000 tcp:8000</code> lets the phone hit <code>http://localhost:8000</code> and reach the local Docker FastAPI backend running on the laptop.</p>
+
+  <p><strong>USB mode is the most reliable mode.</strong> It doesn't depend on Wi-Fi state, doesn't depend on the network at all (for Metro traffic), works through any firewall configuration. The trade-off is small: the phone is tethered to the laptop. Fine at a desk; awkward when you want to walk around showing the app to someone.</p>
+
+  <div class="page-foot">
+    <span>CH 04 · The three connection modes</span>
+    <span>Local Testing · Field Manual</span>
+    <span>19</span>
+  </div>
+</div>
+
+<div class="page">
+  <h2><span class="num">04.03</span> Tunnel mode — public URL</h2>
+
+  <p>When LAN won't work and USB isn't an option (a colleague wants to test on their phone, or you're presenting a demo from across the room), Tunnel mode is the universal fallback.</p>
+
+  <p>Run <code>npx expo start --tunnel</code> instead of plain <code>expo start</code>. Expo will install a small extra dependency (an ngrok-like tunneling client) and give you a public URL like <code>exp://abc-xyz-yourname.exp.direct:80</code>. Your laptop's Metro server is now reachable over the public internet through this URL.</p>
+
+  <figure>
+    <svg viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg" font-family="Inter Tight, sans-serif">
+      <defs>
+        <marker id="aT1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b3079"/></marker>
+      </defs>
+
+      <!-- Laptop -->
+      <rect x="40" y="60" width="160" height="80" rx="6" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="120" y="86" text-anchor="middle" font-size="11" font-weight="700">💻 Laptop · Metro</text>
+      <text x="120" y="106" text-anchor="middle" font-size="9" fill="#767670">behind any firewall,</text>
+      <text x="120" y="120" text-anchor="middle" font-size="9" fill="#767670">any network</text>
+
+      <!-- Tunnel service -->
+      <ellipse cx="380" cy="100" rx="120" ry="56" fill="#ecdaef" stroke="#6b3079" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="380" y="86" text-anchor="middle" font-size="11" font-weight="700" fill="#6b3079">☁ exp.direct relay</text>
+      <text x="380" y="106" text-anchor="middle" font-size="9" fill="#3d3d44">public URL like</text>
+      <text x="380" y="120" text-anchor="middle" font-size="8" fill="#3d3d44" font-family="JetBrains Mono, monospace">abc-xyz-yourname.exp.direct</text>
+
+      <!-- Phone -->
+      <rect x="560" y="60" width="160" height="80" rx="6" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="640" y="86" text-anchor="middle" font-size="11" font-weight="700">📱 Phone · Expo Go</text>
+      <text x="640" y="106" text-anchor="middle" font-size="9" fill="#767670">on cellular LTE,</text>
+      <text x="640" y="120" text-anchor="middle" font-size="9" fill="#767670">guest Wi-Fi, anywhere</text>
+
+      <!-- Arrows showing two-way flow -->
+      <path d="M 200,90 L 260,90" stroke="#6b3079" stroke-width="1.6" fill="none" marker-end="url(#aT1)"/>
+      <text x="230" y="80" text-anchor="middle" font-size="9" fill="#6b3079">register</text>
+
+      <path d="M 500,90 L 560,90" stroke="#6b3079" stroke-width="1.6" fill="none" marker-end="url(#aT1)"/>
+      <path d="M 560,110 L 500,110" stroke="#6b3079" stroke-width="1.6" fill="none" marker-end="url(#aT1)" transform="scale(-1,1) translate(-1060,0)"/>
+
+      <text x="380" y="194" text-anchor="middle" font-size="9" fill="#6b3079" font-style="italic">Both sides only need outbound internet. No firewall holes, no shared LAN required.</text>
+    </svg>
+    <figcaption><span class="fig-num">FIG 4.4</span> Tunnel mode — the slowest but most universal fallback.</figcaption>
+  </figure>
+
+  <p>Trade-offs to know about:</p>
+
+  <ul>
+    <li><strong>Slower</strong>. Every byte of the JS bundle now travels phone → exp.direct → your laptop and back. The first bundle load takes noticeably longer than LAN or USB. Hot reloads also have higher latency.</li>
+    <li><strong>Both sides need internet</strong>. If your laptop is offline, tunnel mode can't work even though both phone and laptop can otherwise see each other.</li>
+    <li><strong>Doesn't help your local Docker backend</strong>. The phone can hit Metro over the tunnel, but <code>EXPO_PUBLIC_API_URL=http://localhost:8000</code> won't work because the phone's <code>localhost</code> is no longer connected to your laptop. In tunnel mode you should hit staging or production: <code>EXPO_PUBLIC_API_URL=https://vitaltrack-api-staging.onrender.com</code>.</li>
+  </ul>
+
+  <h2><span class="num">04.04</span> Picking the right mode for the task</h2>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Situation</th><th>Pick</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>You're at your desk, working on UI for a few hours</td><td><strong>USB</strong></td><td>Most reliable. Cable is fine.</td></tr>
+        <tr><td>Working on backend + mobile simultaneously, both local</td><td><strong>USB</strong> with two reverses</td><td><code>adb reverse tcp:8081 tcp:8081</code> for Metro, <code>adb reverse tcp:8000 tcp:8000</code> for Docker.</td></tr>
+        <tr><td>Quick demo to a colleague at a coffee shop, both on the same Wi-Fi</td><td><strong>LAN</strong></td><td>No cable, scan QR, done.</td></tr>
+        <tr><td>Showing the app to someone on a video call</td><td><strong>LAN</strong> or <strong>USB</strong></td><td>Either works; LAN if you want to hold the phone freely.</td></tr>
+        <tr><td>Corporate Wi-Fi blocks LAN, you forgot your USB cable</td><td><strong>Tunnel</strong></td><td>The fallback. Slower but always works.</td></tr>
+        <tr><td>Reproducing a staging-only bug</td><td>Any mode + <code>start:staging</code></td><td>Mode determines Metro path; env var determines API path. Independent.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout key">
+    <span class="label">The orthogonal axes</span>
+    <p>Two questions, decided independently. <strong>(1) How does the phone reach Metro?</strong> — LAN, USB, or Tunnel. <strong>(2) Which backend should the bundle hit?</strong> — local Docker, staging, or production. The npm script picks the second; your network situation picks the first. They never collide. Mix and match freely.</p>
+  </div>
+
+  <div class="page-foot">
+    <span>CH 04 · The three connection modes</span>
+    <span>Local Testing · Field Manual</span>
+    <span>21</span>
+  </div>
+</div>
+
+<!-- ======================================================
+     CHAPTER 5 — End-to-end flow
+     ====================================================== -->
+<div class="page">
+  <div class="chap-num">Chapter 05</div>
+  <h1 class="chap-title">End-to-end <em>flow</em></h1>
+  <p class="chap-deck">From the moment your USB cable touches the laptop to the moment the dashboard renders with real data — every hop, every protocol, in order. USB mode against staging backend, traced step by step.</p>
+
+  <p class="drop-cap">This is the central reference of the book. Whenever something breaks during the dev loop, the failure is at one of the 38 specific steps below. Find the last step that obviously worked, find the next step that obviously didn't, and the broken layer is between them. The failure is almost never mysterious; it's usually just <em>further upstream than you assumed</em>.</p>
+
+  <p>The flow has four phases. Phase 1 happens once per dev session. Phase 2 happens once per fresh app start. Phase 3 happens on every API call after that. Phase 4 happens on every code save.</p>
+
+  <figure>
+    <svg viewBox="0 0 880 720" xmlns="http://www.w3.org/2000/svg" font-family="Inter Tight, sans-serif">
+      <defs>
+        <marker id="aS1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1a1a1f"/></marker>
+        <marker id="aSo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b86515"/></marker>
+        <marker id="aSb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1e4a87"/></marker>
+        <marker id="aSp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b3079"/></marker>
+      </defs>
+
+      <!-- Lifelines -->
+      <text x="100" y="32" text-anchor="middle" font-size="10" font-weight="700" fill="#3d3d44">YOU</text>
+      <text x="240" y="32" text-anchor="middle" font-size="10" font-weight="700" fill="#3d3d44">LAPTOP</text>
+      <text x="380" y="32" text-anchor="middle" font-size="10" font-weight="700" fill="#b86515">METRO</text>
+      <text x="520" y="32" text-anchor="middle" font-size="10" font-weight="700" fill="#6b3079">USB / ADB</text>
+      <text x="660" y="32" text-anchor="middle" font-size="10" font-weight="700" fill="#0d6e64">EXPO GO</text>
+      <text x="800" y="32" text-anchor="middle" font-size="10" font-weight="700" fill="#1e4a87">RENDER</text>
+
+      <!-- Vertical lifelines -->
+      <line x1="100" y1="40" x2="100" y2="710" stroke="#a59f8e" stroke-width="0.6" stroke-dasharray="2 4"/>
+      <line x1="240" y1="40" x2="240" y2="710" stroke="#a59f8e" stroke-width="0.6" stroke-dasharray="2 4"/>
+      <line x1="380" y1="40" x2="380" y2="710" stroke="#a59f8e" stroke-width="0.6" stroke-dasharray="2 4"/>
+      <line x1="520" y1="40" x2="520" y2="710" stroke="#a59f8e" stroke-width="0.6" stroke-dasharray="2 4"/>
+      <line x1="660" y1="40" x2="660" y2="710" stroke="#a59f8e" stroke-width="0.6" stroke-dasharray="2 4"/>
+      <line x1="800" y1="40" x2="800" y2="710" stroke="#a59f8e" stroke-width="0.6" stroke-dasharray="2 4"/>
+
+      <!-- ======= PHASE 1 ======= -->
+      <rect x="20" y="50" width="840" height="22" rx="3" fill="#f5e6cf"/>
+      <text x="40" y="65" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700" fill="#b86515" letter-spacing="2">PHASE 1 · SETUP · ONCE PER DEV SESSION</text>
+
+      <!-- Step 1 -->
+      <text x="48" y="88" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">①</text>
+      <path d="M 100,86 L 230,86" stroke="#1a1a1f" stroke-width="1" fill="none" marker-end="url(#aS1)"/>
+      <text x="165" y="80" text-anchor="middle" font-size="9" fill="#1a1a1f">plug USB cable</text>
+
+      <!-- Step 2 -->
+      <text x="48" y="106" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">②</text>
+      <path d="M 100,104 L 650,104" stroke="#1a1a1f" stroke-width="1" fill="none" marker-end="url(#aS1)"/>
+      <text x="375" y="98" text-anchor="middle" font-size="9" fill="#1a1a1f">tap "Always allow from this computer"</text>
+
+      <!-- Step 3 -->
+      <text x="48" y="124" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">③</text>
+      <path d="M 100,122 L 230,122" stroke="#1a1a1f" stroke-width="1" fill="none" marker-end="url(#aS1)"/>
+      <text x="165" y="116" text-anchor="middle" font-size="9" fill="#1a1a1f">adb devices</text>
+
+      <text x="265" y="124" font-size="8" fill="#3d3d44" font-style="italic">→ shows phone as "device"</text>
+
+      <!-- Step 4 -->
+      <text x="48" y="146" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">④</text>
+      <path d="M 100,144 L 230,144" stroke="#1a1a1f" stroke-width="1" fill="none" marker-end="url(#aS1)"/>
+      <text x="165" y="138" text-anchor="middle" font-size="9" fill="#1a1a1f">adb reverse tcp:8081</text>
+
+      <path d="M 240,148 L 510,148" stroke="#6b3079" stroke-width="1" fill="none" marker-end="url(#aSp)"/>
+      <text x="375" y="160" text-anchor="middle" font-size="8" fill="#6b3079">"set tunnel: phone localhost:8081 → laptop :8081"</text>
+
+      <!-- Step 5 -->
+      <text x="48" y="178" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑤</text>
+      <path d="M 100,176 L 230,176" stroke="#1a1a1f" stroke-width="1" fill="none" marker-end="url(#aS1)"/>
+      <text x="165" y="170" text-anchor="middle" font-size="9" fill="#1a1a1f">npm run start:staging</text>
+
+      <path d="M 240,180 L 370,180" stroke="#b86515" stroke-width="1" fill="none" marker-end="url(#aSo)"/>
+      <text x="305" y="174" text-anchor="middle" font-size="8" fill="#b86515">EXPO_PUBLIC_API_URL=https://...</text>
+
+      <!-- Metro boots -->
+      <rect x="365" y="194" width="30" height="24" rx="3" fill="#f5e6cf" stroke="#b86515" stroke-width="0.8"/>
+      <text x="380" y="210" text-anchor="middle" font-size="9" fill="#b86515" font-weight="700">build</text>
+      <text x="420" y="210" font-size="8.5" fill="#3d3d44" font-style="italic">Metro reads source, transpiles, bundles, opens :8081</text>
+
+      <!-- Step 6 -->
+      <text x="48" y="240" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑥</text>
+      <path d="M 100,238 L 650,238" stroke="#1a1a1f" stroke-width="1" fill="none" marker-end="url(#aS1)"/>
+      <text x="375" y="232" text-anchor="middle" font-size="9" fill="#1a1a1f">scan QR (or type exp://localhost:8081)</text>
+
+      <!-- ======= PHASE 2 ======= -->
+      <rect x="20" y="252" width="840" height="22" rx="3" fill="#d6ebe7"/>
+      <text x="40" y="267" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700" fill="#0d6e64" letter-spacing="2">PHASE 2 · BUNDLE LOAD · ONCE PER FRESH START</text>
+
+      <!-- Step 7 -->
+      <text x="48" y="290" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑦</text>
+      <path d="M 660,288 L 530,288" stroke="#0d6e64" stroke-width="1" fill="none" marker-end="url(#aSp)" transform="scale(-1,1) translate(-1190,0)"/>
+      <text x="595" y="282" text-anchor="middle" font-size="8.5" fill="#0d6e64">Expo Go: GET /index.bundle</text>
+
+      <text x="48" y="308" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑧</text>
+      <path d="M 520,306 L 250,306" stroke="#6b3079" stroke-width="1" fill="none" marker-end="url(#aSp)" transform="scale(-1,1) translate(-770,0)"/>
+      <text x="380" y="300" text-anchor="middle" font-size="8.5" fill="#6b3079">tunneled over USB to laptop's :8081</text>
+
+      <text x="48" y="326" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑨</text>
+      <path d="M 240,324 L 370,324" stroke="#1a1a1f" stroke-width="1" fill="none" marker-end="url(#aS1)"/>
+      <text x="305" y="318" text-anchor="middle" font-size="8.5" fill="#1a1a1f">→ Metro on :8081</text>
+
+      <!-- Build/respond -->
+      <text x="48" y="346" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑩</text>
+      <rect x="365" y="338" width="30" height="20" rx="3" fill="#f5e6cf" stroke="#b86515" stroke-width="0.8"/>
+      <text x="412" y="352" font-size="8.5" fill="#3d3d44" font-style="italic">Metro builds (cached after first run)</text>
+
+      <!-- Bundle returns -->
+      <text x="48" y="372" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑪</text>
+      <path d="M 380,370 L 670,370" stroke="#b86515" stroke-width="1.6" fill="none" marker-end="url(#aSo)"/>
+      <text x="525" y="364" text-anchor="middle" font-size="8.5" fill="#b86515" font-weight="600">~10 MB JS bundle</text>
+      <text x="525" y="382" text-anchor="middle" font-size="7.5" fill="#b86515">via adb reverse tunnel</text>
+
+      <!-- Hermes executes -->
+      <text x="48" y="406" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑫</text>
+      <rect x="645" y="396" width="30" height="22" rx="3" fill="#d6ebe7" stroke="#0d6e64" stroke-width="0.8"/>
+      <text x="660" y="411" text-anchor="middle" font-size="8" fill="#0d6e64" font-weight="700">exec</text>
+      <text x="688" y="411" font-size="8.5" fill="#3d3d44" font-style="italic">Hermes parses + executes bundle</text>
+
+      <text x="48" y="428" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑬</text>
+      <text x="520" y="428" text-anchor="middle" font-size="8.5" fill="#3d3d44" font-style="italic">AppRegistry.registerComponent('main', App) — splash → first screen</text>
+
+      <!-- ======= PHASE 3 ======= -->
+      <rect x="20" y="442" width="840" height="22" rx="3" fill="#d6e1f4"/>
+      <text x="40" y="457" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700" fill="#1e4a87" letter-spacing="2">PHASE 3 · RUNTIME · EVERY API CALL</text>
+
+      <!-- Step 14: app calls fetch -->
+      <text x="48" y="482" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑭</text>
+      <text x="660" y="482" text-anchor="middle" font-size="8.5" fill="#3d3d44">app calls fetch(API_BASE_URL + '/auth/me')</text>
+
+      <text x="48" y="504" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑮</text>
+      <path d="M 660,502 L 790,502" stroke="#1e4a87" stroke-width="1.6" fill="none" marker-end="url(#aSb)"/>
+      <text x="725" y="496" text-anchor="middle" font-size="8.5" fill="#1e4a87" font-weight="600">HTTPS over phone's Wi-Fi/LTE</text>
+      <text x="725" y="514" text-anchor="middle" font-size="7.5" fill="#1e4a87">DNS · TLS · token in header</text>
+
+      <!-- Render processes -->
+      <text x="48" y="534" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑯</text>
+      <rect x="785" y="524" width="30" height="22" rx="3" fill="#d6e1f4" stroke="#1e4a87" stroke-width="0.8"/>
+      <text x="800" y="540" text-anchor="middle" font-size="9" fill="#1e4a87" font-weight="700">DB</text>
+
+      <text x="48" y="558" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑰</text>
+      <path d="M 790,556 L 670,556" stroke="#1e4a87" stroke-width="1.6" fill="none" marker-end="url(#aSb)" transform="scale(-1,1) translate(-1460,0)"/>
+      <text x="730" y="550" text-anchor="middle" font-size="8.5" fill="#1e4a87">JSON response</text>
+
+      <text x="48" y="582" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑱</text>
+      <rect x="645" y="572" width="30" height="22" rx="3" fill="#d6ebe7" stroke="#0d6e64" stroke-width="0.8"/>
+      <text x="660" y="588" text-anchor="middle" font-size="8" fill="#0d6e64" font-weight="700">cache</text>
+      <text x="688" y="588" font-size="8.5" fill="#3d3d44" font-style="italic">TanStack Query stores → components re-render</text>
+
+      <!-- ======= PHASE 4 ======= -->
+      <rect x="20" y="602" width="840" height="22" rx="3" fill="#ecdaef"/>
+      <text x="40" y="617" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700" fill="#6b3079" letter-spacing="2">PHASE 4 · LIVE EDIT · EVERY SAVE</text>
+
+      <text x="48" y="640" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑲</text>
+      <path d="M 100,638 L 230,638" stroke="#1a1a1f" stroke-width="1" fill="none" marker-end="url(#aS1)"/>
+      <text x="165" y="632" text-anchor="middle" font-size="9" fill="#1a1a1f">save .tsx file</text>
+
+      <text x="48" y="660" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">⑳</text>
+      <path d="M 240,658 L 370,658" stroke="#b86515" stroke-width="1" fill="none" marker-end="url(#aSo)"/>
+      <text x="305" y="652" text-anchor="middle" font-size="8.5" fill="#b86515">file watcher fires</text>
+
+      <text x="48" y="680" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">㉑</text>
+      <path d="M 380,678 L 660,678" stroke="#b86515" stroke-width="1.6" fill="none" marker-end="url(#aSo)" stroke-dasharray="4 2"/>
+      <text x="520" y="672" text-anchor="middle" font-size="8.5" fill="#b86515" font-weight="600">hot-reload patch via WebSocket on :8081</text>
+
+      <text x="48" y="700" font-family="JetBrains Mono, monospace" font-size="9" fill="#767670">㉒</text>
+      <text x="660" y="700" text-anchor="middle" font-size="8.5" fill="#0d6e64" font-style="italic">Hermes reloads changed modules · React re-renders affected components</text>
+    </svg>
+    <figcaption><span class="fig-num">FIG 5.1</span> The full sequence diagram. 22 hops, four phases, three machines, two channels — orange for code (Metro path), blue for data (backend path).</figcaption>
+  </figure>
+
+  <div class="page-foot">
+    <span>CH 05 · End-to-end flow</span>
+    <span>Local Testing · Field Manual</span>
+    <span>23</span>
+  </div>
+</div>
+
+<div class="page">
+  <h2><span class="num">05.01</span> Phase 1, narrated</h2>
+
+  <p>You sit down at your laptop. Your phone is charged but not connected. CareKosh source is checked out at <code>~/code/vitaltrack/vitaltrack-mobile</code>. PowerShell is open in that directory.</p>
+
+  <ol>
+    <li><strong>Plug in the USB data cable.</strong> Establishes the physical channel between phone and laptop. Make sure it's a data cable, not charge-only — many bundled USB-C cables don't carry data.</li>
+    <li><strong>Phone shows "Allow USB debugging?".</strong> The dialog displays your laptop's RSA key fingerprint. Tap "Always allow from this computer" so the trust persists across sessions.</li>
+    <li><strong><code>adb devices</code></strong> in PowerShell. Phone shows up with status <code>device</code>. If it shows <code>unauthorized</code>, you missed the dialog or the trust didn't store; re-plug.</li>
+    <li><strong><code>adb reverse tcp:8081 tcp:8081</code></strong>. The laptop's <code>adb</code> client tells the laptop's <code>adb server</code> to push a rule to the phone's <code>adbd</code>: "any connection to your own port 8081, tunnel to laptop's port 8081." The phone's TCP stack now intercepts.</li>
+    <li><strong><code>npm run start:staging</code></strong>. The npm script runs <code>cross-env EXPO_PUBLIC_API_URL=https://… expo start --clear</code>. Metro starts, reads source files, builds the initial bundle (~10 MB, takes 10–30 seconds the first time), opens the HTTP server on port 8081, prints a QR code containing <code>exp://localhost:8081</code>.</li>
+    <li><strong>Open Expo Go on the phone, scan the QR code</strong> (or type the URL manually).</li>
+  </ol>
+
+  <h2><span class="num">05.02</span> Phase 2, narrated</h2>
+
+  <p>From the QR scan to the dashboard appearing — between five and twenty seconds, depending on your laptop and how warm Metro's cache is.</p>
+
+  <ol start="7">
+    <li><strong>Expo Go parses the URL</strong> <code>exp://localhost:8081</code> and opens an HTTP connection to that address.</li>
+    <li><strong>The phone's TCP stack</strong> sees a connection request to <code>localhost:8081</code>; the rule from step 4 fires; the connection is intercepted by <code>adbd</code>.</li>
+    <li><strong>The connection is tunneled</strong> over the USB cable, through the <code>adb server</code> on the laptop, to the laptop's own <code>localhost:8081</code> — where Metro is listening.</li>
+    <li><strong>Metro receives an HTTP request</strong> like <code>GET /index.bundle?platform=android&dev=true&hot=true</code>. If it's the first request after a code change, Metro builds. Otherwise it serves cached output.</li>
+    <li><strong>~10 MB of JavaScript travels back</strong> through the same tunnel: laptop's Metro → laptop's adb server → USB cable → phone's adbd → Expo Go's HTTP client.</li>
+    <li><strong>Expo Go feeds the bundle to Hermes.</strong> Hermes parses, executes. The bundle ends with <code>AppRegistry.registerComponent('main', App)</code>.</li>
+    <li><strong>Expo Go's native shell mounts your App component.</strong> React's reconciler builds the native view tree. Splash screen disappears. Your auth screen or dashboard appears.</li>
+  </ol>
+
+  <h2><span class="num">05.03</span> Phase 3, narrated</h2>
+
+  <p>The app is running. Now it needs data from the backend. <strong>This is where the USB cable becomes irrelevant.</strong></p>
+
+  <ol start="14">
+    <li><strong>The app calls <code>fetch()</code></strong> with the URL baked into the bundle at build time — <code>https://vitaltrack-api-staging.onrender.com/api/v1/auth/me</code> with a JWT in the <code>Authorization</code> header.</li>
+    <li><strong>The native fetch implementation issues an HTTPS request</strong> — <em>not</em> over the USB cable. Over the phone's own internet connection, whichever it is (Wi-Fi or LTE).</li>
+    <li><strong>DNS resolves</strong> the hostname to Render's edge IP. TLS handshake. Encrypted request travels over the public internet.</li>
+    <li><strong>Render's load balancer routes</strong> to your staging FastAPI container. The container authenticates the JWT, queries Postgres on Neon, returns JSON.</li>
+    <li><strong>The response travels back</strong>: Render → public internet → phone's Wi-Fi/LTE → app's fetch promise resolves. TanStack Query stores the result in its cache. Components subscribed to that query re-render with the data.</li>
+  </ol>
+
+  <h2><span class="num">05.04</span> Phase 4, narrated</h2>
+
+  <p>You spot a typo. You fix it in VS Code and press Save. The fix appears in the running app within a couple of seconds, without restarting.</p>
+
+  <ol start="19">
+    <li><strong>You save the <code>.tsx</code> file</strong> in VS Code.</li>
+    <li><strong>Metro's filesystem watcher</strong> detects the change.</li>
+    <li><strong>Metro recomputes</strong> which parts of the bundle changed (incremental rebuild — typically under one second).</li>
+    <li><strong>Metro pushes a "hot update" message</strong> to Expo Go via WebSocket on the same port 8081. (Same tunnel as the bundle load — adb reverse handles WebSocket too.) Hermes hot-reloads the changed modules. React re-renders affected components. You see your change.</li>
+  </ol>
+
+  <div class="callout key">
+    <span class="label">The single most useful sentence in this book</span>
+    <p><strong>The USB cable is involved in steps 8–11 (initial bundle load) and step 21 (hot reload). The internet is involved in steps 15–18 (API calls). The cable and the internet are unrelated.</strong> You can unplug USB after the bundle loads and the app keeps working — until you change code and need a re-bundle.</p>
+  </div>
+
+  <h2><span class="num">05.05</span> Where things commonly go wrong</h2>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Symptom</th><th>Last working step</th><th>Likely culprit</th></tr></thead>
+      <tbody>
+        <tr><td><code>adb devices</code> empty</td><td>Step 1</td><td>Cable is charge-only, or driver missing on Windows.</td></tr>
+        <tr><td>Status shows <code>unauthorized</code></td><td>Step 2</td><td>Phone wasn't unlocked when plugged, or Allow dialog dismissed.</td></tr>
+        <tr><td>QR scan opens Expo Go but spinner hangs</td><td>Step 7</td><td>adb reverse missing, or Metro not actually running, or wrong network.</td></tr>
+        <tr><td>"Network request failed" on first API call</td><td>Step 14</td><td>Phone has no Wi-Fi/LTE, or staging URL typo, or backend cold-start.</td></tr>
+        <tr><td>Edits don't reflect in the app</td><td>Step 21</td><td>Metro cache stale — restart with <code>--clear</code>.</td></tr>
+        <tr><td>App rendered the wrong backend</td><td>Step 5</td><td>You started the wrong npm script, or didn't restart Metro after switching.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Each of these maps to a specific layer in the diagram. Knowing which step failed is half of debugging.</p>
+
+  <div class="page-foot">
+    <span>CH 05 · End-to-end flow</span>
+    <span>Local Testing · Field Manual</span>
+    <span>27</span>
+  </div>
+</div>
+
+<!-- ======================================================
+     CHAPTER 6 — The setup, with the why
+     ====================================================== -->
+<div class="page">
+  <div class="chap-num">Chapter 06</div>
+  <h1 class="chap-title">The setup, with<br>the <em>why</em></h1>
+  <p class="chap-deck">The same six commands you'd find in any operational guide, but each one annotated with what it does at the network level — and what would happen without it.</p>
+
+  <p class="drop-cap">Operational guides skip the <em>why</em>. They tell you to run <code>adb reverse tcp:8081 tcp:8081</code> without telling you what would happen if you didn't, or what changes if you ran <code>adb forward</code> instead, or why <code>kill-server</code> sometimes "fixes" things. This chapter is the operational guide annotated. You can copy any command verbatim; you can also now reason about every one of them.</p>
+
+  <h2><span class="num">06.01</span> Step 1 — One-time prerequisites</h2>
+
+  <h3>On the phone</h3>
+
+  <pre><code>Settings → About Phone → Build Number → tap 7 times
+        ↓
+"You are now a developer!"
+        ↓
+Settings → Developer Options → USB Debugging → ON</code></pre>
+
+  <p><strong>Why</strong>: Toggling USB Debugging starts the <code>adbd</code> daemon on the phone. <em>Without it, every <code>adb</code> command fails immediately</em> because there's no daemon to talk to. The daemon is the phone-side endpoint of the entire ADB conversation.</p>
+
+  <pre><code>Install Expo Go from the Play Store</code></pre>
+
+  <p><strong>Why</strong>: Expo Go is the native shell that will load your JS bundle. Without it, the phone has no way to execute the bundle Metro produces. You only need to install Expo Go once per phone — not per project.</p>
+
+  <h3>On the laptop</h3>
+
+  <pre><code>Install Android SDK Platform Tools (gives you adb.exe)
+Add to PATH: C:\platform-tools  <span class="c-tok-cmt"># or wherever you extracted it</span></code></pre>
+
+  <p><strong>Why</strong>: Without <code>adb.exe</code> on your PATH, the entire ADB chapter of this book is unavailable. Platform Tools is a tiny ZIP from Google; no Android Studio install required.</p>
+
+  <pre><code>cd vitaltrack-mobile
+npm install --legacy-peer-deps</code></pre>
+
+  <p><strong>Why</strong>: Installs all JavaScript dependencies into <code>node_modules/</code>. The <code>--legacy-peer-deps</code> flag tells npm to be lenient with the React Native ecosystem's perpetually-mismatched peer-dependency declarations — a known quirk that's easier to swallow than fight. Without this, <code>npm install</code> may fail with peer-dep conflicts.</p>
+
+  <h2><span class="num">06.02</span> Step 2 — Plug in the phone, authorize ADB</h2>
+
+  <pre><code>Plug USB cable from phone to laptop</code></pre>
+
+  <p><strong>Why</strong>: Establishes the physical channel. Use a <em>data</em> cable. Many bundled USB-C cables are charge-only and won't pass adb traffic. (You can tell empirically: if <code>adb devices</code> shows nothing even after authorization, swap cables before debugging anything else.)</p>
+
+  <pre><code>On the phone, accept "Allow USB debugging?" dialog.
+Tick "Always allow from this computer."</code></pre>
+
+  <p><strong>Why</strong>: The phone's <code>adbd</code> daemon refuses commands from any computer it doesn't trust. The dialog shows your laptop's RSA key fingerprint — that's the laptop's identity from the phone's point of view. Tapping "Always allow" stores the public key on the phone permanently (until you revoke it via Developer Options).</p>
+
+  <pre><code>adb devices</code></pre>
+
+  <p><strong>Why</strong>: Lists every Android device the laptop can see. Should show your phone with status <code>device</code>. The full state machine:</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Output</th><th>Meaning</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><em>(empty)</em></td><td>Phone not detected at all.</td><td>Cable, port, or driver issue.</td></tr>
+        <tr><td><code>unauthorized</code></td><td>Phone seen, trust not given.</td><td>Look for the dialog on the phone; re-plug if missing.</td></tr>
+        <tr><td><code>device</code></td><td>Authorized and ready.</td><td>Continue to step 3.</td></tr>
+        <tr><td><code>offline</code></td><td>Phone seen, daemon unresponsive.</td><td><code>adb kill-server &amp;&amp; adb start-server</code>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-foot">
+    <span>CH 06 · The setup, with the why</span>
+    <span>Local Testing · Field Manual</span>
+    <span>29</span>
+  </div>
+</div>
+
+<div class="page">
+  <h2><span class="num">06.03</span> Step 3 — Set up the USB tunnel</h2>
+
+  <pre><code>adb reverse tcp:8081 tcp:8081</code></pre>
+
+  <p><strong>Why</strong>: This is the core trick of USB mode, and probably the single command in this book most worth understanding. Read carefully — the syntax is asymmetric.</p>
+
+  <p>The two arguments are <code>tcp:&lt;phone-side-port&gt; tcp:&lt;laptop-side-port&gt;</code>. The command is read aloud as: <em>"any time something on the phone tries to connect to TCP port 8081 on the phone, intercept it and instead forward to TCP port 8081 on the laptop."</em></p>
+
+  <figure>
+    <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" font-family="Inter Tight, sans-serif">
+      <defs>
+        <marker id="aPF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b86515"/></marker>
+        <marker id="aPFm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#a59f8e"/></marker>
+      </defs>
+
+      <!-- Phone column -->
+      <rect x="40" y="20" width="300" height="240" rx="8" fill="#d6ebe7" fill-opacity="0.4" stroke="#0d6e64" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="190" y="42" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="2.5" fill="#0d6e64" font-weight="700">PHONE</text>
+
+      <!-- Expo Go on phone -->
+      <rect x="60" y="60" width="260" height="36" rx="4" fill="#fff" stroke="#0d6e64" stroke-width="1"/>
+      <text x="190" y="76" text-anchor="middle" font-size="10" font-weight="600">Expo Go (app process)</text>
+      <text x="190" y="90" text-anchor="middle" font-size="8.5" fill="#767670" font-family="JetBrains Mono, monospace">tries: http://localhost:8081/index.bundle</text>
+
+      <path d="M 190,96 L 190,116" stroke="#a59f8e" stroke-width="1" fill="none" marker-end="url(#aPFm)"/>
+
+      <!-- Phone TCP -->
+      <rect x="60" y="118" width="260" height="36" rx="4" fill="#fff" stroke="#a59f8e" stroke-width="1"/>
+      <text x="190" y="134" text-anchor="middle" font-size="10" font-weight="600">Android TCP/IP stack</text>
+      <text x="190" y="148" text-anchor="middle" font-size="8.5" fill="#767670">"localhost:8081" — checking listeners…</text>
+
+      <path d="M 190,154 L 190,174" stroke="#a59f8e" stroke-width="1" fill="none" marker-end="url(#aPFm)"/>
+
+      <!-- adbd intercept -->
+      <rect x="60" y="176" width="260" height="68" rx="4" fill="#f5e6cf" stroke="#b86515" stroke-width="1.5"/>
+      <text x="190" y="194" text-anchor="middle" font-size="10" font-weight="700" fill="#b86515">adbd · reverse rule fires</text>
+      <text x="190" y="212" text-anchor="middle" font-size="8.5" fill="#3d3d44">"reverse rule says: tcp:8081 →</text>
+      <text x="190" y="226" text-anchor="middle" font-size="8.5" fill="#3d3d44">laptop's tcp:8081 over USB"</text>
+      <text x="190" y="240" text-anchor="middle" font-size="8" fill="#767670" font-style="italic">no local listener even consulted</text>
+
+      <!-- USB cable arc -->
+      <path d="M 320,210 Q 380,210 380,140 Q 380,70 440,70" stroke="#b86515" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <text x="380" y="146" text-anchor="middle" font-size="9" font-weight="700" fill="#b86515" transform="rotate(-90 380 140)">USB · adb tunnel</text>
+
+      <!-- Laptop column -->
+      <rect x="420" y="20" width="320" height="240" rx="8" fill="#f5e6cf" fill-opacity="0.4" stroke="#b86515" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="580" y="42" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="2.5" fill="#b86515" font-weight="700">LAPTOP</text>
+
+      <!-- adb server -->
+      <rect x="440" y="60" width="280" height="36" rx="4" fill="#fff" stroke="#b86515" stroke-width="1"/>
+      <text x="580" y="76" text-anchor="middle" font-size="10" font-weight="600">adb server :5037</text>
+      <text x="580" y="90" text-anchor="middle" font-size="8.5" fill="#767670">receives the tunnelled connection</text>
+
+      <path d="M 580,96 L 580,116" stroke="#b86515" stroke-width="1.4" fill="none" marker-end="url(#aPF)"/>
+
+      <!-- Forwarded -->
+      <rect x="440" y="118" width="280" height="36" rx="4" fill="#fff" stroke="#a59f8e" stroke-width="1"/>
+      <text x="580" y="134" text-anchor="middle" font-size="10" font-weight="600">forwards to laptop's localhost:8081</text>
+      <text x="580" y="148" text-anchor="middle" font-size="8.5" fill="#767670">→ Metro is listening here</text>
+
+      <path d="M 580,154 L 580,174" stroke="#b86515" stroke-width="1.4" fill="none" marker-end="url(#aPF)"/>
+
+      <!-- Metro answers -->
+      <rect x="440" y="176" width="280" height="68" rx="4" fill="#f5e6cf" stroke="#b86515" stroke-width="1.5"/>
+      <text x="580" y="194" text-anchor="middle" font-size="10" font-weight="700" fill="#b86515">Metro answers</text>
+      <text x="580" y="212" text-anchor="middle" font-size="8.5" fill="#3d3d44">~10 MB JS bundle streams back</text>
+      <text x="580" y="226" text-anchor="middle" font-size="8.5" fill="#3d3d44">through the same tunnel, same path,</text>
+      <text x="580" y="240" text-anchor="middle" font-size="8.5" fill="#3d3d44">in reverse</text>
+    </svg>
+    <figcaption><span class="fig-num">FIG 6.1</span> What <code>adb reverse tcp:8081 tcp:8081</code> actually does. The phone never finds out the laptop exists — it just thinks <code>localhost:8081</code> magically has a server on it.</figcaption>
+  </figure>
+
+  <p>You can verify the rule exists at any time:</p>
+
+  <pre><code>adb reverse --list
+
+<span class="c-tok-cmt"># Output:</span>
+(reverse) tcp:8081 tcp:8081</code></pre>
+
+  <div class="callout warn">
+    <span class="label">adb reverse is not sticky</span>
+    <p>The rule is lost when any of these happen: phone unplugged, phone rebooted, laptop rebooted, <code>adb kill-server</code> run, USB cable physically jiggled hard enough to disconnect briefly. After any of those, re-run the command. Symptom: Expo Go suddenly hangs on "Loading from <code>localhost:8081</code>" when it was working a minute ago — you've lost the tunnel.</p>
+  </div>
+
+  <p>If you also want the phone to reach a <em>local Docker backend</em> on your laptop, add a second tunnel for the API port:</p>
+
+  <pre><code>adb reverse tcp:8000 tcp:8000</code></pre>
+
+  <p><strong>Why</strong>: Same trick, different port. Now <code>localhost:8000</code> on the phone reaches the FastAPI backend running in Docker on the laptop. Skip this if you're hitting staging or production — those are real public URLs reached over the phone's own Wi-Fi/LTE, not over USB.</p>
+
+  <div class="page-foot">
+    <span>CH 06 · The setup, with the why</span>
+    <span>Local Testing · Field Manual</span>
+    <span>31</span>
+  </div>
+</div>
+
+<div class="page">
+  <h2><span class="num">06.04</span> Step 4 — Start Metro with the right backend</h2>
+
+  <pre><code>cd vitaltrack-mobile
+npm run start:staging</code></pre>
+
+  <p><strong>Why</strong> — let's unpack this script the way a debugger would. The line in <code>package.json</code> looks innocent:</p>
+
+  <pre><code><span class="c-tok-key">"start:staging"</span>: <span class="c-tok-str">"cross-env EXPO_PUBLIC_API_URL=https://vitaltrack-api-staging.onrender.com expo start --clear"</span></code></pre>
+
+  <p>But there are four moving parts here, each with its own job:</p>
+
+  <pre><code>npm run start:staging
+  └─→ <span class="c-tok-cmt">runs the "start:staging" script from package.json</span>
+  └─→ which is: cross-env EXPO_PUBLIC_API_URL=https://… expo start --clear
+       │              │                                    │            │
+       │              │                                    │            └── ④ flush Metro's cache
+       │              │                                    │                <span class="c-tok-cmt">necessary after any env-var change</span>
+       │              │                                    │
+       │              │                                    └── ③ start the Expo dev server
+       │              │                                         <span class="c-tok-cmt">(which is Metro + a few extras)</span>
+       │              │
+       │              └── ② set the env var for THIS Metro process. The bundle Metro
+       │                   builds will see this value at process.env.EXPO_PUBLIC_API_URL
+       │                   <span class="c-tok-cmt">— that's how services/api.ts knows which backend to hit.</span>
+       │
+       └── ① cross-platform helper that sets env vars (Windows uses different
+            syntax than macOS/Linux; cross-env normalises this)</code></pre>
+
+  <p>Metro boots. After a few seconds (or up to 30 on a cold start with cleared cache), the terminal prints:</p>
+
+  <pre><code>› Metro waiting on exp://localhost:8081
+› Scan the QR code above with Expo Go (Android) or the Camera app (iOS)</code></pre>
+
+  <p>The QR code in your terminal encodes that <code>exp://...</code> URL. (LAN mode would print your real LAN IP instead of <code>localhost</code>; USB mode keeps it as <code>localhost</code> because that's what reaches the laptop through the tunnel.)</p>
+
+  <div class="callout note">
+    <span class="label">The <code>--clear</code> flag, demystified</span>
+    <p>Metro caches transformed modules aggressively to make subsequent rebuilds fast. <strong>The cache key does not include environment variables.</strong> So if you run <code>start:staging</code>, then later <code>start:local</code> without <code>--clear</code>, Metro will happily serve the still-cached staging bundle to your local-mode phone. Symptoms range from "wrong backend" to "it inexplicably works fine on Tuesday." All our <code>start:*</code> scripts pass <code>--clear</code> for this reason. If you start Metro any other way and switch backends, restart with <code>--clear</code>.</p>
+  </div>
+
+  <h2><span class="num">06.05</span> Step 5 — Connect Expo Go</h2>
+
+  <p>Two equivalent options. Pick whichever your fingers prefer.</p>
+
+  <h3>Option A — Scan the QR code</h3>
+  <p>Open Expo Go on the phone. There's a "Scan QR code" button on its home screen. Point at the QR code in your terminal. Expo Go opens the URL automatically. <em>This is the path most people use.</em></p>
+
+  <h3>Option B — Type the URL manually</h3>
+  <p>Open Expo Go. There's a URL input field labelled "Enter URL manually." Type either:</p>
+  <ul>
+    <li><code>exp://localhost:8081</code> — works in <strong>USB mode</strong> only, because of the <code>adb reverse</code> tunnel.</li>
+    <li><code>exp://192.168.1.5:8081</code> (substituting your actual laptop LAN IP) — works in <strong>LAN mode</strong>.</li>
+  </ul>
+
+  <p>Either way, the same thing happens behind the scenes:</p>
+
+  <ol>
+    <li>Expo Go opens HTTP connection to the URL it parsed.</li>
+    <li>Connection traverses the chosen path (USB tunnel or Wi-Fi).</li>
+    <li>Metro receives the request, builds (or pulls from cache), responds with the bundle.</li>
+    <li>Bundle arrives back at Expo Go, gets handed to Hermes, executes.</li>
+    <li>The app's first screen appears — auth screen on a fresh install, dashboard if you're already logged in.</li>
+  </ol>
+
+  <h2><span class="num">06.06</span> Step 6 — Verify it actually works</h2>
+
+  <p>Loading the bundle proves <em>Metro reached you</em>. To prove the <em>backend</em> is reachable too, do anything in the app that triggers an API call: log in, scroll the dashboard, edit an item. If you see real data — your inventory, your orders, your previous edits — the entire chain is working end-to-end. Metro served the bundle, Expo Go executed it, the app reached the backend over the phone's internet, the backend returned data, TanStack Query cached it, the UI rendered.</p>
+
+  <p>If instead you see "Connecting…" forever, or the dashboard renders empty with no error, or you see a red toast labelled "Network request failed" — something's broken in the chain. The next chapter narrows down where.</p>
+
+  <div class="callout key">
+    <span class="label">A debugging mantra</span>
+    <p>Whenever something hangs or fails, the question to ask first is not <em>"why doesn't this work?"</em> but <em>"which of the four actors is the problem?"</em> Metro? Expo Go? ADB? The backend? The diagrams in chapters 3 and 5 are the map. The question always has an answer.</p>
+  </div>
+
+  <div class="page-foot">
+    <span>CH 06 · The setup, with the why</span>
+    <span>Local Testing · Field Manual</span>
+    <span>33</span>
+  </div>
+</div>
+
+<!-- ======================================================
+     CHAPTER 7 — Three things that confuse everyone
+     ====================================================== -->
+<div class="page">
+  <div class="chap-num">Chapter 07</div>
+  <h1 class="chap-title">Three things that <em>confuse everyone</em></h1>
+  <p class="chap-deck">If you only remember three things from this book, make it these. They explain the majority of "wait, why doesn't this work?" moments in the dev loop.</p>
+
+  <p class="drop-cap">Every developer who works on a React Native app for long enough hits the same three confusions. Each is a category of bug that produces dozens of distinct symptoms. Each has a single conceptual fix. Once you have the model, the symptoms collapse into one diagnosis.</p>
+
+  <h2><span class="num">07.01</span> <code>localhost</code> is ambiguous</h2>
+
+  <p><code>localhost</code> is not a global address. It always means <em>this machine</em>, and <em>this machine</em> changes depending on whose perspective you're taking. The same word, used by code on the laptop versus code on the phone, points to two completely different computers.</p>
+
+  <figure>
+    <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" font-family="Inter Tight, sans-serif">
+      <defs>
+        <marker id="aLh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b3261e"/></marker>
+        <marker id="aLh2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3a6b1f"/></marker>
+      </defs>
+
+      <!-- Laptop -->
+      <rect x="40" y="40" width="280" height="200" rx="8" fill="#f5e6cf" fill-opacity="0.4" stroke="#b86515" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="180" y="62" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="2.5" fill="#b86515" font-weight="700">LAPTOP</text>
+
+      <text x="60" y="92" font-size="11" fill="#1a1a1f">When code on the laptop says</text>
+      <rect x="60" y="100" width="240" height="32" rx="3" fill="#fff" stroke="#1a1a1f" stroke-width="0.8"/>
+      <text x="180" y="120" text-anchor="middle" font-size="10" font-family="JetBrains Mono, monospace" font-weight="600" fill="#0d6e64">http://localhost:8000</text>
+      <text x="60" y="148" font-size="11" fill="#1a1a1f">it means …</text>
+      <rect x="60" y="156" width="240" height="32" rx="3" fill="#dde8cf" stroke="#3a6b1f" stroke-width="1.2"/>
+      <text x="180" y="176" text-anchor="middle" font-size="10" font-weight="700" fill="#3a6b1f">the laptop's port 8000</text>
+      <text x="180" y="208" text-anchor="middle" font-size="9" fill="#3d3d44" font-style="italic">where Docker forwards your FastAPI</text>
+      <text x="180" y="222" text-anchor="middle" font-size="9" fill="#3d3d44" font-style="italic">backend. ✓ Reaches what you expect.</text>
+
+      <!-- Phone -->
+      <rect x="440" y="40" width="280" height="200" rx="8" fill="#d6ebe7" fill-opacity="0.4" stroke="#0d6e64" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="580" y="62" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="2.5" fill="#0d6e64" font-weight="700">PHONE</text>
+
+      <text x="460" y="92" font-size="11" fill="#1a1a1f">When code on the phone says</text>
+      <rect x="460" y="100" width="240" height="32" rx="3" fill="#fff" stroke="#1a1a1f" stroke-width="0.8"/>
+      <text x="580" y="120" text-anchor="middle" font-size="10" font-family="JetBrains Mono, monospace" font-weight="600" fill="#0d6e64">http://localhost:8000</text>
+      <text x="460" y="148" font-size="11" fill="#1a1a1f">it means …</text>
+      <rect x="460" y="156" width="240" height="32" rx="3" fill="#f4dcd7" stroke="#b3261e" stroke-width="1.2"/>
+      <text x="580" y="176" text-anchor="middle" font-size="10" font-weight="700" fill="#b3261e">the phone's port 8000</text>
+      <text x="580" y="208" text-anchor="middle" font-size="9" fill="#3d3d44" font-style="italic">where there is nothing.</text>
+      <text x="580" y="222" text-anchor="middle" font-size="9" fill="#3d3d44" font-style="italic">✗ Connection refused. Silent failure.</text>
+
+      <text x="380" y="270" text-anchor="middle" font-size="10" fill="#1a1a1f" font-style="italic">Same word. Two machines. Two completely different destinations.</text>
+    </svg>
+    <figcaption><span class="fig-num">FIG 7.1</span> Why <code>localhost</code> is the most-misunderstood word in mobile dev.</figcaption>
+  </figure>
+
+  <p>The fix is what we covered in section 06.03: <strong><code>adb reverse tcp:8000 tcp:8000</code> bridges the two interpretations.</strong> After that command, the phone's <code>localhost:8000</code> <em>does</em> reach the laptop's <code>localhost:8000</code> — but only by special arrangement, and only over USB.</p>
+
+  <p>This single confusion explains many recurring bug categories:</p>
+
+  <ul>
+    <li><strong>"My local Docker backend isn't reachable from the app"</strong> — usually because <code>EXPO_PUBLIC_API_URL=http://localhost:8000</code> was set but no <code>adb reverse tcp:8000 tcp:8000</code> was run.</li>
+    <li><strong>"It worked yesterday and now it doesn't"</strong> — the reverse rule was lost when the phone rebooted overnight.</li>
+    <li><strong>"It works in USB mode but not LAN mode"</strong> — LAN mode needs the laptop's actual IP (<code>http://192.168.1.5:8000</code>), not <code>localhost</code>.</li>
+  </ul>
+
+  <div class="callout key">
+    <span class="label">Rule of thumb</span>
+    <p>Never let <code>localhost</code> appear in <code>EXPO_PUBLIC_API_URL</code> unless you've also run a matching <code>adb reverse</code>. If you'd rather not think about it, point at staging or production — those are real public URLs that work the same from any machine.</p>
+  </div>
+
+  <div class="page-foot">
+    <span>CH 07 · Three confusions</span>
+    <span>Local Testing · Field Manual</span>
+    <span>35</span>
+  </div>
+</div>
+
+<div class="page">
+  <h2><span class="num">07.02</span> The USB cable carries code, not data</h2>
+
+  <p>This is the most common mistake new developers make on this stack: <em>"I'm on USB, why doesn't the phone reach my Docker backend?"</em> The answer is that USB and "the phone's internet" are two completely independent channels.</p>
+
+  <figure>
+    <svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg" font-family="Inter Tight, sans-serif">
+      <defs>
+        <marker id="aC1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b86515"/></marker>
+        <marker id="aC2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1e4a87"/></marker>
+      </defs>
+
+      <!-- Laptop -->
+      <rect x="40" y="40" width="180" height="160" rx="6" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="130" y="62" text-anchor="middle" font-size="11" font-weight="700">💻 Laptop</text>
+      <text x="130" y="80" text-anchor="middle" font-size="9" fill="#767670">Metro on :8081</text>
+
+      <!-- Phone -->
+      <rect x="320" y="40" width="180" height="160" rx="6" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="410" y="62" text-anchor="middle" font-size="11" font-weight="700">📱 Phone</text>
+      <text x="410" y="80" text-anchor="middle" font-size="9" fill="#767670">Expo Go running</text>
+
+      <!-- Cloud -->
+      <rect x="600" y="40" width="120" height="160" rx="6" fill="#fff" stroke="#1a1a1f" stroke-width="1"/>
+      <text x="660" y="62" text-anchor="middle" font-size="11" font-weight="700">☁ Render</text>
+      <text x="660" y="80" text-anchor="middle" font-size="9" fill="#767670">staging API</text>
+
+      <!-- USB channel (orange, code) -->
+      <rect x="220" y="100" width="100" height="22" rx="3" fill="#f5e6cf" stroke="#b86515" stroke-width="1.4"/>
+      <text x="270" y="115" text-anchor="middle" font-size="9" font-weight="700" fill="#b86515">USB cable</text>
+
+      <path d="M 220,111 L 320,111" stroke="#b86515" stroke-width="2" fill="none"/>
+      <text x="270" y="138" text-anchor="middle" font-size="9" fill="#b86515" font-weight="600">carries: code (Metro bundle, hot reloads)</text>
+      <text x="270" y="152" text-anchor="middle" font-size="8" fill="#b86515">protocol: HTTP over adb reverse tunnel</text>
+      <text x="270" y="166" text-anchor="middle" font-size="8" fill="#b86515">port: 8081 (and 8000 if you adb-reverse it)</text>
+
+      <!-- Wi-Fi channel (blue, data) -->
+      <path d="M 500,165 Q 540,165 540,140 Q 540,115 580,115" stroke="#1e4a87" stroke-width="2" fill="none"/>
+      <path d="M 580,115 L 600,115" stroke="#1e4a87" stroke-width="2" fill="none" marker-end="url(#aC2)"/>
+      <text x="560" y="195" text-anchor="middle" font-size="9" fill="#1e4a87" font-weight="600">carries: data (API calls, JSON)</text>
+      <text x="560" y="209" text-anchor="middle" font-size="8" fill="#1e4a87">protocol: HTTPS over phone's Wi-Fi/LTE</text>
+      <text x="560" y="223" text-anchor="middle" font-size="8" fill="#1e4a87">port: 443 · directly to Render's edge IP</text>
+
+      <!-- Phone-side label showing both -->
+      <text x="410" y="120" text-anchor="middle" font-size="8.5" fill="#3d3d44">listens on USB</text>
+      <text x="410" y="134" text-anchor="middle" font-size="8.5" fill="#3d3d44">talks via Wi-Fi/LTE</text>
+    </svg>
+    <figcaption><span class="fig-num">FIG 7.2</span> Two parallel channels. The cable is for Metro. The cloud is for the API. They never meet.</figcaption>
+  </figure>
+
+  <p>Concretely, here's how the two channels divide labor:</p>
+
+  <ul>
+    <li>If <code>EXPO_PUBLIC_API_URL</code> is <code>https://vitaltrack-api-staging.onrender.com</code>, every API call goes over the phone's <em>own</em> internet (Wi-Fi or LTE) — directly to Render. The USB cable is irrelevant for these calls.</li>
+    <li>If <code>EXPO_PUBLIC_API_URL</code> is <code>http://localhost:8000</code>, the phone tries to reach <em>its own</em> port 8000 — which only succeeds if a matching <code>adb reverse</code> rule turned that into a tunnel back to the laptop's Docker.</li>
+  </ul>
+
+  <p>The consequence is that you can be in <em>USB mode</em> (Metro over USB) <em>and</em> hitting <em>staging</em> (API over the phone's Wi-Fi) at the same time. They're independent. Two separate channels, two separate questions, two separate things to debug.</p>
+
+  <p>This is also why you can <strong>unplug the USB cable mid-session</strong> and the app keeps working. The bundle is already loaded into Hermes; the app's API calls don't use USB. You only need the cable back when you change code and need a fresh bundle (or a hot-reload patch).</p>
+
+  <h2><span class="num">07.03</span> Metro and the backend never meet</h2>
+
+  <p>Metro serves your <em>code</em>. The backend serves your <em>data</em>. They run on different machines, on different ports, with different protocols.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th></th><th>Metro</th><th>Backend</th></tr></thead>
+      <tbody>
+        <tr><td>Where</td><td>Your laptop</td><td>Render's data centre (or your local Docker)</td></tr>
+        <tr><td>Port</td><td>8081</td><td>443 (or 8000 locally)</td></tr>
+        <tr><td>Protocol</td><td>HTTP (+ WebSocket for hot reload)</td><td>HTTPS (or HTTP locally)</td></tr>
+        <tr><td>Lifetime</td><td>While you have the dev session running</td><td>Always (or while Docker is up)</td></tr>
+        <tr><td>Talks to</td><td>Expo Go</td><td>Your running app</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Both are involved when the app first loads — Metro to deliver the code, then the backend to deliver the data once the code is running. But they don't know about each other and don't share state. They run completely separate processes on completely separate machines.</p>
+
+  <p>So when your dashboard renders empty, the question is sharp: <strong>did Metro deliver the bundle?</strong> (You can tell — the app rendered <em>something</em>; if it didn't, you'd see a "Network request failed" loading the bundle screen.) <strong>Did the backend not respond?</strong> (You'd see a red error toast or a forever-spinning loader.) These are two different problems with two different fixes. Knowing <em>which side broke</em> is half of debugging.</p>
+
+  <div class="callout note">
+    <span class="label">A simple discriminator</span>
+    <p>If the app shows your splash, your nav bar, your fonts, your icons — Metro worked. The bundle is in Hermes. Any subsequent emptiness or error is a backend problem (or a backend-reachability problem). If the app never gets past the Expo Go splash or shows "Loading from <code>localhost:8081</code>" forever — Metro is the problem. The bundle never made it to Hermes.</p>
+  </div>
+
+  <div class="page-foot">
+    <span>CH 07 · Three confusions</span>
+    <span>Local Testing · Field Manual</span>
+    <span>37</span>
+  </div>
+</div>
+
+<!-- ======================================================
+     CHAPTER 8 — Glossary & troubleshooting
+     ====================================================== -->
+<div class="page">
+  <div class="chap-num">Chapter 08</div>
+  <h1 class="chap-title">Glossary &amp; <em>troubleshooting</em></h1>
+  <p class="chap-deck">Every term defined; every common breakage matched to its likely layer; every fix routed to the operational guide that handles it. The reference half of this manual.</p>
+
+  <p class="drop-cap">This chapter is the appendix you'll flip to when something is on fire. The glossary disambiguates terms that look interchangeable in conversation but mean different things in code. The troubleshooting matrix uses the model from the rest of the book to localize failures to a single layer. The "see also" at the end routes you onward.</p>
+
+  <h2><span class="num">08.01</span> Glossary</h2>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:22%">Term</th><th>What it is</th></tr></thead>
+      <tbody>
+        <tr><td><strong>APK</strong></td><td>Android Package — the binary format Android apps ship as. Sideloadable. Useful for direct distribution.</td></tr>
+        <tr><td><strong>AAB</strong></td><td>Android App Bundle — the Play Store's preferred format. EAS builds these for production. The Play Store generates per-device APKs from your AAB.</td></tr>
+        <tr><td><strong>adb</strong></td><td>Android Debug Bridge — the laptop's CLI tool for talking to a connected Android phone.</td></tr>
+        <tr><td><strong>adb client</strong></td><td>The <code>adb.exe</code> you type. Lightweight; just sends commands to the server.</td></tr>
+        <tr><td><strong>adb server</strong></td><td>Background process on the laptop, port 5037. Multiplexes between any number of clients and any number of connected devices.</td></tr>
+        <tr><td><strong>adbd</strong></td><td>The daemon running on the phone (when USB Debugging is enabled) that receives <code>adb</code> commands.</td></tr>
+        <tr><td><strong><code>adb reverse</code></strong></td><td>The specific <code>adb</code> command that creates a port-forward from the phone's localhost back to the laptop's localhost. The trick that makes USB mode work.</td></tr>
+        <tr><td><strong>Bridge</strong> (RN)</td><td>The serialisation layer that lets JavaScript and native code communicate. Newer RN versions use <em>JSI</em> — same concept, more direct binding.</td></tr>
+        <tr><td><strong>Bundle</strong></td><td>The single big <code>.js</code> file Metro produces by combining all your source files plus dependencies.</td></tr>
+        <tr><td><strong>EAS</strong></td><td>Expo Application Services — the cloud service that builds production APKs and AABs. Run with <code>eas build</code>.</td></tr>
+        <tr><td><strong>Expo Go</strong></td><td>The generic native shell installed from the Play Store. Loads any compatible JS bundle from a Metro server.</td></tr>
+        <tr><td><strong>Expo SDK</strong></td><td>The set of native modules Expo provides — camera, file system, secure store, etc. — all bundled into Expo Go's shell.</td></tr>
+        <tr><td><strong><code>exp://</code></strong></td><td>URL scheme that tells Expo Go: "this is a Metro dev server URL, fetch a bundle from it."</td></tr>
+        <tr><td><strong>Hermes</strong></td><td>A small, fast JavaScript engine built by Facebook for React Native. Lives inside Expo Go.</td></tr>
+        <tr><td><strong>Hot reload</strong></td><td>Mechanism where Metro pushes only the changed parts of the bundle to Expo Go on save, applied without restarting the app.</td></tr>
+        <tr><td><strong>LAN mode</strong></td><td>Connection mode where the phone reaches the laptop over Wi-Fi using the laptop's LAN IP. Default for plain <code>expo start</code>.</td></tr>
+        <tr><td><strong><code>localhost</code></strong></td><td>The hostname for the local machine. Means different things on different machines. See §07.01.</td></tr>
+        <tr><td><strong>Metro</strong></td><td>The JavaScript bundler purpose-built for React Native. Serves bundles + hot updates over HTTP/WebSocket on port 8081.</td></tr>
+        <tr><td><strong>port 5037</strong></td><td>Default port for the laptop's <code>adb server</code> to listen on.</td></tr>
+        <tr><td><strong>port 8000</strong></td><td>What the FastAPI backend listens on (in Docker locally; Render uses standard 80/443 with internal routing).</td></tr>
+        <tr><td><strong>port 8081</strong></td><td>What Metro listens on. Hard-coded by Expo CLI but configurable.</td></tr>
+        <tr><td><strong>React Native</strong></td><td>The framework that lets you write apps in JS/TSX that compile to real native UI on iOS and Android.</td></tr>
+        <tr><td><strong>Tunnel mode</strong></td><td>Connection mode where Expo creates a public URL (<code>*.exp.direct</code>) so the phone reaches Metro over the internet. Slowest but most universal.</td></tr>
+        <tr><td><strong>USB Debugging</strong></td><td>Android setting that enables the <code>adbd</code> daemon. Required for any <code>adb</code> command to work.</td></tr>
+        <tr><td><strong>USB mode</strong></td><td>Connection mode where the phone is plugged into the laptop and <code>adb reverse</code> tunnels Metro traffic over USB. Most reliable.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-foot">
+    <span>CH 08 · Glossary &amp; troubleshooting</span>
+    <span>Local Testing · Field Manual</span>
+    <span>39</span>
+  </div>
+</div>
+
+<div class="page">
+  <h2><span class="num">08.02</span> When something breaks</h2>
+
+  <p>Use this table to figure out <strong>which layer is broken</strong>, then jump to the operational guide for the actual fix. The point is to localize the problem so your search space shrinks from "everything" to "one layer."</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:34%">Symptom</th><th style="width:30%">Likely layer</th><th>Fix in</th></tr></thead>
+      <tbody>
+        <tr><td><code>adb devices</code> shows empty list</td><td>USB cable / driver</td><td><code>USB_ADB_REVERSE_GUIDE</code> § Troubleshooting</td></tr>
+        <tr><td><code>adb devices</code> shows <code>unauthorized</code></td><td>Phone hasn't authorized this laptop</td><td><code>USB_ADB_REVERSE_GUIDE</code> § Unauthorized</td></tr>
+        <tr><td>Metro starts but QR scan can't reach it</td><td>Network or firewall (LAN mode)</td><td><code>LOCAL_TESTING_COMPLETE_GUIDE</code> §G</td></tr>
+        <tr><td>Bundle hangs at "Loading from <code>localhost:8081</code>"</td><td>USB tunnel missing or broken</td><td>Re-run <code>adb reverse tcp:8081 tcp:8081</code></td></tr>
+        <tr><td>Bundle loads but app shows "Network request failed"</td><td>Backend unreachable from phone</td><td><code>LOCAL_TESTING_COMPLETE_GUIDE</code> §G</td></tr>
+        <tr><td>Edits not reflecting in app</td><td>Metro cache stale</td><td><code>npx expo start --clear</code></td></tr>
+        <tr><td>App stuck on splash screen</td><td>Bundle failed to load or app crashed during boot</td><td>Check Metro terminal for errors; shake phone for dev menu → Reload</td></tr>
+        <tr><td>"Could not load… server is offline"</td><td>Metro stopped, or USB tunnel dropped</td><td>Restart <code>npm run start:*</code>, re-run <code>adb reverse</code></td></tr>
+        <tr><td>App hits the wrong backend</td><td>Wrong npm script, or Metro not restarted with <code>--clear</code></td><td>§06.04 — <code>--clear</code> flag</td></tr>
+        <tr><td>App crashes on import of new library</td><td>Native dep not in Expo Go's shell</td><td>Replace with pure-JS dep, or build a development build</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2><span class="num">08.03</span> A worked example: "<em>I'm running <code>npm run start:staging</code>, why does <code>adb reverse</code> fail?</em>"</h2>
+
+  <p>This question came up recently. Here's the diagnosis in the model from this book:</p>
+
+  <div class="callout note">
+    <span class="label">The actual problem</span>
+    <p>If <code>adb reverse</code> returns an error, that's an ADB authorization issue, not a code or network issue. The phone needs to authorize the laptop for USB debugging first. Until <code>adb devices</code> shows your phone with status <code>device</code> (not <code>unauthorized</code>, not empty), no <code>adb reverse</code> will succeed.</p>
+  </div>
+
+  <p><strong>Fix sequence:</strong></p>
+  <ol>
+    <li>Look at the phone screen — Android shows an "Allow USB debugging?" dialog with the laptop's RSA key fingerprint when you connect to a new computer. Tap "Always allow from this computer" → OK.</li>
+    <li>If you don't see the dialog: make sure the phone is unlocked when plugged in (locked phones don't show the prompt); try a different USB cable (some are charge-only); try a different USB port.</li>
+    <li>If the dialog still doesn't appear: <code>adb kill-server &amp;&amp; adb start-server &amp;&amp; adb devices</code> — that re-triggers the prompt.</li>
+    <li>Last resort — phone Settings → System → Developer Options → "Revoke USB debugging authorizations" → unplug, replug → fresh prompt.</li>
+  </ol>
+
+  <p>And the second half of that same question — <em>do I even need <code>adb reverse</code>?</em></p>
+
+  <div class="callout key">
+    <span class="label">A useful realization</span>
+    <p>If you're running <code>npm run start:staging</code>, the app points at <code>https://vitaltrack-api-staging.onrender.com</code>. That's a real public URL — the phone reaches it directly over its own Wi-Fi/LTE. <strong>You do not need <code>adb reverse</code> for the API.</strong> You only need <code>adb reverse tcp:8081 tcp:8081</code> for Metro, and only if your phone's Wi-Fi can't reach your laptop's LAN IP. If LAN mode works (QR scan, bundle loads), skip the reverse entirely. Try the QR code first; come back to <code>adb reverse</code> only if Metro hangs.</p>
+  </div>
+
+  <h2><span class="num">08.04</span> See also</h2>
+
+  <ul>
+    <li><strong><code>LOCAL_TESTING_COMPLETE_GUIDE.md</code></strong> — the operational reference: every command, every config file, every troubleshooting step. The companion to this manual.</li>
+    <li><strong><code>USB_ADB_REVERSE_GUIDE.md</code></strong> — USB-specific setup and troubleshooting, including driver issues on Windows.</li>
+    <li><strong><code>NEW_DEVELOPER_QUICKSTART.md</code></strong> — the 30-minute onramp if you're brand new to the project.</li>
+    <li><strong><code>CAREKOSH_DEVELOPER_GUIDE.md §1</code></strong> — the production architecture (server-first, OCC, audit log, etc.). What this manual implies but doesn't explain.</li>
+    <li><strong><code>EXPO_AND_PLAY_STORE_GUIDE.md</code></strong> — for when you're ready to graduate from Expo Go to a release APK or AAB.</li>
+  </ul>
+
+  <div class="ornament" style="margin-top:64px">
+    <div class="line"></div>
+    <div class="glyph">⁂</div>
+    <div class="line"></div>
+  </div>
+
+  <div class="pullquote" style="text-align:center;border-left:none;padding-left:0;margin-top:36px">
+    Read this once. Debug forever.
+    <span class="attr" style="text-align:center">— END OF FIELD MANUAL</span>
+  </div>
+
+  <div class="page-foot">
+    <span>CH 08 · Glossary &amp; troubleshooting</span>
+    <span>Local Testing · Field Manual</span>
+    <span>41</span>
+  </div>
+</div>
+
+<!-- ======================================================
+     COLOPHON
+     ====================================================== -->
+<div class="page" style="background:linear-gradient(180deg,var(--paper) 0%,var(--paper-dim) 100%)">
+  <div style="max-width:560px;margin:120px auto 0;text-align:center">
+    <div class="kicker" style="justify-content:center;color:var(--ink-mute)">Colophon</div>
+    <h2 style="font-size:2rem;text-align:center;margin:24px 0 36px;font-variation-settings:'opsz' 144;font-weight:300">A note on how this manual<br>was made</h2>
+    <p style="text-align:left;color:var(--ink-soft);font-size:0.95rem;line-height:1.75">
+      Set in <strong style="color:var(--ink)">Fraunces</strong> for display, <strong style="color:var(--ink)">Inter Tight</strong> for body, and <strong style="color:var(--ink)">JetBrains Mono</strong> for code. Diagrams hand-drawn in SVG against a brand palette of warm teal, amber, and ink. Eight chapters, ten figures, a single goal: <em>read once, debug forever</em>.
+    </p>
+    <p style="text-align:left;color:var(--ink-soft);font-size:0.95rem;line-height:1.75;margin-top:18px">
+      Companion to the operational guides in <code style="font-size:0.85em">docs/</code>. Where the operational guides answer <em>what to type</em>, this manual answers <em>what's actually happening</em>. Together, the three documents constitute the full local-testing knowledge base for the CareKosh team.
+    </p>
+
+    <div class="ornament" style="margin:48px 0 32px"><div class="line"></div><div class="glyph">§</div><div class="line"></div></div>
+
+    <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.72rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-mute);padding-top:18px;border-top:1px solid var(--rule);max-width:480px;margin:0 auto">
+      <span>Volume I</span>
+      <span>Field Manual</span>
+      <span>CareKosh · Engineering</span>
+    </div>
+    <div style="font-family:var(--display);font-style:italic;font-size:0.95rem;color:var(--ink-faint);margin-top:48px">
+      end of book
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
