@@ -5,6 +5,7 @@
 For a 30-minute onramp, start with [NEW_DEVELOPER_QUICKSTART.md](NEW_DEVELOPER_QUICKSTART.md). This guide goes wider and deeper.
 
 Companion docs:
+- **Conceptual deep-dive** ("what is actually happening when I run these commands"): [LOCAL_TESTING_INTERNALS.md](LOCAL_TESTING_INTERNALS.md)
 - USB debugging: [USB_ADB_REVERSE_GUIDE.md](USB_ADB_REVERSE_GUIDE.md)
 - Architecture: [../CAREKOSH_DEVELOPER_GUIDE.md §1](../CAREKOSH_DEVELOPER_GUIDE.md#1-architecture-overview)
 - Environment wiring (dev/staging/prod): repo-root `CAREKOSH_ENVIRONMENT_ARCHITECTURE.html`
