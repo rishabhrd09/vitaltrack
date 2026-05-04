@@ -84,11 +84,27 @@ function groupByCategory(items: GeneratedItem[], categories: Category[]): Catego
   return groups;
 }
 
+/**
+ * Status badge reflects STOCK STATE only (OUT OF STOCK / LOW / OK), not
+ * equipment criticality. Previously isCritical short-circuited above the OK
+ * branch so every critical-equipment row showed a "CRITICAL" badge regardless
+ * of its actual stock level — which buried the more actionable information
+ * (whether the item needs reorder right now). Critical-equipment status is
+ * still surfaced in the report via the small star marker next to the item
+ * name (criticalMarkerHtml below) and the dedicated Critical Equipment count
+ * in the summary card.
+ */
 function statusBadgeHtml(item: Item): string {
-  if (isOutOfStock(item)) return '<span class="status-badge sb-oos">OUT</span>';
+  if (isOutOfStock(item)) return '<span class="status-badge sb-oos">OUT OF STOCK</span>';
   if (isLowStock(item)) return '<span class="status-badge sb-low">LOW</span>';
-  if (item.isCritical) return '<span class="status-badge sb-critical">CRITICAL</span>';
   return '<span class="status-badge sb-ok">OK</span>';
+}
+
+function criticalMarkerHtml(item: Item): string {
+  if (!item.isCritical) return '';
+  // Inline gold star + small label, sits next to the item name. Doesn't
+  // compete with the status badge for the row's primary color signal.
+  return ' <span class="critical-marker" title="Critical equipment">★</span>';
 }
 
 function stockClass(item: Item): string {
@@ -142,7 +158,7 @@ function buildHtml(opts: {
         .map(
           (item) => `
         <tr class="${isOutOfStock(item) ? 'row-oos' : ''}">
-          <td><span class="item-name">${escapeHtml(item.name)}</span>${
+          <td><span class="item-name">${escapeHtml(item.name)}${criticalMarkerHtml(item)}</span>${
             item.brand ? `<div class="item-sub">${escapeHtml(item.brand)}</div>` : ''
           }</td>
           <td style="text-align:center">${statusBadgeHtml(item)}</td>
@@ -255,77 +271,101 @@ function buildHtml(opts: {
             border-collapse: collapse;
             table-layout: fixed;
             /* fixed layout makes the print engine honor <col> widths
-               instead of auto-sizing columns from content (which was
-               letting the Item column eat ~50% of the page width and
-               crushing Status/Qty/Unit/Min into the right ~25%, per the
-               May 4 v3 audit on the rendered PDF). */
+               instead of auto-sizing columns from content. Without this
+               the Item column dominated the page and the right-side
+               columns were squeezed against the edge. */
         }
         th {
             background: #1e3a5f;
             color: #fff;
-            padding: 12px 10px;
+            padding: 16px 14px;
             text-align: left;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 700;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
         }
         th.col-status { text-align: center; }
-        th.col-stock { text-align: right; }
-        th.col-min { text-align: right; padding-right: 14px; }
+        th.col-stock { text-align: center; }
+        th.col-unit { text-align: center; }
+        th.col-min { text-align: center; padding-right: 14px; }
 
         td {
-            padding: 10px 10px;
+            padding: 14px 14px;
             border-bottom: 1px solid #edf2f7;
-            font-size: 13px;
+            font-size: 14px;
             vertical-align: middle;
             color: #4a5568;
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
+        /* Subtle zebra striping aids row-tracking on long tables, especially
+           when scanning the right-side numeric columns. */
+        tbody tr:nth-child(even):not(.category-row) td { background: #fafbfc; }
+
         tr.category-row { page-break-inside: avoid; }
         tr.category-row td {
-            background: #ecdfca;
+            background: #e6d8b9;
             color: #1e3a5f;
             font-weight: 700;
             font-size: 13px;
-            letter-spacing: 0.02em;
-            padding: 11px 12px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            padding: 12px 14px;
             border-bottom: none;
-            border-top: 1px solid #d6c5a3;
+            border-top: 1px solid #c9b888;
         }
 
-        .item-name { font-weight: 600; color: #2d3748; font-size: 14px; }
-        .item-sub { color: #a0aec0; font-size: 11px; margin-top: 2px; }
+        .item-name { font-weight: 600; color: #1a202c; font-size: 15px; }
+        .item-sub { color: #a0aec0; font-size: 12px; margin-top: 3px; }
 
-        .stock-num { font-weight: 700; text-align: right; font-size: 14px; padding-right: 10px; }
-        .stock-zero { color: #a06060; }
-        .stock-low { color: #a08040; }
-        .stock-ok { color: #5a8a6a; }
-        td.col-unit { color: #6b6b6b; font-size: 12px; }
-        td.col-min { text-align: right; color: #6b6b6b; font-size: 13px; padding-right: 14px; font-weight: 600; }
+        /* Inline gold-star marker for critical equipment. Sits next to the
+           item name without taking a separate column. The Critical Equipment
+           total in the summary card + this per-row marker gives critical
+           equipment two visible signals without competing with the stock-
+           state status badge for the column's primary semantic. */
+        .critical-marker {
+            color: #c9a449;
+            font-size: 14px;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
+        .stock-num { font-weight: 700; text-align: center; font-size: 16px; }
+        .stock-zero { color: #a04848; }
+        .stock-low { color: #a87830; }
+        .stock-ok { color: #4a7a5a; }
+        td.col-unit { color: #4a5568; font-size: 13px; text-align: center; }
+        td.col-min { text-align: center; color: #4a5568; font-size: 14px; font-weight: 600; }
 
         .status-badge {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 700;
-            padding: 4px 9px;
-            border-radius: 4px;
+            padding: 6px 12px;
+            border-radius: 5px;
             display: inline-block;
-            letter-spacing: 0.04em;
-            min-width: 56px;
+            letter-spacing: 0.05em;
+            min-width: 72px;
             text-align: center;
-            /* min-width keeps OK / LOW / OUT / CRITICAL badges visually
-               consistent in width — was uneven without it (CRITICAL much
-               wider than OK, made the column look ragged). */
         }
-        .sb-critical { background: #f0dede; color: #8b5050; }
-        .sb-oos { background: #f0dede; color: #8b5050; }
-        .sb-low { background: #f0e8d0; color: #7a6330; }
-        .sb-ok { background: #ddeee4; color: #4a7a5a; }
+        /* Stock-state colors. Red for OUT (urgent), amber for LOW (warning),
+           green for OK (good). Reads as a traffic light at a glance. */
+        .sb-oos { background: #f8d7d7; color: #8a3a3a; border: 1px solid #e8b8b8; }
+        .sb-low { background: #fbecc6; color: #7a5820; border: 1px solid #e8d68a; }
+        .sb-ok  { background: #d4ebdc; color: #3a6850; border: 1px solid #b0d8be; }
 
-        /* Out-of-stock item rows get a subtle red left-border stripe so
-           critical items are scannable in the middle of a long table. */
+        /* Out-of-stock item rows get a red left-border stripe for scannability. */
         tr.row-oos td:first-child { box-shadow: inset 3px 0 0 #c24646; }
+        tr.row-oos td { background: #fdf6f6; }
+
+        .table-legend {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #718096;
+            text-align: right;
+            font-style: italic;
+        }
+        .table-legend .marker { color: #c9a449; font-style: normal; }
 
         .footer {
             margin-top: 30px;
@@ -408,11 +448,11 @@ function buildHtml(opts: {
 
     <table>
         <colgroup>
-            <col style="width: 45%">
+            <col style="width: 34%">
+            <col style="width: 22%">
+            <col style="width: 13%">
+            <col style="width: 15%">
             <col style="width: 16%">
-            <col style="width: 11%">
-            <col style="width: 14%">
-            <col style="width: 14%">
         </colgroup>
         <thead>
             <tr>
@@ -427,6 +467,11 @@ function buildHtml(opts: {
             ${groupsHtml}
         </tbody>
     </table>
+    ${criticalCount > 0 ? `
+        <div class="table-legend">
+            <span class="marker">★</span> marks critical equipment (${criticalCount} ${criticalCount === 1 ? 'item' : 'items'})
+        </div>
+    ` : ''}
 
     <div class="footer">Generated by <b>CareKosh</b> · Home ICU Inventory Management</div>
 
