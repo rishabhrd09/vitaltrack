@@ -67,10 +67,26 @@ export default function ProfileMenuSheet({
 
     const panResponder = useRef(
         PanResponder.create({
-            // Only claim the gesture when there's a clear downward movement,
-            // so taps on menu items are never intercepted.
+            // Only claim the gesture when there's a clear, deliberate downward
+            // drag — so taps on menu items are never intercepted. The May 4 v3
+            // audit caught a recurring bug where menu taps registered the
+            // Material ripple but the onPress handler never fired: the previous
+            // 5-pixel threshold was below typical finger drift during a tap
+            // (10-15 px is normal even for a "still" tap on touchscreens), so
+            // PanResponder claimed mid-touch and cancelled the child
+            // TouchableOpacity's gesture.
+            //
+            // Two changes:
+            //  1. Bumped dy threshold from 5 → 15 (matches Material Design's
+            //     standard drag-recognition threshold).
+            //  2. Added a direction check — claim only when movement is
+            //     meaningfully more vertical than horizontal. Prevents
+            //     accidental claims on horizontal scrolls / taps with sideways
+            //     drift.
             onStartShouldSetPanResponder: () => false,
-            onMoveShouldSetPanResponder: (_, gs) => gs.dy > 5,
+            onStartShouldSetPanResponderCapture: () => false,
+            onMoveShouldSetPanResponder: (_, gs) => gs.dy > 15 && gs.dy > Math.abs(gs.dx),
+            onMoveShouldSetPanResponderCapture: () => false,
             onPanResponderMove: (_, gs) => {
                 if (gs.dy > 0) translateY.setValue(gs.dy);
             },
