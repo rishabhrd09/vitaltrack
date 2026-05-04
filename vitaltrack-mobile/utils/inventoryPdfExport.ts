@@ -226,17 +226,17 @@ function buildHtml(opts: {
             display: grid;
             grid-template-columns: 1fr 1fr;
             column-gap: 40px;
-            row-gap: 10px;
+            row-gap: 12px;
         }
         .summary-card .row {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            font-size: 13px;
+            font-size: 14px;
         }
-        .summary-card .label { color: #6b6b6b; }
-        .summary-card .value { color: #1e3a5f; font-weight: 700; font-size: 15px; }
-        .summary-card .value.accent { color: #c24646; }
+        .summary-card .label { color: #6b6b6b; font-size: 14px; }
+        .summary-card .value { color: #1e3a5f; font-weight: 700; font-size: 17px; }
+        .summary-card .value.accent { color: #B85450; }
 
         .alert-box {
             border-radius: 8px;
@@ -276,13 +276,13 @@ function buildHtml(opts: {
                the Item column dominated the page and the right-side
                columns were squeezed against the edge. */
         }
-        /* Header band uses the app's warm-black textPrimary (#1C1917) so it
-           reads as a structural divider rather than competing with the
-           status badges for the row's color signal. The app itself uses
-           warm tones throughout — matching keeps the PDF visually
-           consistent with the on-screen experience. */
+        /* Header band uses navy #1e3a5f, the same blue that anchors the
+           rest of the report (header underline, summary-card title, "Inventory
+           by Category" section title). Switching back from the warm-black
+           we tried briefly because it read as too heavy and disconnected
+           from the report's existing blue accent palette. */
         th {
-            background: #1C1917;
+            background: #1e3a5f;
             color: #FAF9F7;
             padding: 16px 14px;
             text-align: left;
@@ -319,17 +319,22 @@ function buildHtml(opts: {
             background: #FFFFFF;
         }
 
+        /* Category subheader is a slightly bolder version of the same navy
+           used in the header band — light blue tint background with navy
+           text, plus a darker blue top-border for a clear "new section
+           starts here" visual cue. Pairs with the 16px spacer-row above
+           it so each category reads as its own block. */
         tr.category-row { page-break-inside: avoid; }
         tr.category-row td {
-            background: #F5F3F0;
-            color: #1C1917;
+            background: #e8eef5;
+            color: #1e3a5f;
             font-weight: 700;
             font-size: 13px;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.05em;
             text-transform: uppercase;
             padding: 12px 14px;
             border-bottom: none;
-            border-top: none;
+            border-top: 2px solid #5a7a9e;
         }
 
         .item-name { font-weight: 600; color: #1C1917; font-size: 15px; }
