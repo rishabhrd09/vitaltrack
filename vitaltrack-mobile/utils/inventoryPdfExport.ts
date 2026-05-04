@@ -150,14 +150,15 @@ function buildHtml(opts: {
 
   const groupsHtml = groups
     .map(
-      (g) => `
+      (g, idx) => `
+      ${idx > 0 ? '<tr class="category-spacer"><td colspan="5"></td></tr>' : ''}
       <tr class="category-row">
         <td colspan="5">${escapeHtml(g.name)} · ${g.items.length} ${g.items.length === 1 ? 'item' : 'items'}</td>
       </tr>
       ${g.items
         .map(
           (item) => `
-        <tr class="${isOutOfStock(item) ? 'row-oos' : ''}">
+        <tr>
           <td><span class="item-name">${escapeHtml(item.name)}${criticalMarkerHtml(item)}</span>${
             item.brand ? `<div class="item-sub">${escapeHtml(item.brand)}</div>` : ''
           }</td>
@@ -275,9 +276,14 @@ function buildHtml(opts: {
                the Item column dominated the page and the right-side
                columns were squeezed against the edge. */
         }
+        /* Header band uses the app's warm-black textPrimary (#1C1917) so it
+           reads as a structural divider rather than competing with the
+           status badges for the row's color signal. The app itself uses
+           warm tones throughout — matching keeps the PDF visually
+           consistent with the on-screen experience. */
         th {
-            background: #1e3a5f;
-            color: #fff;
+            background: #1C1917;
+            color: #FAF9F7;
             padding: 16px 14px;
             text-align: left;
             font-size: 12px;
@@ -292,32 +298,42 @@ function buildHtml(opts: {
 
         td {
             padding: 14px 14px;
-            border-bottom: 1px solid #edf2f7;
+            border-bottom: 1px solid #E8E5E0;
             font-size: 14px;
             vertical-align: middle;
-            color: #4a5568;
+            color: #57534E;
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
-        /* Subtle zebra striping aids row-tracking on long tables, especially
-           when scanning the right-side numeric columns. */
-        tbody tr:nth-child(even):not(.category-row) td { background: #fafbfc; }
+        /* Subtle warm-off-white zebra striping (matches app bgPrimary). */
+        tbody tr:nth-child(even):not(.category-row):not(.category-spacer) td { background: #FAF9F7; }
+
+        /* A blank spacer row injected between category groups (after the
+           first) so each category section reads as its own block instead
+           of bleeding directly into the next. Adds breathing room without
+           introducing a heavy divider. */
+        tr.category-spacer td {
+            height: 16px;
+            padding: 0;
+            border: none;
+            background: #FFFFFF;
+        }
 
         tr.category-row { page-break-inside: avoid; }
         tr.category-row td {
-            background: #e6d8b9;
-            color: #1e3a5f;
+            background: #F5F3F0;
+            color: #1C1917;
             font-weight: 700;
             font-size: 13px;
             letter-spacing: 0.04em;
             text-transform: uppercase;
             padding: 12px 14px;
             border-bottom: none;
-            border-top: 1px solid #c9b888;
+            border-top: none;
         }
 
-        .item-name { font-weight: 600; color: #1a202c; font-size: 15px; }
-        .item-sub { color: #a0aec0; font-size: 12px; margin-top: 3px; }
+        .item-name { font-weight: 600; color: #1C1917; font-size: 15px; }
+        .item-sub { color: #A8A29E; font-size: 12px; margin-top: 3px; }
 
         /* Inline gold-star marker for critical equipment. Sits next to the
            item name without taking a separate column. The Critical Equipment
@@ -325,18 +341,20 @@ function buildHtml(opts: {
            equipment two visible signals without competing with the stock-
            state status badge for the column's primary semantic. */
         .critical-marker {
-            color: #c9a449;
+            color: #B8860B;
             font-size: 14px;
             margin-left: 4px;
             vertical-align: middle;
         }
 
+        /* Stock-number colors mirror the in-app status palette exactly:
+           statusRed / statusOrange / statusGreen from theme/ThemeContext. */
         .stock-num { font-weight: 700; text-align: center; font-size: 16px; }
-        .stock-zero { color: #a04848; }
-        .stock-low { color: #a87830; }
-        .stock-ok { color: #4a7a5a; }
-        td.col-unit { color: #4a5568; font-size: 13px; text-align: center; }
-        td.col-min { text-align: center; color: #4a5568; font-size: 14px; font-weight: 600; }
+        .stock-zero { color: #B85450; }
+        .stock-low { color: #B8860B; }
+        .stock-ok { color: #4A9668; }
+        td.col-unit { color: #57534E; font-size: 13px; text-align: center; }
+        td.col-min { text-align: center; color: #57534E; font-size: 14px; font-weight: 600; }
 
         .status-badge {
             font-size: 11px;
@@ -348,24 +366,23 @@ function buildHtml(opts: {
             min-width: 72px;
             text-align: center;
         }
-        /* Stock-state colors. Red for OUT (urgent), amber for LOW (warning),
-           green for OK (good). Reads as a traffic light at a glance. */
-        .sb-oos { background: #f8d7d7; color: #8a3a3a; border: 1px solid #e8b8b8; }
-        .sb-low { background: #fbecc6; color: #7a5820; border: 1px solid #e8d68a; }
-        .sb-ok  { background: #d4ebdc; color: #3a6850; border: 1px solid #b0d8be; }
-
-        /* Out-of-stock item rows get a red left-border stripe for scannability. */
-        tr.row-oos td:first-child { box-shadow: inset 3px 0 0 #c24646; }
-        tr.row-oos td { background: #fdf6f6; }
+        /* Status badge palette mirrors the in-app statusRed / statusOrange /
+           statusGreen tokens (theme/ThemeContext.tsx). bg uses the matching
+           ~8% tint, border the matching ~12% tint, text the full color.
+           No more standalone colorful left-borders on rows — the badge
+           itself carries the urgency signal. */
+        .sb-oos { background: rgba(184, 84, 80, 0.06);  color: #B85450; border: 1px solid rgba(184, 84, 80, 0.18); }
+        .sb-low { background: rgba(184, 134, 11, 0.08); color: #B8860B; border: 1px solid rgba(184, 134, 11, 0.18); }
+        .sb-ok  { background: rgba(74, 150, 104, 0.08); color: #4A9668; border: 1px solid rgba(74, 150, 104, 0.18); }
 
         .table-legend {
-            margin-top: 10px;
+            margin-top: 14px;
             font-size: 11px;
-            color: #718096;
+            color: #78716C;
             text-align: right;
             font-style: italic;
         }
-        .table-legend .marker { color: #c9a449; font-style: normal; }
+        .table-legend .marker { color: #B8860B; font-style: normal; }
 
         .footer {
             margin-top: 30px;
