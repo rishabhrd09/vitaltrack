@@ -112,6 +112,55 @@ export const formatActionName = (action: string): string => {
 };
 
 // ============================================================================
+// STOCK FORMATTING
+// ============================================================================
+
+/**
+ * Render a stock quantity + unit as a single human-friendly phrase, e.g.
+ *   formatStock(1, 'unit')    -> "1 unit"
+ *   formatStock(2, 'unit')    -> "2 units"
+ *   formatStock(1, 'tablets') -> "1 tablet"
+ *   formatStock(3, 'tablets') -> "3 tablets"
+ *   formatStock(1, 'set')     -> "1 set"
+ *   formatStock(2, 'cylinder')-> "2 cylinders"
+ *
+ * Replaces the previous "{qty} / {min} {unit}" rendering on inventory rows
+ * (e.g. "2 / 1 unit"), which the May 4 user feedback flagged as confusing
+ * — readers had to mentally parse two numbers when they only wanted to
+ * know how many they have. The minimum is still visible in the row's
+ * expanded detail view (Current / Minimum / Unit), so removing it from
+ * the collapsed row doesn't lose any information.
+ *
+ * Pluralisation is the simple English rule (add 's' if not already
+ * plural; strip trailing 's' for singular). Works for the units in
+ * COMMON_UNITS below — unit, tablet, piece, cylinder, set, etc. Not
+ * locale-aware; we don't ship to non-English locales today.
+ */
+export const formatStock = (quantity: number, unit: string): string => {
+  const trimmed = unit.trim();
+  if (!trimmed) return String(quantity);
+
+  // For very short/specialised units (ml, kg, g, mg, cc) don't pluralise.
+  // These are typically measurement units and "5 mls" reads worse than "5 ml".
+  const noPluralise = new Set(['ml', 'kg', 'g', 'mg', 'cc', 'mcg', 'l']);
+  if (noPluralise.has(trimmed.toLowerCase())) {
+    return `${quantity} ${trimmed}`;
+  }
+
+  if (quantity === 1) {
+    // Singular: drop a trailing 's' if the stored unit was plural.
+    const singular = trimmed.endsWith('s') && trimmed.length > 2
+      ? trimmed.slice(0, -1)
+      : trimmed;
+    return `1 ${singular}`;
+  }
+
+  // Plural: add 's' if not already plural.
+  const plural = trimmed.endsWith('s') ? trimmed : `${trimmed}s`;
+  return `${quantity} ${plural}`;
+};
+
+// ============================================================================
 // COMMON UNITS
 // ============================================================================
 

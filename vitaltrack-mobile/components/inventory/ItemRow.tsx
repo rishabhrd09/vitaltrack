@@ -10,6 +10,7 @@ import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import type { Item } from '@/types';
 import { isOutOfStock, isLowStock, isCriticalEquipment } from '@/types';
 import { useCategories } from '@/hooks/useServerData';
+import { formatStock } from '@/utils/helpers';
 
 
 interface ItemRowProps {
@@ -90,7 +91,7 @@ export default function ItemRow({
             )}
             <View style={styles.stockLine}>
               <Text style={[styles.stockText, { color: colors.textTertiary }]}>
-                {item.quantity} / {item.minimumStock} {item.unit}
+                {formatStock(item.quantity, item.unit)}
               </Text>
               {isPending && (
                 <View style={styles.pendingTag} accessibilityLabel="Updating">
