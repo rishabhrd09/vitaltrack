@@ -73,7 +73,15 @@ function makeRetry(
       m.state.status === 'error' &&
       m.state.variables === variables,
     );
-    target?.execute(variables as never);
+    // Mutation.execute returns a Promise that rejects when the retry fails.
+    // Without .catch the rejection escapes as "Uncaught (in promise)" — visible
+    // in dev as the LogBox counter incrementing (the May 4 v3 audit caught this:
+    // tap Retry while WiFi off → counter went from (8) → (9) → (10) → (11) for
+    // each tap). In release builds this becomes a silent error that bypasses
+    // any error-tracking hook. Caught here as a no-op because the hook-level
+    // onError already dispatches the failure dialog and re-arms the Retry —
+    // the rejection itself carries no extra information for us.
+    target?.execute(variables as never).catch(() => {});
   };
 }
 
