@@ -119,8 +119,13 @@ code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--co
 <div class="cover">
   <div class="eyebrow">System Architecture · v2.0</div>
   <h1>CareKosh<br><em>Architecture Diagrams</em></h1>
-  <p class="sub">Five diagrams that together document how a server-first home-ICU inventory app is wired. Written after PR #13, with zero legacy offline-first residue.</p>
-  <p class="meta">Home ICU Inventory · React Native + FastAPI + PostgreSQL · April 2026</p>
+  <p class="sub">Five diagrams that together document how a server-first home-ICU inventory app is wired. Originally written after PR #13; updated through PRs #14–#34 with the cold-start UX track on top of the same server-first foundation.</p>
+  <p class="meta">Home ICU Inventory · React Native + FastAPI + PostgreSQL · April–May 2026</p>
+</div>
+
+<div class="callout amber">
+  <p class="callout-label">Update — May 2026 cold-start UX track (PRs #17–#34)</p>
+  <p>The five diagrams below remain accurate for the load-bearing architecture (server-first · TanStack Query · OCC · audit log · cascade-on-deletion). Diagram 1 has been updated to reflect that there are now three Zustand UI-only stores (<code>useAppStore</code> 61 lines, <code>useAuthStore</code> 422 lines, <code>useResultDialogStore</code> 50 lines) rather than just one. The mobile tier also gained, but is not yet drawn in: <code>MutationResultDialog</code> overlay; consolidated <code>StatusPill</code> (replaces <code>ConnectionStatusPill</code> + <code>SavingStatusPill</code>); <code>usePendingItems</code> for per-row "Updating…" indicators; <code>mutationFeedback</code> dispatcher; <code>safeBack</code>; <code>formatStock</code>; <code>react-native-toast-message</code>; full-screen <code>app/search.tsx</code>; fire-and-forget save via <code>mutateAsync().then()</code>; hook-level mutation feedback dispatch; retry-via-<code>Mutation.execute()</code>; auto-clear of <code>isBackendColdStarting</code>. Backend Alembic head is unchanged at <code>0005_account_deletion_token</code>. The legacy backend <code>/sync/*</code> router is still mounted at <code>app/api/v1/__init__.py</code> for backward compatibility but the mobile client no longer calls it.</p>
 </div>
 
 <!-- TOC -->
@@ -183,13 +188,13 @@ code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--co
 
       <!-- Zustand box -->
       <rect x="670" y="100" width="230" height="160" rx="8" fill="#131a2e" stroke="#2a3654" stroke-width="1.5"/>
-      <text x="685" y="124" fill="#d4a574" font-weight="700" font-size="12">Zustand — UI only, 61 lines</text>
-      <text x="685" y="148" fill="#a8b0c4" font-size="11">useAppStore.ts</text>
-      <text x="685" y="166" fill="#a8b0c4" font-size="11">  isInitialized</text>
-      <text x="685" y="190" fill="#a8b0c4" font-size="11">useAuthStore.ts (385)</text>
-      <text x="685" y="208" fill="#a8b0c4" font-size="11">  user, isAuthenticated</text>
-      <text x="685" y="232" fill="#a8b0c4" font-size="11">expo-secure-store:</text>
-      <text x="685" y="250" fill="#5eead4" font-size="11">  JWT access + refresh</text>
+      <text x="685" y="124" fill="#d4a574" font-weight="700" font-size="12">Zustand — UI only (3 stores)</text>
+      <text x="685" y="148" fill="#a8b0c4" font-size="11">useAppStore.ts (61)</text>
+      <text x="685" y="166" fill="#a8b0c4" font-size="11">  ui state, isInitialized</text>
+      <text x="685" y="190" fill="#a8b0c4" font-size="11">useAuthStore.ts (422)</text>
+      <text x="685" y="208" fill="#a8b0c4" font-size="11">  user, isAuthenticated, cold-start</text>
+      <text x="685" y="232" fill="#a8b0c4" font-size="11">useResultDialogStore.ts (50)</text>
+      <text x="685" y="250" fill="#5eead4" font-size="11">  cold-start dialog queue</text>
 
       <!-- HTTPS arrow down from mobile -->
       <line x1="480" y1="290" x2="480" y2="330" stroke="#5eead4" stroke-width="2" marker-end="url(#arrow-teal)"/>
@@ -924,7 +929,7 @@ code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--co
 </div>
 
 <div class="footer">
-  <em>CareKosh</em> · System Architecture · April 2026 · PRs #4–#13
+  <em>CareKosh</em> · System Architecture · April–May 2026 · PRs #4–#34
 </div>
 
 </div>

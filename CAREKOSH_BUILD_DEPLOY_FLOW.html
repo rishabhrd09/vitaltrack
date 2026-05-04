@@ -57,7 +57,12 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 <div class="hero">
   <h1>Build &amp; <em>Deploy</em> Flow</h1>
   <p class="sub">A plain-English textbook for what happens every time you push, open a PR, merge, or build a mobile artifact. If you're about to do one of these, read the matching Q first.</p>
-  <p class="meta">CareKosh · Home ICU Inventory · Render + Neon + EAS Build · April 2026</p>
+  <p class="meta">CareKosh · Home ICU Inventory · Render + Neon + EAS Build · April–May 2026</p>
+</div>
+
+<div class="callout info">
+  <span class="callout-label">Update — May 2026 cold-start UX track (PRs #17–#34)</span>
+  <p>The build and deploy mechanics themselves are unchanged: same CI jobs, same Render hook, same EAS profiles. What changed is the mobile bundle's runtime behaviour during the cold-start window — see Q10 for the shipped client-side mitigations (<code>MutationResultDialog</code>, consolidated <code>StatusPill</code>, fire-and-forget save flow, retry-via-<code>Mutation.execute()</code>, auto-clear of <code>isBackendColdStarting</code>, inventory PDF redesign). New dependency: <code>react-native-toast-message</code>. The next preview / production APK build will pick all of this up automatically — no env-var or pipeline change required.</p>
 </div>
 
 <!-- MASTER TRIGGER MATRIX -->
@@ -178,7 +183,7 @@ t+4m   production + staging both live on new code</div>
 cd vitaltrack-mobile
 npx expo-doctor                              # sanity check
 
-# Build AAB (production profile bakes in carekosh-api.onrender.com)
+# Build AAB (production profile bakes in vitaltrack-api.onrender.com)
 eas build --profile production --platform android
 
 # Upload to Play Console internal track
@@ -257,11 +262,11 @@ eas submit --profile production --platform android</code></pre>
     <h4>The first request after idle is slow. Why?</h4>
     <div class="a">Answer — Render free-tier cold start</div>
     <p>Free Render web services sleep after 15 min of inactivity. The first request wakes them — container start, Alembic check, Gunicorn boot — which can take 30–60 s.</p>
-    <p>Mitigation options (none shipped yet):</p>
+    <p>Mitigation status:</p>
     <ul>
-      <li>UptimeRobot pinging <code>/health</code> every 14 min keeps the service warm</li>
-      <li>Upgrading to a paid Render tier removes the sleep behavior</li>
-      <li>Client-side: a loading state on the first request after app open, with timeout &gt; 60 s</li>
+      <li><strong>Client-side UX (shipped, audit/cold-start-mutation-ux track):</strong> ambient <code>StatusPill</code> escalates from "Connecting…" to "Connecting… server warming up"; per-item "Updating…" indicators on rows with in-flight saves; cold-start pre-flight banner on Edit Item; <code>MutationResultDialog</code> centred summary for slow-success and connection-failure outcomes; tappable Retry button that re-fires the same mutation through <code>Mutation.execute()</code>; auto-clear of the cold-start flag on any successful 2xx so the pill doesn't get stuck. Cache persistence (PR #16) means cached data renders instantly on launch while the fresh fetch is still in flight.</li>
+      <li><strong>UptimeRobot</strong> pinging <code>/health</code> every 14 min keeps the service warm — not configured today, but recommended.</li>
+      <li><strong>Paid Render tier</strong> removes the sleep behaviour entirely — the most reliable fix once the project monetises.</li>
     </ul>
   </div>
 
@@ -309,7 +314,7 @@ curl https://vitaltrack-api.onrender.com/health
 </div>
 
 <div class="footer">
-  CareKosh · Build &amp; Deploy Flow · April 2026 · PRs #4–#13
+  CareKosh · Build &amp; Deploy Flow · April–May 2026 · PRs #4–#34
 </div>
 
 </div>

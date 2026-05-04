@@ -60,7 +60,12 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 <div class="hero">
   <h1>Environment <em>Architecture</em></h1>
   <p class="sub">How the three CareKosh environments (development, staging, production) are wired — what runs where, what connects to what, and how the same Docker image behaves differently.</p>
-  <p class="meta">CareKosh · Render + Neon + EAS Build · April 2026</p>
+  <p class="meta">CareKosh · Render + Neon + EAS Build · April–May 2026</p>
+</div>
+
+<div class="callout info">
+  <span class="callout-label">Update — May 2026 cold-start UX track (PRs #17–#34)</span>
+  <p>Environment wiring is unchanged. The mobile-side cold-start UX layer was significantly extended: <code>MutationResultDialog</code>, consolidated <code>StatusPill</code> (replaces separate Connection / Saving pills), <code>useResultDialogStore</code>, <code>usePendingItems</code>, <code>mutationFeedback</code>, <code>safeBack</code>, <code>formatStock</code>, fire-and-forget save flow, hook-level mutation feedback dispatch, retry-via-<code>Mutation.execute()</code>, auto-clear of <code>isBackendColdStarting</code> on any 2xx, inventory PDF redesign. New dependency: <code>react-native-toast-message</code>. Removed components: <code>NetworkBanner</code>, <code>OfflineBanner</code>, <code>ConnectionStatusPill</code>, <code>SavingStatusPill</code>. There are now three Zustand UI-only stores: <code>useAppStore</code> (61 lines), <code>useAuthStore</code> (~422 lines, includes <code>isBackendColdStarting</code>), <code>useResultDialogStore</code> (50 lines). Backend Alembic head is still <code>0005_account_deletion_token</code> — no new migrations.</p>
 </div>
 
 <!-- SECTION 1: 3 ENVIRONMENTS -->
@@ -163,7 +168,7 @@ Code flows: git push main → GitHub Actions → Render deploy hook
       <tr><td><code>DEBUG</code></td><td><code>True</code></td><td><code>False</code></td><td><code>False</code></td></tr>
       <tr><td><code>DATABASE_URL</code></td><td>local docker</td><td>Neon <code>vitaltrack_staging</code></td><td>Neon <code>neondb</code></td></tr>
       <tr><td><code>SECRET_KEY</code></td><td>any 32+ char</td><td>distinct 32+</td><td>distinct 32+ (validator rejects "CHANGE-THIS")</td></tr>
-      <tr><td><code>CORS_ORIGINS</code></td><td><code>*</code></td><td>staging domain</td><td>carekosh.com (validator rejects <code>*</code>)</td></tr>
+      <tr><td><code>CORS_ORIGINS</code></td><td><code>*</code></td><td>staging domain</td><td>configured per-service in Render UI; <code>render.yaml</code> currently ships <code>*</code> as a default. There is a <code>parse_cors_origins</code> validator in <code>config.py</code> but no production wildcard rejector — tighten this when carekosh.com goes live.</td></tr>
       <tr><td><code>FRONTEND_URL</code></td><td>empty</td><td>staging domain</td><td>carekosh.com (validator requires in prod)</td></tr>
       <tr><td><code>MAIL_SERVER</code></td><td><code>sandbox.smtp.mailtrap.io</code></td><td>Brevo SMTP host</td><td>Brevo SMTP host</td></tr>
       <tr><td><code>MAIL_USERNAME</code></td><td>Mailtrap user</td><td>Brevo staging user</td><td>Brevo prod user</td></tr>
@@ -236,20 +241,25 @@ Code flows: git push main → GitHub Actions → Render deploy hook
   <h2>4 · Docker + deployment pipeline</h2>
 
   <h3><code>docker-entrypoint.sh</code> — the first thing Render runs</h3>
-  <div class="arch">#!/usr/bin/env bash
+  <div class="arch">#!/bin/sh
 set -e
 
-1. Parse DATABASE_URL into host/port/user/db
+1. Parse DATABASE_URL into host/port via sed
    (handles postgresql:// and postgresql+asyncpg://)
-   Strips query params (Neon appends ?sslmode=require etc.)
+   Note: query-param stripping (Neon's ?sslmode=require etc.) is NOT
+   done here — that happens in app/core/config.py via the
+   ensure_asyncpg_driver validator. The entrypoint only extracts
+   host + port for the readiness check.
 
 2. Wait for DB:
      for i in 1..30:
        pg_isready -h $DB_HOST -p $DB_PORT
        sleep 2
-     On a fresh Render deploy, tries localhost:5432 first — this is
-     the dev fallback and WILL fail 30 times before falling through
-     to the Neon URL. Harmless; expected.
+     If both DATABASE_HOST and DATABASE_URL are unset (or sed parse
+     fails), falls back to db:5432 / localhost:5432 and you'll see
+     30 failed attempts in the logs. With the Neon URL set in Render
+     env vars (the normal case), the parse succeeds and the first
+     attempt hits Neon directly.
 
 3. alembic upgrade head
      Idempotent. Applies any new migrations; skips already-applied.
@@ -356,7 +366,7 @@ deploy-backend job
 </div>
 
 <div class="footer">
-  CareKosh · Environment Architecture · April 2026 · PRs #4–#16
+  CareKosh · Environment Architecture · April–May 2026 · PRs #4–#34
 </div>
 
 </div>
