@@ -684,4 +684,9 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 
 ---
 
-*Last updated 2026-04-19 · tracks changes through PR #13.*
+*Original: 2026-04-19 (tracks changes through PR #13) · Last re-audited 2026-05-04 against PR #34.*
+
+> **Re-audit notes (2026-05-04):**
+> All 24 challenges plus the Architecture Decisions / Performance / Security / Testing sections re-verified against current code. Every "(historical)" tag is correctly applied. Every still-current claim (Argon2 + bcrypt fallback, JWT 30 min / 30 d rotation, OCC `version` column, rate-limiter proxy-IP fix, ADB reverse port mapping, account deletion 24-hour SHA-256 hashed token, `selectinload(Order.items)` eager loading, `useFocusEffect` on auth screens, `services/sync.ts` deleted) was verified file-and-line. No corrections needed in this doc.
+>
+> One addition worth a future entry: a "Challenge 25 — fire-and-forget mutations during Render cold start" capturing the audit/cold-start-mutation-ux branch design (the observer-death bug, hook-level dispatch, mutateAsync().then() pattern, MutationResultDialog overlay). For now, that material lives in commit messages on the merged branch and in `docs/LOCAL_TESTING_INTERNALS.md`.

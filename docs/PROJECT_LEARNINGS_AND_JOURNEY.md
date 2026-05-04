@@ -48,8 +48,15 @@ CareKosh follows the **12-factor app** pattern. All configuration comes from env
 if "?" in v:
     v = v.split("?")[0]
 
-# app/core/database.py — pass SSL via connect_args
-_connect_args = {"ssl": True} if settings.ENVIRONMENT in ("staging", "production") else {}
+# app/core/database.py — pass SSL via connect_args (denylist form: enable
+# unless we're in development/testing). Logically equivalent to "if staging
+# or production" but the actual code uses the denylist so a future env name
+# defaults to secure-on.
+_connect_args = (
+    {"ssl": True}
+    if settings.ENVIRONMENT not in ("development", "testing")
+    else {}
+)
 engine = create_async_engine(..., connect_args=_connect_args)
 ```
 
@@ -173,21 +180,32 @@ Two caregivers editing the same item silently overwrote each other's updates. Ro
 
 ## Part 5 — Email system (Brevo)
 
-### Why Brevo's SMTP works on Render
+### Why Brevo's HTTP API instead of SMTP
 
-Render's outbound traffic allows SMTP over STARTTLS on port 587. We use Brevo SMTP via `fastapi-mail` + `aiosmtplib`. In development we use Mailtrap's sandbox.
+We initially tried Brevo SMTP on STARTTLS port 587 via `fastapi-mail` +
+`aiosmtplib`. That worked locally but Render's egress was unreliable for
+SMTP — first connection after a cold start regularly stalled past Brevo's
+handshake timeout. Switched to **Brevo's transactional v3 REST API over
+HTTPS port 443** (`app/utils/email.py` uses `httpx.AsyncClient` to POST
+to `https://api.brevo.com/v3/smtp/email`). HTTPS-443 is always allowed
+by Render's egress and the round-trip is faster than the SMTP handshake.
+
+In development we still use Mailtrap's sandbox (SMTP), via the same
+utility selecting between transports based on env var presence.
 
 ### Render env vars for email (both services)
 
 | Var | Example |
 |---|---|
-| `MAIL_SERVER` | `smtp-relay.brevo.com` |
-| `MAIL_USERNAME` | Brevo SMTP login |
-| `MAIL_PASSWORD` | Brevo SMTP key |
+| `MAIL_PASSWORD` | Brevo API key (used as the `api-key` HTTP header — variable name kept for backward compatibility with the SMTP-era code) |
 | `MAIL_FROM` | `noreply@carekosh.com` |
-| `MAIL_PORT` | `587` |
-| `MAIL_STARTTLS` | `True` |
+| `MAIL_FROM_NAME` | `CareKosh` |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` |
+
+`MAIL_SERVER`, `MAIL_PORT=587`, `MAIL_STARTTLS=True`, `MAIL_USERNAME` are
+still defined in `app/core/config.py` for the SMTP-era code path
+(Mailtrap dev) and as legacy harmless config — they are no longer used
+in production where the REST transport runs.
 
 ### Safety guards in code
 
@@ -313,4 +331,10 @@ See [../CAREKOSH_ROADMAP.md](../CAREKOSH_ROADMAP.md) for the live version.
 
 ---
 
-*Original: March 25, 2026 · Updated for PRs #4–#13 through April 2026.*
+*Original: March 25, 2026 · Updated for PRs #4–#13 through April 2026 · Last re-audited 2026-05-04 against PR #34.*
+
+> **Re-audit notes (2026-05-04):**
+> 1. **Brevo transport** in §Part 5 was described as SMTP/STARTTLS port 587. The actual production transport is Brevo's HTTP REST API on port 443 (see `app/utils/email.py`). Section corrected; SMTP path is retained for the Mailtrap-dev fallback.
+> 2. **SSL gate snippet** in §Part 1 was written in allowlist form (`if ENVIRONMENT in ("staging", "production")`). The actual code uses denylist form (`if ENVIRONMENT not in ("development", "testing")`). Logically equivalent for the current envs but the actual code defaults a future env to secure-on. Section corrected.
+> 3. **Cold-start UX** (the audit/cold-start-mutation-ux branch, merged 2026-05-04) added a feedback layer — `MutationResultDialog`, consolidated `StatusPill`, `safeBack`, `mutationFeedback`, hook-level dispatch, fire-and-forget mutations — none of which is yet narrated in this learnings doc. The deeper "what we tried, what we shipped" account lives in `audit/cold-start-mutation-ux` commit messages and `docs/LOCAL_TESTING_INTERNALS.md`. Worth folding into a "Part 9 — Cold-start UX" section in a future update.
+> 4. Auth flow, OCC/409, account-deletion narratives, and Railway→Render migration content were re-verified and remain accurate.

@@ -155,7 +155,7 @@ workflow_dispatch       (manual run, any branch)
 | `test-frontend` | `tsc --noEmit` + `eslint` + `expo-doctor` |
 | `security-scan` | Trivy filesystem scan for CRITICAL + HIGH vulns |
 | `pr-check` | Merge gate — requires tests + security passing |
-| `deploy-backend` | `curl -X POST $RENDER_DEPLOY_HOOK_URL` on push to main |
+| `deploy-backend` | `curl -X POST $RENDER_DEPLOY_HOOK` on push to main |
 | `build-preview` | `eas build --profile preview --platform android`, only runs when the PR has the `build-apk` label |
 | `build-production` | `eas build --profile production` — **currently disabled via `if: false`** until mobile release cadence is established |
 
@@ -476,8 +476,53 @@ IMPORTANT URLS
 - `docs/DEVOPS_AND_ARCHITECTURE.md` — longer narrative on the why
 - `docs/ENVIRONMENT_SPLIT.md` — staging/production isolation
 - `docs/LOCAL_TESTING_COMPLETE_GUIDE.md` — troubleshooting local setup
+- `docs/LOCAL_TESTING_INTERNALS.md` — conceptual deep-dive on Metro/Expo Go/ADB
 - `docs/GIT_WORKFLOW_GUIDE.md` — commit message style, fork workflow, branch protection
 - `docs/EMAIL_VERIFICATION_GUIDE.md` — Brevo + verification flow
 - `docs/PHASE1_AUTH_HARDENING.md` · `docs/PHASE2_ACCOUNT_DELETION.md` — retrospective change logs
 
-*Last updated: 2026-04-19.*
+---
+
+## Updates since 2026-05-04
+
+The audit/cold-start-mutation-ux branch (35 commits, merged 2026-05-04)
+added a feedback layer the rest of this guide doesn't yet describe in
+detail:
+
+- **Cold-start save UX** (`vitaltrack-mobile/utils/mutationFeedback.ts`,
+  `components/common/MutationResultDialog.tsx`, `store/useResultDialogStore.ts`).
+  Slow saves (>= 5 s) and connection-failure failures surface as a centred
+  modal with title, item subtitle, body, and Close + Retry buttons.
+  Fast warm-server saves still use a small bottom toast.
+- **Single status pill** (`components/common/StatusPill.tsx`). Replaced
+  the previous `ConnectionStatusPill` and `SavingStatusPill` (both deleted)
+  with one component that priority-orders offline > saving > connecting
+  and escalates to "server warming up" copy after 5 / 8 s.
+- **Per-item "Updating…" indicator** (`hooks/usePendingItems.ts`).
+  Surfaces in-flight item mutations next to the item row.
+- **Fire-and-forget mutations.** Edit Item and Create Order use
+  `mutateAsync().then()` so the screen pops back immediately on Save
+  while the mutation runs in the background. Hook-level dispatch in
+  `hooks/useServerMutations.ts` ensures feedback fires even if the
+  observer's component has unmounted.
+- **`safeBack` helper** (`utils/navigation.ts`) replacing every direct
+  `router.back()` call site — guards against the "GO_BACK was not
+  handled" warning when the previous screen is no longer in the stack.
+- **`react-native-toast-message ^2.3.3`** dependency added; toast wrapper
+  at `utils/toast.ts`.
+- **Inventory PDF redesign** (`utils/inventoryPdfExport.ts`). Status
+  badges now reflect stock state (OUT / LOW / OK), not equipment
+  criticality. Column header is "Stock Left" instead of "Qty". Palette
+  matches the in-app theme (warm-tone navy / cream / muted status
+  colors).
+- **`formatStock` helper** (`utils/helpers.ts`). Inventory rows now
+  render "3 tablets" / "1 cylinder" instead of "3 / 2 tablets".
+- **`ProfileMenuSheet` PanResponder threshold** raised from 5 px to 15 px
+  with an added `dy > |dx|` directional guard, fixing the long-standing
+  "ripple fires but onPress never runs" tap-cancellation bug.
+
+None of those touched the backend, the CI surface, the Render or Neon
+configuration, or the Alembic chain — so the rest of this guide is still
+accurate at the architectural level.
+
+*Original: 2026-04-19. Last reviewed: 2026-05-04.*

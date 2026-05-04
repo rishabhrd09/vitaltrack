@@ -63,7 +63,7 @@
 | Email utility | `vitaltrack-backend/app/utils/email.py` | Sends via Brevo HTTP API (prod/staging) or SMTP (dev) |
 | Auth endpoints | `vitaltrack-backend/app/api/v1/auth.py` | Register, login guard, verification, resend |
 | Config | `vitaltrack-backend/app/core/config.py` | `REQUIRE_EMAIL_VERIFICATION`, `MAIL_*`, `FRONTEND_URL` |
-| User model | `vitaltrack-backend/app/models/user.py` | `is_email_verified`, `verification_token`, `verification_token_expires` |
+| User model | `vitaltrack-backend/app/models/user.py` | `is_email_verified`, `email_verification_token`, `email_verification_expiry` |
 | Migration | `alembic/versions/20260125_add_email_verification.py` | Adds those columns |
 | Mobile auth store | `vitaltrack-mobile/store/useAuthStore.ts` | Catches `EMAIL_NOT_VERIFIED`, redirects |
 | Verify screen | `vitaltrack-mobile/app/(auth)/verify-email-pending.tsx` | Resend + "Go to Login" |
@@ -73,8 +73,8 @@
 Verification tokens follow the same **hash-on-server / raw-in-email** pattern as password reset and (PR #13) account deletion:
 
 - Raw token: `secrets.token_urlsafe(32)` (256 bits of entropy).
-- Stored: `SHA-256(raw)` in `verification_token`.
-- TTL: 24 hours (`verification_token_expires`).
+- Stored: `SHA-256(raw)` in the `email_verification_token` column.
+- TTL: 24 hours (`email_verification_expiry`).
 - Verification query compares `SHA-256(incoming)` against the stored hash and requires `expires > now()`.
 
 DB never holds the raw token, so a DB dump alone does not let an attacker verify anyone.
@@ -89,8 +89,8 @@ All under `/api/v1/auth` (see `vitaltrack-backend/app/api/v1/auth.py`).
 |---|---|---|---|---|
 | `POST` | `/register` | Create account, send verification email | none | 3/hour |
 | `POST` | `/login` | Login, blocks unverified users | none | 5/min |
-| `GET` | `/verify-email?token=...` | Verify via query param (legacy) | none | — |
-| `GET` | `/verify-email/{token}` | Verify via path param (primary) | none | — |
+| `GET` | `/verify-email?token=...` | Verify via query param — **this is what emails actually link to** (`app/utils/email.py` emits `{FRONTEND_URL}/verify-email?token=...`) | none | — |
+| `GET` | `/verify-email/{token}` | Verify via path param (returns JSON; alternate API-style entry point, not used in outgoing email links) | none | — |
 | `POST` | `/resend-verification` | Request new verification email | none | 3/hour |
 | `GET` | `/email-service-status` | Is Brevo configured? | none | — |
 
@@ -151,11 +151,11 @@ An attacker cannot probe which emails are registered by reading the response bod
 
 Hardened in production only:
 
-- `SECRET_KEY` must be ≥32 chars and must not start with `"CHANGE-THIS"` when `ENVIRONMENT=production`.
-- `FRONTEND_URL` must not be empty when `ENVIRONMENT=production`.
-- `CORS_ORIGINS` must not be `"*"` when `ENVIRONMENT=production`.
+- `SECRET_KEY` must be ≥32 chars and must not start with `"CHANGE-THIS"` when `ENVIRONMENT=production`. (`reject_weak_secret_in_production` validator.)
+- `FRONTEND_URL` must not be empty when `ENVIRONMENT=production`. (`require_frontend_url_in_production` validator.)
+- `CORS_ORIGINS` is parsed by `parse_cors_origins` (accepts JSON or comma-separated). **There is no production-rejection validator for `"*"` today** — `render.yaml` actually ships `CORS_ORIGINS: '["*"]'` to production. Tighten manually in the Render dashboard if your threat model requires it.
 
-Startup fails fast rather than send broken verification links or run with a default key.
+Startup fails fast on the two validators above rather than send broken verification links or run with a default key.
 
 ---
 
@@ -204,7 +204,7 @@ Save the result (e.g. `192.168.1.42`). Localhost does **not** work on the phone.
 services:
   api:
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/carekosh
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/vitaltrack
       - SECRET_KEY=dev-secret-key-change-in-production-min-32-chars
       - ENVIRONMENT=development
       - DEBUG=true
@@ -240,7 +240,7 @@ docker compose -f docker-compose.dev.yml up --build
 ```bash
 docker compose -f docker-compose.dev.yml ps
 curl http://localhost:8000/health
-docker exec carekosh-api-dev env | grep MAIL
+docker exec vitaltrack-api-dev env | grep MAIL
 ```
 
 ### Step 6: Point the mobile app at the dev backend
@@ -290,10 +290,12 @@ MAIL_SSL_TLS=false
 REQUIRE_EMAIL_VERIFICATION=true
 FRONTEND_URL=https://vitaltrack-api.onrender.com/api/v1/auth
 
-CORS_ORIGINS=["https://carekosh.com","https://app.carekosh.com"]
+CORS_ORIGINS=["*"]   # actual current value in render.yaml — not enforced as
+                     # "must be domain-list" by any validator. Tighten in the
+                     # Render dashboard if your threat model requires it.
 ```
 
-The production config validators (PR #12) will **refuse to start** if `SECRET_KEY` is weak, `FRONTEND_URL` is empty, or `CORS_ORIGINS` is `"*"`.
+The production config validators (PR #12) will **refuse to start** if `SECRET_KEY` is weak (or starts with `CHANGE-THIS`) or `FRONTEND_URL` is empty. There is no validator that rejects `CORS_ORIGINS=["*"]` in production today.
 
 ### Dev vs Production Summary
 
@@ -353,7 +355,7 @@ Since PR #12, new registrations **require email**. Existing username-only accoun
 ```bash
 docker compose -f docker-compose.dev.yml down
 docker compose -f docker-compose.dev.yml up --build
-docker exec carekosh-api-dev env | grep MAIL
+docker exec vitaltrack-api-dev env | grep MAIL
 ```
 
 ### "Sender not valid" from Brevo
@@ -376,7 +378,7 @@ CORS_ORIGINS=["http://localhost:8081","http://192.168.1.42:8081","exp://192.168.
 2. Tap **Resend**.
 3. Fallback — mark the user verified directly (dev only):
 ```bash
-docker exec -it carekosh-db-dev psql -U postgres -d carekosh -c \
+docker exec -it vitaltrack-db-dev psql -U postgres -d vitaltrack -c \
   "UPDATE users SET is_email_verified = true WHERE email = 'user@example.com';"
 ```
 
@@ -395,26 +397,26 @@ Check that the link was consumed — the flag is set on the `GET /verify-email/{
 docker compose -f docker-compose.dev.yml up --build   # after env changes
 docker compose -f docker-compose.dev.yml up           # no env changes
 docker compose -f docker-compose.dev.yml down
-docker logs carekosh-api-dev -f
-docker exec carekosh-api-dev env | grep MAIL
+docker logs vitaltrack-api-dev -f
+docker exec vitaltrack-api-dev env | grep MAIL
 docker compose -f docker-compose.dev.yml ps
 ```
 
 ### Database
 ```bash
 # Open a psql shell
-docker exec -it carekosh-db-dev psql -U postgres -d carekosh
+docker exec -it vitaltrack-db-dev psql -U postgres -d vitaltrack
 
 # List users with verification state
-docker exec -it carekosh-db-dev psql -U postgres -d carekosh -c \
+docker exec -it vitaltrack-db-dev psql -U postgres -d vitaltrack -c \
   "SELECT id, email, is_email_verified, created_at FROM users;"
 
 # Manually verify (dev only)
-docker exec -it carekosh-db-dev psql -U postgres -d carekosh -c \
+docker exec -it vitaltrack-db-dev psql -U postgres -d vitaltrack -c \
   "UPDATE users SET is_email_verified = true WHERE email = 'user@example.com';"
 
 # Delete test users
-docker exec -it carekosh-db-dev psql -U postgres -d carekosh -c \
+docker exec -it vitaltrack-db-dev psql -U postgres -d vitaltrack -c \
   "DELETE FROM users WHERE email LIKE '%@test.com';"
 ```
 
@@ -458,7 +460,7 @@ curl -X POST http://localhost:8000/api/v1/auth/resend-verification \
 [ ] noreply@carekosh.com sender active
 [ ] SECRET_KEY is strong random (not CHANGE-THIS...)
 [ ] ENVIRONMENT=production
-[ ] CORS_ORIGINS restricted to carekosh.com domains (no "*")
+[ ] CORS_ORIGINS reviewed (currently `["*"]` — tighten to specific domains if you intend to expose the API to a browser frontend; not enforced by validator)
 [ ] FRONTEND_URL set to https://vitaltrack-api.onrender.com/api/v1/auth
 [ ] Smoke test: register new email → receive mail → verify → login works
 [ ] Smoke test: resend-verification returns identical text for real & fake emails
@@ -476,4 +478,12 @@ curl -X POST http://localhost:8000/api/v1/auth/resend-verification \
 
 ---
 
-**Last updated:** 2026-04-19 · Tracks PR #12 auth hardening.
+**Original:** 2026-04-19 · Tracks PR #12 auth hardening · **Last reviewed:** 2026-05-04 against PR #34.
+
+> **Re-audit notes (2026-05-04):**
+> 1. The User model column names are `email_verification_token` and `email_verification_expiry` — earlier drafts of this doc used unprefixed `verification_token` / `verification_token_expires`, which don't exist. Corrected in §2 and §Token Storage.
+> 2. The Docker container names in §5 / §7 / §8 / §9 are `vitaltrack-api-dev` and `vitaltrack-db-dev` (the DB is `vitaltrack`). Earlier drafts used `carekosh-*` which don't match `docker-compose.dev.yml`. Corrected.
+> 3. The verify-email "primary" / "legacy" labels were inverted — `app/utils/email.py` actually emits `?token=...` (query-param) links into outgoing mail, so that route is what users click. The `/verify-email/{token}` path-param route returns JSON and is API-style. Corrected in §3.
+> 4. The CORS-`*`-rejection-validator claim was wrong — see §4 corrections. Production currently ships with `CORS_ORIGINS=["*"]` per `render.yaml`.
+> 5. Brevo HTTP API (port 443) is the production transport, not SMTP — the SMTP config keys (`MAIL_SERVER`, `MAIL_PORT`, `MAIL_STARTTLS`) are kept for the Mailtrap-dev path only.
+> 6. Login enforcement guard, enumeration-safe resend, schema-required-email-on-register all re-verified against current code — unchanged.
