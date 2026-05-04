@@ -253,57 +253,70 @@ function buildHtml(opts: {
         table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
+            /* fixed layout makes the print engine honor <col> widths
+               instead of auto-sizing columns from content (which was
+               letting the Item column eat ~50% of the page width and
+               crushing Status/Qty/Unit/Min into the right ~25%, per the
+               May 4 v3 audit on the rendered PDF). */
         }
         th {
             background: #1e3a5f;
             color: #fff;
-            padding: 10px 8px;
+            padding: 12px 10px;
             text-align: left;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 700;
             letter-spacing: 0.05em;
             text-transform: uppercase;
         }
-        th.col-status { text-align: center; width: 70px; }
-        th.col-stock { text-align: right; width: 60px; }
-        th.col-unit { text-align: left; width: 70px; }
-        th.col-min { text-align: right; width: 45px; }
+        th.col-status { text-align: center; }
+        th.col-stock { text-align: right; }
+        th.col-min { text-align: right; padding-right: 14px; }
 
         td {
-            padding: 8px 8px;
+            padding: 10px 10px;
             border-bottom: 1px solid #edf2f7;
             font-size: 13px;
             vertical-align: middle;
             color: #4a5568;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
         tr.category-row { page-break-inside: avoid; }
         tr.category-row td {
-            background: #f5f0e8;
+            background: #ecdfca;
             color: #1e3a5f;
             font-weight: 700;
             font-size: 13px;
             letter-spacing: 0.02em;
-            padding: 10px 10px;
+            padding: 11px 12px;
             border-bottom: none;
+            border-top: 1px solid #d6c5a3;
         }
 
         .item-name { font-weight: 600; color: #2d3748; font-size: 14px; }
         .item-sub { color: #a0aec0; font-size: 11px; margin-top: 2px; }
 
-        .stock-num { font-weight: 700; text-align: right; font-size: 14px; }
+        .stock-num { font-weight: 700; text-align: right; font-size: 14px; padding-right: 10px; }
         .stock-zero { color: #a06060; }
         .stock-low { color: #a08040; }
         .stock-ok { color: #5a8a6a; }
         td.col-unit { color: #6b6b6b; font-size: 12px; }
-        td.col-min { text-align: right; color: #a0aec0; font-size: 12px; }
+        td.col-min { text-align: right; color: #6b6b6b; font-size: 13px; padding-right: 14px; font-weight: 600; }
 
         .status-badge {
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 700;
-            padding: 2px 7px;
-            border-radius: 3px;
+            padding: 4px 9px;
+            border-radius: 4px;
             display: inline-block;
-            letter-spacing: 0.03em;
+            letter-spacing: 0.04em;
+            min-width: 56px;
+            text-align: center;
+            /* min-width keeps OK / LOW / OUT / CRITICAL badges visually
+               consistent in width — was uneven without it (CRITICAL much
+               wider than OK, made the column look ragged). */
         }
         .sb-critical { background: #f0dede; color: #8b5050; }
         .sb-oos { background: #f0dede; color: #8b5050; }
@@ -324,15 +337,31 @@ function buildHtml(opts: {
         }
         .footer b { color: #1e3a5f; }
 
-        .gallery-header { page-break-before: always; text-align: center; padding: 30px 0 20px; }
-        .gallery-header h2 { color: #1e3a5f; font-size: 20px; margin-bottom: 6px; }
-        .gallery-header p { color: #a0aec0; font-size: 12px; }
-        .gallery-item { page-break-inside: avoid; text-align: center; margin-bottom: 36px; padding: 16px; }
-        .gallery-item h3 { color: #1e3a5f; font-size: 16px; margin-bottom: 6px; }
-        .gallery-item p { color: #a0aec0; font-size: 11px; margin-bottom: 12px; }
+        .gallery-header {
+            page-break-before: always;
+            text-align: center;
+            padding: 32px 0 24px;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 32px;
+        }
+        .gallery-header h2 { color: #1e3a5f; font-size: 22px; margin-bottom: 8px; }
+        .gallery-header p { color: #718096; font-size: 13px; }
+        .gallery-item {
+            page-break-inside: avoid;
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px 0;
+        }
+        .gallery-item h3 {
+            color: #1e3a5f;
+            font-size: 17px;
+            margin-bottom: 6px;
+            font-weight: 700;
+        }
+        .gallery-item p { color: #718096; font-size: 12px; margin-bottom: 16px; }
         .gallery-item img {
-            max-width: 85%;
-            max-height: 400px;
+            max-width: 92%;
+            max-height: 480px;
             object-fit: contain;
             border-radius: 8px;
             box-shadow: 0 2px 12px rgba(0,0,0,0.08);
@@ -378,6 +407,13 @@ function buildHtml(opts: {
     <div class="section-title">Inventory by Category</div>
 
     <table>
+        <colgroup>
+            <col style="width: 45%">
+            <col style="width: 16%">
+            <col style="width: 11%">
+            <col style="width: 14%">
+            <col style="width: 14%">
+        </colgroup>
         <thead>
             <tr>
                 <th>Item</th>
