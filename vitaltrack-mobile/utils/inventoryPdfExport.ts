@@ -480,7 +480,7 @@ function buildHtml(opts: {
             <tr>
                 <th>Item</th>
                 <th class="col-status">Status</th>
-                <th class="col-stock">Qty</th>
+                <th class="col-stock">Stock Left</th>
                 <th class="col-unit">Unit</th>
                 <th class="col-min">Min</th>
             </tr>
