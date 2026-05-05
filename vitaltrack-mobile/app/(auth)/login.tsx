@@ -28,6 +28,15 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
 const MAX_RETRY_ATTEMPTS = 12; // 12 attempts × 5s = 60s window, matches Render's cold-start worst case
 const RETRY_INTERVAL_MS = 5000;
 const HEALTH_CHECK_TIMEOUT_MS = 8000;
+// How long the first login() call may sit without feedback before we surface
+// an expectation-setting banner. The auto-retry UI only appears AFTER the
+// initial request fails, but Render's load balancer often holds the request
+// open for the full cold-start duration (30-60s) and eventually returns 200,
+// so on the first sign-in the user can otherwise stare at a frozen-looking
+// spinner for up to a minute with no indication anything is happening. 4s
+// is short enough to avoid flicker on a warm-server login (~300ms) and long
+// enough to feel responsive rather than alarmist.
+const SLOW_LOGIN_THRESHOLD_MS = 4000;
 
 // Map backend error messages to user-friendly text
 const getFriendlyError = (error: string): string => {
@@ -61,6 +70,14 @@ export default function LoginScreen() {
         exhausted: boolean;
     }>({ isRetrying: false, attempt: 0, message: '', exhausted: false });
 
+    // Slow-login banner: flips on if the first /auth/login request hasn't
+    // resolved within SLOW_LOGIN_THRESHOLD_MS. Bridges the silent gap between
+    // a tap on Sign In and either a successful response or the auto-retry UI
+    // kicking in after a failure. Timer ref lives at component scope so the
+    // unmount cleanup can clear it without relying on the handler's local var.
+    const slowLoginTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [slowLogin, setSlowLogin] = useState(false);
+
     // Clear stale errors when screen gains focus
     useFocusEffect(
         useCallback(() => {
@@ -76,6 +93,13 @@ export default function LoginScreen() {
         }
     }, []);
 
+    const clearSlowLoginTimer = useCallback(() => {
+        if (slowLoginTimerRef.current) {
+            clearTimeout(slowLoginTimerRef.current);
+            slowLoginTimerRef.current = null;
+        }
+    }, []);
+
     const cancelRetry = useCallback(() => {
         stopRetry();
         setRetryState({ isRetrying: false, attempt: 0, message: '', exhausted: false });
@@ -83,12 +107,13 @@ export default function LoginScreen() {
         clearError();
     }, [stopRetry, clearColdStart, clearError]);
 
-    // Cleanup on unmount — prevents memory leak from orphaned interval
+    // Cleanup on unmount — prevents memory leak from orphaned interval/timer
     useEffect(() => {
         return () => {
             stopRetry();
+            clearSlowLoginTimer();
         };
-    }, [stopRetry]);
+    }, [stopRetry, clearSlowLoginTimer]);
 
     // When login succeeds and we were retrying, stop the retry loop
     useEffect(() => {
@@ -179,6 +204,16 @@ export default function LoginScreen() {
         clearError();
         clearColdStart();
         setRetryState({ isRetrying: false, attempt: 0, message: '', exhausted: false });
+        setSlowLogin(false);
+        clearSlowLoginTimer();
+
+        // Surface the cold-start expectation banner if the request hasn't
+        // resolved within SLOW_LOGIN_THRESHOLD_MS. Cleared in the try/catch
+        // tail (and on unmount) so it never lingers after a fast warm login.
+        slowLoginTimerRef.current = setTimeout(() => {
+            setSlowLogin(true);
+            slowLoginTimerRef.current = null;
+        }, SLOW_LOGIN_THRESHOLD_MS);
 
         try {
             const success = await login(identifier.trim(), password);
@@ -198,6 +233,9 @@ export default function LoginScreen() {
                 } as never);
             }
             // Other errors are handled by useAuthStore and shown via error state
+        } finally {
+            clearSlowLoginTimer();
+            setSlowLogin(false);
         }
     };
 
@@ -332,6 +370,27 @@ export default function LoginScreen() {
                             <Text style={styles.buttonText}>{retryExhausted ? 'Try Again' : 'Sign In'}</Text>
                         )}
                     </TouchableOpacity>
+
+                    {/* Slow-login expectation banner — shows during the FIRST
+                        request when it hasn't returned within ~4s. Render's
+                        load balancer often holds the connection for the full
+                        cold-start window and eventually returns 200, so this
+                        is the only feedback the user gets between tap-and-wait
+                        and the auto-retry UI (which only fires on actual
+                        failure). Suppressed once auto-retry takes over. */}
+                    {isLoading && slowLogin && !isRetrying && (
+                        <View style={[styles.slowBox, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '40' }]}>
+                            <View style={styles.slowHeader}>
+                                <Ionicons name="cloudy-outline" size={20} color={colors.primary} />
+                                <Text style={[styles.slowTitle, { color: colors.text }]}>
+                                    CareKosh server is waking up...
+                                </Text>
+                            </View>
+                            <Text style={[styles.slowSubtext, { color: colors.textSecondary }]}>
+                                First sign-in after a while can take up to 60 seconds.
+                            </Text>
+                        </View>
+                    )}
 
                     {/* Retry in progress */}
                     {isRetrying && (
@@ -473,6 +532,27 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+    },
+    slowBox: {
+        padding: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginBottom: 16,
+        gap: 6,
+    },
+    slowHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    slowTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        flexShrink: 1,
+    },
+    slowSubtext: {
+        fontSize: 13,
+        paddingLeft: 30,
     },
     retryBox: {
         padding: 16,
