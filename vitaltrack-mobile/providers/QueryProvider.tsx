@@ -109,10 +109,22 @@ export function QueryProvider({ children }: QueryProviderProps) {
             // SECURITY: Do NOT persist auth-related queries to disk. After account
             // deletion, a cached /auth/me would show user as "logged in" until the
             // network round-trip replaces it. Only persist inventory/order/category data.
+            //
+            // Why `data !== undefined` instead of `status === 'success'`:
+            // After a query that previously succeeded refetches and fails (e.g. user
+            // goes offline mid-session and `refetchOnWindowFocus` triggers a refetch),
+            // the query transitions to status='error' but TanStack Query keeps the last
+            // successful payload in `state.data`. Filtering on status would drop it
+            // from the next dehydration flush — overwriting the persisted blob with
+            // an empty one and showing "no cached data available" on the next launch.
+            // Filtering on `data !== undefined` keeps the last known good payload on
+            // disk through transient error states. Auth queries are still excluded so
+            // a stale /auth/me cannot leak after deletion. The 24h gcTime / persister
+            // maxAge still apply, so genuinely old data still expires.
             shouldDehydrateQuery: (query) => {
               const key = query.queryKey[0];
               const isAuthQuery = key === 'auth' || key === 'user' || key === 'me';
-              return query.state.status === 'success' && !isAuthQuery;
+              return query.state.data !== undefined && !isAuthQuery;
             },
           },
         }}
