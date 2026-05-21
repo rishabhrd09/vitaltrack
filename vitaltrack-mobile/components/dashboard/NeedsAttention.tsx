@@ -6,12 +6,13 @@
  */
 
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import type { Item } from '@/types';
 import { isCriticalEquipment, needsEmergencyBackup, sortByCriticalFirst } from '@/types';
+import { usePendingItemIds } from '@/hooks/usePendingItems';
 
 interface NeedsAttentionProps {
   outOfStockItems: Item[];
@@ -41,6 +42,7 @@ export default function NeedsAttention({
   const [isOutOfStockExpanded, setIsOutOfStockExpanded] = useState(true);
   const [showAllOutOfStock, setShowAllOutOfStock] = useState(false);
   const [showAllLowStock, setShowAllLowStock] = useState(false);
+  const pendingItemIds = usePendingItemIds();
 
   const totalCount = outOfStockItems.length + lowStockItems.length;
 
@@ -129,9 +131,19 @@ export default function NeedsAttention({
                     <View key={item.id} style={[styles.itemRow, { borderTopColor: colors.borderPrimary }]}>
                       <View style={styles.itemLeft}>
                         <View style={[styles.itemDot, { backgroundColor: colors.statusRed }]} />
-                        <Text style={[styles.itemName, { color: colors.textPrimary }]} numberOfLines={1}>
-                          {item.name}
-                        </Text>
+                        <View style={styles.itemNameColumn}>
+                          <Text style={[styles.itemName, { color: colors.textPrimary }]} numberOfLines={1}>
+                            {item.name}
+                          </Text>
+                          {pendingItemIds.has(item.id) && (
+                            <View style={styles.pendingTag} accessibilityLabel="Updating">
+                              <ActivityIndicator size="small" color={colors.textMuted} />
+                              <Text style={[styles.pendingText, { color: colors.textMuted }]}>
+                                Updating…
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
                       <TouchableOpacity
                         style={[styles.updateButton, { borderColor: colors.accentBlue }]}
@@ -217,9 +229,19 @@ export default function NeedsAttention({
                   <View key={item.id} style={[styles.itemRow, { borderTopColor: colors.borderPrimary }]}>
                     <View style={styles.itemLeft}>
                       <View style={[styles.itemDot, { backgroundColor: isCriticalEquipment(item) ? colors.statusRed : colors.statusOrange }]} />
-                      <Text style={[styles.itemName, { color: colors.textPrimary }]} numberOfLines={1}>
-                        {item.name}{isCriticalEquipment(item) ? ' ⚠️' : ''}
-                      </Text>
+                      <View style={styles.itemNameColumn}>
+                        <Text style={[styles.itemName, { color: colors.textPrimary }]} numberOfLines={1}>
+                          {item.name}{isCriticalEquipment(item) ? ' ⚠️' : ''}
+                        </Text>
+                        {pendingItemIds.has(item.id) && (
+                          <View style={styles.pendingTag} accessibilityLabel="Updating">
+                            <ActivityIndicator size="small" color={colors.textMuted} />
+                            <Text style={[styles.pendingText, { color: colors.textMuted }]}>
+                              Updating…
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                     <View style={styles.itemRight}>
                       <View style={[styles.leftBadge, { backgroundColor: colors.statusOrangeBg }]}>
@@ -308,7 +330,18 @@ const styles = StyleSheet.create({
   },
   itemLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: spacing.sm },
   itemDot: { width: 6, height: 6, borderRadius: 3 },
-  itemName: { fontSize: fontSize.md, flex: 1 },
+  itemNameColumn: { flex: 1 },
+  itemName: { fontSize: fontSize.md },
+  pendingTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  pendingText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
+  },
   itemRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   leftBadge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: borderRadius.sm },
   leftBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.medium },

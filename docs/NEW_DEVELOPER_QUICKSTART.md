@@ -157,3 +157,7 @@ npx expo start --tunnel         # firewall / LAN bypass
 4. **Contribute** — [CAREKOSH_DEVELOPER_GUIDE.md §12](../CAREKOSH_DEVELOPER_GUIDE.md#12-contribution-workflow) (branch names, commit convention, PR flow).
 
 Questions? Open a GitHub issue or tag `@rishabhrd09`.
+
+---
+
+*Last reviewed 2026-05-04 against PR #34. The 30-minute onramp itself is unchanged; for deeper context on what runs in the mobile app post the audit/cold-start-mutation-ux merge (status pill, mutation result dialog, fire-and-forget saves), see the "Updates since 2026-05-04" section in `CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md`.*

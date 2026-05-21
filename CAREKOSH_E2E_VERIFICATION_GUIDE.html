@@ -62,7 +62,24 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 <div class="hero">
   <h1>End-to-End <em>Verification</em> Guide</h1>
   <p class="sub">Every curl, every expected response, every gate. Run this after a deploy; if a step fails, stop and fix — do not proceed.</p>
-  <p class="meta">CareKosh · Home ICU Inventory · Staging + Production · April 2026</p>
+  <p class="meta">CareKosh · Home ICU Inventory · Staging + Production · April–May 2026</p>
+</div>
+
+<div class="callout info">
+  <span class="callout-label">Update — May 2026 cold-start UX track</span>
+  <p>The backend curl flow in this guide is unchanged — Phase 1 through Phase 6 still apply byte-for-byte. Phase 7 (mobile APK) gained new things to spot-check that the cold-start UX track shipped:</p>
+  <ul>
+    <li>Single ambient <code>StatusPill</code> at the top of each tab — never stacked. Escalates from "Connecting…" to "Connecting… server warming up" after 5 s; from "Saving…" to "Saving… server warming up" after 8 s.</li>
+    <li>Per-item "Updating…" indicator (small spinner + grey text) on rows with an in-flight save. Visible on Dashboard "Needs Attention" rows and the Inventory list.</li>
+    <li>Cold-start pre-flight banner on Edit Item: "Server is waking up — your save may take 30–60 seconds." Disappears once any 2xx lands.</li>
+    <li>Save → fire-and-forget. Tap Save and the screen navigates back immediately; the mutation runs in the background; outcome surfaces wherever the user has navigated to.</li>
+    <li>Slow success (≥5 s) → centred <code>MutationResultDialog</code> ("Saved · Item Name · Your changes were saved successfully after the server warmed up (took ~XXs)"). Fast success → small bottom toast.</li>
+    <li>Connection failure → centred dialog with red cloud-offline icon, item name, "Couldn't update", and a Retry button that re-fires the same mutation.</li>
+    <li>Concurrent-edit warning: opening the same item twice while a save is in flight shows an amber banner with the Save button greyed.</li>
+    <li>No "GO_BACK was not handled" yellow strip after success-modal dismissal — this regression was killed by <code>safeBack()</code>.</li>
+    <li>Inventory list rows show "5 units" / "1 tablet" instead of "5 / 1 unit" — minimum-stock value moved to the row's expanded detail.</li>
+    <li>Inventory PDF: status badges now reflect stock state (OUT OF STOCK / LOW / OK) not equipment criticality. Critical equipment marked with a gold ★. "Stock Left" column header (was "Qty"). Navy header band, app-palette colours, gap between category sections.</li>
+  </ul>
 </div>
 
 <!-- ENVIRONMENTS -->
@@ -525,7 +542,7 @@ eas build --profile preview --platform android</code></pre>
 </div>
 
 <div class="footer">
-  CareKosh · End-to-End Verification Guide · April 2026 · PRs #4–#16
+  CareKosh · End-to-End Verification Guide · April–May 2026 · PRs #4–#34
 </div>
 
 </div>

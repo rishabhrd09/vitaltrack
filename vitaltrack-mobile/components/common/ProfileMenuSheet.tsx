@@ -67,10 +67,39 @@ export default function ProfileMenuSheet({
 
     const panResponder = useRef(
         PanResponder.create({
-            // Only claim the gesture when there's a clear downward movement,
-            // so taps on menu items are never intercepted.
+            // Only claim the gesture when there's a clear, deliberate downward
+            // drag — so taps on menu items are never intercepted. History:
+            //
+            //  - Original threshold of 5px caused taps to register the Material
+            //    ripple but onPress never fired (PanResponder was claiming
+            //    during a tap's natural finger drift).
+            //  - 2026-05-04 audit bumped to 15px + dy > |dx| direction guard.
+            //  - 2026-05-09: real-device testing showed the issue still occurs
+            //    intermittently — finger drift on Android touchscreens routinely
+            //    exceeds 15px on a "still" tap, especially on bigger phones.
+            //    Symptom was particularly bad: ALL 4 menu options would appear
+            //    dead in a session because every tap had similar drift.
+            //
+            // Final tuning:
+            //  1. Threshold raised to 30px — well outside normal tap drift range
+            //     (typical: 0-15px) but still under a real swipe (50-200px).
+            //  2. Direction guard tightened to dy > 1.5 * |dx|, so the drag must
+            //     be meaningfully more vertical than horizontal, not just
+            //     marginally so.
+            //  3. Explicit termination handlers so a stolen gesture cleans up
+            //     translateY rather than leaving the sheet partially translated.
             onStartShouldSetPanResponder: () => false,
-            onMoveShouldSetPanResponder: (_, gs) => gs.dy > 5,
+            onStartShouldSetPanResponderCapture: () => false,
+            onMoveShouldSetPanResponder: (_, gs) => gs.dy > 30 && gs.dy > Math.abs(gs.dx) * 1.5,
+            onMoveShouldSetPanResponderCapture: () => false,
+            onPanResponderTerminationRequest: () => true,
+            onPanResponderTerminate: () => {
+                Animated.spring(translateY, {
+                    toValue: 0,
+                    bounciness: 4,
+                    useNativeDriver: true,
+                }).start();
+            },
             onPanResponderMove: (_, gs) => {
                 if (gs.dy > 0) translateY.setValue(gs.dy);
             },

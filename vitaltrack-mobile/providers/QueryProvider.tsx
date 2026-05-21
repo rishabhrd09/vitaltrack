@@ -1,10 +1,11 @@
 import React from 'react';
-import { Alert, AppState } from 'react-native';
+import { AppState } from 'react-native';
 import { MutationCache, QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { toast } from '@/utils/toast';
 
 /**
  * Safety notes — why this is different from the old Zustand persist that caused data corruption:
@@ -37,13 +38,27 @@ const ENABLE_CACHE_PERSISTENCE = true;
 const CACHE_STORAGE_KEY = 'carekosh-query-cache';
 
 const queryClient = new QueryClient({
-  // Surface mutation errors that the caller didn't already handle, so a failed
-  // optimistic update doesn't silently roll back without user feedback.
+  // Global safety net for mutation errors the caller didn't handle.
+  // Non-blocking toast (instead of Alert) so it doesn't interrupt whichever
+  // screen the user navigated to during a slow background save. Tapping
+  // the toast re-runs the same mutation through TanStack Query's state
+  // machine via Mutation.execute(variables), so per-item "Updating…"
+  // indicators light up again on retry.
   mutationCache: new MutationCache({
-    onError: (error, _variables, _context, mutation) => {
+    onError: (error, variables, _context, mutation) => {
       if (mutation.options.onError) return;
       const msg = error instanceof Error ? error.message : String(error);
-      Alert.alert('Could not save', msg);
+      toast.error("Couldn't save", {
+        description: `${msg} — Tap to retry`,
+        onRetry: () => {
+          // execute() re-runs the mutationFn through the existing Mutation
+          // instance, so onSuccess / invalidateQueries fire normally. Cast
+          // is needed because MutationCache.onError types variables as
+          // unknown; the runtime contract is that they're the same object
+          // the caller originally passed to mutate().
+          void mutation.execute(variables as never);
+        },
+      });
     },
   }),
   defaultOptions: {
@@ -94,10 +109,22 @@ export function QueryProvider({ children }: QueryProviderProps) {
             // SECURITY: Do NOT persist auth-related queries to disk. After account
             // deletion, a cached /auth/me would show user as "logged in" until the
             // network round-trip replaces it. Only persist inventory/order/category data.
+            //
+            // Why `data !== undefined` instead of `status === 'success'`:
+            // After a query that previously succeeded refetches and fails (e.g. user
+            // goes offline mid-session and `refetchOnWindowFocus` triggers a refetch),
+            // the query transitions to status='error' but TanStack Query keeps the last
+            // successful payload in `state.data`. Filtering on status would drop it
+            // from the next dehydration flush — overwriting the persisted blob with
+            // an empty one and showing "no cached data available" on the next launch.
+            // Filtering on `data !== undefined` keeps the last known good payload on
+            // disk through transient error states. Auth queries are still excluded so
+            // a stale /auth/me cannot leak after deletion. The 24h gcTime / persister
+            // maxAge still apply, so genuinely old data still expires.
             shouldDehydrateQuery: (query) => {
               const key = query.queryKey[0];
               const isAuthQuery = key === 'auth' || key === 'user' || key === 'me';
-              return query.state.status === 'success' && !isAuthQuery;
+              return query.state.data !== undefined && !isAuthQuery;
             },
           },
         }}

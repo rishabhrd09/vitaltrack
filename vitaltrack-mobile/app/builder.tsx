@@ -32,6 +32,7 @@ import { useDeleteItem, useDeleteCategory, useCreateCategory, useToggleItemCriti
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useDelayedPending } from '@/hooks/useDelayedPending';
 import { handleMutationError } from '@/utils/serverErrors';
+import { safeBack } from '@/utils/navigation';
 import {
     useSeedInventory,
     useStartFresh,
@@ -971,7 +972,7 @@ export default function BuildInventoryScreen() {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
             {/* Header */}
             <View style={[styles.header, { backgroundColor: colors.bgSecondary, borderBottomColor: colors.borderPrimary }]}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+                <TouchableOpacity onPress={() => safeBack()} style={styles.headerButton}>
                     <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>

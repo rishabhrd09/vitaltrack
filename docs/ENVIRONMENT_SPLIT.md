@@ -337,7 +337,7 @@ Same set. Differences:
 | `ENVIRONMENT` | `production` |
 | `DATABASE_URL` | `postgresql+asyncpg://...@.../neondb` |
 | `SECRET_KEY` | A **different** 32+ char random value (not starting with `CHANGE-THIS`) |
-| `CORS_ORIGINS` | `["https://carekosh.com","https://app.carekosh.com"]` — PR #12 validator rejects `"*"` in prod |
+| `CORS_ORIGINS` | currently `["*"]` per `render.yaml`. **No validator rejects `"*"` in production today** — earlier drafts of these docs claimed PR #12 added one; it didn't. Tighten to specific domains in the Render dashboard if your threat model requires it. |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` |
 | `FRONTEND_URL` | `https://vitaltrack-api.onrender.com/api/v1/auth` — PR #12 validator requires non-empty in prod |
 
@@ -366,9 +366,17 @@ curl -s https://vitaltrack-api.onrender.com/health | python -m json.tool
 # Expected:
 # {
 #   "status": "healthy",
+#   "version": "1.0.0",
 #   "environment": "production",
-#   "database": "connected"
+#   "database": "connected",
+#   "timestamp": "2026-..."
 # }
+
+# Note: the `database` field is currently a hardcoded literal "connected" in
+# app/main.py — the /health endpoint does NOT actively probe the database.
+# A real DB outage manifests as the endpoint not responding (process down or
+# 5xx), not as `"database": "disconnected"`. Use Neon's own monitoring for
+# database health.
 ```
 
 ### Registration smoke test (staging only)
@@ -401,12 +409,17 @@ curl -s -X POST https://vitaltrack-api.onrender.com/api/v1/auth/login \
 
 ## 8. Troubleshooting
 
-### `"database": "disconnected"` in `/health`
+### `/health` returns nothing (504 / connection error)
+
+The `/health` endpoint always returns `"database": "connected"` literally
+when it responds at all — it does NOT probe Neon. If the endpoint times out
+or returns 5xx, the process itself is unhealthy:
 
 - Check Render → service → Environment Variables → `DATABASE_URL`.
 - Verify the DB name matches (`vitaltrack_staging` for staging, `neondb` for production).
 - Verify the Neon project is not suspended due to inactivity.
 - Verify the password in the connection string matches Neon's current one (rotating the Neon password requires updating Render).
+- For real DB-side health, use the Neon dashboard's monitoring panel.
 
 ### Wrong `environment` value in `/health`
 
@@ -485,7 +498,7 @@ No. EAS Build reads `eas.json` from the repo. Nothing to change in the Expo dash
 
 Yes. CORS is a browser security feature. React Native / native mobile apps do not enforce CORS — they make direct HTTP requests. The wildcard has zero security impact on a mobile-only API.
 
-For **production**, PR #12 rejects `"*"` at startup. The rationale is defence in depth — if anyone ever points a browser-based admin tool at the production API, CORS must be restricted. Staging is explicitly not production and doesn't need the same guardrail.
+An earlier draft of this doc said PR #12 "rejects `*` at startup in production" — that's not accurate. PR #12 added validators for `SECRET_KEY` (no placeholder) and `FRONTEND_URL` (must be set), but no CORS production-rejection. The actual production `render.yaml` ships `CORS_ORIGINS: '["*"]'`. Tighten manually in the Render dashboard if your threat model requires it (defence in depth — if anyone ever points a browser-based admin tool at the production API, CORS would need to be restricted).
 
 ### How do I add a fourth environment (QA, demo, etc.)?
 
@@ -493,4 +506,10 @@ Zero code changes needed. Create a new Neon DB, a new Render service, set its en
 
 ---
 
-*Last updated: 2026-04-19.*
+*Original: 2026-04-19. Last reviewed: 2026-05-04 against PR #34.*
+
+> **Re-audit notes (2026-05-04):**
+> 1. The earlier "PR #12 rejects `*` in production" claim was incorrect — see corrections inline in §4.5 / §6.2 / §FAQ.
+> 2. The `/health` endpoint **does not actually probe the database** — the `database` field in the response is a hardcoded `"connected"` literal in `app/main.py`. A real DB outage shows up as the endpoint not responding (5xx / timeout), not as `"database": "disconnected"`. Section §7 (smoke tests) and §8 (troubleshooting) have been corrected.
+> 3. Email transport in production is now Brevo's HTTP REST API over port 443, not SMTP/STARTTLS. The `MAIL_SERVER` / `MAIL_PORT` / `MAIL_STARTTLS` config keys still exist for the Mailtrap-dev SMTP path; in production they're unused. (See `app/utils/email.py`.)
+> 4. The mobile app gained a cold-start UX layer (`MutationResultDialog`, `StatusPill`, `safeBack`, `mutationFeedback`, `react-native-toast-message`) on the audit/cold-start-mutation-ux branch merged 2026-05-04. None of that touches environment / DB / Render config; the env-split surface is unchanged.

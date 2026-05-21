@@ -351,14 +351,24 @@ const translateY = useRef(new Animated.Value(0)).current;
 const panResponder = useRef(
     PanResponder.create({
         onStartShouldSetPanResponder: () => false,
-        onMoveShouldSetPanResponder: (_, gs) => gs.dy > 5,
+        onStartShouldSetPanResponderCapture: () => false,
+        // Claim the gesture only on a clear, deliberate downward drag —
+        // 15 px is the Material Design drag-recognition threshold, and the
+        // dy > |dx| guard prevents accidental claims on horizontal drift.
+        onMoveShouldSetPanResponder: (_, gs) => gs.dy > 15 && gs.dy > Math.abs(gs.dx),
+        onMoveShouldSetPanResponderCapture: () => false,
         onPanResponderMove: (_, gs) => {
             if (gs.dy > 0) translateY.setValue(gs.dy);
         },
         onPanResponderRelease: (_, gs) => {
-            if (gs.dy > 80) {
-                Animated.timing(translateY, { toValue: 600, duration: 200, useNativeDriver: true })
-                    .start(() => { translateY.setValue(0); onDismiss(); });
+            // Dismiss on distance OR velocity — short fast flicks count too.
+            const shouldDismiss = gs.dy > 100 || gs.vy > 0.5;
+            if (shouldDismiss) {
+                Animated.timing(translateY, { toValue: SCREEN_HEIGHT, duration: 200, useNativeDriver: true })
+                    .start(() => {
+                        handleDismiss();                          // idempotent
+                        setTimeout(() => translateY.setValue(0), 50); // avoid 1-frame flash-back
+                    });
             } else {
                 Animated.spring(translateY, { toValue: 0, bounciness: 4, useNativeDriver: true }).start();
             }
@@ -367,16 +377,17 @@ const panResponder = useRef(
 ).current;
 ```
 
-**Key design decisions:**
+**Key design decisions (current — see commit history for revisions):**
 
-- `onStartShouldSetPanResponder: () => false` — the gesture is NOT claimed on touch-down. This means taps on menu items, the theme toggle, and the logout button are never accidentally blocked.
-- `onMoveShouldSetPanResponder: (_, gs) => gs.dy > 5` — the gesture IS claimed once the finger has moved 5px downward. This distinguishes a swipe from a tap with high reliability.
+- `onStartShouldSetPanResponder: () => false` — the gesture is NOT claimed on touch-down. Taps on menu items, the theme toggle, and the logout button are never blocked.
+- `onMoveShouldSetPanResponder: gs.dy > 15 && gs.dy > Math.abs(gs.dx)` — the gesture IS claimed only after the finger has moved more than 15 px downward AND the movement is more vertical than horizontal. The May 4 v3 audit caught the previous 5 px threshold canceling onPress on quick taps (touchscreen finger drift is typically 10–15 px even on a "still" press), so the threshold was bumped and a directional guard added.
 - Only downward movement (`gs.dy > 0`) translates the sheet. Upward drags are ignored.
-- **Dismiss threshold: 80px.** Industry standard for bottom sheets is roughly 30–40% of the sheet height. 80px is a conservative, forgiving threshold that avoids accidental dismissal while still feeling responsive.
-- After dismissal: `translateY.setValue(0)` resets the animation before `onDismiss()` is called, so the next time the sheet opens it starts at position 0 (not off-screen).
-- `useNativeDriver: true` — the translation is computed on the UI thread (not the JS thread), giving 60fps animation even when the JS thread is busy.
+- **Dismiss threshold: distance > 100 px OR velocity > 0.5 px/ms** — matches iOS / Material bottom-sheet behavior where a short fast flick also closes. Earlier drafts used distance-only at 80 px; that missed legitimate flick gestures.
+- `handleDismiss()` (not `onDismiss()` directly) — wraps the dismiss path through an `isDismissingRef` guard so swipe-end + backdrop-tap + Modal back-button can't double-fire.
+- `setTimeout(() => translateY.setValue(0), 50)` — resets the animation 50 ms after `handleDismiss`, giving the parent time to unmount the Modal. Setting it to 0 immediately while the Modal is still visible would snap the sheet back for one frame (the visible flash-back users reported in earlier builds).
+- `useNativeDriver: true` — the translation is computed on the UI thread (not the JS thread), giving smooth animation even when the JS thread is busy.
 
-The PanResponder is attached only to the **drag handle container**, not the entire sheet. This is intentional — attaching it to the whole sheet would intercept scroll events inside the sheet's `ScrollView` (if one were added later) and break vertical scrolling.
+The PanResponder is attached to the ancestor `Animated.View`, not the inner drag-handle container. This was a deliberate revision: when the inner Pressable holds the responder after touch-start, `onMoveShouldSetPanResponder` is called on the **current responder and its ancestors only — not on descendants**. Attaching `panHandlers` to a descendant View meant the move handler never ran, which made swipe-down silently fail in earlier builds. (The previous draft of this doc said the opposite — "attached to drag handle only" — and rationalized it as scroll-protection. That rationalization was wrong; the move-phase responder bubbles toward ancestors, so the ancestor mount is required for the swipe to work at all.)
 
 **React Native Gesture System — Why `useRef` for Both**
 
@@ -456,3 +467,34 @@ Both `translateY` and `panResponder` are created inside `useRef`. This is requir
 | Already-used link is rejected | Deletion of the user row also deletes the token |
 | Deletion is auditable | Two `logger.warning()` lines — CONFIRMED (before) and COMPLETED (after) |
 | No orphaned data | DB-level `ondelete="CASCADE"` on all child tables, verified in pre-flight |
+
+---
+
+## Re-audit notes (2026-05-04)
+
+This retrospective was written 2026-04-19. Reviewed against current code on 2026-05-04. Two sections needed updating to match what actually shipped:
+
+1. **PanResponder code in §Task 2c** has been updated. The original
+   draft showed a 5-px claim threshold and an 80-px dismiss threshold,
+   and rationalised attaching `panHandlers` to the drag-handle container
+   for "scroll protection." The current `ProfileMenuSheet.tsx` uses a
+   15-px claim threshold with a `dy > |dx|` directional guard, dismisses
+   on distance OR velocity (>100 px or >0.5 px/ms), and attaches
+   `panHandlers` to the ancestor `Animated.View` (not the drag-handle)
+   because RN's move-phase responder bubbles toward ancestors only.
+   The original draft's claim about scroll protection was incorrect; the
+   current attachment point is required for the swipe to fire at all.
+   Both numeric thresholds and the attachment-point rationale were
+   corrected in the May 4 v3 audit.
+
+2. **Auth-guard self-heal flow in §Task 3** is incomplete in this doc —
+   `app/profile.tsx` now also runs an explicit poll on `/auth/me` every
+   5 seconds (with a 10-minute timeout) after a deletion request, and
+   shows a confirmation Alert when the account row disappears. The
+   passive 401-handler self-heal described here still works as a
+   fallback; the explicit poll is the primary signal.
+
+The cascade audit (§1), token storage rationale (§2), background-task
+pattern, two-step destructive-action framing, and all SQL/migration
+content were re-verified and match the current code. Those sections are
+unchanged.

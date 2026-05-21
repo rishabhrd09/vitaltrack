@@ -138,7 +138,7 @@ Jobs:
   test-frontend       tsc --noEmit, eslint, expo-doctor
   security-scan       Trivy (CRITICAL + HIGH, fs scan)
   pr-check            merge gate — requires tests + security + label
-  deploy-backend      POST $RENDER_DEPLOY_HOOK_URL on push to main
+  deploy-backend      POST $RENDER_DEPLOY_HOOK on push to main
   build-preview       eas build --profile preview — requires PR label 'build-apk'
   build-production    eas build --profile production — CURRENTLY DISABLED (if: false)
 ```
@@ -209,7 +209,8 @@ Re-enabling the CI job is a one-line change (`if: false` → `if: github.ref == 
 │                                                                       │
 │  Container runtime                                                    │
 │    FastAPI routes under /api/v1/                                      │
-│      /auth/*, /categories/*, /items/*, /orders/*, /sync/* (legacy)   │
+│      /auth/*, /categories/*, /items/*, /orders/*, /activity/*,        │
+│      /sync/* (legacy, mobile no longer calls it)                      │
 │    Healthcheck: /health                                               │
 │    Non-root user: appuser (UID 1000)                                  │
 │                                                                       │
@@ -257,7 +258,7 @@ Re-enabling the CI job is a one-line change (`if: false` → `if: github.ref == 
 
 ### 1. Secrets aren't in the code
 
-A fresh GitHub Actions runner has no credentials. It only knows your repo secrets. The CI YAML reads them via `${{ secrets.RENDER_DEPLOY_HOOK_URL }}` etc.
+A fresh GitHub Actions runner has no credentials. It only knows your repo secrets. The CI YAML reads them via `${{ secrets.RENDER_DEPLOY_HOOK }}` etc.
 
 > **Rule.** Never hardcode a secret. If a fork somehow lands, it must not be able to deploy to your infrastructure.
 
@@ -295,7 +296,7 @@ Security scans and EAS builds cost time + quota. Run them where they matter.
 
 | Secret | Source | Used by |
 |---|---|---|
-| `RENDER_DEPLOY_HOOK_URL` | Render service → **Settings → Deploy Hook** | `deploy-backend` job (POSTs URL on push) |
+| `RENDER_DEPLOY_HOOK` | Render service → **Settings → Deploy Hook** | `deploy-backend` job (POSTs URL on push) |
 | `EXPO_TOKEN` | `npx expo token:create` | `build-preview` and (if enabled) `build-production` |
 
 ### Step-by-step
@@ -312,7 +313,7 @@ npx expo token:create
 # 3. GitHub
 # https://github.com/rishabhrd09/vitaltrack/settings/secrets/actions
 #   New repository secret
-#     Name: RENDER_DEPLOY_HOOK_URL
+#     Name: RENDER_DEPLOY_HOOK
 #     Value: (paste Render hook URL)
 #   New repository secret
 #     Name: EXPO_TOKEN
@@ -548,11 +549,21 @@ See `docs/GIT_WORKFLOW_GUIDE.md` for commit style, fork workflow, and branch-pro
 │  Flow:     Code → Push → CI (test + scan) → Deploy (Render hook)     │
 │            → Render auto-deploys main → verify at /health            │
 │                                                                      │
-│  Secrets:  RENDER_DEPLOY_HOOK_URL, EXPO_TOKEN                        │
+│  Secrets:  RENDER_DEPLOY_HOOK, EXPO_TOKEN                        │
 │                                                                      │
-│  Current status: PR #13 merged, all 5 migrations applied,            │
-│                  prod + staging healthy.                             │
+│  Current status: PR #34 merged, all 5 migrations applied,            │
+│                  prod + staging healthy. Cold-start UX layer         │
+│                  shipped in audit/cold-start-mutation-ux branch.     │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-*Last updated: 2026-04-19.*
+*Last reviewed: 2026-05-04 (post audit/cold-start-mutation-ux merge). Original: 2026-04-19.*
+
+> **Updates since the last review:** the audit/cold-start-mutation-ux branch
+> added a feedback layer that's not yet woven into the main narrative above —
+> `MutationResultDialog`, consolidated `StatusPill` (replacing
+> `ConnectionStatusPill` + `SavingStatusPill`, both deleted), `safeBack`
+> helper, hook-level dispatch in `useServerMutations.ts`, fire-and-forget
+> mutations via `mutateAsync().then()`, and a `react-native-toast-message`
+> dependency. The DevOps surface (CI / Render / Neon) is unchanged; this is
+> a pure mobile-runtime UX layer.

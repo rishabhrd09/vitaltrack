@@ -129,6 +129,15 @@ tr:last-child td{border-bottom:none}
   <p class="sub">A real-world case study from CareKosh — how a data corruption bug in a medical inventory app forced a complete architecture migration, and what it teaches about state management, data integrity, and production engineering.</p>
 </div>
 
+<div class="callout amber">
+  <p class="callout-label">Update — May 2026 cold-start UX track (PRs #17–#34)</p>
+  <p>This document was originally written through PR #16. The architectural narrative below — the incident, the migration, OCC, audit log, the rejected sync alternatives — is unchanged and remains the load-bearing case study. Since PR #16 the mobile app added a cold-start UX layer on top of the server-first foundation:</p>
+  <p><strong>New code surface (mobile only — no backend or migration changes):</strong> <code>MutationResultDialog</code> centred modal for slow-success and connection-failure outcomes; consolidated <code>StatusPill</code> replaces the previous separate Connection / Saving pills with one priority-ordered indicator (offline &gt; saving &gt; saving-warming &gt; connecting &gt; connecting-warming); <code>useResultDialogStore</code> in-session Zustand queue for the dialog; <code>usePendingItems</code> reads <code>useMutationState</code> to render per-row "Updating…" indicators; <code>mutationFeedback</code> dispatcher decides toast-vs-dialog based on elapsed time and error kind; <code>safeBack</code> guards <code>router.back()</code> with <code>canGoBack()</code>; <code>formatStock</code> pluralises inventory display; <code>react-native-toast-message</code> dependency added.</p>
+  <p><strong>Behaviour changes that affect Q&amp;A 5 and 10:</strong> save flow is fire-and-forget via <code>mutateAsync().then()</code> so feedback fires even if the originating screen has unmounted. Mutation feedback dispatch moved to hook-level (<code>useServerMutations.ts</code>) so it survives observer death and suppresses the global <code>MutationCache</code> toast for the same failure. Failure dialog has a Retry button that re-fires the mutation through <code>Mutation.execute(variables)</code>. <code>isBackendColdStarting</code> auto-clears on any 2xx response so the pill doesn't get stuck. <code>networkMode: 'offlineFirst'</code> is set on the QueryClient so cached data renders immediately when the device is offline.</p>
+  <p><strong>State stores clarification:</strong> the "Zustand 1,100 → 61 lines" headline below refers to the inventory data store (<code>useAppStore.ts</code>, still 61 lines). Two additional UI-only Zustand stores exist alongside it: <code>useAuthStore.ts</code> (~422 lines, holds <code>user</code>, <code>isAuthenticated</code>, <code>isColdStart</code>, <code>isBackendColdStarting</code>; never persists inventory data) and <code>useResultDialogStore.ts</code> (~50 lines, in-session dialog queue). Total Zustand surface area is still UI-only — no domain data anywhere in any of the stores.</p>
+  <p><strong>Backend <code>/sync/*</code> router still mounted:</strong> <code>vitaltrack-backend/app/api/v1/sync.py</code> is included in the router tree at <code>app/api/v1/__init__.py</code> for backward compatibility. The mobile client no longer calls it (and hasn't since PR #4); the routes are dead in practice but reachable via curl. Worth knowing so an interviewer who pokes at the backend repo doesn't catch you flat-footed.</p>
+</div>
+
 <!-- ═══════════════════════════════════ TOC -->
 <div class="toc">
   <h2>Contents</h2>
@@ -606,7 +615,7 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
   <p>A methodology for building SaaS apps. CareKosh follows Factor III (Config) rigorously: the same Docker image runs in development, staging, and production with only environment variables changing (DATABASE_URL, ENVIRONMENT, SECRET_KEY). Zero code changes needed to switch environments.</p>
 
   <h3>Idempotency</h3>
-  <p>An operation is idempotent if calling it multiple times has the same effect as calling it once. CareKosh's OCC provides natural idempotency for updates: if you retry a failed update with the same version, it will either succeed (first try) or fail with 409 (already updated) — never corrupt data by applying the change twice.</p>
+  <p>An operation is idempotent if calling it multiple times has the same effect as calling it once. CareKosh's OCC gives you <em>safe retry</em> rather than strict idempotency: a replay of an already-committed write is detected via the version mismatch and rejected with 409 ("already updated"), so the second call does not silently double-apply or corrupt data. Strict idempotency would mean the second call observes the same final state silently; OCC instead surfaces "this happened before, you're working on stale state" — useful for a UI that can refetch and show the user what actually landed.</p>
 </div>
 
 <hr>
@@ -737,9 +746,9 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
 
 <!-- ═══════════════════════════════════ FOOTER -->
 <div class="footer">
-  <p>CareKosh — Server-First vs Offline-First Architecture · Interview Guide · April 2026</p>
-  <p>Based on real engineering decisions from PRs #4–#13 · github.com/rishabhrd09/vitaltrack</p>
-  <p>Offline-first → Server-first migration · Zustand 1,100→61 lines · sync.ts deleted · TanStack Query adopted · OCC + Audit Log added</p>
+  <p>CareKosh — Server-First vs Offline-First Architecture · Interview Guide · April–May 2026</p>
+  <p>Based on real engineering decisions from PRs #4–#34 · github.com/rishabhrd09/vitaltrack</p>
+  <p>Offline-first → Server-first migration · Zustand 1,100 lines (one inventory store) → 3 small UI-only stores totalling ~530 lines · sync.ts deleted · TanStack Query adopted · OCC + Audit Log added</p>
 </div>
 
 </div>

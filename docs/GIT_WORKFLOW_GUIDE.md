@@ -150,8 +150,11 @@ git branch -d feature/add-export-button
 
 1. **CI re-runs on `main`** (push trigger).
 2. **`deploy-backend` job** POSTs to the Render deploy hook (secret `RENDER_DEPLOY_HOOK`).
-3. **Both Render services** (`vitaltrack-api` and `vitaltrack-api-staging`) pull the new image and restart.
-4. `docker-entrypoint.sh` runs `alembic upgrade head` on both DBs, then boots Gunicorn.
+   The hook URL targets the **production** service only — there is no `RENDER_DEPLOY_HOOK_STAGING` in CI.
+3. **Render services pull the new image** depending on what changed:
+   - `vitaltrack-api` (production) rebuilds on every merge — the CI hook always fires, AND its dashboard auto-deploy is on.
+   - `vitaltrack-api-staging` rebuilds **only when `vitaltrack-backend/` files actually changed**. Staging's auto-deploy is gated by Render's Root Directory filter (set to `vitaltrack-backend` in the Render dashboard), so frontend-only PRs do not retrigger staging. See `docs/STAGING_DEPLOY_DIAGNOSIS.html` for the post-mortem that established this.
+4. `docker-entrypoint.sh` runs `alembic upgrade head` on the rebuilt service's DB, then boots Gunicorn (which spawns 4 Uvicorn workers — the runtime is `gunicorn -k uvicorn.workers.UvicornWorker`).
 5. Health check at `/health` must pass before traffic flips.
 6. **No mobile build is triggered** by merge. Production AAB is manual:
    ```bash
@@ -412,3 +415,7 @@ git push origin main
 ---
 
 Questions? Comment on the PR or open a discussion on GitHub.
+
+---
+
+*Last reviewed 2026-05-04 against PR #34. The "After merge" section (§After merge) was corrected to reflect that staging only rebuilds on backend-file changes (Render Root Directory filter; see `docs/STAGING_DEPLOY_DIAGNOSIS.html` for the post-mortem) and that the runtime is `gunicorn -k uvicorn.workers.UvicornWorker` — gunicorn supervises Uvicorn workers.*

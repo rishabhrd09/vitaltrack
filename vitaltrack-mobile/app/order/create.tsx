@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
@@ -31,7 +31,8 @@ import { escapeHtml, validateImageUri } from '@/utils/sanitize';
 import { useItems } from '@/hooks/useServerData';
 import { useCreateOrder } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { handleMutationError } from '@/utils/serverErrors';
+import { safeBack } from '@/utils/navigation';
+import { toast } from '@/utils/toast';
 
 interface CartItem {
   item: Item;
@@ -39,7 +40,6 @@ interface CartItem {
 }
 
 export default function CreateOrderScreen() {
-  const router = useRouter();
   const { colors } = useTheme();
   const { mode } = useLocalSearchParams();
   const { isOnline } = useNetworkStatus();
@@ -50,7 +50,6 @@ export default function CreateOrderScreen() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Initialize Cart based on mode
@@ -243,7 +242,7 @@ export default function CreateOrderScreen() {
     }
   };
 
-  const handleCreateAndExport = async (includePhotos: boolean) => {
+  const handleCreateAndExport = (includePhotos: boolean) => {
     if (!isOnline) {
       Alert.alert('Offline', 'Connect to WiFi to create orders.');
       return;
@@ -253,37 +252,52 @@ export default function CreateOrderScreen() {
       return;
     }
 
-    setIsGenerating(true);
-    try {
-      // STEP 1: Save to server FIRST — get real order ID
-      const orderItems = cartItems.map(ci => ({
-        itemId: ci.item.id,
-        name: ci.item.name,
-        quantity: ci.quantity,
-        currentStock: ci.item.quantity,
-        minimumStock: ci.item.minimumStock,
-        unit: ci.item.unit,
-        brand: ci.item.brand,
-        imageUri: ci.item.imageUri,
-        purchaseLink: ci.item.purchaseLink,
-        supplierName: ci.item.supplierName,
-      }));
+    const orderItems = cartItems.map(ci => ({
+      itemId: ci.item.id,
+      name: ci.item.name,
+      quantity: ci.quantity,
+      currentStock: ci.item.quantity,
+      minimumStock: ci.item.minimumStock,
+      unit: ci.item.unit,
+      brand: ci.item.brand,
+      imageUri: ci.item.imageUri,
+      purchaseLink: ci.item.purchaseLink,
+      supplierName: ci.item.supplierName,
+    }));
 
-      const createdOrder: any = await createOrderMutation.mutateAsync({ items: orderItems });
-      const serverOrderId = createdOrder.orderId || createdOrder.order_id || createdOrder.id || 'ORD-UNKNOWN';
-
-      // STEP 2: Generate PDF with the REAL server order ID
-      await generateTablePDF(includePhotos, serverOrderId);
-
-      // STEP 3: Show success
-      Alert.alert("Order Created", `Order ${serverOrderId} saved and exported.`, [
-        { text: "OK", onPress: () => router.back() }
-      ]);
-    } catch (error) {
-      handleMutationError(error, 'Create Order');
-    } finally {
-      setIsGenerating(false);
-    }
+    // Order save feedback (toast / MutationResultDialog) is dispatched
+    // HOOK-LEVEL inside useCreateOrder. See the matching commit on
+    // app/item/[id].tsx for the full root-cause writeup — short version:
+    // hook-level dispatch survives observer death AND suppresses the
+    // duplicate global toast.
+    //
+    // PDF generation stays here because it requires the server-assigned
+    // orderId from the response and uses the screen's cartItems closure.
+    // We use mutateAsync().then() so the PDF fires when the order resolves,
+    // independent of observer lifecycle. PDF success is silent (the order
+    // dialog already covers that); PDF failure surfaces as a separate
+    // toast pointing at the manual re-export path.
+    createOrderMutation
+      .mutateAsync({ items: orderItems })
+      .then(async (createdOrder: any) => {
+        const serverOrderId =
+          createdOrder.orderId ||
+          createdOrder.order_id ||
+          createdOrder.id ||
+          'ORD-UNKNOWN';
+        try {
+          await generateTablePDF(includePhotos, serverOrderId);
+        } catch {
+          toast.error('PDF export failed', {
+            description: `Order ${serverOrderId} saved — re-export from Recent Orders`,
+          });
+        }
+      })
+      .catch(() => {
+        // Order save itself failed — the hook-level onError already
+        // dispatched the failure dialog. Nothing more to do here.
+      });
+    safeBack();
   };
 
   // Combined Table + optional Photo Reference PDF
@@ -568,7 +582,7 @@ export default function CreateOrderScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
       {/* HEADER */}
       <View style={[styles.header, { backgroundColor: colors.bgSecondary, borderBottomColor: colors.borderPrimary }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+        <TouchableOpacity onPress={() => safeBack()} style={styles.iconBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -641,17 +655,17 @@ export default function CreateOrderScreen() {
 
       {/* FOOTER */}
       <View style={[styles.footer, { backgroundColor: colors.bgCard, borderTopColor: colors.borderPrimary }]}>
-        <TouchableOpacity style={styles.cancelLink} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.cancelLink} onPress={() => safeBack()}>
           <Text style={{ color: colors.textSecondary, fontSize: fontSize.md }}>Cancel</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.exportBtn, { backgroundColor: colors.accentBlue, opacity: totalItems === 0 ? 0.5 : 1 }]}
           onPress={generatePDF}
-          disabled={totalItems === 0 || isGenerating}
+          disabled={totalItems === 0}
         >
           <Ionicons name="cart-outline" size={18} color="white" />
-          <Text style={styles.exportText}>{isGenerating ? 'Creating...' : 'Create Order & Export PDF'}</Text>
+          <Text style={styles.exportText}>Create Order & Export PDF</Text>
         </TouchableOpacity>
       </View>
 

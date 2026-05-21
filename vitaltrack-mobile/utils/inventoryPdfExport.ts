@@ -84,11 +84,27 @@ function groupByCategory(items: GeneratedItem[], categories: Category[]): Catego
   return groups;
 }
 
+/**
+ * Status badge reflects STOCK STATE only (OUT OF STOCK / LOW / OK), not
+ * equipment criticality. Previously isCritical short-circuited above the OK
+ * branch so every critical-equipment row showed a "CRITICAL" badge regardless
+ * of its actual stock level — which buried the more actionable information
+ * (whether the item needs reorder right now). Critical-equipment status is
+ * still surfaced in the report via the small star marker next to the item
+ * name (criticalMarkerHtml below) and the dedicated Critical Equipment count
+ * in the summary card.
+ */
 function statusBadgeHtml(item: Item): string {
-  if (isOutOfStock(item)) return '<span class="status-badge sb-oos">OUT</span>';
+  if (isOutOfStock(item)) return '<span class="status-badge sb-oos">OUT OF STOCK</span>';
   if (isLowStock(item)) return '<span class="status-badge sb-low">LOW</span>';
-  if (item.isCritical) return '<span class="status-badge sb-critical">CRITICAL</span>';
   return '<span class="status-badge sb-ok">OK</span>';
+}
+
+function criticalMarkerHtml(item: Item): string {
+  if (!item.isCritical) return '';
+  // Inline gold star + small label, sits next to the item name. Doesn't
+  // compete with the status badge for the row's primary color signal.
+  return ' <span class="critical-marker" title="Critical equipment">★</span>';
 }
 
 function stockClass(item: Item): string {
@@ -134,15 +150,16 @@ function buildHtml(opts: {
 
   const groupsHtml = groups
     .map(
-      (g) => `
+      (g, idx) => `
+      ${idx > 0 ? '<tr class="category-spacer"><td colspan="5"></td></tr>' : ''}
       <tr class="category-row">
         <td colspan="5">${escapeHtml(g.name)} · ${g.items.length} ${g.items.length === 1 ? 'item' : 'items'}</td>
       </tr>
       ${g.items
         .map(
           (item) => `
-        <tr class="${isOutOfStock(item) ? 'row-oos' : ''}">
-          <td><span class="item-name">${escapeHtml(item.name)}</span>${
+        <tr>
+          <td><span class="item-name">${escapeHtml(item.name)}${criticalMarkerHtml(item)}</span>${
             item.brand ? `<div class="item-sub">${escapeHtml(item.brand)}</div>` : ''
           }</td>
           <td style="text-align:center">${statusBadgeHtml(item)}</td>
@@ -209,17 +226,17 @@ function buildHtml(opts: {
             display: grid;
             grid-template-columns: 1fr 1fr;
             column-gap: 40px;
-            row-gap: 10px;
+            row-gap: 12px;
         }
         .summary-card .row {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            font-size: 13px;
+            font-size: 14px;
         }
-        .summary-card .label { color: #6b6b6b; }
-        .summary-card .value { color: #1e3a5f; font-weight: 700; font-size: 15px; }
-        .summary-card .value.accent { color: #c24646; }
+        .summary-card .label { color: #6b6b6b; font-size: 14px; }
+        .summary-card .value { color: #1e3a5f; font-weight: 700; font-size: 17px; }
+        .summary-card .value.accent { color: #B85450; }
 
         .alert-box {
             border-radius: 8px;
@@ -253,66 +270,124 @@ function buildHtml(opts: {
         table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
+            /* fixed layout makes the print engine honor <col> widths
+               instead of auto-sizing columns from content. Without this
+               the Item column dominated the page and the right-side
+               columns were squeezed against the edge. */
         }
+        /* Header band uses navy #1e3a5f, the same blue that anchors the
+           rest of the report (header underline, summary-card title, "Inventory
+           by Category" section title). Switching back from the warm-black
+           we tried briefly because it read as too heavy and disconnected
+           from the report's existing blue accent palette. */
         th {
             background: #1e3a5f;
-            color: #fff;
-            padding: 10px 8px;
+            color: #FAF9F7;
+            padding: 16px 14px;
             text-align: left;
-            font-size: 10px;
+            font-size: 12px;
             font-weight: 700;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
         }
-        th.col-status { text-align: center; width: 70px; }
-        th.col-stock { text-align: right; width: 60px; }
-        th.col-unit { text-align: left; width: 70px; }
-        th.col-min { text-align: right; width: 45px; }
+        th.col-status { text-align: center; }
+        th.col-stock { text-align: center; }
+        th.col-unit { text-align: center; }
+        th.col-min { text-align: center; padding-right: 14px; }
 
         td {
-            padding: 8px 8px;
-            border-bottom: 1px solid #edf2f7;
-            font-size: 13px;
+            padding: 14px 14px;
+            border-bottom: 1px solid #E8E5E0;
+            font-size: 14px;
             vertical-align: middle;
-            color: #4a5568;
+            color: #57534E;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
+        /* Subtle warm-off-white zebra striping (matches app bgPrimary). */
+        tbody tr:nth-child(even):not(.category-row):not(.category-spacer) td { background: #FAF9F7; }
+
+        /* A blank spacer row injected between category groups (after the
+           first) so each category section reads as its own block instead
+           of bleeding directly into the next. Adds breathing room without
+           introducing a heavy divider. */
+        tr.category-spacer td {
+            height: 16px;
+            padding: 0;
+            border: none;
+            background: #FFFFFF;
+        }
+
+        /* Category subheader is a slightly bolder version of the same navy
+           used in the header band — light blue tint background with navy
+           text, plus a darker blue top-border for a clear "new section
+           starts here" visual cue. Pairs with the 16px spacer-row above
+           it so each category reads as its own block. */
         tr.category-row { page-break-inside: avoid; }
         tr.category-row td {
-            background: #f5f0e8;
+            background: #e8eef5;
             color: #1e3a5f;
             font-weight: 700;
             font-size: 13px;
-            letter-spacing: 0.02em;
-            padding: 10px 10px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 12px 14px;
             border-bottom: none;
+            border-top: 2px solid #5a7a9e;
         }
 
-        .item-name { font-weight: 600; color: #2d3748; font-size: 14px; }
-        .item-sub { color: #a0aec0; font-size: 11px; margin-top: 2px; }
+        .item-name { font-weight: 600; color: #1C1917; font-size: 15px; }
+        .item-sub { color: #A8A29E; font-size: 12px; margin-top: 3px; }
 
-        .stock-num { font-weight: 700; text-align: right; font-size: 14px; }
-        .stock-zero { color: #a06060; }
-        .stock-low { color: #a08040; }
-        .stock-ok { color: #5a8a6a; }
-        td.col-unit { color: #6b6b6b; font-size: 12px; }
-        td.col-min { text-align: right; color: #a0aec0; font-size: 12px; }
+        /* Inline gold-star marker for critical equipment. Sits next to the
+           item name without taking a separate column. The Critical Equipment
+           total in the summary card + this per-row marker gives critical
+           equipment two visible signals without competing with the stock-
+           state status badge for the column's primary semantic. */
+        .critical-marker {
+            color: #B8860B;
+            font-size: 14px;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
+        /* Stock-number colors mirror the in-app status palette exactly:
+           statusRed / statusOrange / statusGreen from theme/ThemeContext. */
+        .stock-num { font-weight: 700; text-align: center; font-size: 16px; }
+        .stock-zero { color: #B85450; }
+        .stock-low { color: #B8860B; }
+        .stock-ok { color: #4A9668; }
+        td.col-unit { color: #57534E; font-size: 13px; text-align: center; }
+        td.col-min { text-align: center; color: #57534E; font-size: 14px; font-weight: 600; }
 
         .status-badge {
-            font-size: 9px;
+            font-size: 11px;
             font-weight: 700;
-            padding: 2px 7px;
-            border-radius: 3px;
+            padding: 6px 12px;
+            border-radius: 5px;
             display: inline-block;
-            letter-spacing: 0.03em;
+            letter-spacing: 0.05em;
+            min-width: 72px;
+            text-align: center;
         }
-        .sb-critical { background: #f0dede; color: #8b5050; }
-        .sb-oos { background: #f0dede; color: #8b5050; }
-        .sb-low { background: #f0e8d0; color: #7a6330; }
-        .sb-ok { background: #ddeee4; color: #4a7a5a; }
+        /* Status badge palette mirrors the in-app statusRed / statusOrange /
+           statusGreen tokens (theme/ThemeContext.tsx). bg uses the matching
+           ~8% tint, border the matching ~12% tint, text the full color.
+           No more standalone colorful left-borders on rows — the badge
+           itself carries the urgency signal. */
+        .sb-oos { background: rgba(184, 84, 80, 0.06);  color: #B85450; border: 1px solid rgba(184, 84, 80, 0.18); }
+        .sb-low { background: rgba(184, 134, 11, 0.08); color: #B8860B; border: 1px solid rgba(184, 134, 11, 0.18); }
+        .sb-ok  { background: rgba(74, 150, 104, 0.08); color: #4A9668; border: 1px solid rgba(74, 150, 104, 0.18); }
 
-        /* Out-of-stock item rows get a subtle red left-border stripe so
-           critical items are scannable in the middle of a long table. */
-        tr.row-oos td:first-child { box-shadow: inset 3px 0 0 #c24646; }
+        .table-legend {
+            margin-top: 14px;
+            font-size: 11px;
+            color: #78716C;
+            text-align: right;
+            font-style: italic;
+        }
+        .table-legend .marker { color: #B8860B; font-style: normal; }
 
         .footer {
             margin-top: 30px;
@@ -324,15 +399,31 @@ function buildHtml(opts: {
         }
         .footer b { color: #1e3a5f; }
 
-        .gallery-header { page-break-before: always; text-align: center; padding: 30px 0 20px; }
-        .gallery-header h2 { color: #1e3a5f; font-size: 20px; margin-bottom: 6px; }
-        .gallery-header p { color: #a0aec0; font-size: 12px; }
-        .gallery-item { page-break-inside: avoid; text-align: center; margin-bottom: 36px; padding: 16px; }
-        .gallery-item h3 { color: #1e3a5f; font-size: 16px; margin-bottom: 6px; }
-        .gallery-item p { color: #a0aec0; font-size: 11px; margin-bottom: 12px; }
+        .gallery-header {
+            page-break-before: always;
+            text-align: center;
+            padding: 32px 0 24px;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 32px;
+        }
+        .gallery-header h2 { color: #1e3a5f; font-size: 22px; margin-bottom: 8px; }
+        .gallery-header p { color: #718096; font-size: 13px; }
+        .gallery-item {
+            page-break-inside: avoid;
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px 0;
+        }
+        .gallery-item h3 {
+            color: #1e3a5f;
+            font-size: 17px;
+            margin-bottom: 6px;
+            font-weight: 700;
+        }
+        .gallery-item p { color: #718096; font-size: 12px; margin-bottom: 16px; }
         .gallery-item img {
-            max-width: 85%;
-            max-height: 400px;
+            max-width: 92%;
+            max-height: 480px;
             object-fit: contain;
             border-radius: 8px;
             box-shadow: 0 2px 12px rgba(0,0,0,0.08);
@@ -378,11 +469,18 @@ function buildHtml(opts: {
     <div class="section-title">Inventory by Category</div>
 
     <table>
+        <colgroup>
+            <col style="width: 34%">
+            <col style="width: 22%">
+            <col style="width: 13%">
+            <col style="width: 15%">
+            <col style="width: 16%">
+        </colgroup>
         <thead>
             <tr>
                 <th>Item</th>
                 <th class="col-status">Status</th>
-                <th class="col-stock">Qty</th>
+                <th class="col-stock">Stock Left</th>
                 <th class="col-unit">Unit</th>
                 <th class="col-min">Min</th>
             </tr>
@@ -391,6 +489,11 @@ function buildHtml(opts: {
             ${groupsHtml}
         </tbody>
     </table>
+    ${criticalCount > 0 ? `
+        <div class="table-legend">
+            <span class="marker">★</span> marks critical equipment (${criticalCount} ${criticalCount === 1 ? 'item' : 'items'})
+        </div>
+    ` : ''}
 
     <div class="footer">Generated by <b>CareKosh</b> · Home ICU Inventory Management</div>
 

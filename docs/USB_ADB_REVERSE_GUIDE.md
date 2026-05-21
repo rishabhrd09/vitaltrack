@@ -4,6 +4,8 @@
 
 The content here is toolchain-level (ADB + Expo), so it is unaffected by the CareKosh rebrand and server-first migration.
 
+> **New to ADB?** Read [LOCAL_TESTING_INTERNALS.md §3.3](LOCAL_TESTING_INTERNALS.md#33-adb--android-debug-bridge) and [§7.1](LOCAL_TESTING_INTERNALS.md#71-localhost-is-ambiguous) first. Those sections explain what `adb reverse` actually does at the network level and why `localhost` on the phone resolves differently from `localhost` on the laptop. The commands below will then read as logical consequences of that model, not magic incantations.
+
 ---
 
 ## When to use this

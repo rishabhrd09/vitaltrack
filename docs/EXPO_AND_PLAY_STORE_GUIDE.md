@@ -187,3 +187,13 @@ You are ready to build:
 ```bash
 npx eas build --profile preview --platform android
 ```
+
+---
+
+*Original: 2026-04-19. Last reviewed: 2026-05-04 against PR #34.*
+
+> **Re-audit notes (2026-05-04):**
+> - The launch-readiness snapshot in §6 is several weeks old. Re-verify the privacy-policy URL, Play Console listing, Data Safety form, and closed-testing tester count before submission.
+> - The Data Safety enumeration of "fields the backend stores" should additionally declare the email-verification, password-reset, and account-deletion token columns + their expiry timestamps. Those are PII storage touchpoints introduced in PR #12 and PR #13.
+> - The `eas.json` profile mappings (development → localhost, preview → staging, production → prod) and the `RENDER_DEPLOY_HOOK` / `EXPO_TOKEN` secret names are unchanged.
+> - The mobile cold-start UX layer (added on the audit/cold-start-mutation-ux branch, merged 2026-05-04) is review-relevant for first-touch Play Console reviewers — when Render's free tier cold-starts, the user now sees a "Saving… server warming up" pill plus a centred dialog summarising the outcome. Worth adding a launch checklist row "Cold-start UX verified end-to-end on Render free tier."

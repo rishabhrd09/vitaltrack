@@ -62,7 +62,12 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 <div class="hero">
   <h1>Deployment <em>Strategy</em></h1>
   <p class="sub">Four ways to ship a CareKosh change to staging and production. Ranked, with the trade-offs the ranking hides.</p>
-  <p class="meta">CareKosh · April 2026 · Current reference for PRs #4–#13</p>
+  <p class="meta">CareKosh · April–May 2026 · Current reference for PRs #4–#34 (incl. cold-start UX track)</p>
+</div>
+
+<div class="callout info">
+  <span class="callout-label">Update — May 2026 cold-start UX track (PRs #17–#34)</span>
+  <p>The deployment strategy itself is unchanged. The mobile-side surface area has grown materially — the cold-start UX track added <code>MutationResultDialog</code>, consolidated <code>StatusPill</code>, <code>useResultDialogStore</code>, <code>usePendingItems</code>, <code>mutationFeedback</code>, <code>safeBack</code>, <code>formatStock</code>, <code>react-native-toast-message</code>, fire-and-forget mutations, hook-level dispatch, retry-via-<code>Mutation.execute()</code>, auto-clear of <code>isBackendColdStarting</code>, and an inventory PDF redesign. <code>NetworkBanner</code>, <code>OfflineBanner</code>, <code>ConnectionStatusPill</code>, <code>SavingStatusPill</code> were consolidated/deleted. Backend code is unchanged in this track — Alembic head is still <code>0005_account_deletion_token</code>; no new migrations.</p>
 </div>
 
 <!-- INTRO -->
@@ -285,7 +290,7 @@ main  ──► CI re-runs  ──► deploy-backend job  ──► Render hook 
 </div>
 
 <div class="footer">
-  CareKosh · Deployment Strategy · April 2026 · PRs #4–#13
+  CareKosh · Deployment Strategy · April–May 2026 · PRs #4–#34
 </div>
 
 </div>

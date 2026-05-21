@@ -28,9 +28,12 @@ import { sanitizeName, sanitizeString, sanitizeUrl, sanitizeContact, sanitizeNum
 import type { Item } from '@/types';
 import { useItems, useCategories } from '@/hooks/useServerData';
 import { useCreateItem, useUpdateItem, useDeleteItem } from '@/hooks/useServerMutations';
+import { usePendingItemIds } from '@/hooks/usePendingItems';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { useDelayedPending } from '@/hooks/useDelayedPending';
 import { handleMutationError } from '@/utils/serverErrors';
+import { safeBack } from '@/utils/navigation';
+import { toast } from '@/utils/toast';
 
 export default function ItemFormScreen() {
   const router = useRouter();
@@ -44,9 +47,47 @@ export default function ItemFormScreen() {
   const createItemMutation = useCreateItem();
   const updateItemMutation = useUpdateItem();
   const deleteItemMutation = useDeleteItem();
-  const showSavePending = useDelayedPending(
-    createItemMutation.isPending || updateItemMutation.isPending
-  );
+  // Spinner appears the instant the user taps Save — the previous default
+  // 500 ms useDelayedPending window left the button looking like a flat
+  // blue rectangle for the first half-second on a cold-start save (visible
+  // in the May 1 cold_2 recording at t≈19). Immediate feedback is the
+  // right call here because the user just took a deliberate action; flicker
+  // on warm-server saves is preferable to "did anything happen?" silence.
+  const isSavePending =
+    createItemMutation.isPending || updateItemMutation.isPending;
+
+  // Detect a previous save for THIS item that is still in flight from
+  // another screen instance — happens when the user taps Save, navigates
+  // back during a slow cold-start save, then re-opens the same item.
+  // Without this guard the second save would carry the original `version`
+  // and the server would 409 once the first save lands.
+  //
+  // We split into two flags because the user's OWN save (this screen's
+  // local mutation hook) also briefly shows up in pendingItemIds the
+  // moment they tap Save:
+  //  - The banner should NOT appear in that case — it would read as
+  //    "wait, your save is in progress" right after the user tapped
+  //    Save, which is misleading. So banner gates on "from other
+  //    instance only".
+  //  - The Save button + handleSave early-return should still fire on
+  //    EITHER condition so a rapid double-tap can't fire two mutations
+  //    with the same OCC version.
+  const pendingItemIds = usePendingItemIds();
+  const isLocalSavePending =
+    createItemMutation.isPending || updateItemMutation.isPending;
+  const hasPendingSaveFromOtherInstance =
+    !isNew &&
+    typeof id === 'string' &&
+    pendingItemIds.has(id) &&
+    !isLocalSavePending;
+  const hasAnyPendingSaveForThisItem =
+    !isNew && typeof id === 'string' && pendingItemIds.has(id);
+
+  // True while session init detected a slow backend (Render free-tier
+  // cold start). Surfaced as a pre-flight expectation-setting banner so
+  // the user knows the next save may sit pending for ~30-60s before the
+  // server confirms — instead of the form looking frozen with no context.
+  const isBackendColdStarting = useAuthStore((s) => s.isBackendColdStarting);
 
   const existingItem = !isNew ? items.find(i => i.id === id) : undefined;
 
@@ -93,7 +134,15 @@ export default function ItemFormScreen() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
+    if (hasAnyPendingSaveForThisItem) {
+      // Belt-and-suspenders — the Save button is also disabled in this
+      // state. Catches both the "stale save from another instance" case
+      // and the rapid-double-tap-on-this-screen case. Toast (not Alert)
+      // keeps the screen flow consistent with the rest of the app.
+      toast.info('Still saving previous changes', 'Please wait a moment');
+      return;
+    }
     if (!name.trim()) {
       Alert.alert('Error', 'Item name is required');
       return;
@@ -127,33 +176,28 @@ export default function ItemFormScreen() {
       isCritical: isCritical,
     };
 
-    try {
-      if (isNew) {
-        // Check if there's a hidden item with the same name (case-insensitive)
-        const hiddenItem = items.find(
-          item => !item.isActive && item.name.toLowerCase() === sanitizedName.toLowerCase()
-        );
-
-        if (hiddenItem) {
-          await updateItemMutation.mutateAsync({ id: hiddenItem.id, ...itemData, isActive: true, version: hiddenItem.version });
-          Alert.alert('Success', 'Item restored and updated successfully', [
-            { text: 'OK', onPress: () => router.back() },
-          ]);
-        } else {
-          await createItemMutation.mutateAsync(itemData);
-          Alert.alert('Success', 'Item created successfully', [
-            { text: 'OK', onPress: () => router.back() },
-          ]);
-        }
+    // Fire-and-forget. Feedback (toast / MutationResultDialog) is dispatched
+    // HOOK-LEVEL inside useServerMutations.ts, so we don't need .then / .catch
+    // here. Hook-level callbacks survive observer death (this screen unmounts
+    // on safeBack) AND suppress the global MutationCache.onError toast — both
+    // properties the call-site approach lacked. Saw the symptoms in the May 4
+    // screenshots: the dialog fired correctly but a duplicate generic toast
+    // appeared underneath because the global handler had no way to know the
+    // call site already handled it.
+    if (isNew) {
+      // Check if there's a hidden item with the same name (case-insensitive)
+      const hiddenItem = items.find(
+        item => !item.isActive && item.name.toLowerCase() === sanitizedName.toLowerCase()
+      );
+      if (hiddenItem) {
+        updateItemMutation.mutate({ id: hiddenItem.id, ...itemData, isActive: true, version: hiddenItem.version });
       } else {
-        await updateItemMutation.mutateAsync({ id, ...itemData, version: existingItem?.version ?? 1 });
-        Alert.alert('Success', 'Item updated successfully', [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+        createItemMutation.mutate(itemData);
       }
-    } catch (error) {
-      handleMutationError(error, isNew ? 'Create Item' : 'Update Item');
+    } else {
+      updateItemMutation.mutate({ id, ...itemData, version: existingItem?.version ?? 1 });
     }
+    safeBack();
   };
 
   const handleDelete = () => {
@@ -169,7 +213,7 @@ export default function ItemFormScreen() {
           onPress: async () => {
             try {
               await deleteItemMutation.mutateAsync(id);
-              router.back();
+              safeBack();
             } catch (error) {
               handleMutationError(error, 'Delete Item');
             }
@@ -185,16 +229,20 @@ export default function ItemFormScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.borderPrimary }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => safeBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>{isNew ? 'Add Item' : 'Edit Item'}</Text>
         <TouchableOpacity
           onPress={handleSave}
-          style={[styles.saveButton, { backgroundColor: colors.accentBlue }]}
-          disabled={createItemMutation.isPending || updateItemMutation.isPending}
+          style={[
+            styles.saveButton,
+            { backgroundColor: colors.accentBlue },
+            hasAnyPendingSaveForThisItem && styles.saveButtonDisabled,
+          ]}
+          disabled={hasAnyPendingSaveForThisItem}
         >
-          {showSavePending ? (
+          {isSavePending ? (
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <Text style={[styles.saveButtonText, { color: colors.white }]}>Save</Text>
@@ -211,6 +259,22 @@ export default function ItemFormScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
+          {hasPendingSaveFromOtherInstance && (
+            <View style={[styles.concurrentBanner, { backgroundColor: colors.statusYellowBg, borderColor: colors.statusOrangeBorder }]}>
+              <Ionicons name="time-outline" size={18} color={colors.statusOrange} />
+              <Text style={[styles.concurrentBannerText, { color: colors.statusOrange }]}>
+                A previous save for this item is still in progress. Please wait for it to finish before editing again.
+              </Text>
+            </View>
+          )}
+          {isBackendColdStarting && !hasPendingSaveFromOtherInstance && (
+            <View style={[styles.concurrentBanner, { backgroundColor: colors.statusYellowBg, borderColor: colors.statusOrangeBorder }]}>
+              <Ionicons name="cloudy-outline" size={18} color={colors.statusOrange} />
+              <Text style={[styles.concurrentBannerText, { color: colors.statusOrange }]}>
+                Server is waking up — your save may take 30–60 seconds. You can continue using the app while it finishes.
+              </Text>
+            </View>
+          )}
           {/* Image Upload */}
           <TouchableOpacity
             style={[styles.imageContainer, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary }]}
@@ -523,9 +587,27 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
   },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
   saveButtonText: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.medium,
+  },
+  concurrentBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    marginBottom: spacing.lg,
+  },
+  concurrentBannerText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    lineHeight: 18,
   },
   scrollView: { flex: 1 },
   content: {

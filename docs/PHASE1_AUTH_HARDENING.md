@@ -84,9 +84,18 @@ def require_frontend_url_in_production(cls, v, info):
     return v or "http://127.0.0.1:8000/api/v1/auth"
 ```
 
-### 1d. CORS_ORIGINS validator (shipped alongside, documented here for completeness)
+### 1d. CORS_ORIGINS parser (shipped alongside, documented here for completeness)
 
-Rejects `"*"` in production; parses JSON or comma-separated lists otherwise.
+Parses JSON or comma-separated lists into a `list[str]`. The implementation
+shipped in PR #12 lives at `app/core/config.py` as `parse_cors_origins`.
+
+> **Correction (2026-05-04):** an earlier draft of this section claimed the
+> validator also "rejects `"*"` in production." That is not what shipped —
+> there is no production-rejection logic for wildcard CORS in
+> `app/core/config.py`. The actual deployed `vitaltrack-backend/render.yaml`
+> sets `CORS_ORIGINS: '["*"]'` for the production service today. If you want
+> a stricter prod posture, that's a separate hardening task; do not assume a
+> validator catches it.
 
 ### 1e. APP_NAME
 
@@ -311,4 +320,17 @@ vitaltrack-backend/tests/test_auth.py      — 9 test locations updated
 
 ---
 
-*Retrospective of PR #12 · written 2026-04-18 · still accurate as of 2026-04-19.*
+*Retrospective of PR #12 · written 2026-04-18 · last reviewed 2026-05-04.*
+
+> **Re-audit notes (2026-05-04):**
+> 1. The "40/53 tests failing" snapshot in §6 dates from 2026-04-19 and is
+>    almost certainly stale by now (22 PRs and ~5 weeks have passed). Re-run
+>    `pytest -v` to get a fresh count before relying on that number.
+> 2. The earlier draft of §1d claimed PR #12 added a `CORS_ORIGINS` validator
+>    that "rejects `*` in production" — that's not what shipped, and the
+>    section has been corrected. There is no such validator; `render.yaml`
+>    deploys `CORS_ORIGINS: '["*"]'` to production today. Tighten manually
+>    via the Render dashboard if your threat model requires it.
+> 3. Everything else in this retrospective (validators 1a–1c, enumeration
+>    fix, change-password revocation, email-required-on-register) was
+>    re-verified against the current code and matches.
