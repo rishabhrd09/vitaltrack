@@ -259,8 +259,8 @@ export default function LoginScreen() {
                     <Image
                         source={
                             theme.isDarkMode
-                                ? require('../../assets/carekosh-logo-transparent.png')
-                                : require('../../assets/carekosh-logo-light.png')
+                                ? require('../../assets/carekosh-login-logo-warm.png')
+                                : require('../../assets/carekosh-login-logo-warm-light.png')
                         }
                         style={styles.logo}
                         resizeMode="contain"
