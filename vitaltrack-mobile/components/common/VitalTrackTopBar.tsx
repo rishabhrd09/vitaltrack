@@ -58,15 +58,13 @@ export default function VitalTrackTopBar({
             <View style={styles.mainRow}>
                 {/* Left Section: Logo + App Name */}
                 <View style={styles.leftSection}>
-                    {/* Brand mark — simplified clipboard+cross glyph optimised for
-                        small rendering. Theme-aware: dark amber on light, warm gold
-                        on dark so the glyph has enough contrast in both modes. 44×44
-                        matches min touch-target + balances the profile avatar. */}
+                    {/* Brand mark matches the auth/login logo, with theme-specific
+                        transparent assets so it sits on the current top-bar surface. */}
                     <Image
                         source={
                             isDarkMode
-                                ? require('../../assets/carekosh-mark-dark.png')
-                                : require('../../assets/carekosh-mark.png')
+                                ? require('../../assets/carekosh-login-launcher-icon.png')
+                                : require('../../assets/carekosh-login-launcher-icon-light.png')
                         }
                         style={styles.logo}
                         resizeMode="contain"
@@ -150,11 +148,11 @@ const styles = StyleSheet.create({
     leftSection: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.md,
+        gap: spacing.sm,
     },
     logo: {
-        width: 44,
-        height: 44,
+        width: 52,
+        height: 52,
     },
     appNameContainer: {
         flexDirection: 'column',

@@ -19,7 +19,6 @@ import {
     Platform,
     ScrollView,
     ActivityIndicator,
-    Image,
 } from 'react-native';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -158,15 +157,6 @@ export default function RegisterScreen() {
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    <Image
-                        source={
-                            theme.isDarkMode
-                                ? require('../../assets/carekosh-logo-transparent.png')
-                                : require('../../assets/carekosh-logo-light.png')
-                        }
-                        style={styles.logo}
-                        resizeMode="contain"
-                    />
                     <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                         Join CareKosh to manage your inventory
@@ -334,11 +324,6 @@ const styles = StyleSheet.create({
     header: {
         alignItems: 'center',
         marginBottom: 32,
-    },
-    logo: {
-        width: 88,
-        height: 88,
-        marginBottom: 12,
     },
     title: {
         fontSize: 24,
