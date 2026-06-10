@@ -259,8 +259,8 @@ export default function LoginScreen() {
                     <Image
                         source={
                             theme.isDarkMode
-                                ? require('../../assets/carekosh-login-logo-warm.png')
-                                : require('../../assets/carekosh-login-logo-warm-light.png')
+                                ? require('../../assets/carekosh-login-launcher-icon.png')
+                                : require('../../assets/carekosh-login-launcher-icon-light.png')
                         }
                         style={styles.logo}
                         resizeMode="contain"
@@ -452,12 +452,12 @@ const styles = StyleSheet.create({
     logo: {
         width: 112,
         height: 112,
-        marginBottom: 16,
+        marginBottom: 0,
     },
     title: {
         fontSize: 28,
         fontWeight: 'bold',
-        marginTop: 8,
+        marginTop: 0,
     },
     subtitle: {
         fontSize: 14,
