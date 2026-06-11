@@ -43,7 +43,7 @@ Ripped out the offline-first architecture:
 - Zustand reduced to UI-only state (`useAppStore.ts` is 61 lines).
 - Hosting migrated Railway → Render (PR #1, pre-phase).
 
-The mobile-side sync module is gone; the backend `/sync/*` endpoints remain in `app/api/v1/sync.py` but are no longer called. They are kept for backward compatibility and future opt-in use.
+The mobile-side sync module is gone, and the unused backend `/api/v1/sync/*` route surface has now been removed as well. Server-first writes use the normal REST endpoints only; `localId` fields remain as compatibility metadata, not as a sync contract.
 
 ### Phase 4 — CareKosh rebrand (PRs #10, #11)
 Renamed the product from VitalTrack to CareKosh across user-visible surfaces: app name, splash, copy, email from-address, API `APP_NAME`, Play Console listing assets. Directory names (`vitaltrack-backend`, `vitaltrack-mobile`) and git history were intentionally **not** renamed to avoid breaking Render service paths, EAS config, and historical links.
@@ -129,4 +129,4 @@ Rough priority order; none are scheduled.
 
 - **Offline editing.** Deliberately ruled out — see the server-first rationale in [CAREKOSH_DEVELOPER_GUIDE.md §1](CAREKOSH_DEVELOPER_GUIDE.md#1-architecture-overview). Medical inventory has real-world consequences for merge conflicts; the single source of truth is the server.
 - **Renaming `vitaltrack-backend` / `vitaltrack-mobile` directories.** Breaks Render paths, EAS config, historical PR links. Not worth the churn.
-- **Removing backend `sync.py`.** Kept as dead code behind unused routes. Removal is a trivial follow-up but not worth a PR on its own.
+- **Reintroducing offline sync.** Deliberately ruled out for the same reason as offline editing: server-first REST writes are the supported contract.

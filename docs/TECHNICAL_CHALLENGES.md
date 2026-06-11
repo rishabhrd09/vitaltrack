@@ -198,7 +198,7 @@ class SyncOperation(BaseModel):
 ```
 
 ### Status
-The legacy `/sync/*` endpoints still exist in `app/api/v1/sync.py` but are unused by the current mobile app. Main REST endpoints (items, orders, categories) use snake_case on the wire.
+The legacy `/sync/*` endpoints were removed after the server-first migration proved mobile no longer calls them. Main REST endpoints (items, orders, categories) remain the supported write path; `localId` fields stay in those schemas for compatibility metadata.
 
 ---
 
@@ -554,6 +554,8 @@ The original design was offline-first with AsyncStorage + a hand-rolled sync que
 
 React Query + Zustand-UI-only gives us: server is the truth, the cache is read-through, mutations round-trip to the server before we update the UI. Error cases are the network's problem, handled once in `services/api.ts`, not in every screen.
 
+The backend sync router was removed after this migration: there is no `/api/v1/sync/*` API surface, and all app writes continue through normal REST endpoints.
+
 ### Why per-user isolation in queries?
 
 Every domain table (`categories`, `items`, `orders`, `activity_logs`) has a `user_id` FK. Every list query filters by the authenticated user. A compromised access token can't read another tenant's data — the SQL physically cannot return rows for a different `user_id`.
@@ -690,3 +692,5 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 > All 24 challenges plus the Architecture Decisions / Performance / Security / Testing sections re-verified against current code. Every "(historical)" tag is correctly applied. Every still-current claim (Argon2 + bcrypt fallback, JWT 30 min / 30 d rotation, OCC `version` column, rate-limiter proxy-IP fix, ADB reverse port mapping, account deletion 24-hour SHA-256 hashed token, `selectinload(Order.items)` eager loading, `useFocusEffect` on auth screens, `services/sync.ts` deleted) was verified file-and-line. No corrections needed in this doc.
 >
 > One addition worth a future entry: a "Challenge 25 — fire-and-forget mutations during Render cold start" capturing the audit/cold-start-mutation-ux branch design (the observer-death bug, hook-level dispatch, mutateAsync().then() pattern, MutationResultDialog overlay). For now, that material lives in commit messages on the merged branch and in `docs/LOCAL_TESTING_INTERNALS.md`.
+>
+> **Update (2026-06-12):** The unused backend `/api/v1/sync/*` route surface referenced by older offline-first notes has been removed. The historical lessons remain; active architecture is server-first REST only.

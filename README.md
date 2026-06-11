@@ -119,7 +119,7 @@ Feature-complete for v1; preparing for Play Store closed testing. See [CAREKOSH_
 - **Skeleton screens + cold-start auto-retry (PRs #15, #16).** First-launch and post-idle waits are covered by animated skeleton placeholders (matching each screen's layout) and, on login, an auto-retry loop that health-checks the server every 5 s (max 12 attempts) with a Cancel button — replacing the static "server is starting up" text.
 - **Migrated hosting from Railway to Render (PR #1).** Render's Docker web services, zero-cost PR previews via deploy hooks, and Neon integration were a better fit than Railway's per-service pricing.
 - **Rebranded VitalTrack → CareKosh (PRs #10, #11) without renaming directories.** User-visible only — internal paths kept stable to avoid breaking Render service URLs, EAS config references, and historical PR links.
-- **Kept backend `/sync/*` endpoints after deleting mobile sync.** Dead code behind unused routes; not worth a dedicated removal PR.
+- **Removed unused backend `/sync/*` endpoints after deleting mobile sync.** The app remains server-first; mutations use the normal REST endpoints and cached data is never pushed back.
 
 ---
 
