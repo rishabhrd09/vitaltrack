@@ -33,20 +33,6 @@ from app.schemas.order import (
     OrderResponse,
     OrderUpdate,
 )
-from app.schemas.sync import (
-    ConflictResolution,
-    FullSyncRequest,
-    FullSyncResponse,
-    SyncConflict,
-    SyncEntityType,
-    SyncOperation,
-    SyncOperationResult,
-    SyncOperationType,
-    SyncPullRequest,
-    SyncPullResponse,
-    SyncPushRequest,
-    SyncPushResponse,
-)
 from app.schemas.user import (
     AuthResponse,
     EmailVerificationRequest,
@@ -104,19 +90,6 @@ __all__ = [
     "OrderListResponse",
     "OrderResponse",
     "OrderUpdate",
-    # Sync
-    "ConflictResolution",
-    "FullSyncRequest",
-    "FullSyncResponse",
-    "SyncConflict",
-    "SyncEntityType",
-    "SyncOperation",
-    "SyncOperationResult",
-    "SyncOperationType",
-    "SyncPullRequest",
-    "SyncPullResponse",
-    "SyncPushRequest",
-    "SyncPushResponse",
     # Common
     "DashboardStats",
     "ErrorDetail",

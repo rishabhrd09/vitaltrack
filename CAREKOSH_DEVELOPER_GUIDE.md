@@ -56,9 +56,11 @@ CareKosh is **server-first**. The mobile app treats the backend as the source of
 - Auth tokens live in `expo-secure-store` (hardware-backed keystore on Android), not AsyncStorage.
 - Kill switch: `ENABLE_CACHE_PERSISTENCE` in `providers/QueryProvider.tsx` disables persistence with a one-line change — no rebuild. When false, the app reverts to pure in-memory TanStack Query behaviour.
 
-### Legacy sync endpoints
+### Removed legacy sync endpoints
 
-`vitaltrack-backend/app/api/v1/sync.py` still exposes `/sync/push`, `/sync/pull`, `/sync/full` from the offline-first era. **The mobile app no longer calls these endpoints** — they were dropped when the mobile `sync.ts` / `useSyncStore` were deleted in the server-first migration (PR #8, `refactor/server-first-architecture`). The backend module remains for backward compatibility and as a potential future re-sync mechanism. Do not build new features against it.
+The former `/api/v1/sync/*` backend route surface from the offline-first era has been removed. This completes the server-first migration path started in PR #8: mobile has no `sync.ts`, no `useSyncStore`, no offline queue, and no backend reconciliation endpoint. Writes go through the normal REST endpoints (`/items`, `/categories`, `/orders`, `/orders/{id}/apply`) and either commit on the server or return an error to the app.
+
+The `local_id` / `localId` fields remain in item, category, and order models/schemas for compatibility with existing records and client payloads. They are metadata only; they no longer imply a sync API.
 
 ---
 
@@ -107,12 +109,11 @@ vitaltrack/
 │       ├── models/                   # SQLAlchemy models: User, Category, Item, Order, OrderItem, ActivityLog, AuditLog, RefreshToken
 │       ├── schemas/                  # Pydantic I/O schemas
 │       └── api/v1/
-│           ├── auth.py               # 18 endpoints incl. account deletion
+│           ├── auth.py               # 17 route objects incl. account deletion
 │           ├── items.py              # CRUD + OCC (version field, 409 on conflict)
 │           ├── orders.py             # CRUD + POST /{id}/apply
 │           ├── categories.py         # CRUD + /with-counts
-│           ├── activity.py           # read-only activity log
-│           └── sync.py               # LEGACY — unused by mobile, kept for backward compat
+│           └── activity.py           # read-only activity log
 └── vitaltrack-mobile/
     ├── app.json / eas.json           # 3 EAS profiles: development, preview, production
     ├── package.json
@@ -349,9 +350,9 @@ Base URL: `https://vitaltrack-api.onrender.com/api/v1` (prod) · `https://vitalt
 |---|---|---|
 | GET | `/activities` | `limit` param (default 50, max 200); returns action, item_name, item_id, details, order_id, created_at |
 
-### Legacy `/sync`
+### Removed legacy `/sync`
 
-`/sync/push`, `/sync/pull`, `/sync/full` exist but are not called by mobile. See §1.
+No `/api/v1/sync/*` routes are mounted. The old offline-first sync module was removed after the mobile app became server-first. See §1.
 
 ---
 

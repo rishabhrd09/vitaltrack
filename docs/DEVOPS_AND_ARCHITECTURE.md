@@ -209,8 +209,8 @@ Re-enabling the CI job is a one-line change (`if: false` → `if: github.ref == 
 │                                                                       │
 │  Container runtime                                                    │
 │    FastAPI routes under /api/v1/                                      │
-│      /auth/*, /categories/*, /items/*, /orders/*, /activity/*,        │
-│      /sync/* (legacy, mobile no longer calls it)                      │
+│      /auth/*, /categories/*, /items/*, /orders/*, /activity/*         │
+│      No /sync/* route surface; mobile is server-first REST only       │
 │    Healthcheck: /health                                               │
 │    Non-root user: appuser (UID 1000)                                  │
 │                                                                       │

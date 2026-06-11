@@ -49,12 +49,11 @@ vitaltrack-backend/
 ├── alembic/versions/            # 5 migrations (see below)
 ├── app/
 │   ├── api/v1/
-│   │   ├── auth.py              # 18 endpoints incl. account deletion
+│   │   ├── auth.py              # 17 route objects incl. account deletion
 │   │   ├── categories.py
 │   │   ├── items.py             # CRUD + OCC (version field, 409 on conflict)
 │   │   ├── orders.py            # CRUD + POST /{id}/apply
-│   │   ├── activity.py          # read-only audit/activity log
-│   │   └── sync.py              # LEGACY — see "Legacy sync endpoints" below
+│   │   └── activity.py          # read-only audit/activity log
 │   ├── core/
 │   │   ├── config.py            # pydantic-settings, prod validators
 │   │   ├── database.py          # async engine (asyncpg)
@@ -75,9 +74,9 @@ vitaltrack-backend/
 
 ## API endpoints
 
-Counts: 18 auth, 6 categories, 8 items, 6 orders, 1 activity, 3 legacy sync = 42 total.
+Counts: 17 auth, 6 categories, 8 items, 6 orders, 1 activity = 38 total.
 
-### Auth (`/api/v1/auth`) — 18 endpoints
+### Auth (`/api/v1/auth`) — 17 endpoints
 
 | Method | Path | Rate limit | Notes |
 |---|---|---|---|
@@ -142,15 +141,8 @@ Counts: 18 auth, 6 categories, 8 items, 6 orders, 1 activity, 3 legacy sync = 42
 |---|---|---|
 | GET | `/activities` | `limit` param (default 50, max 200) |
 
-### Legacy sync endpoints (`/api/v1/sync`) — unused by mobile
-
-| Method | Path | Status |
-|---|---|---|
-| POST | `/sync/push` | **legacy** — unused by mobile since PR #8 |
-| POST | `/sync/pull` | **legacy** |
-| POST | `/sync/full` | **legacy** |
-
-These endpoints are from the offline-first era. The mobile app was migrated to server-first in PR #8 (`refactor/server-first-architecture`) and no longer calls them. Kept as dead code behind unused routes. Do not build new features against them.
+The former offline-first `/api/v1/sync/*` route surface has been removed. The
+mobile app is server-first and uses the normal REST endpoints above.
 
 ---
 
@@ -260,7 +252,7 @@ PASSWORD_RESET_EXPIRY_HOURS=1
 
 ### Tests
 ```bash
-pytest -v                               # note: test suite is currently failing (40/53), see CAREKOSH_ROADMAP.md
+pytest tests/ -q --cov=app --cov-report=term-missing
 ```
 
 ### Lint / type check / format
