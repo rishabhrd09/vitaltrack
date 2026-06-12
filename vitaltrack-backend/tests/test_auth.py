@@ -12,9 +12,38 @@ Test users: 5 email-based + 4 username-only + dual-identifier
 11 test classes · 55 tests
 """
 
+import hashlib
+from datetime import datetime, timedelta, timezone
+
 import pytest
+from sqlalchemy import select
 from httpx import AsyncClient
-from tests.conftest import register_user, login_user, auth_header
+
+from app.api.v1 import auth as auth_routes
+from app.models import User
+from tests.conftest import TestSession, register_user, login_user, auth_header
+
+
+async def _set_deletion_token(
+    email: str,
+    token: str,
+    expires_at: datetime | None = None,
+) -> str:
+    async with TestSession() as session:
+        result = await session.execute(select(User).where(User.email == email))
+        user = result.scalar_one()
+        user.deletion_token = hashlib.sha256(token.encode()).hexdigest()
+        user.deletion_token_expires = expires_at or (
+            datetime.now(timezone.utc) + timedelta(hours=1)
+        )
+        user_id = str(user.id)
+        await session.commit()
+        return user_id
+
+
+async def _user_exists(user_id: str) -> bool:
+    async with TestSession() as session:
+        return await session.get(User, user_id) is not None
 
 
 # =============================================================================
@@ -501,7 +530,129 @@ class TestDataPersistence:
 
 
 # =============================================================================
-# 10. SESSION ISOLATION — multi-user, concurrent sessions
+# 10. ACCOUNT DELETION CONFIRMATION — GET is safe, POST is destructive
+# =============================================================================
+class TestAccountDeletionConfirmation:
+
+    @pytest.mark.asyncio
+    async def test_get_confirm_delete_valid_token_does_not_delete_user(
+        self, client: AsyncClient
+    ):
+        raw_token = "safe-get-token"
+        user = await register_user(
+            client, name="Delete Preview", email="delete-preview@test.com"
+        )
+        user_id = await _set_deletion_token("delete-preview@test.com", raw_token)
+
+        resp = await client.get(f"/api/v1/auth/confirm-delete/{raw_token}")
+
+        assert resp.status_code == 200
+        assert "Confirm Account Deletion" in resp.text
+        assert 'method="post"' in resp.text
+        assert 'action=""' in resp.text
+        assert "has not been deleted yet" in resp.text
+        assert "Account Deleted" not in resp.text
+        assert await _user_exists(user_id)
+        assert user["user"]["email"] == "delete-preview@test.com"
+
+    @pytest.mark.asyncio
+    async def test_post_confirm_delete_valid_token_deletes_user(
+        self, client: AsyncClient
+    ):
+        raw_token = "post-delete-token"
+        await register_user(client, name="Delete Me", email="post-delete@test.com")
+        user_id = await _set_deletion_token("post-delete@test.com", raw_token)
+
+        resp = await client.post(f"/api/v1/auth/confirm-delete/{raw_token}")
+
+        assert resp.status_code == 200
+        assert "Account Deleted" in resp.text
+        assert "post-delete@test.com" in resp.text
+        assert not await _user_exists(user_id)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("method", ["get", "post"])
+    async def test_confirm_delete_invalid_token_returns_error_and_keeps_user(
+        self, client: AsyncClient, method: str
+    ):
+        await register_user(client, name="Invalid Token", email="invalid-token@test.com")
+        user_id = await _set_deletion_token("invalid-token@test.com", "real-token")
+
+        resp = await client.request(
+            method.upper(), "/api/v1/auth/confirm-delete/wrong-token"
+        )
+
+        assert resp.status_code == 400
+        assert "Invalid or Expired Link" in resp.text
+        assert await _user_exists(user_id)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("method", ["get", "post"])
+    async def test_confirm_delete_expired_token_returns_error_and_keeps_user(
+        self, client: AsyncClient, method: str
+    ):
+        raw_token = "expired-token"
+        await register_user(client, name="Expired Token", email="expired-token@test.com")
+        user_id = await _set_deletion_token(
+            "expired-token@test.com",
+            raw_token,
+            expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+        )
+
+        resp = await client.request(
+            method.upper(), f"/api/v1/auth/confirm-delete/{raw_token}"
+        )
+
+        assert resp.status_code == 400
+        assert "Invalid or Expired Link" in resp.text
+        assert await _user_exists(user_id)
+
+    @pytest.mark.asyncio
+    async def test_request_and_cancel_account_deletion_still_work(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        async def fake_send_email_via_api(**kwargs) -> bool:
+            return True
+
+        monkeypatch.setattr(auth_routes, "is_email_configured", lambda: True)
+        monkeypatch.setattr(auth_routes, "send_email_via_api", fake_send_email_via_api)
+
+        user = await register_user(
+            client, name="Cancel Delete", email="cancel-delete@test.com"
+        )
+        headers = auth_header(user["access_token"])
+
+        delete_resp = await client.delete("/api/v1/auth/me", headers=headers)
+
+        assert delete_resp.status_code == 200
+        assert "confirmation email" in delete_resp.json()["message"]
+
+        async with TestSession() as session:
+            result = await session.execute(
+                select(User).where(User.email == "cancel-delete@test.com")
+            )
+            db_user = result.scalar_one()
+            assert db_user.deletion_token is not None
+            assert db_user.deletion_token_expires is not None
+
+        cancel_resp = await client.post("/api/v1/auth/cancel-delete", headers=headers)
+
+        assert cancel_resp.status_code == 200
+        assert cancel_resp.json()["message"] == (
+            "Account deletion request has been cancelled."
+        )
+
+        async with TestSession() as session:
+            result = await session.execute(
+                select(User).where(User.email == "cancel-delete@test.com")
+            )
+            db_user = result.scalar_one()
+            assert db_user.deletion_token is None
+            assert db_user.deletion_token_expires is None
+
+
+# =============================================================================
+# 11. SESSION ISOLATION — multi-user, concurrent sessions
 # =============================================================================
 class TestSessionIsolation:
 
@@ -569,7 +720,7 @@ class TestSessionIsolation:
 
 
 # =============================================================================
-# 11. HEALTH & DIAGNOSTICS
+# 12. HEALTH & DIAGNOSTICS
 # =============================================================================
 class TestHealthDiagnostics:
 
