@@ -18,7 +18,7 @@ logger = logging.getLogger("vitaltrack.email")
 
 def is_email_configured() -> bool:
     """Check if email service (Brevo) is properly configured."""
-    return bool(settings.MAIL_PASSWORD and settings.MAIL_PASSWORD.strip())
+    return bool(settings.mail_password_value.strip())
 
 
 async def test_email_service() -> tuple[bool, str]:
@@ -33,7 +33,7 @@ async def test_email_service() -> tuple[bool, str]:
     url = "https://api.brevo.com/v3/account"
     headers = {
         "accept": "application/json",
-        "api-key": settings.MAIL_PASSWORD,
+        "api-key": settings.mail_password_value,
     }
 
     try:
@@ -78,7 +78,7 @@ async def send_email_via_api(to_email: str, to_name: str, subject: str, html_con
     
     headers = {
         "accept": "application/json",
-        "api-key": settings.MAIL_PASSWORD,  # SMTP Key works as API Key
+        "api-key": settings.mail_password_value,  # SMTP Key works as API Key
         "content-type": "application/json"
     }
     

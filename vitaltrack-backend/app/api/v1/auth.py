@@ -231,7 +231,7 @@ async def login(
     # Don't enforce verification if MAIL_PASSWORD isn't set (user can't verify without email)
     if (
         settings.REQUIRE_EMAIL_VERIFICATION
-        and settings.MAIL_PASSWORD
+        and is_email_configured()
         and user.email
         and not user.is_email_verified
     ):

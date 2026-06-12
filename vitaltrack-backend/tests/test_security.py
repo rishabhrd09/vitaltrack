@@ -8,7 +8,12 @@ Google Testing Pyramid: unit tests form the base (70% of test count).
 """
 
 from datetime import timedelta
+from types import SimpleNamespace
 
+import pytest
+from pydantic import SecretStr
+
+from app.core.config import Settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -19,6 +24,7 @@ from app.core.security import (
     verify_password,
     verify_refresh_token,
 )
+from app.utils import email as email_utils
 
 
 # =============================================================================
@@ -148,3 +154,96 @@ class TestJWTVerification:
             expires_delta=timedelta(seconds=-1),
         )
         assert verify_access_token(token) is None
+
+
+# =============================================================================
+# SETTINGS SECRET HANDLING
+# =============================================================================
+class TestSettingsSecrets:
+
+    def test_secret_fields_are_masked_but_accessors_return_raw_values(self):
+        raw_secret = "super-secret-key-for-tests-minimum-32-chars"
+        raw_mail_password = "brevo-api-key-secret"
+
+        configured = Settings(
+            ENVIRONMENT="testing",
+            DATABASE_URL="postgresql+asyncpg://test:test@localhost:5432/test_db",
+            SECRET_KEY=raw_secret,
+            MAIL_PASSWORD=raw_mail_password,
+        )
+
+        assert isinstance(configured.DATABASE_URL, str)
+        assert isinstance(configured.SECRET_KEY, SecretStr)
+        assert isinstance(configured.MAIL_PASSWORD, SecretStr)
+        assert configured.secret_key_value == raw_secret
+        assert configured.mail_password_value == raw_mail_password
+
+        dumped = configured.model_dump()
+        dumped_json = configured.model_dump(mode="json")
+
+        for rendered in (repr(configured), repr(dumped), repr(dumped_json)):
+            assert raw_secret not in rendered
+            assert raw_mail_password not in rendered
+
+        assert dumped_json["SECRET_KEY"] != raw_secret
+        assert dumped_json["MAIL_PASSWORD"] != raw_mail_password
+
+    def test_email_configuration_check_uses_raw_mail_password_accessor(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        monkeypatch.setattr(
+            email_utils,
+            "settings",
+            SimpleNamespace(mail_password_value="  raw-brevo-key  "),
+        )
+
+        assert email_utils.is_email_configured() is True
+
+    @pytest.mark.asyncio
+    async def test_email_api_header_uses_raw_mail_password_accessor(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        captured: dict[str, object] = {}
+
+        class FakeBrevoResponse:
+            status_code = 201
+            text = ""
+
+            def json(self) -> dict[str, str]:
+                return {"messageId": "test-message-id"}
+
+        class FakeAsyncClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return None
+
+            async def post(self, url, json, headers, timeout):
+                captured["url"] = url
+                captured["headers"] = headers
+                captured["payload"] = json
+                captured["timeout"] = timeout
+                return FakeBrevoResponse()
+
+        monkeypatch.setattr(
+            email_utils,
+            "settings",
+            SimpleNamespace(
+                mail_password_value="raw-brevo-api-key",
+                MAIL_FROM="sender@example.com",
+            ),
+        )
+        monkeypatch.setattr(email_utils.httpx, "AsyncClient", FakeAsyncClient)
+
+        sent = await email_utils.send_email_via_api(
+            "recipient@example.com",
+            "Recipient",
+            "Subject",
+            "<p>Hello</p>",
+        )
+
+        assert sent is True
+        assert captured["headers"]["api-key"] == "raw-brevo-api-key"

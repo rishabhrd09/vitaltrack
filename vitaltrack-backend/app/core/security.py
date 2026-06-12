@@ -94,7 +94,7 @@ def create_access_token(
 
     return jwt.encode(
         to_encode,
-        settings.SECRET_KEY,
+        settings.secret_key_value,
         algorithm=settings.JWT_ALGORITHM,
     )
 
@@ -126,7 +126,7 @@ def create_refresh_token(
 
     return jwt.encode(
         to_encode,
-        settings.SECRET_KEY,
+        settings.secret_key_value,
         algorithm=settings.JWT_ALGORITHM,
     )
 
@@ -170,7 +170,7 @@ def decode_token(token: str) -> Optional[TokenPayload]:
     try:
         payload = jwt.decode(
             token,
-            settings.SECRET_KEY,
+            settings.secret_key_value,
             algorithms=[settings.JWT_ALGORITHM],
         )
         return TokenPayload(**payload)

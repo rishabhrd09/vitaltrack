@@ -15,11 +15,13 @@ Test users: 5 email-based + 4 username-only + dual-identifier
 import hashlib
 import html
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select
 from httpx import AsyncClient
 
+import app.main as main_module
 from app.api.v1 import auth as auth_routes
 from app.models import User
 from tests.conftest import TestSession, register_user, login_user, auth_header
@@ -857,7 +859,45 @@ class TestHealthDiagnostics:
     async def test_health_endpoint(self, client: AsyncClient):
         resp = await client.get("/health")
         assert resp.status_code == 200
-        assert resp.json()["status"] == "healthy"
+        body = resp.json()
+        assert body["status"] == "healthy"
+        assert body["database"] == "connected"
+
+    @pytest.mark.asyncio
+    async def test_health_endpoint_returns_503_when_database_probe_fails(
+        self,
+        client: AsyncClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        async def failed_probe() -> bool:
+            return False
+
+        monkeypatch.setattr(main_module, "check_database_readiness", failed_probe)
+
+        resp = await client.get("/health")
+
+        assert resp.status_code == 503
+        body = resp.json()
+        assert body["status"] == "unhealthy"
+        assert body["database"] == "unavailable"
+
+    @pytest.mark.asyncio
+    async def test_live_endpoint_returns_200_without_database_probe(
+        self,
+        client: AsyncClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        async def fail_if_called() -> bool:
+            raise AssertionError("/live must not probe the database")
+
+        monkeypatch.setattr(main_module, "check_database_readiness", fail_if_called)
+
+        resp = await client.get("/live")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "healthy"
+        assert body["database"] == "not_checked"
 
     @pytest.mark.asyncio
     async def test_email_service_status(self, client: AsyncClient):
@@ -872,3 +912,22 @@ class TestHealthDiagnostics:
         body = resp.json()
         assert "name" in body
         assert "version" in body
+        assert body["health"] == "/health"
+        assert body["live"] == "/live"
+
+    def test_api_v1_route_count_remains_39(self):
+        api_v1_routes = [
+            route
+            for route in main_module.app.routes
+            if getattr(route, "path", "").startswith("/api/v1")
+        ]
+
+        assert len(api_v1_routes) == 39
+        assert all(route.path not in {"/api/v1/health", "/api/v1/live"} for route in api_v1_routes)
+
+    def test_render_health_check_uses_liveness_endpoint(self):
+        render_yaml = Path(__file__).resolve().parents[1] / "render.yaml"
+        render_config = render_yaml.read_text()
+
+        assert "healthCheckPath: /live" in render_config
+        assert "healthCheckPath: /health" not in render_config

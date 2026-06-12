@@ -11,7 +11,7 @@ services:
     region: singapore
     plan: free
     branch: main
-    healthCheckPath: /health
+    healthCheckPath: /live
     envVars:
       - key: DATABASE_URL
         sync: false
