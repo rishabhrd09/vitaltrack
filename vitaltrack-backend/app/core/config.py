@@ -7,7 +7,7 @@ import json
 from functools import lru_cache
 from typing import List, Union
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -66,18 +66,21 @@ class Settings(BaseSettings):
         return v
 
     # Security
-    SECRET_KEY: str = "CHANGE-THIS-IN-PRODUCTION-MIN-32-CHARS-LONG-RANDOM-STRING"
+    SECRET_KEY: SecretStr = SecretStr(
+        "CHANGE-THIS-IN-PRODUCTION-MIN-32-CHARS-LONG-RANDOM-STRING"
+    )
 
     @field_validator("SECRET_KEY")
     @classmethod
     def reject_weak_secret_in_production(cls, v, info):
+        secret_value = v.get_secret_value() if isinstance(v, SecretStr) else str(v)
         env = info.data.get("ENVIRONMENT", "development")
-        if env == "production" and v.startswith("CHANGE-THIS"):
+        if env == "production" and secret_value.startswith("CHANGE-THIS"):
             raise ValueError(
                 "SECRET_KEY must be set to a strong random value in production. "
                 'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
             )
-        if len(v) < 32:
+        if len(secret_value) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters")
         return v
     JWT_ALGORITHM: str = "HS256"
@@ -114,7 +117,7 @@ class Settings(BaseSettings):
 
     # Email Configuration
     MAIL_USERNAME: str = ""
-    MAIL_PASSWORD: str = ""
+    MAIL_PASSWORD: SecretStr = SecretStr("")
     MAIL_FROM: str = "noreply@carekosh.com"
     MAIL_PORT: int = 587
     MAIL_SERVER: str = "sandbox.smtp.mailtrap.io"
@@ -143,6 +146,16 @@ class Settings(BaseSettings):
     def database_url_sync(self) -> str:
         """Synchronous database URL for Alembic migrations."""
         return self.DATABASE_URL.replace("+asyncpg", "")
+
+    @property
+    def secret_key_value(self) -> str:
+        """Raw JWT signing secret for crypto APIs that require a plain string."""
+        return self.SECRET_KEY.get_secret_value()
+
+    @property
+    def mail_password_value(self) -> str:
+        """Raw Brevo API key for outbound email calls."""
+        return self.MAIL_PASSWORD.get_secret_value()
     
     @property
     def is_cors_allow_all(self) -> bool:

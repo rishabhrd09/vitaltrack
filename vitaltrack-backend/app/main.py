@@ -3,20 +3,23 @@ VitalTrack Backend - Main Application
 FastAPI application with middleware, CORS, rate limiting, and lifecycle events
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.api.v1 import router as api_v1_router
 from app.core.config import settings
-from app.core.database import create_tables, dispose_engine
+from app.core.database import create_tables, dispose_engine, get_db_context
 from app.schemas import HealthCheck
 from app.utils.rate_limiter import limiter
 
@@ -29,6 +32,8 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("vitaltrack.main")
+
+DATABASE_HEALTH_TIMEOUT_SECONDS = 2.0
 
 
 # =============================================================================
@@ -200,26 +205,71 @@ def register_exception_handlers(app: FastAPI) -> None:
 # =============================================================================
 # HEALTH ENDPOINTS
 # =============================================================================
+async def _run_database_readiness_probe() -> None:
+    async with get_db_context() as db:
+        result = await db.execute(text("SELECT 1"))
+        result.scalar_one()
+
+
+async def check_database_readiness(
+    timeout_seconds: float = DATABASE_HEALTH_TIMEOUT_SECONDS,
+) -> bool:
+    try:
+        await asyncio.wait_for(_run_database_readiness_probe(), timeout=timeout_seconds)
+    except Exception:
+        logger.exception("Database readiness probe failed")
+        return False
+    return True
+
+
 def register_health_endpoints(app: FastAPI) -> None:
     """Register health check endpoints."""
     
     @app.get(
         "/health",
         response_model=HealthCheck,
+        responses={status.HTTP_503_SERVICE_UNAVAILABLE: {"model": HealthCheck}},
         tags=["Health"],
-        summary="Health check",
+        summary="Readiness check",
     )
-    async def health_check() -> HealthCheck:
+    async def health_check() -> HealthCheck | JSONResponse:
         """
-        Check application health status.
+        Check application readiness, including database connectivity.
         
-        Returns basic health information including version and environment.
+        Returns 200 only when the database probe succeeds.
+        """
+        is_ready = await check_database_readiness()
+        health = HealthCheck(
+            status="healthy" if is_ready else "unhealthy",
+            version=settings.APP_VERSION,
+            environment=settings.ENVIRONMENT,
+            database="connected" if is_ready else "unavailable",
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        if not is_ready:
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content=jsonable_encoder(health),
+            )
+
+        return health
+
+    @app.get(
+        "/live",
+        response_model=HealthCheck,
+        tags=["Health"],
+        summary="Liveness check",
+    )
+    async def liveness_check() -> HealthCheck:
+        """
+        Check whether the application process is alive without probing the DB.
         """
         return HealthCheck(
             status="healthy",
             version=settings.APP_VERSION,
             environment=settings.ENVIRONMENT,
-            database="connected",
+            database="not_checked",
             timestamp=datetime.now(timezone.utc),
         )
     
@@ -235,6 +285,7 @@ def register_health_endpoints(app: FastAPI) -> None:
             "version": settings.APP_VERSION,
             "docs": "/docs" if settings.DEBUG else None,
             "health": "/health",
+            "live": "/live",
             "api": "/api/v1",
             "cors_mode": "allow_all" if settings.is_cors_allow_all else "restricted",
         }
