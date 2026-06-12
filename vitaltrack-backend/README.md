@@ -184,11 +184,48 @@ Client                                   Server
 | `REFRESH_TOKEN_EXPIRE_DAYS` | 30 |
 | `JWT_ALGORITHM` | `HS256` |
 
+### Password reset token flow
+
+Password reset uses an email-link token, but the raw token is never stored in
+the database.
+
+1. `POST /auth/forgot-password` generates a high-entropy raw token and stores
+   `SHA-256(raw_token)` plus an expiry timestamp on the user row.
+2. The reset email links to `/api/v1/auth/reset-password?token=<raw_token>`.
+3. `GET /auth/reset-password` renders the browser form. The query token is
+   escaped with `html.escape(token, quote=True)` and placed in a `data-token`
+   attribute, not interpolated into inline JavaScript.
+4. The page JavaScript reads `dataset.token` from the DOM and submits the same
+   API body as before:
+
+```json
+{
+  "token": "<raw_token>",
+  "new_password": "<new password>"
+}
+```
+
+5. `POST /auth/reset-password` hashes the submitted token, compares it with the
+   stored hash, enforces expiry, updates the password, clears the reset token,
+   and revokes all refresh tokens for the user.
+
+The important browser-safety boundary is that the URL token is untrusted input.
+It must be treated as data. Escaping it into an HTML attribute prevents crafted
+values containing quotes or `</script>` from breaking out of the page and
+executing script, while keeping the public POST contract unchanged.
+
+For users, the normal and malicious-token test URLs should look the same: both
+render the reset-password form. The security difference is internal to the HTML
+source and browser parsing. A malicious-looking token must not show an alert,
+inject a second script tag, break the form, or appear as `token: '<raw token>'`
+inside inline JavaScript.
+
 ### Security features
 
 - **Argon2** password hashing via `passlib[argon2]` (bcrypt fallback for legacy hashes)
 - **JWT HS256** with rotating refresh tokens
 - **Session revoke on password change / reset / account delete**
+- **Password reset XSS guard**: reset tokens are escaped into a DOM attribute and are never rendered raw inside inline JavaScript
 - **slowapi** rate limits on auth endpoints (see table above)
 - **Config validators** refuse production startup if `SECRET_KEY` is the placeholder, `CORS_ORIGINS` is `*`, or `FRONTEND_URL` is empty
 

@@ -9,10 +9,11 @@ Verified against actual endpoint behavior (auth.py source):
   - Token type enforcement: refresh cannot be used as access
 
 Test users: 5 email-based + 4 username-only + dual-identifier
-11 test classes · 55 tests
+13 test classes · 60 tests
 """
 
 import hashlib
+import html
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -22,6 +23,9 @@ from httpx import AsyncClient
 from app.api.v1 import auth as auth_routes
 from app.models import User
 from tests.conftest import TestSession, register_user, login_user, auth_header
+
+
+MALICIOUS_RESET_TOKEN = "abc'\");</script><script>alert(1)</script>"
 
 
 async def _set_deletion_token(
@@ -41,9 +45,30 @@ async def _set_deletion_token(
         return user_id
 
 
+async def _set_password_reset_token(
+    email: str,
+    token: str,
+    expires_at: datetime | None = None,
+) -> None:
+    async with TestSession() as session:
+        result = await session.execute(select(User).where(User.email == email))
+        user = result.scalar_one()
+        user.password_reset_token = hashlib.sha256(token.encode()).hexdigest()
+        user.password_reset_expiry = expires_at or (
+            datetime.now(timezone.utc) + timedelta(hours=1)
+        )
+        await session.commit()
+
+
 async def _user_exists(user_id: str) -> bool:
     async with TestSession() as session:
         return await session.get(User, user_id) is not None
+
+
+def _reset_password_script(html_source: str) -> str:
+    script_start = html_source.index("<script>")
+    script_end = html_source.index("</script>", script_start)
+    return html_source[script_start:script_end]
 
 
 # =============================================================================
@@ -471,7 +496,111 @@ class TestPasswordChange:
 
 
 # =============================================================================
-# 9. DATA PERSISTENCE — profile data survives logout/login/refresh
+# 9. PASSWORD RESET — HTML token escaping and POST contract
+# =============================================================================
+class TestPasswordReset:
+
+    @pytest.mark.asyncio
+    async def test_reset_password_form_renders_for_normal_token(
+        self, client: AsyncClient
+    ):
+        resp = await client.get(
+            "/api/v1/auth/reset-password",
+            params={"token": "normal-reset-token"},
+        )
+
+        assert resp.status_code == 200
+        assert "Reset Your Password" in resp.text
+        assert 'id="form-container"' in resp.text
+        assert 'data-token="normal-reset-token"' in resp.text
+        assert "async function resetPassword()" in resp.text
+
+    @pytest.mark.asyncio
+    async def test_reset_password_form_escapes_crafted_token(
+        self, client: AsyncClient
+    ):
+        resp = await client.get(
+            "/api/v1/auth/reset-password",
+            params={"token": MALICIOUS_RESET_TOKEN},
+        )
+
+        escaped_token = html.escape(MALICIOUS_RESET_TOKEN, quote=True)
+        assert resp.status_code == 200
+        assert f'data-token="{escaped_token}"' in resp.text
+        assert MALICIOUS_RESET_TOKEN not in resp.text
+
+    @pytest.mark.asyncio
+    async def test_reset_password_script_does_not_contain_raw_crafted_token(
+        self, client: AsyncClient
+    ):
+        resp = await client.get(
+            "/api/v1/auth/reset-password",
+            params={"token": MALICIOUS_RESET_TOKEN},
+        )
+
+        script = _reset_password_script(resp.text)
+        assert MALICIOUS_RESET_TOKEN not in script
+        assert "const token = document.getElementById('form-container').dataset.token;" in script
+        assert "JSON.stringify({ token, new_password: password })" in script
+
+    @pytest.mark.asyncio
+    async def test_reset_password_old_inline_token_pattern_is_gone(
+        self, client: AsyncClient
+    ):
+        resp = await client.get(
+            "/api/v1/auth/reset-password",
+            params={"token": MALICIOUS_RESET_TOKEN},
+        )
+
+        script = _reset_password_script(resp.text)
+        assert f"token: '{MALICIOUS_RESET_TOKEN}'" not in resp.text
+        assert "token: '{token}'" not in resp.text
+        assert "token: '" not in script
+
+    @pytest.mark.asyncio
+    async def test_post_reset_password_contract_still_works(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        async def fake_send_password_changed_notification(**kwargs) -> bool:
+            return True
+
+        monkeypatch.setattr(
+            auth_routes,
+            "send_password_changed_notification",
+            fake_send_password_changed_notification,
+        )
+
+        raw_token = "valid-reset-token"
+        await register_user(
+            client,
+            name="Reset User",
+            email="reset-post@test.com",
+            password="OldPass1",
+        )
+        await _set_password_reset_token("reset-post@test.com", raw_token)
+
+        resp = await client.post(
+            "/api/v1/auth/reset-password",
+            json={"token": raw_token, "new_password": "NewPass99"},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["message"] == (
+            "Password reset successfully! Please log in with your new password."
+        )
+
+        old_login = await client.post(
+            "/api/v1/auth/login",
+            json={"identifier": "reset-post@test.com", "password": "OldPass1"},
+        )
+        new_login = await login_user(client, "reset-post@test.com", "NewPass99")
+
+        assert old_login.status_code == 401
+        assert "access_token" in new_login
+
+
+# =============================================================================
+# 10. DATA PERSISTENCE — profile data survives logout/login/refresh
 # =============================================================================
 class TestDataPersistence:
 
@@ -530,7 +659,7 @@ class TestDataPersistence:
 
 
 # =============================================================================
-# 10. ACCOUNT DELETION CONFIRMATION — GET is safe, POST is destructive
+# 11. ACCOUNT DELETION CONFIRMATION — GET is safe, POST is destructive
 # =============================================================================
 class TestAccountDeletionConfirmation:
 
@@ -652,7 +781,7 @@ class TestAccountDeletionConfirmation:
 
 
 # =============================================================================
-# 11. SESSION ISOLATION — multi-user, concurrent sessions
+# 12. SESSION ISOLATION — multi-user, concurrent sessions
 # =============================================================================
 class TestSessionIsolation:
 
