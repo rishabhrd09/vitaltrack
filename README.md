@@ -35,7 +35,7 @@ Family caregivers running a home ICU for a chronically ill relative juggle dozen
 | Backend | FastAPI · SQLAlchemy 2.0 (async) · Alembic · Argon2 |
 | Database | PostgreSQL 16 on [Neon](https://neon.tech) |
 | Hosting | [Render](https://render.com) (backend) · [EAS Build](https://expo.dev/eas) (mobile) |
-| CI/CD | GitHub Actions · Trivy security scan · Render deploy hook |
+| CI/CD | GitHub Actions · blocking backend tests/Ruff/route/coverage gates · advisory mypy/Trivy baselines · Render deploy hook |
 | Email | Mailtrap (dev) · Brevo SMTP (prod) |
 
 ### Architecture
@@ -120,6 +120,7 @@ Feature-complete for v1; preparing for Play Store closed testing. See [CAREKOSH_
 - **Migrated hosting from Railway to Render (PR #1).** Render's Docker web services, zero-cost PR previews via deploy hooks, and Neon integration were a better fit than Railway's per-service pricing.
 - **Rebranded VitalTrack → CareKosh (PRs #10, #11) without renaming directories.** User-visible only — internal paths kept stable to avoid breaking Render service URLs, EAS config references, and historical PR links.
 - **Removed unused backend `/sync/*` endpoints after deleting mobile sync.** The app remains server-first; mutations use the normal REST endpoints and cached data is never pushed back.
+- **Backend quality gates now protect the server contract.** CI blocks on Ruff, pytest, exact `/api/v1` route count `39`, and per-file coverage floors for `items.py` and `orders.py`. `mypy` and Trivy stay advisory until their existing baselines are cleaned up.
 
 ---
 

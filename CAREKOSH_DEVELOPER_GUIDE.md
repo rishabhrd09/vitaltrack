@@ -84,8 +84,8 @@ The `local_id` / `localId` fields remain in item, category, and order models/sch
 | Hosting (backend) | **Render** | Docker web service, auto-deploy on push to `main` |
 | Hosting (DB) | **Neon** | separate branches for dev / staging / production |
 | Hosting (mobile) | **EAS Build** | profiles: `development`, `preview`, `production` |
-| CI | GitHub Actions | pytest, ruff, mypy, TypeScript, ESLint, expo-doctor, Trivy |
-| Security scan | Trivy | severity CRITICAL, HIGH |
+| CI | GitHub Actions | blocking pytest, ruff, route-count, item/order coverage, TypeScript, ESLint; advisory mypy, expo-doctor, Trivy |
+| Security scan | Trivy | advisory HIGH/CRITICAL scan until the existing dependency baseline is fixed |
 
 **Not used (despite what older docs claimed):** Railway, redux-persist, AsyncStorage for app data, offline sync queue, manual migration scripts.
 
@@ -109,7 +109,7 @@ vitaltrack/
 │       ├── models/                   # SQLAlchemy models: User, Category, Item, Order, OrderItem, ActivityLog, AuditLog, RefreshToken
 │       ├── schemas/                  # Pydantic I/O schemas
 │       └── api/v1/
-│           ├── auth.py               # 17 route objects incl. account deletion
+│           ├── auth.py               # 18 route objects incl. account deletion
 │           ├── items.py              # CRUD + OCC (version field, 409 on conflict)
 │           ├── orders.py             # CRUD + POST /{id}/apply
 │           ├── categories.py         # CRUD + /with-counts
@@ -170,7 +170,7 @@ docker compose logs -f api    # confirm "Uvicorn running on http://0.0.0.0:8000"
 
 The entrypoint runs `alembic upgrade head` automatically — you do not run migrations manually.
 
-**Health check:** `curl http://localhost:8000/health` → `{"status": "healthy"}`
+**Readiness check:** `curl http://localhost:8000/health` probes the database and returns `200` with `database="connected"` only when the probe succeeds. `curl http://localhost:8000/live` is the process-only liveness check used by Render.
 
 ### Mobile
 
@@ -203,7 +203,7 @@ Scan the QR code with Expo Go. Default `EXPO_PUBLIC_API_URL` points at `http://l
 | `JWT_ALGORITHM` | `HS256` | — |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | 30 | — |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | 30 | — |
-| `CORS_ORIGINS` | `["*"]` | comma-separated list; **never `*` in prod** |
+| `CORS_ORIGINS` | `["*"]` | parsed from JSON or comma-separated values; production still permits `*` today |
 | `RATE_LIMIT_PER_MINUTE` / `_BURST` | 60 / 10 | — |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` | `""` | **required for verification emails** |
 | `MAIL_FROM` | `noreply@carekosh.com` | — |
@@ -215,7 +215,7 @@ Scan the QR code with Expo Go. Default `EXPO_PUBLIC_API_URL` points at `http://l
 | `PASSWORD_RESET_EXPIRY_HOURS` | 1 | — |
 | `REQUIRE_EMAIL_VERIFICATION` | False | `True` in prod |
 
-Production validators live in `config.py` — they refuse startup if `SECRET_KEY` is the placeholder, if `CORS_ORIGINS` is `*`, or if `FRONTEND_URL` is empty.
+Production validators live in `config.py` — they refuse startup if `SECRET_KEY` is the placeholder or if `FRONTEND_URL` is empty. They do not reject `CORS_ORIGINS=["*"]` today; tightening CORS is deferred to Goal 8 because the real browser/admin origins are not decided yet.
 
 ### Mobile env vars (`eas.json`)
 
@@ -234,13 +234,18 @@ Production validators live in `config.py` — they refuse startup if `SECRET_KEY
 
 | Job | Runs on | Purpose |
 |---|---|---|
-| `test-backend` | PR + push | pytest (postgres:16 service), ruff lint, mypy |
+| `test-backend` | PR + push | blocking pytest (postgres:16 service), Ruff, exact `/api/v1` route count `39`, and `items.py` / `orders.py` coverage floors |
+| `typecheck-backend-advisory` | PR + push | advisory mypy baseline; not a merge gate until existing type errors are fixed |
 | `test-frontend` | PR + push | TypeScript typecheck, ESLint, `expo-doctor` |
-| `security-scan` | PR + push | Trivy filesystem scan, severity CRITICAL + HIGH |
+| `security-scan-advisory` | PR only | advisory Trivy vulnerability scan, severity CRITICAL + HIGH; not a merge gate until existing dependency findings are triaged/fixed |
 | `pr-check` | PR only | merge gate — requires `test-backend` + `test-frontend` to pass |
 | `deploy-backend` | push to `main` | POST to Render deploy hook (secret `RENDER_DEPLOY_HOOK`) |
 | `build-preview` | PR only, label `build-apk` | EAS preview APK build |
 | `build-production` | push to `main` | **disabled** (`if: false`) — enable when ready to ship AAB from CI |
+
+**Advisory baseline as of 2026-06-13:**
+- `mypy app/ --ignore-missing-imports` reports 10 existing errors across `orders.py`, `items.py`, `categories.py`, `auth.py`, and `main.py`, so it is not a blocking gate yet.
+- `trivy fs --scanners vuln --severity CRITICAL,HIGH --exit-code 1 .` reports existing dependency findings. Backend findings are in `black`, `python-jose`, and `python-multipart`; mobile findings are in transitive npm packages including `@xmldom/xmldom`, `minimatch`, `node-forge`, `picomatch`, and `shell-quote`. Upgrading those dependencies is a separate follow-up because it can change runtime behavior.
 
 **Label-based APK:** add the `build-apk` label to a PR and CI will run `eas build --profile preview` so reviewers can install a binary.
 
@@ -305,7 +310,8 @@ Base URL: `https://vitaltrack-api.onrender.com/api/v1` (prod) · `https://vitalt
 | GET | `/me` | — | current user profile |
 | PATCH | `/me` | — | update profile |
 | **DELETE** | `/me` | — | **request account deletion**, sends confirmation email |
-| GET | `/confirm-delete/{token}` | — | HTML confirmation page, executes deletion |
+| GET | `/confirm-delete/{token}` | — | HTML confirmation page only |
+| POST | `/confirm-delete/{token}` | — | final account deletion after form submit |
 | POST | `/cancel-delete` | — | cancel a pending deletion request |
 | POST | `/change-password` | — | revokes all refresh tokens |
 | GET | `/email-service-status` | — | diagnostic, no auth |
@@ -393,7 +399,7 @@ Both DB-level `ondelete="CASCADE"` and ORM `cascade="all, delete-orphan"` are se
 **Session revocation events** (all refresh tokens invalidated for the user):
 - `POST /auth/change-password`
 - `POST /auth/reset-password`
-- `DELETE /auth/me` (when deletion completes)
+- `POST /auth/confirm-delete/{token}` (when deletion completes)
 
 **Cache isolation on auth transitions (PR #16):** Both `logout()` and successful `login()` clear the TanStack Query cache from memory (`queryClient.clear()`) and from disk (`AsyncStorage.removeItem('carekosh-query-cache')`). This is belt-and-suspenders for shared family devices — if logout's clear failed (crash, force-quit), login starts fresh anyway. An `isColdStart` flag on `useAuthStore` is set when `ApiClientError.status` is `0 / 502 / 503 / 504` and drives the login screen's auto-retry loop (health-check every 5 s, max 12 attempts, cancellable). 401 / 403 never trigger retry.
 
@@ -405,8 +411,9 @@ Both DB-level `ondelete="CASCADE"` and ORM `cascade="all, delete-orphan"` are se
 **Account deletion** (PR #13, Play Store compliance):
 1. Authenticated user calls `DELETE /auth/me`.
 2. Server generates `deletion_token`, writes `deletion_token_expires` = now + 24 h, emails confirmation link.
-3. User clicks link → `GET /auth/confirm-delete/{token}` → `DELETE FROM users` (cascades via §9). HTML success page rendered.
-4. Alternative: user calls `POST /auth/cancel-delete` while logged in to abort.
+3. User clicks link → `GET /auth/confirm-delete/{token}` renders an HTML confirmation page only.
+4. User submits the form → `POST /auth/confirm-delete/{token}` → `DELETE FROM users` (cascades via §9). HTML success page rendered.
+5. Alternative: user calls `POST /auth/cancel-delete` while logged in to abort.
 
 Mobile surfaces this at `app/profile.tsx` with a swipe-down dismissable popup menu.
 

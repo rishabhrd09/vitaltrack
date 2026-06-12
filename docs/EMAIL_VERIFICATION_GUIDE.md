@@ -305,7 +305,7 @@ The production config validators (PR #12) will **refuse to start** if `SECRET_KE
 | `FRONTEND_URL` | `http://<IP>:8000/api/v1/auth` | `https://vitaltrack-api.onrender.com/api/v1/auth` |
 | `DEBUG` | `true` | `false` |
 | `SECRET_KEY` | any dev value | strong, not `CHANGE-THIS*` |
-| `CORS_ORIGINS` | local origins | production domains only |
+| `CORS_ORIGINS` | local origins or wildcard | currently wildcard; replace with real production browser/admin origins in Goal 8 |
 
 ---
 

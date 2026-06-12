@@ -41,6 +41,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   # =============================================================================
   # BACKEND TESTS (Required for PR merge)
@@ -83,14 +86,7 @@ jobs:
       - name: Run linting (Ruff)
         run: |
           cd vitaltrack-backend
-          pip install ruff
-          ruff check app/ --output-format=github
-      
-      - name: Run type checking
-        run: |
-          cd vitaltrack-backend
-          pip install mypy types-python-jose types-passlib
-          mypy app/ --ignore-missing-imports || echo "Type hints review recommended"
+          ruff check app/ tests/ scripts/ --output-format=github
       
       - name: Run tests
         env:
@@ -99,31 +95,63 @@ jobs:
           ENVIRONMENT: testing
         run: |
           cd vitaltrack-backend
-          # Smoke test - verify app imports
-          python -c "from app.main import app; print('✅ Backend imports successfully')"
-          
-          # Run pytest if tests exist
-          if [ -d "tests" ]; then
-            pip install pytest pytest-asyncio httpx pytest-cov
-            python -m pytest tests/ -v --tb=short --cov=app --cov-report=term-missing
-          else
-            echo "ℹ️ No tests directory - running import verification only"
-          fi
+          python -m pytest tests/ -q --cov=app --cov-report=term-missing --cov-report=json
       
-      - name: Verify API endpoints
+      - name: Verify API route count
         env:
           DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
           SECRET_KEY: test-secret-key-for-ci-testing-minimum-32-chars-long
           ENVIRONMENT: testing
         run: |
           cd vitaltrack-backend
-          python -c "
-          from app.main import app
-          routes = [r.path for r in app.routes if hasattr(r, 'path')]
-          api_routes = [r for r in routes if r.startswith('/api/v1')]
-          print(f'✅ {len(api_routes)} API endpoints registered')
-          assert len(api_routes) >= 30, 'Expected at least 30 API endpoints'
-          "
+          python scripts/check_api_routes.py --expected 39
+
+      - name: Verify item/order coverage floors
+        run: |
+          cd vitaltrack-backend
+          python scripts/check_file_coverage.py coverage.json --threshold 70 \
+            --file app/api/v1/items.py \
+            --file app/api/v1/orders.py
+
+  # =============================================================================
+  # BACKEND TYPE CHECK (Advisory until the existing mypy baseline is green)
+  # =============================================================================
+  typecheck-backend-advisory:
+    name: "Backend Type Check (Advisory)"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: vitaltrack-backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd vitaltrack-backend
+          pip install -r requirements.txt
+
+      - name: Run mypy advisory baseline
+        continue-on-error: true
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
+          SECRET_KEY: test-secret-key-for-ci-testing-minimum-32-chars-long
+          ENVIRONMENT: testing
+        run: |
+          cd vitaltrack-backend
+          mypy app/ --ignore-missing-imports
+
+      - name: Explain advisory type baseline
+        if: always()
+        run: |
+          echo "mypy is advisory in this branch because the baseline is not green."
+          echo "Promote it to a blocking gate only after the existing type errors are fixed."
 
   # =============================================================================
   # FRONTEND TESTS (Required for PR merge)
@@ -166,25 +194,35 @@ jobs:
           npx expo-doctor || echo "Expo doctor completed"
 
   # =============================================================================
-  # SECURITY SCAN (Runs on PRs)
+  # SECURITY SCAN (Advisory until existing HIGH/CRITICAL findings are fixed)
   # =============================================================================
-  security-scan:
-    name: "Security Scan"
+  security-scan-advisory:
+    name: "Security Scan (Advisory)"
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    continue-on-error: true
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      # Pinned to aquasecurity/trivy-action v0.29.0.
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0
         with:
           scan-type: 'fs'
           scan-ref: '.'
+          scanners: 'vuln'
           severity: 'CRITICAL,HIGH'
-          exit-code: '0'  # Don't fail on vulnerabilities (warning only)
-        continue-on-error: true
+          exit-code: '1'
+          version: 'v0.71.1'
+
+      - name: Explain advisory security baseline
+        if: always()
+        run: |
+          echo "Trivy is advisory in this branch because the baseline has existing HIGH/CRITICAL findings."
+          echo "Do not treat this as clean until the dependency-upgrade follow-up is complete."
 
   # =============================================================================
   # PR STATUS CHECK (Gate for merging)
@@ -260,6 +298,10 @@ jobs:
     if: |
       github.event_name == 'pull_request' &&
       contains(github.event.pull_request.labels.*.name, 'build-apk')
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
     defaults:
       run:
         working-directory: vitaltrack-mobile
@@ -279,7 +321,8 @@ jobs:
         run: npm ci --legacy-peer-deps
       
       - name: Setup EAS CLI
-        uses: expo/expo-github-action@v8
+        # Pinned to expo/expo-github-action v8.2.1.
+        uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
@@ -350,7 +393,8 @@ jobs:
       
       - name: Setup Expo
         if: steps.check-token.outputs.has_token == 'true'
-        uses: expo/expo-github-action@v8
+        # Pinned to expo/expo-github-action v8.2.1.
+        uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}

@@ -119,7 +119,7 @@ The server-first pattern (PR #8) is the key architectural decision. Mobile is **
 | Neon | Managed Postgres (two DBs on one project) |
 | Expo EAS | APK / AAB builds |
 | Docker | Reproducible local + prod runtime |
-| Trivy | CVE scan on every PR (CRITICAL + HIGH) |
+| Trivy | Advisory CVE scan on every PR (CRITICAL + HIGH) until the existing dependency baseline is fixed |
 
 ---
 
@@ -134,10 +134,11 @@ Triggers:
   workflow_dispatch
 
 Jobs:
-  test-backend        pytest + ruff + mypy, Postgres 16 service container
+  test-backend        pytest + ruff + route count + item/order coverage, Postgres 16 service container
+  typecheck-backend   mypy advisory baseline
   test-frontend       tsc --noEmit, eslint, expo-doctor
-  security-scan       Trivy (CRITICAL + HIGH, fs scan)
-  pr-check            merge gate — requires tests + security + label
+  security-scan       Trivy advisory (CRITICAL + HIGH, fs vuln scan)
+  pr-check            merge gate — requires backend + frontend tests
   deploy-backend      POST $RENDER_DEPLOY_HOOK on push to main
   build-preview       eas build --profile preview — requires PR label 'build-apk'
   build-production    eas build --profile production — CURRENTLY DISABLED (if: false)
@@ -150,13 +151,15 @@ EVENT                        │ WHAT RUNS
 ─────────────────────────────┼────────────────────────────────────────────
 Push to feature branch       │ Nothing
                              │
-Open PR → main               │ test-backend, test-frontend, security-scan,
+Open PR → main               │ test-backend, test-frontend,
+                             │ typecheck-backend-advisory,
+                             │ security-scan-advisory,
                              │ pr-check
                              │ + build-preview IF PR has label 'build-apk'
                              │
 Label PR 'build-apk'         │ build-preview runs on next commit / rerun
                              │
-Merge → main                 │ test-backend, test-frontend, security-scan,
+Merge → main                 │ test-backend, test-frontend,
                              │ deploy-backend (POSTs Render hook)
                              │ Render also auto-deploys main independently,
                              │ so the hook is redundant but harmless.
@@ -211,7 +214,7 @@ Re-enabling the CI job is a one-line change (`if: false` → `if: github.ref == 
 │    FastAPI routes under /api/v1/                                      │
 │      /auth/*, /categories/*, /items/*, /orders/*, /activity/*         │
 │      No /sync/* route surface; mobile is server-first REST only       │
-│    Healthcheck: /health                                               │
+│    Healthcheck: /live                                                 │
 │    Non-root user: appuser (UID 1000)                                  │
 │                                                                       │
 │  URLs                                                                 │
@@ -474,7 +477,7 @@ pending ──▶ ordered ──▶ received ──▶ stock_updated
 | Input validation | Pydantic v2 on every endpoint |
 | SQL injection | Parameterised via SQLAlchemy |
 | Secrets | Render dashboard env vars; repo secrets in GitHub Actions only |
-| Config guardrails | Production startup refuses weak `SECRET_KEY`, empty `FRONTEND_URL`, `CORS_ORIGINS=*` (PR #12) |
+| Config guardrails | Production startup refuses weak `SECRET_KEY` and empty `FRONTEND_URL`; wildcard CORS rejection is deferred until real browser origins are known |
 
 ### Password reset safety model
 
@@ -536,8 +539,10 @@ See `docs/LOCAL_TESTING_COMPLETE_GUIDE.md` and `docs/USB_ADB_REVERSE_GUIDE.md` f
 # Backend
 cd vitaltrack-backend
 ruff check app/
-mypy app/ --ignore-missing-imports
-pytest
+pytest tests/ -q --cov=app --cov-report=term-missing --cov-report=json
+python scripts/check_api_routes.py --expected 39
+python scripts/check_file_coverage.py coverage.json --threshold 70 --file app/api/v1/items.py --file app/api/v1/orders.py
+mypy app/ --ignore-missing-imports   # advisory until the current baseline is fixed
 
 # Frontend
 cd vitaltrack-mobile
