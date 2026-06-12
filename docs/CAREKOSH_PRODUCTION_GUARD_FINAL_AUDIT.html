@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CareKosh Production Guard Final Audit</title>
+  <style>
+    :root {
+      --bg: #f7f9fb;
+      --panel: #ffffff;
+      --ink: #162027;
+      --muted: #5f6d78;
+      --soft: #e5ebf0;
+      --soft-2: #f0f4f7;
+      --teal: #0f766e;
+      --teal-soft: #dff3ef;
+      --blue: #1d4f7a;
+      --amber: #946200;
+      --amber-soft: #fff1cb;
+      --red: #a43c34;
+      --shadow: 0 18px 50px rgba(17, 40, 58, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    a { color: inherit; }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 40px 24px 88px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 28px;
+      align-items: start;
+      margin-bottom: 34px;
+    }
+
+    .hero-main,
+    .toc,
+    section,
+    .goal-card {
+      background: var(--panel);
+      border: 1px solid var(--soft);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-main {
+      padding: 42px;
+      border-radius: 10px;
+    }
+
+    .kicker {
+      margin: 0 0 14px;
+      color: var(--teal);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 780px;
+      font-size: clamp(2.15rem, 5vw, 4.15rem);
+      font-weight: 850;
+    }
+
+    .subtitle {
+      max-width: 760px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      overflow: hidden;
+      margin-top: 30px;
+      border: 1px solid var(--soft);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+
+    .meta-grid div {
+      min-width: 0;
+      padding: 14px 16px;
+      background: #fbfcfd;
+    }
+
+    .meta-grid span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .meta-grid strong {
+      display: block;
+      margin-top: 4px;
+      overflow-wrap: anywhere;
+      font-size: 0.95rem;
+    }
+
+    .toc {
+      position: sticky;
+      top: 20px;
+      padding: 18px;
+      border-radius: 10px;
+    }
+
+    .toc-title {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.73rem;
+      font-weight: 850;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .toc a {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 10px;
+      align-items: center;
+      padding: 9px 8px;
+      border-radius: 7px;
+      color: var(--ink);
+      font-size: 0.92rem;
+      font-weight: 650;
+      text-decoration: none;
+    }
+
+    .toc a:hover { background: var(--soft-2); }
+
+    .toc span {
+      color: var(--teal);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    section {
+      margin-top: 22px;
+      padding: 36px;
+      border-radius: 10px;
+    }
+
+    .section-number {
+      margin: 0 0 9px;
+      color: var(--teal);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+    }
+
+    h2 {
+      max-width: 900px;
+      margin-bottom: 18px;
+      font-size: clamp(1.65rem, 3vw, 2.55rem);
+      font-weight: 820;
+    }
+
+    h3 {
+      margin-top: 28px;
+      margin-bottom: 9px;
+      color: var(--blue);
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+
+    h4 {
+      margin-top: 20px;
+      margin-bottom: 8px;
+      color: var(--ink);
+      font-size: 0.88rem;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    p {
+      max-width: 920px;
+      margin: 0 0 14px;
+      color: var(--muted);
+    }
+
+    section > p:first-of-type:not(.section-number) {
+      color: #35434d;
+      font-size: 1.03rem;
+    }
+
+    code {
+      padding: 0.12rem 0.32rem;
+      border-radius: 4px;
+      background: var(--soft-2);
+      color: #0f4f49;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.9em;
+    }
+
+    .callout,
+    .objective,
+    .accept {
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    .callout {
+      margin: 20px 0 2px;
+      border-left: 4px solid var(--teal);
+      background: var(--teal-soft);
+      color: #173b37;
+    }
+
+    .objective {
+      margin: 12px 0 16px;
+      background: var(--soft-2);
+      color: #2d3f4a;
+    }
+
+    .accept {
+      margin-top: 14px;
+      border: 1px solid #d7e8da;
+      background: #eef8ef;
+      color: #284e32;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 18px 0 24px;
+      border: 1px solid var(--soft);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 680px;
+      border-collapse: collapse;
+      background: var(--panel);
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--soft);
+      border-right: 1px solid var(--soft);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th:last-child,
+    td:last-child { border-right: 0; }
+    tr:last-child td { border-bottom: 0; }
+
+    th {
+      background: #edf6f4;
+      color: #16413d;
+      font-size: 0.78rem;
+      font-weight: 850;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    td {
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .goal-card {
+      margin: 24px 0;
+      padding: 24px;
+      border-radius: 9px;
+      box-shadow: none;
+    }
+
+    .goal-label {
+      display: inline-flex;
+      margin-bottom: 8px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--amber-soft);
+      color: var(--amber);
+      font-size: 0.76rem;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .goal-card h3 {
+      margin: 0;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 1rem;
+      overflow-wrap: anywhere;
+    }
+
+    .goal-title {
+      margin-top: 12px;
+      color: var(--blue);
+      font-size: 1.12rem;
+      font-weight: 800;
+    }
+
+    .check-list {
+      max-width: 920px;
+      margin: 0 0 14px;
+      padding-left: 1.15rem;
+      color: var(--muted);
+    }
+
+    .check-list li { margin: 7px 0; }
+
+    .env-block {
+      max-width: 920px;
+      overflow-x: auto;
+      margin: 12px 0 4px;
+      padding: 16px;
+      border-radius: 8px;
+      background: #101820;
+      color: #e8f4f2;
+      font-size: 0.9rem;
+    }
+
+    .env-block code {
+      display: block;
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      white-space: pre;
+    }
+
+    .closing-note {
+      margin-top: 24px;
+      color: var(--teal);
+      font-weight: 800;
+    }
+
+    @media (max-width: 960px) {
+      .hero { grid-template-columns: 1fr; }
+      .toc { position: static; }
+      .meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 640px) {
+      .page { padding: 24px 14px 64px; }
+      .hero-main,
+      section { padding: 24px 18px; }
+      .meta-grid { grid-template-columns: 1fr; }
+      table { min-width: 560px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="hero-main">
+        <p class="kicker">CareKosh production guard</p>
+        <h1>Final audit, necessary goals, and implementation textbook</h1>
+        <p class="subtitle">This document is the final handoff map for taking an already-working CareKosh app through the smallest necessary backend hardening path, plus the release-readiness items surfaced by external standards review. It keeps the existing mobile/server-first behavior intact while closing the defects that were actually verified in code.</p>
+        <div class="meta-grid">
+          <div><span>Repo</span><strong>vitaltrack</strong></div>
+          <div><span>Baseline commit</span><strong>7185f29</strong></div>
+          <div><span>Generated</span><strong>2026-06-11</strong></div>
+          <div><span>Primary scope</span><strong>FastAPI backend + release guardrails</strong></div>
+        </div>
+      </div>
+      <nav class="toc" aria-label="Document sections">
+        <p class="toc-title">Sections</p>
+        <a href="#final-verdict"><span>01</span>Final Verdict</a>
+        <a href="#play-store-fit"><span>02</span>Play Store Fit</a>
+        <a href="#audit-baseline"><span>03</span>Audit Baseline</a>
+        <a href="#goal-sequence"><span>04</span>Goal Sequence</a>
+        <a href="#critical-goal-8"><span>05</span>Critical Goal 8</a>
+        <a href="#standards-cross-check"><span>06</span>Standards Cross-Check</a>
+        <a href="#release-goals"><span>07</span>Release Goals</a>
+        <a href="#parked-items"><span>08</span>Parked Items</a>
+        <a href="#execution-rules"><span>09</span>Execution Rules</a>
+        <a href="#acceptance-gate"><span>10</span>Acceptance Gate</a>
+      </nav>
+    </header>
+    <section id="final-verdict">
+      <p class="section-number">01</p>
+      <h2>Final Verdict</h2>
+      <p>The seven original backend goals are necessary and well scoped. For a stricter backend production finish, add Goal 8. For Play Store publication and real users, add two separate release-readiness goals that do not disturb the backend branch pack.</p>
+      <h3>Short answer</h3>
+      <p>The original 7 goals close every defect that was verified in the current backend code. They should be run in order, one branch at a time. They are not speculative feature work; they are production guard work for a working app.</p>
+      <p>Backend production-grade finish line: run those 7 goals, then run Goal 8 only after the required CORS origin decision is known. Goal 8 covers CORS, unauthenticated email diagnostics, and server-side default-category protection.</p>
+      <p>Play Store / real-user finish line: after the backend pack, run Goal 9 for mobile release privacy/platform hardening and Goal 10 for backup, monitoring, and launch operations. These are separate because they target the installable app and production operations, not the FastAPI defect pack.</p>
+      <div class="table-wrap">
+        <table>
+          <tr>
+            <th>Layer</th>
+            <th>Decision</th>
+            <th>Why</th>
+          </tr>
+          <tr>
+            <td>Must do</td>
+            <td>Goals 1-7</td>
+            <td>Close the destructive sync route, GET account deletion, reset XSS, missing domain tests, order race/workflow holes, fake health, plain-string secret reprs, advisory CI, and stale docs.</td>
+          </tr>
+          <tr>
+            <td>After pack</td>
+            <td>Goal 8</td>
+            <td>Closes three known deferred backend security gaps that are small and important, but one of them requires a real production CORS origin list before merge.</td>
+          </tr>
+          <tr>
+            <td>Before public launch</td>
+            <td>Goals 9-10</td>
+            <td>Cover mobile Play Store safety, Android platform configuration, production logging, privacy disclosures, backups, monitoring, and rollback. These are release guardrails, not backend behavior changes.</td>
+          </tr>
+          <tr>
+            <td>Park</td>
+            <td>Migration hygiene and template cleanup</td>
+            <td>Useful, but not necessary to keep the current working app functionally correct or materially safer right now.</td>
+          </tr>
+        </table>
+      </div>
+      <div class="callout"><strong>Final recommendation:</strong> Treat CareKosh backend production guard as an 8-goal program, with Goals 1-7 as the verified-defect pack and Goal 8 as the minimal backend security finish. Treat Play Store release as a separate 2-goal launch guard: Goal 9 for mobile privacy/platform hardening and Goal 10 for production operations. Do not mix Goals 9-10 into the backend branches.</div>
+    </section>
+    <section id="play-store-fit">
+      <p class="section-number">02</p>
+      <h2>Play Store And Solo-Developer Fit</h2>
+      <p>Goals 1-8 are backend production guardrails. Goals 9-10 are the separate mobile and operations guardrails that make sense before inviting real users into a health-adjacent Play Store app.</p>
+      <h3>Decision</h3>
+      <p>For a solo developer targeting real users, Goals 1-7 are justified and necessary for the verified backend risks. Add Goal 8 for the cleanest backend posture, then Goals 9-10 for Play Store/mobile/operations readiness. This is especially true because CareKosh handles accounts, authentication, email, caregiver inventory records, and home ICU/health-adjacent data.</p>
+      <div class="table-wrap">
+        <table>
+          <tr>
+            <th>Question</th>
+            <th>Answer</th>
+          </tr>
+          <tr>
+            <td>Are these required by Google Play?</td>
+            <td>No. Google Play also requires app-content declarations such as privacy policy, Data Safety, app access instructions for login-gated apps, target audience, content rating, ad declaration, and sensitive-permission declarations when applicable. These backend goals complement those requirements; they do not replace them.</td>
+          </tr>
+          <tr>
+            <td>Are they necessary before real users?</td>
+            <td>Yes for Goals 1-7, because each closes a verified backend security, correctness, operational, test, or CI/doc honesty issue. Goal 8 is the minimal post-pack backend hardening. Goals 9-10 are necessary before a serious public Play Store release because they cover mobile privacy/platform safety and production operations.</td>
+          </tr>
+          <tr>
+            <td>Are they overkill for 10 users?</td>
+            <td>No. The riskiest defects are not scale-dependent: a crawler can trigger GET deletion with one user, a destructive sync route can delete data for one user, and double-apply can corrupt one family&#x27;s inventory.</td>
+          </tr>
+          <tr>
+            <td>Are they enough for 1000-5000 users?</td>
+            <td>They are enough for the verified backend defects in this audit. For 1000-5000 real users, add Goal 9 and Goal 10 before broad release because Google Play privacy, mobile platform hardening, backups, monitoring, and rollback are outside the backend-only pack.</td>
+          </tr>
+          <tr>
+            <td>Will they break existing functionality?</td>
+            <td>No plan can honestly guarantee zero regression. This pack is designed to minimize breakage by splitting changes into branches, avoiding mobile changes, preserving API contracts, adding tests before risky logic changes, and requiring CI/staging verification after each branch.</td>
+          </tr>
+        </table>
+      </div>
+      <h3>Play Store checklist that is separate from this backend pack</h3>
+      <ul class="check-list">
+          <li>Publish and link an active privacy policy that covers app data collection, use, sharing, and deletion.</li>
+          <li>Complete the Play Console Data Safety form accurately, including data handled by third-party SDKs.</li>
+          <li>Provide reviewer access instructions if login is required to inspect the app.</li>
+          <li>Declare ads, target audience, content rating, and any high-risk/sensitive permissions truthfully.</li>
+          <li>Ensure sensitive user data is transmitted securely over HTTPS and used only for expected app functionality.</li>
+        </ul>
+      <h3>Risk posture</h3>
+      <p>For a medical/home-ICU inventory app, user trust matters before the user count is large. The goal pack is intentionally conservative because data loss, account deletion, and stock corruption are high-impact even at small scale.</p>
+    </section>
+    <section id="audit-baseline">
+      <p class="section-number">03</p>
+      <h2>Audit Baseline</h2>
+      <p>These are the repo facts that shape the plan. They matter because several existing docs are stale or off by one.</p>
+      <h3>Current architecture</h3>
+      <p>The mobile app is server-first, not offline-first. It does not have a sync queue, <code>services/sync.ts</code>, or <code>useSyncStore</code>. That makes removing backend <code>/sync/*</code> compatible with the current app.</p>
+      <h3>Current route count</h3>
+      <p>Current <code>/api/v1</code> count is 41: auth 17, categories 6, items 8, orders 6, activity 1, sync 3. The backend README currently claims 42 and 18 auth routes, which is stale.</p>
+      <h3>After route changes</h3>
+      <p>Goal 1 removes 3 sync routes, leaving 38. Goal 2 adds POST <code>/confirm-delete/{token}</code>, bringing the final API count to 39. <code>/health</code> and <code>/live</code> are root routes, not <code>/api/v1</code> routes.</p>
+      <h3>Test warning</h3>
+      <p>The backend test fixture drops and recreates all tables. Never run pytest against production or staging DB URLs. Use a disposable Postgres test database like CI.</p>
+      <h3>Defects verified in code</h3>
+      <div class="table-wrap">
+        <table>
+          <tr>
+            <th>Defect</th>
+            <th>Current proof point</th>
+            <th>Goal</th>
+          </tr>
+          <tr>
+            <td>Legacy sync can delete records</td>
+            <td><code>app/api/v1/sync.py</code> is mounted and <code>/push</code> performs orphan cleanup based on missing <code>local_id</code> values.</td>
+            <td>Goal 1</td>
+          </tr>
+          <tr>
+            <td>GET account deletion</td>
+            <td><code>GET /confirm-delete/{token}</code> validates token and deletes the user on page load.</td>
+            <td>Goal 2</td>
+          </tr>
+          <tr>
+            <td>Reset token XSS</td>
+            <td>Reset page injects the raw token into inline JavaScript string context.</td>
+            <td>Goal 3</td>
+          </tr>
+          <tr>
+            <td>Domain behavior under-tested</td>
+            <td>Existing tests cover auth/security only; items/orders/categories have no dedicated coverage.</td>
+            <td>Goal 4</td>
+          </tr>
+          <tr>
+            <td>Order workflow/race bugs</td>
+            <td><code>apply_order_to_stock</code> uses Python read-modify-write and <code>update_order_status</code> does not enforce documented transitions.</td>
+            <td>Goal 5</td>
+          </tr>
+          <tr>
+            <td>Health endpoint is fake</td>
+            <td><code>/health</code> returns <code>healthy</code> and <code>database=connected</code> without probing DB.</td>
+            <td>Goal 6</td>
+          </tr>
+          <tr>
+            <td>Secrets are plain strings</td>
+            <td><code>SECRET_KEY</code> and <code>MAIL_PASSWORD</code> are ordinary string settings and flow directly to call sites.</td>
+            <td>Goal 6</td>
+          </tr>
+          <tr>
+            <td>CI gates are advisory</td>
+            <td>mypy uses <code>|| echo</code>, Trivy exits <code>0</code> and <code>continue-on-error: true</code>.</td>
+            <td>Goal 7</td>
+          </tr>
+          <tr>
+            <td>Docs are stale</td>
+            <td>Backend docs claim wrong route counts, active legacy sync, failing old tests, and CORS validation that does not exist.</td>
+            <td>Goal 7</td>
+          </tr>
+        </table>
+      </div>
+    </section>
+    <section id="goal-sequence">
+      <p class="section-number">04</p>
+      <h2>Goal Sequence: Required Verified-Defect Pack</h2>
+      <p>Run these as separate branch-sized changes. Each one is deliberately scoped to protect the already-working app.</p>
+      <article class="goal-card" id="goal-1-branch-security-remove-legacy-sync-router">
+        <div class="goal-label">Goal 1</div>
+        <h3>security/remove-legacy-sync-router</h3>
+        <p class="goal-title">Remove legacy destructive sync API</p>
+        <p class="objective">Objective: remove the unused <code>/api/v1/sync/*</code> surface that can delete user data based on incomplete offline payloads.</p>
+        <h4>Implementation</h4>
+        <ul class="check-list">
+          <li>Remove <code>sync</code> import and <code>router.include_router(sync.router)</code> from <code>app/api/v1/__init__.py</code>.</li>
+          <li>Delete or quarantine <code>app/api/v1/sync.py</code> and <code>app/schemas/sync.py</code>.</li>
+          <li>Remove sync schema imports and <code>__all__</code> entries from <code>app/schemas/__init__.py</code>.</li>
+          <li>Keep <code>local_id</code> columns, migrations, and <code>SYNC_PUSH</code>/<code>SYNC_PULL</code> enum values.</li>
+          <li>Update backend README count from stale 42 to 38 after sync removal.</li>
+        </ul>
+        <h4>Compatibility guard</h4>
+        <ul class="check-list">
+          <li>No mobile edits. Current mobile is server-first and no longer calls sync.</li>
+          <li>No database migration. Leaving <code>local_id</code> is harmless and safer for rollback.</li>
+          <li>Historical docs may mention old sync as history, but active backend docs must not advertise it.</li>
+        </ul>
+        <h4>Verification</h4>
+        <ul class="check-list">
+          <li>pytest tests/ -q --cov=app --cov-report=term-missing</li>
+          <li>ruff check app/</li>
+          <li>python -c &quot;from app.main import app; print(len([r for r in app.routes if hasattr(r, &#x27;path&#x27;) and r.path.startswith(&#x27;/api/v1&#x27;)]))&quot;</li>
+        </ul>
+        <p class="accept"><strong>Accept:</strong> all tests pass, import succeeds, sync route count is 0, API route count is 38.</p>
+      </article>
+      <article class="goal-card" id="goal-2-branch-security-account-deletion-post-confirm">
+        <div class="goal-label">Goal 2</div>
+        <h3>security/account-deletion-post-confirm</h3>
+        <p class="goal-title">Require POST confirmation for account deletion</p>
+        <p class="objective">Objective: prevent account deletion by link previews, crawlers, scanners, or accidental email-link opens.</p>
+        <h4>Implementation</h4>
+        <ul class="check-list">
+          <li>Keep <code>GET /confirm-delete/{token}</code> but make it render a confirmation page only.</li>
+          <li>Add <code>POST /confirm-delete/{token}</code> for the destructive action.</li>
+          <li>Reuse the existing SHA-256 token hash and expiry validation.</li>
+          <li>Prefer a simple HTML form with <code>method=&quot;post&quot;</code> and <code>action=&quot;&quot;</code>.</li>
+          <li>Keep <code>DELETE /me</code>, <code>POST /cancel-delete</code>, token format, and cascades unchanged.</li>
+        </ul>
+        <h4>Compatibility guard</h4>
+        <ul class="check-list">
+          <li>Email links still work; users just get a deliberate final confirm button.</li>
+          <li>Mobile does not call the confirm route, so mobile auth flow stays intact.</li>
+          <li>No schema or token generation changes.</li>
+        </ul>
+        <h4>Tests</h4>
+        <ul class="check-list">
+          <li>GET valid token returns page and user remains.</li>
+          <li>POST valid token deletes user.</li>
+          <li>Invalid/expired POST returns error and user remains.</li>
+          <li>Invalid GET returns error and never deletes.</li>
+        </ul>
+        <p class="accept"><strong>Accept:</strong> <code>pytest tests/test_auth.py -q</code> and full backend pytest pass; final API count becomes 39.</p>
+      </article>
+      <article class="goal-card" id="goal-3-branch-security-reset-password-token-escaping">
+        <div class="goal-label">Goal 3</div>
+        <h3>security/reset-password-token-escaping</h3>
+        <p class="goal-title">Escape reset token in password reset HTML</p>
+        <p class="objective">Objective: close reflected-token XSS without changing the password reset API contract.</p>
+        <h4>Implementation</h4>
+        <ul class="check-list">
+          <li>Import stdlib <code>html</code> in <code>auth.py</code>.</li>
+          <li>Render <code>safe_token = html.escape(token, quote=True)</code> into a <code>data-*</code> attribute.</li>
+          <li>Have JavaScript read the token from the DOM.</li>
+          <li>Remove all raw <code>{token}</code> interpolation from <code>&lt;script&gt;</code> content.</li>
+        </ul>
+        <h4>Compatibility guard</h4>
+        <ul class="check-list">
+          <li>Do not change <code>POST /reset-password</code> request body.</li>
+          <li>Do not change token hashing, expiry, password rules, or email link format.</li>
+          <li>Do not migrate all auth HTML to templates here.</li>
+        </ul>
+        <h4>Tests</h4>
+        <ul class="check-list">
+          <li>Injection probe with quotes and <code>&lt;script&gt;</code> renders escaped.</li>
+          <li>Raw injected script does not appear in the response.</li>
+          <li>Normal reset flow still works.</li>
+        </ul>
+        <p class="accept"><strong>Accept:</strong> auth tests and full backend tests pass.</p>
+      </article>
+      <article class="goal-card" id="goal-4-branch-test-domain-inventory-order-coverage">
+        <div class="goal-label">Goal 4</div>
+        <h3>test/domain-inventory-order-coverage</h3>
+        <p class="goal-title">Add domain coverage for inventory and orders</p>
+        <p class="objective">Objective: create a behavioral safety net around items, categories, and orders before changing correctness logic.</p>
+        <h4>Implementation</h4>
+        <ul class="check-list">
+          <li>Add <code>tests/test_items.py</code> and <code>tests/test_orders.py</code>; optionally add <code>tests/test_categories.py</code>.</li>
+          <li>Cover item CRUD, filters, stats, needs-attention, OCC conflicts, and per-user scoping.</li>
+          <li>Cover category CRUD and per-user scoping.</li>
+          <li>Cover order create, forward lifecycle, apply success, apply invalid status, missing item, sequential double-apply, and scoping.</li>
+          <li>Add a test-only guard so destructive test isolation refuses non-test DB targets.</li>
+        </ul>
+        <h4>Compatibility guard</h4>
+        <ul class="check-list">
+          <li>This goal is tests-first and should not change production behavior.</li>
+          <li>Do not refactor fixture isolation unless absolutely required.</li>
+          <li>If a new test reveals a real bug, stop and report instead of silently fixing it in this branch.</li>
+        </ul>
+        <p class="accept"><strong>Accept:</strong> existing tests plus new tests pass; <code>items.py &gt;= 70%</code> and <code>orders.py &gt;= 70%</code> coverage.</p>
+      </article>
+      <article class="goal-card" id="goal-5-branch-correctness-atomic-apply-order-stock">
+        <div class="goal-label">Goal 5</div>
+        <h3>correctness/atomic-apply-order-stock</h3>
+        <p class="goal-title">Make order stock application atomic</p>
+        <p class="objective">Objective: prevent double stock application and enforce the order workflow the server already documents.</p>
+        <h4>Implementation</h4>
+        <ul class="check-list">
+          <li>Add failing concurrency test first: two apply requests, only one should win.</li>
+          <li>Claim the order with a guarded DB update where status is still <code>received</code>.</li>
+          <li>Increment item <code>quantity</code> and <code>version</code> with DB-level updates, not Python object math.</li>
+          <li>Preserve missing-item fail-fast validation, audit logs, and activity logs.</li>
+          <li>Validate order item existence and ownership during order creation.</li>
+          <li>Enforce legal status transitions; <code>stock_updated</code> should only be reached via apply.</li>
+        </ul>
+        <h4>Compatibility guard</h4>
+        <ul class="check-list">
+          <li>Search mobile order screens before finalizing the transition map.</li>
+          <li>Allow same-status PATCH as an idempotent retry-safe no-op.</li>
+          <li>Do not redesign order schema, reservations, or mobile behavior.</li>
+        </ul>
+        <p class="accept"><strong>Accept:</strong> concurrency test fails before fix and passes after; Goal 4 lifecycle tests remain green.</p>
+      </article>
+      <article class="goal-card" id="goal-6-branch-ops-health-and-secret-types">
+        <div class="goal-label">Goal 6</div>
+        <h3>ops/health-and-secret-types</h3>
+        <p class="goal-title">Make health truthful and protect secret representations</p>
+        <p class="objective">Objective: make runtime health honest and stop sensitive config from appearing as plain strings in repr/log contexts.</p>
+        <h4>Implementation</h4>
+        <ul class="check-list">
+          <li>Change <code>/health</code> into a DB-backed readiness check using <code>SELECT 1</code> and timeout.</li>
+          <li>Add <code>/live</code> as a no-DB liveness endpoint.</li>
+          <li>Move Render <code>healthCheckPath</code> to <code>/live</code> so DB outages do not trigger restart loops.</li>
+          <li>Convert <code>SECRET_KEY</code> and <code>MAIL_PASSWORD</code> to <code>SecretStr</code>.</li>
+          <li>Add explicit accessors for raw secret values and update JWT/email call sites.</li>
+          <li>Keep <code>DATABASE_URL</code> as <code>str</code> in this goal.</li>
+        </ul>
+        <h4>Compatibility guard</h4>
+        <ul class="check-list">
+          <li>Mobile already treats <code>/health</code> 503 as a retryable cold-start/server-unavailable signal.</li>
+          <li>Do not change JWT algorithm, token expiry, or secret values.</li>
+          <li>Do not convert <code>DATABASE_URL</code> until alembic, conftest, and engine consumers are audited.</li>
+        </ul>
+        <p class="accept"><strong>Accept:</strong> <code>/health</code> 200 with DB, <code>/health</code> 503 when probe fails, <code>/live</code> 200 always, all auth/JWT/email tests pass, API route count remains 39.</p>
+      </article>
+      <article class="goal-card" id="goal-7-branch-ci-block-quality-gates-and-docs">
+        <div class="goal-label">Goal 7</div>
+        <h3>ci/block-quality-gates-and-docs</h3>
+        <p class="goal-title">Make backend quality gates blocking and docs honest</p>
+        <p class="objective">Objective: enforce the standard the code now meets and remove stale production-readiness claims.</p>
+        <h4>Implementation</h4>
+        <ul class="check-list">
+          <li>Keep Ruff and pytest blocking.</li>
+          <li>Make mypy blocking only if the baseline is green; otherwise move it to a separate clearly advisory job.</li>
+          <li>Make Trivy blocking for high/critical after baseline triage.</li>
+          <li>Add per-file coverage gates for <code>items.py</code> and <code>orders.py</code> using coverage JSON/XML.</li>
+          <li>Set default GitHub workflow token permissions to read-only and review third-party action refs; pin high-risk third-party actions where practical.</li>
+          <li>Update README, roadmap, and developer docs for route counts, sync removal, test status, health semantics, CORS truth, and deferred follow-ups.</li>
+        </ul>
+        <h4>Compatibility guard</h4>
+        <ul class="check-list">
+          <li>Do not change runtime behavior in this goal.</li>
+          <li>Do not make CORS stricter in this branch; document it as Goal 8 because it needs real origin values.</li>
+          <li>Do not pretend mypy/Trivy are clean until the baseline run proves it.</li>
+        </ul>
+        <p class="accept"><strong>Accept:</strong> CI passes with blocking tests, route floor, coverage gates, and triaged security scan; docs no longer contain stale <code>42 total</code>, <code>40/53</code>, or active legacy sync claims.</p>
+      </article>
+    </section>
+    <section id="critical-goal-8">
+      <p class="section-number">05</p>
+      <h2>Critical Goal 8: Post-Pack Security Hardening</h2>
+      <p>This goal is not part of the original verified-defect pack, but it is the honest minimal add-on if &quot;production-grade&quot; means no known backend security gaps left untriaged.</p>
+      <h3>Why Goal 8 is separate</h3>
+      <p>Goals 1-7 should land first because they fix proven defects and build the test/CI foundation. Goal 8 depends on one product/deployment decision: the real allowed CORS origins. Without that list, a CORS validator can break the Render deployment.</p>
+      <article class="goal-card" id="goal-8-branch-security-post-pack-hardening">
+        <div class="goal-label">Goal 8</div>
+        <h3>security/post-pack-hardening</h3>
+        <p class="goal-title">Harden CORS, email diagnostics, and default categories</p>
+        <p class="objective">Objective: close the three important deferred backend security gaps while preserving the working mobile app.</p>
+      <div class="table-wrap">
+        <table>
+          <tr>
+            <th>Item</th>
+            <th>Implementation</th>
+            <th>Breakage guard</th>
+          </tr>
+          <tr>
+            <td>CORS hardening</td>
+            <td>Replace production <code>CORS_ORIGINS=[&quot;*&quot;]</code> with explicit origins in Render/env, then add a production validator that rejects wildcard origins.</td>
+            <td>Do not merge until actual web/admin origins are known. Native mobile requests are not governed by browser CORS, so mobile should keep working.</td>
+          </tr>
+          <tr>
+            <td>Email service status</td>
+            <td>Restrict <code>GET /api/v1/auth/email-service-status</code> to authenticated users, superuser/admin if such a role is used, or disable it in production.</td>
+            <td>Keep non-production diagnostics available if useful. Add tests for unauthenticated 401/403 and allowed diagnostic access.</td>
+          </tr>
+          <tr>
+            <td>Default-category deletion</td>
+            <td>Reject deletion of <code>Category.is_default == true</code> on the backend.</td>
+            <td>Return 400/409 with clear detail. Add test proving non-default category deletion still works.</td>
+          </tr>
+        </table>
+      </div>
+        <h4>Verification</h4>
+        <ul class="check-list">
+          <li>Backend tests pass.</li>
+          <li>CORS validator test proves wildcard is rejected only in production.</li>
+          <li>Configured Render env uses explicit origins before production deploy.</li>
+          <li>Email diagnostic is no longer public in production.</li>
+          <li>Default categories cannot be deleted through the API.</li>
+        </ul>
+        <p class="accept"><strong>Accept:</strong> Goal 8 closes known deferred security gaps with no mobile behavior regression and no deployment break from missing CORS configuration.</p>
+      </article>
+    </section>
+    <section id="standards-cross-check">
+      <p class="section-number">06</p>
+      <h2>External Standards Cross-Check</h2>
+      <p>The backend plan was checked against official docs, OWASP guidance, Google Play policy, Postgres/SQLAlchemy behavior, and high-quality FastAPI reference projects. The result: the backend goals are right, but Play Store release needs mobile and operations guardrails too.</p>
+      <div class="table-wrap">
+        <table>
+          <tr>
+            <th>Reference standard</th>
+            <th>What it expects</th>
+            <th>CareKosh status</th>
+            <th>Action</th>
+          </tr>
+          <tr>
+            <td>Google Play Data Safety and User Data policy</td>
+            <td>Accurate privacy policy, Data Safety declarations, encryption in transit, data deletion mechanism, third-party SDK disclosure, and correct handling of personal/sensitive data.</td>
+            <td>Backend deletion flow exists but needs Goal 2 safety. Mobile stores tokens in SecureStore and uses HTTPS in production, but Play Store privacy/disclosure work is separate from backend code.</td>
+            <td>Goal 9</td>
+          </tr>
+          <tr>
+            <td>OWASP MASVS</td>
+            <td>Secure storage, secure networking, privacy controls, no sensitive data in logs, minimal platform exposure, and testing of local storage/backup behavior.</td>
+            <td>Tokens use Expo SecureStore, which is good. Domain cache is persisted in AsyncStorage. Production code still has many <code>console.*</code> calls, <code>usesCleartextTraffic: true</code>, and broad Android storage permissions in <code>app.json</code>.</td>
+            <td>Goal 9</td>
+          </tr>
+          <tr>
+            <td>Expo SecureStore and EAS environment variables</td>
+            <td>Use platform secure storage for secrets/tokens and keep build-time environment values separated by development, preview, and production.</td>
+            <td>Access and refresh tokens are stored in SecureStore. EAS already points production to HTTPS. The release gap is hardening Android backup/cache behavior and documenting production env expectations.</td>
+            <td>Goal 9</td>
+          </tr>
+          <tr>
+            <td>OWASP Authentication and Forgot Password</td>
+            <td>Safe password recovery, single-use expiring tokens, TLS, rate limiting, secure password storage, reauthentication for sensitive actions, and careful password policy.</td>
+            <td>CareKosh already has Argon2, JWTs, refresh-token storage, auth rate limits, password reset token hashing, and current-password verification for password change. Goals 2-3 close the dangerous HTML/auth gaps. Password policy is functional but below the latest passphrase-oriented guidance.</td>
+            <td>Goals 2-3 now; password-policy modernization later</td>
+          </tr>
+          <tr>
+            <td>SQLAlchemy versioning and PostgreSQL isolation</td>
+            <td>Concurrency-sensitive updates need explicit versioning, guarded updates, locks, atomic SQL, or retry-aware transactions.</td>
+            <td>Item OCC exists conceptually, but order stock application currently does Python read-modify-write and can race. Goal 5 is the correct fix.</td>
+            <td>Goal 5</td>
+          </tr>
+          <tr>
+            <td>Pydantic SecretStr and Twelve-Factor Config</td>
+            <td>Secrets/config should come from environment and avoid unsafe string representation/logging.</td>
+            <td>Config is environment-driven, but <code>SECRET_KEY</code> and <code>MAIL_PASSWORD</code> are plain strings. Goal 6 converts the simple sensitive fields and intentionally leaves <code>DATABASE_URL</code> for later call-site audit.</td>
+            <td>Goal 6</td>
+          </tr>
+          <tr>
+            <td>GitHub Actions secure use and FastAPI full-stack template</td>
+            <td>Tests/CI should be real gates, secrets should be least-privilege, and production projects should have CI/CD rather than manual trust.</td>
+            <td>CI exists and already runs backend/frontend checks, but mypy and Trivy are advisory. Workflow token permissions and third-party action pinning are not yet hardened.</td>
+            <td>Goal 7 plus small CI supply-chain add-on</td>
+          </tr>
+          <tr>
+            <td>Google SRE books</td>
+            <td>Production readiness includes reliability, monitoring, backups, incident response, and rollback, not only code correctness.</td>
+            <td>The backend goals improve readiness, but backup/restore drills, monitoring, log retention, and release rollback are not code defects and are not covered by Goals 1-8.</td>
+            <td>Goal 10</td>
+          </tr>
+        </table>
+      </div>
+      <h3>Reference projects and books considered</h3>
+      <p>Useful references for the goal agents: FastAPI&#x27;s full-stack template for CI/deployment shape, FastAPI Users for auth-route expectations, Google SRE books for launch operations, Designing Data-Intensive Applications for concurrency/data correctness thinking, API Security in Action for API threat modeling, and Web Application Security for browser/XSS/account-flow hardening.</p>
+    </section>
+    <section id="release-goals">
+      <p class="section-number">07</p>
+      <h2>Additional Release Goals</h2>
+      <p>These are not replacements for Goals 1-8. They are separate, low-regression launch guardrails needed because the app will be installed from Google Play and used by real people.</p>
+      <h3>Decision</h3>
+      <p>Yes, there are two additional important goals outside the backend production guard. They should be done before a serious public Play Store launch or before inviting non-test users at scale. They should not break current functionality because they mostly tighten configuration, logging, docs, and operational readiness.</p>
+      <article class="goal-card" id="goal-9-branch-mobile-playstore-release-hardening">
+        <div class="goal-label">Goal 9</div>
+        <h3>mobile/playstore-release-hardening</h3>
+        <p class="goal-title">Harden the Android release and Play Store privacy posture</p>
+        <p class="objective">Objective: make the installable Android app match Google Play and OWASP mobile expectations without changing the working server-first product flow.</p>
+        <h4>Implementation</h4>
+        <ul class="check-list">
+          <li>Disable cleartext traffic for production Android builds, or introduce an environment-specific debug-only exception so local development can still use <code>http://localhost:8000</code>.</li>
+          <li>Audit Android permissions in <code>app.json</code>; remove legacy storage permissions unless the built APK/AAB proves they are required for image/PDF flows.</li>
+          <li>Gate or remove production <code>console.log</code>, <code>console.warn</code>, and <code>console.error</code> statements that include email, username, URLs, error payloads, or operational details.</li>
+          <li>Review persisted AsyncStorage query cache: document exactly what inventory/order/category data is stored, ensure it is cleared on logout/login, and decide whether backup exclusion/encryption is needed for health-adjacent data.</li>
+          <li>Confirm SecureStore plugin configuration and Android backup behavior for token storage.</li>
+          <li>Create a Play Data Safety and privacy-policy data inventory: account info, email, username, phone, inventory items, photos/images if used, files/PDF export, diagnostics/crash logs if any, and third-party SDK data.</li>
+          <li>Update Play Store release docs with app access instructions for reviewers, privacy policy URL, target audience, permissions, content rating, and account deletion path.</li>
+        </ul>
+        <h4>Compatibility guard</h4>
+        <ul class="check-list">
+          <li>Do not remove features. If a permission is required for image picking, document it and keep it.</li>
+          <li>Keep development builds usable with local HTTP through a dev-only configuration path.</li>
+          <li>Keep production <code>EXPO_PUBLIC_API_URL</code> on HTTPS.</li>
+          <li>Run a preview APK smoke test after permission or cleartext changes.</li>
+        </ul>
+        <p class="accept"><strong>Accept:</strong> production build uses HTTPS-only network behavior, no sensitive production logs remain, permission list is justified and minimal, Play Data Safety inputs are documented, and registration/login/inventory/order/PDF/image flows still work in a preview build.</p>
+      </article>
+      <article class="goal-card" id="goal-10-branch-ops-launch-readiness-runbook">
+        <div class="goal-label">Goal 10</div>
+        <h3>ops/launch-readiness-runbook</h3>
+        <p class="goal-title">Add backup, monitoring, and rollback readiness</p>
+        <p class="objective">Objective: make the production service operable for real users without changing app behavior.</p>
+        <h4>Implementation</h4>
+        <ul class="check-list">
+          <li>Document Neon/Postgres backup schedule, retention, owner, and a restore drill against a disposable database.</li>
+          <li>Add a release checklist for backend deploy, mobile preview build, Play internal testing, smoke account, rollback decision, and post-deploy verification.</li>
+          <li>Add minimal uptime/error monitoring for <code>/live</code>, <code>/health</code>, login, register, inventory list, and order apply flows.</li>
+          <li>Define log redaction and retention rules so health-adjacent user data, tokens, passwords, and DB URLs are not retained in logs.</li>
+          <li>Record incident contacts, Render/Neon/Brevo dashboards, environment variables that must exist, and how to rotate <code>SECRET_KEY</code> with user-impact warning.</li>
+          <li>Run a small load/cold-start smoke test sized for the expected early audience rather than a large enterprise benchmark.</li>
+        </ul>
+        <h4>Compatibility guard</h4>
+        <ul class="check-list">
+          <li>This goal should be docs, monitoring config, and smoke scripts only unless a real defect is discovered.</li>
+          <li>Do not change database schema or app flows.</li>
+          <li>Do not run restore drills against production.</li>
+          <li>Keep free-tier Render cold-start behavior documented honestly.</li>
+        </ul>
+        <p class="accept"><strong>Accept:</strong> there is a tested restore path, a clear launch/rollback checklist, basic monitors exist, logs have a redaction policy, and a solo developer can handle a small production incident without guessing under stress.</p>
+      <h3>Standards deltas that should not become immediate goals</h3>
+      <div class="table-wrap">
+        <table>
+          <tr>
+            <th>Delta</th>
+            <th>Why not immediate</th>
+            <th>Future trigger</th>
+          </tr>
+          <tr>
+            <td>Password policy modernization</td>
+            <td>Current policy works and password hashing is strong. OWASP/NIST-style passphrases, no composition rules, common-password blocking, and a strength meter would improve UX/security but could affect registration behavior.</td>
+            <td>Do when onboarding/password UX is intentionally revisited.</td>
+          </tr>
+          <tr>
+            <td>MFA/passkeys</td>
+            <td>Good future security feature, but too much product and recovery complexity for the current solo-developer launch.</td>
+            <td>Do after real-user traction or if higher-risk account roles are introduced.</td>
+          </tr>
+          <tr>
+            <td>Independent MASA/MASVS review</td>
+            <td>Valuable but paid/external. Not necessary before early launch if Goals 1-10 are complete and the privacy policy is honest.</td>
+            <td>Do before major scale, partnerships, or medical/compliance-heavy positioning.</td>
+          </tr>
+        </table>
+      </div>
+      </article>
+    </section>
+    <section id="parked-items">
+      <p class="section-number">08</p>
+      <h2>Important But Parked</h2>
+      <p>These are not ignored. They are intentionally not part of the critical production guard pack because they are hygiene, maintainability, or operational work rather than proven app-breaking defects.</p>
+      <div class="table-wrap">
+        <table>
+          <tr>
+            <th>Parked item</th>
+            <th>Why not now</th>
+            <th>Future trigger</th>
+          </tr>
+          <tr>
+            <td><code>local_id</code> cleanup and sync enum retirement</td>
+            <td>Requires migration and is pure hygiene after Goal 1. Leaving columns/enums does not affect users.</td>
+            <td>When the app has a migration-focused cleanup sprint.</td>
+          </tr>
+          <tr>
+            <td>Full Jinja2 migration for auth HTML</td>
+            <td>Goals 2 and 3 fix the dangerous pages. Template migration is maintainability work.</td>
+            <td>When auth pages need visual redesign or more HTML screens.</td>
+          </tr>
+          <tr>
+            <td><code>DATABASE_URL</code> as <code>SecretStr</code></td>
+            <td>Needs careful audit of alembic, conftest, and engine creation. The URL is not returned in responses today.</td>
+            <td>After Goal 6 proves the secret accessor pattern for simpler fields.</td>
+          </tr>
+          <tr>
+            <td>Rate-limit/brute-force audit</td>
+            <td>The current pack did not measure attacker-scale login behavior. No defect is claimed yet.</td>
+            <td>Security review after CI/Trivy/mypy baselines are stable.</td>
+          </tr>
+          <tr>
+            <td>Large-scale performance/load engineering</td>
+            <td>Goal 10 includes a small launch smoke test. Full performance architecture is not needed before early users on a solo-developer app.</td>
+            <td>When real usage, monitoring, or paid-user growth shows actual capacity pressure.</td>
+          </tr>
+        </table>
+      </div>
+    </section>
+    <section id="execution-rules">
+      <p class="section-number">09</p>
+      <h2>Execution Rules For Every Goal Agent</h2>
+      <p>These rules are what keep a production-guard branch from accidentally disturbing a working app.</p>
+      <p>Start from fresh, up-to-date <code>main</code>; create only the named branch for that goal.</p>
+      <p>Implement only the goal scope. Do not bundle refactors, UI polish, or mobile changes unless explicitly required.</p>
+      <p>Run backend commands from <code>vitaltrack-backend/</code>.</p>
+      <p>Never run pytest with staging or production <code>DATABASE_URL</code>; the fixture drops tables.</p>
+      <p>Use a disposable Postgres test DB and <code>ENVIRONMENT=testing</code>.</p>
+      <p>Preserve current mobile server-first behavior and API response shapes unless the goal explicitly changes a browser-only HTML route.</p>
+      <p>If a test exposes a new production bug outside the branch scope, stop and report it instead of quietly expanding the branch.</p>
+      <p>Open a PR and merge before beginning the next goal.</p>
+      <h3>Safe test environment</h3>
+      <pre class="env-block"><code>
+export DATABASE_URL=&quot;postgresql+asyncpg://test:test@localhost:5432/test_db&quot;
+export SECRET_KEY=&quot;test-secret-key-for-ci-testing-minimum-32-chars-long&quot;
+export ENVIRONMENT=&quot;testing&quot;
+</code></pre>
+    </section>
+    <section id="acceptance-gate">
+      <p class="section-number">10</p>
+      <h2>Final Acceptance Gate</h2>
+      <p>CareKosh should be considered through the backend guard and launch-readiness pack only when these conditions are true.</p>
+      <h3>Security</h3>
+      <p>Sync routes gone, deletion POST-only, reset token escaped, public email diagnostic restricted, wildcard production CORS removed, default categories protected server-side.</p>
+      <h3>Correctness</h3>
+      <p>Order creation validates owned items, status transitions are enforced, stock application is atomic, and double apply cannot inflate inventory.</p>
+      <h3>Reliability</h3>
+      <p>Health reports DB readiness truthfully, <code>/live</code> supports platform liveness, secrets use safe reprs, and tests cover core item/order flows.</p>
+      <h3>Governance</h3>
+      <p>CI blocks on tests, route floor, coverage gates, and triaged security scans; docs match current server-first backend behavior.</p>
+      <h3>Mobile Release</h3>
+      <p>Production Android build uses HTTPS-only behavior, permissions are minimal and justified, sensitive production logs are removed, and Play Data Safety inputs are documented.</p>
+      <h3>Operations</h3>
+      <p>Backup restore path, launch checklist, monitors, rollback notes, and log-retention/redaction rules are documented and tested away from production data.</p>
+      <h3>Final answer to the central question</h3>
+      <p>Are only the original 7 goals needed? They are enough for every backend defect verified in code. For an honest backend production-grade posture, add Goal 8. For a Play Store app targeting real users, add Goal 9 and Goal 10 as separate release-readiness goals. After Goals 1-10 are green, do not add more engineering goals until staging evidence, Play internal testing, and real operational checks say something specific is still missing.</p>
+      <p class="closing-note">CareKosh Production Guard Final Audit. Created as a handoff textbook for sequential Codex Goal Agent work.</p>
+    </section>
+  </main>
+</body>
+</html>

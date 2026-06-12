@@ -49,7 +49,7 @@ vitaltrack-backend/
 ├── alembic/versions/            # 5 migrations (see below)
 ├── app/
 │   ├── api/v1/
-│   │   ├── auth.py              # 17 route objects incl. account deletion
+│   │   ├── auth.py              # 18 route objects incl. account deletion
 │   │   ├── categories.py
 │   │   ├── items.py             # CRUD + OCC (version field, 409 on conflict)
 │   │   ├── orders.py            # CRUD + POST /{id}/apply
@@ -74,9 +74,9 @@ vitaltrack-backend/
 
 ## API endpoints
 
-Counts: 17 auth, 6 categories, 8 items, 6 orders, 1 activity = 38 total.
+Counts: 18 auth, 6 categories, 8 items, 6 orders, 1 activity = 39 total.
 
-### Auth (`/api/v1/auth`) — 17 endpoints
+### Auth (`/api/v1/auth`) — 18 endpoints
 
 | Method | Path | Rate limit | Notes |
 |---|---|---|---|
@@ -93,7 +93,8 @@ Counts: 17 auth, 6 categories, 8 items, 6 orders, 1 activity = 38 total.
 | GET | `/me` | — | profile |
 | PATCH | `/me` | — | update profile |
 | **DELETE** | `/me` | — | request account deletion; sends confirmation email |
-| GET | `/confirm-delete/{token}` | — | HTML; completes deletion |
+| GET | `/confirm-delete/{token}` | — | HTML confirmation page only |
+| POST | `/confirm-delete/{token}` | — | final account deletion after form submit |
 | POST | `/cancel-delete` | — | abort pending deletion |
 | POST | `/change-password` | — | revokes all refresh tokens |
 | GET | `/email-service-status` | — | diagnostic, no auth |

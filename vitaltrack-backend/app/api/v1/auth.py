@@ -4,6 +4,7 @@ User registration, login, token refresh, logout, email verification, and passwor
 """
 
 import hashlib
+import html
 import logging
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -949,7 +950,7 @@ async def request_account_deletion(
     Step 1: Request account deletion.
 
     Sends a confirmation email with a deletion link valid for 24 hours.
-    Account is NOT deleted until the user clicks the confirmation link.
+    Account is NOT deleted until the user submits the confirmation page.
     """
     if not current_user.email:
         raise HTTPException(
@@ -972,10 +973,13 @@ async def request_account_deletion(
 
     confirm_url = f"{settings.FRONTEND_URL}/confirm-delete/{raw_token}"
 
+    safe_name = html.escape(current_user.name or "there", quote=True)
+    safe_confirm_url = html.escape(confirm_url, quote=True)
+
     html_content = f"""
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #8a6830;">CareKosh — Account Deletion Request</h2>
-        <p>Hi {current_user.name or 'there'},</p>
+        <p>Hi {safe_name},</p>
         <p>We received a request to permanently delete your CareKosh account.</p>
         <p><strong>This will permanently delete:</strong></p>
         <ul>
@@ -985,12 +989,12 @@ async def request_account_deletion(
             <li>All activity logs</li>
         </ul>
         <p><strong>This action cannot be undone.</strong></p>
-        <p>If you want to proceed, click the button below:</p>
+        <p>If you want to proceed, click the button below and review the final confirmation page:</p>
         <p style="text-align: center; margin: 30px 0;">
-            <a href="{confirm_url}"
+            <a href="{safe_confirm_url}"
                style="background-color: #dc2626; color: white; padding: 12px 32px;
                       text-decoration: none; border-radius: 6px; font-weight: bold;">
-                Confirm Account Deletion
+                Open Account Deletion Page
             </a>
         </p>
         <p style="color: #666; font-size: 14px;">
@@ -1015,24 +1019,11 @@ async def request_account_deletion(
     )
 
     return MessageResponse(
-        message="A confirmation email has been sent. Please check your inbox and click the link to confirm account deletion. The link expires in 24 hours."
+        message="A confirmation email has been sent. Please check your inbox and open the link to review and confirm account deletion. The link expires in 24 hours."
     )
 
 
-@router.get(
-    "/confirm-delete/{token}",
-    response_class=HTMLResponse,
-    summary="Confirm account deletion via email link",
-    include_in_schema=False,
-)
-async def confirm_account_deletion(
-    token: str,
-    db: DB,
-) -> HTMLResponse:
-    """
-    Step 2: User clicks the email link to confirm deletion.
-    Verifies the token, deletes the account, returns an HTML confirmation page.
-    """
+async def _get_user_for_deletion_token(token: str, db: DB) -> User | None:
     hashed_token = hashlib.sha256(token.encode()).hexdigest()
 
     result = await db.execute(
@@ -1041,24 +1032,116 @@ async def confirm_account_deletion(
             User.deletion_token_expires > datetime.now(timezone.utc),
         )
     )
-    user = result.scalar_one_or_none()
+    return result.scalar_one_or_none()
+
+
+def _invalid_deletion_link_response() -> HTMLResponse:
+    return HTMLResponse(
+        content="""
+        <!DOCTYPE html>
+        <html>
+        <head><title>CareKosh</title></head>
+        <body style="font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; text-align: center;">
+            <h1 style="color: #dc2626;">Invalid or Expired Link</h1>
+            <p>This deletion link has expired or has already been used.</p>
+            <p>If you still want to delete your account, please request deletion again from the CareKosh app.</p>
+            <p style="color: #999; margin-top: 40px;">CareKosh — Home ICU Inventory Management</p>
+        </body>
+        </html>
+        """,
+        status_code=400,
+    )
+
+
+def _deletion_confirmation_response(user: User) -> HTMLResponse:
+    account_label = user.email or user.username or user.name or "this account"
+    safe_account_label = html.escape(account_label, quote=True)
+
+    return HTMLResponse(
+        content=f"""
+        <!DOCTYPE html>
+        <html>
+        <head><title>Confirm Account Deletion — CareKosh</title></head>
+        <body style="font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; text-align: center;">
+            <h1 style="color: #dc2626;">Confirm Account Deletion</h1>
+            <p>Your CareKosh account (<strong>{safe_account_label}</strong>) has not been deleted yet.</p>
+            <p>Submitting this form will permanently delete your profile, inventory, orders, and activity history.</p>
+            <form method="post" action="" style="margin: 30px 0;">
+                <button type="submit"
+                        style="background-color: #dc2626; color: white; padding: 12px 32px;
+                               border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                    Permanently Delete My Account
+                </button>
+            </form>
+            <p style="color: #666; font-size: 14px;">If you did not request this, close this page and your account will remain active.</p>
+            <p style="color: #999; margin-top: 40px;">CareKosh — Home ICU Inventory Management</p>
+        </body>
+        </html>
+        """,
+        status_code=200,
+    )
+
+
+def _deletion_completed_response(user_email: str) -> HTMLResponse:
+    safe_user_email = html.escape(user_email, quote=True)
+
+    return HTMLResponse(
+        content=f"""
+        <!DOCTYPE html>
+        <html>
+        <head><title>Account Deleted — CareKosh</title></head>
+        <body style="font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; text-align: center;">
+            <h1 style="color: #8a6830;">Account Deleted</h1>
+            <p>Your CareKosh account (<strong>{safe_user_email}</strong>) and all associated data have been permanently deleted.</p>
+            <p>We're sorry to see you go. If you ever need to track home ICU supplies again, you can create a new account in the app.</p>
+            <p style="color: #999; margin-top: 40px;">CareKosh — Home ICU Inventory Management</p>
+        </body>
+        </html>
+        """,
+        status_code=200,
+    )
+
+
+@router.get(
+    "/confirm-delete/{token}",
+    response_class=HTMLResponse,
+    summary="Show account deletion confirmation page",
+    include_in_schema=False,
+)
+async def show_account_deletion_confirmation(
+    token: str,
+    db: DB,
+) -> HTMLResponse:
+    """
+    Step 2a: User clicks the email link.
+    Verifies the token and returns a confirmation page only.
+    """
+    user = await _get_user_for_deletion_token(token, db)
 
     if not user:
-        return HTMLResponse(
-            content="""
-            <!DOCTYPE html>
-            <html>
-            <head><title>CareKosh</title></head>
-            <body style="font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; text-align: center;">
-                <h1 style="color: #dc2626;">Invalid or Expired Link</h1>
-                <p>This deletion link has expired or has already been used.</p>
-                <p>If you still want to delete your account, please request deletion again from the CareKosh app.</p>
-                <p style="color: #999; margin-top: 40px;">CareKosh — Home ICU Inventory Management</p>
-            </body>
-            </html>
-            """,
-            status_code=400,
-        )
+        return _invalid_deletion_link_response()
+
+    return _deletion_confirmation_response(user)
+
+
+@router.post(
+    "/confirm-delete/{token}",
+    response_class=HTMLResponse,
+    summary="Confirm account deletion via email form",
+    include_in_schema=False,
+)
+async def confirm_account_deletion(
+    token: str,
+    db: DB,
+) -> HTMLResponse:
+    """
+    Step 2b: User submits the confirmation form.
+    Verifies the token, deletes the account, returns an HTML completion page.
+    """
+    user = await _get_user_for_deletion_token(token, db)
+
+    if not user:
+        return _invalid_deletion_link_response()
 
     user_id = str(user.id)
     user_email = user.email or "no-email"
@@ -1075,21 +1158,7 @@ async def confirm_account_deletion(
         f"Account deletion COMPLETED: user_id={user_id} email={user_email}"
     )
 
-    return HTMLResponse(
-        content=f"""
-        <!DOCTYPE html>
-        <html>
-        <head><title>Account Deleted — CareKosh</title></head>
-        <body style="font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; text-align: center;">
-            <h1 style="color: #8a6830;">Account Deleted</h1>
-            <p>Your CareKosh account (<strong>{user_email}</strong>) and all associated data have been permanently deleted.</p>
-            <p>We're sorry to see you go. If you ever need to track home ICU supplies again, you can create a new account in the app.</p>
-            <p style="color: #999; margin-top: 40px;">CareKosh — Home ICU Inventory Management</p>
-        </body>
-        </html>
-        """,
-        status_code=200,
-    )
+    return _deletion_completed_response(user_email)
 
 
 @router.post(
