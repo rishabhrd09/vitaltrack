@@ -1,8 +1,11 @@
 """Domain tests for order endpoints."""
 
+import asyncio
+
 import pytest
 from httpx import AsyncClient
 
+from app.api.v1 import orders as orders_api
 from tests.conftest import (
     create_category,
     create_item,
@@ -170,6 +173,65 @@ async def test_orders_are_scoped_to_authenticated_user(client: AsyncClient):
     assert owner_get.status_code == 200
 
 
+async def test_order_create_rejects_missing_and_foreign_item_ids_without_partial_create(
+    client: AsyncClient,
+):
+    _, owner_headers = await register_and_auth(
+        client,
+        name="Order Validation Owner",
+        email="order-validation-owner@test.com",
+    )
+    _, stranger_headers = await register_and_auth(
+        client,
+        name="Order Validation Stranger",
+        email="order-validation-stranger@test.com",
+    )
+    owner_item = await _inventory_item(
+        client,
+        owner_headers,
+        category_name="Validation Owner Items",
+        item_name="Owned Validation Item",
+    )
+    stranger_item = await _inventory_item(
+        client,
+        stranger_headers,
+        category_name="Validation Stranger Items",
+        item_name="Foreign Validation Item",
+    )
+
+    missing_item_resp = await client.post(
+        "/api/v1/orders",
+        headers=owner_headers,
+        json={
+            "orderId": "CLIENT-SIDE-ID",
+            "items": [
+                order_item_payload(
+                    owner_item,
+                    quantity=1,
+                    itemId="00000000-0000-0000-0000-000000000000",
+                )
+            ],
+        },
+    )
+    assert missing_item_resp.status_code == 400
+    assert "invalid inventory item" in missing_item_resp.json()["detail"].lower()
+
+    foreign_item_resp = await client.post(
+        "/api/v1/orders",
+        headers=owner_headers,
+        json={
+            "orderId": "CLIENT-SIDE-ID",
+            "items": [order_item_payload(stranger_item, quantity=1)],
+        },
+    )
+    assert foreign_item_resp.status_code == 400
+    assert "invalid inventory item" in foreign_item_resp.json()["detail"].lower()
+
+    list_resp = await client.get("/api/v1/orders", headers=owner_headers)
+    assert list_resp.status_code == 200
+    assert list_resp.json()["total"] == 0
+
+
 async def test_order_lifecycle_apply_updates_stock_and_version(
     client: AsyncClient,
 ):
@@ -212,6 +274,176 @@ async def test_order_lifecycle_apply_updates_stock_and_version(
     refreshed_item = item_resp.json()
     assert refreshed_item["quantity"] == 9
     assert refreshed_item["version"] == item["version"] + 1
+
+
+async def test_order_status_transitions_preserve_mobile_flow_and_reject_illegal(
+    client: AsyncClient,
+):
+    _, headers = await register_and_auth(
+        client,
+        name="Transition Owner",
+        email="transition-owner@test.com",
+    )
+    item = await _inventory_item(
+        client,
+        headers,
+        item_name="Transition Item",
+    )
+
+    mobile_order = await create_order(
+        client,
+        headers,
+        items=[order_item_payload(item, quantity=1)],
+    )
+
+    same_pending = await _set_order_status(
+        client,
+        headers,
+        mobile_order["id"],
+        "pending",
+    )
+    assert same_pending["status"] == "pending"
+    assert same_pending["receivedAt"] is None
+
+    direct_stock_update = await client.patch(
+        f"/api/v1/orders/{mobile_order['id']}/status",
+        headers=headers,
+        json={"status": "stock_updated"},
+    )
+    assert direct_stock_update.status_code == 400
+
+    mobile_received = await _set_order_status(
+        client,
+        headers,
+        mobile_order["id"],
+        "received",
+    )
+    assert mobile_received["status"] == "received"
+    assert mobile_received["receivedAt"] is not None
+
+    same_received = await _set_order_status(
+        client,
+        headers,
+        mobile_order["id"],
+        "received",
+    )
+    assert same_received["status"] == "received"
+
+    received_to_stock_updated = await client.patch(
+        f"/api/v1/orders/{mobile_order['id']}/status",
+        headers=headers,
+        json={"status": "stock_updated"},
+    )
+    assert received_to_stock_updated.status_code == 400
+
+    backward_to_ordered = await client.patch(
+        f"/api/v1/orders/{mobile_order['id']}/status",
+        headers=headers,
+        json={"status": "ordered"},
+    )
+    assert backward_to_ordered.status_code == 400
+
+    partial_order = await create_order(
+        client,
+        headers,
+        items=[order_item_payload(item, quantity=1)],
+    )
+    await _set_order_status(client, headers, partial_order["id"], "ordered")
+    partially_received = await _set_order_status(
+        client,
+        headers,
+        partial_order["id"],
+        "partially_received",
+    )
+    assert partially_received["status"] == "partially_received"
+    partial_to_received = await _set_order_status(
+        client,
+        headers,
+        partial_order["id"],
+        "received",
+    )
+    assert partial_to_received["status"] == "received"
+
+    declined_order = await create_order(
+        client,
+        headers,
+        items=[order_item_payload(item, quantity=1)],
+    )
+    await _set_order_status(client, headers, declined_order["id"], "declined")
+    declined_to_ordered = await client.patch(
+        f"/api/v1/orders/{declined_order['id']}/status",
+        headers=headers,
+        json={"status": "ordered"},
+    )
+    assert declined_to_ordered.status_code == 400
+
+
+async def test_order_apply_concurrent_requests_update_stock_once(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    _, headers = await register_and_auth(
+        client,
+        name="Concurrent Apply Owner",
+        email="concurrent-apply-owner@test.com",
+    )
+    item = await _inventory_item(
+        client,
+        headers,
+        item_name="Concurrent Feeding Bags",
+        quantity=5,
+    )
+    order = await create_order(
+        client,
+        headers,
+        items=[order_item_payload(item, quantity=4)],
+    )
+    await _set_order_status(client, headers, order["id"], "received")
+
+    original_log_audit = orders_api.log_audit
+    audit_call_count = 0
+    audit_gate = asyncio.Event()
+    audit_lock = asyncio.Lock()
+
+    async def delayed_log_audit(*args, **kwargs):
+        nonlocal audit_call_count
+        async with audit_lock:
+            audit_call_count += 1
+            if audit_call_count == 2:
+                audit_gate.set()
+
+        try:
+            await asyncio.wait_for(audit_gate.wait(), timeout=0.2)
+        except TimeoutError:
+            pass
+
+        return await original_log_audit(*args, **kwargs)
+
+    monkeypatch.setattr(orders_api, "log_audit", delayed_log_audit)
+
+    responses = await asyncio.gather(
+        client.post(f"/api/v1/orders/{order['id']}/apply", headers=headers),
+        client.post(f"/api/v1/orders/{order['id']}/apply", headers=headers),
+    )
+
+    status_codes = sorted(resp.status_code for resp in responses)
+    assert status_codes == [200, 400], [resp.text for resp in responses]
+
+    item_resp = await client.get(f"/api/v1/items/{item['id']}", headers=headers)
+    assert item_resp.status_code == 200
+    refreshed_item = item_resp.json()
+    assert refreshed_item["quantity"] == 9
+    assert refreshed_item["version"] == item["version"] + 1
+
+    activity_resp = await client.get("/api/v1/activities", headers=headers)
+    assert activity_resp.status_code == 200
+    apply_activities = [
+        activity
+        for activity in activity_resp.json()["activities"]
+        if activity["action"] == "order_applied"
+        and activity["orderId"] == order["orderId"]
+    ]
+    assert len(apply_activities) == 1
 
 
 async def test_order_apply_rejects_pending_and_second_apply_is_noop(
