@@ -214,6 +214,12 @@ It must be treated as data. Escaping it into an HTML attribute prevents crafted
 values containing quotes or `</script>` from breaking out of the page and
 executing script, while keeping the public POST contract unchanged.
 
+For users, the normal and malicious-token test URLs should look the same: both
+render the reset-password form. The security difference is internal to the HTML
+source and browser parsing. A malicious-looking token must not show an alert,
+inject a second script tag, break the form, or appear as `token: '<raw token>'`
+inside inline JavaScript.
+
 ### Security features
 
 - **Argon2** password hashing via `passlib[argon2]` (bcrypt fallback for legacy hashes)

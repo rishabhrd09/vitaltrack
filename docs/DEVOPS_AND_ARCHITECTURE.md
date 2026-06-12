@@ -504,6 +504,12 @@ preventing reflected-token XSS. A crafted token such as
 `abc'");</script><script>alert(1)</script>` should render as escaped HTML data,
 not as executable script.
 
+A successful manual probe is intentionally boring: a normal token URL and a
+malicious-token URL both show the same CareKosh reset form. The user should not
+see a popup, broken layout, or different password-reset flow. The difference is
+only in the rendered source: the malicious characters are escaped as data in the
+DOM attribute and are never placed raw inside script code.
+
 ---
 
 ## 9. Quick Reference

@@ -666,6 +666,13 @@ quotes or `</script>` could break out of `token: '<raw token>'` JavaScript
 string context. The API contract, token hashing, expiry, password rules, email
 link format, and mobile behavior stay the same.
 
+Manual verification should confirm that both a normal URL and a crafted-token
+URL render the same reset form. The expected user-visible behavior is no
+difference: no alert popup, no broken page, and no changed mobile flow. The
+security effect is visible only by inspecting the HTML/source or regression
+tests, where the crafted token is escaped in `data-token` and absent from raw
+JavaScript string interpolation.
+
 ---
 
 ## Testing Checklist
