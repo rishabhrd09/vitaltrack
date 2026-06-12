@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Optional, Union
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import DB, CurrentUser
@@ -23,6 +23,26 @@ from app.services.audit import log_audit
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
+
+LEGAL_STATUS_TRANSITIONS = {
+    OrderStatus.PENDING: frozenset(
+        {
+            OrderStatus.ORDERED,
+            OrderStatus.RECEIVED,
+            OrderStatus.DECLINED,
+        }
+    ),
+    OrderStatus.ORDERED: frozenset(
+        {
+            OrderStatus.PARTIALLY_RECEIVED,
+            OrderStatus.RECEIVED,
+        }
+    ),
+    OrderStatus.PARTIALLY_RECEIVED: frozenset({OrderStatus.RECEIVED}),
+    OrderStatus.RECEIVED: frozenset(),
+    OrderStatus.DECLINED: frozenset(),
+    OrderStatus.STOCK_UPDATED: frozenset(),
+}
 
 
 def generate_order_id(existing_count: int) -> str:
@@ -66,6 +86,58 @@ def _status_text(status_value: Optional[Union[str, OrderStatus]]) -> str:
     except ValueError:
         member = OrderStatus.__members__.get(raw_status.upper())
         return member.name.lower() if member else raw_status
+
+
+def _validate_status_transition(
+    old_status: OrderStatus,
+    new_status: OrderStatus,
+) -> None:
+    """Reject illegal order workflow changes while allowing retry-safe no-ops."""
+    if old_status == new_status:
+        return
+
+    if new_status == OrderStatus.STOCK_UPDATED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order stock updates must be applied through the apply endpoint",
+        )
+
+    if new_status not in LEGAL_STATUS_TRANSITIONS.get(old_status, frozenset()):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Illegal order status transition: "
+                f"{_status_text(old_status)} -> {_status_text(new_status)}"
+            ),
+        )
+
+
+async def _validate_order_items_belong_to_user(
+    db: DB,
+    user_id: str,
+    items: list,
+) -> None:
+    """Ensure an order cannot reference missing or another user's inventory."""
+    if not items:
+        return
+
+    requested_item_ids = {item.item_id for item in items}
+    result = await db.execute(
+        select(Item.id).where(
+            Item.user_id == user_id,
+            Item.id.in_(requested_item_ids),
+        )
+    )
+    owned_item_ids = set(result.scalars().all())
+    invalid_item_ids = [
+        item_id for item_id in requested_item_ids if item_id not in owned_item_ids
+    ]
+
+    if invalid_item_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order contains invalid inventory item IDs",
+        )
 
 
 # =============================================================================
@@ -174,6 +246,8 @@ async def create_order(
     - **items**: List of items to order
     - **notes**: Optional notes
     """
+    await _validate_order_items_belong_to_user(db, current_user.id, data.items)
+
     # Count existing orders today globally for ID generation
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     count_result = await db.execute(
@@ -270,9 +344,10 @@ async def update_order_status(
     Update the status of an order.
     
     Valid status transitions:
-    - pending → ordered, declined
+    - pending → ordered, received, declined
     - ordered → received, partially_received
-    - received → stock_updated
+    - partially_received → received
+    - stock_updated is only reached through POST /orders/{id}/apply
     """
     result = await db.execute(
         select(Order).where(
@@ -289,8 +364,12 @@ async def update_order_status(
         )
     
     now = datetime.now(timezone.utc)
-    old_status = order.status
+    old_status = _normalize_order_status(order.status)
     new_status = _normalize_order_status(data.status)
+    _validate_status_transition(old_status, new_status)
+
+    if old_status == new_status:
+        return OrderResponse.model_validate(order)
     
     # Update status and timestamp
     order.status = new_status
@@ -299,8 +378,6 @@ async def update_order_status(
         order.ordered_at = now
     elif new_status == OrderStatus.RECEIVED:
         order.received_at = now
-    elif new_status == OrderStatus.STOCK_UPDATED:
-        order.applied_at = now
     elif new_status == OrderStatus.DECLINED:
         order.declined_at = now
     
@@ -311,7 +388,6 @@ async def update_order_status(
     action_type = {
         OrderStatus.RECEIVED: ActivityActionType.ORDER_RECEIVED,
         OrderStatus.DECLINED: ActivityActionType.ORDER_DECLINED,
-        OrderStatus.STOCK_UPDATED: ActivityActionType.ORDER_APPLIED,
     }.get(new_status, ActivityActionType.ITEM_UPDATE)
     
     activity = ActivityLog(
@@ -375,23 +451,20 @@ async def apply_order_to_stock(
             detail="Order has no items to apply",
         )
     
-    # Resolve all inventory items before mutating so missing items don't cause
-    # a partial stock application.
-    items_to_update = []
+    # Resolve all inventory items before claiming so missing items don't change
+    # order state or cause a partial stock application.
     missing_items = []
     for order_item in order.items:
         item_result = await db.execute(
-            select(Item).where(
+            select(Item.id).where(
                 Item.id == order_item.item_id,
                 Item.user_id == current_user.id,
             )
         )
-        item = item_result.scalar_one_or_none()
+        item_id = item_result.scalar_one_or_none()
 
-        if not item:
+        if not item_id:
             missing_items.append(order_item.name)
-        else:
-            items_to_update.append((order_item, item))
 
     if missing_items:
         missing_preview = ", ".join(missing_items[:3])
@@ -402,28 +475,70 @@ async def apply_order_to_stock(
             detail=f"Cannot apply order because inventory items are missing: {missing_preview}",
         )
 
+    now = datetime.now(timezone.utc)
+    claim_result = await db.execute(
+        update(Order)
+        .where(
+            Order.id == order.id,
+            Order.user_id == current_user.id,
+            Order.status == OrderStatus.RECEIVED,
+        )
+        .values(
+            status=OrderStatus.STOCK_UPDATED,
+            applied_at=now,
+        )
+        .returning(Order.id)
+    )
+    claimed_order_id = claim_result.scalar_one_or_none()
+
+    if not claimed_order_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order must be in 'received' status to apply to stock",
+        )
+
     # Update stock for each item in one transaction.
     updated_items = []
-    for order_item, item in items_to_update:
-        old_qty = item.quantity
-        item.quantity += order_item.quantity
-        item.version += 1
-        updated_items.append({"id": item.id, "name": item.name, "old_qty": old_qty, "new_qty": item.quantity})
+    for order_item in order.items:
+        item_update_result = await db.execute(
+            update(Item)
+            .where(
+                Item.id == order_item.item_id,
+                Item.user_id == current_user.id,
+            )
+            .values(
+                quantity=Item.quantity + order_item.quantity,
+                version=Item.version + 1,
+            )
+            .returning(Item.id, Item.name, Item.quantity)
+        )
+        updated_item = item_update_result.one_or_none()
+
+        if not updated_item:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Cannot apply order because inventory items are missing: "
+                    f"{order_item.name}"
+                ),
+            )
+
+        item_id, item_name, new_qty = updated_item
+        old_qty = new_qty - order_item.quantity
+        updated_items.append(
+            {"id": item_id, "name": item_name, "old_qty": old_qty, "new_qty": new_qty}
+        )
 
         # Audit each stock update
         await log_audit(
             db,
             user_id=current_user.id,
             entity_type="item",
-            entity_id=item.id,
+            entity_id=item_id,
             action="stock_update",
             old_values={"quantity": old_qty},
-            new_values={"quantity": item.quantity, "source": f"order:{order.order_id}"},
+            new_values={"quantity": new_qty, "source": f"order:{order.order_id}"},
         )
-
-    # Update order status
-    order.status = OrderStatus.STOCK_UPDATED
-    order.applied_at = datetime.now(timezone.utc)
 
     # Log activity
     activity = ActivityLog(
