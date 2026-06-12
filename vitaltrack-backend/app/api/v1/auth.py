@@ -542,6 +542,8 @@ async def reset_password_html(
     Users see this when they click the link in the reset email.
     The form submits to the POST /reset-password endpoint via JavaScript.
     """
+    safe_token = html.escape(token, quote=True)
+
     return HTMLResponse(content=f"""
     <!DOCTYPE html>
     <html>
@@ -601,7 +603,7 @@ async def reset_password_html(
                 <h1>CareKosh</h1>
                 <p>Reset Your Password</p>
             </div>
-            <div id="form-container">
+            <div id="form-container" data-token="{safe_token}">
                 <div class="form-group">
                     <label>New Password</label>
                     <input type="password" id="password" placeholder="Enter new password" />
@@ -621,6 +623,7 @@ async def reset_password_html(
                 const confirm = document.getElementById('confirm').value;
                 const btn = document.getElementById('submit-btn');
                 const result = document.getElementById('result');
+                const token = document.getElementById('form-container').dataset.token;
                 if (!password || password.length < 8) {{
                     result.className = 'message error';
                     result.textContent = 'Password must be at least 8 characters.';
@@ -639,7 +642,7 @@ async def reset_password_html(
                     const response = await fetch(window.location.pathname, {{
                         method: 'POST',
                         headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{ token: '{token}', new_password: password }})
+                        body: JSON.stringify({{ token, new_password: password }})
                     }});
                     const data = await response.json();
                     if (response.ok) {{

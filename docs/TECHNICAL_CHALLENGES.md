@@ -647,6 +647,25 @@ reset-password     5/hour
 ### Account deletion (PR #13)
 Hash-on-server + 24 h expiry + email out-of-band confirmation + DB cascade. Plaintext token exists only in the email.
 
+### Password reset token rendering
+Password reset tokens are high-entropy bearer-style secrets sent through an
+email link. The backend stores only `SHA-256(raw_token)` plus an expiry, but
+the raw token still passes through the browser URL and reset form. That means
+the rendered reset page must treat the token as untrusted data, not as code.
+
+The reset form now escapes the query token with `html.escape(token, quote=True)`
+and places it in a DOM `data-token` attribute. Inline JavaScript reads the value
+from `dataset.token` and submits the unchanged POST body:
+
+```js
+JSON.stringify({ token, new_password: password })
+```
+
+This closes the reflected-token XSS class where a crafted token containing
+quotes or `</script>` could break out of `token: '<raw token>'` JavaScript
+string context. The API contract, token hashing, expiry, password rules, email
+link format, and mobile behavior stay the same.
+
 ---
 
 ## Testing Checklist

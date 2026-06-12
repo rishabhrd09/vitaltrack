@@ -470,10 +470,39 @@ pending ──▶ ordered ──▶ received ──▶ stock_updated
 | Rate limiting | 3 registrations/hr, 5 logins/min, 3 forgot-password/hr, 3 resend-verify/hr, 5 reset/hr |
 | Enumeration resistance | Uniform response from `/auth/resend-verification` (PR #12) |
 | Destructive actions | Two-step, email-confirmed, 24 h TTL — account deletion (PR #13), password reset |
+| Reset-page rendering | Password reset URL token is escaped into a DOM `data-token` attribute; inline JavaScript reads it from the DOM instead of receiving raw query-string interpolation |
 | Input validation | Pydantic v2 on every endpoint |
 | SQL injection | Parameterised via SQLAlchemy |
 | Secrets | Render dashboard env vars; repo secrets in GitHub Actions only |
 | Config guardrails | Production startup refuses weak `SECRET_KEY`, empty `FRONTEND_URL`, `CORS_ORIGINS=*` (PR #12) |
+
+### Password reset safety model
+
+Password reset has two separate safety boundaries:
+
+1. **Server-side token safety.** The email contains the raw reset token, but the
+   database stores only `SHA-256(raw_token)` with an expiry. When the user
+   submits a new password, the backend hashes the submitted token, compares it
+   with the stored hash, clears the reset token on success, and revokes every
+   refresh token for that user.
+
+2. **Browser rendering safety.** The reset form is backend-rendered HTML, so the
+   query-string token must not be inserted as raw JavaScript source. The safe
+   pattern is:
+
+```html
+<div id="form-container" data-token="escaped token here">
+```
+
+```js
+const token = document.getElementById('form-container').dataset.token;
+body: JSON.stringify({ token, new_password: password });
+```
+
+This preserves the existing `POST /auth/reset-password` request body while
+preventing reflected-token XSS. A crafted token such as
+`abc'");</script><script>alert(1)</script>` should render as escaped HTML data,
+not as executable script.
 
 ---
 
