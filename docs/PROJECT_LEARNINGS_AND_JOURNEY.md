@@ -130,7 +130,7 @@ ROUTE GUARD
 - **Email is now required at registration** — username-only signup removed.
 - `/resend-verification` returns a uniform response regardless of account state (no user enumeration).
 - Password change and password reset revoke **all** refresh tokens.
-- Config validators refuse production startup if `SECRET_KEY` is the placeholder or `FRONTEND_URL` is empty. `CORS_ORIGINS=["*"]` is still accepted today; CORS tightening is deferred until real browser/admin origins are known.
+- Config validators refuse production startup if `SECRET_KEY` is the placeholder or `FRONTEND_URL` is empty. `CORS_ORIGINS=["*"]` is still accepted today; CORS tightening remains deferred until real browser/admin origins are known.
 
 ### Key lesson
 
@@ -194,7 +194,7 @@ The June production-guard sequence tightened the backend without changing the mo
 | 6. Truthful health + secret types | `/health` became DB-backed readiness, `/live` became process-only liveness, Render uses `/live`, and simple secrets use `SecretStr`. | Readiness and liveness answer different operational questions; secret values should only be unwrapped at integration boundaries. |
 | 7. Blocking backend gates | Ruff, pytest, exact `/api/v1` route count 39, and item/order coverage gates block CI; mypy and Trivy stay advisory until known baselines are fixed. | CI must describe reality. A red baseline should be isolated and documented, not hidden behind fake green claims. |
 
-Deferred on purpose: Goal 8 still needs real production browser/admin origins before CORS can be tightened. The public email diagnostic and default-category backend protection also belong there.
+Deferred on purpose: CORS still needs real production browser/admin origins before it can be tightened. Goal 8 locked down the email diagnostic behind authentication, masked raw provider errors, and added backend default-category deletion protection.
 
 ---
 

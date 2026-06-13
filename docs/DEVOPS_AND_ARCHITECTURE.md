@@ -422,7 +422,7 @@ pending ──▶ ordered ──▶ received ──▶ stock_updated
 | `CHECK (quantity >= 0)` | Inventory cannot go negative — enforced in DB, not just app code |
 | `audit_log` table | Forensic record for sensitive mutations (delete, apply, reset) |
 | Per-user filtering on every query | Defence in depth; even a leaked token can't read another tenant |
-| `is_default` on categories | "Default" categories are client-protected; backend has no enforcement |
+| `is_default` on categories | Backend rejects deletion of default categories; custom category deletion remains user-scoped |
 | Separate DBs per environment | Test data cannot pollute production (PR #2) |
 
 ---

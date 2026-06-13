@@ -517,7 +517,7 @@ Added a `version` column to `items` (migration `20260406_add_version_audit_log_q
 ### What changed
 - **Config validators** — `SECRET_KEY` must be ≥32 chars; in production rejects anything starting with `"CHANGE-THIS"`.
 - **FRONTEND_URL validator** — required in production, otherwise emails contain broken links.
-- **CORS_ORIGINS parser** — accepts JSON or comma-separated values. There is no production wildcard rejection today; that is deferred until real browser/admin origins are known.
+- **CORS_ORIGINS parser** — accepts JSON or comma-separated values. There is no production wildcard rejection today; that remains deferred until real browser/admin origins are known.
 - **Session revocation on password change** — `change_password` now revokes all refresh tokens, same as `reset_password`. The response message tells the user their other devices will need to re-login.
 - **Email required at registration** — `UserRegister.email` is no longer optional. Username-only accounts have no recovery path and are a support liability; Play Store requires account recovery. Username remains optional.
 - **Enumeration-safe resend** — `POST /auth/resend-verification` returns identical text whether the email exists, is already verified, or doesn't exist.

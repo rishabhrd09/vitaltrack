@@ -900,10 +900,65 @@ class TestHealthDiagnostics:
         assert body["database"] == "not_checked"
 
     @pytest.mark.asyncio
-    async def test_email_service_status(self, client: AsyncClient):
+    async def test_email_service_status_requires_auth(self, client: AsyncClient):
         resp = await client.get("/api/v1/auth/email-service-status")
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_email_service_status_allows_authenticated_user(
+        self,
+        client: AsyncClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        user = await register_user(
+            client,
+            name="Email Diagnostic User",
+            email="email-diagnostic@test.com",
+        )
+
+        async def working_email_service() -> tuple[bool, str]:
+            return True, ""
+
+        monkeypatch.setattr(auth_routes, "is_email_configured", lambda: True)
+        monkeypatch.setattr(auth_routes, "test_email_service", working_email_service)
+
+        resp = await client.get(
+            "/api/v1/auth/email-service-status",
+            headers=auth_header(user["access_token"]),
+        )
+
         assert resp.status_code == 200
-        assert "message" in resp.json()
+        assert resp.json()["message"] == "Email service is configured and reachable."
+
+    @pytest.mark.asyncio
+    async def test_email_service_status_masks_provider_errors(
+        self,
+        client: AsyncClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        user = await register_user(
+            client,
+            name="Email Failure User",
+            email="email-failure@test.com",
+        )
+
+        async def failed_email_service() -> tuple[bool, str]:
+            return False, "Brevo API rejected secret-api-key for noreply@carekosh.com"
+
+        monkeypatch.setattr(auth_routes, "is_email_configured", lambda: True)
+        monkeypatch.setattr(auth_routes, "test_email_service", failed_email_service)
+
+        resp = await client.get(
+            "/api/v1/auth/email-service-status",
+            headers=auth_header(user["access_token"]),
+        )
+
+        assert resp.status_code == 200
+        message = resp.json()["message"]
+        assert message == "Email service is unavailable. Check server logs."
+        assert "Brevo" not in message
+        assert "secret-api-key" not in message
+        assert "noreply@carekosh.com" not in message
 
     @pytest.mark.asyncio
     async def test_root_endpoint(self, client: AsyncClient):

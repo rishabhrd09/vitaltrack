@@ -92,7 +92,7 @@ All under `/api/v1/auth` (see `vitaltrack-backend/app/api/v1/auth.py`).
 | `GET` | `/verify-email?token=...` | Verify via query param — **this is what emails actually link to** (`app/utils/email.py` emits `{FRONTEND_URL}/verify-email?token=...`) | none | — |
 | `GET` | `/verify-email/{token}` | Verify via path param (returns JSON; alternate API-style entry point, not used in outgoing email links) | none | — |
 | `POST` | `/resend-verification` | Request new verification email | none | 3/hour |
-| `GET` | `/email-service-status` | Is Brevo configured? | none | — |
+| `GET` | `/email-service-status` | Authenticated email-service diagnostic with raw provider errors masked | bearer token | — |
 
 **Not** `POST /verify-email` — the browser clicks a link in an email, so the endpoint must be `GET`.
 
@@ -153,7 +153,7 @@ Hardened in production only:
 
 - `SECRET_KEY` must be ≥32 chars and must not start with `"CHANGE-THIS"` when `ENVIRONMENT=production`. (`reject_weak_secret_in_production` validator.)
 - `FRONTEND_URL` must not be empty when `ENVIRONMENT=production`. (`require_frontend_url_in_production` validator.)
-- `CORS_ORIGINS` is parsed by `parse_cors_origins` (accepts JSON or comma-separated). **There is no production-rejection validator for `"*"` today** — `render.yaml` actually ships `CORS_ORIGINS: '["*"]'` to production. Tighten manually in the Render dashboard if your threat model requires it.
+- `CORS_ORIGINS` is parsed by `parse_cors_origins` (accepts JSON or comma-separated). **There is no production-rejection validator for `"*"` today** — `render.yaml` actually ships `CORS_ORIGINS: '["*"]'` to production. Tightening remains blocked until real browser/admin origins are known.
 
 Startup fails fast on the two validators above rather than send broken verification links or run with a default key.
 
@@ -291,11 +291,11 @@ REQUIRE_EMAIL_VERIFICATION=true
 FRONTEND_URL=https://vitaltrack-api.onrender.com/api/v1/auth
 
 CORS_ORIGINS=["*"]   # actual current value in render.yaml — not enforced as
-                     # "must be domain-list" by any validator. Tighten in the
-                     # Render dashboard if your threat model requires it.
+                     # "must be domain-list" by any validator. Tighten only
+                     # after real browser/admin origins are known.
 ```
 
-The production config validators (PR #12) will **refuse to start** if `SECRET_KEY` is weak (or starts with `CHANGE-THIS`) or `FRONTEND_URL` is empty. There is no validator that rejects `CORS_ORIGINS=["*"]` in production today.
+The production config validators (PR #12) will **refuse to start** if `SECRET_KEY` is weak (or starts with `CHANGE-THIS`) or `FRONTEND_URL` is empty. There is no validator that rejects `CORS_ORIGINS=["*"]` in production today because no real browser/admin origins are configured yet.
 
 ### Dev vs Production Summary
 
@@ -305,7 +305,7 @@ The production config validators (PR #12) will **refuse to start** if `SECRET_KE
 | `FRONTEND_URL` | `http://<IP>:8000/api/v1/auth` | `https://vitaltrack-api.onrender.com/api/v1/auth` |
 | `DEBUG` | `true` | `false` |
 | `SECRET_KEY` | any dev value | strong, not `CHANGE-THIS*` |
-| `CORS_ORIGINS` | local origins or wildcard | currently wildcard; replace with real production browser/admin origins in Goal 8 |
+| `CORS_ORIGINS` | local origins or wildcard | currently wildcard; replace only after real production browser/admin origins are known |
 
 ---
 
