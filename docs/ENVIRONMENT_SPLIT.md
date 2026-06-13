@@ -337,7 +337,7 @@ Same set. Differences:
 | `ENVIRONMENT` | `production` |
 | `DATABASE_URL` | `postgresql+asyncpg://...@.../neondb` |
 | `SECRET_KEY` | A **different** 32+ char random value (not starting with `CHANGE-THIS`) |
-| `CORS_ORIGINS` | currently `["*"]` per `render.yaml`. **No validator rejects `"*"` in production today** — earlier drafts of these docs claimed PR #12 added one; it didn't. Tighten to specific domains in the Render dashboard if your threat model requires it. |
+| `CORS_ORIGINS` | currently `["*"]` per `render.yaml`. **No validator rejects `"*"` in production today** because no real browser/admin origins are configured yet. Tighten only after those origins are known. |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` |
 | `FRONTEND_URL` | `https://vitaltrack-api.onrender.com/api/v1/auth` — PR #12 validator requires non-empty in prod |
 
@@ -497,7 +497,7 @@ No. EAS Build reads `eas.json` from the repo. Nothing to change in the Expo dash
 
 Yes. CORS is a browser security feature. React Native / native mobile apps do not enforce CORS — they make direct HTTP requests. The wildcard has zero security impact on a mobile-only API.
 
-An earlier draft of this doc said PR #12 "rejects `*` at startup in production" — that's not accurate. PR #12 added validators for `SECRET_KEY` (no placeholder) and `FRONTEND_URL` (must be set), but no CORS production-rejection. The actual production `render.yaml` ships `CORS_ORIGINS: '["*"]'`. Tighten manually in the Render dashboard if your threat model requires it (defence in depth — if anyone ever points a browser-based admin tool at the production API, CORS would need to be restricted).
+An earlier draft of this doc said PR #12 "rejects `*` at startup in production" — that's not accurate. PR #12 added validators for `SECRET_KEY` (no placeholder) and `FRONTEND_URL` (must be set), but no CORS production-rejection. The actual production `render.yaml` ships `CORS_ORIGINS: '["*"]'`. Tightening is intentionally deferred until real browser/admin origins are known; native mobile requests are not governed by browser CORS.
 
 ### How do I add a fourth environment (QA, demo, etc.)?
 

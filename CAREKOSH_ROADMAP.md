@@ -53,7 +53,7 @@ Renamed the product from VitalTrack to CareKosh across user-visible surfaces: ap
 - `email` is now **required** at registration (username-only signup removed).
 - `POST /auth/resend-verification` returns a uniform response regardless of account state (no user enumeration).
 - `POST /auth/change-password` and `POST /auth/reset-password` revoke **all** refresh tokens for the user.
-- Config validators refuse production startup if `SECRET_KEY` matches the placeholder or `FRONTEND_URL` is empty. `CORS_ORIGINS=["*"]` is still accepted today; tightening CORS is deferred until real browser/admin origins are known.
+- Config validators refuse production startup if `SECRET_KEY` matches the placeholder or `FRONTEND_URL` is empty. `CORS_ORIGINS=["*"]` is still accepted today; tightening CORS remains decision-blocked until real browser/admin origins are known.
 
 ### Phase 7 — Loading UX (PRs #15, #16)
 
@@ -140,7 +140,7 @@ Rough priority order; none are scheduled.
 8. **Production AAB from CI** — enable the disabled `build-production` job and wire `eas submit` into the pipeline.
 9. **Item expiry tracking + alerts.**
 10. **Caregiver sharing** — multiple accounts on one inventory (currently each user's inventory is private).
-11. **Goal 8 backend finish.** Replace wildcard production CORS with real origin values, lock down the unauthenticated email diagnostic, and add server-side default-category protection.
+11. **Goal 8 backend finish.** Email diagnostic access is authenticated and raw provider errors are masked; server-side default-category deletion is rejected. Wildcard production CORS remains decision-blocked until real browser/admin origins are known.
 
 ---
 

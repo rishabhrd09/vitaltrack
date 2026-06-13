@@ -52,7 +52,7 @@ async def test_category_crud_lifecycle(client: AsyncClient):
             "name": "Respiratory Gear",
             "description": "Updated",
             "display_order": 4,
-            "is_default": True,
+            "is_default": False,
         },
     )
     assert update_resp.status_code == 200
@@ -60,7 +60,7 @@ async def test_category_crud_lifecycle(client: AsyncClient):
     assert updated["name"] == "Respiratory Gear"
     assert updated["description"] == "Updated"
     assert updated["displayOrder"] == 4
-    assert updated["isDefault"] is True
+    assert updated["isDefault"] is False
 
     delete_resp = await client.delete(
         f"/api/v1/categories/{category['id']}",
@@ -74,6 +74,69 @@ async def test_category_crud_lifecycle(client: AsyncClient):
         headers=headers,
     )
     assert missing_resp.status_code == 404
+
+
+async def test_default_category_delete_is_rejected_without_leaking_scope(
+    client: AsyncClient,
+):
+    _, owner_headers = await register_and_auth(
+        client,
+        name="Default Category Owner",
+        email="default-category-owner@test.com",
+    )
+    _, other_headers = await register_and_auth(
+        client,
+        name="Default Category Stranger",
+        email="default-category-stranger@test.com",
+    )
+
+    default_category = await create_category(
+        client,
+        owner_headers,
+        name="Default Supplies",
+        is_default=True,
+    )
+    custom_category = await create_category(
+        client,
+        owner_headers,
+        name="Custom Supplies",
+    )
+
+    foreign_delete_resp = await client.delete(
+        f"/api/v1/categories/{default_category['id']}",
+        headers=other_headers,
+    )
+    assert foreign_delete_resp.status_code == 404
+
+    default_delete_resp = await client.delete(
+        f"/api/v1/categories/{default_category['id']}",
+        headers=owner_headers,
+    )
+    assert default_delete_resp.status_code == 409
+    assert (
+        default_delete_resp.json()["detail"]
+        == "Default categories cannot be deleted"
+    )
+
+    default_get_resp = await client.get(
+        f"/api/v1/categories/{default_category['id']}",
+        headers=owner_headers,
+    )
+    assert default_get_resp.status_code == 200
+    assert default_get_resp.json()["isDefault"] is True
+
+    custom_delete_resp = await client.delete(
+        f"/api/v1/categories/{custom_category['id']}",
+        headers=owner_headers,
+    )
+    assert custom_delete_resp.status_code == 200
+    assert "Custom Supplies" in custom_delete_resp.json()["message"]
+
+    missing_custom_resp = await client.get(
+        f"/api/v1/categories/{custom_category['id']}",
+        headers=owner_headers,
+    )
+    assert missing_custom_resp.status_code == 404
 
 
 async def test_duplicate_category_names_are_rejected_per_user(

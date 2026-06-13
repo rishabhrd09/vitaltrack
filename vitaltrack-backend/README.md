@@ -97,7 +97,7 @@ Counts: 18 auth, 6 categories, 8 items, 6 orders, 1 activity = 39 total.
 | POST | `/confirm-delete/{token}` | — | final account deletion after form submit |
 | POST | `/cancel-delete` | — | abort pending deletion |
 | POST | `/change-password` | — | revokes all refresh tokens |
-| GET | `/email-service-status` | — | diagnostic, no auth |
+| GET | `/email-service-status` | — | authenticated diagnostic; raw provider errors masked |
 
 ### Categories (`/api/v1/categories`) — 6 endpoints
 
@@ -110,7 +110,7 @@ Counts: 18 auth, 6 categories, 8 items, 6 orders, 1 activity = 39 total.
 | PUT | `/categories/{id}` | update |
 | DELETE | `/categories/{id}` | delete (cascades items) |
 
-`is_default` is a flag; protection of default categories from deletion is enforced client-side, not on the backend.
+`is_default` categories cannot be deleted through the backend API; custom categories can still be deleted and remain user-scoped.
 
 ### Items (`/api/v1/items`) — 8 endpoints
 
@@ -227,7 +227,7 @@ inside inline JavaScript.
 - **Session revoke on password change / reset / account delete**
 - **Password reset XSS guard**: reset tokens are escaped into a DOM attribute and are never rendered raw inside inline JavaScript
 - **slowapi** rate limits on auth endpoints (see table above)
-- **Config validators** refuse production startup if `SECRET_KEY` is the placeholder or `FRONTEND_URL` is empty. `CORS_ORIGINS` is parsed but wildcard production rejection is deferred to Goal 8, after real browser origins are known.
+- **Config validators** refuse production startup if `SECRET_KEY` is the placeholder or `FRONTEND_URL` is empty. `CORS_ORIGINS` is parsed, but wildcard production rejection remains decision-blocked until real browser/admin origins are configured.
 
 ---
 
@@ -271,7 +271,7 @@ ENVIRONMENT=development
 DEBUG=False
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=30
-CORS_ORIGINS=*                                                  # accepted today; restrict in Goal 8 when real browser origins are known
+CORS_ORIGINS=*                                                  # accepted today; restrict only after real browser/admin origins are known
 RATE_LIMIT_PER_MINUTE=60
 RATE_LIMIT_BURST=10
 MAIL_SERVER=sandbox.smtp.mailtrap.io                            # Brevo SMTP in prod

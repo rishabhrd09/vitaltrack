@@ -788,8 +788,8 @@
           </tr>
           <tr>
             <td>CORS hardening</td>
-            <td>Replace production <code>CORS_ORIGINS=[&quot;*&quot;]</code> with explicit origins in Render/env, then add a production validator that rejects wildcard origins.</td>
-            <td>Do not merge until actual web/admin origins are known. Native mobile requests are not governed by browser CORS, so mobile should keep working.</td>
+            <td>Replace production <code>CORS_ORIGINS=[&quot;*&quot;]</code> with explicit origins in Render/env, then add a production validator that rejects wildcard origins only after real browser/admin origins are known. If they are not known, leave runtime CORS unchanged and document the decision block.</td>
+            <td>Do not add a validator that breaks Render while actual web/admin origins are unknown. Native mobile requests are not governed by browser CORS, so mobile should keep working.</td>
           </tr>
           <tr>
             <td>Email service status</td>
@@ -806,12 +806,12 @@
         <h4>Verification</h4>
         <ul class="check-list">
           <li>Backend tests pass.</li>
-          <li>CORS validator test proves wildcard is rejected only in production.</li>
-          <li>Configured Render env uses explicit origins before production deploy.</li>
+          <li>If real browser/admin origins are known, CORS validator test proves wildcard is rejected only in production.</li>
+          <li>If real browser/admin origins are not known, docs explicitly mark CORS as decision-blocked and runtime CORS remains unchanged.</li>
           <li>Email diagnostic is no longer public in production.</li>
           <li>Default categories cannot be deleted through the API.</li>
         </ul>
-        <p class="accept"><strong>Accept:</strong> Goal 8 closes known deferred security gaps with no mobile behavior regression and no deployment break from missing CORS configuration.</p>
+        <p class="accept"><strong>Accept:</strong> Goal 8 closes known deferred security gaps where safe and explicitly defers CORS tightening when real origins are missing, with no mobile behavior regression and no deployment break from missing CORS configuration.</p>
       </article>
     </section>
     <section id="standards-cross-check">
@@ -1021,7 +1021,7 @@ export ENVIRONMENT=&quot;testing&quot;
       <h2>Final Acceptance Gate</h2>
       <p>CareKosh should be considered through the backend guard and launch-readiness pack only when these conditions are true. After Goals 1-7, the remaining backend items in this gate are Goal 8: CORS, email diagnostics, and default-category protection.</p>
       <h3>Security</h3>
-      <p>Sync routes gone, deletion POST-only, reset token escaped, public email diagnostic restricted, wildcard production CORS removed, default categories protected server-side.</p>
+      <p>Sync routes gone, deletion POST-only, reset token escaped, public email diagnostic restricted, wildcard production CORS either replaced with real origins or explicitly decision-blocked, default categories protected server-side.</p>
       <h3>Correctness</h3>
       <p>Order creation validates owned items, status transitions are enforced, stock application is atomic, and double apply cannot inflate inventory.</p>
       <h3>Reliability</h3>

@@ -203,7 +203,7 @@ Scan the QR code with Expo Go. Default `EXPO_PUBLIC_API_URL` points at `http://l
 | `JWT_ALGORITHM` | `HS256` | — |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | 30 | — |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | 30 | — |
-| `CORS_ORIGINS` | `["*"]` | parsed from JSON or comma-separated values; production still permits `*` today |
+| `CORS_ORIGINS` | `["*"]` | parsed from JSON or comma-separated values; production still permits `*` until real browser/admin origins are configured |
 | `RATE_LIMIT_PER_MINUTE` / `_BURST` | 60 / 10 | — |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` | `""` | **required for verification emails** |
 | `MAIL_FROM` | `noreply@carekosh.com` | — |
@@ -215,7 +215,7 @@ Scan the QR code with Expo Go. Default `EXPO_PUBLIC_API_URL` points at `http://l
 | `PASSWORD_RESET_EXPIRY_HOURS` | 1 | — |
 | `REQUIRE_EMAIL_VERIFICATION` | False | `True` in prod |
 
-Production validators live in `config.py` — they refuse startup if `SECRET_KEY` is the placeholder or if `FRONTEND_URL` is empty. They do not reject `CORS_ORIGINS=["*"]` today; tightening CORS is deferred to Goal 8 because the real browser/admin origins are not decided yet.
+Production validators live in `config.py` — they refuse startup if `SECRET_KEY` is the placeholder or if `FRONTEND_URL` is empty. They do not reject `CORS_ORIGINS=["*"]` today; tightening CORS remains decision-blocked because the real browser/admin origins are not decided yet.
 
 ### Mobile env vars (`eas.json`)
 
@@ -314,7 +314,7 @@ Base URL: `https://vitaltrack-api.onrender.com/api/v1` (prod) · `https://vitalt
 | POST | `/confirm-delete/{token}` | — | final account deletion after form submit |
 | POST | `/cancel-delete` | — | cancel a pending deletion request |
 | POST | `/change-password` | — | revokes all refresh tokens |
-| GET | `/email-service-status` | — | diagnostic, no auth |
+| GET | `/email-service-status` | — | authenticated diagnostic; raw provider errors masked |
 
 ### Items (`/items`)
 
@@ -348,7 +348,7 @@ Base URL: `https://vitaltrack-api.onrender.com/api/v1` (prod) · `https://vitalt
 | GET | `/categories/with-counts` | includes item count |
 | GET/POST/PUT/DELETE | `/categories/{id}` | DELETE cascades items |
 
-`is_default` is a flag on each category; protection of default categories from deletion is **enforced client-side**, not on the backend.
+`is_default` is a flag on each category; default categories are protected from backend deletion while custom category deletion remains user-scoped.
 
 ### Activity (`/activities`)
 

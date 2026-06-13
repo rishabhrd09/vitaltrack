@@ -1226,23 +1226,24 @@ async def change_password(
     response_model=MessageResponse,
     summary="Check email service health",
 )
-async def email_service_status() -> MessageResponse:
+async def email_service_status(_current_user: CurrentUser) -> MessageResponse:
     """
     Check if the email service (Brevo) is properly configured and reachable.
-    No authentication required — diagnostic endpoint.
+    Requires authentication and never exposes raw provider diagnostics.
     """
     if not is_email_configured():
         return MessageResponse(
-            message="Email service NOT configured: MAIL_PASSWORD is empty or not set.",
+            message="Email service is not configured.",
         )
 
     is_working, error_msg = await test_email_service()
 
     if is_working:
         return MessageResponse(
-            message=f"Email service is working. Sender: {settings.MAIL_FROM}",
+            message="Email service is configured and reachable.",
         )
-    else:
-        return MessageResponse(
-            message=f"Email service FAILED: {error_msg}",
-        )
+
+    logger.warning("Email service diagnostic failed: %s", error_msg)
+    return MessageResponse(
+        message="Email service is unavailable. Check server logs.",
+    )

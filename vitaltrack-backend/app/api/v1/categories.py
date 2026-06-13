@@ -283,6 +283,12 @@ async def delete_category(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Category not found",
         )
+
+    if category.is_default:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Default categories cannot be deleted",
+        )
     
     category_name = category.name
     
