@@ -424,7 +424,7 @@
           <tr>
             <td>Must do</td>
             <td>Goals 1-7</td>
-            <td>Close the destructive sync route, GET account deletion, reset XSS, missing domain tests, order race/workflow holes, fake health, plain-string secret reprs, advisory CI, and stale docs.</td>
+            <td>Closed the original destructive sync route, deletion-on-link-open flow, reset XSS, missing domain tests, order race/workflow holes, health-readiness mismatch, plain-string secret reprs, advisory CI ambiguity, and stale active docs.</td>
           </tr>
           <tr>
             <td>After pack</td>
@@ -493,7 +493,7 @@
     <section id="audit-baseline">
       <p class="section-number">03</p>
       <h2>Audit Baseline</h2>
-      <p>These are the repo facts that shape the plan. They matter because several existing docs are stale or off by one.</p>
+      <p>These were the repo facts at the original audit point. They matter because several docs were stale or off by one. The status table below records the current state after Goals 1-7.</p>
       <h3>Current architecture</h3>
       <p>The mobile app is server-first, not offline-first. It does not have a sync queue, <code>services/sync.ts</code>, or <code>useSyncStore</code>. That makes removing backend <code>/sync/*</code> compatible with the current app.</p>
       <h3>Original audit route count</h3>
@@ -507,7 +507,7 @@
         <table>
           <tr>
             <th>Defect</th>
-            <th>Current proof point</th>
+            <th>Original proof point</th>
             <th>Goal</th>
           </tr>
           <tr>
@@ -557,11 +557,48 @@
           </tr>
         </table>
       </div>
+      <h3>Current status after Goals 1-7</h3>
+      <div class="table-wrap">
+        <table>
+          <tr>
+            <th>Goal</th>
+            <th>Current code/doc state</th>
+          </tr>
+          <tr>
+            <td>Goal 1</td>
+            <td><code>/api/v1/sync/*</code> is no longer mounted. <code>local_id</code> remains only as compatibility metadata.</td>
+          </tr>
+          <tr>
+            <td>Goal 2</td>
+            <td><code>GET /auth/confirm-delete/{token}</code> renders an HTML confirmation page only. <code>POST /auth/confirm-delete/{token}</code> performs final deletion.</td>
+          </tr>
+          <tr>
+            <td>Goal 3</td>
+            <td>Password reset tokens are escaped into a DOM data attribute and are not interpolated raw into inline JavaScript.</td>
+          </tr>
+          <tr>
+            <td>Goal 4</td>
+            <td>Items, orders, and categories have domain tests. CI enforces per-file coverage floors for <code>items.py</code> and <code>orders.py</code>.</td>
+          </tr>
+          <tr>
+            <td>Goal 5</td>
+            <td>Order stock application claims a received order with a guarded database update and increments stock/version through SQL updates so double-apply cannot inflate stock.</td>
+          </tr>
+          <tr>
+            <td>Goal 6</td>
+            <td><code>/health</code> is DB-backed readiness, <code>/live</code> is process-only liveness, Render uses <code>/live</code>, and simple config secrets use <code>SecretStr</code>.</td>
+          </tr>
+          <tr>
+            <td>Goal 7</td>
+            <td>Ruff, pytest, exact <code>/api/v1</code> route count 39, and item/order coverage gates are blocking. mypy and Trivy remain advisory because their baselines are not clean.</td>
+          </tr>
+        </table>
+      </div>
     </section>
     <section id="goal-sequence">
       <p class="section-number">04</p>
       <h2>Goal Sequence: Required Verified-Defect Pack</h2>
-      <p>Run these as separate branch-sized changes. Each one is deliberately scoped to protect the already-working app.</p>
+      <p>These goals were designed as separate branch-sized changes. Each one was deliberately scoped to protect the already-working app.</p>
       <article class="goal-card" id="goal-1-branch-security-remove-legacy-sync-router">
         <div class="goal-label">Goal 1</div>
         <h3>security/remove-legacy-sync-router</h3>
@@ -810,26 +847,26 @@
           <tr>
             <td>OWASP Authentication and Forgot Password</td>
             <td>Safe password recovery, single-use expiring tokens, TLS, rate limiting, secure password storage, reauthentication for sensitive actions, and careful password policy.</td>
-            <td>CareKosh already has Argon2, JWTs, refresh-token storage, auth rate limits, password reset token hashing, and current-password verification for password change. Goals 2-3 close the dangerous HTML/auth gaps. Password policy is functional but below the latest passphrase-oriented guidance.</td>
-            <td>Goals 2-3 now; password-policy modernization later</td>
+            <td>CareKosh already has Argon2, JWTs, refresh-token storage, auth rate limits, password reset token hashing, and current-password verification for password change. Goals 2-3 closed the dangerous HTML/auth gaps. Password policy is functional but below the latest passphrase-oriented guidance.</td>
+            <td>Goals 2-3 done; password-policy modernization later</td>
           </tr>
           <tr>
             <td>SQLAlchemy versioning and PostgreSQL isolation</td>
             <td>Concurrency-sensitive updates need explicit versioning, guarded updates, locks, atomic SQL, or retry-aware transactions.</td>
-            <td>Item OCC exists conceptually, but order stock application currently does Python read-modify-write and can race. Goal 5 is the correct fix.</td>
-            <td>Goal 5</td>
+            <td>Item OCC exists, and Goal 5 moved order stock application to guarded database updates so double-apply cannot inflate inventory.</td>
+            <td>Goal 5 done</td>
           </tr>
           <tr>
             <td>Pydantic SecretStr and Twelve-Factor Config</td>
             <td>Secrets/config should come from environment and avoid unsafe string representation/logging.</td>
-            <td>Config is environment-driven, but <code>SECRET_KEY</code> and <code>MAIL_PASSWORD</code> are plain strings. Goal 6 converts the simple sensitive fields and intentionally leaves <code>DATABASE_URL</code> for later call-site audit.</td>
-            <td>Goal 6</td>
+            <td>Config is environment-driven. Goal 6 converted <code>SECRET_KEY</code> and <code>MAIL_PASSWORD</code> to <code>SecretStr</code> and intentionally left <code>DATABASE_URL</code> as <code>str</code> for later call-site audit.</td>
+            <td>Goal 6 done</td>
           </tr>
           <tr>
             <td>GitHub Actions secure use and FastAPI full-stack template</td>
             <td>Tests/CI should be real gates, secrets should be least-privilege, and production projects should have CI/CD rather than manual trust.</td>
-            <td>CI exists and already runs backend/frontend checks, but mypy and Trivy are advisory. Workflow token permissions and third-party action pinning are not yet hardened.</td>
-            <td>Goal 7 plus small CI supply-chain add-on</td>
+            <td>CI now blocks backend Ruff, pytest, route count, and item/order coverage gates. Workflow token permissions default to read-only, high-risk action refs were reviewed/pinned where practical, and mypy/Trivy are explicitly advisory until their baselines are fixed.</td>
+            <td>Goal 7 done; clean mypy/Trivy baselines later</td>
           </tr>
           <tr>
             <td>Google SRE books</td>
@@ -982,7 +1019,7 @@ export ENVIRONMENT=&quot;testing&quot;
     <section id="acceptance-gate">
       <p class="section-number">10</p>
       <h2>Final Acceptance Gate</h2>
-      <p>CareKosh should be considered through the backend guard and launch-readiness pack only when these conditions are true.</p>
+      <p>CareKosh should be considered through the backend guard and launch-readiness pack only when these conditions are true. After Goals 1-7, the remaining backend items in this gate are Goal 8: CORS, email diagnostics, and default-category protection.</p>
       <h3>Security</h3>
       <p>Sync routes gone, deletion POST-only, reset token escaped, public email diagnostic restricted, wildcard production CORS removed, default categories protected server-side.</p>
       <h3>Correctness</h3>

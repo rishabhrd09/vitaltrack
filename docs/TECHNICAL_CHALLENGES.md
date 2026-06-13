@@ -534,8 +534,9 @@ Google Play requires an in-app path to delete an account and all its data. The n
 
 ### Solution — two-step, email-confirmed deletion
 1. `DELETE /auth/me` — generate a raw token (`secrets.token_urlsafe(32)`), store `SHA-256(raw)` with a 24-hour expiry on the user row, send the raw token in a confirmation email via `BackgroundTask`. **No data deleted yet.**
-2. `GET /auth/confirm-delete/{token}` — user clicks email link. Backend hashes the incoming token, verifies the DB hash + expiry, then `db.delete(user)`. DB-level `ondelete="CASCADE"` on every FK tears down categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
-3. `POST /auth/cancel-delete` — authenticated nullifier for `deletion_token` and `deletion_token_expires`. Pending email link becomes invalid.
+2. `GET /auth/confirm-delete/{token}` — user clicks email link. Backend hashes the incoming token, verifies the DB hash + expiry, then renders a confirmation page only. This prevents crawlers, link scanners, or accidental opens from deleting the account.
+3. `POST /auth/confirm-delete/{token}` — user submits the confirmation form. Backend verifies the token again, then `db.delete(user)`. DB-level `ondelete="CASCADE"` on every FK tears down categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
+4. `POST /auth/cancel-delete` — authenticated nullifier for `deletion_token` and `deletion_token_expires`. Pending email link becomes invalid.
 
 Schema change: migration `20260419_add_account_deletion_token_fields.py` adds two nullable columns to `users`. Safe on a live DB with zero downtime.
 

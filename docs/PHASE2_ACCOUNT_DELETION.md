@@ -6,6 +6,8 @@
 **Status:** Shipped — currently running on staging + production
 
 > Predecessor: [PHASE1_AUTH_HARDENING.md](PHASE1_AUTH_HARDENING.md) (PR #12). For the end-user-facing flow and curl recipes, see the repo-root `CAREKOSH_E2E_VERIFICATION_GUIDE.html` (Phase 5).
+>
+> Current security update: Goal 2 (`security/account-deletion-post-confirm`) changed the email-link route so `GET /auth/confirm-delete/{token}` renders a confirmation page only. The destructive delete now happens only after `POST /auth/confirm-delete/{token}`. The original PR #13 token/cascade design remains, but the final mutation is no longer a GET.
 
 ---
 
@@ -169,15 +171,15 @@ The account is **not touched** beyond writing the token. The user can still log 
 
 ---
 
-### Endpoint 2: `GET /auth/confirm-delete/{token}` — Confirm Deletion
+### Endpoint 2: `GET /auth/confirm-delete/{token}` — Show Confirmation Page
 
-The user clicks the link in the email. This endpoint is the second and final step.
+The user clicks the link in the email. This endpoint validates the token and renders a deliberate final confirmation page. It does not delete anything.
 
 ```
 Method:   GET
 Path:     /api/v1/auth/confirm-delete/{token}
 Auth:     None (token in URL is the credential)
-Response: HTML page
+Response: HTML confirmation page
 ```
 
 **Logic:**
@@ -185,17 +187,36 @@ Response: HTML page
 1. Hash the incoming raw token: `hashlib.sha256(token.encode()).hexdigest()`.
 2. Query `users` for a row where `deletion_token == hash AND deletion_token_expires > now()`.
 3. If not found → return HTML error page (`400`). This covers expired links and already-used links.
-4. Log `CONFIRMED` (before the delete — forensics record survives even if the commit fails).
-5. `await db.delete(user)` — SQLAlchemy emits one DELETE on `users`; DB cascades handle all child tables.
-6. `await db.commit()`.
-7. Log `COMPLETED`.
-8. Return HTML success page.
+4. Render an HTML form that posts back to the same token URL.
 
 The endpoint is `include_in_schema=False` so it does not appear in the Swagger/OpenAPI docs. It is a browser-facing page, not an API consumer endpoint.
 
 ---
 
-### Endpoint 3: `POST /auth/cancel-delete` — Cancel Deletion
+### Endpoint 3: `POST /auth/confirm-delete/{token}` — Finalize Deletion
+
+The user submits the confirmation form. This is the second and final step.
+
+```
+Method:   POST
+Path:     /api/v1/auth/confirm-delete/{token}
+Auth:     None (token in URL is the credential)
+Response: HTML success page
+```
+
+**Logic:**
+
+1. Hash the incoming raw token and find the non-expired matching user row.
+2. If not found → return HTML error page (`400`).
+3. Log `CONFIRMED` (before the delete — forensics record survives even if the commit fails).
+4. `await db.delete(user)` — SQLAlchemy emits one DELETE on `users`; DB cascades handle all child tables.
+5. `await db.commit()`.
+6. Log `COMPLETED`.
+7. Return HTML success page.
+
+---
+
+### Endpoint 4: `POST /auth/cancel-delete` — Cancel Deletion
 
 Lets the user change their mind after requesting but before confirming.
 
@@ -227,8 +248,13 @@ Server                          User's Email           User's Browser
   │◄─────────────────────────────────────────────────────────┤
   ├─ incoming_hash = SHA-256(raw)    │                       │
   ├─ DB.query(hash == incoming_hash) │                       │
-  ├─ if match + not expired → delete │                       │
-  └─ HTML response ────────────────────────────────────────►│
+  ├─ if match + not expired → render confirm form            │
+  └─ HTML confirmation page ────────────────────────────────►│
+  │                                  │  User submits form    │
+  │◄─────────────────────────────────────────────────────────┤
+  ├─ POST /confirm-delete/{raw}: validate hash again          │
+  ├─ if match + not expired → delete                          │
+  └─ HTML success page ─────────────────────────────────────►│
 ```
 
 **Why SHA-256 and not bcrypt/argon2?**
@@ -424,12 +450,15 @@ Both `translateY` and `panResponder` are created inside `useRef`. This is requir
 13. User opens email → clicks "Confirm Account Deletion" link
 14. Browser: GET /api/v1/auth/confirm-delete/{raw_token}
 15. Backend: SHA-256 hashes incoming token, queries DB for matching non-expired row
-16. Backend: logs CONFIRMED, calls db.delete(user), DB cascades all child tables
-17. Backend: commits, logs COMPLETED
-18. Browser: displays "Account Deleted" HTML page
-19. Mobile: next API call returns 401 → ApiClient refresh attempt → 401 again
-20. useAuthStore: clears tokens, sets isAuthenticated = false
-21. useProtectedRoute: router.replace('/(auth)/login')
+16. Backend: renders the confirmation page; no data is deleted on GET
+17. User submits the confirmation form
+18. Browser: POST /api/v1/auth/confirm-delete/{raw_token}
+19. Backend: validates the token again, logs CONFIRMED, calls db.delete(user), DB cascades all child tables
+20. Backend: commits, logs COMPLETED
+21. Browser: displays "Account Deleted" HTML page
+22. Mobile: next API call returns 401 → ApiClient refresh attempt → 401 again
+23. useAuthStore: clears tokens, sets isAuthenticated = false
+24. useProtectedRoute: router.replace('/(auth)/login')
 ```
 
 ---
@@ -442,7 +471,7 @@ Both `translateY` and `panResponder` are created inside `useRef`. This is requir
 |---|---|
 | `vitaltrack-backend/app/models/user.py` | Added `deletion_token` and `deletion_token_expires` fields |
 | `vitaltrack-backend/alembic/versions/20260419_add_account_deletion_token_fields.py` | New migration — adds two nullable columns to `users` |
-| `vitaltrack-backend/app/api/v1/auth.py` | Replaced immediate `delete_account` with `request_account_deletion`; added `confirm_account_deletion` (HTML) and `cancel_account_deletion` endpoints; added `hashlib` import; added `send_email_via_api` to email utils import |
+| `vitaltrack-backend/app/api/v1/auth.py` | Replaced immediate `delete_account` with `request_account_deletion`; added browser confirmation GET, final deletion POST, and `cancel_account_deletion`; added `hashlib` import; added `send_email_via_api` to email utils import |
 
 ### Mobile
 

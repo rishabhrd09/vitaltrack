@@ -70,14 +70,14 @@ Google Play policy requires in-app account deletion with full data erasure:
 - `POST /auth/cancel-delete` → lets a logged-in user abort a pending deletion.
 - Mobile: new `app/profile.tsx` screen with account info, change-password, delete-account flow, and a swipe-down-to-dismiss popup menu reached from the top-right of the app.
 
-### Phase 8 — Backend production guard (PRs #37 → #42, Goal 7 in progress)
+### Phase 8 — Backend production guard (PRs #37 → #43)
 The backend production-guard sequence closed the previously verified high-risk backend gaps:
 - Removed the unused `/api/v1/sync/*` route surface.
 - Made account deletion POST-confirmed instead of destructive on GET.
 - Escaped password-reset URL tokens in backend-rendered HTML.
 - Added item/order/category domain tests and atomic order stock application.
 - Split `/health` readiness from `/live` liveness and masked secret config values.
-- Goal 7 adds blocking Ruff, pytest, exact route-count, and item/order coverage gates while keeping mypy and Trivy advisory until their existing baselines are clean.
+- Added blocking Ruff, pytest, exact `/api/v1` route-count, and item/order coverage gates while keeping mypy and Trivy advisory until their existing baselines are clean.
 
 ---
 
@@ -106,6 +106,7 @@ The backend production-guard sequence closed the previously verified high-risk b
 | #40 | `test/domain-inventory-order-coverage` | Add item/order/category domain test coverage |
 | #41 | `correctness/atomic-apply-order-stock` | Make order stock application atomic |
 | #42 | `ops/health-and-secret-types` | Make `/health` DB-backed readiness, add `/live`, and mask config secrets |
+| #43 | `ci/block-quality-gates-and-docs` | Block backend Ruff/pytest/route/coverage gates; keep mypy/Trivy advisory with documented baselines |
 
 (PR #3 was rolled into #4 during review and does not appear as its own merge commit.)
 

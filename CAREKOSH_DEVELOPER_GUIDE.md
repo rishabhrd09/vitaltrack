@@ -3,7 +3,7 @@
 > Home ICU medical inventory management app for family caregivers.
 > Single source of truth for architecture, setup, workflow, and operations.
 
-**Repo layout:** `vitaltrack-backend/` (FastAPI) · `vitaltrack-mobile/` (React Native + Expo) · `docs/` (removed — see this file instead)
+**Repo layout:** `vitaltrack-backend/` (FastAPI) · `vitaltrack-mobile/` (React Native + Expo) · `docs/` (deep-dive and historical decision guides)
 
 > The `vitaltrack-*` directory names are legacy from the pre-rebrand period. The product name is **CareKosh**. Do not rename the directories — Render service paths, EAS config, and git history depend on them.
 
@@ -95,7 +95,7 @@ The `local_id` / `localId` fields remain in item, category, and order models/sch
 
 ```
 vitaltrack/
-├── .github/workflows/ci.yml          # 7 jobs: backend/frontend tests, trivy, pr-check, deploy, preview APK, prod AAB (disabled)
+├── .github/workflows/ci.yml          # backend/frontend tests, advisory mypy/Trivy, pr-check, deploy, preview APK, prod AAB (disabled)
 ├── vitaltrack-backend/
 │   ├── Dockerfile                    # multi-stage (builder → python:3.12-slim runtime, non-root user)
 │   ├── docker-entrypoint.sh          # waits for DB (pg_isready × 30), runs alembic upgrade head, execs CMD
@@ -262,7 +262,7 @@ Production validators live in `config.py` — they refuse startup if `SECRET_KEY
 │    └── open PR → main                                               │
 │                    │                                                │
 │                    ▼                                                │
-│  CI: test-backend + test-frontend + security-scan + pr-check       │
+│  CI: test-backend + test-frontend + advisory scans + pr-check      │
 │                    │ (green)                                        │
 │                    ▼                                                │
 │  reviewer approves → merge to main                                  │
@@ -484,7 +484,7 @@ e.g. `feat(auth): add biometric login`, `fix(items): handle negative quantity ed
 
 ### PR requirements
 
-- CI green (`test-backend`, `test-frontend`, `security-scan`, `pr-check`)
+- CI green (`test-backend`, `test-frontend`, `pr-check`); advisory mypy/Trivy reviewed and not treated as clean until their baselines are fixed
 - At least one code-owner approval
 - Rebased on latest `main` (no merge conflicts)
 - Add `build-apk` label to generate a preview APK for reviewers
