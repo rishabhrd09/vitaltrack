@@ -110,16 +110,17 @@ git push origin feature/add-export-button
 
 #### 6. Wait for CI (3–5 min)
 
-Four jobs run in parallel:
+The important PR jobs run in parallel:
 
 | Job | Does |
 |---|---|
-| `test-backend` | pytest, ruff, mypy (postgres:16 service) |
+| `test-backend` | blocking pytest, Ruff, `/api/v1` route count 39, and item/order coverage gates (postgres:16 service) |
+| `typecheck-backend-advisory` | mypy baseline, advisory until the existing type errors are fixed |
 | `test-frontend` | `tsc`, ESLint, `expo-doctor` |
-| `security-scan` | Trivy (CRITICAL + HIGH) |
+| `security-scan-advisory` | Trivy CRITICAL/HIGH baseline, advisory until vulnerable dependencies are upgraded |
 | `pr-check` | Merge gate — succeeds only if backend + frontend pass |
 
-All four must be green before merge.
+The merge gate is `pr-check`; it requires the backend and frontend jobs. The advisory jobs should still be inspected, but they are not proof that mypy or Trivy are clean yet.
 
 #### 7. Address review
 ```bash

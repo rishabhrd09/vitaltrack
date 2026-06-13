@@ -312,13 +312,19 @@ curl -X DELETE http://localhost:8000/api/v1/auth/me \
 ```
 Response: `{"message": "Deletion confirmation email sent"}`. Server generates `deletion_token` (24 h TTL) and emails a confirmation link.
 
-### Step 2a: Confirm via email link
+### Step 2a: Open email confirmation page
 ```bash
 curl http://localhost:8000/api/v1/auth/confirm-delete/DELETION_TOKEN
 ```
+HTML confirmation page rendered. No data is deleted on GET.
+
+### Step 2b: Submit final confirmation
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/confirm-delete/DELETION_TOKEN
+```
 HTML success page rendered. User row is deleted; CASCADE unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
 
-### Step 2b (alternative): Cancel pending deletion
+### Step 2c (alternative): Cancel pending deletion
 ```bash
 curl -X POST http://localhost:8000/api/v1/auth/cancel-delete \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
@@ -326,86 +332,11 @@ curl -X POST http://localhost:8000/api/v1/auth/cancel-delete \
 
 ---
 
-## Legacy Sync Endpoints (unused by mobile)
+## Removed Legacy Sync Endpoints
 
-> **These endpoints are from the pre-server-first era.** The mobile app stopped calling them in PR #8 (`refactor/server-first-architecture`). The routes remain in `app/api/v1/sync.py` for backward compatibility but are not exercised by the client. Do not build new features against them.
+The pre-server-first `/api/v1/sync/*` routes were removed in the backend production-guard work. The mobile app no longer has `sync.ts`, `useSyncStore`, or an offline mutation queue. Do not test or build against `/api/v1/sync/push`, `/api/v1/sync/pull`, or `/api/v1/sync/full`; they should return 404 in the current backend.
 
-### Push Local Changes
-```bash
-curl -X POST http://localhost:8000/api/v1/sync/push \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "operations": [
-      {
-        "id": "op_123",
-        "type": "create",
-        "entity": "item",
-        "entityId": "local-uuid",
-        "localId": "local-uuid",
-        "data": {
-          "name": "New Item",
-          "quantity": 10,
-          "categoryId": "cat-uuid"
-        },
-        "timestamp": "2026-01-27T10:00:00Z"
-      }
-    ],
-    "lastSyncAt": null
-  }'
-```
-
-**Response:**
-```json
-{
-  "results": [
-    {
-      "operationId": "op_123",
-      "success": true,
-      "entityId": "local-uuid",
-      "serverId": "server-uuid"
-    }
-  ],
-  "serverTime": "2026-01-27T10:00:05Z",
-  "successCount": 1,
-  "errorCount": 0
-}
-```
-
-### Pull Server Changes
-```bash
-curl -X POST http://localhost:8000/api/v1/sync/pull \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "lastSyncAt": null,
-    "includeDeleted": true
-  }'
-```
-
-**Response:**
-```json
-{
-  "categories": [...],
-  "items": [...],
-  "orders": [...],
-  "deletedIds": [],
-  "serverTime": "2026-01-27T10:00:05Z",
-  "hasMore": false
-}
-```
-
-### Full Sync (Push + Pull)
-```bash
-curl -X POST http://localhost:8000/api/v1/sync/full \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "operations": [...],
-    "lastSyncAt": null,
-    "includeDeleted": true
-  }'
-```
+`localId` / `local_id` fields may still appear in schemas and records as compatibility metadata, but they are not a sync contract.
 
 ---
 
@@ -418,9 +349,12 @@ curl http://localhost:8000/health
 **Response:**
 ```json
 {
-  "status": "healthy"
+  "status": "healthy",
+  "database": "connected"
 }
 ```
+
+`/health` is the DB-backed readiness endpoint and returns 503 when the database probe fails. `/live` is the process-only liveness endpoint used by Render and returns `"database": "not_checked"`.
 
 ---
 

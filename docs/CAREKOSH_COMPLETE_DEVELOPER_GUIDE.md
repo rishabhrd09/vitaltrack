@@ -141,9 +141,10 @@ production     AAB        Play Store (→ production backend)
 ### `.github/workflows/ci.yml` triggers
 
 ```
-pull_request → main     (test-backend, test-frontend, security-scan, pr-check,
+pull_request → main     (test-backend, test-frontend, advisory mypy/Trivy,
+                         pr-check,
                          build-preview if PR labeled "build-apk")
-push → main             (test-backend, test-frontend, security-scan, deploy-backend)
+push → main             (test-backend, test-frontend, advisory mypy, deploy-backend)
 workflow_dispatch       (manual run, any branch)
 ```
 
@@ -151,10 +152,11 @@ workflow_dispatch       (manual run, any branch)
 
 | Job | Purpose |
 |-----|---------|
-| `test-backend` | pytest + ruff + mypy against Postgres 16 service container |
+| `test-backend` | pytest + Ruff + `/api/v1` route count 39 + item/order coverage gates against Postgres 16 service container |
+| `typecheck-backend-advisory` | mypy baseline, advisory until existing type errors are fixed |
 | `test-frontend` | `tsc --noEmit` + `eslint` + `expo-doctor` |
-| `security-scan` | Trivy filesystem scan for CRITICAL + HIGH vulns |
-| `pr-check` | Merge gate — requires tests + security passing |
+| `security-scan-advisory` | Trivy filesystem scan for CRITICAL + HIGH vulns, advisory until existing dependency findings are fixed |
+| `pr-check` | Merge gate — requires backend + frontend tests passing |
 | `deploy-backend` | `curl -X POST $RENDER_DEPLOY_HOOK` on push to main |
 | `build-preview` | `eas build --profile preview --platform android`, only runs when the PR has the `build-apk` label |
 | `build-production` | `eas build --profile production` — **currently disabled via `if: false`** until mobile release cadence is established |
@@ -168,13 +170,16 @@ ACTION                        │ WHAT RUNS
 ──────────────────────────────┼─────────────────────────────────────────────
 Push to feature branch        │ Nothing (no PR, not main)
                               │
-Create PR → main              │ test-backend, test-frontend, security-scan,
-                              │ pr-check. build-preview only if labeled.
+Create PR → main              │ test-backend, test-frontend,
+                              │ typecheck-backend-advisory,
+                              │ security-scan-advisory, pr-check.
+                              │ build-preview only if labeled.
                               │
 PR labeled 'build-apk'        │ build-preview runs (APK → EAS)
                               │
-Merge PR to main              │ test-backend, test-frontend, security-scan,
-(or push direct to main)      │ deploy-backend (POSTs Render hook). Render
+Merge PR to main              │ test-backend, test-frontend,
+(or push direct to main)      │ typecheck-backend-advisory,
+                              │ deploy-backend (POSTs Render hook). Render
                               │ also auto-deploys independently.
                               │ build-production is disabled (if: false).
 ```
@@ -230,7 +235,7 @@ npx eas build:list
 
 > Never push directly to `main`. Always: feature branch → PR → review → merge.
 
-`main` is branch-protected — tests + security scan + approval are required before merge.
+`main` is branch-protected — blocking backend/frontend tests plus approval are required before merge. mypy and Trivy still run, but they are advisory until their known baselines are cleaned up.
 
 ### Complete flow
 

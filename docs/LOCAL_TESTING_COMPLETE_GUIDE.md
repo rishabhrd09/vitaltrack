@@ -390,7 +390,8 @@ EXPO_PUBLIC_API_URL=http://YOUR_LAN_IP:8000
 □ Docker Desktop is running
 □ docker ps shows 2 containers (api + db)
 □ Both containers status: Up
-□ http://localhost:8000/health → status healthy + database connected
+□ http://localhost:8000/health → status healthy + database connected when DB is reachable
+□ http://localhost:8000/live → status healthy + database not_checked
 □ http://localhost:8000/docs loads Swagger UI
 □ docker compose logs api has no ERROR/CRITICAL lines
 □ alembic current matches the newest migration filename

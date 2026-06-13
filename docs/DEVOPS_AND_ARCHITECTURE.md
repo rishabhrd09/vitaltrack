@@ -135,9 +135,11 @@ Triggers:
 
 Jobs:
   test-backend        pytest + ruff + route count + item/order coverage, Postgres 16 service container
-  typecheck-backend   mypy advisory baseline
+  typecheck-backend-advisory
+                      mypy advisory baseline
   test-frontend       tsc --noEmit, eslint, expo-doctor
-  security-scan       Trivy advisory (CRITICAL + HIGH, fs vuln scan)
+  security-scan-advisory
+                      Trivy advisory (CRITICAL + HIGH, fs vuln scan)
   pr-check            merge gate — requires backend + frontend tests
   deploy-backend      POST $RENDER_DEPLOY_HOOK on push to main
   build-preview       eas build --profile preview — requires PR label 'build-apk'
@@ -278,7 +280,7 @@ Treat warnings as technical debt. Fix when there's slack, but don't block a rele
 ### 3. Why some jobs skip
 
 ```yaml
-security-scan:   # only on PRs — catching issues before they merge
+security-scan-advisory:   # only on PRs — catching issues before they merge
   if: github.event_name == 'pull_request'
 
 build-preview:   # only when the reviewer explicitly wants an APK
@@ -584,10 +586,10 @@ See `docs/GIT_WORKFLOW_GUIDE.md` for commit style, fork workflow, and branch-pro
 │            + JWT HS256 + Argon2 + slowapi                            │
 │                                                                      │
 │  DevOps:   GitHub Actions + Render + Neon + Expo EAS + Docker        │
-│            + Trivy (PR security scan)                                │
+│            + advisory mypy and Trivy baselines                       │
 │                                                                      │
-│  Flow:     Code → Push → CI (test + scan) → Deploy (Render hook)     │
-│            → Render auto-deploys main → verify at /health            │
+│  Flow:     Code → Push → CI (blocking tests + advisory scans)        │
+│            → Deploy (Render hook) → verify at /health                │
 │                                                                      │
 │  Secrets:  RENDER_DEPLOY_HOOK, EXPO_TOKEN                        │
 │                                                                      │
