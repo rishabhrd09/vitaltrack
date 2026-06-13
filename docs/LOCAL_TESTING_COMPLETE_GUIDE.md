@@ -109,10 +109,11 @@ hostname -I | awk '{print $1}'
 
 Open `http://YOUR_IP:8000/health` in the **phone's browser**. Expect:
 ```json
-{"status":"healthy"}
+{"status":"healthy","database":"connected"}
 ```
 
 - Timeout → firewall is blocking (see §E).
+- `503` / `database:"unavailable"` → backend is reachable, but the database readiness probe failed.
 - "Connection refused" → backend isn't actually running.
 - Browser loads, but the app fails → check the `.env` value matches the IP exactly.
 
@@ -258,7 +259,7 @@ Harmless. `docker-entrypoint.sh` probes a local-dev fallback before using the re
 ### "Network request failed" inside the app
 
 Debug in order:
-1. Backend up on PC: `curl http://localhost:8000/health` → `{"status":"healthy"}`
+1. Backend up on PC: `curl http://localhost:8000/health` → status `healthy` and database `connected`
 2. Phone can reach PC: `http://YOUR_IP:8000/health` in the phone browser works
 3. `.env` exactly matches that IP (no typos, no trailing slash)
 4. Metro restarted with `--clear` **after** the `.env` change
@@ -389,7 +390,7 @@ EXPO_PUBLIC_API_URL=http://YOUR_LAN_IP:8000
 □ Docker Desktop is running
 □ docker ps shows 2 containers (api + db)
 □ Both containers status: Up
-□ http://localhost:8000/health → {"status":"healthy"}
+□ http://localhost:8000/health → status healthy + database connected
 □ http://localhost:8000/docs loads Swagger UI
 □ docker compose logs api has no ERROR/CRITICAL lines
 □ alembic current matches the newest migration filename

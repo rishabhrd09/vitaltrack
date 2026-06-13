@@ -1,6 +1,6 @@
 # CareKosh Roadmap
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-06-13
 
 CareKosh is a home-ICU medical inventory app for family caregivers. This document captures where the project has been, where it is today, and what remains before a Play Store launch.
 
@@ -22,7 +22,8 @@ CareKosh is a home-ICU medical inventory app for family caregivers. This documen
 | Domain + privacy policy hosted | 🟡 in progress |
 | Play Console account + closed testing | 🟡 in progress |
 | Launch on Google Play | 🔴 not yet |
-| Automated test suite health | 🔴 40 / 53 tests failing — largest open gap |
+| Automated test suite health | ✅ 111 backend tests passing in the CI-shaped Postgres baseline |
+| Backend quality gates | ✅ Ruff, pytest, `/api/v1` route count 39, and item/order coverage gates blocking; mypy and Trivy advisory until existing findings are cleaned up |
 
 ---
 
@@ -52,7 +53,7 @@ Renamed the product from VitalTrack to CareKosh across user-visible surfaces: ap
 - `email` is now **required** at registration (username-only signup removed).
 - `POST /auth/resend-verification` returns a uniform response regardless of account state (no user enumeration).
 - `POST /auth/change-password` and `POST /auth/reset-password` revoke **all** refresh tokens for the user.
-- Config validators refuse production startup if `SECRET_KEY` matches the placeholder, `CORS_ORIGINS` is `*`, or `FRONTEND_URL` is empty.
+- Config validators refuse production startup if `SECRET_KEY` matches the placeholder or `FRONTEND_URL` is empty. `CORS_ORIGINS=["*"]` is still accepted today; tightening CORS is deferred until real browser/admin origins are known.
 
 ### Phase 7 — Loading UX (PRs #15, #16)
 
@@ -64,9 +65,19 @@ Two-PR effort to close the "blank-screen while loading" gap without reintroducin
 ### Phase 6 — Account deletion + Profile screen (PR #13)
 Google Play policy requires in-app account deletion with full data erasure:
 - `DELETE /auth/me` → generates a `deletion_token` (24 h TTL), emails confirmation link.
-- `GET /auth/confirm-delete/{token}` → deletes the user. CASCADE unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
+- `GET /auth/confirm-delete/{token}` → renders an HTML confirmation page.
+- `POST /auth/confirm-delete/{token}` → deletes the user. CASCADE unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
 - `POST /auth/cancel-delete` → lets a logged-in user abort a pending deletion.
 - Mobile: new `app/profile.tsx` screen with account info, change-password, delete-account flow, and a swipe-down-to-dismiss popup menu reached from the top-right of the app.
+
+### Phase 8 — Backend production guard (PRs #37 → #42, Goal 7 in progress)
+The backend production-guard sequence closed the previously verified high-risk backend gaps:
+- Removed the unused `/api/v1/sync/*` route surface.
+- Made account deletion POST-confirmed instead of destructive on GET.
+- Escaped password-reset URL tokens in backend-rendered HTML.
+- Added item/order/category domain tests and atomic order stock application.
+- Split `/health` readiness from `/live` liveness and masked secret config values.
+- Goal 7 adds blocking Ruff, pytest, exact route-count, and item/order coverage gates while keeping mypy and Trivy advisory until their existing baselines are clean.
 
 ---
 
@@ -89,6 +100,12 @@ Google Play policy requires in-app account deletion with full data erasure:
 | #14 | `docs/carekosh-docs-overhaul` | Documentation overhaul — complete guide refresh for PRs #1–#13 |
 | #15 | `fix/skeleton-loading` | Skeleton loading screens for dashboard, inventory, orders tabs |
 | #16 | `fix/cache-persistence-cold-start` | TanStack Query cache persistence + cold-start auto-retry on login + focusManager wiring |
+| #37 | `security/remove-legacy-sync-router` | Remove unused legacy backend sync route surface |
+| #38 | `security/account-deletion-post-confirm` | Make account deletion finalization POST-confirmed |
+| #39 | `security/reset-password-token-escaping` | Escape reset-password URL tokens in backend-rendered HTML |
+| #40 | `test/domain-inventory-order-coverage` | Add item/order/category domain test coverage |
+| #41 | `correctness/atomic-apply-order-stock` | Make order stock application atomic |
+| #42 | `ops/health-and-secret-types` | Make `/health` DB-backed readiness, add `/live`, and mask config secrets |
 
 (PR #3 was rolled into #4 during review and does not appear as its own merge commit.)
 
@@ -112,7 +129,7 @@ Google Play policy requires in-app account deletion with full data erasure:
 
 Rough priority order; none are scheduled.
 
-1. **Fix the test suite.** 40 / 53 backend tests currently fail (schema drift from the server-first migration + account-deletion changes). Largest single portfolio gap.
+1. **Clean advisory CI baselines.** Fix the current mypy errors, upgrade vulnerable dependencies from the Trivy HIGH/CRITICAL baseline, then promote both advisory jobs to blocking gates.
 2. **Sentry** for mobile + backend error monitoring.
 3. **UptimeRobot** (or similar) pinging `/health` every 5 min to keep Render warm and to alert on outages.
 4. **Google SSO** on mobile.
@@ -122,6 +139,7 @@ Rough priority order; none are scheduled.
 8. **Production AAB from CI** — enable the disabled `build-production` job and wire `eas submit` into the pipeline.
 9. **Item expiry tracking + alerts.**
 10. **Caregiver sharing** — multiple accounts on one inventory (currently each user's inventory is private).
+11. **Goal 8 backend finish.** Replace wildcard production CORS with real origin values, lock down the unauthenticated email diagnostic, and add server-side default-category protection.
 
 ---
 

@@ -496,8 +496,8 @@
       <p>These are the repo facts that shape the plan. They matter because several existing docs are stale or off by one.</p>
       <h3>Current architecture</h3>
       <p>The mobile app is server-first, not offline-first. It does not have a sync queue, <code>services/sync.ts</code>, or <code>useSyncStore</code>. That makes removing backend <code>/sync/*</code> compatible with the current app.</p>
-      <h3>Current route count</h3>
-      <p>Current <code>/api/v1</code> count is 41: auth 17, categories 6, items 8, orders 6, activity 1, sync 3. The backend README currently claims 42 and 18 auth routes, which is stale.</p>
+      <h3>Original audit route count</h3>
+      <p>At the original audit point, the <code>/api/v1</code> count was 41: auth 17, categories 6, items 8, orders 6, activity 1, sync 3. The then-current backend README claimed 42 and 18 auth routes, which was stale.</p>
       <h3>After route changes</h3>
       <p>Goal 1 removes 3 sync routes, leaving 38. Goal 2 adds POST <code>/confirm-delete/{token}</code>, bringing the final API count to 39. <code>/health</code> and <code>/live</code> are root routes, not <code>/api/v1</code> routes.</p>
       <h3>Test warning</h3>
@@ -552,7 +552,7 @@
           </tr>
           <tr>
             <td>Docs are stale</td>
-            <td>Backend docs claim wrong route counts, active legacy sync, failing old tests, and CORS validation that does not exist.</td>
+            <td>Before Goal 7, backend docs contained stale route-count, legacy-sync, old test-status, and nonexistent CORS-validation references.</td>
             <td>Goal 7</td>
           </tr>
         </table>
@@ -728,7 +728,7 @@
           <li>Do not make CORS stricter in this branch; document it as Goal 8 because it needs real origin values.</li>
           <li>Do not pretend mypy/Trivy are clean until the baseline run proves it.</li>
         </ul>
-        <p class="accept"><strong>Accept:</strong> CI passes with blocking tests, route floor, coverage gates, and triaged security scan; docs no longer contain stale <code>42 total</code>, <code>40/53</code>, or active legacy sync claims.</p>
+        <p class="accept"><strong>Accept:</strong> CI passes with blocking tests, route floor, coverage gates, and triaged security scan; active docs no longer contain stale route-count, old test-status, or legacy-sync claims.</p>
       </article>
     </section>
     <section id="critical-goal-8">

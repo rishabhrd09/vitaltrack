@@ -227,7 +227,7 @@ inside inline JavaScript.
 - **Session revoke on password change / reset / account delete**
 - **Password reset XSS guard**: reset tokens are escaped into a DOM attribute and are never rendered raw inside inline JavaScript
 - **slowapi** rate limits on auth endpoints (see table above)
-- **Config validators** refuse production startup if `SECRET_KEY` is the placeholder, `CORS_ORIGINS` is `*`, or `FRONTEND_URL` is empty
+- **Config validators** refuse production startup if `SECRET_KEY` is the placeholder or `FRONTEND_URL` is empty. `CORS_ORIGINS` is parsed but wildcard production rejection is deferred to Goal 8, after real browser origins are known.
 
 ---
 
@@ -271,7 +271,7 @@ ENVIRONMENT=development
 DEBUG=False
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=30
-CORS_ORIGINS=*                                                  # NEVER "*" in production
+CORS_ORIGINS=*                                                  # accepted today; restrict in Goal 8 when real browser origins are known
 RATE_LIMIT_PER_MINUTE=60
 RATE_LIMIT_BURST=10
 MAIL_SERVER=sandbox.smtp.mailtrap.io                            # Brevo SMTP in prod
@@ -290,13 +290,17 @@ PASSWORD_RESET_EXPIRY_HOURS=1
 
 ### Tests
 ```bash
-pytest tests/ -q --cov=app --cov-report=term-missing
+pytest tests/ -q --cov=app --cov-report=term-missing --cov-report=json
+python scripts/check_api_routes.py --expected 39
+python scripts/check_file_coverage.py coverage.json --threshold 70 \
+  --file app/api/v1/items.py \
+  --file app/api/v1/orders.py
 ```
 
 ### Lint / type check / format
 ```bash
-ruff check app/
-mypy app/
+ruff check app/ tests/
+mypy app/ --ignore-missing-imports   # advisory until the existing baseline is fixed
 black app/
 ```
 
@@ -333,6 +337,8 @@ Backend auto-deploys on every push to `main` via the `deploy-backend` job in `.g
 
 Both run the same container; they differ only in env vars (Neon branch for `DATABASE_URL`, `FRONTEND_URL`, Brevo credentials).
 
+Render should use `/live` as the platform liveness check. `/health` is a readiness check that probes the database and returns `503` when the probe fails.
+
 ---
 
 ## API testing
@@ -342,8 +348,11 @@ See [API_TESTING_GUIDE.md](API_TESTING_GUIDE.md).
 ### Quick curl examples
 
 ```bash
-# Health
+# Readiness: probes the database
 curl http://localhost:8000/health
+
+# Liveness: process-only, no database probe
+curl http://localhost:8000/live
 
 # Register
 curl -X POST http://localhost:8000/api/v1/auth/register \

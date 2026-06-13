@@ -128,7 +128,7 @@ ROUTE GUARD
 - **Email is now required at registration** — username-only signup removed.
 - `/resend-verification` returns a uniform response regardless of account state (no user enumeration).
 - Password change and password reset revoke **all** refresh tokens.
-- Config validators refuse production startup if `SECRET_KEY` is the placeholder, `CORS_ORIGINS` is `*`, or `FRONTEND_URL` is empty.
+- Config validators refuse production startup if `SECRET_KEY` is the placeholder or `FRONTEND_URL` is empty. `CORS_ORIGINS=["*"]` is still accepted today; CORS tightening is deferred until real browser/admin origins are known.
 
 ### Key lesson
 
@@ -322,7 +322,7 @@ components/common/ProfileMenuSheet.tsx           NEW — swipe-down dismiss
 | Closed testing (≥12 testers, 14 days) | P1 | Not started |
 | Data Safety form in Play Console | P1 | Not started |
 | Flip `build-production` CI job from `if: false` | P2 | Ready; pending listing complete |
-| Fix the test suite (40/53 failing) | P2 | Largest portfolio gap |
+| Clean advisory CI baselines | P2 | mypy and Trivy have existing findings; backend pytest now passes 111 tests |
 | Sentry error monitoring (mobile + backend) | P3 | Planned v1.1 |
 | Sender domain verification in Brevo | P3 | Improves deliverability |
 | DPDP Act grievance endpoint | P3 | Required for India launch per DPDP Act |

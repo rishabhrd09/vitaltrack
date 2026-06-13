@@ -224,7 +224,7 @@ Specific updates in `test_auth.py`:
 | `TestRegistrationErrors.test_duplicate_username_rejected` | Added `"email": "imposter@test.com"` to raw POST (without email → 422 masked the duplicate logic) |
 | `TestPasswordValidation` × 6 | Added unique email to each raw POST |
 
-> As of 2026-04-19, the test suite reports 40/53 failing overall. The failures are schema drift unrelated to these changes — see [../CAREKOSH_ROADMAP.md](../CAREKOSH_ROADMAP.md).
+> Superseded: the old 2026-04-19 failing-test snapshot is no longer current. As of the Goal 7 baseline, the backend suite collects and passes 111 tests against a disposable PostgreSQL database.
 
 ---
 
@@ -323,9 +323,9 @@ vitaltrack-backend/tests/test_auth.py      — 9 test locations updated
 *Retrospective of PR #12 · written 2026-04-18 · last reviewed 2026-05-04.*
 
 > **Re-audit notes (2026-05-04):**
-> 1. The "40/53 tests failing" snapshot in §6 dates from 2026-04-19 and is
->    almost certainly stale by now (22 PRs and ~5 weeks have passed). Re-run
->    `pytest -v` to get a fresh count before relying on that number.
+> 1. The old failing-test snapshot in §6 is historical only and no longer
+>    describes current branch health. The Goal 7 baseline is 111 backend tests
+>    passing against PostgreSQL.
 > 2. The earlier draft of §1d claimed PR #12 added a `CORS_ORIGINS` validator
 >    that "rejects `*` in production" — that's not what shipped, and the
 >    section has been corrected. There is no such validator; `render.yaml`

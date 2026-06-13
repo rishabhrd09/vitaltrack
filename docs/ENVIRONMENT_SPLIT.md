@@ -372,11 +372,10 @@ curl -s https://vitaltrack-api.onrender.com/health | python -m json.tool
 #   "timestamp": "2026-..."
 # }
 
-# Note: the `database` field is currently a hardcoded literal "connected" in
-# app/main.py — the /health endpoint does NOT actively probe the database.
-# A real DB outage manifests as the endpoint not responding (process down or
-# 5xx), not as `"database": "disconnected"`. Use Neon's own monitoring for
-# database health.
+# /health is a readiness check: it actively runs a database probe and returns
+# 503 with database="unavailable" when that probe fails. Render should use
+# /live for process liveness so database outages do not trigger restart loops.
+curl -s https://vitaltrack-api.onrender.com/live | python -m json.tool
 ```
 
 ### Registration smoke test (staging only)
@@ -409,17 +408,17 @@ curl -s -X POST https://vitaltrack-api.onrender.com/api/v1/auth/login \
 
 ## 8. Troubleshooting
 
-### `/health` returns nothing (504 / connection error)
+### `/health` returns 503 or times out
 
-The `/health` endpoint always returns `"database": "connected"` literally
-when it responds at all — it does NOT probe Neon. If the endpoint times out
-or returns 5xx, the process itself is unhealthy:
+`/health` actively probes the database. A `503` with `database="unavailable"`
+means the app process is alive but the readiness probe failed. A timeout or
+connection error means the process or Render edge path itself is unhealthy:
 
 - Check Render → service → Environment Variables → `DATABASE_URL`.
 - Verify the DB name matches (`vitaltrack_staging` for staging, `neondb` for production).
 - Verify the Neon project is not suspended due to inactivity.
 - Verify the password in the connection string matches Neon's current one (rotating the Neon password requires updating Render).
-- For real DB-side health, use the Neon dashboard's monitoring panel.
+- For DB-side detail beyond the readiness probe, use the Neon dashboard's monitoring panel.
 
 ### Wrong `environment` value in `/health`
 
@@ -488,7 +487,7 @@ Yes. It starts empty. You or testers register accounts and populate test data. B
 
 Render free-tier services sleep after ~15 minutes idle. The first request after sleep takes 30–60 seconds while the container boots + runs migrations + starts gunicorn. Subsequent requests are fast. Staging and production sleep independently.
 
-A keep-alive monitor (UptimeRobot or similar) pointed at `/health` on a 5-minute interval keeps the services warm.
+A keep-alive monitor (UptimeRobot or similar) can point at `/live` on a 5-minute interval to keep the service warm without coupling liveness to database readiness. Use `/health` when you specifically want database-backed readiness.
 
 ### Do I need Expo dashboard changes?
 
@@ -510,6 +509,6 @@ Zero code changes needed. Create a new Neon DB, a new Render service, set its en
 
 > **Re-audit notes (2026-05-04):**
 > 1. The earlier "PR #12 rejects `*` in production" claim was incorrect — see corrections inline in §4.5 / §6.2 / §FAQ.
-> 2. The `/health` endpoint **does not actually probe the database** — the `database` field in the response is a hardcoded `"connected"` literal in `app/main.py`. A real DB outage shows up as the endpoint not responding (5xx / timeout), not as `"database": "disconnected"`. Section §7 (smoke tests) and §8 (troubleshooting) have been corrected.
+> 2. Superseded by Goal 6: `/health` now probes the database and returns `503` when readiness fails. `/live` is the process-only liveness endpoint for Render and keep-alive monitors.
 > 3. Email transport in production is now Brevo's HTTP REST API over port 443, not SMTP/STARTTLS. The `MAIL_SERVER` / `MAIL_PORT` / `MAIL_STARTTLS` config keys still exist for the Mailtrap-dev SMTP path; in production they're unused. (See `app/utils/email.py`.)
 > 4. The mobile app gained a cold-start UX layer (`MutationResultDialog`, `StatusPill`, `safeBack`, `mutationFeedback`, `react-native-toast-message`) on the audit/cold-start-mutation-ux branch merged 2026-05-04. None of that touches environment / DB / Render config; the env-split surface is unchanged.
