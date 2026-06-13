@@ -812,6 +812,52 @@
           <li>Default categories cannot be deleted through the API.</li>
         </ul>
         <p class="accept"><strong>Accept:</strong> Goal 8 closes known deferred security gaps where safe and explicitly defers CORS tightening when real origins are missing, with no mobile behavior regression and no deployment break from missing CORS configuration.</p>
+        <h4>Manual API verification to recall later</h4>
+        <p>After the Goal 8 branch is deployed, verify the behavior with a throwaway account on staging or production. These checks prove the security intent, not just that the endpoints return successful responses.</p>
+        <div class="table-wrap">
+          <table>
+            <tr>
+              <th>Manual check</th>
+              <th>Expected result</th>
+              <th>What it proves</th>
+            </tr>
+            <tr>
+              <td>Call <code>GET /api/v1/auth/email-service-status</code> with no bearer token.</td>
+              <td><code>401 Unauthorized</code> with <code>{&quot;detail&quot;:&quot;Not authenticated&quot;}</code>.</td>
+              <td>The production email diagnostic is no longer a public information leak.</td>
+            </tr>
+            <tr>
+              <td>Call the same endpoint with a valid bearer token.</td>
+              <td><code>200 OK</code> with a generic message such as <code>Email service is configured and reachable.</code>, <code>Email service is not configured.</code>, or <code>Email service is unavailable. Check server logs.</code>.</td>
+              <td>Authenticated diagnostics still work, but raw provider errors, API keys, sender internals, stack traces, and infrastructure details are not exposed to API callers.</td>
+            </tr>
+            <tr>
+              <td>Create a category with <code>is_default=true</code>, then call <code>DELETE /api/v1/categories/{id}</code> as the owner.</td>
+              <td><code>409 Conflict</code> with <code>Default categories cannot be deleted</code>.</td>
+              <td>Default-category protection is enforced by the backend, not only by mobile UI behavior.</td>
+            </tr>
+            <tr>
+              <td>Fetch that same default category after the failed delete.</td>
+              <td><code>200 OK</code> and <code>isDefault: true</code>.</td>
+              <td>The delete rejection preserves the category rather than partially deleting or mutating it.</td>
+            </tr>
+            <tr>
+              <td>Create a category with <code>is_default=false</code>, then delete it as the owner.</td>
+              <td><code>200 OK</code> with a success message.</td>
+              <td>Normal category deletion still works; Goal 8 did not break legitimate custom-category cleanup.</td>
+            </tr>
+            <tr>
+              <td>Use a second user's bearer token to delete the first user's default category.</td>
+              <td><code>404 Not Found</code>, not <code>409 Conflict</code>.</td>
+              <td>User scoping still runs before the default-category guard, so another user's category existence is not leaked.</td>
+            </tr>
+          </table>
+        </div>
+        <ul class="check-list">
+          <li>A production smoke test on 2026-06-13 returned exactly these outcomes: unauthenticated email diagnostic <code>401</code>, authenticated email diagnostic <code>200</code> with a generic configured/reachable message, default delete <code>409</code>, default follow-up fetch <code>200</code>, custom delete <code>200</code>, and cross-user delete <code>404</code>.</li>
+          <li>For mobile regression confidence, still smoke test login, inventory/category load, item create/edit, and order receive/apply-stock flows. Goal 8 is backend-only and should not change mobile runtime behavior.</li>
+          <li>CORS is intentionally not considered fully hardened until real browser/admin origins are configured. Native mobile requests are not governed by browser CORS.</li>
+        </ul>
       </article>
     </section>
     <section id="standards-cross-check">
