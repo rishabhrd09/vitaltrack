@@ -333,6 +333,7 @@ jobs:
       
       - name: Post build notification on PR
         if: success()
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
