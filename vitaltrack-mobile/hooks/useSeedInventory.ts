@@ -18,6 +18,7 @@ import { ApiClientError } from '@/services/api';
 import { SEED_DATA, ESSENTIAL_ITEM_KEYWORDS } from '@/data/seedData';
 import { queryKeys } from './useServerData';
 import type { Item, Category } from '@/types';
+import { logger } from '@/utils/logger';
 
 interface SeedProgress {
   phase: 'categories' | 'items';
@@ -184,7 +185,7 @@ export function useSeedInventory() {
             }
             const msg = err instanceof Error ? err.message : String(err);
             trueFailures.push(`Category "${seedCat.name}": ${msg}`);
-            console.warn('[Seed] Category create failed:', seedCat.name, msg);
+            logger.warn('Seed', 'Category create failed', err);
             // Skip items for this category since we have no categoryId
             categoriesHandled++;
             itemsHandled += seedCat.items.length;
@@ -226,7 +227,7 @@ export function useSeedInventory() {
             } else {
               const msg = err instanceof Error ? err.message : String(err);
               trueFailures.push(`Item "${seedItem.name}": ${msg}`);
-              console.warn('[Seed] Item create failed:', seedItem.name, msg);
+              logger.warn('Seed', 'Item create failed', err);
             }
           }
           itemsHandled++;
@@ -250,7 +251,7 @@ export function useSeedInventory() {
           qc.refetchQueries({ queryKey: queryKeys.items }),
         ]);
       } catch (reconcileErr) {
-        console.warn('[Seed] Cache reconciliation failed:', reconcileErr);
+        logger.warn('Seed', 'Cache reconciliation failed', reconcileErr);
       }
       setIsSeeding(false);
       setProgress(null);
@@ -451,7 +452,7 @@ export function useStartFresh() {
           qc.refetchQueries({ queryKey: queryKeys.categories }),
         ]);
       } catch (reconcileErr) {
-        console.warn('[StartFresh] Cache reconciliation failed:', reconcileErr);
+        logger.warn('StartFresh', 'Cache reconciliation failed', reconcileErr);
       }
       setIsResetting(false);
     }

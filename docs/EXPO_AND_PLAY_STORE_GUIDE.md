@@ -6,6 +6,7 @@ Related:
 - Build triggers & CI: repo-root `CAREKOSH_BUILD_DEPLOY_FLOW.html`
 - Deployment strategies: repo-root `CAREKOSH_DEPLOYMENT_STRATEGY.html`
 - Roadmap / launch checklist: [../CAREKOSH_ROADMAP.md](../CAREKOSH_ROADMAP.md)
+- Android release privacy/platform hardening: [PLAY_STORE_RELEASE_HARDENING_GOAL_9.md](PLAY_STORE_RELEASE_HARDENING_GOAL_9.md)
 
 ---
 
@@ -42,6 +43,10 @@ eas build:configure
 | `development` | APK | `http://localhost:8000` | — | Local dev on physical device |
 | `preview` | APK | `https://vitaltrack-api-staging.onrender.com` | `preview` | PR review sideload, staging backend |
 | `production` | AAB | `https://vitaltrack-api.onrender.com` | `production` · autoIncrement | Play Store (track: `internal`) |
+
+Android cleartext traffic is disabled by default. `app.config.js` enables it
+only for the development EAS profile or an explicit local-only override. Preview
+and production builds are HTTPS-only.
 
 ### 1.4 Create an access token for CI
 
@@ -99,11 +104,11 @@ Every one of these must be complete before Google lets you submit:
 
 | Section | Notes |
 |---|---|
-| App access | If login is required (it is), provide test credentials for Google reviewers |
+| App access | If login is required (it is), provide test credentials and cold-start notes for Google reviewers. Use the template in `PLAY_STORE_RELEASE_HARDENING_GOAL_9.md` |
 | Content rating | Questionnaire — pick "Medical", no violent/adult content |
-| **Data safety** | Declare: name, email, device identifiers. Declare storage location (Neon / Singapore), encryption-in-transit, user-deletable (point to in-app account deletion — see PR #13) |
+| **Data safety** | Use `PLAY_STORE_RELEASE_HARDENING_GOAL_9.md` as the data inventory: name, email, username, optional supplier/contact phone, inventory, orders, categories, activity, selected images/photos, PDF/files, clipboard export, diagnostics/crash-log status, and third-party SDK/provider data. Declare encryption-in-transit and account deletion accurately |
 | Target audience | 13+ |
-| **Account deletion** | Link to in-app deletion instructions. CareKosh ships `DELETE /auth/me` and the Profile screen's Delete Account button (PR #13) — Play Store requires this |
+| **Account deletion** | In-app path: Profile → Delete Account → email confirmation. Play also requires a public web deletion request URL; host this before submission |
 | Assets | Icon 512×512 PNG, feature graphic 1024×500 PNG, ≥2 phone screenshots |
 | **Privacy policy URL** | Must resolve publicly (GitHub Pages, Notion public page, or a simple static site work) |
 
@@ -159,7 +164,7 @@ eas submit --profile production --platform android   # uploads to Play Console i
 | Privacy policy requirement | Any app with user accounts needs one | Host on GitHub Pages as markdown; link URL in Play Console + in-app About screen |
 | Expo token expiration | CI suddenly fails months later | Set expiration to None, or schedule a yearly rotation |
 | App signing key loss | Cannot push updates to existing users | Use "Let Google manage app signing"; let EAS generate and Google hold |
-| Data Safety declaration errors | Suspension risk | Declare every field the backend stores (users: name, email, hashed password, username, last_login; plus inventory and order data) |
+| Data Safety declaration errors | Suspension risk | Declare every field the app/backend stores or transmits. Start from `PLAY_STORE_RELEASE_HARDENING_GOAL_9.md`, then re-check the final backend schema and SDK/provider docs before submission |
 | Account deletion not reachable | Instant Play Store rejection on new apps (2024+) | Verified: `DELETE /auth/me` + Profile screen Delete button ship in PR #13 |
 
 ---
@@ -176,7 +181,8 @@ eas submit --profile production --platform android   # uploads to Play Console i
 | App listing (title, icons, screenshots) | 🟡 WIP |
 | Privacy policy hosted at a stable URL | 🟡 drafted, not hosted |
 | `FRONTEND_URL` env var set on production Render service | ✅ done |
-| Data Safety form | 🔴 not started |
+| Goal 9 Play Data Safety input inventory | ✅ documented in `docs/PLAY_STORE_RELEASE_HARDENING_GOAL_9.md` |
+| Data Safety form in Play Console | 🔴 not submitted |
 | Closed testing track (≥12 testers, 14 days) | 🔴 not started |
 
 See [../CAREKOSH_ROADMAP.md](../CAREKOSH_ROADMAP.md) for the live version of this list.
@@ -197,3 +203,8 @@ npx eas build --profile preview --platform android
 > - The Data Safety enumeration of "fields the backend stores" should additionally declare the email-verification, password-reset, and account-deletion token columns + their expiry timestamps. Those are PII storage touchpoints introduced in PR #12 and PR #13.
 > - The `eas.json` profile mappings (development → localhost, preview → staging, production → prod) and the `RENDER_DEPLOY_HOOK` / `EXPO_TOKEN` secret names are unchanged.
 > - The mobile cold-start UX layer (added on the audit/cold-start-mutation-ux branch, merged 2026-05-04) is review-relevant for first-touch Play Console reviewers — when Render's free tier cold-starts, the user now sees a "Saving… server warming up" pill plus a centred dialog summarising the outcome. Worth adding a launch checklist row "Cold-start UX verified end-to-end on Render free tier."
+
+> **Goal 9 notes (2026-06-15):**
+> - Android production/preview cleartext is disabled through app config; development remains able to use local HTTP.
+> - Explicit Android permissions were reduced to `ACCESS_NETWORK_STATE`; camera, microphone, overlay, vibration, and legacy broad storage permissions are blocked unless a future generated manifest proves a feature requires them.
+> - App auto-backup is disabled because AsyncStorage cache snapshots can contain health-adjacent inventory/order/activity data. SecureStore remains configured for Android backup exclusion behavior.

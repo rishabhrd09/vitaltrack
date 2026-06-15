@@ -22,6 +22,7 @@ import { Alert } from 'react-native';
 import { escapeHtml, validateImageUri } from '@/utils/sanitize';
 import { formatDate, now } from '@/utils/helpers';
 import { isLowStock, isOutOfStock, type Item, type Category } from '@/types';
+import { logger } from '@/utils/logger';
 
 async function getBase64Image(uri: string): Promise<string> {
   try {
@@ -570,7 +571,7 @@ export function showInventoryPdfDialog(opts: {
     exportInventoryPdf({ items, categories, includePhotos })
       .then(() => onDone?.())
       .catch((err) => {
-        console.error(err);
+        logger.warn('InventoryPdfExport', 'PDF export failed', err);
         Alert.alert('Error', 'Failed to export PDF');
       });
   };

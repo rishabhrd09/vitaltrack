@@ -20,6 +20,7 @@ import { authService } from '@/services/auth';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import { safeBack } from '@/utils/navigation';
+import { logger } from '@/utils/logger';
 
 const DELETION_POLL_INTERVAL_MS = 5000;
 const DELETION_POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
@@ -46,7 +47,7 @@ export default function ProfileScreen() {
     const startDeletionPolling = () => {
         if (pollRef.current) return;
         const pollStart = Date.now();
-        console.info('[Auth] Account deletion polling started');
+        logger.info('Auth', 'Account deletion polling started');
 
         pollRef.current = setInterval(async () => {
             if (Date.now() - pollStart > DELETION_POLL_TIMEOUT_MS) {
@@ -54,12 +55,12 @@ export default function ProfileScreen() {
                     clearInterval(pollRef.current);
                     pollRef.current = null;
                 }
-                console.info('[Auth] Deletion poll timed out after 10 minutes');
+                logger.info('Auth', 'Account deletion polling timed out');
                 return;
             }
             try {
                 await authService.getProfile();
-                console.info('[Auth] Polling /auth/me — account still alive');
+                logger.debug('Auth', 'Account deletion poll still authenticated');
             } catch (err) {
                 const status = (err as { status?: number }).status;
                 if (status === 401 || status === 404) {
@@ -67,7 +68,7 @@ export default function ProfileScreen() {
                         clearInterval(pollRef.current);
                         pollRef.current = null;
                     }
-                    console.info('[Auth] 401/404 detected — account deleted');
+                    logger.info('Auth', 'Account deletion poll detected deletion');
                     Alert.alert(
                         'Account Deleted',
                         'Your CareKosh account has been permanently deleted.',
@@ -109,7 +110,7 @@ export default function ProfileScreen() {
                     onPress: async () => {
                         try {
                             const response = await authService.requestAccountDeletion();
-                            console.info('[Auth] Account deletion requested');
+                            logger.info('Auth', 'Account deletion requested');
                             Alert.alert(
                                 'Check your email',
                                 response.message ||

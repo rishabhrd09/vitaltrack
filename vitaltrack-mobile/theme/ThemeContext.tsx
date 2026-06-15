@@ -7,6 +7,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors as darkColors } from './colors';
+import { logger } from '@/utils/logger';
 
 /**
  * Light theme colors - Industry-standard warm colors
@@ -126,7 +127,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
                     setIsDarkMode(true);
                 }
             } catch (error) {
-                console.warn('Failed to load theme preference:', error);
+                logger.warn('Theme', 'Failed to load theme preference', error);
                 setIsDarkMode(true); // Fallback to dark
             } finally {
                 setIsLoaded(true);
@@ -141,7 +142,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         try {
             await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme ? 'dark' : 'light');
         } catch (error) {
-            console.warn('Failed to save theme preference:', error);
+            logger.warn('Theme', 'Failed to save theme preference', error);
         }
     };
 

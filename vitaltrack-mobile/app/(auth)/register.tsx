@@ -24,6 +24,7 @@ import { Link, router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { logger } from '@/utils/logger';
 
 export default function RegisterScreen() {
     const theme = useTheme();
@@ -59,7 +60,7 @@ export default function RegisterScreen() {
     const handleRegister = async () => {
         // Prevent double-submit
         if (isSubmitting || isLoading) {
-            console.log('[Register] Already submitting, ignoring');
+            logger.debug('Register', 'Already submitting; ignoring duplicate tap');
             return;
         }
 
@@ -109,7 +110,7 @@ export default function RegisterScreen() {
             return;
         }
 
-        console.log('[Register] Starting registration');
+        logger.debug('Register', 'Starting registration');
         setIsSubmitting(true);
 
         try {
@@ -125,7 +126,7 @@ export default function RegisterScreen() {
                 // anymore (useAuthStore discards tokens). Always route to the
                 // verify-email screen — the user confirms their email, then logs
                 // in fresh. No probe-login, no conditional branching.
-                console.log('[Register] Registration complete — routing to verify-email');
+                logger.debug('Register', 'Registration complete; routing to verify-email');
                 setTimeout(() => {
                     router.replace({
                         pathname: '/(auth)/verify-email-pending' as const,
@@ -133,10 +134,10 @@ export default function RegisterScreen() {
                     } as never);
                 }, 100);
             } else {
-                console.log('[Register] Registration returned false');
+                logger.debug('Register', 'Registration returned false');
             }
         } catch (err) {
-            console.error('[Register] Registration error:', err);
+            logger.warn('Register', 'Registration error', err);
             setLocalError('An unexpected error occurred. Please try again.');
         } finally {
             setIsSubmitting(false);

@@ -19,6 +19,7 @@ import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import { now } from '@/utils/helpers';
 import { showInventoryPdfDialog } from '@/utils/inventoryPdfExport';
 import { useItems, useCategories } from '@/hooks/useServerData';
+import { logger } from '@/utils/logger';
 
 interface ExportModalProps {
     visible: boolean;
@@ -82,7 +83,7 @@ export default function ExportModal({ visible, onClose }: ExportModalProps) {
                 [{ text: 'OK' }]
             );
         } catch (e) {
-            console.error(e);
+            logger.warn('ExportModal', 'JSON export failed', e);
             Alert.alert('Error', 'Failed to export JSON');
         } finally {
             setIsExporting(false);

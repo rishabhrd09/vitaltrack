@@ -11,6 +11,7 @@ import { Alert } from 'react-native';
 import { escapeHtml, validateImageUri } from '@/utils/sanitize';
 import { formatDate, now } from '@/utils/helpers';
 import type { OrderItem } from '@/types';
+import { logger } from '@/utils/logger';
 
 interface ExportableOrder {
   id: string;
@@ -249,7 +250,7 @@ export function showPdfExportDialog(order: ExportableOrder): void {
 
 function doExport(order: ExportableOrder, includePhotos: boolean): void {
   generateCombinedPDF(order, includePhotos).catch((e) => {
-    console.error(e);
+    logger.warn('OrderPdfExport', 'PDF export failed', e);
     Alert.alert('Error', 'Failed to generate PDF');
   });
 }

@@ -5,6 +5,7 @@
 
 import { api, ApiClientError } from './api';
 import type { Item, DashboardStats } from '@/types';
+import { logger } from '@/utils/logger';
 
 // Response types
 interface ItemsListResponse {
@@ -218,7 +219,7 @@ export const itemService = {
       return await api.delete<{ message: string }>(`/items/${id}`);
     } catch (err) {
       if (err instanceof ApiClientError && err.status === 404) {
-        console.info(`[itemService] DELETE ${id}: already gone (404 treated as success)`);
+        logger.info('itemService', 'DELETE returned 404; treating as already deleted');
         return { message: 'Item already deleted' };
       }
       throw err;

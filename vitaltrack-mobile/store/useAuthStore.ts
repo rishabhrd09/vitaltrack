@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User, RegisterRequest } from '@/types';
 import { authService } from '@/services/auth';
 import { tokenStorage, ApiClientError } from '@/services/api';
+import { logger } from '@/utils/logger';
 
 // ============================================================================
 // SECURE STORAGE ADAPTER
@@ -28,14 +29,14 @@ const secureStorage = {
     try {
       await SecureStore.setItemAsync(name, value);
     } catch (error) {
-      console.error('[SecureStore] Failed to save:', error);
+      logger.warn('SecureStore', 'Failed to save value', error);
     }
   },
   removeItem: async (name: string): Promise<void> => {
     try {
       await SecureStore.deleteItemAsync(name);
     } catch (error) {
-      console.error('[SecureStore] Failed to remove:', error);
+      logger.warn('SecureStore', 'Failed to remove value', error);
     }
   },
 };
@@ -95,14 +96,14 @@ export const useAuthStore = create<AuthStore>()(
       // INITIALIZE - Check for existing session
       // =====================================================================
       initialize: async () => {
-        console.log('[Auth] Initializing...');
+        logger.debug('Auth', 'Initializing session');
         set({ isLoading: true, error: null });
 
         try {
           const token = await tokenStorage.getAccessToken();
 
           if (!token) {
-            console.log('[Auth] No token found');
+            logger.debug('Auth', 'No token found');
             set({
               isAuthenticated: false,
               user: null,
@@ -112,7 +113,7 @@ export const useAuthStore = create<AuthStore>()(
             return;
           }
 
-          console.log('[Auth] Token found, fetching profile...');
+          logger.debug('Auth', 'Token found; fetching profile');
 
           // Race profile fetch against timeout (Render cold start can take 60s)
           let user;
@@ -126,7 +127,7 @@ export const useAuthStore = create<AuthStore>()(
           } catch (timeoutErr) {
             const err = timeoutErr as Error;
             if (err.message === 'PROFILE_TIMEOUT') {
-              console.log('[Auth] Profile fetch timed out (server cold start?) — using cached state');
+              logger.info('Auth', 'Profile fetch timed out; using cached auth state');
               set({
                 isAuthenticated: true,
                 isLoading: false,
@@ -140,11 +141,11 @@ export const useAuthStore = create<AuthStore>()(
                 try {
                   const freshUser = await authService.getProfile();
                   set({ user: freshUser, isBackendColdStarting: false });
-                  console.log('[Auth] Background profile refresh succeeded');
+                  logger.debug('Auth', 'Background profile refresh succeeded');
                 } catch {
                   // Leave the flag set — the backend may still be warming
                   // and the next successful API call will clear it.
-                  console.warn('[Auth] Background profile refresh failed');
+                  logger.warn('Auth', 'Background profile refresh failed');
                 }
               }, 5000);
               return;
@@ -152,7 +153,7 @@ export const useAuthStore = create<AuthStore>()(
             throw timeoutErr;
           }
 
-          console.log('[Auth] Profile loaded:', user.email || user.username);
+          logger.debug('Auth', 'Profile loaded');
           set({
             user,
             isAuthenticated: true,
@@ -166,11 +167,11 @@ export const useAuthStore = create<AuthStore>()(
               const { queryClient } = await import('@/providers/QueryProvider');
               queryClient.invalidateQueries();
             } catch (err) {
-              console.warn('[Auth] Failed to invalidate queries:', err);
+              logger.warn('Auth', 'Failed to invalidate queries after initialize', err);
             }
           }, 100);
         } catch (error) {
-          console.error('[Auth] Initialize failed:', error);
+          logger.warn('Auth', 'Initialize failed', error);
           // Only clear tokens on explicit auth errors (401)
           // On network errors (Render cold start), preserve cached auth state
           const apiError = error as { status?: number };
@@ -185,7 +186,7 @@ export const useAuthStore = create<AuthStore>()(
             });
           } else {
             // Network error — keep existing persisted auth state
-            console.log('[Auth] Network error during init — preserving cached auth state');
+            logger.info('Auth', 'Network error during initialize; preserving cached auth state');
             const existingUser = get().user;
             set({
               isAuthenticated: !!existingUser,
@@ -201,13 +202,13 @@ export const useAuthStore = create<AuthStore>()(
       // LOGIN
       // =====================================================================
       login: async (identifier: string, password: string) => {
-        console.log('[Auth] Login attempt:', identifier);
+        logger.debug('Auth', 'Login attempt');
         set({ isLoading: true, error: null, isColdStart: false });
 
         try {
           const response = await authService.login({ identifier, password });
 
-          console.log('[Auth] Login successful:', response.user.email || response.user.username);
+          logger.debug('Auth', 'Login successful');
           set({
             user: response.user,
             isAuthenticated: true,
@@ -224,7 +225,7 @@ export const useAuthStore = create<AuthStore>()(
             queryClient.clear();
             try { await AsyncStorage.removeItem(CACHE_STORAGE_KEY); } catch { /* non-critical */ }
           } catch (err) {
-            console.warn('[Auth] Failed to clear cache on login:', err);
+            logger.warn('Auth', 'Failed to clear cache on login', err);
           }
 
           // Invalidate React Query cache for the new user
@@ -233,14 +234,14 @@ export const useAuthStore = create<AuthStore>()(
               const { queryClient } = await import('@/providers/QueryProvider');
               queryClient.invalidateQueries();
             } catch (err) {
-              console.warn('[Auth] Failed to invalidate queries after login:', err);
+              logger.warn('Auth', 'Failed to invalidate queries after login', err);
             }
           }, 100);
 
           return true;
         } catch (error) {
           const err = error as Error;
-          console.error('[Auth] Login failed:', err.message);
+          logger.warn('Auth', 'Login failed', err);
 
           // Rethrow EMAIL_NOT_VERIFIED for UI handling
           if (err.message === 'EMAIL_NOT_VERIFIED') {
@@ -271,12 +272,12 @@ export const useAuthStore = create<AuthStore>()(
       // REGISTER
       // =====================================================================
       register: async (data: RegisterRequest) => {
-        console.log('[Auth] Register attempt:', data.email || data.username);
+        logger.debug('Auth', 'Register attempt');
         set({ isLoading: true, error: null });
 
         try {
-          const response = await authService.register(data);
-          console.log('[Auth] Registration successful:', response.user.id);
+          await authService.register(data);
+          logger.debug('Auth', 'Registration successful');
 
           // Registration must NOT authenticate the user. The backend may still
           // return tokens today for backwards compatibility; we defensively
@@ -296,7 +297,7 @@ export const useAuthStore = create<AuthStore>()(
           return true;
         } catch (error) {
           const err = error as Error;
-          console.error('[Auth] Registration failed:', err.message);
+          logger.warn('Auth', 'Registration failed', err);
           set({
             isLoading: false,
             error: err.message || 'Registration failed. Please try again.',
@@ -316,7 +317,7 @@ export const useAuthStore = create<AuthStore>()(
         // Immediately deauthenticate so the UI redirects to login
         set({ isAuthenticated: false, isLoggingOut: true });
 
-        console.log('[Auth] ========== LOGOUT STARTED ==========');
+        logger.debug('Auth', 'Logout started');
 
         try {
           // Logout from backend
@@ -340,7 +341,7 @@ export const useAuthStore = create<AuthStore>()(
           await tokenStorage.clearTokens();
 
         } catch (error) {
-          console.error('[Auth] Logout error:', error);
+          logger.warn('Auth', 'Logout error', error);
         } finally {
           // ALWAYS reset state, no matter what happened above
           set({
@@ -352,7 +353,7 @@ export const useAuthStore = create<AuthStore>()(
             isColdStart: false,
             isBackendColdStarting: false,
           });
-          console.log('[Auth] ========== LOGOUT COMPLETE ==========');
+          logger.debug('Auth', 'Logout complete');
         }
       },
 
@@ -376,7 +377,7 @@ export const useAuthStore = create<AuthStore>()(
       // FORGOT PASSWORD
       // =====================================================================
       forgotPassword: async (email: string): Promise<boolean> => {
-        console.log('[Auth] Forgot password request for:', email);
+        logger.debug('Auth', 'Forgot password request');
         set({ isLoading: true, error: null });
 
         try {
@@ -385,7 +386,7 @@ export const useAuthStore = create<AuthStore>()(
           return true;
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Failed to send reset email';
-          console.error('[Auth] Forgot password error:', message);
+          logger.warn('Auth', 'Forgot password failed', error);
           set({ isLoading: false, error: message });
           return false;
         }
@@ -395,7 +396,7 @@ export const useAuthStore = create<AuthStore>()(
       // RESET PASSWORD
       // =====================================================================
       resetPassword: async (token: string, newPassword: string): Promise<boolean> => {
-        console.log('[Auth] Reset password request');
+        logger.debug('Auth', 'Reset password request');
         set({ isLoading: true, error: null });
 
         try {
@@ -404,7 +405,7 @@ export const useAuthStore = create<AuthStore>()(
           return true;
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Failed to reset password';
-          console.error('[Auth] Reset password error:', message);
+          logger.warn('Auth', 'Reset password failed', error);
           set({ isLoading: false, error: message });
           return false;
         }

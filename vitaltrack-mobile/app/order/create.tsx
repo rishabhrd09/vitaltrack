@@ -33,6 +33,7 @@ import { useCreateOrder } from '@/hooks/useServerMutations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { safeBack } from '@/utils/navigation';
 import { toast } from '@/utils/toast';
+import { logger } from '@/utils/logger';
 
 interface CartItem {
   item: Item;
@@ -212,7 +213,7 @@ export default function CreateOrderScreen() {
       const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
       return `data:${mimeType};base64,${base64}`;
     } catch (error) {
-      console.log('Image conversion failed:', error);
+      logger.warn('OrderCreate', 'Image conversion failed', error);
       return '';
     }
   };
@@ -482,7 +483,7 @@ export default function CreateOrderScreen() {
         await Sharing.shareAsync(newUri, { UTI: 'com.adobe.pdf', mimeType: 'application/pdf', dialogTitle: `CareKosh Order ${orderId}` });
       }
     } catch (e) {
-      console.error(e);
+      logger.warn('OrderCreate', 'PDF export failed after order save', e);
       Alert.alert("PDF Failed", "Order saved but PDF generation failed. You can export the PDF later from the Orders screen.");
     }
   };
