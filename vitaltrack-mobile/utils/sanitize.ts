@@ -3,6 +3,8 @@
  * Security-critical functions for data handling
  */
 
+import { logger } from '@/utils/logger';
+
 // ============================================================================
 // HTML/XSS PROTECTION
 // ============================================================================
@@ -69,7 +71,7 @@ export const sanitizeUrl = (url: string | undefined | null): string | undefined 
 
         // Only allow http/https
         if (!ALLOWED_URL_PROTOCOLS.includes(parsed.protocol)) {
-            console.warn('Rejected URL with protocol:', parsed.protocol);
+            logger.warn('Sanitize', 'Rejected URL with disallowed protocol');
             return undefined;
         }
 
@@ -141,7 +143,7 @@ export const validateImageUri = (uri: string | undefined | null): string | null 
     // Validate file extension
     const ext = trimmed.split('.').pop()?.toLowerCase();
     if (!ext || !ALLOWED_IMAGE_EXTENSIONS.includes(ext)) {
-        console.warn('Rejected image with extension:', ext);
+        logger.warn('Sanitize', 'Rejected image with disallowed extension');
         return null;
     }
 
@@ -152,13 +154,13 @@ export const validateImageUri = (uri: string | undefined | null): string | null 
 
     // Also allow absolute paths starting with /
     if (!hasValidScheme && !trimmed.startsWith('/')) {
-        console.warn('Rejected URI with invalid scheme');
+        logger.warn('Sanitize', 'Rejected URI with invalid scheme');
         return null;
     }
 
     // Check for path traversal attempts
     if (trimmed.includes('..')) {
-        console.warn('Rejected URI with path traversal pattern');
+        logger.warn('Sanitize', 'Rejected URI with path traversal pattern');
         return null;
     }
 

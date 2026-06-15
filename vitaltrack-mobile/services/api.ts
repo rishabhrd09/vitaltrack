@@ -4,6 +4,7 @@
  */
 
 import * as SecureStore from 'expo-secure-store';
+import { logger } from '@/utils/logger';
 
 // API Configuration
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
@@ -163,9 +164,9 @@ function logNetworkFailure(url: string, err: Error): void {
     }
 
     if (isRetrySpam) {
-        console.debug(`[API] Connection retry failed: ${url}`);
+        logger.debug('API', 'Connection retry failed');
     } else {
-        console.error(`[API] Connection Failure: ${url} [${err.message}]`);
+        logger.error('API', 'Connection failure', err);
     }
 }
 
@@ -189,7 +190,7 @@ async function clearBackendColdStartingFlag(): Promise<void> {
             // and leaving the StatusPill stuck on "Connecting…". Only logs
             // when the flag actually transitions, so it's quiet in steady state.
             if (__DEV__) {
-                console.log('[Auth] isBackendColdStarting cleared by 2xx response');
+                logger.debug('Auth', 'Backend cold-start flag cleared by 2xx response');
             }
         }
     } catch {
@@ -207,11 +208,11 @@ async function triggerAutoLogout(endpoint: string): Promise<void> {
         const { useAuthStore } = await import('@/store/useAuthStore');
         const state = useAuthStore.getState();
         if (state.isAuthenticated) {
-            console.info('[Auth] 401 on authenticated request — auto-logout');
+            logger.info('Auth', '401 on authenticated request; auto-logout triggered');
             await state.logout();
         }
     } catch (err) {
-        console.warn('[Auth] Auto-logout failed:', err);
+        logger.warn('Auth', 'Auto-logout failed', err);
     }
 }
 
@@ -254,11 +255,11 @@ class ApiClient {
                 throw new ApiClientError(
                     'Unable to connect to server. The server may be starting up — please wait a moment and try again.',
                     0,
-                    { url, originalError: err.message }
+                    { originalError: 'network_request_failed' }
                 );
             }
             // Unexpected non-network failure — always log loudly.
-            console.error(`[API] Connection Failure: ${url}`, error);
+            logger.error('API', 'Unexpected connection failure', error);
             throw error;
         }
 
@@ -382,19 +383,12 @@ class ApiClient {
             const isIdempotentDeleteGone = method === 'DELETE' && response.status === 404;
 
             if (isIdempotentDeleteGone) {
-                if (__DEV__) {
-                    console.debug(`[API] DELETE ${endpoint} → 404 (idempotent — nothing to delete)`);
-                }
+                logger.debug('API', 'Idempotent DELETE returned 404');
             } else {
                 // 5xx / network-level problems are unexpected; 4xx is caller-handleable.
                 const level: 'error' | 'warn' =
                     response.status >= 500 || response.status === 0 ? 'error' : 'warn';
-                console[level](
-                    `[API] ${method} ${endpoint} → ${response.status} ${message}`
-                );
-                if (__DEV__) {
-                    console[level]('[API] body:', JSON.stringify(data).substring(0, 500));
-                }
+                logger[level]('API', `${method} request failed with ${response.status}`);
             }
 
             throw new ApiClientError(message, response.status, data);

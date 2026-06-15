@@ -33,6 +33,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useDelayedPending } from '@/hooks/useDelayedPending';
 import { handleMutationError } from '@/utils/serverErrors';
 import { safeBack } from '@/utils/navigation';
+import { logger } from '@/utils/logger';
 import {
     useSeedInventory,
     useStartFresh,
@@ -297,7 +298,7 @@ export default function BuildInventoryScreen() {
                             queryClient.refetchQueries({ queryKey: queryKeys.categories }),
                         ]);
                     } catch (reconcileErr) {
-                        console.warn('[ReplaceAll] Cache reconciliation failed:', reconcileErr);
+                        logger.warn('ReplaceAll', 'Cache reconciliation failed', reconcileErr);
                     }
                 }
             }

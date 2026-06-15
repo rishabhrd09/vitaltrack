@@ -303,6 +303,35 @@ These steps were done manually via the web dashboards; documented here so they c
    ```
 3. The new DB shares the same Neon project/branch, so the connection host is identical — only the database name in the connection string changes.
 
+#### Neon dashboard reading guide
+
+The Neon Console can look confusing because this project uses the existing Neon
+root/default branch, which the Console labels `production`, while keeping two
+separate Postgres databases inside that branch. This matches Neon's hierarchy:
+a project contains branches, and each branch can contain multiple databases
+([Neon object hierarchy](https://neon.com/docs/manage/overview),
+[Neon databases](https://neon.com/docs/manage/databases)).
+
+Read the dashboard in this order:
+
+1. **Project:** `vitaltrack`.
+2. **Branch:** `production`. This is the Neon branch/container label. It does
+   not by itself mean you are looking at CareKosh production app data.
+3. **Database dropdown:**
+   - `vitaltrack_staging` = staging/test data. Use this when validating preview
+     APK smoke-test users, inventory, categories, orders, and activity.
+   - `neondb` = production data. Use this only for production checks.
+4. **Render `DATABASE_URL`:** this is what the running backend actually uses.
+   `vitaltrack-api-staging` must end in `/vitaltrack_staging`; `vitaltrack-api`
+   must end in `/neondb`.
+
+During preview APK validation, create a uniquely named staging test user or
+item, then confirm it appears under `vitaltrack_staging` and does **not** appear
+as a new row under `neondb`. Historical rows in `neondb` from older manual
+production testing are not a staging-split failure. Do not wipe production rows
+casually; clean them only before real production/internal Play testing, after a
+backup/snapshot and after confirming they are disposable test records.
+
 ### 6.2 Render — create staging service
 
 1. New **Web Service** named `vitaltrack-api-staging`.
