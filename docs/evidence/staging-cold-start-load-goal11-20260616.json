@@ -1,0 +1,146 @@
+{
+  "base_url": "https://vitaltrack-api-staging.onrender.com",
+  "concurrency": 3,
+  "first_probes": [
+    {
+      "elapsed_ms": 90050,
+      "error": "The read operation timed out",
+      "ok": false,
+      "path": "/live",
+      "status": null
+    },
+    {
+      "elapsed_ms": 1129,
+      "error": null,
+      "ok": true,
+      "path": "/health",
+      "status": 200
+    }
+  ],
+  "generated_at": "2026-06-15T22:17:51.265548+00:00",
+  "ok": false,
+  "pass_checks": {
+    "cold_live_within_threshold": false,
+    "no_unexpected_warm_failures": true,
+    "warm_health_p95_within_threshold": true,
+    "warm_live_p95_within_threshold": true
+  },
+  "production_allowed": false,
+  "requests": 12,
+  "target": "staging",
+  "thresholds": {
+    "cold_live_max_ms": 75000,
+    "warm_health_p95_max_ms": 10000,
+    "warm_live_p95_max_ms": 5000
+  },
+  "warm_results": [
+    {
+      "elapsed_ms": 131,
+      "error": null,
+      "ok": true,
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "elapsed_ms": 296,
+      "error": null,
+      "ok": true,
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "elapsed_ms": 254,
+      "error": null,
+      "ok": true,
+      "path": "/live",
+      "status": 200
+    },
+    {
+      "elapsed_ms": 289,
+      "error": null,
+      "ok": true,
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "elapsed_ms": 142,
+      "error": null,
+      "ok": true,
+      "path": "/live",
+      "status": 200
+    },
+    {
+      "elapsed_ms": 1122,
+      "error": null,
+      "ok": true,
+      "path": "/live",
+      "status": 200
+    },
+    {
+      "elapsed_ms": 120,
+      "error": null,
+      "ok": true,
+      "path": "/live",
+      "status": 200
+    },
+    {
+      "elapsed_ms": 157,
+      "error": null,
+      "ok": true,
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "elapsed_ms": 150,
+      "error": null,
+      "ok": true,
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "elapsed_ms": 133,
+      "error": null,
+      "ok": true,
+      "path": "/live",
+      "status": 200
+    },
+    {
+      "elapsed_ms": 153,
+      "error": null,
+      "ok": true,
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "elapsed_ms": 2292,
+      "error": null,
+      "ok": true,
+      "path": "/live",
+      "status": 200
+    }
+  ],
+  "warm_summary": {
+    "/health": {
+      "count": 6,
+      "max_ms": 296,
+      "median_ms": 155,
+      "min_ms": 131,
+      "ok_count": 6,
+      "p95_ms": 296,
+      "status_counts": {
+        "200": 6
+      }
+    },
+    "/live": {
+      "count": 6,
+      "max_ms": 2292,
+      "median_ms": 198,
+      "min_ms": 120,
+      "ok_count": 6,
+      "p95_ms": 2292,
+      "status_counts": {
+        "200": 6
+      }
+    }
+  }
+}

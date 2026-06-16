@@ -7,6 +7,7 @@ Related:
 - Deployment strategies: repo-root `CAREKOSH_DEPLOYMENT_STRATEGY.html`
 - Roadmap / launch checklist: [../CAREKOSH_ROADMAP.md](../CAREKOSH_ROADMAP.md)
 - Android release privacy/platform hardening: [PLAY_STORE_RELEASE_HARDENING_GOAL_9.md](PLAY_STORE_RELEASE_HARDENING_GOAL_9.md)
+- Production launch operations runbook: [LAUNCH_READINESS_RUNBOOK_GOAL_10.md](LAUNCH_READINESS_RUNBOOK_GOAL_10.md)
 
 ---
 
@@ -182,6 +183,7 @@ eas submit --profile production --platform android   # uploads to Play Console i
 | Privacy policy hosted at a stable URL | 🟡 drafted, not hosted |
 | `FRONTEND_URL` env var set on production Render service | ✅ done |
 | Goal 9 Play Data Safety input inventory | ✅ documented in `docs/PLAY_STORE_RELEASE_HARDENING_GOAL_9.md` |
+| Goal 10 launch operations runbook | ✅ documented in `docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md` |
 | Data Safety form in Play Console | 🔴 not submitted |
 | Closed testing track (≥12 testers, 14 days) | 🔴 not started |
 
@@ -208,3 +210,7 @@ npx eas build --profile preview --platform android
 > - Android production/preview cleartext is disabled through app config; development remains able to use local HTTP.
 > - Explicit Android permissions were reduced to `ACCESS_NETWORK_STATE`; camera, microphone, overlay, vibration, and legacy broad storage permissions are blocked unless a future generated manifest proves a feature requires them.
 > - App auto-backup is disabled because AsyncStorage cache snapshots can contain health-adjacent inventory/order/activity data. SecureStore remains configured for Android backup exclusion behavior.
+
+> **Goal 10 notes (2026-06-15):**
+> - Backup/restore, launch/rollback checklists, monitoring, log redaction, incident response, and small cold-start/load smoke are now routed through `docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md`.
+> - Production smoke should use a dedicated smoke account. Register and order-apply remain staging synthetic or controlled manual production checks only.

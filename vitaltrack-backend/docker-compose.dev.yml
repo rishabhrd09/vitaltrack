@@ -33,9 +33,9 @@ services:
       # ========================================
       # EMAIL CONFIGURATION (Brevo SMTP)
       # ========================================
-      - MAIL_USERNAME=a14a39001@smtp-brevo.com
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
       - MAIL_PASSWORD=${MAIL_PASSWORD}
-      - MAIL_FROM=rishabhdongre.rd@gmail.com
+      - MAIL_FROM=${MAIL_FROM:-noreply@carekosh.com}
       # SMTP Variables are no longer used (Using HTTP API)
       # ========================================
       # EMAIL VERIFICATION

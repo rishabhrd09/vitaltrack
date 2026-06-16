@@ -43,9 +43,9 @@ async def test_email_service() -> tuple[bool, str]:
         if response.status_code == 200:
             return True, ""
         else:
-            return False, f"Brevo API error: {response.status_code} — {response.text[:200]}"
+            return False, f"Brevo API returned status {response.status_code}"
     except Exception as e:
-        return False, f"Cannot reach Brevo: {str(e)}"
+        return False, f"Cannot reach Brevo: {type(e).__name__}"
 
 
 def generate_verification_token() -> tuple[str, str]:
@@ -97,21 +97,24 @@ async def send_email_via_api(to_email: str, to_name: str, subject: str, html_con
         "htmlContent": html_content
     }
     
-    logger.info(f"Sending email to {to_email} via Brevo API...")
+    logger.info("Sending transactional email via Brevo API")
     
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(url, json=payload, headers=headers, timeout=10.0)
             
         if response.status_code == 201:
-            logger.info(f"Email sent. Message ID: {response.json().get('messageId')}")
+            logger.info("Transactional email sent via Brevo API")
             return True
         else:
-            logger.error(f"Email failed. Status: {response.status_code}, Response: {response.text}")
+            logger.error(
+                "Transactional email failed via Brevo API. Status: %s",
+                response.status_code,
+            )
             return False
             
     except Exception as e:
-        logger.error(f"Email exception: {str(e)}")
+        logger.error("Transactional email exception: %s", type(e).__name__)
         return False
 
 

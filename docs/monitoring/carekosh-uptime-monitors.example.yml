@@ -1,0 +1,78 @@
+# CareKosh lightweight uptime monitor template.
+# Translate this into UptimeRobot, Better Stack, or a similar provider.
+# This file contains no secrets and is not consumed by the app at runtime.
+
+service: carekosh
+owner: rishabhrd09
+alert_destination: "fill-before-launch"
+
+monitors:
+  - name: "carekosh-production-live"
+    environment: production
+    method: GET
+    url: "https://vitaltrack-api.onrender.com/live"
+    interval_minutes: 5
+    timeout_seconds: 15
+    expected_status: 200
+    expected_json:
+      status: "healthy"
+      database: "not_checked"
+    alert_after_consecutive_failures: 2
+    purpose: "Process liveness and Render free-tier keep-warm probe."
+
+  - name: "carekosh-production-health"
+    environment: production
+    method: GET
+    url: "https://vitaltrack-api.onrender.com/health"
+    interval_minutes: 5
+    timeout_seconds: 15
+    expected_status: 200
+    expected_json:
+      status: "healthy"
+      database: "connected"
+    alert_after_consecutive_failures: 2
+    purpose: "Database-backed readiness."
+
+  - name: "carekosh-staging-live"
+    environment: staging
+    method: GET
+    url: "https://vitaltrack-api-staging.onrender.com/live"
+    interval_minutes: 10
+    timeout_seconds: 15
+    expected_status: 200
+    expected_json:
+      status: "healthy"
+      database: "not_checked"
+    alert_after_consecutive_failures: 2
+    purpose: "Staging process liveness during launch work."
+
+  - name: "carekosh-staging-health"
+    environment: staging
+    method: GET
+    url: "https://vitaltrack-api-staging.onrender.com/health"
+    interval_minutes: 10
+    timeout_seconds: 15
+    expected_status: 200
+    expected_json:
+      status: "healthy"
+      database: "connected"
+    alert_after_consecutive_failures: 2
+    purpose: "Staging DB readiness during launch work."
+
+synthetics:
+  - name: "staging-login-inventory-smoke"
+    environment: staging
+    schedule: "after backend deploys and before Play submission"
+    command: "python vitaltrack-backend/scripts/smoke_api.py --target staging --include-authenticated"
+    credentials: "CAREKOSH_SMOKE_IDENTIFIER and CAREKOSH_SMOKE_PASSWORD from password manager"
+    notes: "Login writes session/activity traces. Use a dedicated smoke account."
+
+manual_only:
+  - name: "production-login-inventory-smoke"
+    environment: production
+    command: "python vitaltrack-backend/scripts/smoke_api.py --target production --allow-production --include-authenticated"
+    notes: "Run only with a production smoke account and explicit launch approval."
+
+  - name: "register-and-order-apply"
+    environment: staging
+    notes: "Keep automated register/order-apply on staging. Production is controlled manual smoke only to avoid junk users, orders, and inventory changes."

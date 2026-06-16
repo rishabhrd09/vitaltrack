@@ -1,6 +1,6 @@
 # CareKosh Roadmap
 
-**Last updated:** 2026-06-13
+**Last updated:** 2026-06-15
 
 CareKosh is a home-ICU medical inventory app for family caregivers. This document captures where the project has been, where it is today, and what remains before a Play Store launch.
 
@@ -122,6 +122,7 @@ The backend production-guard sequence closed the previously verified high-risk b
 | Closed testing track with ≥12 testers for 14 days | rishabhrd09 | 🔴 not started |
 | Play Store listing assets (feature graphic, screenshots, description) | rishabhrd09 | 🟡 screenshots WIP |
 | Data safety form | rishabhrd09 | 🔴 not started |
+| Goal 10 launch ops runbook, monitor template, and smoke scripts | rishabhrd09 | ✅ documented in `docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md` |
 | Production AAB build from CI (currently `if: false` in `ci.yml`) | rishabhrd09 | 🔴 not started — flip to `if: github.ref == 'refs/heads/main'` when ready |
 
 ---
@@ -132,7 +133,7 @@ Rough priority order; none are scheduled.
 
 1. **Clean advisory CI baselines.** Fix the current mypy errors, upgrade vulnerable dependencies from the Trivy HIGH/CRITICAL baseline, then promote both advisory jobs to blocking gates.
 2. **Sentry** for mobile + backend error monitoring.
-3. **UptimeRobot** (or similar) pinging `/health` every 5 min to keep Render warm and to alert on outages.
+3. **Production monitor provider setup.** Goal 10 adds the monitor template; the remaining work is creating the actual provider monitors and alert destination.
 4. **Google SSO** on mobile.
 5. **Biometric unlock** (fingerprint / face).
 6. **Hindi localization** — the target user base for home ICU caregivers in India skews non-English.
