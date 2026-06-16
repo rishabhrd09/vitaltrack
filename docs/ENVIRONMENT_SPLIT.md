@@ -32,7 +32,7 @@ Staging and production run as **independent pipelines**. Each has:
 - Its own `SECRET_KEY` (so JWTs from one environment cannot authenticate on the other)
 - Its own `CORS_ORIGINS`, `FRONTEND_URL`, and email config
 
-The mobile preview APK hits staging; the Play Store AAB hits production. Test data cannot pollute production; untested migrations can't destroy real user data.
+The mobile preview APK hits staging; the Play Store AAB hits production. Test data cannot pollute production. Schema changes still need normal CI, staging smoke, backup/restore, and rollback discipline before broad release because a bad migration merged to `main` can still affect production.
 
 ### Why it mattered before Play Store submission
 
@@ -125,10 +125,10 @@ The split addresses all three at the same time.
 |---|---|---|---|---|---|---|
 | Development | `localhost:8000` (Docker) | Local Postgres 16 (Docker) | Expo Go | OFF | OFF | `development` |
 | Testing (CI) | GitHub Actions runner | Postgres 16 service container | N/A | OFF | N/A | `testing` |
-| Staging | `vitaltrack-api-staging.onrender.com` | Neon: `vitaltrack_staging` | Preview APK | ON | OFF (by default) | `staging` |
+| Staging | `vitaltrack-api-staging.onrender.com` | Neon: `vitaltrack_staging` | Preview APK | ON | ON for launch-like staging | `staging` |
 | Production | `vitaltrack-api.onrender.com` | Neon: `neondb` | Production AAB | ON | ON | `production` |
 
-Both `staging` and `production` live on Neon in Singapore and use TLS. Both Render services watch `main` and auto-deploy on push.
+Both `staging` and `production` live on Neon in Singapore and use TLS. Both Render services watch `main`; staging is dashboard-managed outside `render.yaml` and its auto-deploy is gated by the `vitaltrack-backend` root-directory filter documented in `STAGING_DEPLOY_DIAGNOSIS.html`.
 
 ---
 
@@ -145,7 +145,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     APP_NAME: str = "CareKosh API"
     ENVIRONMENT: str = "development"
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/carekosh"
+    DATABASE_URL: str = "<local-database-url>"
     SECRET_KEY: str = "dev-secret-key-change-in-production"
     REQUIRE_EMAIL_VERIFICATION: bool = False
     MAIL_FROM: str = "noreply@carekosh.com"
@@ -347,13 +347,13 @@ backup/snapshot and after confirming they are disposable test records.
 | `DATABASE_URL` | `postgresql+asyncpg://...@.../vitaltrack_staging` | DB name is `vitaltrack_staging`, NOT `neondb` |
 | `SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(32))"` output | **Must differ from production** |
 | `CORS_ORIGINS` | `["*"]` | Wildcard is fine for a mobile-only API (no browser CORS concerns) |
-| `REQUIRE_EMAIL_VERIFICATION` | `false` | Allows testers to register without email verification |
-| `MAIL_USERNAME` | Brevo SMTP user | Optional in staging if email flows aren't being tested |
-| `MAIL_PASSWORD` | Brevo API key | |
+| `REQUIRE_EMAIL_VERIFICATION` | `true` | Matches launch-like staging; use local development if testers need no-email registration |
+| `MAIL_USERNAME` | legacy SMTP username | Unused by current Brevo HTTP API send path |
+| `MAIL_PASSWORD` | Brevo HTTP API key | Required for launch-like staging email verification/reset/deletion flows |
 | `MAIL_FROM` | `noreply@carekosh.com` | |
-| `MAIL_SERVER` | `smtp-relay.brevo.com` | |
-| `MAIL_PORT` | `587` | |
-| `MAIL_STARTTLS` | `true` | |
+| `MAIL_SERVER` | legacy SMTP-era key | Current send path uses Brevo HTTP API over 443 |
+| `MAIL_PORT` | legacy SMTP-era key | Current send path uses Brevo HTTP API over 443 |
+| `MAIL_STARTTLS` | legacy SMTP-era key | Current send path uses Brevo HTTP API over 443 |
 | `MAIL_SSL_TLS` | `false` | |
 | `FRONTEND_URL` | `https://vitaltrack-api-staging.onrender.com/api/v1/auth` | Used in email link templates |
 
@@ -373,6 +373,88 @@ Same set. Differences:
 ### 6.3 Expo/EAS — no dashboard changes needed
 
 EAS Build reads the `env` block from `eas.json` in the repo at build time. No action in the Expo dashboard.
+
+### 6.4 Backend platform migration checklist
+
+Render is the current backend host, but the backend is not locked to Render.
+The Docker image, entrypoint, Alembic migrations, and pydantic env config are
+portable to any host that can run a Python Docker container and reach Postgres.
+
+#### Recommended target shape
+
+Use stable domains before a serious production release:
+
+| Environment | Preferred stable URL | Today |
+|---|---|---|
+| Staging | `https://staging-api.carekosh.com` | `https://vitaltrack-api-staging.onrender.com` |
+| Production | `https://api.carekosh.com` | `https://vitaltrack-api.onrender.com` |
+
+With stable domains, moving from Render to another host is mostly DNS plus
+provider env-var/deploy-secret changes. Without stable domains, the mobile API
+URL changes and every APK/AAB must be rebuilt because `EXPO_PUBLIC_API_URL` is
+baked into the bundle.
+
+#### Migration steps
+
+1. Pick the host.
+   Render paid is the smallest change. Fly.io, Railway, DigitalOcean App
+   Platform, Hetzner, AWS Lightsail, or another VPS/managed Docker host are all
+   viable. A MacBook or home server can work for demos, but should not be the
+   Play Store production backend because uptime, public TLS, IP stability,
+   power, OS patching, and monitoring become fragile.
+2. Recreate the runtime env vars on the new host:
+   `DATABASE_URL`, `SECRET_KEY`, `ENVIRONMENT`, `CORS_ORIGINS`,
+   `REQUIRE_EMAIL_VERIFICATION`, `MAIL_PASSWORD`, `MAIL_FROM`,
+   `FRONTEND_URL`.
+3. Build/run `vitaltrack-backend/Dockerfile`; keep
+   `vitaltrack-backend/docker-entrypoint.sh` as the startup path so DB wait and
+   `alembic upgrade head` still run before Gunicorn/Uvicorn.
+4. Replace Render-specific deployment wiring:
+   - `vitaltrack-backend/render.yaml` becomes historical or is replaced by the
+     new provider's config.
+   - `.github/workflows/ci.yml` `deploy-backend` stops using
+     `RENDER_DEPLOY_HOOK` and uses the new host's deploy mechanism.
+5. Update mobile URL wiring if the public hostnames change:
+   - `vitaltrack-mobile/eas.json`: `preview.env.EXPO_PUBLIC_API_URL` and
+     `production.env.EXPO_PUBLIC_API_URL`.
+   - `vitaltrack-mobile/app.config.js`: `PREVIEW_API_URL` and
+     `PRODUCTION_API_URL` guards.
+   - `vitaltrack-mobile/package.json`: `start:staging` and `start:prod`
+     convenience scripts.
+   - `vitaltrack-mobile/services/api.ts` usually stays unchanged because it
+     reads `EXPO_PUBLIC_API_URL`.
+6. Rebuild affected mobile artifacts. Preview APK and production AAB keep the
+   API URL they were built with.
+
+#### GitHub secrets
+
+Existing secrets today:
+
+| Secret | Keep/change |
+|---|---|
+| `EXPO_TOKEN` | Keep. EAS still needs it for preview/production builds. |
+| `RENDER_DEPLOY_HOOK` | Replace if leaving Render. |
+
+Examples for other hosts:
+
+| Host style | Example secrets |
+|---|---|
+| VPS/self-managed Docker | `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY` |
+| Fly.io | `FLY_API_TOKEN` |
+| Railway | `RAILWAY_TOKEN` |
+| DigitalOcean | `DIGITALOCEAN_ACCESS_TOKEN` |
+
+Never paste real secret values into docs, PRs, or evidence files.
+
+#### Play launch timing
+
+The current Render cold-start/server-call issue is technically an operations
+choice, not a mobile product blocker in code. It can be fixed after Play
+deployment. The safer recommendation is to fix it before Play review: reviewers
+and first users may interpret 30-60 second login or inventory timeouts as a
+broken app. Minimum before Play review is paid Render or another reliable
+production uptime/keep-warm strategy with evidence; staging can stay on a
+cheaper setup.
 
 ---
 
@@ -539,5 +621,5 @@ Zero code changes needed. Create a new Neon DB, a new Render service, set its en
 > **Re-audit notes (2026-05-04):**
 > 1. The earlier "PR #12 rejects `*` in production" claim was incorrect — see corrections inline in §4.5 / §6.2 / §FAQ.
 > 2. Superseded by Goal 6: `/health` now probes the database and returns `503` when readiness fails. `/live` is the process-only liveness endpoint for Render and keep-alive monitors.
-> 3. Email transport in production is now Brevo's HTTP REST API over port 443, not SMTP/STARTTLS. The `MAIL_SERVER` / `MAIL_PORT` / `MAIL_STARTTLS` config keys still exist for the Mailtrap-dev SMTP path; in production they're unused. (See `app/utils/email.py`.)
+> 3. Email transport is now Brevo's HTTP REST API over port 443, not SMTP/STARTTLS. The `MAIL_SERVER` / `MAIL_PORT` / `MAIL_STARTTLS` config keys still exist for legacy compatibility, but `app/utils/email.py` does not use them for sending.
 > 4. The mobile app gained a cold-start UX layer (`MutationResultDialog`, `StatusPill`, `safeBack`, `mutationFeedback`, `react-native-toast-message`) on the audit/cold-start-mutation-ux branch merged 2026-05-04. None of that touches environment / DB / Render config; the env-split surface is unchanged.

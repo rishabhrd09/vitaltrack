@@ -796,6 +796,13 @@ $ git log --oneline de39437..origin/main | wc -l
           <div class="action-body">If you're about to test something backend-specific and want absolute certainty staging matches <code>main</code> (e.g. reproducing a bug, verifying a migration), click <strong>Manual Deploy → Deploy latest commit</strong> on staging's Render dashboard. Takes 60–90 seconds. This is the pragmatic escape hatch regardless of which of the options above you pick.</div>
         </div>
       </div>
+      <div class="action">
+        <div class="action-num">vi</div>
+        <div>
+          <div class="action-title">Future host migration: hide providers behind domains</div>
+          <div class="action-body">This diagnosis is Render-specific. The backend itself is portable because it has <code>vitaltrack-backend/Dockerfile</code>, <code>docker-entrypoint.sh</code>, and env-var config. If you move to paid Render, Fly.io, Railway, DigitalOcean, Hetzner, AWS Lightsail, or a VPS, keep EAS's <code>EXPO_TOKEN</code>, replace <code>RENDER_DEPLOY_HOOK</code> with the new provider's deploy secret, and prefer <code>api.carekosh.com</code> / <code>staging-api.carekosh.com</code> so installed apps do not need another rebuild for every provider URL change.</div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -823,6 +830,9 @@ $ git log --oneline de39437..origin/main | wc -l
 
     <div class="gloss-term">Idle spin-down</div>
     <div class="gloss-def">Unrelated to this diagnosis, but visible on the dashboard: Render's free tier puts services to sleep after 15 minutes of inactivity. The first request after sleep takes 30–60 seconds to wake the container. Different problem from deploys not firing.</div>
+
+    <div class="gloss-term">Stable API domain</div>
+    <div class="gloss-def">A provider-neutral hostname such as <code>api.carekosh.com</code> or <code>staging-api.carekosh.com</code>. EAS builds should eventually point at these domains so future backend host moves can be DNS changes instead of app rebuilds.</div>
   </section>
 
   <footer class="doc-footer">

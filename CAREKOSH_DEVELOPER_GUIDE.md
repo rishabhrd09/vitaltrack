@@ -80,14 +80,14 @@ The `local_id` / `localId` fields remain in item, category, and order models/sch
 | Database | PostgreSQL 16 | Neon (managed, branchable) |
 | Auth | JWT (HS256) + refresh token rotation | `python-jose`, `passlib[argon2]`, `bcrypt` |
 | Rate limiting | `slowapi` | per-route limits on auth |
-| Email | `fastapi-mail` + `aiosmtplib` | Mailtrap (dev), Brevo (staging/prod) |
+| Email | Brevo v3 HTTP API via `httpx` | `MAIL_PASSWORD` stores the Brevo API key; SMTP-era config keys/deps remain but are not the active send path |
 | Hosting (backend) | **Render** | Docker web service, auto-deploy on push to `main` |
 | Hosting (DB) | **Neon** | separate branches for dev / staging / production |
 | Hosting (mobile) | **EAS Build** | profiles: `development`, `preview`, `production` |
 | CI | GitHub Actions | blocking pytest, ruff, route-count, item/order coverage, TypeScript, ESLint; advisory mypy, expo-doctor, Trivy |
 | Security scan | Trivy | advisory HIGH/CRITICAL scan until the existing dependency baseline is fixed |
 
-**Not used (despite what older docs claimed):** Railway, redux-persist, AsyncStorage for app data, offline sync queue, manual migration scripts.
+**Not used (despite what older docs claimed):** Railway, redux-persist, AsyncStorage for app data, offline sync queue, manual migration scripts, SMTP as the active production email transport.
 
 ---
 
@@ -205,15 +205,15 @@ Scan the QR code with Expo Go. Default `EXPO_PUBLIC_API_URL` points at `http://l
 | `REFRESH_TOKEN_EXPIRE_DAYS` | 30 | — |
 | `CORS_ORIGINS` | `["*"]` | parsed from JSON or comma-separated values; production still permits `*` until real browser/admin origins are configured |
 | `RATE_LIMIT_PER_MINUTE` / `_BURST` | 60 / 10 | — |
-| `MAIL_USERNAME` / `MAIL_PASSWORD` | `""` | **required for verification emails** |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | `""` | `MAIL_PASSWORD` is **required for verification emails** and is used as the Brevo HTTP API key; `MAIL_USERNAME` is legacy/unused by the current send path |
 | `MAIL_FROM` | `noreply@carekosh.com` | — |
-| `MAIL_SERVER` | `sandbox.smtp.mailtrap.io` | Brevo SMTP in prod |
+| `MAIL_SERVER` | `sandbox.smtp.mailtrap.io` | legacy SMTP-era key; current production send path uses Brevo HTTP API |
 | `MAIL_PORT` | 587 | — |
 | `MAIL_STARTTLS` / `_SSL_TLS` | True / False | — |
 | `FRONTEND_URL` | `""` | **required in production** (used in verification & password-reset emails) |
 | `EMAIL_VERIFICATION_EXPIRY_HOURS` | 24 | — |
 | `PASSWORD_RESET_EXPIRY_HOURS` | 1 | — |
-| `REQUIRE_EMAIL_VERIFICATION` | False | `True` in prod |
+| `REQUIRE_EMAIL_VERIFICATION` | False | `True` in staging/production launch environments |
 
 Production validators live in `config.py` — they refuse startup if `SECRET_KEY` is the placeholder or if `FRONTEND_URL` is empty. They do not reject `CORS_ORIGINS=["*"]` today; tightening CORS remains decision-blocked because the real browser/admin origins are not decided yet.
 
@@ -236,7 +236,7 @@ Production validators live in `config.py` — they refuse startup if `SECRET_KEY
 |---|---|---|
 | `test-backend` | PR + push | blocking pytest (postgres:16 service), Ruff, exact `/api/v1` route count `39`, and `items.py` / `orders.py` coverage floors |
 | `typecheck-backend-advisory` | PR + push | advisory mypy baseline; not a merge gate until existing type errors are fixed |
-| `test-frontend` | PR + push | TypeScript typecheck, ESLint, `expo-doctor` |
+| `test-frontend` | PR + push | blocking TypeScript typecheck and ESLint; `expo-doctor` runs as an advisory sanity check |
 | `security-scan-advisory` | PR only | advisory Trivy vulnerability scan, severity CRITICAL + HIGH; not a merge gate until existing dependency findings are triaged/fixed |
 | `pr-check` | PR only | merge gate — requires `test-backend` + `test-frontend` to pass |
 | `deploy-backend` | push to `main` | POST to Render deploy hook (secret `RENDER_DEPLOY_HOOK`) |
@@ -451,7 +451,7 @@ OCC working as designed. Another client updated the item since your GET. Re-fetc
 Expo Go runs on your phone; `localhost` there = the phone. Either `adb reverse tcp:8000 tcp:8000` or point `EXPO_PUBLIC_API_URL` at your machine's LAN IP.
 
 **"Email not received" in dev**
-Dev uses Mailtrap sandbox. Log in to Mailtrap and check the inbox there — emails never reach real addresses from `development` env.
+The current email utility sends through Brevo HTTP API when `MAIL_PASSWORD` is configured; it does not route to Mailtrap SMTP. For local real-email testing, set a Brevo API key and verified `MAIL_FROM`; otherwise leave `MAIL_PASSWORD` empty and keep email verification disabled to avoid lockouts.
 
 **CI `pr-check` failing but tests green**
 `pr-check` depends on both `test-backend` and `test-frontend`. If either is skipped (e.g., no matching paths), `pr-check` may fail. Re-run from Actions tab.
@@ -489,7 +489,7 @@ e.g. `feat(auth): add biometric login`, `fix(items): handle negative quantity ed
 - Rebased on latest `main` (no merge conflicts)
 - Add `build-apk` label to generate a preview APK for reviewers
 
-Merge → Render auto-deploys backend. Mobile production AAB is built manually (`eas build --profile production`).
+Merge → CI/Render deploys the backend according to the configured hook and Render auto-deploy settings. Mobile production AAB is built manually (`eas build --profile production`).
 
 ---
 

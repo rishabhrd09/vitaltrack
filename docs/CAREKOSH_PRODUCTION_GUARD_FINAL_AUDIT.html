@@ -409,6 +409,7 @@
     <section id="final-verdict">
       <p class="section-number">01</p>
       <h2>Final Verdict</h2>
+      <p><strong>Current status note (2026-06-16):</strong> This audit was written as a handoff before the goal sequence ran. Goals 1-7, Goal 8, Goal 9, and Goal 10/11 have since merged through PR #47. The branch prompts below are preserved as historical implementation context; remaining launch gaps are Play/operator evidence and real monitor-provider setup.</p>
       <p>The seven original backend goals are necessary and well scoped. For a stricter backend production finish, add Goal 8. For Play Store publication and real users, add two separate release-readiness goals that do not disturb the backend branch pack.</p>
       <h3>Short answer</h3>
       <p>The original 7 goals close every defect that was verified in the current backend code. They should be run in order, one branch at a time. They are not speculative feature work; they are production guard work for a working app.</p>
@@ -930,7 +931,7 @@
           <li>Do not run restore drills against production.</li>
           <li>Keep free-tier Render cold-start behavior documented honestly.</li>
         </ul>
-        <p class="accept"><strong>Accept:</strong> there is a tested restore path, a clear launch/rollback checklist, basic monitors exist, logs have a redaction policy, and a solo developer can handle a small production incident without guessing under stress.</p>
+        <p class="accept"><strong>Accept:</strong> there is a tested restore path, a clear launch/rollback checklist, monitor provider setup or an explicit template/evidence gap, logs have a redaction policy, and a solo developer can handle a small production incident without guessing under stress.</p>
       <h3>Standards deltas that should not become immediate goals</h3>
       <div class="table-wrap">
         <table>
@@ -1019,7 +1020,7 @@ export ENVIRONMENT=&quot;testing&quot;
     <section id="acceptance-gate">
       <p class="section-number">10</p>
       <h2>Final Acceptance Gate</h2>
-      <p>CareKosh should be considered through the backend guard and launch-readiness pack only when these conditions are true. After Goals 1-7, the remaining backend items in this gate are Goal 8: CORS, email diagnostics, and default-category protection.</p>
+      <p>Historical acceptance gate for the backend guard and launch-readiness pack. As of 2026-06-16, Goals 1-7, Goal 8, Goal 9, and Goal 10/11 are merged; this section is retained to explain the gate, not to claim those branches are still pending.</p>
       <h3>Security</h3>
       <p>Sync routes gone, deletion POST-only, reset token escaped, public email diagnostic restricted, wildcard production CORS either replaced with real origins or explicitly decision-blocked, default categories protected server-side.</p>
       <h3>Correctness</h3>
@@ -1031,9 +1032,9 @@ export ENVIRONMENT=&quot;testing&quot;
       <h3>Mobile Release</h3>
       <p>Production Android build uses HTTPS-only behavior, permissions are minimal and justified, sensitive production logs are removed, and Play Data Safety inputs are documented.</p>
       <h3>Operations</h3>
-      <p>Backup restore path, launch checklist, monitors, rollback notes, and log-retention/redaction rules are documented and tested away from production data.</p>
+      <p>Backup restore path, launch checklist, rollback notes, and log-retention/redaction rules are documented and tested away from production data. Monitor provider setup is not proven by repo evidence yet; the repo contains a provider template and placeholders for external monitor links/screenshots.</p>
       <h3>Final answer to the central question</h3>
-      <p>Are only the original 7 goals needed? They are enough for every backend defect verified in code. For an honest backend production-grade posture, add Goal 8. For a Play Store app targeting real users, add Goal 9 and Goal 10 as separate release-readiness goals. After Goals 1-10 are green, do not add more engineering goals until staging evidence, Play internal testing, and real operational checks say something specific is still missing.</p>
+      <p>Are only the original 7 goals needed? They were enough for every backend defect verified in code at audit time, and Goals 8-10/11 have since been merged for backend finish, Play hardening, and launch operations. Do not add more engineering goals until staging evidence, Play internal testing, monitor-provider setup, or real operational checks say something specific is still missing.</p>
       <p class="closing-note">CareKosh Production Guard Final Audit. Created as a handoff textbook for sequential Codex Goal Agent work.</p>
     </section>
   </main>

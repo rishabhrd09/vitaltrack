@@ -62,7 +62,7 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 
 <div class="callout info">
   <span class="callout-label">Update — May 2026 cold-start UX track (PRs #17–#34)</span>
-  <p>The build and deploy mechanics themselves are unchanged: same CI jobs, same Render hook, same EAS profiles. What changed is the mobile bundle's runtime behaviour during the cold-start window — see Q10 for the shipped client-side mitigations (<code>MutationResultDialog</code>, consolidated <code>StatusPill</code>, fire-and-forget save flow, retry-via-<code>Mutation.execute()</code>, auto-clear of <code>isBackendColdStarting</code>, inventory PDF redesign). New dependency: <code>react-native-toast-message</code>. The next preview / production APK build will pick all of this up automatically — no env-var or pipeline change required.</p>
+  <p>The build and deploy mechanics themselves are unchanged: same CI jobs, current Render hook, same EAS profiles. What changed is the mobile bundle's runtime behaviour during the cold-start window — see Q10 for the shipped client-side mitigations (<code>MutationResultDialog</code>, consolidated <code>StatusPill</code>, fire-and-forget save flow, retry-via-<code>Mutation.execute()</code>, auto-clear of <code>isBackendColdStarting</code>, inventory PDF redesign). New dependency: <code>react-native-toast-message</code>. The next preview / production APK build will pick all of this up automatically — no env-var or pipeline change required.</p>
 </div>
 
 <!-- MASTER TRIGGER MATRIX -->
@@ -75,7 +75,7 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
       <tr><td>Push to <code>feature/*</code></td><td>No</td><td>No</td><td>No</td><td>Only you</td></tr>
       <tr><td>Open PR → <code>main</code></td><td><span class="tag good">Yes</span></td><td>No</td><td>No</td><td>Reviewers</td></tr>
       <tr><td>PR + label <code>build-apk</code></td><td><span class="tag good">Yes</span></td><td>No</td><td><span class="tag info">Preview APK</span></td><td>Reviewers can sideload</td></tr>
-      <tr><td>Merge PR to <code>main</code></td><td><span class="tag good">Yes</span></td><td><span class="tag good">Both Render services</span></td><td>No</td><td>All environments</td></tr>
+      <tr><td>Merge PR to <code>main</code></td><td><span class="tag good">Yes</span></td><td><span class="tag good">Production hook; staging if backend rebuilds</span></td><td>No</td><td>Backend environments</td></tr>
       <tr><td>Manual <code>eas build --profile production</code></td><td>No</td><td>No</td><td><span class="tag warn">AAB</span></td><td>Play Console upload</td></tr>
       <tr><td><code>workflow_dispatch</code> (Run workflow)</td><td><span class="tag good">Yes</span></td><td>—</td><td>—</td><td>Same as PR</td></tr>
     </tbody>
@@ -83,6 +83,10 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
   <div class="callout info">
     <span class="callout-label">Note</span>
     <p>The production AAB job (<code>build-production</code>) is currently gated by <code>if: false</code> in <code>.github/workflows/ci.yml</code>. Until that flips, all AAB builds are manual. Plan: flip to <code>if: github.ref == 'refs/heads/main'</code> when Play Store production track is live.</p>
+  </div>
+  <div class="callout warn">
+    <span class="callout-label">Before Play review</span>
+    <p>The Render free-tier cold-start issue is hosting/ops work and can technically be fixed after Play deployment. It is still safer to fix before review: reviewers and first users may treat 30–60 s login or inventory timeouts as a broken app. Minimum: paid Render or an equivalent reliable uptime / keep-warm strategy with evidence.</p>
   </div>
 </div>
 
@@ -109,13 +113,14 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
     <div class="q">Question 2</div>
     <h4>I opened a PR. What runs?</h4>
     <div class="a">Answer</div>
-    <p>Four jobs run in <code>.github/workflows/ci.yml</code>, in parallel where possible:</p>
+    <p>PR jobs run in <code>.github/workflows/ci.yml</code>, in parallel where possible:</p>
     <table>
       <thead><tr><th>Job</th><th>Does</th><th>~Time</th></tr></thead>
       <tbody>
-        <tr><td><code>test-backend</code></td><td>pytest (postgres:16 service), ruff lint, mypy</td><td>1–2 min</td></tr>
-        <tr><td><code>test-frontend</code></td><td>TypeScript check, ESLint, <code>expo-doctor</code></td><td>30–60 s</td></tr>
-        <tr><td><code>security-scan</code></td><td>Trivy filesystem scan (CRITICAL + HIGH)</td><td>~1 min</td></tr>
+        <tr><td><code>test-backend</code></td><td>pytest (postgres:16 service), Ruff, route count, item/order coverage gates</td><td>1–2 min</td></tr>
+        <tr><td><code>typecheck-backend-advisory</code></td><td>mypy baseline, advisory until existing errors are fixed</td><td>~1 min</td></tr>
+        <tr><td><code>test-frontend</code></td><td>blocking TypeScript check + ESLint; <code>expo-doctor</code> advisory sanity check</td><td>30–60 s</td></tr>
+        <tr><td><code>security-scan-advisory</code></td><td>Trivy filesystem scan (CRITICAL + HIGH), advisory until dependency baseline is fixed</td><td>~1 min</td></tr>
         <tr><td><code>pr-check</code></td><td>Merge gate — succeeds only if backend + frontend pass</td><td>instant</td></tr>
       </tbody>
     </table>
@@ -139,20 +144,20 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
   <div class="qa">
     <div class="q">Question 4</div>
     <h4>I merged the PR. Now what?</h4>
-    <div class="a">Answer — two things happen in sequence</div>
-    <p><strong>1. CI re-runs on <code>main</code>.</strong> Same four jobs. If any fails, the deploy is skipped.</p>
-    <p><strong>2. <code>deploy-backend</code> runs.</strong> It POSTs to the Render deploy hook URL (stored as the <code>RENDER_DEPLOY_HOOK</code> repository secret). Render pulls the new image and starts a rolling deploy of <em>both</em> the production and staging services — both watch <code>main</code>; their only difference is env vars.</p>
+    <div class="a">Answer — CI and Render both react to main</div>
+    <p><strong>1. CI re-runs on <code>main</code>.</strong> Backend and frontend gates must pass. The mypy job is advisory; the Trivy job is PR-only advisory.</p>
+    <p><strong>2. <code>deploy-backend</code> runs.</strong> If <code>RENDER_DEPLOY_HOOK</code> is configured, CI POSTs that hook as a production deploy backup. Render's own GitHub auto-deploy can also rebuild connected services from <code>main</code>; the repo only proves the production hook and <code>render.yaml</code> production service, while staging is an external Render service documented in the staging diagnosis.</p>
     <div class="arch">TIMELINE FOR A TYPICAL MERGE
 
 t+0    merge button clicked
 t+0.1  GitHub creates merge commit on main
 t+0.2  CI triggers on push event
-t+2m   backend/frontend/security pass on main
-t+2m   deploy-backend POSTs Render hook
-t+2.5m Render pulls image
+t+2m   backend/frontend gates pass on main; advisory mypy reports separately
+t+2m   deploy-backend POSTs Render hook if configured
+t+2.5m Render pulls image for the service being deployed
 t+3m   docker-entrypoint.sh: waits for DB, runs alembic upgrade head
 t+4m   Gunicorn replaces old workers; health check passes
-t+4m   production + staging both live on new code</div>
+t+4m   production live; staging updates through its own Render auto-deploy when its service rebuilds</div>
     <p>No mobile build is kicked off by merging. Mobile releases are a separate manual step (Q6).</p>
   </div>
 
@@ -206,8 +211,8 @@ eas submit --profile production --platform android</code></pre>
       <tbody>
         <tr><td><code>ENVIRONMENT</code></td><td><code>staging</code></td><td><code>production</code></td></tr>
         <tr><td><code>DATABASE_URL</code></td><td>Neon branch <code>vitaltrack_staging</code></td><td>Neon branch <code>neondb</code></td></tr>
-        <tr><td><code>FRONTEND_URL</code></td><td>staging domain</td><td>carekosh.com</td></tr>
-        <tr><td><code>CORS_ORIGINS</code></td><td>staging domain</td><td>production domain</td></tr>
+        <tr><td><code>FRONTEND_URL</code></td><td><code>https://vitaltrack-api-staging.onrender.com/api/v1/auth</code></td><td><code>https://vitaltrack-api.onrender.com/api/v1/auth</code> today; custom domain can replace it later</td></tr>
+        <tr><td><code>CORS_ORIGINS</code></td><td><code>["*"]</code> is acceptable for mobile-only staging</td><td><code>["*"]</code> today per <code>render.yaml</code>; tighten when real browser/admin origins exist</td></tr>
         <tr><td><code>REQUIRE_EMAIL_VERIFICATION</code></td><td><code>true</code></td><td><code>true</code></td></tr>
         <tr><td><code>MAIL_PASSWORD</code></td><td>Brevo staging key</td><td>Brevo production key</td></tr>
         <tr><td><code>SECRET_KEY</code></td><td>distinct 32+ char value</td><td>distinct 32+ char value</td></tr>
@@ -250,7 +255,8 @@ eas submit --profile production --platform android</code></pre>
       <tbody>
         <tr><td><code>GET /api/v1/auth/verify-email</code></td><td>Browser clicking email verification link</td><td>HTML page — "email verified"</td></tr>
         <tr><td><code>GET /api/v1/auth/reset-password</code></td><td>Browser clicking reset link</td><td>HTML form — submit to <code>POST /reset-password</code></td></tr>
-        <tr><td><code>GET /api/v1/auth/confirm-delete/{token}</code></td><td>Browser clicking deletion confirmation link (PR #13)</td><td>HTML page — "account deleted" (cascade runs server-side)</td></tr>
+        <tr><td><code>GET /api/v1/auth/confirm-delete/{token}</code></td><td>Browser clicking deletion confirmation link (PR #13)</td><td>HTML confirmation page only — no deletion on GET</td></tr>
+        <tr><td><code>POST /api/v1/auth/confirm-delete/{token}</code></td><td>User submits the confirmation form</td><td>Final account deletion; cascade runs server-side</td></tr>
       </tbody>
     </table>
     <p>The JSON API variants (<code>GET /verify-email/{token}</code>, <code>POST /reset-password</code>, <code>POST /cancel-delete</code>) exist for in-app flows.</p>
@@ -268,6 +274,20 @@ eas submit --profile production --platform android</code></pre>
       <li><strong>UptimeRobot</strong> pinging <code>/health</code> every 14 min keeps the service warm — not configured today, but recommended.</li>
       <li><strong>Paid Render tier</strong> removes the sleep behaviour entirely — the most reliable fix once the project monetises.</li>
     </ul>
+    <div class="callout warn">
+      <span class="callout-label">Launch timing verdict</span>
+      <p>Do not make first reviewers discover the cold-start path. Either move production to paid Render or prove an equivalent uptime/keep-warm setup before Play review. Staging can stay cheaper.</p>
+    </div>
+  </div>
+
+  <!-- Q10b -->
+  <div class="qa">
+    <div class="q">Question 10b</div>
+    <h4>Can we move the backend off Render later?</h4>
+    <div class="a">Answer — yes, but plan the public URL</div>
+    <p>The backend is portable because <code>vitaltrack-backend/Dockerfile</code>, <code>docker-entrypoint.sh</code>, Alembic, and <code>app/core/config.py</code> already define a Docker + env-var runtime. Render paid is the smallest cold-start fix; Fly.io, Railway, DigitalOcean, Hetzner, AWS Lightsail, or another Docker-capable VPS/managed host can also work. A MacBook/home server is fine for demos, not Play Store production.</p>
+    <p>The mobile app bakes <code>EXPO_PUBLIC_API_URL</code> at build time and <code>app.config.js</code> guards the current Render URLs. If the public API hostname changes, update <code>eas.json</code>, <code>app.config.js</code>, and the <code>start:staging</code>/<code>start:prod</code> scripts in <code>package.json</code>, then rebuild affected APK/AAB artifacts.</p>
+    <p>Best long-term move: put <code>api.carekosh.com</code> and <code>staging-api.carekosh.com</code> in front of the backend before broad release. Then a future platform move can be DNS-only for installed apps.</p>
   </div>
 
   <!-- Q11 -->

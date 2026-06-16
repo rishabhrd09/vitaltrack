@@ -70,14 +70,20 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
   <p>The deployment strategy itself is unchanged. The mobile-side surface area has grown materially — the cold-start UX track added <code>MutationResultDialog</code>, consolidated <code>StatusPill</code>, <code>useResultDialogStore</code>, <code>usePendingItems</code>, <code>mutationFeedback</code>, <code>safeBack</code>, <code>formatStock</code>, <code>react-native-toast-message</code>, fire-and-forget mutations, hook-level dispatch, retry-via-<code>Mutation.execute()</code>, auto-clear of <code>isBackendColdStarting</code>, and an inventory PDF redesign. <code>NetworkBanner</code>, <code>OfflineBanner</code>, <code>ConnectionStatusPill</code>, <code>SavingStatusPill</code> were consolidated/deleted. Backend code is unchanged in this track — Alembic head is still <code>0005_account_deletion_token</code>; no new migrations.</p>
 </div>
 
+<div class="callout warn">
+  <span class="callout-label">Backend host choice before Play</span>
+  <p>Render is replaceable because the backend runs from <code>vitaltrack-backend/Dockerfile</code> with env vars and <code>docker-entrypoint.sh</code>. Moving to paid Render is the smallest reliability fix; Fly.io, Railway, DigitalOcean, Hetzner, AWS Lightsail, or another VPS/managed Docker host are also viable. Do not use a MacBook/home server for Play Store production. The practical recommendation is to put <code>api.carekosh.com</code> and <code>staging-api.carekosh.com</code> in front of the backend so a future host move can be DNS-only instead of an app rebuild.</p>
+  <p>The current free-tier cold-start/server-call issue can technically be solved after Play deployment, but that is not recommended. Reviewers and first users may see timeouts and think the app is broken. Minimum before Play review: paid Render or equivalent reliable production uptime/keep-warm evidence.</p>
+</div>
+
 <!-- INTRO -->
 <div class="section">
   <h2>The four strategies, briefly</h2>
-  <p>Every backend change ends up on Render. Every mobile change ends up on a phone. The only question is the <em>path</em>. There are four realistic paths. We picked one as the default; the rest have their moments.</p>
+  <p>Every backend change ends up on Render today. Every mobile change ends up on a phone. The only question is the <em>path</em>. There are four realistic paths. We picked one as the default; the rest have their moments. If the backend later moves to paid Render, Fly.io, Railway, DigitalOcean, Hetzner, AWS Lightsail, or another Docker-capable host, keep the same branch-gated release discipline and swap the provider deploy step.</p>
   <table>
     <thead><tr><th>Strategy</th><th>What it means</th><th>Default?</th></tr></thead>
     <tbody>
-      <tr><td>A — Branch-gated merge</td><td>Feature branch → PR → CI + preview APK on label → merge → Render auto-deploys both environments</td><td><span class="score a">Yes — default</span></td></tr>
+      <tr><td>A — Branch-gated merge</td><td>Feature branch → PR → blocking CI + advisory scans + preview APK on label → merge → CI deploy hook for production plus Render auto-deploy for connected services</td><td><span class="score a">Yes — default</span></td></tr>
       <tr><td>B — Staging-only service per PR</td><td>Each PR gets its own Render preview environment</td><td><span class="score b">Only if needed</span></td></tr>
       <tr><td>C — Manual stepped rollout</td><td>Merge to staging branch first, verify, then merge staging → main</td><td><span class="score c">Rarely</span></td></tr>
       <tr><td>D — Direct push to main</td><td>No PR, no review, push and pray</td><td><span class="score d">Never, except hotfix</span></td></tr>
@@ -98,23 +104,23 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
     <div class="arch">feature branch
     │
     ▼
-PR to main  ──► CI (backend + frontend + security + pr-check)
+PR to main  ──► CI (backend + frontend gates + advisory scans + pr-check)
     │               │
     │               └── label: build-apk  ──► EAS preview APK → sideload → staging backend
     │
     ▼ merge
-main  ──► CI re-runs  ──► deploy-backend job  ──► Render hook fires
+main  ──► CI re-runs  ──► deploy-backend job  ──► production Render hook if configured
                                                       │
                                                       ├── vitaltrack-api (prod, neondb)
-                                                      └── vitaltrack-api-staging (staging branch)
+                                                      └── staging updates via its own Render auto-deploy when that service rebuilds
                                                       │
-                                                      └── alembic upgrade head on both</div>
+                                                      └── alembic upgrade head on each rebuilt service</div>
     <div class="grid">
       <div class="col">
         <h4 class="pro">Wins</h4>
         <ul>
-          <li>One green merge = both environments updated, zero manual Render interaction</li>
-          <li>CI gates every change; no way to ship a type error or trivy critical</li>
+          <li>One green merge updates production through CI/Render and lets staging follow through its own Render auto-deploy when backend files changed</li>
+          <li>CI blocks backend/frontend regressions; mypy and Trivy still run advisory until their known baselines are clean</li>
           <li>Preview APK on a PR label — reviewers exercise the real binary on a real device</li>
           <li>Alembic runs before Gunicorn serves, so schema and code deploy atomically</li>
         </ul>
@@ -184,7 +190,7 @@ main  ──► CI re-runs  ──► deploy-backend job  ──► Render hook 
         <ul>
           <li>Two branches to keep in sync — merge-debt accumulates fast on small teams</li>
           <li>Requires changing both Render services' watched-branch config</li>
-          <li>Doesn't buy much over Strategy A until you have a test suite worth trusting (CareKosh's test suite is currently 40/53 failing)</li>
+          <li>Doesn't buy much over Strategy A until you have a test suite worth trusting. Historical note: this was written when the suite was 40/53 failing; the latest Goal 11 evidence records 123 backend tests passing with 85% total coverage.</li>
         </ul>
       </div>
     </div>
@@ -254,8 +260,8 @@ main  ──► CI re-runs  ──► deploy-backend job  ──► Render hook 
 6. if reviewer needs a binary: add label "build-apk" → APK sideloaded
 7. reviewer approves
 8. merge (squash or merge, your call — both work)
-9. CI re-runs on main; deploy-backend POSTs Render hook
-10. BOTH Render services redeploy; Alembic runs on both DBs
+9. CI re-runs on main; deploy-backend POSTs the production Render hook if configured
+10. Production redeploys through the hook/auto-deploy path; staging redeploys through its own Render auto-deploy when the backend service rebuilds. Alembic runs on each rebuilt service's DB.
 11. verify deploy:
     ├── curl https://vitaltrack-api-staging.onrender.com/health
     ├── curl https://vitaltrack-api.onrender.com/health

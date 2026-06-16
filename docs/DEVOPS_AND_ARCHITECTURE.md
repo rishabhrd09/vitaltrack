@@ -97,7 +97,7 @@ The server-first pattern (PR #8) is the key architectural decision. Mobile is **
 | Validation | Pydantic v2 | Request/response schemas, config |
 | Auth | JWT **HS256** (symmetric) | One secret, rotated on refresh |
 | Password hashing | Argon2 (+ bcrypt fallback via passlib) | OWASP recommended |
-| Email | `fastapi-mail` (SMTP), Brevo HTTP API helper | Mailtrap in dev, Brevo in staging/prod |
+| Email | Brevo HTTP API helper (`httpx`) | SMTP-era dependencies/config remain, but current sends go through Brevo REST over HTTPS |
 | Server | Gunicorn + Uvicorn workers (4) | Production ASGI setup (see `docker-entrypoint.sh`) |
 | Rate limit | `slowapi` with proxy-aware `key_func` | Survives Render's edge, swallows storage errors |
 
@@ -137,7 +137,7 @@ Jobs:
   test-backend        pytest + ruff + route count + item/order coverage, Postgres 16 service container
   typecheck-backend-advisory
                       mypy advisory baseline
-  test-frontend       tsc --noEmit, eslint, expo-doctor
+  test-frontend       tsc --noEmit, eslint; expo-doctor advisory
   security-scan-advisory
                       Trivy advisory (CRITICAL + HIGH, fs vuln scan)
   pr-check            merge gate — requires backend + frontend tests
@@ -162,9 +162,9 @@ Open PR → main               │ test-backend, test-frontend,
 Label PR 'build-apk'         │ build-preview runs on next commit / rerun
                              │
 Merge → main                 │ test-backend, test-frontend,
-                             │ deploy-backend (POSTs Render hook)
-                             │ Render also auto-deploys main independently,
-                             │ so the hook is redundant but harmless.
+                             │ deploy-backend (POSTs configured Render hook)
+                             │ Render auto-deploy may also rebuild services
+                             │ connected to main.
                              │ build-production stays disabled.
 ```
 
@@ -257,6 +257,96 @@ Re-enabling the CI job is a one-line change (`if: false` → `if: github.ref == 
 
 `EXPO_PUBLIC_API_URL` is baked into the JS bundle at build time — you cannot flip a preview APK to production at runtime. This is deliberate: preview traffic can never reach production data.
 
+### Backend platform migration guide
+
+The backend is intentionally portable. The runtime is a Docker image, startup is
+`docker-entrypoint.sh`, and operational behavior comes from environment
+variables read by `app/core/config.py`. Render is the current host, not a hard
+requirement.
+
+#### What can host it?
+
+| Option | Fit |
+|---|---|
+| Render paid | Smallest change from today; removes free-tier sleep without changing app architecture |
+| Fly.io, Railway, DigitalOcean App Platform, AWS Lightsail | Good managed/VPS-style options if you want fewer cold-start surprises |
+| Hetzner / generic VPS | Fine when you are comfortable owning Docker, systemd/restarts, TLS, firewall, backups, and OS patching |
+| MacBook / home server | Useful for local demos or temporary internal testing; not recommended for Play Store production because uptime, network, TLS, IP changes, and physical power/network failure become your problem |
+
+#### Files and settings touched by a host move
+
+| Surface | Current file | What changes |
+|---|---|---|
+| Backend image | `vitaltrack-backend/Dockerfile` | Usually unchanged; build this image on the new host |
+| Backend startup | `vitaltrack-backend/docker-entrypoint.sh` | Usually unchanged; still waits for DB, runs Alembic, then starts Gunicorn/Uvicorn |
+| Runtime config | `vitaltrack-backend/app/core/config.py` | No code change expected; set env vars on the new host |
+| Render IaC | `vitaltrack-backend/render.yaml` | Remove/replace if leaving Render, or keep as historical Render config |
+| Mobile build URLs | `vitaltrack-mobile/eas.json` | Change `preview.env.EXPO_PUBLIC_API_URL` and/or `production.env.EXPO_PUBLIC_API_URL` if the public API hostname changes |
+| Mobile URL guards | `vitaltrack-mobile/app.config.js` | Update `PREVIEW_API_URL` / `PRODUCTION_API_URL`, or builds will fail when EAS uses the new URL |
+| Local scripts | `vitaltrack-mobile/package.json` | Update `start:staging` / `start:prod` convenience URLs |
+| API client | `vitaltrack-mobile/services/api.ts` | Usually unchanged; it reads `EXPO_PUBLIC_API_URL` and appends `/api/v1` |
+| CI deploy hook | `.github/workflows/ci.yml` | Replace the `deploy-backend` Render hook logic with the new host's deploy command or API call |
+
+Runtime env vars to recreate on the new host:
+
+```text
+DATABASE_URL
+SECRET_KEY
+ENVIRONMENT
+CORS_ORIGINS
+REQUIRE_EMAIL_VERIFICATION
+MAIL_PASSWORD
+MAIL_FROM
+FRONTEND_URL
+```
+
+Keep `DATABASE_URL` pointed at the right database (`vitaltrack_staging` vs
+`neondb` today), keep `SECRET_KEY` different per environment, and make
+`FRONTEND_URL` match the backend auth base URL that serves email links.
+
+#### GitHub secrets during migration
+
+Keep `EXPO_TOKEN`; it belongs to EAS builds, not Render. Replace
+`RENDER_DEPLOY_HOOK` if the backend leaves Render.
+
+Examples:
+
+| New host | Example repo secrets |
+|---|---|
+| VPS / self-managed Docker | `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY` |
+| Fly.io | `FLY_API_TOKEN` |
+| Railway | `RAILWAY_TOKEN` |
+| DigitalOcean | `DIGITALOCEAN_ACCESS_TOKEN` |
+
+Do not commit provider tokens, SSH keys, database URLs, or API keys. Store them
+as GitHub Actions secrets and provider-side environment variables.
+
+#### Custom-domain recommendation
+
+Before broad production release, prefer stable hostnames:
+
+```text
+https://api.carekosh.com
+https://staging-api.carekosh.com
+```
+
+Point those DNS records at Render today. If you later move to Fly.io, Railway,
+DigitalOcean, Hetzner, or Lightsail, you can repoint DNS instead of rebuilding
+every installed mobile binary. Without custom domains, changing
+`vitaltrack-api.onrender.com` requires updating `eas.json`, updating
+`app.config.js`, rebuilding the AAB/APK, and waiting for users to install the
+new version.
+
+#### Launch timing verdict
+
+The Render free-tier cold-start/server-call issue is technically hosting/ops
+work, so it can be fixed after a Play Store deployment. It is still not a good
+idea to wait: Play reviewers and first users may hit login, verification, or
+inventory timeouts and conclude the app is broken. Minimum before Play review:
+move production to paid Render or provide an equivalent reliable uptime /
+keep-warm strategy with monitor evidence. Staging can remain cheaper while
+production gets the reliability budget.
+
 ---
 
 ## 5. DevOps Mental Model
@@ -336,7 +426,7 @@ Watch Actions → `deploy-backend` should hit the Render hook and come back 200.
 
 ### Note on `railway.toml`
 
-Historical. The `railway.toml` file that existed pre-PR #1 was deleted with the migration. `render.yaml` at the repo root is the successor, though the Render services are manually configured and `render.yaml` is documentation-only at the moment.
+Historical. The `railway.toml` file that existed pre-PR #1 was deleted with the migration. `vitaltrack-backend/render.yaml` is the successor production service spec. The staging service is still dashboard-managed, as documented in `docs/STAGING_DEPLOY_DIAGNOSIS.html`.
 
 ---
 

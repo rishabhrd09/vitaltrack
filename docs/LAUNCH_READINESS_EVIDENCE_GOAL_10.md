@@ -294,7 +294,7 @@ Resolved on 2026-06-16:
 
 ## Commit Approval Packet
 
-Status: ready for human review and commit approval, but not committed.
+Status: historical pre-merge packet. The Goal 10/11 launch-readiness work was committed as `0b19763` and merged to `main` via PR #47; the current branch history includes merge commit `1f73699`.
 
 Suggested commit message:
 

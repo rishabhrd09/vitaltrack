@@ -1,6 +1,6 @@
 # CareKosh Roadmap
 
-**Last updated:** 2026-06-15
+**Last updated:** 2026-06-16
 
 CareKosh is a home-ICU medical inventory app for family caregivers. This document captures where the project has been, where it is today, and what remains before a Play Store launch.
 
@@ -22,8 +22,11 @@ CareKosh is a home-ICU medical inventory app for family caregivers. This documen
 | Domain + privacy policy hosted | 🟡 in progress |
 | Play Console account + closed testing | 🟡 in progress |
 | Launch on Google Play | 🔴 not yet |
-| Automated test suite health | ✅ 111 backend tests passing in the CI-shaped Postgres baseline |
+| Automated test suite health | ✅ 123 backend tests passing with 85% total coverage in latest Goal 11 evidence |
 | Backend quality gates | ✅ Ruff, pytest, `/api/v1` route count 39, and item/order coverage gates blocking; mypy and Trivy advisory until existing findings are cleaned up |
+| Goal 8 backend finish | ✅ shipped PR #45; CORS remains explicitly decision-blocked until real browser/admin origins are known |
+| Goal 9 Play Store hardening | ✅ shipped PR #46; preview APK smoke evidence recorded |
+| Goal 10/11 launch operations | ✅ shipped PR #47; runbook, restore/smoke evidence, redaction hardening, and monitor template recorded |
 
 ---
 
@@ -79,6 +82,12 @@ The backend production-guard sequence closed the previously verified high-risk b
 - Split `/health` readiness from `/live` liveness and masked secret config values.
 - Added blocking Ruff, pytest, exact `/api/v1` route-count, and item/order coverage gates while keeping mypy and Trivy advisory until their existing baselines are clean.
 
+### Phase 9 — Release hardening and launch operations (PRs #45 → #47)
+The later goal work finished the post-pack backend security pass and moved Play/ops readiness into documented, evidence-backed checks:
+- Goal 8 authenticated the email diagnostic, protected default categories server-side, masked raw provider errors, and documented the still-deferred production CORS-origin decision.
+- Goal 9 hardened Android release configuration, minimized permissions, disabled sensitive Android auto-backup behavior, and captured Play Data Safety inputs.
+- Goal 10/11 added launch/rollback runbooks, guarded restore drills, read-only production/staging smoke evidence, cold-start/load smoke evidence, log-redaction hardening, and a monitor provider template. Actual production monitor-provider setup is still a launch gap unless external provider evidence is added.
+
 ---
 
 ## PR history
@@ -107,6 +116,10 @@ The backend production-guard sequence closed the previously verified high-risk b
 | #41 | `correctness/atomic-apply-order-stock` | Make order stock application atomic |
 | #42 | `ops/health-and-secret-types` | Make `/health` DB-backed readiness, add `/live`, and mask config secrets |
 | #43 | `ci/block-quality-gates-and-docs` | Block backend Ruff/pytest/route/coverage gates; keep mypy/Trivy advisory with documented baselines |
+| #44 | `ci/block-quality-gates-and-docs` | Align production-guard docs after Goals 1-7 |
+| #45 | `security/post-pack-hardening` | Implement Goal 8 post-pack security hardening |
+| #46 | `mobile/playstore-release-hardening` | Finalize Goal 9 Android/Play Store release hardening |
+| #47 | `ops/launch-readiness-runbook` | Harden Goal 10/11 restore, smoke, monitoring-template, and redaction evidence |
 
 (PR #3 was rolled into #4 during review and does not appear as its own merge commit.)
 
@@ -122,7 +135,8 @@ The backend production-guard sequence closed the previously verified high-risk b
 | Closed testing track with ≥12 testers for 14 days | rishabhrd09 | 🔴 not started |
 | Play Store listing assets (feature graphic, screenshots, description) | rishabhrd09 | 🟡 screenshots WIP |
 | Data safety form | rishabhrd09 | 🔴 not started |
-| Goal 10 launch ops runbook, monitor template, and smoke scripts | rishabhrd09 | ✅ documented in `docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md` |
+| Goal 10/11 launch ops runbook, restore evidence, monitor template, and smoke scripts | rishabhrd09 | ✅ documented in `docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md` and `docs/LAUNCH_READINESS_EVIDENCE_GOAL_10.md` |
+| Production monitor provider setup | rishabhrd09 | 🔴 template exists; provider monitors and alert destination not proven yet |
 | Production AAB build from CI (currently `if: false` in `ci.yml`) | rishabhrd09 | 🔴 not started — flip to `if: github.ref == 'refs/heads/main'` when ready |
 
 ---
@@ -141,7 +155,7 @@ Rough priority order; none are scheduled.
 8. **Production AAB from CI** — enable the disabled `build-production` job and wire `eas submit` into the pipeline.
 9. **Item expiry tracking + alerts.**
 10. **Caregiver sharing** — multiple accounts on one inventory (currently each user's inventory is private).
-11. **Goal 8 backend finish.** Email diagnostic access is authenticated and raw provider errors are masked; server-side default-category deletion is rejected. Wildcard production CORS remains decision-blocked until real browser/admin origins are known.
+11. **Production CORS real-origin tightening.** Goal 8 shipped the safe backend fixes; replacing wildcard production CORS still waits on real browser/admin origins.
 
 ---
 
