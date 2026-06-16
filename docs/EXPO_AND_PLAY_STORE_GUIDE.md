@@ -170,7 +170,7 @@ eas submit --profile production --platform android   # uploads to Play Console i
 
 ---
 
-## Part 6 — Launch readiness checklist (current state as of 2026-04-19)
+## Part 6 — Launch readiness checklist (current state as of 2026-06-16)
 
 | Task | Status |
 |---|---|
@@ -183,7 +183,8 @@ eas submit --profile production --platform android   # uploads to Play Console i
 | Privacy policy hosted at a stable URL | 🟡 drafted, not hosted |
 | `FRONTEND_URL` env var set on production Render service | ✅ done |
 | Goal 9 Play Data Safety input inventory | ✅ documented in `docs/PLAY_STORE_RELEASE_HARDENING_GOAL_9.md` |
-| Goal 10 launch operations runbook | ✅ documented in `docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md` |
+| Goal 10/11 launch operations runbook and evidence | ✅ documented in `docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md` and `docs/LAUNCH_READINESS_EVIDENCE_GOAL_10.md` |
+| Production monitor provider setup | 🔴 template exists; provider monitors and alert destination not proven yet |
 | Data Safety form in Play Console | 🔴 not submitted |
 | Closed testing track (≥12 testers, 14 days) | 🔴 not started |
 
@@ -198,10 +199,10 @@ npx eas build --profile preview --platform android
 
 ---
 
-*Original: 2026-04-19. Last reviewed: 2026-05-04 against PR #34.*
+*Original: 2026-04-19. Last reviewed: 2026-06-16 against PR #47.*
 
 > **Re-audit notes (2026-05-04):**
-> - The launch-readiness snapshot in §6 is several weeks old. Re-verify the privacy-policy URL, Play Console listing, Data Safety form, and closed-testing tester count before submission.
+> - Historical note: the original launch-readiness snapshot was written on 2026-04-19. The §6 table above has been refreshed for the merged Goal 9/10/11 work, but the privacy-policy URL, Play Console listing, Data Safety form, closed-testing tester count, and real monitor-provider setup still need operator evidence before submission.
 > - The Data Safety enumeration of "fields the backend stores" should additionally declare the email-verification, password-reset, and account-deletion token columns + their expiry timestamps. Those are PII storage touchpoints introduced in PR #12 and PR #13.
 > - The `eas.json` profile mappings (development → localhost, preview → staging, production → prod) and the `RENDER_DEPLOY_HOOK` / `EXPO_TOKEN` secret names are unchanged.
 > - The mobile cold-start UX layer (added on the audit/cold-start-mutation-ux branch, merged 2026-05-04) is review-relevant for first-touch Play Console reviewers — when Render's free tier cold-starts, the user now sees a "Saving… server warming up" pill plus a centred dialog summarising the outcome. Worth adding a launch checklist row "Cold-start UX verified end-to-end on Render free tier."
@@ -211,6 +212,7 @@ npx eas build --profile preview --platform android
 > - Explicit Android permissions were reduced to `ACCESS_NETWORK_STATE`; camera, microphone, overlay, vibration, and legacy broad storage permissions are blocked unless a future generated manifest proves a feature requires them.
 > - App auto-backup is disabled because AsyncStorage cache snapshots can contain health-adjacent inventory/order/activity data. SecureStore remains configured for Android backup exclusion behavior.
 
-> **Goal 10 notes (2026-06-15):**
-> - Backup/restore, launch/rollback checklists, monitoring, log redaction, incident response, and small cold-start/load smoke are now routed through `docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md`.
+> **Goal 10/11 notes (2026-06-16):**
+> - Backup/restore, launch/rollback checklists, monitoring template, log redaction, incident response, and small cold-start/load smoke are now routed through `docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md` and `docs/LAUNCH_READINESS_EVIDENCE_GOAL_10.md`.
+> - The repo contains a monitor provider template and evidence placeholders. It does not prove that UptimeRobot, Better Stack, or another provider has live production monitors and alert destinations configured.
 > - Production smoke should use a dedicated smoke account. Register and order-apply remain staging synthetic or controlled manual production checks only.

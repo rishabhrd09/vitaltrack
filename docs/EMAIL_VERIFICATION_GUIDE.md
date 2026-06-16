@@ -27,7 +27,7 @@
 |---------|--------|-------|
 | Email verification enforcement | Shipped | `app/api/v1/auth.py` login path |
 | Brevo HTTP API integration | Shipped | `app/utils/email.py` |
-| Mailtrap sandbox for dev | Shipped | Same utility, SMTP path |
+| Local email testing | Brevo HTTP API only | Same utility; leave `MAIL_PASSWORD` empty to skip email sends |
 | Verification pending screen | Shipped | `app/(auth)/verify-email-pending.tsx` |
 | Resend verification | Shipped | `POST /auth/resend-verification` |
 | Enumeration-safe responses | Shipped in PR #12 | Identical text on all branches |
@@ -60,7 +60,7 @@
 
 | Component | File | Responsibility |
 |-----------|------|----------------|
-| Email utility | `vitaltrack-backend/app/utils/email.py` | Sends via Brevo HTTP API (prod/staging) or SMTP (dev) |
+| Email utility | `vitaltrack-backend/app/utils/email.py` | Sends via Brevo HTTP API when `MAIL_PASSWORD` is configured |
 | Auth endpoints | `vitaltrack-backend/app/api/v1/auth.py` | Register, login guard, verification, resend |
 | Config | `vitaltrack-backend/app/core/config.py` | `REQUIRE_EMAIL_VERIFICATION`, `MAIL_*`, `FRONTEND_URL` |
 | User model | `vitaltrack-backend/app/models/user.py` | `is_email_verified`, `email_verification_token`, `email_verification_expiry` |
@@ -135,12 +135,12 @@ An attacker cannot probe which emails are registered by reading the response bod
 
 | Variable | Purpose | Dev (Docker) | Staging/Prod (Render) |
 |---|---|---|---|
-| `MAIL_USERNAME` | SMTP login (if using SMTP) | Mailtrap sandbox user | Brevo SMTP user |
-| `MAIL_PASSWORD` | SMTP password or Brevo API key | Mailtrap token | Brevo API key (`xkeysib-...`) |
+| `MAIL_USERNAME` | Legacy SMTP login; unused by current send path | usually empty | unused by current Brevo HTTP API path |
+| `MAIL_PASSWORD` | Brevo HTTP API key for the current send path | optional unless testing real email | Brevo API key (`xkeysib-...`) |
 | `MAIL_FROM` | Sender shown to user | Verified address | `noreply@carekosh.com` |
-| `MAIL_SERVER` | SMTP host | `sandbox.smtp.mailtrap.io` | `smtp-relay.brevo.com` |
-| `MAIL_PORT` | SMTP port | `2525` (Mailtrap) | `587` |
-| `MAIL_STARTTLS` | STARTTLS on | `true` | `true` |
+| `MAIL_SERVER` | Legacy SMTP host; retained in config | `sandbox.smtp.mailtrap.io` | unused by current Brevo HTTP API path |
+| `MAIL_PORT` | Legacy SMTP port | `587` | unused by current Brevo HTTP API path |
+| `MAIL_STARTTLS` | Legacy SMTP toggle | `true` | unused by current Brevo HTTP API path |
 | `MAIL_SSL_TLS` | Implicit TLS (mutually exclusive) | `false` | `false` |
 | `REQUIRE_EMAIL_VERIFICATION` | Block unverified login | `false` (optional in dev) | `true` |
 | `FRONTEND_URL` | Base for email links | `http://<host-IP>:8000/api/v1/auth` | `https://vitaltrack-api.onrender.com/api/v1/auth` |
@@ -161,10 +161,10 @@ Startup fails fast on the two validators above rather than send broken verificat
 
 ## 5. Local Development Setup
 
-You have two choices:
+Current code has one active send path:
 
-- **Mailtrap sandbox** (recommended) — captures email to a web UI, no risk of sending to real addresses.
-- **Brevo with a verified personal sender** — real delivery to your own inbox.
+- **Brevo with a verified sender** — real delivery through Brevo's HTTP API.
+- For local runs that should not send email, leave `MAIL_PASSWORD` empty and keep `REQUIRE_EMAIL_VERIFICATION=false`.
 
 ### Prerequisites
 - Docker Desktop running
@@ -173,15 +173,13 @@ You have two choices:
 
 ### Step 1: Set up the email provider
 
-**Mailtrap sandbox:**
-1. Create account at [mailtrap.io](https://mailtrap.io), go to **Sandbox → Inboxes**.
-2. Open the default inbox → **SMTP Settings** → Node.js/etc.
-3. Note host (`sandbox.smtp.mailtrap.io`), port (`2525`), username, and password.
+**Mailtrap sandbox (historical SMTP option):**
+The current code path does not send through Mailtrap SMTP; it sends through Brevo's HTTP API when `MAIL_PASSWORD` is configured. Mailtrap notes are retained only for older SMTP-era troubleshooting.
 
 **Brevo with personal sender:**
 1. Log in at [app.brevo.com](https://app.brevo.com).
 2. **Senders & IP → Senders → Add a sender** → enter your personal Gmail, confirm via the link Brevo emails you.
-3. **SMTP & API → SMTP** → note the SMTP username and generate a Master key for `MAIL_PASSWORD`.
+3. **SMTP & API → API Keys** → generate a key for `MAIL_PASSWORD`.
 
 ### Step 2: Find your local IP (so phone can click verify links)
 
@@ -212,12 +210,12 @@ services:
       # CORS — include every origin your phone might present
       - CORS_ORIGINS=["http://localhost:3000","http://localhost:8081","http://192.168.1.42:8081","exp://192.168.1.42:8081"]
 
-      # Email (Mailtrap sandbox example)
-      - MAIL_USERNAME=<mailtrap-username>
-      - MAIL_PASSWORD=<mailtrap-password>
+      # Email (optional local real-email test through Brevo HTTP API)
+      - MAIL_USERNAME=
+      - MAIL_PASSWORD=<brevo-api-key>
       - MAIL_FROM=noreply@carekosh.com
       - MAIL_SERVER=sandbox.smtp.mailtrap.io
-      - MAIL_PORT=2525
+      - MAIL_PORT=587
       - MAIL_STARTTLS=true
       - MAIL_SSL_TLS=false
 
@@ -279,11 +277,11 @@ SECRET_KEY=<32+ char random, NOT starting with CHANGE-THIS>
 ENVIRONMENT=production
 DATABASE_URL=postgresql+asyncpg://...@neon.../neondb
 
-MAIL_USERNAME=<Brevo SMTP user>
+MAIL_USERNAME=
 MAIL_PASSWORD=<Brevo API key>
 MAIL_FROM=noreply@carekosh.com
-MAIL_SERVER=smtp-relay.brevo.com
-MAIL_PORT=587
+MAIL_SERVER=sandbox.smtp.mailtrap.io  # legacy SMTP-era key; unused by Brevo HTTP send path
+MAIL_PORT=587                         # legacy SMTP-era key
 MAIL_STARTTLS=true
 MAIL_SSL_TLS=false
 
@@ -485,5 +483,5 @@ curl -X POST http://localhost:8000/api/v1/auth/resend-verification \
 > 2. The Docker container names in §5 / §7 / §8 / §9 are `vitaltrack-api-dev` and `vitaltrack-db-dev` (the DB is `vitaltrack`). Earlier drafts used `carekosh-*` which don't match `docker-compose.dev.yml`. Corrected.
 > 3. The verify-email "primary" / "legacy" labels were inverted — `app/utils/email.py` actually emits `?token=...` (query-param) links into outgoing mail, so that route is what users click. The `/verify-email/{token}` path-param route returns JSON and is API-style. Corrected in §3.
 > 4. The CORS-`*`-rejection-validator claim was wrong — see §4 corrections. Production currently ships with `CORS_ORIGINS=["*"]` per `render.yaml`.
-> 5. Brevo HTTP API (port 443) is the production transport, not SMTP — the SMTP config keys (`MAIL_SERVER`, `MAIL_PORT`, `MAIL_STARTTLS`) are kept for the Mailtrap-dev path only.
+> 5. Brevo HTTP API (port 443) is the active transport, not SMTP — the SMTP config keys (`MAIL_SERVER`, `MAIL_PORT`, `MAIL_STARTTLS`) remain in config for legacy compatibility but are not used by `app/utils/email.py`.
 > 6. Login enforcement guard, enumeration-safe resend, schema-required-email-on-register all re-verified against current code — unchanged.

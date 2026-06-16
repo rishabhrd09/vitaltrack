@@ -189,7 +189,7 @@ curl -X POST $BASE/api/v1/auth/register \
       <span class="expect-label">Expected (403)</span>
       <code>{"detail":"Email not verified"}</code>
     </div>
-    <p>Click the verification link in the email sandbox (Mailtrap dev, Brevo staging/prod), then retry login — it should now succeed.</p>
+    <p>Click the verification link delivered by the configured Brevo HTTP email path, then retry login — it should now succeed.</p>
   </div>
 
   <div class="step">
@@ -367,7 +367,7 @@ curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{quantity,version}'</code></pr
     <pre><code>curl -s -X DELETE $BASE/api/v1/auth/me -H "$AUTH"</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      <code>{"message":"Deletion confirmation email sent"}</code>. In the mail sandbox, a confirmation email with a link to <code>GET /api/v1/auth/confirm-delete/{token}</code> (token is raw; DB stores the SHA-256 hash with a 24 h TTL).
+      <code>{"message":"Deletion confirmation email sent"}</code>. In the configured email provider, the message contains a browser link to <code>GET /api/v1/auth/confirm-delete/{token}</code> (token is raw; DB stores the SHA-256 hash with a 24 h TTL). The GET route renders a confirmation page only.
     </div>
   </div>
 
@@ -384,11 +384,17 @@ curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{quantity,version}'</code></pr
   <div class="step">
     <div class="step-num">Step 17</div>
     <h4>Confirm deletion (testing only — irreversible)</h4>
-    <p>Request deletion again (Step 15), open the email, click the link:</p>
+    <p>Request deletion again (Step 15), open the email, then load the GET confirmation page:</p>
     <pre><code>curl -s https://vitaltrack-api-staging.onrender.com/api/v1/auth/confirm-delete/RAW_TOKEN</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      HTML success page. User row is deleted; cascade unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
+      HTML confirmation page only. No data is deleted by the GET request.
+    </div>
+    <p>Submit the confirmation form, or reproduce it with POST:</p>
+    <pre><code>curl -s -X POST https://vitaltrack-api-staging.onrender.com/api/v1/auth/confirm-delete/RAW_TOKEN</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      HTML completion page. User row is deleted; cascade unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
     </div>
     <p>Prove cascade worked — any authenticated call with a saved access token should now 401:</p>
     <pre><code>curl -s -w "HTTP %{http_code}\n" $BASE/api/v1/items -H "$AUTH"</code></pre>

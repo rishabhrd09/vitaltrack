@@ -61,7 +61,7 @@ vitaltrack-backend/
 │   ├── models/                  # SQLAlchemy 2.0 async models
 │   ├── schemas/                 # Pydantic I/O schemas
 │   └── utils/
-│       ├── email.py             # fastapi-mail (Mailtrap dev / Brevo prod)
+│       ├── email.py             # Brevo HTTP API email sender
 │       └── rate_limiter.py      # slowapi
 ├── docker-compose.dev.yml
 ├── Dockerfile                   # multi-stage, non-root runtime user
@@ -274,12 +274,12 @@ REFRESH_TOKEN_EXPIRE_DAYS=30
 CORS_ORIGINS=*                                                  # accepted today; restrict only after real browser/admin origins are known
 RATE_LIMIT_PER_MINUTE=60
 RATE_LIMIT_BURST=10
-MAIL_SERVER=sandbox.smtp.mailtrap.io                            # Brevo SMTP in prod
+MAIL_SERVER=sandbox.smtp.mailtrap.io                            # legacy SMTP-era key; current send path uses Brevo HTTP API
 MAIL_USERNAME=
 MAIL_PASSWORD=
 MAIL_FROM=noreply@carekosh.com
 FRONTEND_URL=                                                   # required in production
-REQUIRE_EMAIL_VERIFICATION=False                                # True in production
+REQUIRE_EMAIL_VERIFICATION=False                                # True in staging/production launch envs
 EMAIL_VERIFICATION_EXPIRY_HOURS=24
 PASSWORD_RESET_EXPIRY_HOURS=1
 ```
@@ -328,9 +328,9 @@ See [DOCKER_GUIDE.md](DOCKER_GUIDE.md) for Docker concepts walkthrough.
 
 ### Render (production + staging)
 
-Configuration: [`render.yaml`](render.yaml).
+Production IaC: [`render.yaml`](render.yaml). The staging service is managed in Render outside this file.
 
-Backend auto-deploys on every push to `main` via the `deploy-backend` job in `.github/workflows/ci.yml`, which POSTs to a Render deploy hook (secret `RENDER_DEPLOY_HOOK`).
+On pushes to `main`, `.github/workflows/ci.yml` reruns the backend/frontend gates and then `deploy-backend` POSTs `RENDER_DEPLOY_HOOK` when that secret is configured. Render's own GitHub auto-deploy can also rebuild services connected to `main`.
 
 - **Production:** `https://vitaltrack-api.onrender.com`
 - **Staging:** `https://vitaltrack-api-staging.onrender.com`

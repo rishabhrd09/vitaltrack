@@ -80,7 +80,7 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
         <dt>Backend</dt><dd>docker compose (local)</dd>
         <dt>API URL</dt><dd>http://localhost:8000</dd>
         <dt>Database</dt><dd>Local postgres:16 (Docker volume)</dd>
-        <dt>Email</dt><dd>Mailtrap sandbox</dd>
+        <dt>Email</dt><dd>Usually disabled locally; Brevo HTTP API if <code>MAIL_PASSWORD</code> is set</dd>
         <dt>Mobile</dt><dd>Expo Go + dev profile</dd>
         <dt>Lifecycle</dt><dd>docker compose down -v to reset</dd>
       </dl>
@@ -90,9 +90,9 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
       <dl>
         <dt>Backend</dt><dd>vitaltrack-api-staging.onrender.com</dd>
         <dt>Database</dt><dd>Neon branch: vitaltrack_staging (Singapore)</dd>
-        <dt>Email</dt><dd>Brevo SMTP (staging key)</dd>
+        <dt>Email</dt><dd>Brevo HTTP API (staging key)</dd>
         <dt>Mobile</dt><dd>EAS preview APK (sideload)</dd>
-        <dt>Triggered by</dt><dd>push to main + build-apk label</dd>
+        <dt>Triggered by</dt><dd>backend deploy from <code>main</code>; preview APK by PR <code>build-apk</code> label</dd>
         <dt>Lifecycle</dt><dd>Test data only · safe to wipe</dd>
       </dl>
     </div>
@@ -101,9 +101,9 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
       <dl>
         <dt>Backend</dt><dd>vitaltrack-api.onrender.com</dd>
         <dt>Database</dt><dd>Neon branch: neondb (Singapore)</dd>
-        <dt>Email</dt><dd>Brevo SMTP (production key)</dd>
+        <dt>Email</dt><dd>Brevo HTTP API (production key)</dd>
         <dt>Mobile</dt><dd>EAS production AAB (Play Store internal)</dd>
-        <dt>Triggered by</dt><dd>merge to main (backend); manual eas build (mobile)</dd>
+        <dt>Triggered by</dt><dd>merge to <code>main</code> (backend); manual EAS build/submit today (mobile)</dd>
         <dt>Lifecycle</dt><dd>Real user data · never wipe</dd>
       </dl>
     </div>
@@ -133,7 +133,7 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 │                            Neon branch: vitaltrack_staging         │
 │                                   │                                │
 │                                   ▼                                │
-│                            Brevo SMTP (staging key)                │
+│                            Brevo HTTP API (staging key)            │
 │                                                                     │
 ├────────────────────────────────────────────────────────────────────┤
 │                                                                     │
@@ -147,12 +147,12 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 │                            Neon branch: neondb                     │
 │                                   │                                │
 │                                   ▼                                │
-│                            Brevo SMTP (production key)             │
+│                            Brevo HTTP API (production key)         │
 │                                                                     │
 └────────────────────────────────────────────────────────────────────┘
 
-Code flows: git push main → GitHub Actions → Render deploy hook
-           → Render pulls same image for BOTH staging + production</div>
+Code flows: git push main → GitHub Actions → optional Render deploy hook for the configured service
+           → Render auto-deploys connected services from main when their service rebuilds</div>
 </div>
 
 <hr>
@@ -168,11 +168,11 @@ Code flows: git push main → GitHub Actions → Render deploy hook
       <tr><td><code>DEBUG</code></td><td><code>True</code></td><td><code>False</code></td><td><code>False</code></td></tr>
       <tr><td><code>DATABASE_URL</code></td><td>local docker</td><td>Neon <code>vitaltrack_staging</code></td><td>Neon <code>neondb</code></td></tr>
       <tr><td><code>SECRET_KEY</code></td><td>any 32+ char</td><td>distinct 32+</td><td>distinct 32+ (validator rejects "CHANGE-THIS")</td></tr>
-      <tr><td><code>CORS_ORIGINS</code></td><td><code>*</code></td><td>staging domain</td><td>configured per-service in Render UI; <code>render.yaml</code> currently ships <code>*</code> as a default. There is a <code>parse_cors_origins</code> validator in <code>config.py</code> but no production wildcard rejector — tighten this when carekosh.com goes live.</td></tr>
-      <tr><td><code>FRONTEND_URL</code></td><td>empty</td><td>staging domain</td><td>carekosh.com (validator requires in prod)</td></tr>
-      <tr><td><code>MAIL_SERVER</code></td><td><code>sandbox.smtp.mailtrap.io</code></td><td>Brevo SMTP host</td><td>Brevo SMTP host</td></tr>
-      <tr><td><code>MAIL_USERNAME</code></td><td>Mailtrap user</td><td>Brevo staging user</td><td>Brevo prod user</td></tr>
-      <tr><td><code>MAIL_PASSWORD</code></td><td>Mailtrap key</td><td>Brevo staging key</td><td>Brevo prod key</td></tr>
+      <tr><td><code>CORS_ORIGINS</code></td><td><code>*</code></td><td><code>*</code> is acceptable for mobile-only staging</td><td><code>render.yaml</code> currently ships <code>*</code> as a default. There is a <code>parse_cors_origins</code> validator in <code>config.py</code> but no production wildcard rejector — tighten this when real browser/admin origins exist.</td></tr>
+      <tr><td><code>FRONTEND_URL</code></td><td>empty</td><td><code>https://vitaltrack-api-staging.onrender.com/api/v1/auth</code></td><td><code>https://vitaltrack-api.onrender.com/api/v1/auth</code> today; validator requires non-empty in prod</td></tr>
+      <tr><td><code>MAIL_SERVER</code></td><td><code>sandbox.smtp.mailtrap.io</code></td><td>legacy SMTP-era key; unused by current Brevo HTTP send path</td><td>legacy SMTP-era key; unused by current Brevo HTTP send path</td></tr>
+      <tr><td><code>MAIL_USERNAME</code></td><td>legacy SMTP username</td><td>legacy SMTP username; unused by current send path</td><td>legacy SMTP username; unused by current send path</td></tr>
+      <tr><td><code>MAIL_PASSWORD</code></td><td>empty unless testing Brevo API</td><td>Brevo HTTP API key</td><td>Brevo HTTP API key</td></tr>
       <tr><td><code>MAIL_FROM</code></td><td><code>noreply@carekosh.com</code></td><td><code>noreply@carekosh.com</code></td><td><code>noreply@carekosh.com</code></td></tr>
       <tr><td><code>REQUIRE_EMAIL_VERIFICATION</code></td><td><code>False</code></td><td><code>True</code></td><td><code>True</code></td></tr>
       <tr><td><code>ACCESS_TOKEN_EXPIRE_MINUTES</code></td><td>30</td><td>30</td><td>30</td></tr>
@@ -287,14 +287,15 @@ set -e
      ▼
 GitHub Actions: ci.yml (push trigger)
      │
-     ├── test-backend   (ruff + mypy + pytest)
-     ├── test-frontend  (tsc + eslint + expo-doctor)
-     ├── security-scan  (Trivy CRITICAL+HIGH)
+     ├── test-backend   (ruff + pytest + route count + coverage gates)
+     ├── typecheck-backend-advisory (mypy baseline)
+     ├── test-frontend  (tsc + eslint; expo-doctor advisory)
+     ├── security-scan-advisory (Trivy CRITICAL+HIGH; PR-only advisory)
      │   ↓ all green
      ▼
 deploy-backend job
      │
-     └── POST $RENDER_DEPLOY_HOOK   (both services listen)
+     └── POST $RENDER_DEPLOY_HOOK   (configured deploy hook; production in current CI evidence)
                     │
                     ▼
        Render: pull image → docker-entrypoint.sh → gunicorn boot
@@ -324,7 +325,7 @@ deploy-backend job
 
   <div class="callout info">
     <span class="callout-label">Quirk 3 · Render free-tier cold starts</span>
-    <p>15 min idle → sleep. First request after sleep: 30–60 s to wake. Mitigate with UptimeRobot pinging <code>/health</code> every 14 min, or upgrade tier.</p>
+    <p>15 min idle → sleep. First request after sleep: 30–60 s to wake. Mitigate with a provider monitor pointed at <code>/live</code> (or <code>/health</code> when DB readiness is the signal) or upgrade tier. Current repo evidence includes a monitor template, not proof that provider monitors are live.</p>
   </div>
 
   <div class="callout warn">
@@ -333,8 +334,8 @@ deploy-backend job
   </div>
 
   <div class="callout warn">
-    <span class="callout-label">Quirk 5 · Both Render services auto-deploy from main</span>
-    <p>There is no "deploy to staging first, soak, then production" today. Both services watch <code>main</code> and get the same code at the same time. If you need time separation, that's Strategy C in the deployment strategy doc — needs a <code>staging</code> long-lived branch.</p>
+    <span class="callout-label">Quirk 5 · Render services track main differently</span>
+    <p>There is no "deploy to staging first, soak, then production" today. Both services watch <code>main</code>, but staging is dashboard-managed outside <code>render.yaml</code> and its auto-deploy is gated by the backend root-directory filter documented in <code>docs/STAGING_DEPLOY_DIAGNOSIS.html</code>. Backend changes should rebuild staging; frontend-only merges do not. If you need time separation, that's Strategy C in the deployment strategy doc — it needs a <code>staging</code> long-lived branch.</p>
   </div>
 
   <div class="callout warn">

@@ -6,11 +6,13 @@ Scope: production operations and Play launch readiness only. This runbook does
 not change database schema, API behavior, auth semantics, inventory/order flows,
 mobile UI, EAS API targets, or backend runtime behavior.
 
-## Current Checkout Facts
+## Checkout And Merge Facts
 
-- Branch: `ops/launch-readiness-runbook`.
-- Base: PR #46 merge commit `30e3ad2`, also `main` and `origin/main` after
-  remote refresh on 2026-06-15.
+- Historical implementation branch: `ops/launch-readiness-runbook`.
+- Original Goal 10 base: PR #46 merge commit `30e3ad2`, also `main` and
+  `origin/main` after remote refresh on 2026-06-15.
+- Current merged state as of 2026-06-16: PR #47 merged `0b19763`; `main` and
+  `origin/main` are at merge commit `1f73699`.
 - Render blueprint already sets `healthCheckPath: /live`.
 - Backend liveness endpoint: `GET /live`, process-only, no database probe.
 - Backend readiness endpoint: `GET /health`, runs a database `SELECT 1` probe

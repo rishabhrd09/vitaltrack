@@ -19,7 +19,7 @@ Family caregivers running a home ICU for a chronically ill relative juggle dozen
 - Raises "needs attention" alerts for low / out-of-stock / expiring items
 - Manages orders end-to-end (pending → ordered → received → applied to stock)
 - Maintains an audit log of every stock change
-- Syncs across caregivers in real time (server-first; no offline merge conflicts)
+- Keeps caregivers aligned through server-backed reads/writes and query revalidation (server-first; no offline merge conflicts)
 
 ---
 
@@ -36,11 +36,27 @@ Family caregivers running a home ICU for a chronically ill relative juggle dozen
 | Database | PostgreSQL 16 on [Neon](https://neon.tech) |
 | Hosting | [Render](https://render.com) (backend) · [EAS Build](https://expo.dev/eas) (mobile) |
 | CI/CD | GitHub Actions · blocking backend tests/Ruff/route/coverage gates · advisory mypy/Trivy baselines · Render deploy hook |
-| Email | Mailtrap (dev) · Brevo SMTP (prod) |
+| Email | Brevo HTTP API for transactional email; SMTP config keys remain from the Mailtrap/SMTP era |
 
 ### Architecture
 
 CareKosh is **server-first**, not offline-first. The backend is the single source of truth; the mobile app surfaces write errors explicitly rather than queuing them. Optimistic concurrency control (a `version` column on `items`, HTTP 409 on stale updates) handles concurrent edits. See [CAREKOSH_DEVELOPER_GUIDE.md §1](CAREKOSH_DEVELOPER_GUIDE.md#1-architecture-overview) for the rationale.
+
+---
+
+## End-to-end map
+
+Mobile screens call `vitaltrack-mobile/services/api.ts`, which reads `EXPO_PUBLIC_API_URL` from the active Expo/EAS profile and sends JSON to the FastAPI app. The backend mounts `/api/v1/auth`, `/categories`, `/items`, `/orders`, and `/activities`; `/health` and `/live` are root-level operational endpoints. PostgreSQL on Neon is the source of truth. The mobile app keeps auth tokens in SecureStore and a read-only TanStack Query display cache in AsyncStorage; it does not queue offline writes or push cached data back to the server.
+
+Environment routing:
+
+| Runtime | Backend | Database | Notes |
+|---|---|---|---|
+| Local Expo / dev APK | `http://localhost:8000` by default, or LAN/ADB override | local Docker Postgres | development profile allows local cleartext HTTP |
+| Preview APK | `https://vitaltrack-api-staging.onrender.com` | Neon staging database | built by EAS preview profile; PR label `build-apk` can trigger CI build |
+| Production AAB | `https://vitaltrack-api.onrender.com` | Neon production database | manual EAS/Play flow today; CI production AAB job is disabled |
+
+Deployment routing: PRs run blocking backend/frontend gates, with mypy and Trivy advisory. Merging to `main` triggers the backend deploy job; when `RENDER_DEPLOY_HOOK` is configured, CI POSTs that Render hook, and Render's own GitHub auto-deploy can also rebuild connected services. The Docker entrypoint waits for Postgres, applies Alembic, then launches Gunicorn/Uvicorn. Mobile production release remains manual until the disabled `build-production` job is intentionally re-enabled.
 
 ---
 
@@ -99,8 +115,11 @@ Full setup, env vars, and troubleshooting: **[CAREKOSH_DEVELOPER_GUIDE.md](CAREK
 | [docs/ENVIRONMENT_SPLIT.md](docs/ENVIRONMENT_SPLIT.md) | Neon + Render per-environment operational detail |
 | [docs/EMAIL_VERIFICATION_GUIDE.md](docs/EMAIL_VERIFICATION_GUIDE.md) | Full auth email flow — verification, password reset, deletion |
 | [docs/EXPO_AND_PLAY_STORE_GUIDE.md](docs/EXPO_AND_PLAY_STORE_GUIDE.md) | EAS + Play Console launch setup |
+| [docs/PLAY_STORE_RELEASE_HARDENING_GOAL_9.md](docs/PLAY_STORE_RELEASE_HARDENING_GOAL_9.md) | Goal 9 Android/Play Store privacy, permissions, backup, reviewer, and Data Safety notes |
+| [docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md](docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md) | Goal 10/11 backup, restore, smoke, rollback, monitoring-template, and incident runbook |
+| [docs/LAUNCH_READINESS_EVIDENCE_GOAL_10.md](docs/LAUNCH_READINESS_EVIDENCE_GOAL_10.md) | Non-secret launch-readiness evidence: restore drill, smoke runs, coverage, cold-start, remaining gaps |
 | [docs/TECHNICAL_CHALLENGES.md](docs/TECHNICAL_CHALLENGES.md) | Post-mortems — bugs found and fixed |
-| [docs/PROJECT_LEARNINGS_AND_JOURNEY.md](docs/PROJECT_LEARNINGS_AND_JOURNEY.md) | The full narrative — migrations, decisions, PRs #1–#13 |
+| [docs/PROJECT_LEARNINGS_AND_JOURNEY.md](docs/PROJECT_LEARNINGS_AND_JOURNEY.md) | The full narrative — migrations, decisions, PRs #1–#13 plus June launch-readiness goals |
 | [docs/PHASE1_AUTH_HARDENING.md](docs/PHASE1_AUTH_HARDENING.md) | PR #12 change summary — auth hardening |
 | [docs/PHASE2_ACCOUNT_DELETION.md](docs/PHASE2_ACCOUNT_DELETION.md) | PR #13 change summary — account deletion + Profile screen |
 
@@ -117,7 +136,7 @@ Feature-complete for v1; preparing for Play Store closed testing. See [CAREKOSH_
 - **Migrated from offline-first to server-first (PRs #4–#8).** Offline editing of life-critical inventory creates merge conflicts with real-world consequences. A server-first design eliminates the conflict class; OCC handles the last remaining race.
 - **Cache persistence stores a read-only snapshot of TanStack Query data to AsyncStorage (PR #16).** Unlike the old offline-first architecture, cached data is never pushed to the server — mutations always go server-first. Cache is cleared on both logout and login for shared-device privacy, and a schema `buster` tied to the app version auto-invalidates stale snapshots on upgrade. Kill switch (`ENABLE_CACHE_PERSISTENCE`) in `providers/QueryProvider.tsx` for instant rollback.
 - **Skeleton screens + cold-start auto-retry (PRs #15, #16).** First-launch and post-idle waits are covered by animated skeleton placeholders (matching each screen's layout) and, on login, an auto-retry loop that health-checks the server every 5 s (max 12 attempts) with a Cancel button — replacing the static "server is starting up" text.
-- **Migrated hosting from Railway to Render (PR #1).** Render's Docker web services, zero-cost PR previews via deploy hooks, and Neon integration were a better fit than Railway's per-service pricing.
+- **Migrated hosting from Railway to Render (PR #1).** Render's Docker web services, deploy hooks, and Neon integration were a better fit than Railway's per-service pricing.
 - **Rebranded VitalTrack → CareKosh (PRs #10, #11) without renaming directories.** User-visible only — internal paths kept stable to avoid breaking Render service URLs, EAS config references, and historical PR links.
 - **Removed unused backend `/sync/*` endpoints after deleting mobile sync.** The app remains server-first; mutations use the normal REST endpoints and cached data is never pushed back.
 - **Backend quality gates now protect the server contract.** CI blocks on Ruff, pytest, exact `/api/v1` route count `39`, and per-file coverage floors for `items.py` and `orders.py`. `mypy` and Trivy stay advisory until their existing baselines are cleaned up.

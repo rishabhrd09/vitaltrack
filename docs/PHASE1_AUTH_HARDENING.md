@@ -224,7 +224,7 @@ Specific updates in `test_auth.py`:
 | `TestRegistrationErrors.test_duplicate_username_rejected` | Added `"email": "imposter@test.com"` to raw POST (without email → 422 masked the duplicate logic) |
 | `TestPasswordValidation` × 6 | Added unique email to each raw POST |
 
-> Superseded: the old 2026-04-19 failing-test snapshot is no longer current. As of the Goal 7 baseline, the backend suite collects and passes 111 tests against a disposable PostgreSQL database.
+> Superseded: the old 2026-04-19 failing-test snapshot is no longer current. The Goal 7 baseline collected and passed 111 tests; the latest Goal 11 evidence records 123 backend tests passing with 85% total coverage against a disposable PostgreSQL database.
 
 ---
 
@@ -239,11 +239,11 @@ Set on both Render services before merging to production. Set staging first, ver
 | `MAIL_FROM` | `noreply@carekosh.com` | `noreply@carekosh.com` |
 | `FRONTEND_URL` | `https://vitaltrack-api-staging.onrender.com/api/v1/auth` | `https://vitaltrack-api.onrender.com/api/v1/auth` |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` | `true` |
-| `MAIL_USERNAME` | Brevo SMTP login | same |
-| `MAIL_PASSWORD` | Brevo API key | same |
-| `MAIL_SERVER` | `smtp-relay.brevo.com` | same |
-| `MAIL_PORT` | `587` | same |
-| `MAIL_STARTTLS` | `true` | same |
+| `MAIL_USERNAME` | legacy SMTP-era key; unused by current send path | same |
+| `MAIL_PASSWORD` | Brevo HTTP API key | same |
+| `MAIL_SERVER` | legacy SMTP-era key | same |
+| `MAIL_PORT` | legacy SMTP-era key | same |
+| `MAIL_STARTTLS` | legacy SMTP-era key | same |
 | `MAIL_SSL_TLS` | `false` | same |
 
 If Render already had `MAIL_*` vars configured and email was working — no changes for those. **Check specifically:** `ENVIRONMENT`, `FRONTEND_URL`, and that `SECRET_KEY` does not start with `"CHANGE-THIS"`.
@@ -320,12 +320,13 @@ vitaltrack-backend/tests/test_auth.py      — 9 test locations updated
 
 ---
 
-*Retrospective of PR #12 · written 2026-04-18 · last reviewed 2026-05-04.*
+*Retrospective of PR #12 · written 2026-04-18 · last reviewed 2026-06-16.*
 
 > **Re-audit notes (2026-05-04):**
 > 1. The old failing-test snapshot in §6 is historical only and no longer
->    describes current branch health. The Goal 7 baseline is 111 backend tests
->    passing against PostgreSQL.
+>    describes current branch health. The Goal 7 baseline was 111 backend tests
+>    passing against PostgreSQL; the latest Goal 11 evidence records 123 passed
+>    with 85% total coverage.
 > 2. The earlier draft of §1d claimed PR #12 added a `CORS_ORIGINS` validator
 >    that "rejects `*` in production" — that's not what shipped, and the
 >    section has been corrected. There is no such validator; `render.yaml`

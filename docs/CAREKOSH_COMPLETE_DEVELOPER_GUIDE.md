@@ -37,7 +37,7 @@ CareKosh (formerly **VitalTrack**, rebranded in PR #10/#11) is a home-ICU medica
 │   │                     GITHUB ACTIONS (CI/CD)                          │   │
 │   │                                                                     │   │
 │   │   Tests backend + mobile, then:                                     │   │
-│   │     • POST Render deploy hook (on push to main)                     │   │
+│   │     • POST configured Render deploy hook (on push to main)          │   │
 │   │     • Trigger EAS Build (preview APK, gated by 'build-apk' label)  │   │
 │   │     • Trigger EAS Build production (currently disabled in CI)      │   │
 │   └─────────┬────────────────────────────┬──────────────────────────────┘   │
@@ -108,7 +108,7 @@ The Play Store serves the user the AAB that EAS produced. Render has nothing to 
 - Two Web Services: production + staging, each wired to its own Neon database.
 - Each reads the Dockerfile in `vitaltrack-backend/`, runs the multi-stage build, runs `docker-entrypoint.sh` on startup (which runs `alembic upgrade head`, then execs `gunicorn -w 4 -k uvicorn.workers.UvicornWorker`).
 - Both watch the `main` branch and auto-redeploy on merge.
-- Free tier sleeps after ~15 minutes idle; first request after sleep takes 30–60 s (cold start). UptimeRobot or an equivalent keep-alive ping is typically pointed at `/health` to avoid that.
+- Free tier sleeps after ~15 minutes idle; first request after sleep takes 30–60 s (cold start). Goal 10/11 added a monitor template and evidence placeholders, but repo evidence does not prove a live provider monitor yet. Before launch, configure UptimeRobot, Better Stack, or equivalent for `/live` and `/health`, then record links/screenshots.
 
 ### Cloud 3: Expo / EAS (Mobile App Builds)
 
@@ -154,14 +154,14 @@ workflow_dispatch       (manual run, any branch)
 |-----|---------|
 | `test-backend` | pytest + Ruff + `/api/v1` route count 39 + item/order coverage gates against Postgres 16 service container |
 | `typecheck-backend-advisory` | mypy baseline, advisory until existing type errors are fixed |
-| `test-frontend` | `tsc --noEmit` + `eslint` + `expo-doctor` |
+| `test-frontend` | blocking `tsc --noEmit` + `eslint`; `expo-doctor` runs advisory |
 | `security-scan-advisory` | Trivy filesystem scan for CRITICAL + HIGH vulns, advisory until existing dependency findings are fixed |
 | `pr-check` | Merge gate — requires backend + frontend tests passing |
 | `deploy-backend` | `curl -X POST $RENDER_DEPLOY_HOOK` on push to main |
 | `build-preview` | `eas build --profile preview --platform android`, only runs when the PR has the `build-apk` label |
 | `build-production` | `eas build --profile production` — **currently disabled via `if: false`** until mobile release cadence is established |
 
-Both Render services are also individually configured to auto-deploy when `main` receives a push — the CI hook is an extra guarantee, not the only trigger.
+The CI hook is optional backup automation for the configured Render service; the current workflow names a single `RENDER_DEPLOY_HOOK` and production environment. Staging is an external Render service documented in `docs/STAGING_DEPLOY_DIAGNOSIS.html`, where dashboard evidence showed its own `main` auto-deploy path gated by the backend root directory filter.
 
 ### Trigger Matrix
 
@@ -179,8 +179,9 @@ PR labeled 'build-apk'        │ build-preview runs (APK → EAS)
                               │
 Merge PR to main              │ test-backend, test-frontend,
 (or push direct to main)      │ typecheck-backend-advisory,
-                              │ deploy-backend (POSTs Render hook). Render
-                              │ also auto-deploys independently.
+                              │ deploy-backend (POSTs configured Render hook).
+                              │ Render auto-deploy may also rebuild services
+                              │ connected to main.
                               │ build-production is disabled (if: false).
 ```
 
@@ -265,7 +266,7 @@ STEP 4 — Commit & push
 
 STEP 5 — Open PR
   GitHub → "Compare & pull request" → fill in body → submit.
-  CI starts: backend tests, frontend tests, security scan, pr-check.
+  CI starts: backend tests, frontend tests, advisory mypy/Trivy, pr-check.
   If you want an APK for device testing, apply the `build-apk` label.
 
 STEP 6 — Wait for CI (~5–10 min without APK, +15 min with APK)
@@ -280,10 +281,10 @@ STEP 8 — Review
 
 STEP 9 — Merge to main
   "Squash and merge" is the house style.
-  Triggers: backend+frontend tests, security scan, deploy-backend hook.
-  Render auto-redeploys both production and staging (staging from main
-  head same as production — if you want environment divergence, you need
-  a release branch strategy).
+  Triggers: backend+frontend tests, advisory mypy, and deploy-backend hook.
+  Production redeploys through the configured hook/auto-deploy path. Staging
+  redeploys through its own Render auto-deploy when backend files trigger that
+  service rebuild.
 
 STEP 10 — Verify production
   curl https://vitaltrack-api.onrender.com/health
@@ -403,13 +404,15 @@ If the PR isn't labeled `build-apk`, the build-preview job never ran. Apply the 
 
 ### Q5. "My PR tests passed but Render didn't deploy."
 
-Expected. The `deploy-backend` job runs only on pushes to `main`. Render is also wired to auto-deploy `main` independently, so once the PR is merged the deploy fires twice (safe — idempotent).
+Expected. The `deploy-backend` job runs only on pushes to `main`. If `RENDER_DEPLOY_HOOK` is configured, CI triggers that Render hook; Render's own GitHub auto-deploy can also rebuild services connected to `main`.
 
 ### Q6. "How do I test backend changes before merge?"
 
-Two options:
+Use local Docker before merge:
 1. **Local Docker** — `docker-compose -f docker-compose.dev.yml up --build`. This is the normal path.
-2. **Staging** — merge the backend change, wait for Render to auto-deploy staging, exercise via the preview APK. This is the "smoke on real infrastructure" path before you cut a production release.
+
+After merge, use staging as real-infrastructure smoke before you cut a mobile production release:
+2. **Staging** — wait for the staging Render service to auto-deploy when the backend change triggers its root-directory filter, then exercise via the preview APK.
 
 Preview APKs talk to the **staging** backend, not production — PR #2 split the environments specifically so testing wouldn't pollute real data.
 
@@ -530,4 +533,4 @@ None of those touched the backend, the CI surface, the Render or Neon
 configuration, or the Alembic chain — so the rest of this guide is still
 accurate at the architectural level.
 
-*Original: 2026-04-19. Last reviewed: 2026-05-04.*
+*Original: 2026-04-19. Last reviewed: 2026-06-16 for Goal 10/11 launch-readiness status.*

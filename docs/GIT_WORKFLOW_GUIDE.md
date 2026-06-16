@@ -116,7 +116,7 @@ The important PR jobs run in parallel:
 |---|---|
 | `test-backend` | blocking pytest, Ruff, `/api/v1` route count 39, and item/order coverage gates (postgres:16 service) |
 | `typecheck-backend-advisory` | mypy baseline, advisory until the existing type errors are fixed |
-| `test-frontend` | `tsc`, ESLint, `expo-doctor` |
+| `test-frontend` | blocking `tsc` and ESLint; `expo-doctor` runs advisory |
 | `security-scan-advisory` | Trivy CRITICAL/HIGH baseline, advisory until vulnerable dependencies are upgraded |
 | `pr-check` | Merge gate — succeeds only if backend + frontend pass |
 
@@ -166,6 +166,32 @@ git branch -d feature/add-export-button
    The CI `build-production` job exists but is gated off (`if: false`) until Play Console production is live.
 
 Full trigger taxonomy: repo-root `CAREKOSH_BUILD_DEPLOY_FLOW.html`.
+
+### Backend platform migration PRs
+
+A backend host move is a docs/config/deploy-surface change, not a normal
+feature. Keep product behavior unchanged and review these surfaces explicitly:
+
+| Surface | File / setting |
+|---|---|
+| Backend image/runtime | `vitaltrack-backend/Dockerfile`, `vitaltrack-backend/docker-entrypoint.sh` |
+| Runtime env vars | `DATABASE_URL`, `SECRET_KEY`, `ENVIRONMENT`, `CORS_ORIGINS`, `REQUIRE_EMAIL_VERIFICATION`, `MAIL_PASSWORD`, `MAIL_FROM`, `FRONTEND_URL` |
+| Render-specific config | `vitaltrack-backend/render.yaml` |
+| CI deploy step | `.github/workflows/ci.yml` `deploy-backend` job |
+| Mobile build URLs | `vitaltrack-mobile/eas.json` |
+| Mobile URL guards | `vitaltrack-mobile/app.config.js` |
+| Local convenience scripts | `vitaltrack-mobile/package.json` `start:staging` / `start:prod` |
+
+GitHub secrets today are `RENDER_DEPLOY_HOOK` and `EXPO_TOKEN`. Keep
+`EXPO_TOKEN` for EAS. Replace `RENDER_DEPLOY_HOOK` if the backend leaves
+Render; examples include `SSH_HOST` / `SSH_USER` / `SSH_PRIVATE_KEY` for a VPS,
+`FLY_API_TOKEN` for Fly.io, `RAILWAY_TOKEN` for Railway, or
+`DIGITALOCEAN_ACCESS_TOKEN` for DigitalOcean.
+
+Prefer stable public API hostnames (`api.carekosh.com` and
+`staging-api.carekosh.com`) before broad release. If installed mobile builds
+point directly at a provider URL, a future platform change requires an APK/AAB
+rebuild. With stable domains, the next host move can usually be DNS-only.
 
 ---
 
