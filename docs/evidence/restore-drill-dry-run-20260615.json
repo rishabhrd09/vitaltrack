@@ -1,0 +1,40 @@
+{
+  "commands": {
+    "dump": [
+      "/opt/homebrew/bin/pg_dump",
+      "-Fc",
+      "--no-owner",
+      "--no-acl",
+      "-d",
+      "postgresql://<redacted>@source.example.com/source_db",
+      "-f",
+      "/var/folders/wd/schw303n1tv16s7w0y_07mpc0000gn/T/carekosh-restore-drill-20260615T133307Z.dump"
+    ],
+    "restore": [
+      "/opt/homebrew/bin/pg_restore",
+      "--clean",
+      "--if-exists",
+      "--no-owner",
+      "--no-acl",
+      "-d",
+      "postgresql://<redacted>@target.example.com/disposable_restore_drill",
+      "/var/folders/wd/schw303n1tv16s7w0y_07mpc0000gn/T/carekosh-restore-drill-20260615T133307Z.dump"
+    ],
+    "verify": [
+      "/opt/homebrew/bin/psql",
+      "postgresql://<redacted>@target.example.com/disposable_restore_drill",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-Atc",
+      "select count(*) from information_schema.tables where table_schema='public';"
+    ]
+  },
+  "dry_run": true,
+  "dump_file": "/var/folders/wd/schw303n1tv16s7w0y_07mpc0000gn/T/carekosh-restore-drill-20260615T133307Z.dump",
+  "generated_at": "2026-06-15T13:33:07.153724+00:00",
+  "ok": true,
+  "source_url": "postgresql://<redacted>@source.example.com/source_db",
+  "steps": [],
+  "target_description": "disposable restore-drill Neon branch",
+  "target_url": "postgresql://<redacted>@target.example.com/disposable_restore_drill"
+}

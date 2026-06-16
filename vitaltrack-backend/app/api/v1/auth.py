@@ -1236,14 +1236,14 @@ async def email_service_status(_current_user: CurrentUser) -> MessageResponse:
             message="Email service is not configured.",
         )
 
-    is_working, error_msg = await test_email_service()
+    is_working, _error_msg = await test_email_service()
 
     if is_working:
         return MessageResponse(
             message="Email service is configured and reachable.",
         )
 
-    logger.warning("Email service diagnostic failed: %s", error_msg)
+    logger.warning("Email service diagnostic failed")
     return MessageResponse(
         message="Email service is unavailable. Check server logs.",
     )

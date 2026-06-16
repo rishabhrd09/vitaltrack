@@ -1,0 +1,40 @@
+{
+  "authenticated_status": "skipped",
+  "base_url": "https://vitaltrack-api-staging.onrender.com",
+  "checks": [
+    {
+      "body": {
+        "database": "not_checked",
+        "environment": "staging",
+        "status": "healthy",
+        "timestamp": "2026-06-15T22:30:07.692153Z",
+        "version": "1.0.0"
+      },
+      "elapsed_ms": 145,
+      "error": null,
+      "method": "GET",
+      "ok": true,
+      "path": "/live",
+      "status": 200
+    },
+    {
+      "body": {
+        "database": "connected",
+        "environment": "staging",
+        "status": "healthy",
+        "timestamp": "2026-06-15T22:30:08.288383Z",
+        "version": "1.0.0"
+      },
+      "elapsed_ms": 605,
+      "error": null,
+      "method": "GET",
+      "ok": true,
+      "path": "/health",
+      "status": 200
+    }
+  ],
+  "generated_at": "2026-06-15T22:30:08.321006+00:00",
+  "ok": true,
+  "production_allowed": false,
+  "target": "staging"
+}

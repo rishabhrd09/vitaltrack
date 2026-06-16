@@ -7,7 +7,10 @@ without hitting any HTTP endpoints. These run in <1 second.
 Google Testing Pyramid: unit tests form the base (70% of test count).
 """
 
+import importlib.util
+import logging
 from datetime import timedelta
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -25,6 +28,16 @@ from app.core.security import (
     verify_refresh_token,
 )
 from app.utils import email as email_utils
+
+
+def load_restore_drill_module():
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "restore_drill.py"
+    spec = importlib.util.spec_from_file_location("restore_drill", script_path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 # =============================================================================
@@ -247,3 +260,256 @@ class TestSettingsSecrets:
 
         assert sent is True
         assert captured["headers"]["api-key"] == "raw-brevo-api-key"
+
+    @pytest.mark.asyncio
+    async def test_email_logs_redact_recipient_and_provider_body(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        class FakeBrevoResponse:
+            status_code = 500
+            text = "recipient@example.com secret-api-key raw provider failure"
+
+            def json(self) -> dict[str, str]:
+                return {}
+
+        class FakeAsyncClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return None
+
+            async def post(self, url, json, headers, timeout):
+                return FakeBrevoResponse()
+
+        monkeypatch.setattr(
+            email_utils,
+            "settings",
+            SimpleNamespace(
+                mail_password_value="raw-brevo-api-key",
+                MAIL_FROM="sender@example.com",
+            ),
+        )
+        monkeypatch.setattr(email_utils.httpx, "AsyncClient", FakeAsyncClient)
+
+        with caplog.at_level(logging.INFO, logger="vitaltrack.email"):
+            sent = await email_utils.send_email_via_api(
+                "recipient@example.com",
+                "Recipient",
+                "Subject",
+                "<p>Hello</p>",
+            )
+
+        log_text = caplog.text
+        assert sent is False
+        assert "recipient@example.com" not in log_text
+        assert "secret-api-key" not in log_text
+        assert "raw provider failure" not in log_text
+        assert "Status: 500" in log_text
+
+
+class TestRestoreDrillGuards:
+
+    def test_restore_target_url_must_include_disposable_marker(self):
+        restore_drill = load_restore_drill_module()
+
+        errors = restore_drill.validate_url_pair(
+            "postgresql://user@source.example.com/source_db",
+            "postgresql://user@target.example.com/neondb",
+        )
+
+        assert any("reserved for long-lived environments" in error for error in errors)
+        assert any("target URL must include a strong disposable marker" in error for error in errors)
+
+    def test_restore_target_url_accepts_marked_disposable_target(self):
+        restore_drill = load_restore_drill_module()
+
+        errors = restore_drill.validate_url_pair(
+            "postgresql://user@source.example.com/source_db",
+            "postgresql://user@target.example.com/carekosh_restore_drill_target",
+        )
+
+        assert errors == []
+
+    def test_restore_target_url_rejects_multi_host_decoy(self):
+        # libpq failover: urlparse().hostname collapses the comma-joined list, so
+        # a disposable-looking decoy host can smuggle a real prod host past the
+        # per-field checks. Multi-host targets must be rejected outright.
+        restore_drill = load_restore_drill_module()
+
+        errors = restore_drill.validate_url_pair(
+            "postgresql://user@source.example.com/source_db",
+            "postgresql://owner@scratch-x.example.com,"
+            "ep-prod-real-123.us-east-2.aws.neon.tech/app_db",
+        )
+
+        assert any("must list exactly one host" in error for error in errors)
+
+    def test_restore_target_url_rejects_username_only_marker(self):
+        # A disposable marker in the username must not satisfy the marker check
+        # while the real protected host/database go unchecked.
+        restore_drill = load_restore_drill_module()
+
+        errors = restore_drill.validate_url_pair(
+            "postgresql://user@source.example.com/source_db",
+            "postgresql://restore-drill@prod-db.example.com/customers",
+        )
+
+        assert any(
+            "must include a strong disposable marker" in error for error in errors
+        )
+
+    def test_restore_target_url_rejects_protected_environment_word(self):
+        restore_drill = load_restore_drill_module()
+
+        errors = restore_drill.validate_url_pair(
+            "postgresql://user@source.example.com/source_db",
+            "postgresql://user@scratch-prod.example.com/carekosh_restore_drill_target",
+        )
+
+        assert any("protected environment word" in error for error in errors)
+
+    def test_restore_target_url_rejects_configured_production_host(self, monkeypatch):
+        # The built-in host allowlist cannot know a deployment's real Neon
+        # endpoint, so operators add it to CAREKOSH_RESTORE_DENY_HOSTS. A
+        # disposable-marked URL on a random Neon endpoint passes until the
+        # operator denylists that endpoint host.
+        restore_drill = load_restore_drill_module()
+        prod_host = "ep-cool-darkness-a1b2c3d4.us-east-2.aws.neon.tech"
+        target = f"postgresql://user@{prod_host}/scratch_db"
+        source = "postgresql://user@source.example.com/source_db"
+
+        monkeypatch.delenv("CAREKOSH_RESTORE_DENY_HOSTS", raising=False)
+        assert restore_drill.validate_url_pair(source, target) == []
+
+        monkeypatch.setenv("CAREKOSH_RESTORE_DENY_HOSTS", "ep-cool-darkness-a1b2c3d4")
+        errors = restore_drill.validate_url_pair(source, target)
+        assert any("protected fragment" in error for error in errors)
+
+    def test_redact_url_survives_multi_host_with_port(self):
+        # A multi-host netloc with an explicit port previously crashed evidence
+        # logging via ValueError on parsed.port.
+        restore_drill = load_restore_drill_module()
+
+        redacted = restore_drill.redact_url(
+            "postgresql://owner@scratch.example.com:5432,ep-prod.neon.tech/app_db"
+        )
+
+        assert "<redacted>" in redacted
+        assert "owner" not in redacted
+
+    def test_redact_url_survives_malformed_url(self):
+        restore_drill = load_restore_drill_module()
+
+        assert restore_drill.redact_url("not a postgres URL") == "<invalid-url>"
+
+    def test_restore_target_url_rejects_host_query_override(self):
+        # libpq honors ?host= and it OVERRIDES the netloc host, so a decoy host
+        # carrying a disposable marker must not unlock a restore that actually
+        # connects to a smuggled prod host + neondb in the query string.
+        restore_drill = load_restore_drill_module()
+
+        errors = restore_drill.validate_url_pair(
+            "postgresql://user@source.example.com/source_db",
+            "postgresql://u:p@ep-decoy-scratch.example.com/scratchdb"
+            "?host=ep-prod-real.invalid&dbname=neondb",
+        )
+
+        assert errors != []
+        # The EFFECTIVE database (?dbname=neondb) is what gets protected,
+        # not the harmless /scratchdb path.
+        assert any("reserved for long-lived environments" in error for error in errors)
+        # The EFFECTIVE host has no marker, so the decoy marker no longer counts.
+        assert any(
+            "must include a strong disposable marker" in error for error in errors
+        )
+
+    def test_restore_target_url_rejects_dbname_query_override(self):
+        # Even with a genuinely disposable-marked host, ?dbname=neondb retargets
+        # the restore onto the protected database and must be rejected.
+        restore_drill = load_restore_drill_module()
+
+        errors = restore_drill.validate_url_pair(
+            "postgresql://user@source.example.com/source_db",
+            "postgresql://user@scratch-disposable.example.com/scratch_db"
+            "?dbname=neondb",
+        )
+
+        assert any("reserved for long-lived environments" in error for error in errors)
+
+    def test_restore_target_url_rejects_query_host_multi_host(self):
+        # A comma-separated ?host= list is libpq failover routing and can hide a
+        # protected host behind a disposable-looking one, so it is rejected.
+        restore_drill = load_restore_drill_module()
+
+        errors = restore_drill.validate_url_pair(
+            "postgresql://user@source.example.com/source_db",
+            "postgresql://user@scratch-disposable.example.com/scratch_db"
+            "?host=scratch-x.example.com,ep-prod-real.neon.tech",
+        )
+
+        assert any("must list exactly one host" in error for error in errors)
+
+    def test_restore_target_url_rejects_hostaddr_query_param(self):
+        # hostaddr names a raw IP we cannot reason about against the disposable
+        # policy, so any target carrying it is rejected outright.
+        restore_drill = load_restore_drill_module()
+
+        errors = restore_drill.validate_url_pair(
+            "postgresql://user@source.example.com/source_db",
+            "postgresql://user@scratch-disposable.example.com/scratch_db"
+            "?hostaddr=203.0.113.10",
+        )
+
+        assert any(
+            "cannot be validated" in error and "hostaddr" in error for error in errors
+        )
+
+    def test_restore_target_url_rejects_service_query_param(self):
+        # service references an opaque external connection-service file, so the
+        # effective target cannot be validated and must be rejected.
+        restore_drill = load_restore_drill_module()
+
+        errors = restore_drill.validate_url_pair(
+            "postgresql://user@source.example.com/source_db",
+            "postgresql://user@scratch-disposable.example.com/scratch_db"
+            "?service=prod",
+        )
+
+        assert any(
+            "cannot be validated" in error and "service" in error for error in errors
+        )
+
+    def test_restore_target_url_accepts_sslmode_only_query(self):
+        # A legitimate query that does not retarget the connection (sslmode) must
+        # still pass.
+        restore_drill = load_restore_drill_module()
+
+        errors = restore_drill.validate_url_pair(
+            "postgresql://user@source.example.com/source_db",
+            "postgresql://user@scratch-disposable.example.com/"
+            "carekosh_restore_drill_target?sslmode=require",
+        )
+
+        assert errors == []
+
+    def test_redact_url_surfaces_query_override(self):
+        # The smuggled ?host=/?dbname= must NOT be hidden from the evidence trail,
+        # while credentials (userinfo password and any password query param) are
+        # masked.
+        restore_drill = load_restore_drill_module()
+
+        redacted = restore_drill.redact_url(
+            "postgresql://u:supersecret@decoy-scratch.example.com/scratchdb"
+            "?host=ep-prod-real.invalid&dbname=neondb&password=hunter2"
+        )
+
+        # Smuggled connection target is surfaced for the audit log.
+        assert "ep-prod-real.invalid" in redacted
+        assert "dbname=neondb" in redacted
+        # Credentials are masked.
+        assert "supersecret" not in redacted
+        assert "hunter2" not in redacted
+        assert "<redacted>" in redacted

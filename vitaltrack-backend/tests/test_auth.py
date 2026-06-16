@@ -14,6 +14,7 @@ Test users: 5 email-based + 4 username-only + dual-identifier
 
 import hashlib
 import html
+import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -935,6 +936,7 @@ class TestHealthDiagnostics:
         self,
         client: AsyncClient,
         monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
     ):
         user = await register_user(
             client,
@@ -948,10 +950,11 @@ class TestHealthDiagnostics:
         monkeypatch.setattr(auth_routes, "is_email_configured", lambda: True)
         monkeypatch.setattr(auth_routes, "test_email_service", failed_email_service)
 
-        resp = await client.get(
-            "/api/v1/auth/email-service-status",
-            headers=auth_header(user["access_token"]),
-        )
+        with caplog.at_level(logging.WARNING, logger="carekosh.auth"):
+            resp = await client.get(
+                "/api/v1/auth/email-service-status",
+                headers=auth_header(user["access_token"]),
+            )
 
         assert resp.status_code == 200
         message = resp.json()["message"]
@@ -959,6 +962,9 @@ class TestHealthDiagnostics:
         assert "Brevo" not in message
         assert "secret-api-key" not in message
         assert "noreply@carekosh.com" not in message
+        assert "Brevo" not in caplog.text
+        assert "secret-api-key" not in caplog.text
+        assert "noreply@carekosh.com" not in caplog.text
 
     @pytest.mark.asyncio
     async def test_root_endpoint(self, client: AsyncClient):
