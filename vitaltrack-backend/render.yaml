@@ -28,4 +28,4 @@ services:
       - key: MAIL_FROM
         sync: false
       - key: FRONTEND_URL
-        value: https://vitaltrack-api.onrender.com/api/v1/auth
+        value: https://api.carekosh.com/api/v1/auth

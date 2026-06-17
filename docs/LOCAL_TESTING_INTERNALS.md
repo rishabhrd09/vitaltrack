@@ -163,20 +163,20 @@ If your phone status shows `unauthorized`, the daemon on the phone hasn't been t
 
 ### 3.4 The backend (FastAPI on Render)
 
-Your local Docker backend OR the staging backend on Render OR the production backend — it doesn't matter which from the dev loop's perspective. The mobile app makes HTTPS calls to *some* URL, that URL responds with JSON. The URL is determined by the env var `EXPO_PUBLIC_API_URL`.
+Your local Docker backend OR the public staging API OR the public production API — it doesn't matter which from the dev loop's perspective. The mobile app makes HTTPS calls to *some* URL, that URL responds with JSON. The URL is determined by the env var `EXPO_PUBLIC_API_URL`.
 
 | Backend choice | URL | When you'd use it |
 |---|---|---|
 | Local Docker | `http://localhost:8000` (with `adb reverse`) or `http://YOUR_LAN_IP:8000` | Day-to-day dev with code changes on both ends |
-| Render staging | `https://vitaltrack-api-staging.onrender.com` | Reproduce a staging-only bug; demo to others |
-| Render production | `https://vitaltrack-api.onrender.com` | Manual smoke test of the live system |
+| Staging API | `https://staging-api.carekosh.com` | Reproduce a staging-only bug; demo to others |
+| Production API | `https://api.carekosh.com` | Manual smoke test of the live system |
 
 The npm scripts wire the right URL:
 
 ```json
 "start:local":   "cross-env EXPO_PUBLIC_API_URL=http://localhost:8000 expo start --clear"
-"start:staging": "cross-env EXPO_PUBLIC_API_URL=https://vitaltrack-api-staging.onrender.com expo start --clear"
-"start:prod":    "cross-env EXPO_PUBLIC_API_URL=https://vitaltrack-api.onrender.com expo start --clear"
+"start:staging": "cross-env EXPO_PUBLIC_API_URL=https://staging-api.carekosh.com expo start --clear"
+"start:prod":    "cross-env EXPO_PUBLIC_API_URL=https://api.carekosh.com expo start --clear"
 ```
 
 When Metro bundles your code, it reads `process.env.EXPO_PUBLIC_API_URL` and inlines the value into the bundle. The mobile app reads `API_BASE_URL` from [`vitaltrack-mobile/services/api.ts`](../vitaltrack-mobile/services/api.ts):
@@ -266,7 +266,7 @@ For USB mode the env var should be `EXPO_PUBLIC_API_URL=http://localhost:8000` (
 **Trade-offs**:
 - Slower (every byte of the JS bundle now travels phone → exp.direct → laptop and back)
 - Needs internet on both ends
-- Doesn't help your local Docker backend — phone can hit Metro over the tunnel, but `EXPO_PUBLIC_API_URL=http://localhost:8000` won't work because phone's localhost is no longer connected to your laptop. Use `EXPO_PUBLIC_API_URL=https://vitaltrack-api-staging.onrender.com` to keep the API call path simple
+- Doesn't help your local Docker backend — phone can hit Metro over the tunnel, but `EXPO_PUBLIC_API_URL=http://localhost:8000` won't work because phone's localhost is no longer connected to your laptop. Use `EXPO_PUBLIC_API_URL=https://staging-api.carekosh.com` to keep the API call path simple
 
 ---
 
@@ -326,12 +326,12 @@ Let's trace exactly what happens, USB mode, against staging backend.
 ### Phase 3 — Runtime (every API call from now on)
 
 ```
-23. App calls fetch('https://vitaltrack-api-staging.onrender.com/api/v1/auth/me',
+23. App calls fetch('https://staging-api.carekosh.com/api/v1/auth/me',
                   { headers: { Authorization: 'Bearer ...' } })
 24. Hermes hands the request to React Native's native fetch implementation
 25. Native fetch issues an HTTPS request — over the phone's own internet
     (Wi-Fi or LTE), NOT over the USB cable
-26. DNS resolves vitaltrack-api-staging.onrender.com → Render's edge IP
+26. DNS resolves staging-api.carekosh.com → Render's edge IP
 27. TLS handshake. Encrypted request travels over the public internet
 28. Render's load balancer routes to your staging FastAPI container
 29. FastAPI authenticates the JWT, queries Postgres (Neon), returns JSON
@@ -536,7 +536,7 @@ The USB cable carries **Metro traffic** — the JS bundle and hot-reload patches
 
 For the API:
 - If `EXPO_PUBLIC_API_URL` is `http://localhost:8000`, the phone tries to reach localhost:8000 — works only if `adb reverse tcp:8000 tcp:8000` was set up.
-- If `EXPO_PUBLIC_API_URL` is `https://vitaltrack-api-staging.onrender.com`, the phone reaches Render's servers over the *phone's own Wi-Fi/LTE*. The USB cable is irrelevant for this traffic.
+- If `EXPO_PUBLIC_API_URL` is `https://staging-api.carekosh.com`, the phone reaches Render's servers over the *phone's own Wi-Fi/LTE*. The USB cable is irrelevant for this traffic.
 
 So you can be in USB mode (Metro over USB) AND hitting staging (API over Wi-Fi) at the same time. Two independent channels.
 

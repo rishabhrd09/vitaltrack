@@ -12,6 +12,7 @@ import statistics
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -21,10 +22,11 @@ from typing import Any
 
 
 TARGETS = {
-    "staging": "https://vitaltrack-api-staging.onrender.com",
-    "production": "https://vitaltrack-api.onrender.com",
+    "staging": "https://staging-api.carekosh.com",
+    "production": "https://api.carekosh.com",
     "local": "http://127.0.0.1:8000",
 }
+PRODUCTION_HOSTS = {"api.carekosh.com", "vitaltrack-api.onrender.com"}
 MAX_REQUESTS = 60
 MAX_CONCURRENCY = 6
 
@@ -55,7 +57,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def is_production_url(base_url: str) -> bool:
-    return "vitaltrack-api.onrender.com" in base_url.rstrip("/")
+    host = urllib.parse.urlparse(base_url.rstrip("/")).hostname
+    return host in PRODUCTION_HOSTS
 
 
 def probe(base_url: str, path: str, timeout: float) -> ProbeResult:

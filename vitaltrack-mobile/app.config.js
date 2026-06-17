@@ -1,7 +1,7 @@
 const appJson = require('./app.json');
 
-const PRODUCTION_API_URL = 'https://vitaltrack-api.onrender.com';
-const PREVIEW_API_URL = 'https://vitaltrack-api-staging.onrender.com';
+const PRODUCTION_API_URL = 'https://api.carekosh.com';
+const PREVIEW_API_URL = 'https://staging-api.carekosh.com';
 
 function isCleartextDevelopmentBuild() {
   const profile = process.env.EAS_BUILD_PROFILE;

@@ -49,13 +49,13 @@ CareKosh (formerly **VitalTrack**, rebranded in PR #10/#11) is a home-ICU medica
 │   │  FastAPI (Docker)    │     │  Compiles RN → APK   │                    │
 │   │  PostgreSQL (Neon)   │     │  Compiles RN → AAB   │                    │
 │   │                      │     │  Hosts build artifacts│                   │
-│   │  vitaltrack-api.     │     │                      │                    │
-│   │  onrender.com        │     │  expo.dev/.../builds │                    │
-│   │  (production)        │     │                      │                    │
+│   │  api.carekosh.com    │     │                      │                    │
+│   │  (production API)    │     │  expo.dev/.../builds │                    │
 │   │                      │     │                      │                    │
-│   │  vitaltrack-api-     │     └─────────┬────────────┘                    │
-│   │  staging.onrender.   │               │                                 │
-│   │  com (staging)       │               │ Download APK/AAB               │
+│   │                      │     │                      │                    │
+│   │  staging-api.        │     └─────────┬────────────┘                    │
+│   │  carekosh.com        │               │                                 │
+│   │  (staging API)       │               │ Download APK/AAB               │
 │   └──────────┬───────────┘               ▼                                  │
 │              │                   ┌──────────────────────┐                   │
 │              │                   │   USER'S PHONE       │                   │
@@ -79,7 +79,7 @@ CareKosh (formerly **VitalTrack**, rebranded in PR #10/#11) is a home-ICU medica
 | Service | Purpose | URL | Stores |
 |---------|---------|-----|--------|
 | **GitHub** | Code + CI/CD | `github.com/rishabhrd09/vitaltrack` | Source, workflows, issues, PRs |
-| **Render** | Backend hosting | `vitaltrack-api.onrender.com` (prod), `vitaltrack-api-staging.onrender.com` (staging) | FastAPI container |
+| **Render** | Backend hosting | `api.carekosh.com` (prod), `staging-api.carekosh.com` (staging) | FastAPI container |
 | **Neon** | Managed PostgreSQL | `*.neon.tech` | Two DBs: `neondb` (prod), `vitaltrack_staging` (staging) |
 | **Expo / EAS** | Mobile builds | `expo.dev` | APKs (dev/preview), AABs (production) |
 
@@ -127,8 +127,8 @@ production     AAB        Play Store (→ production backend)
 ```json
 {
   "development": { "env": { "EXPO_PUBLIC_API_URL": "http://localhost:8000" } },
-  "preview":     { "env": { "EXPO_PUBLIC_API_URL": "https://vitaltrack-api-staging.onrender.com" } },
-  "production":  { "env": { "EXPO_PUBLIC_API_URL": "https://vitaltrack-api.onrender.com" } }
+  "preview":     { "env": { "EXPO_PUBLIC_API_URL": "https://staging-api.carekosh.com" } },
+  "production":  { "env": { "EXPO_PUBLIC_API_URL": "https://api.carekosh.com" } }
 }
 ```
 
@@ -287,7 +287,7 @@ STEP 9 — Merge to main
   service rebuild.
 
 STEP 10 — Verify production
-  curl https://vitaltrack-api.onrender.com/health
+  curl https://api.carekosh.com/health
   (expect {"status":"healthy","environment":"production"})
 ```
 
@@ -444,8 +444,8 @@ FIND PREVIEW APK
   (label the PR 'build-apk' to trigger the build)
 
 CHECK BACKEND
-  curl https://vitaltrack-api.onrender.com/health
-  curl https://vitaltrack-api-staging.onrender.com/health
+  curl https://api.carekosh.com/health
+  curl https://staging-api.carekosh.com/health
 
 MANUAL BUILD FROM LAPTOP
   cd vitaltrack-mobile
@@ -453,8 +453,8 @@ MANUAL BUILD FROM LAPTOP
 
 IMPORTANT URLS
   GitHub repo       https://github.com/rishabhrd09/vitaltrack
-  Production API    https://vitaltrack-api.onrender.com
-  Staging API       https://vitaltrack-api-staging.onrender.com
+  Production API    https://api.carekosh.com
+  Staging API       https://staging-api.carekosh.com
   Expo builds       https://expo.dev/accounts/<username>/projects/carekosh-mobile/builds
   Render dashboard  https://dashboard.render.com
   Neon dashboard    https://console.neon.tech

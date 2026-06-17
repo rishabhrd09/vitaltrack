@@ -53,8 +53,8 @@ Environment routing:
 | Runtime | Backend | Database | Notes |
 |---|---|---|---|
 | Local Expo / dev APK | `http://localhost:8000` by default, or LAN/ADB override | local Docker Postgres | development profile allows local cleartext HTTP |
-| Preview APK | `https://vitaltrack-api-staging.onrender.com` | Neon staging database | built by EAS preview profile; PR label `build-apk` can trigger CI build |
-| Production AAB | `https://vitaltrack-api.onrender.com` | Neon production database | manual EAS/Play flow today; CI production AAB job is disabled |
+| Preview APK | `https://staging-api.carekosh.com` | Neon staging database | built by EAS preview profile; PR label `build-apk` can trigger CI build |
+| Production AAB | `https://api.carekosh.com` | Neon production database | manual EAS/Play flow today; CI production AAB job is disabled |
 
 Deployment routing: PRs run blocking backend/frontend gates, with mypy and Trivy advisory. Merging to `main` triggers the backend deploy job; when `RENDER_DEPLOY_HOOK` is configured, CI POSTs that Render hook, and Render's own GitHub auto-deploy can also rebuild connected services. The Docker entrypoint waits for Postgres, applies Alembic, then launches Gunicorn/Uvicorn. Mobile production release remains manual until the disabled `build-production` job is intentionally re-enabled.
 

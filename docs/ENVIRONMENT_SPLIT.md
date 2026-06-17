@@ -57,7 +57,7 @@ The split addresses all three at the same time.
 │                        BEFORE (Single Environment)                  │
 │                                                                     │
 │  Preview APK (testers)  ──┐                                         │
-│                           ├──▶  vitaltrack-api.onrender.com         │
+│                           ├──▶  api.carekosh.com                    │
 │  Production AAB (users) ──┘     (ENVIRONMENT=production)            │
 │                                          │                          │
 │                                          ▼                          │
@@ -78,7 +78,7 @@ The split addresses all three at the same time.
 │  Preview APK (testers)                                              │
 │       │                                                             │
 │       ▼                                                             │
-│  vitaltrack-api-staging.onrender.com                                │
+│  staging-api.carekosh.com                                           │
 │  (ENVIRONMENT=staging)                                              │
 │       │                                                             │
 │       ▼                                                             │
@@ -89,7 +89,7 @@ The split addresses all three at the same time.
 │  Production AAB (real users)                                        │
 │       │                                                             │
 │       ▼                                                             │
-│  vitaltrack-api.onrender.com                                        │
+│  api.carekosh.com                                                   │
 │  (ENVIRONMENT=production)                                           │
 │       │                                                             │
 │       ▼                                                             │
@@ -125,8 +125,8 @@ The split addresses all three at the same time.
 |---|---|---|---|---|---|---|
 | Development | `localhost:8000` (Docker) | Local Postgres 16 (Docker) | Expo Go | OFF | OFF | `development` |
 | Testing (CI) | GitHub Actions runner | Postgres 16 service container | N/A | OFF | N/A | `testing` |
-| Staging | `vitaltrack-api-staging.onrender.com` | Neon: `vitaltrack_staging` | Preview APK | ON | ON for launch-like staging | `staging` |
-| Production | `vitaltrack-api.onrender.com` | Neon: `neondb` | Production AAB | ON | ON | `production` |
+| Staging | `staging-api.carekosh.com` | Neon: `vitaltrack_staging` | Preview APK | ON | ON for launch-like staging | `staging` |
+| Production | `api.carekosh.com` | Neon: `neondb` | Production AAB | ON | ON | `production` |
 
 Both `staging` and `production` live on Neon in Singapore and use TLS. Both Render services watch `main`; staging is dashboard-managed outside `render.yaml` and its auto-deploy is gated by the `vitaltrack-backend` root-directory filter documented in `STAGING_DEPLOY_DIAGNOSIS.html`.
 
@@ -161,8 +161,8 @@ At startup, `pydantic-settings` reads every field from the process environment. 
 ```json
 {
   "development": { "env": { "EXPO_PUBLIC_API_URL": "http://localhost:8000" } },
-  "preview":     { "env": { "EXPO_PUBLIC_API_URL": "https://vitaltrack-api-staging.onrender.com" } },
-  "production":  { "env": { "EXPO_PUBLIC_API_URL": "https://vitaltrack-api.onrender.com" } }
+  "preview":     { "env": { "EXPO_PUBLIC_API_URL": "https://staging-api.carekosh.com" } },
+  "production":  { "env": { "EXPO_PUBLIC_API_URL": "https://api.carekosh.com" } }
 }
 ```
 
@@ -247,8 +247,8 @@ Local Docker PostgreSQL doesn't need SSL because the connection goes from app co
 ```diff
  "preview": {
    "env": {
--    "EXPO_PUBLIC_API_URL": "https://vitaltrack-api.onrender.com"
-+    "EXPO_PUBLIC_API_URL": "https://vitaltrack-api-staging.onrender.com"
+-    "EXPO_PUBLIC_API_URL": "https://api.carekosh.com"
++    "EXPO_PUBLIC_API_URL": "https://staging-api.carekosh.com"
    }
  }
 ```
@@ -269,8 +269,8 @@ Local Docker PostgreSQL doesn't need SSL because the connection goes from app co
 #### `vitaltrack-mobile/package.json` — convenience script
 
 ```diff
- "start:prod": "cross-env EXPO_PUBLIC_API_URL=https://vitaltrack-api.onrender.com expo start --clear",
-+"start:staging": "cross-env EXPO_PUBLIC_API_URL=https://vitaltrack-api-staging.onrender.com expo start --clear",
+ "start:prod": "cross-env EXPO_PUBLIC_API_URL=https://api.carekosh.com expo start --clear",
++"start:staging": "cross-env EXPO_PUBLIC_API_URL=https://staging-api.carekosh.com expo start --clear",
 ```
 
 ### Files deliberately NOT changed
@@ -355,7 +355,7 @@ backup/snapshot and after confirming they are disposable test records.
 | `MAIL_PORT` | legacy SMTP-era key | Current send path uses Brevo HTTP API over 443 |
 | `MAIL_STARTTLS` | legacy SMTP-era key | Current send path uses Brevo HTTP API over 443 |
 | `MAIL_SSL_TLS` | `false` | |
-| `FRONTEND_URL` | `https://vitaltrack-api-staging.onrender.com/api/v1/auth` | Used in email link templates |
+| `FRONTEND_URL` | `https://staging-api.carekosh.com/api/v1/auth` | Used in email link templates |
 
 #### Render env vars — production
 
@@ -368,7 +368,7 @@ Same set. Differences:
 | `SECRET_KEY` | A **different** 32+ char random value (not starting with `CHANGE-THIS`) |
 | `CORS_ORIGINS` | currently `["*"]` per `render.yaml`. **No validator rejects `"*"` in production today** because no real browser/admin origins are configured yet. Tighten only after those origins are known. |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` |
-| `FRONTEND_URL` | `https://vitaltrack-api.onrender.com/api/v1/auth` — PR #12 validator requires non-empty in prod |
+| `FRONTEND_URL` | `https://api.carekosh.com/api/v1/auth` — PR #12 validator requires non-empty in prod |
 
 ### 6.3 Expo/EAS — no dashboard changes needed
 
@@ -380,19 +380,19 @@ Render is the current backend host, but the backend is not locked to Render.
 The Docker image, entrypoint, Alembic migrations, and pydantic env config are
 portable to any host that can run a Python Docker container and reach Postgres.
 
-#### Recommended target shape
+#### Current public API domains
 
-Use stable domains before a serious production release:
+Use the custom domains for mobile builds, smoke tests, and monitoring:
 
-| Environment | Preferred stable URL | Today |
-|---|---|---|
-| Staging | `https://staging-api.carekosh.com` | `https://vitaltrack-api-staging.onrender.com` |
-| Production | `https://api.carekosh.com` | `https://vitaltrack-api.onrender.com` |
+| Environment | Public URL |
+|---|---|
+| Staging | `https://staging-api.carekosh.com` |
+| Production | `https://api.carekosh.com` |
 
 With stable domains, moving from Render to another host is mostly DNS plus
-provider env-var/deploy-secret changes. Without stable domains, the mobile API
-URL changes and every APK/AAB must be rebuilt because `EXPO_PUBLIC_API_URL` is
-baked into the bundle.
+provider env-var/deploy-secret changes. Avoid provider hostnames in mobile
+builds: if the public API URL changes, every APK/AAB must be rebuilt because
+`EXPO_PUBLIC_API_URL` is baked into the bundle.
 
 #### Migration steps
 
@@ -464,7 +464,7 @@ cheaper setup.
 
 ```bash
 # Staging
-curl -s https://vitaltrack-api-staging.onrender.com/health | python -m json.tool
+curl -s https://staging-api.carekosh.com/health | python -m json.tool
 # Expected:
 # {
 #   "status": "healthy",
@@ -473,7 +473,7 @@ curl -s https://vitaltrack-api-staging.onrender.com/health | python -m json.tool
 # }
 
 # Production
-curl -s https://vitaltrack-api.onrender.com/health | python -m json.tool
+curl -s https://api.carekosh.com/health | python -m json.tool
 # Expected:
 # {
 #   "status": "healthy",
@@ -486,13 +486,13 @@ curl -s https://vitaltrack-api.onrender.com/health | python -m json.tool
 # /health is a readiness check: it actively runs a database probe and returns
 # 503 with database="unavailable" when that probe fails. Render should use
 # /live for process liveness so database outages do not trigger restart loops.
-curl -s https://vitaltrack-api.onrender.com/live | python -m json.tool
+curl -s https://api.carekosh.com/live | python -m json.tool
 ```
 
 ### Registration smoke test (staging only)
 
 ```bash
-curl -s -X POST https://vitaltrack-api-staging.onrender.com/api/v1/auth/register \
+curl -s -X POST https://staging-api.carekosh.com/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "testuser@example.com",
@@ -506,7 +506,7 @@ curl -s -X POST https://vitaltrack-api-staging.onrender.com/api/v1/auth/register
 After registering a test user on staging, confirm it does NOT exist on production:
 
 ```bash
-curl -s -X POST https://vitaltrack-api.onrender.com/api/v1/auth/login \
+curl -s -X POST https://api.carekosh.com/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "identifier": "testuser@example.com",

@@ -188,10 +188,11 @@ Render; examples include `SSH_HOST` / `SSH_USER` / `SSH_PRIVATE_KEY` for a VPS,
 `FLY_API_TOKEN` for Fly.io, `RAILWAY_TOKEN` for Railway, or
 `DIGITALOCEAN_ACCESS_TOKEN` for DigitalOcean.
 
-Prefer stable public API hostnames (`api.carekosh.com` and
-`staging-api.carekosh.com`) before broad release. If installed mobile builds
-point directly at a provider URL, a future platform change requires an APK/AAB
-rebuild. With stable domains, the next host move can usually be DNS-only.
+Use the stable public API hostnames (`api.carekosh.com` and
+`staging-api.carekosh.com`) for mobile builds and operator smoke tests. If
+installed mobile builds point directly at a provider URL, a future platform
+change requires an APK/AAB rebuild. With stable domains, the next host move can
+usually be DNS-only.
 
 ---
 

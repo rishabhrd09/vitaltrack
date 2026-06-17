@@ -22,7 +22,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://vitaltrack-api-staging.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://staging-api.carekosh.com"
       }
     },
     "production": {
@@ -33,7 +33,7 @@
         "resourceClass": "medium"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://vitaltrack-api.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://api.carekosh.com"
       }
     }
   },

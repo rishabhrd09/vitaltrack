@@ -222,8 +222,8 @@ Production validators live in `config.py` — they refuse startup if `SECRET_KEY
 | Profile | `EXPO_PUBLIC_API_URL` | Channel | Artifact |
 |---|---|---|---|
 | `development` | `http://localhost:8000` | — | APK |
-| `preview` | `https://vitaltrack-api-staging.onrender.com` | `preview` | APK |
-| `production` | `https://vitaltrack-api.onrender.com` | `production` | AAB (track: `internal`) |
+| `preview` | `https://staging-api.carekosh.com` | `preview` | APK |
+| `production` | `https://api.carekosh.com` | `production` | AAB (track: `internal`) |
 
 ---
 
@@ -291,7 +291,7 @@ eas submit --profile production --platform android    # uploads AAB to Play Cons
 
 ## 8. API Endpoints
 
-Base URL: `https://vitaltrack-api.onrender.com/api/v1` (prod) · `https://vitaltrack-api-staging.onrender.com/api/v1` (staging)
+Base URL: `https://api.carekosh.com/api/v1` (prod) · `https://staging-api.carekosh.com/api/v1` (staging)
 
 ### Auth (`/auth`)
 

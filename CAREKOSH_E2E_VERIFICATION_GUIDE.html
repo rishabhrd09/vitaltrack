@@ -88,12 +88,12 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
   <div class="envs">
     <div class="env-card">
       <h4>Staging</h4>
-      <div class="url">vitaltrack-api-staging.onrender.com</div>
+      <div class="url">staging-api.carekosh.com</div>
       <div class="db">Neon branch: vitaltrack_staging · Test data only · Safe to wipe</div>
     </div>
     <div class="env-card">
       <h4>Production</h4>
-      <div class="url">vitaltrack-api.onrender.com</div>
+      <div class="url">api.carekosh.com</div>
       <div class="db">Neon branch: neondb · Real user data · Never wipe</div>
     </div>
   </div>
@@ -112,8 +112,8 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
   <div class="step">
     <div class="step-num">Step 1</div>
     <h4>Both services healthy</h4>
-    <pre><code>curl https://vitaltrack-api-staging.onrender.com/health
-curl https://vitaltrack-api.onrender.com/health</code></pre>
+    <pre><code>curl https://staging-api.carekosh.com/health
+curl https://api.carekosh.com/health</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
       <code>{"status":"healthy","environment":"staging"}</code> (or <code>"production"</code>)
@@ -158,7 +158,7 @@ curl https://vitaltrack-api.onrender.com/health</code></pre>
   <div class="step">
     <div class="step-num">Step 4</div>
     <h4>Register a test user</h4>
-    <pre><code>BASE=https://vitaltrack-api-staging.onrender.com
+    <pre><code>BASE=https://staging-api.carekosh.com
 
 curl -X POST $BASE/api/v1/auth/register \
   -H "Content-Type: application/json" \
@@ -385,13 +385,13 @@ curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{quantity,version}'</code></pr
     <div class="step-num">Step 17</div>
     <h4>Confirm deletion (testing only — irreversible)</h4>
     <p>Request deletion again (Step 15), open the email, then load the GET confirmation page:</p>
-    <pre><code>curl -s https://vitaltrack-api-staging.onrender.com/api/v1/auth/confirm-delete/RAW_TOKEN</code></pre>
+    <pre><code>curl -s https://staging-api.carekosh.com/api/v1/auth/confirm-delete/RAW_TOKEN</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
       HTML confirmation page only. No data is deleted by the GET request.
     </div>
     <p>Submit the confirmation form, or reproduce it with POST:</p>
-    <pre><code>curl -s -X POST https://vitaltrack-api-staging.onrender.com/api/v1/auth/confirm-delete/RAW_TOKEN</code></pre>
+    <pre><code>curl -s -X POST https://staging-api.carekosh.com/api/v1/auth/confirm-delete/RAW_TOKEN</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
       HTML completion page. User row is deleted; cascade unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
@@ -459,7 +459,7 @@ SELECT count(*) FROM refresh_tokens WHERE user_id = 'DELETED_USER_ID';</code></p
     <h4>Build preview APK</h4>
     <pre><code>cd vitaltrack-mobile
 eas build --profile preview --platform android</code></pre>
-    <p>Or: add the <code>build-apk</code> label to a PR and let CI do it. APK bakes <code>EXPO_PUBLIC_API_URL = https://vitaltrack-api-staging.onrender.com</code>.</p>
+    <p>Or: add the <code>build-apk</code> label to a PR and let CI do it. APK bakes <code>EXPO_PUBLIC_API_URL = https://staging-api.carekosh.com</code>.</p>
   </div>
 
   <div class="step">

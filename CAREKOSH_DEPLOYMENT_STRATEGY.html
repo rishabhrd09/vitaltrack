@@ -72,7 +72,7 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 
 <div class="callout warn">
   <span class="callout-label">Backend host choice before Play</span>
-  <p>Render is replaceable because the backend runs from <code>vitaltrack-backend/Dockerfile</code> with env vars and <code>docker-entrypoint.sh</code>. Moving to paid Render is the smallest reliability fix; Fly.io, Railway, DigitalOcean, Hetzner, AWS Lightsail, or another VPS/managed Docker host are also viable. Do not use a MacBook/home server for Play Store production. The practical recommendation is to put <code>api.carekosh.com</code> and <code>staging-api.carekosh.com</code> in front of the backend so a future host move can be DNS-only instead of an app rebuild.</p>
+  <p>Render is replaceable because the backend runs from <code>vitaltrack-backend/Dockerfile</code> with env vars and <code>docker-entrypoint.sh</code>. Moving to paid Render is the smallest reliability fix; Fly.io, Railway, DigitalOcean, Hetzner, AWS Lightsail, or another VPS/managed Docker host are also viable. Do not use a MacBook/home server for Play Store production. The custom domains <code>api.carekosh.com</code> and <code>staging-api.carekosh.com</code> already sit in front of the backend, so a future host move can usually be DNS-only instead of an app rebuild.</p>
   <p>The current free-tier cold-start/server-call issue can technically be solved after Play deployment, but that is not recommended. Reviewers and first users may see timeouts and think the app is broken. Minimum before Play review: paid Render or equivalent reliable production uptime/keep-warm evidence.</p>
 </div>
 
@@ -263,8 +263,8 @@ main  ──► CI re-runs  ──► deploy-backend job  ──► production R
 9. CI re-runs on main; deploy-backend POSTs the production Render hook if configured
 10. Production redeploys through the hook/auto-deploy path; staging redeploys through its own Render auto-deploy when the backend service rebuilds. Alembic runs on each rebuilt service's DB.
 11. verify deploy:
-    ├── curl https://vitaltrack-api-staging.onrender.com/health
-    ├── curl https://vitaltrack-api.onrender.com/health
+    ├── curl https://staging-api.carekosh.com/health
+    ├── curl https://api.carekosh.com/health
     ├── Render dashboard → Events tab → "Deploy live"
     └── alembic current (via Render shell) = latest migration filename
 12. if change touches Play Store surface: eas build --profile production

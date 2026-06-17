@@ -74,7 +74,7 @@ CareKosh's `package.json` ships scripts that set the right `EXPO_PUBLIC_API_URL`
 | Command | Target | When |
 |---|---|---|
 | `npm run start:local` | Local Docker (`http://localhost:8000`) | Day-to-day dev |
-| `npm run start:staging` | Render staging | Reproduce a staging bug against real Neon data |
+| `npm run start:staging` | Staging API (`https://staging-api.carekosh.com`) | Reproduce a staging bug against real Neon data |
 | `npm run start` | `.env` setting | When you want manual control |
 
 **One-time setup on Windows** (cross-platform env var syntax):
@@ -155,7 +155,7 @@ cd vitaltrack-mobile
 npx expo start --tunnel
 ```
 
-Expo creates a public URL and routes Metro traffic through it. The app still hits whatever `EXPO_PUBLIC_API_URL` points at, so your phone must be able to reach that URL — typically this means setting `EXPO_PUBLIC_API_URL=https://vitaltrack-api-staging.onrender.com` and letting the phone hit staging directly.
+Expo creates a public URL and routes Metro traffic through it. The app still hits whatever `EXPO_PUBLIC_API_URL` points at, so your phone must be able to reach that URL — typically this means setting `EXPO_PUBLIC_API_URL=https://staging-api.carekosh.com` and letting the phone hit staging directly.
 
 **Trade-offs**
 
