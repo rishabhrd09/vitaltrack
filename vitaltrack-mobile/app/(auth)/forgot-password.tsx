@@ -98,7 +98,7 @@ export default function ForgotPasswordScreen() {
                         Enter your email address and we'll send you a link to reset your password.
                     </Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary, fontSize: 12, marginTop: 8 }]}>
-                        Registered with only a username? Log in and add an email in Settings to enable password recovery.
+                        Registered with only a username? Contact support@carekosh.com for help with password recovery.
                     </Text>
                 </View>
 
