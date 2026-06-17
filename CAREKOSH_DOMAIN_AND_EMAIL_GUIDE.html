@@ -48,6 +48,9 @@
   .toc h4{margin-top:0}
   .toc ol{margin:6px 0 0; padding-left:22px}
   .toc li{margin:5px 0}
+  .toc ul{margin:4px 0 4px; padding-left:18px; list-style:none}
+  .toc ul li{margin:2px 0; font-size:15px; color:var(--ink-soft)}
+  .toc ul li::before{content:"↳"; color:var(--terra); margin-right:6px}
   .toc a{border:0;color:var(--ink)}
   .toc a:hover{color:var(--teal)}
 
@@ -93,6 +96,7 @@
   .steps>li::before{content:counter(s); position:absolute; left:0; top:9px; width:32px; height:32px; border-radius:50%; background:var(--teal); color:#fff; font-family:ui-monospace,monospace; font-weight:700; display:flex; align-items:center; justify-content:center; font-size:15px}
   .steps.terra>li::before{background:var(--terra)}
   .steps.gold>li::before{background:var(--gold)}
+  .steps .substep{margin:12px 0 4px}
 
   .pillrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
   .pill{font-family:ui-monospace,monospace;font-size:12.5px;padding:4px 11px;border-radius:20px;border:1px solid var(--line-strong);background:var(--card2);color:var(--ink-soft)}
@@ -113,31 +117,52 @@
   <div class="wrap">
     <p class="kicker">CareKosh / VitalTrack · Infrastructure Field Guide</p>
     <h1>Custom Domain &amp; Email, End to End</h1>
-    <p class="sub">How <code>carekosh.com</code> was wired across Cloudflare, Render, GitHub, Brevo and our own codebase — and exactly what happens, request by request, when a user verifies their email, resets a password, or writes to support.</p>
+    <p class="sub">How <code>carekosh.com</code> was wired across Cloudflare, Render, GitHub, Brevo and our own codebase — the exact steps we performed, the screenshots from each step, and what happens request-by-request when a user verifies their email, resets a password, or writes to support.</p>
     <p class="meta">Production API: https://api.carekosh.com · Staging: https://staging-api.carekosh.com · No secrets printed</p>
   </div>
 </header>
 
 <div class="wrap">
 
-  <p class="lead">This is a textbook, not a checklist. It explains the <em>why</em> and the <em>mechanics</em> behind every setting we changed, so anyone on the team can reason about the system rather than just copy buttons. Read it top to bottom once; after that it is a reference.</p>
+  <p class="lead">This is both a textbook and a runbook. It explains the <em>why</em> and the <em>mechanics</em> behind every setting, and it lists the <em>exact steps</em> we performed on each platform, with the screenshot from each step. Read it top to bottom once; after that it is a reference.</p>
 
   <div class="callout tip">
     <span class="tag">How to add your screenshots</span>
-    <p>This guide references the screenshots captured during setup. Create a folder named <code>domain-email-img/</code> next to this HTML file and drop the images in using the filenames shown in each grey placeholder (e.g. <code>brevo-04-authenticated.png</code>). Until you do, you'll see a labelled placeholder describing what belongs there — the guide reads correctly either way.</p>
+    <p>The image slots below are wired to filenames. Create a folder named <code>domain-email-img/</code> next to this HTML file and drop each screenshot in using the matching filename. Until a file exists, its slot shows a labelled placeholder — the guide reads correctly either way.</p>
+    <table>
+      <tr><th>Filename</th><th>The screenshot it expects</th></tr>
+      <tr><td><code>cloudflare-00-domain.png</code></td><td>carekosh.com active in the Cloudflare dashboard</td></tr>
+      <tr><td><code>github-01-secrets.png</code></td><td>GitHub repo secrets: EXPO_TOKEN &amp; RENDER_DEPLOY_HOOK</td></tr>
+      <tr><td><code>brevo-01-authenticate-options.png</code></td><td>Brevo "Authenticate carekosh.com" — the 3 choices</td></tr>
+      <tr><td><code>brevo-02-authorize-records.png</code></td><td>Brevo "Authorize DNS records" table</td></tr>
+      <tr><td><code>brevo-03-verification-status.png</code></td><td>Brevo record verification (syncing / mismatch then green)</td></tr>
+      <tr><td><code>brevo-04-authenticated.png</code></td><td>Brevo domain status "Authenticated"</td></tr>
+      <tr><td><code>email-01-before-brevosend.png</code></td><td>Email header from <code>…brevosend.com</code> (before)</td></tr>
+      <tr><td><code>email-02-after-noreply.png</code></td><td>Reset email from <code>noreply@carekosh.com</code> (after)</td></tr>
+      <tr><td><code>cloudflare-01-routing-disabled.png</code></td><td>Email Routing overview — Disabled / Not configured</td></tr>
+      <tr><td><code>cloudflare-02-create-rule.png</code></td><td>Create routing rule (support@ → Gmail)</td></tr>
+      <tr><td><code>cloudflare-03-rules-list.png</code></td><td>Routing rules list — support@ Active</td></tr>
+      <tr><td><code>cloudflare-04-dns-records.png</code></td><td>Settings → DNS records (MX / SPF / DKIM)</td></tr>
+      <tr><td><code>cloudflare-05-routing-enabled.png</code></td><td>Overview — Routing status Enabled</td></tr>
+      <tr><td><code>cloudflare-06-activity-log.png</code></td><td>Activity Log — message "Forwarded"</td></tr>
+      <tr><td><code>email-03-support-received.png</code></td><td>Test email to support@ arriving in Gmail</td></tr>
+    </table>
   </div>
 
   <div class="toc">
     <h4>Contents</h4>
     <ol>
       <li><a href="#bigpicture">The big picture — every platform on one map</a></li>
-      <li><a href="#domain">The custom domain — why we own carekosh.com</a></li>
+      <li><a href="#domain">The custom domain — why we own carekosh.com</a>
+        <ul><li><a href="#domain-steps">The exact steps we performed</a></li></ul></li>
       <li><a href="#dns">DNS — how a name becomes a server</a></li>
       <li><a href="#render">Render + GitHub — how code becomes a running backend</a></li>
       <li><a href="#mobile">The mobile app — how it knows which backend to call</a></li>
       <li><a href="#request">Request journey — what happens when a button is tapped</a></li>
-      <li><a href="#email-send">Email sending — Brevo &amp; the noreply@ address</a></li>
-      <li><a href="#email-receive">Email receiving — Cloudflare &amp; the support@ address</a></li>
+      <li><a href="#email-send">Email sending — Brevo &amp; the noreply@ address</a>
+        <ul><li><a href="#brevo-steps">The exact steps we performed</a></li></ul></li>
+      <li><a href="#email-receive">Email receiving — Cloudflare &amp; the support@ address</a>
+        <ul><li><a href="#cf-steps">The exact steps we performed</a></li></ul></li>
       <li><a href="#flow-support">Flow: a user emails support@carekosh.com</a></li>
       <li><a href="#flow-forgot">Flow: forgot password, start to finish</a></li>
       <li><a href="#flow-verify">Flow: registration &amp; email verification</a></li>
@@ -165,35 +190,28 @@
     <defs>
       <marker id="a1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8a7a66"/></marker>
     </defs>
-    <!-- lanes -->
     <text x="20" y="28" font-family="monospace" font-size="13" fill="#b8623a" letter-spacing="2">RUN TIME — a user using the app</text>
-    <!-- phone -->
     <rect x="20" y="44" width="150" height="80" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
     <text x="95" y="78" text-anchor="middle" font-size="15" font-weight="700" fill="#2b2117">Mobile app</text>
     <text x="95" y="98" text-anchor="middle" font-size="12" fill="#6b5a48">Expo / React Native</text>
     <text x="95" y="113" text-anchor="middle" font-size="11" fill="#8c7a64">URL baked at build</text>
-    <!-- arrow -->
     <line x1="170" y1="84" x2="232" y2="84" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)"/>
     <text x="201" y="76" text-anchor="middle" font-size="10.5" fill="#8c7a64">HTTPS</text>
-    <!-- cloudflare edge -->
     <rect x="234" y="44" width="160" height="80" rx="10" fill="#dfe9f1" stroke="#587f9d"/>
     <text x="314" y="74" text-anchor="middle" font-size="14" font-weight="700" fill="#274055">api.carekosh.com</text>
     <text x="314" y="93" text-anchor="middle" font-size="12" fill="#3a5b74">Cloudflare DNS + edge</text>
     <text x="314" y="108" text-anchor="middle" font-size="11" fill="#587f9d">CNAME → Render</text>
     <line x1="394" y1="84" x2="456" y2="84" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)"/>
-    <!-- render -->
     <rect x="458" y="44" width="170" height="80" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
     <text x="543" y="72" text-anchor="middle" font-size="14" font-weight="700" fill="#155b45">Render</text>
     <text x="543" y="91" text-anchor="middle" font-size="12" fill="#1d8f6b">vitaltrack-api (Docker)</text>
     <text x="543" y="106" text-anchor="middle" font-size="11" fill="#2f7a60">FastAPI · TLS</text>
     <line x1="628" y1="84" x2="690" y2="84" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)"/>
-    <!-- neon -->
     <rect x="692" y="44" width="150" height="80" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
     <text x="767" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#2b2117">Neon</text>
     <text x="767" y="98" text-anchor="middle" font-size="12" fill="#6b5a48">PostgreSQL</text>
     <text x="767" y="113" text-anchor="middle" font-size="11" fill="#8c7a64">asyncpg · SSL</text>
 
-    <!-- BUILD/DEPLOY lane -->
     <text x="20" y="190" font-family="monospace" font-size="13" fill="#b8623a" letter-spacing="2">BUILD TIME — shipping new code</text>
     <rect x="20" y="206" width="170" height="76" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
     <text x="105" y="238" text-anchor="middle" font-size="14" font-weight="700" fill="#2b2117">GitHub</text>
@@ -207,7 +225,6 @@
     <text x="344" y="267" text-anchor="middle" font-size="11" fill="#2f7a60">+ RENDER_DEPLOY_HOOK</text>
     <line x1="344" y1="206" x2="344" y2="130" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)" stroke-dasharray="4 3"/>
     <text x="360" y="170" font-size="10.5" fill="#8c7a64">updates the running service ↑</text>
-
     <rect x="470" y="206" width="180" height="76" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
     <text x="560" y="234" text-anchor="middle" font-size="13.5" font-weight="700" fill="#2b2117">EAS Build (Expo)</text>
     <text x="560" y="252" text-anchor="middle" font-size="11.5" fill="#6b5a48">bakes EXPO_PUBLIC_API_URL</text>
@@ -216,9 +233,7 @@
     <line x1="560" y1="206" x2="200" y2="124" stroke="#8a7a66" stroke-width="1.4" marker-end="url(#a1)" stroke-dasharray="4 3"/>
     <text x="430" y="160" font-size="10.5" fill="#8c7a64">produces the app binary ↖</text>
 
-    <!-- EMAIL lane -->
     <text x="20" y="350" font-family="monospace" font-size="13" fill="#b8623a" letter-spacing="2">EMAIL — two directions, two services</text>
-    <!-- send -->
     <rect x="20" y="368" width="170" height="78" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
     <text x="105" y="396" text-anchor="middle" font-size="13.5" font-weight="700" fill="#155b45">Backend → Brevo</text>
     <text x="105" y="415" text-anchor="middle" font-size="11.5" fill="#1d8f6b">SEND (transactional)</text>
@@ -227,7 +242,6 @@
     <rect x="254" y="368" width="150" height="78" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
     <text x="329" y="402" text-anchor="middle" font-size="13.5" font-weight="700" fill="#2b2117">User's inbox</text>
     <text x="329" y="421" text-anchor="middle" font-size="11.5" fill="#6b5a48">verify / reset links</text>
-    <!-- receive -->
     <rect x="470" y="368" width="160" height="78" rx="10" fill="#f3e0d5" stroke="#b8623a"/>
     <text x="550" y="396" text-anchor="middle" font-size="13" font-weight="700" fill="#8a3f1f">support@carekosh.com</text>
     <text x="550" y="415" text-anchor="middle" font-size="11.5" fill="#b8623a">RECEIVE (Cloudflare)</text>
@@ -263,7 +277,19 @@
     <figcaption>Figure 2 — The domain, owned and managed in Cloudflare.</figcaption>
   </figure>
 
-  <h3>What changed in the codebase</h3>
+  <h3 id="domain-steps">The exact steps we performed</h3>
+  <ol class="steps">
+    <li><strong>Registered the domain.</strong> Bought <code>carekosh.com</code> on Cloudflare Registrar (at-cost, free DNS, full control of the zone). See Figure 2.</li>
+    <li><strong>Added the custom domains in Render.</strong> For each service, opened Render → the service → <em>Settings → Custom Domains</em> and added <code>api.carekosh.com</code> to <code>vitaltrack-api</code> (production) and <code>staging-api.carekosh.com</code> to <code>vitaltrack-api-staging</code> (staging). Render then showed the CNAME target to point each name at.</li>
+    <li><strong>Created the CNAME records in Cloudflare.</strong> In Cloudflare → carekosh.com → <em>DNS → Records</em>, added two CNAMEs: <code>api</code> → <code>vitaltrack-api.onrender.com</code> and <code>staging-api</code> → <code>vitaltrack-api-staging.onrender.com</code> (left as "DNS only" while Render issued certificates).</li>
+    <li><strong>Let Render issue TLS.</strong> Render verified the DNS and automatically issued and installed TLS certificates for both custom domains, so HTTPS works on the carekosh names.</li>
+    <li><strong>Set FRONTEND_URL per environment (Render dashboard).</strong> Production = <code>https://api.carekosh.com/api/v1/auth</code>, staging = <code>https://staging-api.carekosh.com/api/v1/auth</code>. This is the base used inside email links (see §7). Value only — never type <code>FRONTEND_URL=</code> into the value box.</li>
+    <li><strong>Updated the codebase</strong> on branch <code>config/use-carekosh-custom-domains</code> so future builds and ops checks use the carekosh names — see the table below.</li>
+    <li><strong>Confirmed the GitHub Actions secrets</strong> the pipeline needs were present: <code>EXPO_TOKEN</code> and <code>RENDER_DEPLOY_HOOK</code> (see §4 / Figure 4).</li>
+    <li><strong>Verified.</strong> Ran <code>dig</code> to confirm <code>api</code> / <code>staging-api</code> resolve to Render, and ran the smoke checks against the new hostnames.</li>
+  </ol>
+
+  <h4>What changed in the codebase</h4>
   <p>On branch <code>config/use-carekosh-custom-domains</code>, the old onrender URLs were swapped for the carekosh domains everywhere they are <em>baked or defaulted</em>:</p>
   <table>
     <tr><th>File</th><th>What changed</th><th>Why it matters</th></tr>
@@ -410,7 +436,7 @@ payload = {
     "htmlContent": html_content,                           # contains the FRONTEND_URL link
 }</code></pre>
 
-  <h3>The problem we fixed: emails came from a Brevo domain</h3>
+  <h3>The problem we started with: emails came from a Brevo domain</h3>
   <p>Before authentication, Brevo had to send from its own shared domain, so the <code>from:</code> showed <code>...@brevosend.com</code> with our Gmail as reply-to. Unbranded, and weaker for deliverability.</p>
 
   <div class="mailcard">
@@ -425,21 +451,40 @@ payload = {
     <figcaption>Figure 6 — Before: the sender was a Brevo domain.</figcaption>
   </figure>
 
-  <h3>The fix: authenticate carekosh.com in Brevo</h3>
-  <p>Brevo's "Authenticate automatically" option connected to Cloudflare and wrote four DNS records: a verification <code>brevo-code</code> TXT, two DKIM <code>CNAME</code>s, and a <code>DMARC</code> TXT. DKIM is the key one — it lets Brevo cryptographically sign as <code>carekosh.com</code>.</p>
+  <h3 id="brevo-steps">The exact steps we performed</h3>
+  <ol class="steps">
+    <li><strong>Started domain authentication in Brevo.</strong> Brevo → <em>Senders, Domains &amp; Dedicated IPs → Domains → Authenticate a domain</em>, entered <code>carekosh.com</code>, and chose <strong>"Authenticate the domain automatically (Recommended)"</strong> so Brevo writes the records straight into Cloudflare.
+      <figure class="shot">
+        <img src="domain-email-img/brevo-01-authenticate-options.png" alt="Brevo authenticate options" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/brevo-01-authenticate-options.png</code><span class="ph-desc">Brevo "Authenticate carekosh.com" — pick "Authenticate automatically"</span></div>
+        <figcaption>Brevo's three authentication choices — we picked the first.</figcaption>
+      </figure>
+    </li>
+    <li><strong>Authorized the DNS records (one-time).</strong> Brevo connected to Cloudflare and added four records: a verification <code>brevo-code</code> TXT, two DKIM <code>CNAME</code>s (<code>brevo1._domainkey</code>, <code>brevo2._domainkey</code>), and a <code>DMARC</code> TXT. DKIM is the key one — it lets Brevo cryptographically sign as <code>carekosh.com</code>. (Note: Brevo authenticates via DKIM and did <em>not</em> add an SPF record — important later for §8.)
+      <figure class="shot">
+        <img src="domain-email-img/brevo-02-authorize-records.png" alt="Brevo authorize DNS records" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/brevo-02-authorize-records.png</code><span class="ph-desc">Brevo "Authorize DNS records" — brevo-code, two DKIM CNAMEs, DMARC</span></div>
+        <figcaption>Figure 7 — The records Brevo added to Cloudflare automatically.</figcaption>
+      </figure>
+    </li>
+    <li><strong>Waited for propagation and re-verified.</strong> Brevo's checker briefly showed some records as "mismatch / not detected" — that is normal DNS lag, not an error. We confirmed the values were live in DNS and clicked verify again until all went green.
+      <figure class="shot">
+        <img src="domain-email-img/brevo-03-verification-status.png" alt="Brevo verification status" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/brevo-03-verification-status.png</code><span class="ph-desc">Brevo record check mid-propagation (DKIM 2 matched; others syncing)</span></div>
+        <figcaption>Mid-propagation: some records still "syncing" — resolves on its own.</figcaption>
+      </figure>
+    </li>
+    <li><strong>Domain showed Authenticated.</strong> Once verified, sending from any <code>@carekosh.com</code> address was unlocked.
+      <figure class="shot">
+        <img src="domain-email-img/brevo-04-authenticated.png" alt="Brevo domain authenticated" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/brevo-04-authenticated.png</code><span class="ph-desc">carekosh.com showing the green "Authenticated" status in Brevo</span></div>
+        <figcaption>Figure 8 — Domain authenticated.</figcaption>
+      </figure>
+    </li>
+    <li><strong>Set the sender in Render.</strong> Set <code>MAIL_FROM=noreply@carekosh.com</code> (value only, no <code>MAIL_FROM=</code> prefix) and redeployed. The code already reads <code>settings.MAIL_FROM</code> and uses the sender name "CareKosh", so no code change was needed.</li>
+    <li><strong>Tested.</strong> Triggered a forgot-password — the email now arrives from <code>noreply@carekosh.com</code>, DKIM-signed by carekosh.com, with no reply-to leaking a personal address (see below). <em>Still to confirm: set the same <code>MAIL_FROM</code> on the production service and re-test, since the first test ran on staging.</em></li>
+  </ol>
 
-  <figure class="shot">
-    <img src="domain-email-img/brevo-02-authorize-records.png" alt="Brevo authorize DNS records" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-    <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/brevo-02-authorize-records.png</code><span class="ph-desc">Brevo's "Authorize DNS records" — brevo-code, two DKIM CNAMEs, DMARC</span></div>
-    <figcaption>Figure 7 — The records Brevo added to Cloudflare automatically.</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="domain-email-img/brevo-04-authenticated.png" alt="Brevo domain authenticated" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-    <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/brevo-04-authenticated.png</code><span class="ph-desc">carekosh.com showing the green "Authenticated" status in Brevo</span></div>
-    <figcaption>Figure 8 — Domain authenticated. Sending from any @carekosh.com address is now unlocked.</figcaption>
-  </figure>
-
-  <p>Then we set <code>MAIL_FROM=noreply@carekosh.com</code> in Render. The result, confirmed in a real reset email:</p>
   <div class="mailcard">
     <div class="mc-h">After — authenticated</div>
     <div class="mc-row"><span class="k">from:</span><span class="v">CareKosh &lt;noreply@<span class="ok">carekosh.com</span>&gt;</span></div>
@@ -457,21 +502,62 @@ payload = {
   <h2 id="email-receive"><span class="num">08</span>Email receiving — Cloudflare &amp; the support@ address</h2>
   <hr class="rule">
   <p>Brevo cannot give us an inbox. To <em>receive</em> mail at <code>support@carekosh.com</code> we use <strong>Cloudflare Email Routing</strong>, which is <em>forwarding</em>, not a mailbox: it catches mail for the address and forwards it to an existing Gmail. There is no new login — support mail simply arrives in the normal Gmail inbox.</p>
-  <p>Enabling it added the MX records (so the world knows where carekosh.com mail goes), an SPF TXT, and Cloudflare's own DKIM. We created one rule — <code>support@carekosh.com → your Gmail</code> — and locked the records to protect them.</p>
 
-  <figure class="shot">
-    <img src="domain-email-img/cloudflare-03-rules-list.png" alt="Cloudflare routing rules" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-    <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-03-rules-list.png</code><span class="ph-desc">Routing rules — support@carekosh.com forwarding to Gmail, status Active</span></div>
-    <figcaption>Figure 10 — The forwarding rule, Active.</figcaption>
-  </figure>
-  <figure class="shot">
-    <img src="domain-email-img/cloudflare-06-activity-log.png" alt="Cloudflare email routing activity log" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-    <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-06-activity-log.png</code><span class="ph-desc">Activity Log — test emails to support@ marked "Forwarded"</span></div>
-    <figcaption>Figure 11 — Proof it works: incoming test mail shows "Forwarded" in the Activity Log.</figcaption>
-  </figure>
+  <h3 id="cf-steps">The exact steps we performed</h3>
+  <ol class="steps terra">
+    <li><strong>Opened Email Routing.</strong> Cloudflare → carekosh.com → <em>Email → Email Routing</em>. It started <strong>Disabled</strong> with DNS "Not configured" — expected at this point.
+      <figure class="shot">
+        <img src="domain-email-img/cloudflare-01-routing-disabled.png" alt="Email Routing overview disabled" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-01-routing-disabled.png</code><span class="ph-desc">Email Routing overview — Routing status Disabled, DNS not configured</span></div>
+        <figcaption>Starting state — routing not yet enabled.</figcaption>
+      </figure>
+    </li>
+    <li><strong>Added and verified the destination.</strong> <em>Destination Addresses → Add</em>, entered the Gmail, then clicked the verification link Cloudflare emailed to it. (A rule pointing at an unverified address won't deliver.)</li>
+    <li><strong>Created the routing rule.</strong> <em>Routing rules → Create routing rule</em>: pattern <code>support</code> @ <code>carekosh.com</code>, action <strong>Send to an email</strong>, destination the verified Gmail → Save.
+      <figure class="shot">
+        <img src="domain-email-img/cloudflare-02-create-rule.png" alt="Create routing rule" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-02-create-rule.png</code><span class="ph-desc">Create routing rule — support@carekosh.com → Send to an email → Gmail</span></div>
+        <figcaption>The forwarding rule being created.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="domain-email-img/cloudflare-03-rules-list.png" alt="Cloudflare routing rules list" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-03-rules-list.png</code><span class="ph-desc">Routing rules — support@carekosh.com forwarding to Gmail, status Active</span></div>
+        <figcaption>Figure 10 — The rule, Active.</figcaption>
+      </figure>
+    </li>
+    <li><strong>Ignored the "Connect" button.</strong> The blue <em>Connect</em> button opens Email <em>Workers</em> (programmatic processing) — it is <strong>not</strong> how routing is enabled. We closed it.</li>
+    <li><strong>Enabled routing by adding the MX records.</strong> Via <em>Settings → DNS records</em> (the "DNS records: Not configured" link). Cloudflare added the three <code>route1/2/3.mx.cloudflare.net</code> MX records, an SPF TXT, and its own routing DKIM.
+      <figure class="shot">
+        <img src="domain-email-img/cloudflare-04-dns-records.png" alt="Cloudflare email routing DNS records" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-04-dns-records.png</code><span class="ph-desc">Settings → DNS records: 3× MX, SPF TXT, cf2024-1 DKIM TXT</span></div>
+        <figcaption>The MX/SPF/DKIM records Email Routing publishes.</figcaption>
+      </figure>
+    </li>
+    <li><strong>Confirmed Enabled and locked the records.</strong> The overview flipped to <strong>Routing status: Enabled</strong> / DNS Configured. We then "Locked" the records so they can't be edited or deleted by accident.
+      <figure class="shot">
+        <img src="domain-email-img/cloudflare-05-routing-enabled.png" alt="Email Routing enabled" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-05-routing-enabled.png</code><span class="ph-desc">Overview — Routing status Enabled, DNS records Enabled</span></div>
+        <figcaption>Routing live.</figcaption>
+      </figure>
+    </li>
+    <li><strong>Tested receiving.</strong> Emailed <code>support@carekosh.com</code> from a different account; it forwarded to Gmail and the Activity Log showed <strong>Forwarded</strong>.
+      <figure class="shot">
+        <img src="domain-email-img/cloudflare-06-activity-log.png" alt="Email routing activity log" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-06-activity-log.png</code><span class="ph-desc">Activity Log — test emails to support@ marked "Forwarded"</span></div>
+        <figcaption>Figure 11 — Proof: incoming test mail shows "Forwarded".</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="domain-email-img/email-03-support-received.png" alt="Forwarded test email in Gmail" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/email-03-support-received.png</code><span class="ph-desc">The test email to support@carekosh.com arriving in Gmail</span></div>
+        <figcaption>...and the same message landing in the Gmail inbox.</figcaption>
+      </figure>
+    </li>
+  </ol>
+
+  <div class="callout tip"><span class="tag">Why no SPF conflict</span><p>Cloudflare added the only SPF record (<code>v=spf1 include:_spf.mx.cloudflare.net ~all</code>). Because Brevo authenticates via <em>DKIM</em> (it added no SPF of its own), there's nothing to merge — and Brevo's outgoing mail still passes DMARC on DKIM alignment. The two DKIM setups (Brevo's for sending, Cloudflare's for routing) coexist cleanly.</p></div>
 
   <div class="callout"><span class="tag">Two addresses, two jobs</span>
-    <p><code>noreply@carekosh.com</code> = <strong>outgoing</strong>, via Brevo. <code>support@carekosh.com</code> = <strong>incoming</strong>, via Cloudflare → Gmail. They share only the domain name. The app never sends from <code>support@</code>; nothing ever receives at <code>noreply@</code> (replies to it simply bounce, which is exactly how a no-reply address should behave).</p>
+    <p><code>noreply@carekosh.com</code> = <strong>outgoing</strong>, via Brevo. <code>support@carekosh.com</code> = <strong>incoming</strong>, via Cloudflare → Gmail. They share only the domain name. The app never sends from <code>support@</code>; nothing ever receives at <code>noreply@</code> (replies to it simply bounce, which is exactly how a no-reply address should behave). There is also no separate "CareKosh inbox" to log into — support mail lands in your normal Gmail.</p>
   </div>
 
   <!-- ============================================================= -->
@@ -515,7 +601,6 @@ payload = {
   <div class="diagram">
   <svg viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Forgot password end to end flow">
     <defs><marker id="a5" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8a7a66"/></marker></defs>
-    <!-- row 1 -->
     <rect x="12" y="20" width="150" height="66" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
     <text x="87" y="48" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2b2117">App: forgot pw</text>
     <text x="87" y="66" text-anchor="middle" font-size="10.5" fill="#6b5a48">POST /forgot-password</text>
@@ -533,9 +618,7 @@ payload = {
     <rect x="618" y="20" width="150" height="66" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
     <text x="693" y="48" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2b2117">User inbox</text>
     <text x="693" y="66" text-anchor="middle" font-size="10.5" fill="#6b5a48">gets the link</text>
-    <!-- down arrow -->
     <line x1="693" y1="86" x2="693" y2="128" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a5)"/>
-    <!-- row 2 (reversed) -->
     <rect x="618" y="130" width="150" height="66" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
     <text x="693" y="154" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2b2117">Taps link</text>
     <text x="693" y="171" text-anchor="middle" font-size="10.5" fill="#6b5a48">GET /reset-password</text>
@@ -554,7 +637,6 @@ payload = {
     <text x="96" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#155b45">Backend verifies</text>
     <text x="96" y="166" text-anchor="middle" font-size="10" fill="#1d8f6b">hash match + not expired</text>
     <text x="96" y="180" text-anchor="middle" font-size="10" fill="#2f7a60">re-hash pw, revoke tokens</text>
-    <!-- down to done -->
     <line x1="96" y1="196" x2="96" y2="236" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a5)"/>
     <rect x="12" y="238" width="320" height="58" rx="10" fill="#f3e0d5" stroke="#b8623a"/>
     <text x="172" y="263" text-anchor="middle" font-size="12.5" font-weight="700" fill="#8a3f1f">Password changed → "password changed" email sent</text>
@@ -686,7 +768,7 @@ dig +short staging-api.carekosh.com @1.1.1.1</code></pre>
   </table>
 
   <footer>
-    <p>CareKosh / VitalTrack — Domain &amp; Email Field Guide. Generated from the project's setup history; all DNS values verified live. Secrets are referenced by name only and never printed. To embed the screenshots, drop them into <code>domain-email-img/</code> using the filenames shown in each placeholder.</p>
+    <p>CareKosh / VitalTrack — Domain &amp; Email Field Guide. Generated from the project's setup history; all DNS values verified live. Secrets are referenced by name only and never printed. To embed the screenshots, drop them into <code>domain-email-img/</code> using the filenames in the table at the top.</p>
   </footer>
 
 </div>
