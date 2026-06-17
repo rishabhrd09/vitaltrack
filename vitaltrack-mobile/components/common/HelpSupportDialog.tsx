@@ -7,9 +7,11 @@
  * between "ok" and "nuke the cache."
  */
 
-import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, Modal, Pressable, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
+
+const SUPPORT_EMAIL = 'support@carekosh.com';
 
 interface HelpSupportDialogProps {
     visible: boolean;
@@ -23,6 +25,10 @@ export default function HelpSupportDialog({
     onRefreshFromServer,
 }: HelpSupportDialogProps) {
     const { colors } = useTheme();
+
+    const openSupportEmail = () => {
+        Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() => { });
+    };
 
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
@@ -39,7 +45,14 @@ export default function HelpSupportDialog({
                     </Text>
 
                     <Text style={[styles.body, { color: colors.textSecondary }]}>
-                        Contact support@carekosh.com for assistance.
+                        Contact{' '}
+                        <Text
+                            style={[styles.emailLink, { color: colors.accentBlue }]}
+                            onPress={openSupportEmail}
+                        >
+                            {SUPPORT_EMAIL}
+                        </Text>
+                        {' '}for assistance.
                     </Text>
 
                     <TouchableOpacity
@@ -90,6 +103,10 @@ const styles = StyleSheet.create({
         fontSize: fontSize.md,
         lineHeight: 22,
         marginBottom: spacing.lg,
+    },
+    emailLink: {
+        textDecorationLine: 'underline',
+        fontWeight: fontWeight.medium,
     },
     refreshLink: {
         paddingVertical: spacing.sm,

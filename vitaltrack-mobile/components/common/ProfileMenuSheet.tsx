@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Switch, Modal, Pressable, PanResponder, Animated, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 
@@ -21,7 +22,6 @@ interface ProfileMenuSheetProps {
     isDarkTheme: boolean;
     onThemeToggle: () => void;
     onEditProfile?: () => void;
-    onSettings?: () => void;
     onAbout?: () => void;
     onHelp?: () => void;
     onLogout?: () => void;
@@ -35,13 +35,13 @@ export default function ProfileMenuSheet({
     isDarkTheme,
     onThemeToggle,
     onEditProfile,
-    onSettings,
     onAbout,
     onHelp,
     onLogout,
 }: ProfileMenuSheetProps) {
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
+    const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
     const translateY = useRef(new Animated.Value(0)).current;
 
@@ -241,19 +241,9 @@ export default function ProfileMenuSheet({
                     />
 
                     <MenuItem
-                        icon="settings-outline"
-                        title="Settings"
-                        subtitle="App preferences and configuration"
-                        onPress={() => {
-                            onSettings?.();
-                            onDismiss();
-                        }}
-                    />
-
-                    <MenuItem
                         icon="information-circle-outline"
                         title="About CareKosh"
-                        subtitle="Home ICU Inventory Management · v2.0.0"
+                        subtitle={`Home ICU Inventory Management · v${appVersion}`}
                         onPress={() => {
                             onAbout?.();
                             onDismiss();
@@ -413,4 +403,3 @@ const styles = StyleSheet.create({
         fontWeight: fontWeight.medium,
     },
 });
-

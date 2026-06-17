@@ -12,6 +12,7 @@ import {
     Alert,
     ActivityIndicator,
     TouchableOpacity,
+    TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,11 +25,19 @@ import { logger } from '@/utils/logger';
 
 const DELETION_POLL_INTERVAL_MS = 5000;
 const DELETION_POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const USERNAME_PATTERN = /^[a-z0-9_]+$/;
 
 export default function ProfileScreen() {
     const { colors } = useTheme();
     const user = useAuthStore((state) => state.user);
+    const updateUser = useAuthStore((state) => state.updateUser);
     const [isRequesting, setIsRequesting] = useState(false);
+    const [name, setName] = useState(user?.name ?? '');
+    const [username, setUsername] = useState((user?.username ?? '').toLowerCase());
+    const [touchedFields, setTouchedFields] = useState({ name: false, username: false });
+    const [usernameError, setUsernameError] = useState<string | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Interval for polling /auth/me after deletion email is sent. When the
     // backend deletes the account, the next poll returns 401/404 → the api.ts
@@ -43,6 +52,78 @@ export default function ProfileScreen() {
             }
         };
     }, []);
+
+    useEffect(() => {
+        setName(user?.name ?? '');
+        setUsername((user?.username ?? '').toLowerCase());
+        setTouchedFields({ name: false, username: false });
+        setUsernameError(null);
+        setFormError(null);
+    }, [user?.id, user?.name, user?.username]);
+
+    const currentName = (user?.name ?? '').trim();
+    const currentUsername = (user?.username ?? '').trim().toLowerCase();
+    const trimmedName = name.trim();
+    const normalizedUsername = username.trim().toLowerCase();
+    const emailVerificationState =
+        typeof user?.isEmailVerified === 'boolean' ? user.isEmailVerified : null;
+
+    const nameValidationError = trimmedName.length === 0 ? 'Name is required.' : null;
+    const usernameValidationError =
+        normalizedUsername.length === 0
+            ? 'Username is required.'
+            : normalizedUsername.length < 3 || normalizedUsername.length > 50
+                ? 'Username must be 3-50 characters.'
+                : USERNAME_PATTERN.test(normalizedUsername)
+                    ? null
+                    : 'Use lowercase letters, numbers, and underscores only.';
+    const hasChanges = trimmedName !== currentName || normalizedUsername !== currentUsername;
+    const isSaveDisabled =
+        !hasChanges ||
+        isSaving ||
+        Boolean(nameValidationError) ||
+        Boolean(usernameValidationError) ||
+        Boolean(usernameError);
+
+    const handleNameChange = (value: string) => {
+        setName(value);
+        setFormError(null);
+    };
+
+    const handleUsernameChange = (value: string) => {
+        setUsername(value.toLowerCase());
+        setUsernameError(null);
+        setFormError(null);
+    };
+
+    const handleSave = async () => {
+        setTouchedFields({ name: true, username: true });
+        if (isSaveDisabled) return;
+
+        setIsSaving(true);
+        setUsernameError(null);
+        setFormError(null);
+
+        try {
+            const profile = await authService.updateProfile({
+                name: trimmedName,
+                username: normalizedUsername,
+            });
+            updateUser(profile);
+            Alert.alert('Profile updated', 'Your profile has been saved.');
+        } catch (error) {
+            const status = (error as { status?: number }).status;
+            const message = error instanceof Error ? error.message : 'Failed to save profile.';
+            if (status === 400 && message === 'Username already taken') {
+                setUsernameError(message);
+            } else {
+                setFormError(message);
+                Alert.alert('Unable to save profile', message);
+            }
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const startDeletionPolling = () => {
         if (pollRef.current) return;
@@ -145,8 +226,23 @@ export default function ProfileScreen() {
                 <TouchableOpacity onPress={() => safeBack()} style={styles.backButton} activeOpacity={0.7}>
                     <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Profile</Text>
-                <View style={styles.headerSpacer} />
+                <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Edit profile</Text>
+                <TouchableOpacity
+                    onPress={handleSave}
+                    style={[
+                        styles.saveButton,
+                        { backgroundColor: colors.accentBlue },
+                        isSaveDisabled && styles.saveButtonDisabled,
+                    ]}
+                    disabled={isSaveDisabled}
+                    activeOpacity={0.8}
+                >
+                    {isSaving ? (
+                        <ActivityIndicator size="small" color={colors.white} />
+                    ) : (
+                        <Text style={[styles.saveButtonText, { color: colors.white }]}>Save</Text>
+                    )}
+                </TouchableOpacity>
             </View>
 
             <ScrollView
@@ -167,7 +263,7 @@ export default function ProfileScreen() {
                         </Text>
                     </View>
                     <Text style={[styles.displayName, { color: colors.textPrimary }]}>
-                        {user?.name || user?.username || '—'}
+                        {trimmedName || normalizedUsername || '—'}
                     </Text>
                 </View>
 
@@ -177,24 +273,108 @@ export default function ProfileScreen() {
 
                     <View style={[styles.field, { borderBottomColor: colors.borderPrimary }]}>
                         <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Name</Text>
-                        <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
-                            {user?.name || '—'}
-                        </Text>
+                        <TextInput
+                            style={[
+                                styles.fieldInput,
+                                { color: colors.textPrimary, borderColor: colors.borderPrimary },
+                            ]}
+                            value={name}
+                            onChangeText={handleNameChange}
+                            onFocus={() => setTouchedFields((fields) => ({ ...fields, name: true }))}
+                            placeholder="Enter your name"
+                            placeholderTextColor={colors.textTertiary}
+                            autoCorrect={false}
+                            returnKeyType="next"
+                        />
+                        {touchedFields.name && nameValidationError && (
+                            <Text style={[styles.fieldError, { color: colors.statusRed }]}>
+                                {nameValidationError}
+                            </Text>
+                        )}
                     </View>
 
                     <View style={[styles.field, { borderBottomColor: colors.borderPrimary }]}>
                         <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Username</Text>
-                        <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
-                            {user?.username || 'Not set'}
-                        </Text>
+                        <TextInput
+                            style={[
+                                styles.fieldInput,
+                                { color: colors.textPrimary, borderColor: colors.borderPrimary },
+                            ]}
+                            value={username}
+                            onChangeText={handleUsernameChange}
+                            onFocus={() => setTouchedFields((fields) => ({ ...fields, username: true }))}
+                            placeholder="username"
+                            placeholderTextColor={colors.textTertiary}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            returnKeyType="done"
+                        />
+                        {touchedFields.username && usernameValidationError && (
+                            <Text style={[styles.fieldError, { color: colors.statusRed }]}>
+                                {usernameValidationError}
+                            </Text>
+                        )}
+                        {usernameError && (
+                            <Text style={[styles.fieldError, { color: colors.statusRed }]}>
+                                {usernameError}
+                            </Text>
+                        )}
                     </View>
 
                     <View style={styles.fieldLast}>
-                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Email</Text>
-                        <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
-                            {user?.email || '—'}
+                        <View style={styles.emailLabelRow}>
+                            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Email</Text>
+                            {emailVerificationState !== null && (
+                                <View
+                                    style={[
+                                        styles.emailBadge,
+                                        {
+                                            backgroundColor: emailVerificationState
+                                                ? colors.statusGreenBg
+                                                : colors.statusOrangeBg,
+                                        },
+                                    ]}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.emailBadgeText,
+                                            {
+                                                color: emailVerificationState
+                                                    ? colors.statusGreen
+                                                    : colors.statusOrange,
+                                            },
+                                        ]}
+                                    >
+                                        {emailVerificationState ? 'Verified' : 'Unverified'}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                        <TextInput
+                            style={[
+                                styles.fieldInput,
+                                styles.readOnlyInput,
+                                {
+                                    color: colors.textSecondary,
+                                    borderColor: colors.borderPrimary,
+                                    backgroundColor: colors.bgTertiary,
+                                },
+                            ]}
+                            value={user?.email ?? ''}
+                            placeholder="No email on file"
+                            placeholderTextColor={colors.textTertiary}
+                            editable={false}
+                        />
+                        <Text style={[styles.fieldCaption, { color: colors.textTertiary }]}>
+                            To change your email, contact support.
                         </Text>
                     </View>
+
+                    {formError && (
+                        <Text style={[styles.formError, { color: colors.statusRed }]}>
+                            {formError}
+                        </Text>
+                    )}
                 </View>
 
                 {/* Account deletion card — red border signals destructive intent without alarmist copy */}
@@ -268,6 +448,7 @@ const styles = StyleSheet.create({
     },
     backButton: {
         padding: spacing.xs,
+        width: 40,
     },
     headerTitle: {
         flex: 1,
@@ -275,8 +456,20 @@ const styles = StyleSheet.create({
         fontSize: fontSize.lg,
         fontWeight: fontWeight.semibold,
     },
-    headerSpacer: {
-        width: 32,
+    saveButton: {
+        minWidth: 64,
+        height: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: borderRadius.md,
+        paddingHorizontal: spacing.md,
+    },
+    saveButtonDisabled: {
+        opacity: 0.45,
+    },
+    saveButtonText: {
+        fontSize: fontSize.sm,
+        fontWeight: fontWeight.semibold,
     },
     scrollView: {
         flex: 1,
@@ -310,7 +503,7 @@ const styles = StyleSheet.create({
         fontSize: fontSize.sm,
         fontWeight: fontWeight.medium,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 0,
         marginBottom: spacing.md,
     },
     field: {
@@ -324,8 +517,47 @@ const styles = StyleSheet.create({
         fontSize: fontSize.sm,
         marginBottom: 4,
     },
-    fieldValue: {
+    fieldInput: {
+        borderWidth: 1,
+        borderRadius: borderRadius.md,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
         fontSize: fontSize.md,
+        fontWeight: fontWeight.medium,
+        minHeight: 44,
+    },
+    readOnlyInput: {
+        opacity: 0.9,
+    },
+    fieldCaption: {
+        fontSize: fontSize.xs,
+        lineHeight: 16,
+        marginTop: spacing.xs,
+    },
+    fieldError: {
+        fontSize: fontSize.xs,
+        lineHeight: 16,
+        marginTop: spacing.xs,
+    },
+    formError: {
+        fontSize: fontSize.sm,
+        lineHeight: 18,
+        marginTop: spacing.md,
+    },
+    emailLabelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: spacing.md,
+        marginBottom: 4,
+    },
+    emailBadge: {
+        borderRadius: borderRadius.full,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 2,
+    },
+    emailBadgeText: {
+        fontSize: fontSize.xs,
         fontWeight: fontWeight.medium,
     },
     dangerDescription: {

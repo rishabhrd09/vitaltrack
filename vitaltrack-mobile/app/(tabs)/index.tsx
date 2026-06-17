@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +23,7 @@ import StatusPill from '@/components/common/StatusPill';
 import ProfileMenuSheet from '@/components/common/ProfileMenuSheet';
 import ExportModal from '@/components/common/ExportModal';
 import HelpSupportDialog from '@/components/common/HelpSupportDialog';
+import AboutCareKoshDialog from '@/components/common/AboutCareKoshDialog';
 import StatsCard from '@/components/dashboard/StatsCard';
 import NeedsAttention from '@/components/dashboard/NeedsAttention';
 import ActivityList from '@/components/dashboard/ActivityList';
@@ -42,6 +42,7 @@ export default function DashboardScreen() {
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showHelpDialog, setShowHelpDialog] = useState(false);
+  const [showAboutDialog, setShowAboutDialog] = useState(false);
 
   // Auth state
   const user = useAuthStore((state) => state.user);
@@ -294,8 +295,7 @@ export default function DashboardScreen() {
         isDarkTheme={isDarkMode}
         onThemeToggle={toggleTheme}
         onEditProfile={() => router.push('/profile')}
-        onSettings={() => Alert.alert('Settings', 'Settings screen coming soon')}
-        onAbout={() => Alert.alert('About CareKosh', 'CareKosh helps family caregivers manage critical medical supplies at home.\n\nDesigned for families caring for loved ones with ALS, MND, stroke recovery, and other conditions requiring home ICU setups.')}
+        onAbout={() => setShowAboutDialog(true)}
         onHelp={handleHelpAndSupport}
         onLogout={handleLogout}
       />
@@ -311,6 +311,12 @@ export default function DashboardScreen() {
         visible={showHelpDialog}
         onDismiss={() => setShowHelpDialog(false)}
         onRefreshFromServer={handleRefreshFromServerFromHelp}
+      />
+
+      {/* About dialog with real version/build details */}
+      <AboutCareKoshDialog
+        visible={showAboutDialog}
+        onDismiss={() => setShowAboutDialog(false)}
       />
     </SafeAreaView>
   );
@@ -391,4 +397,3 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
 });
-
