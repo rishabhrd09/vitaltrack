@@ -332,8 +332,8 @@ Production IaC: [`render.yaml`](render.yaml). The staging service is managed in 
 
 On pushes to `main`, `.github/workflows/ci.yml` reruns the backend/frontend gates and then `deploy-backend` POSTs `RENDER_DEPLOY_HOOK` when that secret is configured. Render's own GitHub auto-deploy can also rebuild services connected to `main`.
 
-- **Production:** `https://vitaltrack-api.onrender.com`
-- **Staging:** `https://vitaltrack-api-staging.onrender.com`
+- **Production:** `https://api.carekosh.com`
+- **Staging:** `https://staging-api.carekosh.com`
 
 Both run the same container; they differ only in env vars (Neon branch for `DATABASE_URL`, `FRONTEND_URL`, Brevo credentials).
 
@@ -369,7 +369,7 @@ curl http://localhost:8000/api/v1/items \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
-Replace `localhost:8000` with `https://vitaltrack-api-staging.onrender.com` or `https://vitaltrack-api.onrender.com` to hit deployed environments.
+Replace `localhost:8000` with `https://staging-api.carekosh.com` or `https://api.carekosh.com` to hit deployed environments.
 
 ---
 

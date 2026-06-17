@@ -10,7 +10,7 @@ monitors:
   - name: "carekosh-production-live"
     environment: production
     method: GET
-    url: "https://vitaltrack-api.onrender.com/live"
+    url: "https://api.carekosh.com/live"
     interval_minutes: 5
     timeout_seconds: 15
     expected_status: 200
@@ -23,7 +23,7 @@ monitors:
   - name: "carekosh-production-health"
     environment: production
     method: GET
-    url: "https://vitaltrack-api.onrender.com/health"
+    url: "https://api.carekosh.com/health"
     interval_minutes: 5
     timeout_seconds: 15
     expected_status: 200
@@ -36,7 +36,7 @@ monitors:
   - name: "carekosh-staging-live"
     environment: staging
     method: GET
-    url: "https://vitaltrack-api-staging.onrender.com/live"
+    url: "https://staging-api.carekosh.com/live"
     interval_minutes: 10
     timeout_seconds: 15
     expected_status: 200
@@ -49,7 +49,7 @@ monitors:
   - name: "carekosh-staging-health"
     environment: staging
     method: GET
-    url: "https://vitaltrack-api-staging.onrender.com/health"
+    url: "https://staging-api.carekosh.com/health"
     interval_minutes: 10
     timeout_seconds: 15
     expected_status: 200

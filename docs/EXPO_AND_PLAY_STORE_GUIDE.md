@@ -42,8 +42,8 @@ eas build:configure
 | Profile | Artifact | `EXPO_PUBLIC_API_URL` | Channel | Use |
 |---|---|---|---|---|
 | `development` | APK | `http://localhost:8000` | — | Local dev on physical device |
-| `preview` | APK | `https://vitaltrack-api-staging.onrender.com` | `preview` | PR review sideload, staging backend |
-| `production` | AAB | `https://vitaltrack-api.onrender.com` | `production` · autoIncrement | Play Store (track: `internal`) |
+| `preview` | APK | `https://staging-api.carekosh.com` | `preview` | PR review sideload, staging backend |
+| `production` | AAB | `https://api.carekosh.com` | `production` · autoIncrement | Play Store (track: `internal`) |
 
 Android cleartext traffic is disabled by default. `app.config.js` enables it
 only for the development EAS profile or an explicit local-only override. Preview

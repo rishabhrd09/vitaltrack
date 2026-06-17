@@ -220,8 +220,8 @@ Re-enabling the CI job is a one-line change (`if: false` → `if: github.ref == 
 │    Non-root user: appuser (UID 1000)                                  │
 │                                                                       │
 │  URLs                                                                 │
-│    Prod:    https://vitaltrack-api.onrender.com                       │
-│    Staging: https://vitaltrack-api-staging.onrender.com               │
+│    Prod:    https://api.carekosh.com                                  │
+│    Staging: https://staging-api.carekosh.com                          │
 │                                                                       │
 │  Env vars (set in Render dashboard):                                 │
 │    SECRET_KEY, DATABASE_URL, ENVIRONMENT, CORS_ORIGINS, FRONTEND_URL, │
@@ -242,9 +242,9 @@ Re-enabling the CI job is a one-line change (`if: false` → `if: github.ref == 
 │                                                                       │
 │  eas.json profiles:                                                   │
 │    development  APK   http://localhost:8000          for hot reload   │
-│    preview      APK   https://vitaltrack-api-staging.onrender.com     │
+│    preview      APK   https://staging-api.carekosh.com                │
 │                       channel 'preview'              beta testing     │
-│    production   AAB   https://vitaltrack-api.onrender.com             │
+│    production   AAB   https://api.carekosh.com                        │
 │                       channel 'production'           Play Store       │
 │                       autoIncrement versionCode                       │
 │                       submit track: internal                          │
@@ -321,19 +321,20 @@ Examples:
 Do not commit provider tokens, SSH keys, database URLs, or API keys. Store them
 as GitHub Actions secrets and provider-side environment variables.
 
-#### Custom-domain recommendation
+#### Custom API domains
 
-Before broad production release, prefer stable hostnames:
+Use the stable public API hostnames for mobile builds, operator smoke tests,
+and monitoring:
 
 ```text
 https://api.carekosh.com
 https://staging-api.carekosh.com
 ```
 
-Point those DNS records at Render today. If you later move to Fly.io, Railway,
-DigitalOcean, Hetzner, or Lightsail, you can repoint DNS instead of rebuilding
-every installed mobile binary. Without custom domains, changing
-`vitaltrack-api.onrender.com` requires updating `eas.json`, updating
+Those DNS records point at Render today. If you later move to Fly.io, Railway,
+DigitalOcean, Hetzner, or Lightsail, repoint DNS instead of rebuilding every
+installed mobile binary. Avoid baking provider hostnames into mobile builds; a
+public API hostname change requires updating `eas.json`, updating
 `app.config.js`, rebuilding the AAB/APK, and waiting for users to install the
 new version.
 

@@ -237,7 +237,7 @@ Set on both Render services before merging to production. Set staging first, ver
 | `ENVIRONMENT` | `staging` | `production` |
 | `SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(32))"` | Different random key |
 | `MAIL_FROM` | `noreply@carekosh.com` | `noreply@carekosh.com` |
-| `FRONTEND_URL` | `https://vitaltrack-api-staging.onrender.com/api/v1/auth` | `https://vitaltrack-api.onrender.com/api/v1/auth` |
+| `FRONTEND_URL` | `https://staging-api.carekosh.com/api/v1/auth` | `https://api.carekosh.com/api/v1/auth` |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` | `true` |
 | `MAIL_USERNAME` | legacy SMTP-era key; unused by current send path | same |
 | `MAIL_PASSWORD` | Brevo HTTP API key | same |
@@ -255,7 +255,7 @@ If Render already had `MAIL_*` vars configured and email was working — no chan
 Run after merge + Render redeploy completes:
 
 ```bash
-S=https://vitaltrack-api-staging.onrender.com/api/v1
+S=https://staging-api.carekosh.com/api/v1
 
 # 1. Health
 curl -s ${S%/api/v1}/health | jq .status

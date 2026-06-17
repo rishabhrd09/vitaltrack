@@ -133,7 +133,7 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
     <h4>How do I get a preview APK from a PR?</h4>
     <div class="a">Answer</div>
     <p>Add the label <code>build-apk</code> to the PR.</p>
-    <p>The <code>build-preview</code> job is gated on this label. Once applied, it runs <code>eas build --profile preview --platform android</code> against the PR branch. Artifact: an APK bound to the <strong>staging</strong> backend (<code>https://vitaltrack-api-staging.onrender.com</code>), because <code>EXPO_PUBLIC_API_URL</code> is baked into the binary at build time.</p>
+    <p>The <code>build-preview</code> job is gated on this label. Once applied, it runs <code>eas build --profile preview --platform android</code> against the PR branch. Artifact: an APK bound to the <strong>staging</strong> backend (<code>https://staging-api.carekosh.com</code>), because <code>EXPO_PUBLIC_API_URL</code> is baked into the binary at build time.</p>
     <div class="callout info">
       <span class="callout-label">Why label-based</span>
       <p>EAS build credits are finite. Running a build on every PR push burns them. A label makes each build an explicit reviewer decision.</p>
@@ -188,7 +188,7 @@ t+4m   production live; staging updates through its own Render auto-deploy when 
 cd vitaltrack-mobile
 npx expo-doctor                              # sanity check
 
-# Build AAB (production profile bakes in vitaltrack-api.onrender.com)
+# Build AAB (production profile bakes in api.carekosh.com)
 eas build --profile production --platform android
 
 # Upload to Play Console internal track
@@ -211,7 +211,7 @@ eas submit --profile production --platform android</code></pre>
       <tbody>
         <tr><td><code>ENVIRONMENT</code></td><td><code>staging</code></td><td><code>production</code></td></tr>
         <tr><td><code>DATABASE_URL</code></td><td>Neon branch <code>vitaltrack_staging</code></td><td>Neon branch <code>neondb</code></td></tr>
-        <tr><td><code>FRONTEND_URL</code></td><td><code>https://vitaltrack-api-staging.onrender.com/api/v1/auth</code></td><td><code>https://vitaltrack-api.onrender.com/api/v1/auth</code> today; custom domain can replace it later</td></tr>
+        <tr><td><code>FRONTEND_URL</code></td><td><code>https://staging-api.carekosh.com/api/v1/auth</code></td><td><code>https://api.carekosh.com/api/v1/auth</code></td></tr>
         <tr><td><code>CORS_ORIGINS</code></td><td><code>["*"]</code> is acceptable for mobile-only staging</td><td><code>["*"]</code> today per <code>render.yaml</code>; tighten when real browser/admin origins exist</td></tr>
         <tr><td><code>REQUIRE_EMAIL_VERIFICATION</code></td><td><code>true</code></td><td><code>true</code></td></tr>
         <tr><td><code>MAIL_PASSWORD</code></td><td>Brevo staging key</td><td>Brevo production key</td></tr>
@@ -229,13 +229,13 @@ eas submit --profile production --platform android</code></pre>
     <div class="q">Question 8</div>
     <h4>Which backend does a given APK talk to?</h4>
     <div class="a">Answer — whichever URL was baked in at build time</div>
-    <p><code>EXPO_PUBLIC_API_URL</code> is a compile-time constant. Once an APK/AAB is built, its backend is fixed — changing a Render URL later won't redirect existing installs.</p>
+    <p><code>EXPO_PUBLIC_API_URL</code> is a compile-time constant. Once an APK/AAB is built, its backend is fixed — changing the API URL later won't redirect existing installs.</p>
     <table>
       <thead><tr><th>EAS profile</th><th>Artifact</th><th>Points at</th></tr></thead>
       <tbody>
         <tr><td><code>development</code></td><td>APK</td><td><code>http://localhost:8000</code></td></tr>
-        <tr><td><code>preview</code></td><td>APK</td><td><code>https://vitaltrack-api-staging.onrender.com</code></td></tr>
-        <tr><td><code>production</code></td><td>AAB (Play Store internal)</td><td><code>https://vitaltrack-api.onrender.com</code></td></tr>
+        <tr><td><code>preview</code></td><td>APK</td><td><code>https://staging-api.carekosh.com</code></td></tr>
+        <tr><td><code>production</code></td><td>AAB (Play Store internal)</td><td><code>https://api.carekosh.com</code></td></tr>
       </tbody>
     </table>
     <div class="callout danger">
@@ -287,7 +287,7 @@ eas submit --profile production --platform android</code></pre>
     <div class="a">Answer — yes, but plan the public URL</div>
     <p>The backend is portable because <code>vitaltrack-backend/Dockerfile</code>, <code>docker-entrypoint.sh</code>, Alembic, and <code>app/core/config.py</code> already define a Docker + env-var runtime. Render paid is the smallest cold-start fix; Fly.io, Railway, DigitalOcean, Hetzner, AWS Lightsail, or another Docker-capable VPS/managed host can also work. A MacBook/home server is fine for demos, not Play Store production.</p>
     <p>The mobile app bakes <code>EXPO_PUBLIC_API_URL</code> at build time and <code>app.config.js</code> guards the current Render URLs. If the public API hostname changes, update <code>eas.json</code>, <code>app.config.js</code>, and the <code>start:staging</code>/<code>start:prod</code> scripts in <code>package.json</code>, then rebuild affected APK/AAB artifacts.</p>
-    <p>Best long-term move: put <code>api.carekosh.com</code> and <code>staging-api.carekosh.com</code> in front of the backend before broad release. Then a future platform move can be DNS-only for installed apps.</p>
+    <p>Current shape: <code>api.carekosh.com</code> and <code>staging-api.carekosh.com</code> sit in front of the backend, so a future platform move can usually be DNS-only for installed apps.</p>
   </div>
 
   <!-- Q11 -->
@@ -309,8 +309,8 @@ eas submit --profile production --platform android</code></pre>
     <div class="a">Answer — the E2E verification guide</div>
     <p>Short version:</p>
     <pre><code># 1. Health
-curl https://vitaltrack-api-staging.onrender.com/health
-curl https://vitaltrack-api.onrender.com/health
+curl https://staging-api.carekosh.com/health
+curl https://api.carekosh.com/health
 # expected: {"status":"healthy"}
 
 # 2. Recent deploy check (in Render dashboard)

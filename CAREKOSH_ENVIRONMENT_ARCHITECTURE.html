@@ -88,7 +88,7 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
     <div class="env-card stg">
       <h3>Staging</h3>
       <dl>
-        <dt>Backend</dt><dd>vitaltrack-api-staging.onrender.com</dd>
+        <dt>Backend</dt><dd>staging-api.carekosh.com</dd>
         <dt>Database</dt><dd>Neon branch: vitaltrack_staging (Singapore)</dd>
         <dt>Email</dt><dd>Brevo HTTP API (staging key)</dd>
         <dt>Mobile</dt><dd>EAS preview APK (sideload)</dd>
@@ -99,7 +99,7 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
     <div class="env-card prd">
       <h3>Production</h3>
       <dl>
-        <dt>Backend</dt><dd>vitaltrack-api.onrender.com</dd>
+        <dt>Backend</dt><dd>api.carekosh.com</dd>
         <dt>Database</dt><dd>Neon branch: neondb (Singapore)</dd>
         <dt>Email</dt><dd>Brevo HTTP API (production key)</dd>
         <dt>Mobile</dt><dd>EAS production AAB (Play Store internal)</dd>
@@ -125,8 +125,8 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 │                                                                     │
 │  STAGING                                                            │
 │    ┌────────────────┐      ┌──────────────────────────────┐       │
-│    │ Preview APK    │ ───► │ vitaltrack-api-staging       │       │
-│    │ (EAS preview)  │      │ .onrender.com                │       │
+│    │ Preview APK    │ ───► │ staging-api.carekosh.com     │       │
+│    │ (EAS preview)  │      │ custom domain                │       │
 │    └────────────────┘      │ ENVIRONMENT=staging          │       │
 │                            └──────┬───────────────────────┘       │
 │                                   ▼                                │
@@ -139,8 +139,8 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 │                                                                     │
 │  PRODUCTION                                                         │
 │    ┌────────────────┐      ┌──────────────────────────────┐       │
-│    │ Production AAB │ ───► │ vitaltrack-api               │       │
-│    │ (Play Store)   │      │ .onrender.com                │       │
+│    │ Production AAB │ ───► │ api.carekosh.com             │       │
+│    │ (Play Store)   │      │ custom domain                │       │
 │    └────────────────┘      │ ENVIRONMENT=production       │       │
 │                            └──────┬───────────────────────┘       │
 │                                   ▼                                │
@@ -169,7 +169,7 @@ Code flows: git push main → GitHub Actions → optional Render deploy hook for
       <tr><td><code>DATABASE_URL</code></td><td>local docker</td><td>Neon <code>vitaltrack_staging</code></td><td>Neon <code>neondb</code></td></tr>
       <tr><td><code>SECRET_KEY</code></td><td>any 32+ char</td><td>distinct 32+</td><td>distinct 32+ (validator rejects "CHANGE-THIS")</td></tr>
       <tr><td><code>CORS_ORIGINS</code></td><td><code>*</code></td><td><code>*</code> is acceptable for mobile-only staging</td><td><code>render.yaml</code> currently ships <code>*</code> as a default. There is a <code>parse_cors_origins</code> validator in <code>config.py</code> but no production wildcard rejector — tighten this when real browser/admin origins exist.</td></tr>
-      <tr><td><code>FRONTEND_URL</code></td><td>empty</td><td><code>https://vitaltrack-api-staging.onrender.com/api/v1/auth</code></td><td><code>https://vitaltrack-api.onrender.com/api/v1/auth</code> today; validator requires non-empty in prod</td></tr>
+      <tr><td><code>FRONTEND_URL</code></td><td>empty</td><td><code>https://staging-api.carekosh.com/api/v1/auth</code></td><td><code>https://api.carekosh.com/api/v1/auth</code> today; validator requires non-empty in prod</td></tr>
       <tr><td><code>MAIL_SERVER</code></td><td><code>sandbox.smtp.mailtrap.io</code></td><td>legacy SMTP-era key; unused by current Brevo HTTP send path</td><td>legacy SMTP-era key; unused by current Brevo HTTP send path</td></tr>
       <tr><td><code>MAIL_USERNAME</code></td><td>legacy SMTP username</td><td>legacy SMTP username; unused by current send path</td><td>legacy SMTP username; unused by current send path</td></tr>
       <tr><td><code>MAIL_PASSWORD</code></td><td>empty unless testing Brevo API</td><td>Brevo HTTP API key</td><td>Brevo HTTP API key</td></tr>
@@ -193,8 +193,8 @@ Code flows: git push main → GitHub Actions → optional Render deploy hook for
     <thead><tr><th>EAS profile</th><th>Artifact</th><th><code>EXPO_PUBLIC_API_URL</code></th><th>Channel</th></tr></thead>
     <tbody>
       <tr><td><code>development</code></td><td>APK</td><td><code>http://localhost:8000</code></td><td>—</td></tr>
-      <tr><td><code>preview</code></td><td>APK</td><td><code>https://vitaltrack-api-staging.onrender.com</code></td><td><code>preview</code></td></tr>
-      <tr><td><code>production</code></td><td>AAB</td><td><code>https://vitaltrack-api.onrender.com</code></td><td><code>production</code></td></tr>
+      <tr><td><code>preview</code></td><td>APK</td><td><code>https://staging-api.carekosh.com</code></td><td><code>preview</code></td></tr>
+      <tr><td><code>production</code></td><td>AAB</td><td><code>https://api.carekosh.com</code></td><td><code>production</code></td></tr>
     </tbody>
   </table>
 </div>

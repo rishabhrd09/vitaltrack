@@ -12,8 +12,8 @@ semantics, auth design, inventory/order semantics, or Goal 10 operations work.
 | Build profile | API URL | Cleartext HTTP |
 |---|---|---|
 | `development` | `http://localhost:8000` | Allowed for local development builds only |
-| `preview` | `https://vitaltrack-api-staging.onrender.com` | Disabled |
-| `production` | `https://vitaltrack-api.onrender.com` | Disabled |
+| `preview` | `https://staging-api.carekosh.com` | Disabled |
+| `production` | `https://api.carekosh.com` | Disabled |
 
 `vitaltrack-mobile/app.json` defaults `android.usesCleartextTraffic` to `false`.
 `vitaltrack-mobile/app.config.js` turns it on only for the `development` EAS
@@ -23,7 +23,7 @@ and production profiles fail config generation if pointed at the wrong HTTPS
 backend.
 
 Production `EXPO_PUBLIC_API_URL` remains
-`https://vitaltrack-api.onrender.com`.
+`https://api.carekosh.com`.
 
 ## Android Permissions
 

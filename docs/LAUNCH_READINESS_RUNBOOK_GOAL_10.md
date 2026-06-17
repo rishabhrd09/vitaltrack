@@ -17,8 +17,8 @@ mobile UI, EAS API targets, or backend runtime behavior.
 - Backend liveness endpoint: `GET /live`, process-only, no database probe.
 - Backend readiness endpoint: `GET /health`, runs a database `SELECT 1` probe
   with a 2 second timeout and returns `503` when the DB probe fails.
-- Preview APK target remains `https://vitaltrack-api-staging.onrender.com`.
-- Production AAB target remains `https://vitaltrack-api.onrender.com`.
+- Preview APK target remains `https://staging-api.carekosh.com`.
+- Production AAB target remains `https://api.carekosh.com`.
 - Production AAB automation is still disabled in `.github/workflows/ci.yml`
   with `if: false`; production AABs are manual until the Play track is ready.
 
@@ -222,7 +222,7 @@ hidden `?host=ep-prod-real&dbname=neondb`). The script now:
 - Add the `build-apk` PR label only when a real device preview APK is needed.
 - Confirm preview APK was built with profile `preview`.
 - Confirm preview APK target is staging:
-  `https://vitaltrack-api-staging.onrender.com`.
+  `https://staging-api.carekosh.com`.
 - Install on a real Android device.
 - Smoke:
   - App launches.
@@ -243,7 +243,7 @@ hidden `?host=ep-prod-real&dbname=neondb`). The script now:
   ```
 
 - Confirm production AAB target is production:
-  `https://vitaltrack-api.onrender.com`.
+  `https://api.carekosh.com`.
 - Confirm Android App Bundle upload is used for Play release.
 - Confirm version code increments.
 - Confirm Play App Signing is configured.

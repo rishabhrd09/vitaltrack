@@ -143,7 +143,7 @@ An attacker cannot probe which emails are registered by reading the response bod
 | `MAIL_STARTTLS` | Legacy SMTP toggle | `true` | unused by current Brevo HTTP API path |
 | `MAIL_SSL_TLS` | Implicit TLS (mutually exclusive) | `false` | `false` |
 | `REQUIRE_EMAIL_VERIFICATION` | Block unverified login | `false` (optional in dev) | `true` |
-| `FRONTEND_URL` | Base for email links | `http://<host-IP>:8000/api/v1/auth` | `https://vitaltrack-api.onrender.com/api/v1/auth` |
+| `FRONTEND_URL` | Base for email links | `http://<host-IP>:8000/api/v1/auth` | `https://api.carekosh.com/api/v1/auth` |
 
 **`MAIL_FROM` default** is `noreply@carekosh.com` in `app/core/config.py` (set by PR #12). If the env var is present it overrides the default.
 
@@ -286,7 +286,7 @@ MAIL_STARTTLS=true
 MAIL_SSL_TLS=false
 
 REQUIRE_EMAIL_VERIFICATION=true
-FRONTEND_URL=https://vitaltrack-api.onrender.com/api/v1/auth
+FRONTEND_URL=https://api.carekosh.com/api/v1/auth
 
 CORS_ORIGINS=["*"]   # actual current value in render.yaml — not enforced as
                      # "must be domain-list" by any validator. Tighten only
@@ -300,7 +300,7 @@ The production config validators (PR #12) will **refuse to start** if `SECRET_KE
 | Setting | Dev | Production |
 |---|---|---|
 | `MAIL_FROM` | verified personal sender | `noreply@carekosh.com` |
-| `FRONTEND_URL` | `http://<IP>:8000/api/v1/auth` | `https://vitaltrack-api.onrender.com/api/v1/auth` |
+| `FRONTEND_URL` | `http://<IP>:8000/api/v1/auth` | `https://api.carekosh.com/api/v1/auth` |
 | `DEBUG` | `true` | `false` |
 | `SECRET_KEY` | any dev value | strong, not `CHANGE-THIS*` |
 | `CORS_ORIGINS` | local origins or wildcard | currently wildcard; replace only after real production browser/admin origins are known |
@@ -459,7 +459,7 @@ curl -X POST http://localhost:8000/api/v1/auth/resend-verification \
 [ ] SECRET_KEY is strong random (not CHANGE-THIS...)
 [ ] ENVIRONMENT=production
 [ ] CORS_ORIGINS reviewed (currently `["*"]` — tighten to specific domains if you intend to expose the API to a browser frontend; not enforced by validator)
-[ ] FRONTEND_URL set to https://vitaltrack-api.onrender.com/api/v1/auth
+[ ] FRONTEND_URL set to https://api.carekosh.com/api/v1/auth
 [ ] Smoke test: register new email → receive mail → verify → login works
 [ ] Smoke test: resend-verification returns identical text for real & fake emails
 ```

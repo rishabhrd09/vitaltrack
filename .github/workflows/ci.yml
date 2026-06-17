@@ -281,7 +281,7 @@ jobs:
           echo "🚀 Backend deployment on Render"
           echo "Platform: Render (free tier)"
           echo "Database: Neon PostgreSQL (free tier)"
-          echo "URL: https://vitaltrack-api.onrender.com"
+          echo "URL: https://api.carekosh.com"
 
   # =============================================================================
   # BUILD MOBILE PREVIEW (Only when 'build-apk' label is added to PR)
@@ -348,7 +348,7 @@ jobs:
                 '',
                 '| Detail | Value |',
                 '|--------|-------|',
-                '| **Backend** | `vitaltrack-api-staging.onrender.com` (staging) |',
+                '| **Backend** | `staging-api.carekosh.com` (staging) |',
                 '| **Database** | `vitaltrack_staging` (test data only) |',
                 '| **Download** | Check [EAS Builds Dashboard](https://expo.dev) |',
                 '',

@@ -180,8 +180,8 @@ Restart Expo with `--clear` after changing `.env`.
 | Profile | `EXPO_PUBLIC_API_URL` | Channel | Artifact |
 |---|---|---|---|
 | `development` | `http://localhost:8000` | — | APK |
-| `preview` | `https://vitaltrack-api-staging.onrender.com` | `preview` | APK |
-| `production` | `https://vitaltrack-api.onrender.com` | `production` | AAB (Play Store `internal` track) |
+| `preview` | `https://staging-api.carekosh.com` | `preview` | APK |
+| `production` | `https://api.carekosh.com` | `production` | AAB (Play Store `internal` track) |
 
 ---
 
