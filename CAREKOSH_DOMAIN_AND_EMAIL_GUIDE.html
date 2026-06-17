@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CareKosh — Domain &amp; Email Setup: The Complete Field Guide</title>
+<style>
+  :root{
+    --bg:#f3e8d3; --surface:#fbf5e9; --card:#fdf9f0; --card2:#f7eedc;
+    --ink:#3a2e23; --ink-soft:#6b5a48; --ink-faint:#8c7a64; --head:#2b2117;
+    --teal:#1d8f6b; --teal-bg:#e0f0e8; --terra:#b8623a; --terra-bg:#f3e0d5;
+    --gold:#a9842c; --gold-bg:#f5ead0; --blue:#587f9d; --blue-bg:#dfe9f1;
+    --line:#e2d4ba; --line-strong:#d3bf9c; --code-bg:#2f2820; --code-ink:#ece0cc;
+    --shadow:0 1px 0 #efe4cf, 0 2px 14px rgba(90,66,40,.07);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    font-size:18px; line-height:1.72; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:0 22px}
+  header.masthead{
+    background:linear-gradient(180deg,#efe1c6,#f3e8d3);
+    border-bottom:2px solid var(--line-strong); padding:54px 0 34px;
+  }
+  header.masthead .kicker{font-size:14px; letter-spacing:.22em; text-transform:uppercase; color:var(--terra); margin:0 0 10px}
+  header.masthead h1{font-size:40px; line-height:1.12; margin:0 0 12px; color:var(--head); font-weight:700; letter-spacing:-.01em}
+  header.masthead p.sub{font-size:19px; color:var(--ink-soft); margin:0; max-width:42em}
+  header.masthead .meta{margin-top:18px; font-size:14px; color:var(--ink-faint); font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+  h2{font-size:28px; color:var(--head); margin:54px 0 6px; letter-spacing:-.01em; font-weight:700}
+  h2 .num{color:var(--terra); font-size:18px; vertical-align:middle; margin-right:10px; font-family:ui-monospace,monospace}
+  h3{font-size:21px; color:var(--head); margin:30px 0 4px; font-weight:700}
+  h4{font-size:17px; color:var(--terra); margin:22px 0 2px; letter-spacing:.02em; text-transform:uppercase; font-family:ui-monospace,monospace}
+  .rule{height:2px;background:var(--line-strong);border:0;margin:8px 0 0}
+  p{margin:12px 0}
+  a{color:var(--teal); text-decoration:none; border-bottom:1px solid rgba(29,143,107,.35)}
+  a:hover{border-bottom-color:var(--teal)}
+  strong{color:var(--head)}
+  code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:.86em; background:var(--card2); color:#7a4f24; padding:2px 6px; border-radius:5px; border:1px solid var(--line)}
+  pre{background:var(--code-bg); color:var(--code-ink); padding:16px 18px; border-radius:10px; overflow:auto; font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:14.5px; line-height:1.6; border:1px solid #1d1814; box-shadow:var(--shadow)}
+  pre code{background:none;border:0;color:inherit;padding:0;font-size:inherit}
+
+  .lead{font-size:20px;color:var(--ink-soft)}
+  .toc{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 24px; margin:26px 0; box-shadow:var(--shadow)}
+  .toc h4{margin-top:0}
+  .toc ol{margin:6px 0 0; padding-left:22px}
+  .toc li{margin:5px 0}
+  .toc a{border:0;color:var(--ink)}
+  .toc a:hover{color:var(--teal)}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 22px; margin:20px 0; box-shadow:var(--shadow)}
+  .callout{border-left:5px solid var(--gold); background:var(--gold-bg); border-radius:0 10px 10px 0; padding:14px 20px; margin:20px 0}
+  .callout.tip{border-left-color:var(--teal); background:var(--teal-bg)}
+  .callout.warn{border-left-color:var(--terra); background:var(--terra-bg)}
+  .callout p{margin:6px 0}
+  .callout .tag{display:inline-block;font-family:ui-monospace,monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin-bottom:4px}
+  .callout.tip .tag{color:var(--teal)} .callout.warn .tag{color:var(--terra)} .callout .tag{color:var(--gold)}
+
+  figure.shot{margin:22px 0; text-align:center}
+  figure.shot img{max-width:100%; border:1px solid var(--line-strong); border-radius:10px; box-shadow:var(--shadow); background:#fff}
+  .ph{display:none; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+      border:2px dashed var(--line-strong); border-radius:10px; background:var(--card2);
+      padding:34px 20px; color:var(--ink-faint)}
+  .ph .ph-tag{font-family:ui-monospace,monospace; font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--terra)}
+  .ph code{background:#fff}
+  .ph .ph-desc{font-style:italic; max-width:34em}
+  figcaption{font-size:14.5px; color:var(--ink-faint); margin-top:9px; font-style:italic}
+
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:15px; background:var(--card); border-radius:10px; overflow:hidden; box-shadow:var(--shadow)}
+  th,td{border:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{background:var(--card2); color:var(--head); font-family:ui-monospace,monospace; font-size:12.5px; letter-spacing:.04em; text-transform:uppercase}
+  td code{font-size:.84em}
+  tr:nth-child(even) td{background:#fcf7ec}
+
+  .mailcard{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:14px; background:#fff; border:1px solid var(--line-strong); border-radius:10px; box-shadow:var(--shadow); overflow:hidden; margin:18px 0}
+  .mailcard .mc-h{background:var(--card2); padding:8px 14px; border-bottom:1px solid var(--line); font-weight:700; color:var(--head)}
+  .mailcard .mc-row{display:flex; gap:10px; padding:5px 14px}
+  .mailcard .mc-row .k{color:var(--ink-faint); min-width:88px; text-align:right}
+  .mailcard .mc-row .v{color:var(--ink)}
+  .ok{color:var(--teal); font-weight:700}
+  .bad{color:var(--terra); font-weight:700}
+
+  .diagram{margin:24px 0; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; box-shadow:var(--shadow)}
+  .diagram svg{display:block; width:100%; height:auto}
+  .dcap{font-size:14.5px;color:var(--ink-faint);font-style:italic;margin:10px 4px 2px;text-align:center}
+
+  .steps{counter-reset:s; list-style:none; padding:0; margin:16px 0}
+  .steps>li{counter-increment:s; position:relative; padding:10px 0 10px 48px; border-bottom:1px solid var(--line)}
+  .steps>li:last-child{border-bottom:0}
+  .steps>li::before{content:counter(s); position:absolute; left:0; top:9px; width:32px; height:32px; border-radius:50%; background:var(--teal); color:#fff; font-family:ui-monospace,monospace; font-weight:700; display:flex; align-items:center; justify-content:center; font-size:15px}
+  .steps.terra>li::before{background:var(--terra)}
+  .steps.gold>li::before{background:var(--gold)}
+
+  .pillrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .pill{font-family:ui-monospace,monospace;font-size:12.5px;padding:4px 11px;border-radius:20px;border:1px solid var(--line-strong);background:var(--card2);color:var(--ink-soft)}
+  .pill.teal{background:var(--teal-bg);color:#155b45;border-color:#bfe0d2}
+  .pill.terra{background:var(--terra-bg);color:#8a3f1f;border-color:#e7c9b8}
+  .pill.blue{background:var(--blue-bg);color:#3a5b74;border-color:#c6d6e2}
+
+  footer{margin:70px 0 40px; padding-top:20px; border-top:2px solid var(--line-strong); color:var(--ink-faint); font-size:14px}
+  @media (max-width:640px){
+    body{font-size:17px} header.masthead h1{font-size:30px}
+    .mailcard .mc-row{flex-direction:column;gap:0} .mailcard .mc-row .k{text-align:left}
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="kicker">CareKosh / VitalTrack · Infrastructure Field Guide</p>
+    <h1>Custom Domain &amp; Email, End to End</h1>
+    <p class="sub">How <code>carekosh.com</code> was wired across Cloudflare, Render, GitHub, Brevo and our own codebase — and exactly what happens, request by request, when a user verifies their email, resets a password, or writes to support.</p>
+    <p class="meta">Production API: https://api.carekosh.com · Staging: https://staging-api.carekosh.com · No secrets printed</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <p class="lead">This is a textbook, not a checklist. It explains the <em>why</em> and the <em>mechanics</em> behind every setting we changed, so anyone on the team can reason about the system rather than just copy buttons. Read it top to bottom once; after that it is a reference.</p>
+
+  <div class="callout tip">
+    <span class="tag">How to add your screenshots</span>
+    <p>This guide references the screenshots captured during setup. Create a folder named <code>domain-email-img/</code> next to this HTML file and drop the images in using the filenames shown in each grey placeholder (e.g. <code>brevo-04-authenticated.png</code>). Until you do, you'll see a labelled placeholder describing what belongs there — the guide reads correctly either way.</p>
+  </div>
+
+  <div class="toc">
+    <h4>Contents</h4>
+    <ol>
+      <li><a href="#bigpicture">The big picture — every platform on one map</a></li>
+      <li><a href="#domain">The custom domain — why we own carekosh.com</a></li>
+      <li><a href="#dns">DNS — how a name becomes a server</a></li>
+      <li><a href="#render">Render + GitHub — how code becomes a running backend</a></li>
+      <li><a href="#mobile">The mobile app — how it knows which backend to call</a></li>
+      <li><a href="#request">Request journey — what happens when a button is tapped</a></li>
+      <li><a href="#email-send">Email sending — Brevo &amp; the noreply@ address</a></li>
+      <li><a href="#email-receive">Email receiving — Cloudflare &amp; the support@ address</a></li>
+      <li><a href="#flow-support">Flow: a user emails support@carekosh.com</a></li>
+      <li><a href="#flow-forgot">Flow: forgot password, start to finish</a></li>
+      <li><a href="#flow-verify">Flow: registration &amp; email verification</a></li>
+      <li><a href="#records">The complete DNS records reference</a></li>
+      <li><a href="#verify">How to verify everything yourself</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </div>
+
+  <!-- ============================================================= -->
+  <h2 id="bigpicture"><span class="num">01</span>The big picture</h2>
+  <hr class="rule">
+  <p>CareKosh is a mobile app (React Native / Expo) talking to a Python backend (FastAPI) on a database (Neon PostgreSQL). Five independent services each own one job. The art is in how they connect.</p>
+
+  <div class="pillrow">
+    <span class="pill blue">Cloudflare — owns the domain &amp; DNS, receives support mail</span>
+    <span class="pill teal">Render — runs the backend container</span>
+    <span class="pill">Neon — the PostgreSQL database</span>
+    <span class="pill terra">Brevo — sends transactional email</span>
+    <span class="pill">GitHub — source of truth + CI/CD</span>
+  </div>
+
+  <div class="diagram">
+  <svg viewBox="0 0 920 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Master architecture of CareKosh across Cloudflare, Render, Neon, Brevo and GitHub">
+    <defs>
+      <marker id="a1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8a7a66"/></marker>
+    </defs>
+    <!-- lanes -->
+    <text x="20" y="28" font-family="monospace" font-size="13" fill="#b8623a" letter-spacing="2">RUN TIME — a user using the app</text>
+    <!-- phone -->
+    <rect x="20" y="44" width="150" height="80" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="95" y="78" text-anchor="middle" font-size="15" font-weight="700" fill="#2b2117">Mobile app</text>
+    <text x="95" y="98" text-anchor="middle" font-size="12" fill="#6b5a48">Expo / React Native</text>
+    <text x="95" y="113" text-anchor="middle" font-size="11" fill="#8c7a64">URL baked at build</text>
+    <!-- arrow -->
+    <line x1="170" y1="84" x2="232" y2="84" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)"/>
+    <text x="201" y="76" text-anchor="middle" font-size="10.5" fill="#8c7a64">HTTPS</text>
+    <!-- cloudflare edge -->
+    <rect x="234" y="44" width="160" height="80" rx="10" fill="#dfe9f1" stroke="#587f9d"/>
+    <text x="314" y="74" text-anchor="middle" font-size="14" font-weight="700" fill="#274055">api.carekosh.com</text>
+    <text x="314" y="93" text-anchor="middle" font-size="12" fill="#3a5b74">Cloudflare DNS + edge</text>
+    <text x="314" y="108" text-anchor="middle" font-size="11" fill="#587f9d">CNAME → Render</text>
+    <line x1="394" y1="84" x2="456" y2="84" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)"/>
+    <!-- render -->
+    <rect x="458" y="44" width="170" height="80" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
+    <text x="543" y="72" text-anchor="middle" font-size="14" font-weight="700" fill="#155b45">Render</text>
+    <text x="543" y="91" text-anchor="middle" font-size="12" fill="#1d8f6b">vitaltrack-api (Docker)</text>
+    <text x="543" y="106" text-anchor="middle" font-size="11" fill="#2f7a60">FastAPI · TLS</text>
+    <line x1="628" y1="84" x2="690" y2="84" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)"/>
+    <!-- neon -->
+    <rect x="692" y="44" width="150" height="80" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="767" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#2b2117">Neon</text>
+    <text x="767" y="98" text-anchor="middle" font-size="12" fill="#6b5a48">PostgreSQL</text>
+    <text x="767" y="113" text-anchor="middle" font-size="11" fill="#8c7a64">asyncpg · SSL</text>
+
+    <!-- BUILD/DEPLOY lane -->
+    <text x="20" y="190" font-family="monospace" font-size="13" fill="#b8623a" letter-spacing="2">BUILD TIME — shipping new code</text>
+    <rect x="20" y="206" width="170" height="76" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="105" y="238" text-anchor="middle" font-size="14" font-weight="700" fill="#2b2117">GitHub</text>
+    <text x="105" y="257" text-anchor="middle" font-size="12" fill="#6b5a48">repo + GitHub Actions</text>
+    <text x="105" y="272" text-anchor="middle" font-size="11" fill="#8c7a64">branch: main</text>
+    <line x1="190" y1="232" x2="252" y2="232" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)"/>
+    <text x="221" y="224" text-anchor="middle" font-size="10.5" fill="#8c7a64">push</text>
+    <rect x="254" y="206" width="180" height="76" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
+    <text x="344" y="234" text-anchor="middle" font-size="13.5" font-weight="700" fill="#155b45">Render auto-deploy</text>
+    <text x="344" y="252" text-anchor="middle" font-size="11.5" fill="#1d8f6b">builds image, rolls out</text>
+    <text x="344" y="267" text-anchor="middle" font-size="11" fill="#2f7a60">+ RENDER_DEPLOY_HOOK</text>
+    <line x1="344" y1="206" x2="344" y2="130" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)" stroke-dasharray="4 3"/>
+    <text x="360" y="170" font-size="10.5" fill="#8c7a64">updates the running service ↑</text>
+
+    <rect x="470" y="206" width="180" height="76" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="560" y="234" text-anchor="middle" font-size="13.5" font-weight="700" fill="#2b2117">EAS Build (Expo)</text>
+    <text x="560" y="252" text-anchor="middle" font-size="11.5" fill="#6b5a48">bakes EXPO_PUBLIC_API_URL</text>
+    <text x="560" y="267" text-anchor="middle" font-size="11" fill="#8c7a64">+ EXPO_TOKEN</text>
+    <line x1="434" y1="244" x2="468" y2="244" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)"/>
+    <line x1="560" y1="206" x2="200" y2="124" stroke="#8a7a66" stroke-width="1.4" marker-end="url(#a1)" stroke-dasharray="4 3"/>
+    <text x="430" y="160" font-size="10.5" fill="#8c7a64">produces the app binary ↖</text>
+
+    <!-- EMAIL lane -->
+    <text x="20" y="350" font-family="monospace" font-size="13" fill="#b8623a" letter-spacing="2">EMAIL — two directions, two services</text>
+    <!-- send -->
+    <rect x="20" y="368" width="170" height="78" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
+    <text x="105" y="396" text-anchor="middle" font-size="13.5" font-weight="700" fill="#155b45">Backend → Brevo</text>
+    <text x="105" y="415" text-anchor="middle" font-size="11.5" fill="#1d8f6b">SEND (transactional)</text>
+    <text x="105" y="430" text-anchor="middle" font-size="11" fill="#2f7a60">from noreply@carekosh.com</text>
+    <line x1="190" y1="407" x2="252" y2="407" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)"/>
+    <rect x="254" y="368" width="150" height="78" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="329" y="402" text-anchor="middle" font-size="13.5" font-weight="700" fill="#2b2117">User's inbox</text>
+    <text x="329" y="421" text-anchor="middle" font-size="11.5" fill="#6b5a48">verify / reset links</text>
+    <!-- receive -->
+    <rect x="470" y="368" width="160" height="78" rx="10" fill="#f3e0d5" stroke="#b8623a"/>
+    <text x="550" y="396" text-anchor="middle" font-size="13" font-weight="700" fill="#8a3f1f">support@carekosh.com</text>
+    <text x="550" y="415" text-anchor="middle" font-size="11.5" fill="#b8623a">RECEIVE (Cloudflare)</text>
+    <text x="550" y="430" text-anchor="middle" font-size="11" fill="#a85a36">MX → Email Routing</text>
+    <line x1="630" y1="407" x2="692" y2="407" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)"/>
+    <rect x="694" y="368" width="148" height="78" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="768" y="402" text-anchor="middle" font-size="13.5" font-weight="700" fill="#2b2117">Your Gmail</text>
+    <text x="768" y="421" text-anchor="middle" font-size="11.5" fill="#6b5a48">forwarded here</text>
+
+    <text x="20" y="498" font-size="12.5" fill="#8c7a64" font-style="italic">Sending (Brevo) and receiving (Cloudflare) are completely separate systems that merely share the carekosh.com name.</text>
+    <text x="20" y="520" font-size="12.5" fill="#8c7a64" font-style="italic">Secrets (DB URL, API keys, tokens) live only in Render / GitHub / Brevo dashboards — never in the repo.</text>
+  </svg>
+  <p class="dcap">Figure 1 — The whole system. Four boxes across the top are a single user request; the lanes below are deployment and email.</p>
+  </div>
+
+  <!-- ============================================================= -->
+  <h2 id="domain"><span class="num">02</span>The custom domain — why we own carekosh.com</h2>
+  <hr class="rule">
+  <p>Before this work, the app called Render's own hostnames: <code>vitaltrack-api.onrender.com</code> (prod) and <code>vitaltrack-api-staging.onrender.com</code> (staging). That works, but it permanently chains us to one hosting provider: the URL is baked into every shipped app binary, so moving hosts later would force an app update for every user.</p>
+  <p>The fix is to call <strong>a name we own</strong>. We registered <code>carekosh.com</code> on <strong>Cloudflare Registrar</strong> (at-cost pricing, free DNS) and pointed two subdomains at Render:</p>
+
+  <table>
+    <tr><th>Environment</th><th>Public hostname (what the app calls)</th><th>Points at (Render service)</th></tr>
+    <tr><td>Production</td><td><code>api.carekosh.com</code></td><td><code>vitaltrack-api.onrender.com</code></td></tr>
+    <tr><td>Staging</td><td><code>staging-api.carekosh.com</code></td><td><code>vitaltrack-api-staging.onrender.com</code></td></tr>
+  </table>
+
+  <p>Now portability comes from three things we control: we <em>own the domain</em>, we <em>control DNS</em>, and the app <em>calls our domain</em> instead of a provider URL. If we ever leave Render, we change one CNAME — no app update required.</p>
+
+  <figure class="shot">
+    <img src="domain-email-img/cloudflare-00-domain.png" alt="carekosh.com registered on Cloudflare" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-00-domain.png</code><span class="ph-desc">carekosh.com registered &amp; active in the Cloudflare dashboard</span></div>
+    <figcaption>Figure 2 — The domain, owned and managed in Cloudflare.</figcaption>
+  </figure>
+
+  <h3>What changed in the codebase</h3>
+  <p>On branch <code>config/use-carekosh-custom-domains</code>, the old onrender URLs were swapped for the carekosh domains everywhere they are <em>baked or defaulted</em>:</p>
+  <table>
+    <tr><th>File</th><th>What changed</th><th>Why it matters</th></tr>
+    <tr><td><code>vitaltrack-mobile/eas.json</code></td><td>preview → <code>staging-api.carekosh.com</code>; production → <code>api.carekosh.com</code></td><td>Decides which backend is baked into each app build</td></tr>
+    <tr><td><code>vitaltrack-mobile/app.config.js</code></td><td>Guard constants set to the new domains; throws if a build's URL doesn't match</td><td>Makes it impossible to ship a prod build pointed at staging</td></tr>
+    <tr><td><code>vitaltrack-mobile/package.json</code></td><td><code>start:prod</code> / <code>start:staging</code> use the new domains</td><td>Local dev hits the same public hostnames</td></tr>
+    <tr><td><code>vitaltrack-backend/render.yaml</code></td><td><code>FRONTEND_URL=https://api.carekosh.com/api/v1/auth</code></td><td>The base URL for links inside emails</td></tr>
+    <tr><td><code>scripts/smoke_api.py</code>, <code>cold_start_load_smoke.py</code></td><td>Default targets + production-host guard (keeps onrender as a transition host)</td><td>Ops checks hit the real public hostnames</td></tr>
+  </table>
+  <div class="callout"><span class="tag">Note</span><p><code>services/api.ts</code> and the login screen did <em>not</em> need changes — they already read the URL from the environment. They inherit the new domain automatically.</p></div>
+
+  <!-- ============================================================= -->
+  <h2 id="dns"><span class="num">03</span>DNS — how a name becomes a server</h2>
+  <hr class="rule">
+  <p>DNS is the phone book of the internet. When anything needs to reach <code>api.carekosh.com</code>, it asks DNS "what is this name?" and gets back where to go. We use three record types in this project:</p>
+  <ul>
+    <li><strong>CNAME</strong> — "this name is an alias for that name." <code>api.carekosh.com</code> is a CNAME to <code>vitaltrack-api.onrender.com</code>, so traffic ends up at Render.</li>
+    <li><strong>TXT</strong> — free-text records used for <em>proof</em> and <em>email policy</em> (domain ownership, SPF, DMARC, DKIM keys).</li>
+    <li><strong>MX</strong> — "mail for this domain goes to these servers." Ours point at Cloudflare so support mail can be received.</li>
+  </ul>
+  <p>Because Cloudflare is both our registrar and DNS host, every record lives in one place: Cloudflare → carekosh.com → DNS. The full list, with the live values we verified, is in <a href="#records">section 12</a>.</p>
+
+  <div class="diagram">
+  <svg viewBox="0 0 900 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DNS resolution of api.carekosh.com to Render">
+    <defs><marker id="a2" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8a7a66"/></marker></defs>
+    <rect x="20" y="70" width="170" height="76" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="105" y="102" text-anchor="middle" font-size="14" font-weight="700" fill="#2b2117">App / browser</text>
+    <text x="105" y="121" text-anchor="middle" font-size="11.5" fill="#6b5a48">"reach api.carekosh.com"</text>
+    <line x1="190" y1="108" x2="252" y2="108" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a2)"/>
+    <rect x="254" y="70" width="180" height="76" rx="10" fill="#dfe9f1" stroke="#587f9d"/>
+    <text x="344" y="98" text-anchor="middle" font-size="14" font-weight="700" fill="#274055">Cloudflare DNS</text>
+    <text x="344" y="117" text-anchor="middle" font-size="11.5" fill="#3a5b74">CNAME api → onrender</text>
+    <text x="344" y="133" text-anchor="middle" font-size="11" fill="#587f9d">answers with Render's address</text>
+    <line x1="434" y1="108" x2="496" y2="108" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a2)"/>
+    <rect x="498" y="70" width="180" height="76" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
+    <text x="588" y="98" text-anchor="middle" font-size="14" font-weight="700" fill="#155b45">Render</text>
+    <text x="588" y="117" text-anchor="middle" font-size="11.5" fill="#1d8f6b">matches Host header</text>
+    <text x="588" y="133" text-anchor="middle" font-size="11" fill="#2f7a60">serves TLS + the app</text>
+    <line x1="678" y1="108" x2="740" y2="108" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a2)"/>
+    <rect x="742" y="70" width="138" height="76" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="811" y="102" text-anchor="middle" font-size="13.5" font-weight="700" fill="#2b2117">FastAPI</text>
+    <text x="811" y="121" text-anchor="middle" font-size="11.5" fill="#6b5a48">handles the request</text>
+  </svg>
+  <p class="dcap">Figure 3 — Name → address → server. Render uses the incoming <code>Host: api.carekosh.com</code> header to pick the right service and serve its TLS certificate.</p>
+  </div>
+
+  <!-- ============================================================= -->
+  <h2 id="render"><span class="num">04</span>Render + GitHub — how code becomes a running backend</h2>
+  <hr class="rule">
+  <p>The backend is defined as code in <code>render.yaml</code> (Infrastructure as Code). It declares a Docker web service named <code>vitaltrack-api</code>, region Singapore, health check at <code>/live</code>, and a set of environment variables. Secrets are marked <code>sync:false</code> (set in the dashboard, never in git); <code>SECRET_KEY</code> is auto-generated.</p>
+  <pre><code>services:
+  - type: web
+    name: vitaltrack-api
+    runtime: docker
+    branch: main
+    healthCheckPath: /live
+    envVars:
+      - key: DATABASE_URL      # sync:false — set in dashboard (a secret)
+      - key: MAIL_PASSWORD     # sync:false — Brevo API key (a secret)
+      - key: MAIL_FROM         # sync:false — noreply@carekosh.com
+      - key: FRONTEND_URL
+        value: https://api.carekosh.com/api/v1/auth</code></pre>
+
+  <h3>How GitHub and Render connect</h3>
+  <p>Render is linked to the GitHub repo. <strong>When <code>main</code> changes, Render automatically rebuilds and redeploys</strong> — no extra step. Our CI pipeline (<code>.github/workflows/ci.yml</code>) <em>also</em> calls a Render deploy hook as an explicit backup trigger. Neither decides which backend the app talks to; that is fixed at app build time (section 5).</p>
+
+  <h3>The two GitHub secrets</h3>
+  <p>The repository has exactly two Actions secrets, and that is correct and complete — they are the only two referenced anywhere in the workflow.</p>
+  <table>
+    <tr><th>Secret</th><th>Used by</th><th>What it does</th><th>Required?</th></tr>
+    <tr><td><code>EXPO_TOKEN</code></td><td>EAS Build (Expo cloud)</td><td>Lets GitHub authenticate to Expo non-interactively and queue an APK/AAB build</td><td>Yes, for any CI build</td></tr>
+    <tr><td><code>RENDER_DEPLOY_HOOK</code></td><td>Render API</td><td>A private URL that triggers a redeploy on push to main</td><td>No — Render also auto-deploys; this is a backup</td></tr>
+  </table>
+  <p>Backend runtime secrets (<code>DATABASE_URL</code>, <code>MAIL_PASSWORD</code>, <code>SECRET_KEY</code>) correctly live in <em>Render</em>, not GitHub. The two systems each hold only what they need.</p>
+
+  <figure class="shot">
+    <img src="domain-email-img/github-01-secrets.png" alt="GitHub repository secrets" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/github-01-secrets.png</code><span class="ph-desc">GitHub → Settings → Secrets and variables → Actions, showing EXPO_TOKEN and RENDER_DEPLOY_HOOK</span></div>
+    <figcaption>Figure 4 — The two repository secrets.</figcaption>
+  </figure>
+
+  <div class="diagram">
+  <svg viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CI/CD deploy flow">
+    <defs><marker id="a3" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8a7a66"/></marker></defs>
+    <rect x="14" y="62" width="150" height="72" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="89" y="92" text-anchor="middle" font-size="13.5" font-weight="700" fill="#2b2117">Pull request</text>
+    <text x="89" y="111" text-anchor="middle" font-size="11" fill="#6b5a48">tests run (CI)</text>
+    <line x1="164" y1="98" x2="214" y2="98" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a3)"/>
+    <rect x="216" y="62" width="150" height="72" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="291" y="92" text-anchor="middle" font-size="13.5" font-weight="700" fill="#2b2117">Merge to main</text>
+    <text x="291" y="111" text-anchor="middle" font-size="11" fill="#6b5a48">push event</text>
+    <line x1="366" y1="98" x2="416" y2="98" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a3)"/>
+    <rect x="418" y="62" width="180" height="72" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
+    <text x="508" y="88" text-anchor="middle" font-size="13" font-weight="700" fill="#155b45">Render builds image</text>
+    <text x="508" y="106" text-anchor="middle" font-size="11" fill="#1d8f6b">auto-deploy + deploy hook</text>
+    <text x="508" y="121" text-anchor="middle" font-size="10.5" fill="#2f7a60">healthcheck /live</text>
+    <line x1="598" y1="98" x2="648" y2="98" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a3)"/>
+    <rect x="650" y="62" width="170" height="72" rx="10" fill="#dfe9f1" stroke="#587f9d"/>
+    <text x="735" y="92" text-anchor="middle" font-size="13" font-weight="700" fill="#274055">Live at</text>
+    <text x="735" y="111" text-anchor="middle" font-size="11.5" fill="#3a5b74">api.carekosh.com</text>
+  </svg>
+  <p class="dcap">Figure 5 — From pull request to live backend. The app binary is built separately by EAS and is unaffected by backend deploys.</p>
+  </div>
+
+  <!-- ============================================================= -->
+  <h2 id="mobile"><span class="num">05</span>The mobile app — how it knows which backend to call</h2>
+  <hr class="rule">
+  <p>The app does <strong>not</strong> ask anyone at runtime which backend to use. The URL is <em>baked into the binary at build time</em> through the variable <code>EXPO_PUBLIC_API_URL</code>. Expo inlines that value into the JavaScript bundle, and <code>services/api.ts</code> reads it:</p>
+  <pre><code>// services/api.ts
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+const API_VERSION  = '/api/v1';   // every API call is `${API_BASE_URL}${API_VERSION}/...`</code></pre>
+  <p>Which value gets baked depends on the EAS build profile in <code>eas.json</code>:</p>
+  <table>
+    <tr><th>Build profile</th><th>EXPO_PUBLIC_API_URL baked in</th><th>Result</th></tr>
+    <tr><td><code>preview</code> (APK)</td><td><code>https://staging-api.carekosh.com</code></td><td>Testers hit staging + the staging database</td></tr>
+    <tr><td><code>production</code> (AAB)</td><td><code>https://api.carekosh.com</code></td><td>Play Store users hit production</td></tr>
+  </table>
+  <div class="callout warn"><span class="tag">Critical consequence</span><p>Because the URL is baked in, a build pointed at the wrong backend can't be fixed without rebuilding. That's why <code>app.config.js</code> contains <em>throw-guards</em>: if a production build's URL isn't exactly the production domain, the build fails on purpose. After this change, the next production AAB must be rebuilt for users to hit <code>api.carekosh.com</code>.</p></div>
+
+  <!-- ============================================================= -->
+  <h2 id="request"><span class="num">06</span>Request journey — what happens when a button is tapped</h2>
+  <hr class="rule">
+  <p>Putting sections 3–5 together, here is the life of a single tap — say, loading the inventory list:</p>
+  <ol class="steps">
+    <li>The user taps a button. The app builds a URL: <code>https://api.carekosh.com/api/v1/items</code> (base from the baked <code>EXPO_PUBLIC_API_URL</code>, plus <code>/api/v1</code>).</li>
+    <li>The phone resolves <code>api.carekosh.com</code> via DNS → Cloudflare answers with the CNAME chain to Render.</li>
+    <li>The request travels over HTTPS to Render. Render reads the <code>Host: api.carekosh.com</code> header, matches it to the <code>vitaltrack-api</code> custom domain, and terminates TLS with the certificate Render issued for that domain.</li>
+    <li>FastAPI handles the route, checks the auth token, and queries Neon PostgreSQL (asyncpg, SSL via connect args).</li>
+    <li>Neon returns rows → FastAPI serializes JSON → the response travels back the same path to the app, which renders the list.</li>
+  </ol>
+  <p>Cross-origin requests are allowed by the backend's <code>CORS_ORIGINS</code> setting. Health is monitored at <code>/live</code> (process-only) and <code>/health</code> (database-backed).</p>
+
+  <!-- ============================================================= -->
+  <h2 id="email-send"><span class="num">07</span>Email sending — Brevo &amp; the noreply@ address</h2>
+  <hr class="rule">
+  <p>All transactional email (verification, password reset, deletion) is sent by the backend through <strong>Brevo</strong>'s HTTP API. Brevo is a <em>sending</em> service only — it never receives mail for us.</p>
+  <pre><code># app/utils/email.py  (simplified)
+url = "https://api.brevo.com/v3/smtp/email"
+headers = {"api-key": settings.mail_password_value}      # the Brevo key (a Render secret)
+payload = {
+    "sender":  {"name": "CareKosh", "email": settings.MAIL_FROM},   # noreply@carekosh.com
+    "to":      [{"email": to_email, "name": to_name}],
+    "subject": subject,
+    "htmlContent": html_content,                           # contains the FRONTEND_URL link
+}</code></pre>
+
+  <h3>The problem we fixed: emails came from a Brevo domain</h3>
+  <p>Before authentication, Brevo had to send from its own shared domain, so the <code>from:</code> showed <code>...@brevosend.com</code> with our Gmail as reply-to. Unbranded, and weaker for deliverability.</p>
+
+  <div class="mailcard">
+    <div class="mc-h">Before — unauthenticated</div>
+    <div class="mc-row"><span class="k">from:</span><span class="v">CareKosh &lt;rishabhdongre.rd@<span class="bad">10570297.brevosend.com</span>&gt;</span></div>
+    <div class="mc-row"><span class="k">reply-to:</span><span class="v">CareKosh &lt;rishabhdongre.rd@gmail.com&gt;</span></div>
+    <div class="mc-row"><span class="k">signed by:</span><span class="v"><span class="bad">10570297.brevosend.com</span></span></div>
+  </div>
+  <figure class="shot">
+    <img src="domain-email-img/email-01-before-brevosend.png" alt="Email header before authentication" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/email-01-before-brevosend.png</code><span class="ph-desc">The original account-deletion email — from brevosend.com</span></div>
+    <figcaption>Figure 6 — Before: the sender was a Brevo domain.</figcaption>
+  </figure>
+
+  <h3>The fix: authenticate carekosh.com in Brevo</h3>
+  <p>Brevo's "Authenticate automatically" option connected to Cloudflare and wrote four DNS records: a verification <code>brevo-code</code> TXT, two DKIM <code>CNAME</code>s, and a <code>DMARC</code> TXT. DKIM is the key one — it lets Brevo cryptographically sign as <code>carekosh.com</code>.</p>
+
+  <figure class="shot">
+    <img src="domain-email-img/brevo-02-authorize-records.png" alt="Brevo authorize DNS records" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/brevo-02-authorize-records.png</code><span class="ph-desc">Brevo's "Authorize DNS records" — brevo-code, two DKIM CNAMEs, DMARC</span></div>
+    <figcaption>Figure 7 — The records Brevo added to Cloudflare automatically.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="domain-email-img/brevo-04-authenticated.png" alt="Brevo domain authenticated" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/brevo-04-authenticated.png</code><span class="ph-desc">carekosh.com showing the green "Authenticated" status in Brevo</span></div>
+    <figcaption>Figure 8 — Domain authenticated. Sending from any @carekosh.com address is now unlocked.</figcaption>
+  </figure>
+
+  <p>Then we set <code>MAIL_FROM=noreply@carekosh.com</code> in Render. The result, confirmed in a real reset email:</p>
+  <div class="mailcard">
+    <div class="mc-h">After — authenticated</div>
+    <div class="mc-row"><span class="k">from:</span><span class="v">CareKosh &lt;noreply@<span class="ok">carekosh.com</span>&gt;</span></div>
+    <div class="mc-row"><span class="k">signed by:</span><span class="v"><span class="ok">carekosh.com</span></span></div>
+    <div class="mc-row"><span class="k">reply-to:</span><span class="v">(none — no personal address leaks)</span></div>
+    <div class="mc-row"><span class="k">mailed-by:</span><span class="v">gy.d.sender-sib.com <span style="color:var(--ink-faint)">(Brevo's plumbing — normal, harmless)</span></span></div>
+  </div>
+  <figure class="shot">
+    <img src="domain-email-img/email-02-after-noreply.png" alt="Email header after authentication" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/email-02-after-noreply.png</code><span class="ph-desc">"Reset your CareKosh password" — now from noreply@carekosh.com, signed by carekosh.com</span></div>
+    <figcaption>Figure 9 — After: branded sender, DKIM-signed by our own domain, no reply-to leak.</figcaption>
+  </figure>
+
+  <!-- ============================================================= -->
+  <h2 id="email-receive"><span class="num">08</span>Email receiving — Cloudflare &amp; the support@ address</h2>
+  <hr class="rule">
+  <p>Brevo cannot give us an inbox. To <em>receive</em> mail at <code>support@carekosh.com</code> we use <strong>Cloudflare Email Routing</strong>, which is <em>forwarding</em>, not a mailbox: it catches mail for the address and forwards it to an existing Gmail. There is no new login — support mail simply arrives in the normal Gmail inbox.</p>
+  <p>Enabling it added the MX records (so the world knows where carekosh.com mail goes), an SPF TXT, and Cloudflare's own DKIM. We created one rule — <code>support@carekosh.com → your Gmail</code> — and locked the records to protect them.</p>
+
+  <figure class="shot">
+    <img src="domain-email-img/cloudflare-03-rules-list.png" alt="Cloudflare routing rules" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-03-rules-list.png</code><span class="ph-desc">Routing rules — support@carekosh.com forwarding to Gmail, status Active</span></div>
+    <figcaption>Figure 10 — The forwarding rule, Active.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="domain-email-img/cloudflare-06-activity-log.png" alt="Cloudflare email routing activity log" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-06-activity-log.png</code><span class="ph-desc">Activity Log — test emails to support@ marked "Forwarded"</span></div>
+    <figcaption>Figure 11 — Proof it works: incoming test mail shows "Forwarded" in the Activity Log.</figcaption>
+  </figure>
+
+  <div class="callout"><span class="tag">Two addresses, two jobs</span>
+    <p><code>noreply@carekosh.com</code> = <strong>outgoing</strong>, via Brevo. <code>support@carekosh.com</code> = <strong>incoming</strong>, via Cloudflare → Gmail. They share only the domain name. The app never sends from <code>support@</code>; nothing ever receives at <code>noreply@</code> (replies to it simply bounce, which is exactly how a no-reply address should behave).</p>
+  </div>
+
+  <!-- ============================================================= -->
+  <h2 id="flow-support"><span class="num">09</span>Flow: a user emails support@carekosh.com</h2>
+  <hr class="rule">
+  <div class="diagram">
+  <svg viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Support email forwarding flow">
+    <defs><marker id="a4" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8a7a66"/></marker></defs>
+    <rect x="10" y="64" width="150" height="72" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="85" y="94" text-anchor="middle" font-size="13" font-weight="700" fill="#2b2117">Anyone</text>
+    <text x="85" y="113" text-anchor="middle" font-size="11" fill="#6b5a48">emails support@</text>
+    <line x1="160" y1="100" x2="206" y2="100" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a4)"/>
+    <rect x="208" y="64" width="160" height="72" rx="10" fill="#dfe9f1" stroke="#587f9d"/>
+    <text x="288" y="90" text-anchor="middle" font-size="12.5" font-weight="700" fill="#274055">DNS MX lookup</text>
+    <text x="288" y="108" text-anchor="middle" font-size="11" fill="#3a5b74">route1/2/3.mx.</text>
+    <text x="288" y="123" text-anchor="middle" font-size="11" fill="#587f9d">cloudflare.net</text>
+    <line x1="368" y1="100" x2="414" y2="100" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a4)"/>
+    <rect x="416" y="64" width="170" height="72" rx="10" fill="#f3e0d5" stroke="#b8623a"/>
+    <text x="501" y="90" text-anchor="middle" font-size="12.5" font-weight="700" fill="#8a3f1f">Cloudflare routing</text>
+    <text x="501" y="108" text-anchor="middle" font-size="11" fill="#b8623a">matches rule support@</text>
+    <text x="501" y="123" text-anchor="middle" font-size="11" fill="#a85a36">action: forward</text>
+    <line x1="586" y1="100" x2="632" y2="100" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a4)"/>
+    <rect x="634" y="64" width="150" height="72" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="709" y="94" text-anchor="middle" font-size="13" font-weight="700" fill="#2b2117">Your Gmail</text>
+    <text x="709" y="113" text-anchor="middle" font-size="11" fill="#6b5a48">arrives in inbox</text>
+  </svg>
+  <p class="dcap">Figure 12 — Receiving is forwarding. Brevo, Render and our backend are not involved at all.</p>
+  </div>
+  <ol class="steps terra">
+    <li>Someone composes an email to <code>support@carekosh.com</code> and hits send.</li>
+    <li>Their mail server asks DNS for the <strong>MX</strong> records of carekosh.com and gets back Cloudflare's three mail servers.</li>
+    <li>The message is delivered to Cloudflare Email Routing.</li>
+    <li>Cloudflare matches the active rule for <code>support@</code> and <strong>forwards</strong> the message to the configured Gmail.</li>
+    <li>It lands in the normal Gmail inbox. The Activity Log records it as "Forwarded."</li>
+  </ol>
+  <div class="callout tip"><span class="tag">Gmail quirk</span><p>If you test by sending <em>from the same Gmail</em> it forwards to, Gmail may hide the looped-back copy as a duplicate. Test from a different account, or trust the Activity Log's "Forwarded" status.</p></div>
+
+  <!-- ============================================================= -->
+  <h2 id="flow-forgot"><span class="num">10</span>Flow: forgot password, start to finish</h2>
+  <hr class="rule">
+  <div class="diagram">
+  <svg viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Forgot password end to end flow">
+    <defs><marker id="a5" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8a7a66"/></marker></defs>
+    <!-- row 1 -->
+    <rect x="12" y="20" width="150" height="66" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="87" y="48" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2b2117">App: forgot pw</text>
+    <text x="87" y="66" text-anchor="middle" font-size="10.5" fill="#6b5a48">POST /forgot-password</text>
+    <line x1="162" y1="53" x2="206" y2="53" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a5)"/>
+    <rect x="208" y="20" width="168" height="66" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
+    <text x="292" y="44" text-anchor="middle" font-size="12.5" font-weight="700" fill="#155b45">Backend (Render)</text>
+    <text x="292" y="61" text-anchor="middle" font-size="10.5" fill="#1d8f6b">make + hash reset token</text>
+    <text x="292" y="76" text-anchor="middle" font-size="10" fill="#2f7a60">store hash, 1h expiry</text>
+    <line x1="376" y1="53" x2="420" y2="53" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a5)"/>
+    <rect x="422" y="20" width="150" height="66" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
+    <text x="497" y="44" text-anchor="middle" font-size="12.5" font-weight="700" fill="#155b45">Brevo API</text>
+    <text x="497" y="61" text-anchor="middle" font-size="10.5" fill="#1d8f6b">send reset email</text>
+    <text x="497" y="76" text-anchor="middle" font-size="10" fill="#2f7a60">from noreply@</text>
+    <line x1="572" y1="53" x2="616" y2="53" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a5)"/>
+    <rect x="618" y="20" width="150" height="66" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="693" y="48" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2b2117">User inbox</text>
+    <text x="693" y="66" text-anchor="middle" font-size="10.5" fill="#6b5a48">gets the link</text>
+    <!-- down arrow -->
+    <line x1="693" y1="86" x2="693" y2="128" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a5)"/>
+    <!-- row 2 (reversed) -->
+    <rect x="618" y="130" width="150" height="66" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="693" y="154" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2b2117">Taps link</text>
+    <text x="693" y="171" text-anchor="middle" font-size="10.5" fill="#6b5a48">GET /reset-password</text>
+    <text x="693" y="186" text-anchor="middle" font-size="10" fill="#8c7a64">?token=…</text>
+    <line x1="618" y1="163" x2="574" y2="163" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a5)"/>
+    <rect x="422" y="130" width="150" height="66" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
+    <text x="497" y="154" text-anchor="middle" font-size="12.5" font-weight="700" fill="#155b45">Backend HTML</text>
+    <text x="497" y="171" text-anchor="middle" font-size="10.5" fill="#1d8f6b">serves reset form</text>
+    <line x1="422" y1="163" x2="378" y2="163" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a5)"/>
+    <rect x="226" y="130" width="150" height="66" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="301" y="154" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2b2117">User submits</text>
+    <text x="301" y="171" text-anchor="middle" font-size="10.5" fill="#6b5a48">POST /reset-password</text>
+    <text x="301" y="186" text-anchor="middle" font-size="10" fill="#8c7a64">token + new password</text>
+    <line x1="226" y1="163" x2="182" y2="163" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a5)"/>
+    <rect x="12" y="130" width="168" height="66" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
+    <text x="96" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#155b45">Backend verifies</text>
+    <text x="96" y="166" text-anchor="middle" font-size="10" fill="#1d8f6b">hash match + not expired</text>
+    <text x="96" y="180" text-anchor="middle" font-size="10" fill="#2f7a60">re-hash pw, revoke tokens</text>
+    <!-- down to done -->
+    <line x1="96" y1="196" x2="96" y2="236" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a5)"/>
+    <rect x="12" y="238" width="320" height="58" rx="10" fill="#f3e0d5" stroke="#b8623a"/>
+    <text x="172" y="263" text-anchor="middle" font-size="12.5" font-weight="700" fill="#8a3f1f">Password changed → "password changed" email sent</text>
+    <text x="172" y="281" text-anchor="middle" font-size="10.5" fill="#a85a36">all other sessions are logged out</text>
+  </svg>
+  <p class="dcap">Figure 13 — Forgot-password is a round trip: app → backend → Brevo → user, then user → backend to actually change the password.</p>
+  </div>
+  <ol class="steps">
+    <li>In the app, the user requests a reset. The app calls <code>POST https://api.carekosh.com/api/v1/auth/forgot-password</code> with their email.</li>
+    <li>The backend finds the active user, generates a random token, stores only its <strong>SHA-256 hash</strong> with a <strong>1-hour expiry</strong> (the raw token is never stored), and returns a generic success either way to prevent account-enumeration. Rate limited to 3/hour.</li>
+    <li>It calls Brevo to send the reset email. The link is <code>{FRONTEND_URL}/reset-password?token=…</code> → <code>https://api.carekosh.com/api/v1/auth/reset-password?token=…</code>. The email arrives from <code>noreply@carekosh.com</code>, DKIM-signed.</li>
+    <li>The user taps the link. The backend serves an HTML reset form (this is why <code>FRONTEND_URL</code> points at the backend, not a separate website).</li>
+    <li>The user submits a new password. The backend re-hashes the submitted token, checks it matches and hasn't expired, enforces password strength, stores the new hash, <strong>revokes all refresh tokens</strong> (other devices are logged out), and sends a "password changed" notice. Rate limited to 5/hour.</li>
+  </ol>
+
+  <!-- ============================================================= -->
+  <h2 id="flow-verify"><span class="num">11</span>Flow: registration &amp; email verification</h2>
+  <hr class="rule">
+  <div class="diagram">
+  <svg viewBox="0 0 900 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Registration and email verification flow">
+    <defs><marker id="a6" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8a7a66"/></marker></defs>
+    <rect x="12" y="24" width="150" height="70" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="87" y="52" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2b2117">App: register</text>
+    <text x="87" y="70" text-anchor="middle" font-size="10.5" fill="#6b5a48">POST /register</text>
+    <text x="87" y="85" text-anchor="middle" font-size="10" fill="#8c7a64">no auto-login</text>
+    <line x1="162" y1="59" x2="206" y2="59" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a6)"/>
+    <rect x="208" y="24" width="172" height="70" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
+    <text x="294" y="48" text-anchor="middle" font-size="12.5" font-weight="700" fill="#155b45">Backend</text>
+    <text x="294" y="65" text-anchor="middle" font-size="10.5" fill="#1d8f6b">hash pw; make verify token</text>
+    <text x="294" y="80" text-anchor="middle" font-size="10" fill="#2f7a60">is_email_verified = false, 24h</text>
+    <line x1="380" y1="59" x2="424" y2="59" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a6)"/>
+    <rect x="426" y="24" width="150" height="70" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
+    <text x="501" y="52" text-anchor="middle" font-size="12.5" font-weight="700" fill="#155b45">Brevo</text>
+    <text x="501" y="70" text-anchor="middle" font-size="10.5" fill="#1d8f6b">verify email sent</text>
+    <text x="501" y="85" text-anchor="middle" font-size="10" fill="#2f7a60">from noreply@</text>
+    <line x1="576" y1="59" x2="620" y2="59" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a6)"/>
+    <rect x="622" y="24" width="160" height="70" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
+    <text x="702" y="48" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2b2117">User taps "Verify"</text>
+    <text x="702" y="66" text-anchor="middle" font-size="10.5" fill="#6b5a48">GET /verify-email</text>
+    <text x="702" y="81" text-anchor="middle" font-size="10" fill="#8c7a64">?token=…</text>
+    <line x1="702" y1="94" x2="702" y2="132" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a6)"/>
+    <rect x="500" y="134" width="282" height="62" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
+    <text x="641" y="159" text-anchor="middle" font-size="12" font-weight="700" fill="#155b45">Backend: hash match → is_email_verified = true</text>
+    <text x="641" y="177" text-anchor="middle" font-size="10.5" fill="#2f7a60">clears token, returns HTML success page</text>
+    <line x1="500" y1="165" x2="392" y2="165" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a6)"/>
+    <rect x="222" y="134" width="170" height="62" rx="10" fill="#f3e0d5" stroke="#b8623a"/>
+    <text x="307" y="159" text-anchor="middle" font-size="12" font-weight="700" fill="#8a3f1f">User logs in</text>
+    <text x="307" y="177" text-anchor="middle" font-size="10.5" fill="#a85a36">now allowed → tokens issued</text>
+  </svg>
+  <p class="dcap">Figure 14 — Registration intentionally does not log the user in; access is gated until the email is verified.</p>
+  </div>
+  <ol class="steps gold">
+    <li>The user registers. The app calls <code>POST /api/v1/auth/register</code>. The backend hashes the password (Argon2, bcrypt fallback), creates the user with <code>is_email_verified = false</code>, generates a verification token (stored as a SHA-256 hash, 24-hour expiry), and sends the verification email via Brevo. The link is <code>{FRONTEND_URL}/verify-email?token=…</code>.</li>
+    <li>The app deliberately does <strong>not</strong> log the user in — it routes to a "verify your email" screen.</li>
+    <li>The user opens the email (from <code>noreply@carekosh.com</code>) and taps Verify. The backend hashes the token, checks the match and expiry, sets <code>is_email_verified = true</code>, clears the token, and returns an HTML success page.</li>
+    <li>The user returns to the app and logs in. With <code>REQUIRE_EMAIL_VERIFICATION</code> on, login is blocked until verified; once verified, login succeeds and access + refresh tokens are issued.</li>
+  </ol>
+
+  <!-- ============================================================= -->
+  <h2 id="records"><span class="num">12</span>The complete DNS records reference</h2>
+  <hr class="rule">
+  <p>Every record currently published on carekosh.com, grouped by purpose. These values were verified live against Cloudflare's public resolver.</p>
+
+  <h4>Routing — app traffic</h4>
+  <table>
+    <tr><th>Type</th><th>Name</th><th>Value</th><th>Purpose</th></tr>
+    <tr><td>CNAME</td><td><code>api</code></td><td><code>vitaltrack-api.onrender.com</code></td><td>Production API → Render</td></tr>
+    <tr><td>CNAME</td><td><code>staging-api</code></td><td><code>vitaltrack-api-staging.onrender.com</code></td><td>Staging API → Render</td></tr>
+  </table>
+
+  <h4>Sending — Brevo authentication</h4>
+  <table>
+    <tr><th>Type</th><th>Name</th><th>Value</th><th>Purpose</th></tr>
+    <tr><td>TXT</td><td><code>@</code></td><td><code>brevo-code:c60b9f58…861aa</code></td><td>Proves domain ownership to Brevo</td></tr>
+    <tr><td>CNAME</td><td><code>brevo1._domainkey</code></td><td><code>b1.carekosh-com.dkim.brevo.com</code></td><td>DKIM key 1 (signs outgoing mail)</td></tr>
+    <tr><td>CNAME</td><td><code>brevo2._domainkey</code></td><td><code>b2.carekosh-com.dkim.brevo.com</code></td><td>DKIM key 2</td></tr>
+    <tr><td>TXT</td><td><code>_dmarc</code></td><td><code>v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com</code></td><td>DMARC policy (monitor mode)</td></tr>
+  </table>
+
+  <h4>Receiving — Cloudflare Email Routing</h4>
+  <table>
+    <tr><th>Type</th><th>Name</th><th>Value (priority)</th><th>Purpose</th></tr>
+    <tr><td>MX</td><td><code>@</code></td><td><code>route1.mx.cloudflare.net</code> (42)</td><td>Inbound mail → Cloudflare</td></tr>
+    <tr><td>MX</td><td><code>@</code></td><td><code>route2.mx.cloudflare.net</code> (19)</td><td>Inbound mail → Cloudflare</td></tr>
+    <tr><td>MX</td><td><code>@</code></td><td><code>route3.mx.cloudflare.net</code> (70)</td><td>Inbound mail → Cloudflare</td></tr>
+    <tr><td>TXT</td><td><code>@</code></td><td><code>v=spf1 include:_spf.mx.cloudflare.net ~all</code></td><td>SPF (the single SPF record)</td></tr>
+    <tr><td>TXT</td><td><code>cf2024-1._domainkey</code></td><td><code>v=DKIM1; …</code></td><td>Cloudflare's routing DKIM</td></tr>
+  </table>
+  <div class="callout"><span class="tag">On SPF &amp; DKIM</span><p>There is exactly <strong>one</strong> SPF record (Cloudflare's) — no merge was needed because Brevo authenticates via <em>DKIM</em>, not SPF. Brevo's mail still passes DMARC because its DKIM signature aligns to carekosh.com. Two different DKIM setups (Brevo's for sending, Cloudflare's for routing) coexist without conflict.</p></div>
+
+  <!-- ============================================================= -->
+  <h2 id="verify"><span class="num">13</span>How to verify everything yourself</h2>
+  <hr class="rule">
+  <p>Trust, but verify. The dashboard can lag; public DNS is the ground truth. These read-only commands confirm the live state:</p>
+  <pre><code># Sending side — Brevo auth
+dig +short CNAME brevo1._domainkey.carekosh.com @1.1.1.1
+dig +short TXT   _dmarc.carekosh.com            @1.1.1.1
+
+# Receiving side — Cloudflare routing
+dig +short MX  carekosh.com  @1.1.1.1        # expect route1/2/3.mx.cloudflare.net
+dig +short TXT carekosh.com  @1.1.1.1        # expect the v=spf1 … line
+
+# Routing side — app domains
+dig +short api.carekosh.com         @1.1.1.1 # expect the Render chain
+dig +short staging-api.carekosh.com @1.1.1.1</code></pre>
+  <p>End-to-end manual tests:</p>
+  <ul>
+    <li><strong>Sending:</strong> trigger a forgot-password and confirm the email reads <code>from: noreply@carekosh.com</code> and <code>signed by: carekosh.com</code>.</li>
+    <li><strong>Receiving:</strong> email <code>support@carekosh.com</code> <em>from a different account</em> and confirm it lands in Gmail (and shows "Forwarded" in Cloudflare's Activity Log).</li>
+  </ul>
+  <div class="callout warn"><span class="tag">Still to confirm</span><p>Set <code>MAIL_FROM=noreply@carekosh.com</code> on the <strong>production</strong> Render service (not only staging) and run one production forgot-password test, so production mail is branded too.</p></div>
+
+  <!-- ============================================================= -->
+  <h2 id="glossary"><span class="num">14</span>Glossary</h2>
+  <hr class="rule">
+  <table>
+    <tr><th>Term</th><th>Plain meaning</th></tr>
+    <tr><td><strong>DNS</strong></td><td>The internet's phone book — turns names into server addresses.</td></tr>
+    <tr><td><strong>CNAME</strong></td><td>An alias: "this name is really that name." Used to point our subdomains at Render.</td></tr>
+    <tr><td><strong>MX</strong></td><td>"Mail for this domain goes here." Ours point at Cloudflare.</td></tr>
+    <tr><td><strong>TXT</strong></td><td>Free-text DNS record used for proof and email policy.</td></tr>
+    <tr><td><strong>SPF</strong></td><td>Lists who is allowed to send mail for the domain. One record only.</td></tr>
+    <tr><td><strong>DKIM</strong></td><td>A cryptographic signature proving an email really came from the domain.</td></tr>
+    <tr><td><strong>DMARC</strong></td><td>Policy telling receivers what to do if SPF/DKIM fail. Ours is <code>p=none</code> (monitor).</td></tr>
+    <tr><td><strong>TLS</strong></td><td>The encryption behind HTTPS. Render issues the certificate for our custom domain.</td></tr>
+    <tr><td><strong>FRONTEND_URL</strong></td><td>The base address used inside email links — points at the backend's own HTML pages.</td></tr>
+    <tr><td><strong>EXPO_PUBLIC_API_URL</strong></td><td>The backend URL baked into the app at build time.</td></tr>
+    <tr><td><strong>Email Routing</strong></td><td>Cloudflare's free forwarding — receives mail and forwards it to a real inbox.</td></tr>
+  </table>
+
+  <footer>
+    <p>CareKosh / VitalTrack — Domain &amp; Email Field Guide. Generated from the project's setup history; all DNS values verified live. Secrets are referenced by name only and never printed. To embed the screenshots, drop them into <code>domain-email-img/</code> using the filenames shown in each placeholder.</p>
+  </footer>
+
+</div>
+</body>
+</html>
