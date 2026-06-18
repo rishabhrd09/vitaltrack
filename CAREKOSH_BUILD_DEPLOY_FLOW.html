@@ -156,7 +156,7 @@ t+2m   backend/frontend gates pass on main; advisory mypy reports separately
 t+2m   deploy-backend POSTs Render hook if configured
 t+2.5m Render pulls image for the service being deployed
 t+3m   docker-entrypoint.sh: waits for DB, runs alembic upgrade head
-t+4m   Gunicorn replaces old workers; health check passes
+t+4m   Gunicorn replaces old workers; Render /live check passes
 t+4m   production live; staging updates through its own Render auto-deploy when its service rebuilds</div>
     <p>No mobile build is kicked off by merging. Mobile releases are a separate manual step (Q6).</p>
   </div>
@@ -171,11 +171,11 @@ t+4m   production live; staging updates through its own Render auto-deploy when 
       <li>Wait for DB with <code>pg_isready</code> (up to 30 retries × 2 s = 60 s)</li>
       <li>Run <code>alembic upgrade head</code> — idempotent; skips already-applied migrations</li>
       <li><code>exec</code> the <code>CMD</code>: <code>gunicorn -k uvicorn.workers.UvicornWorker -w 4 app.main:app</code></li>
-      <li>Gunicorn binds on <code>0.0.0.0:$PORT</code> (Render injects <code>$PORT</code>); health check at <code>/health</code></li>
+      <li>Gunicorn binds on <code>0.0.0.0:$PORT</code> (Render injects <code>$PORT</code>). The Docker image healthcheck uses <code>/health</code>; Render's platform <code>healthCheckPath</code> is <code>/live</code>.</li>
     </ol>
     <div class="callout warn">
-      <span class="callout-label">Quirk you'll see in Render logs</span>
-      <p>The entrypoint first tries <code>localhost:5432</code> before falling through to the real <code>DATABASE_URL</code>. You'll see ~30 failed connection attempts in the first minute of every deploy. <strong>This is harmless</strong> — it's the local-dev fallback running before the Neon URL takes over.</p>
+      <span class="callout-label">What you'll see in Render logs</span>
+      <p>The entrypoint parses <code>DATABASE_URL</code> first, extracts the real Neon host and port, then waits with <code>pg_isready</code> for up to 30 attempts. <code>localhost</code> or <code>db</code> are only fallback values if parsing fails or no host is provided; there should not be a routine minute of local fallback failures on every deploy.</p>
     </div>
   </div>
 

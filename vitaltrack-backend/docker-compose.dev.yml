@@ -1,10 +1,10 @@
 # VitalTrack Backend - Development Docker Compose
-# Use: docker-compose -f docker-compose.dev.yml up --build
+# Use: docker compose -f docker-compose.dev.yml up --build
 # 
-# IMPORTANT: Before running, update YOUR_LOCAL_IP in this file!
+# Optional for physical-device LAN testing: set LOCAL_IP in .env.
 # Find your IP: 
 #   Windows: ipconfig | findstr /i "IPv4"
-#   Mac: ifconfig | grep "inet " | grep -v 127.0.0.1
+#   macOS: ipconfig getifaddr en0
 #   Linux: hostname -I | awk '{print $1}'
 
 services:
@@ -27,21 +27,21 @@ services:
       - DATABASE_USER=postgres
       - SECRET_KEY=development-secret-key-change-in-production-min-32-chars
       # ========================================
-      # IMPORTANT: Replace YOUR_LOCAL_IP below!
+      # LOCAL_IP can come from vitaltrack-backend/.env; localhost works for desktop/USB.
       # ========================================
-      - CORS_ORIGINS=["http://localhost:3000","http://localhost:8081","http://localhost:19006","http://10.0.2.2:8081","exp://localhost:8081","http://172.25.32.1:8081","exp://172.25.32.1:8081"]
+      - CORS_ORIGINS=["http://localhost:3000","http://localhost:8081","http://localhost:19006","http://10.0.2.2:8081","exp://localhost:8081","http://${LOCAL_IP:-localhost}:8081","exp://${LOCAL_IP:-localhost}:8081"]
       # ========================================
-      # EMAIL CONFIGURATION (Brevo SMTP)
+      # EMAIL CONFIGURATION (Brevo HTTP API)
       # ========================================
       - MAIL_USERNAME=${MAIL_USERNAME:-}
-      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
       - MAIL_FROM=${MAIL_FROM:-noreply@carekosh.com}
       # SMTP Variables are no longer used (Using HTTP API)
       # ========================================
       # EMAIL VERIFICATION
       # ========================================
       - REQUIRE_EMAIL_VERIFICATION=true
-      - FRONTEND_URL=http://172.25.32.1:8000/api/v1/auth
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8000/api/v1/auth}
     depends_on:
       db:
         condition: service_healthy
@@ -87,7 +87,7 @@ services:
     image: dpage/pgadmin4:latest
     container_name: vitaltrack-pgadmin-dev
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@vitaltrack.app
+      PGADMIN_DEFAULT_EMAIL: admin@carekosh.com
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:
@@ -97,7 +97,7 @@ services:
     networks:
       - vitaltrack-network
     profiles:
-      - tools  # Only start with: docker-compose -f docker-compose.dev.yml --profile tools up
+      - tools  # Only start with: docker compose -f docker-compose.dev.yml --profile tools up
 
 networks:
   vitaltrack-network:

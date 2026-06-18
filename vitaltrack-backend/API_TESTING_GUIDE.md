@@ -5,8 +5,8 @@
 | Environment | Base URL |
 |---|---|
 | Local | `http://localhost:8000` |
-| Staging | `https://vitaltrack-api-staging.onrender.com` |
-| Production | `https://vitaltrack-api.onrender.com` |
+| Staging | `https://staging-api.carekosh.com` |
+| Production | `https://api.carekosh.com` |
 
 All examples below use `http://localhost:8000`. Substitute the base URL for staging/prod.
 
@@ -160,11 +160,15 @@ curl http://localhost:8000/api/v1/items \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 
 # Filter by category
-curl "http://localhost:8000/api/v1/items?category_id=CATEGORY_ID" \
+curl "http://localhost:8000/api/v1/items?categoryId=CATEGORY_ID" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 
 # Filter by low stock
-curl "http://localhost:8000/api/v1/items?low_stock=true" \
+curl "http://localhost:8000/api/v1/items?lowStockOnly=true" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# Other filters
+curl "http://localhost:8000/api/v1/items?isCritical=true&outOfStockOnly=false&isActive=true&search=mask" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -174,12 +178,12 @@ curl -X POST http://localhost:8000/api/v1/items \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "category_id": "CATEGORY_ID",
+    "categoryId": "CATEGORY_ID",
     "name": "Oxygen Mask",
     "quantity": 10,
     "unit": "pieces",
-    "minimum_stock": 5,
-    "is_critical": true
+    "minimumStock": 5,
+    "isCritical": true
   }'
 ```
 
@@ -206,7 +210,8 @@ curl -X PATCH http://localhost:8000/api/v1/items/ITEM_ID/stock \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "quantity": 20
+    "quantity": 20,
+    "version": 1
   }'
 ```
 
@@ -225,11 +230,12 @@ curl http://localhost:8000/api/v1/items/stats \
 **Response:**
 ```json
 {
-  "total_items": 32,
-  "total_categories": 10,
-  "low_stock_count": 5,
-  "out_of_stock_count": 2,
-  "critical_items_count": 8
+  "totalItems": 32,
+  "totalCategories": 10,
+  "outOfStockCount": 2,
+  "lowStockCount": 5,
+  "criticalItems": 8,
+  "pendingOrdersCount": 3
 }
 ```
 
@@ -281,11 +287,16 @@ curl -X PATCH http://localhost:8000/api/v1/orders/ORDER_ID/status \
 **Valid statuses:**
 - `pending` - Order created
 - `ordered` - Order placed with supplier
+- `partially_received` - Some ordered items received
 - `declined` - Order cancelled
 - `received` - All items received
 - `stock_updated` - Received order applied to inventory (via `POST /orders/{id}/apply`)
 
-Status flow: `pending → ordered/declined → received → stock_updated`
+Status flow:
+- `pending → ordered / received / declined`
+- `ordered → partially_received / received`
+- `partially_received → received`
+- `received → stock_updated` only through `POST /orders/{id}/apply`
 
 ### Apply Order to Stock
 ```bash
@@ -310,7 +321,7 @@ Play Store–compliant two-step deletion flow.
 curl -X DELETE http://localhost:8000/api/v1/auth/me \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
-Response: `{"message": "Deletion confirmation email sent"}`. Server generates `deletion_token` (24 h TTL) and emails a confirmation link.
+Response: `{"message": "A confirmation email has been sent. Please check your inbox and open the link to review and confirm account deletion. The link expires in 24 hours."}`. Server generates `deletion_token` (24 h TTL) and emails a confirmation link.
 
 ### Step 2a: Open email confirmation page
 ```bash
@@ -322,7 +333,7 @@ HTML confirmation page rendered. No data is deleted on GET.
 ```bash
 curl -X POST http://localhost:8000/api/v1/auth/confirm-delete/DELETION_TOKEN
 ```
-HTML success page rendered. User row is deleted; CASCADE unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
+HTML success page rendered. User row is deleted; CASCADE unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_log.
 
 ### Step 2c (alternative): Cancel pending deletion
 ```bash
@@ -350,7 +361,10 @@ curl http://localhost:8000/health
 ```json
 {
   "status": "healthy",
-  "database": "connected"
+  "version": "1.0.0",
+  "environment": "development",
+  "database": "connected",
+  "timestamp": "2026-..."
 }
 ```
 
@@ -435,14 +449,14 @@ CAT_ID=$(curl -s -X POST http://localhost:8000/api/v1/categories \
 ITEM_ID=$(curl -s -X POST http://localhost:8000/api/v1/items \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"category_id\":\"$CAT_ID\",\"name\":\"Oxygen Mask\",\"quantity\":10,\"minimum_stock\":5}" \
+  -d "{\"categoryId\":\"$CAT_ID\",\"name\":\"Oxygen Mask\",\"quantity\":10,\"minimumStock\":5}" \
   | jq -r '.id')
 
 # 5. Update stock
 curl -X PATCH http://localhost:8000/api/v1/items/$ITEM_ID/stock \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"quantity":15}'
+  -d '{"quantity":15,"version":1}'
 
 # 6. Get stats
 curl http://localhost:8000/api/v1/items/stats \

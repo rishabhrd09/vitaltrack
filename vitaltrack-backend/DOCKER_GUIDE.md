@@ -100,12 +100,12 @@ Think of it like cooking:
 
 ---
 
-## 🔄 What Happens After `docker compose up -d`
+## 🔄 What Happens After `docker compose -f docker-compose.dev.yml up -d`
 
 ```
 STEP BY STEP:
 
-1️⃣ Docker reads docker-compose.yml
+1️⃣ Docker reads docker-compose.dev.yml
    └── "I need 2 services: api and db"
 
 2️⃣ For 'db' service:
@@ -144,8 +144,8 @@ STEP BY STEP:
 │   YOUR COMPUTER                                                      │
 │   ┌─────────────────────────────────────────────────────────────┐   │
 │   │                                                              │   │
-│   │   Windows 11                                                │   │
-│   │   ├── Python 3.11 (installed globally)                      │   │
+│   │   macOS / Windows / Linux                                   │   │
+│   │   ├── Python 3.12 (installed globally or in a venv)         │   │
 │   │   ├── PostgreSQL 16 (installed globally)                    │   │
 │   │   ├── pip packages (installed in venv)                      │   │
 │   │   └── Your code (in a folder)                               │   │
@@ -172,7 +172,7 @@ STEP BY STEP:
 │   YOUR COMPUTER                                                      │
 │   ┌─────────────────────────────────────────────────────────────┐   │
 │   │                                                              │   │
-│   │   Windows 11                                                │   │
+│   │   macOS / Windows / Linux                                   │   │
 │   │   └── Docker Desktop                                        │   │
 │   │       ├─────────────────────┐  ┌─────────────────────┐      │   │
 │   │       │ Container: api      │  │ Container: db       │      │   │
@@ -248,43 +248,39 @@ Same Docker images run everywhere! That's the magic.
 
 ## 🔧 Common Docker Commands
 
-```powershell
+```bash
 # Start all services
-docker compose up -d
+docker compose -f docker-compose.dev.yml up --build -d
 
 # Stop all services
-docker compose down
+docker compose -f docker-compose.dev.yml down
 
 # View logs
-docker compose logs -f api
+docker compose -f docker-compose.dev.yml logs -f api
 
 # Rebuild after code changes
-docker compose up -d --build
+docker compose -f docker-compose.dev.yml up -d --build
 
-# Run command inside container
-docker compose exec api alembic upgrade head
+# Troubleshooting only: rerun migrations manually
+docker compose -f docker-compose.dev.yml exec api alembic upgrade head
 
 # Reset everything (including database)
-docker compose down -v
-docker compose up -d
+docker compose -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.dev.yml up --build -d
 ```
 
 ---
 
 ## ✅ CareKosh Setup Checklist
 
-After running `docker compose up -d`, you should have:
+After running `docker compose -f docker-compose.dev.yml up --build -d`, you should have:
 
 - ✅ `vitaltrack-db` container running (PostgreSQL)
 - ✅ `vitaltrack-api` container running (FastAPI)
 - ✅ Network created (they can talk to each other)
 - ✅ Volume created (database data persists)
 
-**Next Step:** Run the migration command:
-
-```powershell
-docker compose exec api alembic upgrade head
-```
+Alembic migrations run automatically at container startup. Run `docker compose -f docker-compose.dev.yml exec api alembic upgrade head` only while troubleshooting a bypassed or failed startup.
 
 Then access: **http://localhost:8000/docs** 🚀
 

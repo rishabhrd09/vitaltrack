@@ -99,7 +99,7 @@ vitaltrack/
 ├── vitaltrack-backend/
 │   ├── Dockerfile                    # multi-stage (builder → python:3.12-slim runtime, non-root user)
 │   ├── docker-entrypoint.sh          # waits for DB (pg_isready × 30), runs alembic upgrade head, execs CMD
-│   ├── requirements.txt              # 23 deps
+│   ├── requirements.txt              # 26 deps
 │   ├── alembic/versions/             # 5 migrations (see §9)
 │   └── app/
 │       ├── core/
@@ -124,9 +124,9 @@ vitaltrack/
         ├── item/[id].tsx             # item detail modal
         ├── order/create.tsx          # new order modal
         ├── builder.tsx               # bulk inventory seed modal
-        └── profile.tsx               # account info + delete account + change password
+        └── profile.tsx               # edit name/username, read-only email, account deletion
     ├── store/
-    │   ├── useAuthStore.ts           # 385 lines — auth state, tokens in SecureStore
+    │   ├── useAuthStore.ts           # 423 lines — auth state, tokens in SecureStore
     │   └── useAppStore.ts            # 61 lines — UI-only (isInitialized)
     ├── services/
     │   ├── api.ts                    # fetch-based HTTP client with token injection
@@ -371,7 +371,7 @@ No `/api/v1/sync/*` routes are mounted. The old offline-first sync module was re
 | 1 | `20260117_000000_initial.py` | `users`, `categories`, `items`, `orders`, `order_items`, `refresh_tokens`, `activity_logs` |
 | 2 | `20260124_add_username.py` | `users.username` (unique, nullable) |
 | 3 | `20260125_add_email_verification.py` | `users.is_email_verified`, `email_verification_token`, `email_verification_expiry` |
-| 4 | `20260406_add_version_audit_log_quantity_check.py` | `items.version` (OCC), new `audit_logs` table, CHECK constraint `items.quantity >= 0` |
+| 4 | `20260406_add_version_audit_log_quantity_check.py` | `items.version` (OCC), new `audit_log` table, CHECK constraint `items.quantity >= 0` |
 | 5 | `20260419_add_account_deletion_token_fields.py` | `users.deletion_token`, `deletion_token_expires` |
 
 ### Cascade-on-user-delete audit (PR #13)
@@ -384,7 +384,7 @@ No `/api/v1/sync/*` routes are mounted. The old offline-first sync module was re
 | `order_items` | via `orders.id` CASCADE | handled by Order |
 | `activity_logs` | CASCADE | `all, delete-orphan` |
 | `refresh_tokens` | CASCADE | `all, delete-orphan` |
-| `audit_logs` | CASCADE | DB-level only, no ORM relationship on User |
+| `audit_log` | CASCADE | DB-level only, no ORM relationship on User |
 
 Both DB-level `ondelete="CASCADE"` and ORM `cascade="all, delete-orphan"` are set on every user-owned table. `DELETE FROM users WHERE id = ?` leaves no orphans.
 
@@ -415,7 +415,7 @@ Both DB-level `ondelete="CASCADE"` and ORM `cascade="all, delete-orphan"` are se
 4. User submits the form → `POST /auth/confirm-delete/{token}` → `DELETE FROM users` (cascades via §9). HTML success page rendered.
 5. Alternative: user calls `POST /auth/cancel-delete` while logged in to abort.
 
-Mobile surfaces this at `app/profile.tsx` with a swipe-down dismissable popup menu.
+Mobile surfaces this in `app/profile.tsx`, opened from the top-right profile button's bottom-sheet menu. The screen lets users edit Name/Username via `PATCH /auth/me`, keeps email read-only, and requests deletion through a native confirmation alert.
 
 ---
 

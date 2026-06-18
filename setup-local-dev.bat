@@ -69,10 +69,11 @@ if not exist "vitaltrack-backend\.env" (
         echo SECRET_KEY=local-dev-secret-key-change-in-production
         echo ENVIRONMENT=development
         echo CORS_ORIGINS=["*"]
+        echo LOCAL_IP=%LOCAL_IP%
         echo REQUIRE_EMAIL_VERIFICATION=false
-        echo MAIL_FROM=noreply@vitaltrack.app
+        echo MAIL_FROM=noreply@carekosh.com
         echo MAIL_PASSWORD=
-        echo FRONTEND_URL=http://%LOCAL_IP%:8081
+        echo FRONTEND_URL=http://%LOCAL_IP%:8000/api/v1/auth
     ) > vitaltrack-backend\.env
     echo [OK] Backend .env created
 ) else (
@@ -127,7 +128,7 @@ echo ╠════════════════════════
 echo ║                                                      ║
 echo ║   Terminal 1 - Backend:                              ║
 echo ║     cd vitaltrack-backend                            ║
-echo ║     docker-compose up --build                        ║
+echo ║     docker compose -f docker-compose.dev.yml up --build ║
 echo ║                                                      ║
 echo ║   Terminal 2 - Mobile:                               ║
 echo ║     cd vitaltrack-mobile                             ║

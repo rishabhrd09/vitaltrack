@@ -297,7 +297,7 @@
     <tr><td><code>vitaltrack-mobile/app.config.js</code></td><td>Guard constants set to the new domains; throws if a build's URL doesn't match</td><td>Makes it impossible to ship a prod build pointed at staging</td></tr>
     <tr><td><code>vitaltrack-mobile/package.json</code></td><td><code>start:prod</code> / <code>start:staging</code> use the new domains</td><td>Local dev hits the same public hostnames</td></tr>
     <tr><td><code>vitaltrack-backend/render.yaml</code></td><td><code>FRONTEND_URL=https://api.carekosh.com/api/v1/auth</code></td><td>The base URL for links inside emails</td></tr>
-    <tr><td><code>scripts/smoke_api.py</code>, <code>cold_start_load_smoke.py</code></td><td>Default targets + production-host guard (keeps onrender as a transition host)</td><td>Ops checks hit the real public hostnames</td></tr>
+    <tr><td><code>vitaltrack-backend/scripts/smoke_api.py</code>, <code>vitaltrack-backend/scripts/cold_start_load_smoke.py</code></td><td>Default targets + production-host guard (keeps onrender as a transition host)</td><td>Ops checks hit the real public hostnames</td></tr>
   </table>
   <div class="callout"><span class="tag">Note</span><p><code>services/api.ts</code> and the login screen did <em>not</em> need changes — they already read the URL from the environment. They inherit the new domain automatically.</p></div>
 

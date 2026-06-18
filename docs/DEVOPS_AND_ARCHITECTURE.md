@@ -207,8 +207,7 @@ Re-enabling the CI job is a one-line change (`if: false` → `if: github.ref == 
 │                                                                       │
 │  docker-entrypoint.sh                                                 │
 │    1. Parse DATABASE_URL for host + port                              │
-│    2. pg_isready loop (30x retries; 30 failures vs localhost:5432    │
-│       before Neon URL takes over is a known quirk — harmless)         │
+│    2. pg_isready loop against parsed DATABASE_URL host/port           │
 │    3. alembic upgrade head                                            │
 │    4. exec gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app│
 │                                                                       │
@@ -216,7 +215,7 @@ Re-enabling the CI job is a one-line change (`if: false` → `if: github.ref == 
 │    FastAPI routes under /api/v1/                                      │
 │      /auth/*, /categories/*, /items/*, /orders/*, /activity/*         │
 │      No /sync/* route surface; mobile is server-first REST only       │
-│    Healthcheck: /live                                                 │
+│    Docker healthcheck: /health; Render healthCheckPath: /live         │
 │    Non-root user: appuser (UID 1000)                                  │
 │                                                                       │
 │  URLs                                                                 │
@@ -225,8 +224,7 @@ Re-enabling the CI job is a one-line change (`if: false` → `if: github.ref == 
 │                                                                       │
 │  Env vars (set in Render dashboard):                                 │
 │    SECRET_KEY, DATABASE_URL, ENVIRONMENT, CORS_ORIGINS, FRONTEND_URL, │
-│    MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM, MAIL_SERVER, MAIL_PORT,   │
-│    MAIL_STARTTLS, MAIL_SSL_TLS, REQUIRE_EMAIL_VERIFICATION            │
+│    MAIL_PASSWORD, MAIL_FROM, REQUIRE_EMAIL_VERIFICATION               │
 │                                                                       │
 │  SSL: automatic via Render (TLS 1.3)                                  │
 │  Cold start: ~30–60 s after 15 min idle (free tier)                   │
@@ -497,8 +495,10 @@ Every FK from a domain table to `users` has `ondelete="CASCADE"` at the DB level
 ### Order status flow
 
 ```
-pending ──▶ ordered ──▶ received ──▶ stock_updated
-   │
+pending ──▶ ordered ──▶ partially_received ──▶ received ──▶ stock_updated
+   │          │                                ▲
+   │          └────────────────────────────────┘
+   ├──────▶ received
    └──────▶ declined (terminal)
 ```
 

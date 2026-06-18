@@ -88,7 +88,7 @@ Metro is a JavaScript bundler purpose-built for React Native. Same family as Web
 When you run `npm run start:staging`:
 
 ```
-PowerShell
+Terminal / zsh
   ↓ runs npm script
 package.json says: "cross-env EXPO_PUBLIC_API_URL=https://... expo start --clear"
   ↓
@@ -140,14 +140,14 @@ ADB is a tool from the Android SDK. It lets your laptop talk to your Android pho
 
 | Component | Where it runs | Role |
 |---|---|---|
-| **adb client** | On your laptop, the `adb.exe` you type | Sends commands |
+| **adb client** | On your laptop, the `adb` command you type | Sends commands |
 | **adb server** | Background process on your laptop, port 5037 | Multiplexes between client and connected devices |
 | **adbd** (adb daemon) | On the phone, runs when USB Debugging is enabled | Receives commands, executes them |
 
 When you type `adb devices`:
 
 ```
-adb.exe                   adb server                     adbd (phone)
+adb                       adb server                     adbd (phone)
 ┌─────────┐  pipe       ┌───────────────┐   USB        ┌─────────────┐
 │ client  │────────────►│ server :5037  │─────────────►│  daemon     │
 └─────────┘             └───────────────┘              └─────────────┘
@@ -222,7 +222,7 @@ Default for `npx expo start`. The QR code in the terminal encodes `exp://192.168
 **When LAN fails**:
 - Wi-Fi access point has "client isolation" enabled (devices can't talk to each other) — common on guest networks
 - Wi-Fi access point on a different subnet from the laptop (e.g. wired desktop on `192.168.0.x`, phone on guest Wi-Fi `192.168.10.x`)
-- Windows firewall blocking inbound on port 8081 (see [LOCAL_TESTING_COMPLETE_GUIDE §E](LOCAL_TESTING_COMPLETE_GUIDE.md#e-windows-firewall))
+- Local firewall blocking inbound on port 8081 (see [LOCAL_TESTING_COMPLETE_GUIDE §E](LOCAL_TESTING_COMPLETE_GUIDE.md#e-windows-firewall))
 
 For LAN mode the env var should be `EXPO_PUBLIC_API_URL=http://YOUR_LAN_IP:8000` (so the API also reaches the laptop's Docker), or staging/prod (which the phone reaches over its own Wi-Fi/LTE).
 
@@ -289,7 +289,7 @@ Let's trace exactly what happens, USB mode, against staging backend.
 │                                                                         │
 │  5. `npm run start:staging`                                             │
 │         └─→ npm runs the script in package.json                         │
-│         └─→ cross-env sets EXPO_PUBLIC_API_URL=https://vitaltrack-...   │
+│         └─→ cross-env sets EXPO_PUBLIC_API_URL=https://staging-api.carekosh.com │
 │         └─→ expo CLI starts Metro                                       │
 │         └─→ Metro reads source files, builds initial bundle             │
 │         └─→ Metro starts HTTP server on port 8081                       │
@@ -383,11 +383,12 @@ Install Expo Go from the Play Store
 #### On the laptop
 
 ```
-Install Android SDK Platform Tools (gives you adb.exe)
-Add to PATH: C:\platform-tools  (or wherever you extracted it)
+Install Android SDK Platform Tools (gives you adb)
+macOS: brew install --cask android-platform-tools
+Manual install: add the platform-tools directory to PATH in ~/.zshrc
 ```
 
-**Why**: Without `adb` on your PATH, you can't run any of the commands below from PowerShell.
+**Why**: Without `adb` on your PATH, you can't run any of the commands below from Terminal.
 
 ```bash
 cd vitaltrack-mobile
