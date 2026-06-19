@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CareKosh — Documentation &amp; Dev-Environment Audit</title>
+<style>
+  :root{
+    --bg:#f3e8d3; --card:#fdf9f0; --card2:#f7eedc;
+    --ink:#3a2e23; --ink-soft:#6b5a48; --ink-faint:#8c7a64; --head:#2b2117;
+    --teal:#1d8f6b; --teal-bg:#e0f0e8; --terra:#b8623a; --terra-bg:#f3e0d5;
+    --gold:#a9842c; --gold-bg:#f5ead0; --blue:#587f9d; --blue-bg:#dfe9f1;
+    --red:#b0382f; --red-bg:#f6dedb;
+    --line:#e2d4ba; --line-strong:#d3bf9c; --code-bg:#2f2820; --code-ink:#ece0cc;
+    --shadow:0 1px 0 #efe4cf, 0 2px 14px rgba(90,66,40,.07);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    font-size:17.5px; line-height:1.68; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1000px; margin:0 auto; padding:0 22px}
+  header.masthead{background:linear-gradient(180deg,#efe1c6,#f3e8d3); border-bottom:2px solid var(--line-strong); padding:50px 0 32px;}
+  header.masthead .kicker{font-size:13.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--terra); margin:0 0 10px}
+  header.masthead h1{font-size:38px; line-height:1.12; margin:0 0 12px; color:var(--head); font-weight:700; letter-spacing:-.01em}
+  header.masthead p.sub{font-size:18px; color:var(--ink-soft); margin:0; max-width:46em}
+  header.masthead .meta{margin-top:16px; font-size:13.5px; color:var(--ink-faint); font-family:ui-monospace,Menlo,Consolas,monospace}
+  h2{font-size:26px; color:var(--head); margin:50px 0 6px; letter-spacing:-.01em; font-weight:700}
+  h2 .num{color:var(--terra); font-size:17px; margin-right:10px; font-family:ui-monospace,monospace}
+  h3{font-size:18.5px; color:var(--head); margin:26px 0 4px; font-weight:700}
+  .rule{height:2px;background:var(--line-strong);border:0;margin:8px 0 0}
+  p{margin:11px 0}
+  a{color:var(--teal); text-decoration:none; border-bottom:1px solid rgba(29,143,107,.35)}
+  a:hover{border-bottom-color:var(--teal)}
+  strong{color:var(--head)}
+  code{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.84em; background:var(--card2); color:#7a4f24; padding:2px 6px; border-radius:5px; border:1px solid var(--line)}
+  pre{background:var(--code-bg); color:var(--code-ink); padding:14px 16px; border-radius:10px; overflow:auto; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13.5px; line-height:1.55; box-shadow:var(--shadow)}
+  .lead{font-size:19px;color:var(--ink-soft)}
+  .toc{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 22px; margin:24px 0; box-shadow:var(--shadow); columns:2; column-gap:30px}
+  .toc a{border:0;color:var(--ink); display:block; margin:4px 0}
+  .toc a:hover{color:var(--teal)}
+  .statgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:18px 0}
+  .stat{background:var(--card2); border-radius:10px; padding:14px 16px; text-align:center}
+  .stat .n{font-size:30px; font-weight:700; color:var(--head); line-height:1}
+  .stat .l{font-size:12.5px; color:var(--ink-soft); margin-top:6px; text-transform:uppercase; letter-spacing:.04em; font-family:ui-monospace,monospace}
+  .stat.green .n{color:var(--teal)} .stat.amber .n{color:var(--gold)} .stat.red .n{color:var(--red)} .stat.blue .n{color:var(--blue)}
+  .callout{border-left:5px solid var(--gold); background:var(--gold-bg); border-radius:0 10px 10px 0; padding:13px 18px; margin:18px 0}
+  .callout.tip{border-left-color:var(--teal); background:var(--teal-bg)}
+  .callout.warn{border-left-color:var(--terra); background:var(--terra-bg)}
+  .callout .tag{display:inline-block;font-family:ui-monospace,monospace;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin-bottom:3px;color:var(--gold)}
+  .callout.tip .tag{color:var(--teal)} .callout.warn .tag{color:var(--terra)}
+  table{border-collapse:collapse; width:100%; margin:14px 0; font-size:14px; background:var(--card); border-radius:10px; overflow:hidden; box-shadow:var(--shadow)}
+  th,td{border:1px solid var(--line); padding:8px 11px; text-align:left; vertical-align:top}
+  th{background:var(--card2); color:var(--head); font-family:ui-monospace,monospace; font-size:11.5px; letter-spacing:.03em; text-transform:uppercase}
+  td code{font-size:.82em}
+  tr:nth-child(even) td{background:#fcf7ec}
+  .doc{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 18px; margin:16px 0; box-shadow:var(--shadow)}
+  .doc h3{margin-top:4px; display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .badge{font-family:ui-monospace,monospace; font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.04em}
+  .b-acc{background:var(--teal-bg); color:#155b45} .b-min{background:var(--gold-bg); color:#7a5b12}
+  .b-out{background:var(--red-bg); color:var(--red)} .b-hist{background:var(--blue-bg); color:#3a5b74}
+  .sev{font-family:ui-monospace,monospace; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:5px; text-transform:uppercase; white-space:nowrap}
+  .s-high{background:var(--red-bg); color:var(--red)} .s-med{background:var(--gold-bg); color:#7a5b12} .s-low{background:var(--card2); color:var(--ink-soft)}
+  .fname{font-family:ui-monospace,monospace; font-size:14px}
+  ul{margin:10px 0} li{margin:5px 0}
+  footer{margin:60px 0 40px; padding-top:18px; border-top:2px solid var(--line-strong); color:var(--ink-faint); font-size:13.5px}
+  @media (max-width:680px){ body{font-size:16.5px} .toc{columns:1} header.masthead h1{font-size:29px} }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap">
+    <p class="kicker">CareKosh / VitalTrack · Read-only Documentation Audit</p>
+    <h1>Docs &amp; Dev-Environment Audit</h1>
+    <p class="sub">Every document in the repo cross-checked against the live codebase (dev / staging / prod), plus a MacBook dev-environment readiness review. For each file: a verdict and the <em>exact</em> changes required.</p>
+    <p class="meta">41 Markdown/HTML surfaces + dev-env cluster · Claude first pass + Codex second-pass verification · report updated 2026-06-19</p>
+  </div>
+</header>
+<div class="wrap">
+
+  <p class="lead">This report started as Claude's 35-auditor read-only pass and was then cross-checked against the live checkout by Codex. The second pass expanded coverage to backend/mobile support docs, generated/cache documentation, setup scripts, compose files, env examples, Render/EAS config, and the current API/schema surface. Findings are grouped so you can act on what matters: current guidance that misleads a reader today, versus historical records that are correct to leave alone.</p>
+
+  <div class="statgrid">
+    <div class="stat"><div class="n">41</div><div class="l">doc surfaces</div></div>
+    <div class="stat green"><div class="n">11</div><div class="l">clean/support ok</div></div>
+    <div class="stat amber"><div class="n">19</div><div class="l">current docs with fixes</div></div>
+    <div class="stat red"><div class="n">2</div><div class="l">must-fix docs</div></div>
+    <div class="stat blue"><div class="n">10</div><div class="l">historical records</div></div>
+  </div>
+
+  <div class="callout tip"><span class="tag">Bottom line</span>
+    <p>No deployed backend/mobile code issue was found during this documentation audit, and the macOS dev environment is structurally compatible with <strong>Apple Silicon and Intel</strong>. However, the docs are <strong>not yet fully final/push-ready as a documentation set</strong>: two current guides would mislead a developer if followed literally (<code>docs/NEW_DEVELOPER_QUICKSTART.md</code> and <code>vitaltrack-backend/API_TESTING_GUIDE.md</code>), and the setup/env cluster still contains stale <code>vitaltrack.app</code> and Windows-only assumptions. Treat this report as the exact fix plan before declaring docs fully synced.</p>
+  </div>
+
+  <div class="toc">
+    <a href="#legend">Status legend</a>
+    <a href="#themes">§1 Cross-cutting themes</a>
+    <a href="#priority">§2 Prioritized action list</a>
+    <a href="#current">§3 Current guidance — changes required</a>
+    <a href="#historical">§4 Historical docs — leave as-is</a>
+    <a href="#clean">§5 Clean / accounted-for documents</a>
+    <a href="#devenv">§6 macOS dev-environment readiness</a>
+  </div>
+
+  <!-- ===================== -->
+  <h2 id="legend">Status legend</h2><hr class="rule">
+  <p>
+    <span class="badge b-acc">accurate</span> in sync, no changes ·
+    <span class="badge b-min">minor</span> small fixes, not misleading ·
+    <span class="badge b-out">outdated</span> materially wrong, would mislead today ·
+    <span class="badge b-hist">historical-ok</span> a dated record; old values are correct to keep
+  </p>
+  <p>Severities: <span class="sev s-high">high</span> fix before relying on the doc · <span class="sev s-med">med</span> fix soon · <span class="sev s-low">low</span> polish.</p>
+
+  <div class="callout warn"><span class="tag">Second-pass scope correction</span>
+    <p>The first Claude report was directionally strong but not quite "whole codebase documentation." This Codex pass added the missing support docs: <code>vitaltrack-backend/API_TESTING_GUIDE.md</code>, <code>vitaltrack-backend/DOCKER_GUIDE.md</code>, <code>vitaltrack-backend/README.md</code>, <code>vitaltrack-mobile/credentials/README.md</code>, <code>.github/pull_request_template.md</code>, <code>domain-email-img/README.md</code>, <code>docs/monitoring/carekosh-uptime-monitors.example.yml</code>, and the generated <code>vitaltrack-backend/.pytest_cache/README.md</code>. The audit report itself is counted separately as the live deliverable and should not be used as product truth until its findings are applied.</p>
+  </div>
+
+  <!-- ===================== -->
+  <h2 id="themes">§1 Cross-cutting themes</h2><hr class="rule">
+  <p>These recurring issues each span several documents — fixing the root concept once and applying it everywhere is the efficient path.</p>
+  <table>
+    <tr><th>Theme</th><th>The correct fact</th><th>Docs affected</th></tr>
+    <tr><td><strong><code>/live</code> vs <code>/health</code></strong></td><td>Render's <code>healthCheckPath</code> is <code>/live</code> (process-only, <code>database:"not_checked"</code>). <code>/health</code> is the deeper DB-backed <code>SELECT 1</code> probe (503 on DB failure). Several docs say Render checks <code>/health</code>.</td><td>BUILD_DEPLOY_FLOW, ENVIRONMENT_ARCHITECTURE, architecture_diagrams, USB_ADB_REVERSE_GUIDE</td></tr>
+    <tr><td><strong>Dev entrypoint</strong></td><td>Prod uses <code>docker-entrypoint.sh</code> → Gunicorn. <strong>Dev</strong> uses <code>Dockerfile.dev</code>'s own inline entrypoint → <code>alembic upgrade head</code> → Uvicorn <code>--reload</code>. The wait loop probes <code>DATABASE_HOST:PORT</code> (default <code>db:5432</code>), not <code>localhost:5432</code>; no "~30 failures every deploy".</td><td>NEW_DEVELOPER_QUICKSTART, LOCAL_TESTING_COMPLETE_GUIDE, BUILD_DEPLOY_FLOW, ENVIRONMENT_SPLIT</td></tr>
+    <tr><td><strong>Stale <code>vitaltrack.app</code></strong></td><td>Canonical sender is <code>noreply@carekosh.com</code>; APIs are <code>api.carekosh.com</code> / <code>staging-api.carekosh.com</code>. Setup scripts + a mobile env example still use the old <code>vitaltrack.app</code>.</td><td>setup-local-dev.sh/.bat, vitaltrack-mobile/.env.example, LOCAL_TESTING_COMPLETE, NEW_DEVELOPER_QUICKSTART</td></tr>
+    <tr><td><strong>Raw Render URL drift</strong></td><td>Current public API URLs are <code>https://api.carekosh.com</code> and <code>https://staging-api.carekosh.com</code>. Raw <code>*.onrender.com</code> hostnames may appear in historical evidence, but current operator/API docs should not present them as canonical.</td><td>API_TESTING_GUIDE, local-testing internals/evidence docs where used as current guidance</td></tr>
+    <tr><td><strong>API examples/schema drift</strong></td><td>Current item filters use aliases such as <code>categoryId</code>, <code>lowStockOnly</code>, <code>isCritical</code>, <code>outOfStockOnly</code>; stock PATCH requires <code>version</code>; item stats return camelCase aliases including <code>pendingOrdersCount</code>.</td><td>API_TESTING_GUIDE, E2E_VERIFICATION</td></tr>
+    <tr><td><strong><code>REQUIRE_EMAIL_VERIFICATION</code> in dev</strong></td><td><code>config.py</code> default is <code>false</code>, but <code>docker-compose.dev.yml</code> hardcodes <code>=true</code>. Docs that say "dev skips verification" are wrong for the prescribed Docker flow.</td><td>NEW_DEVELOPER_QUICKSTART (high), LOCAL_TESTING_COMPLETE</td></tr>
+    <tr><td><strong>Profile UI after PR&nbsp;#50</strong></td><td>No Settings row; About is a real modal (version from expo-constants); Name/Username editable via <code>PATCH /auth/me</code>; no change-password UI; email read-only; support is a tappable mailto.</td><td>CAREKOSH_DEVELOPER_GUIDE, E2E_VERIFICATION, mobile README, architecture_diagrams, PHASE2</td></tr>
+    <tr><td><strong>Order status enum</strong></td><td>Real enum includes <code>partially_received</code>: pending → ordered → partially_received → received → stock_updated / declined.</td><td>DEVOPS_AND_ARCHITECTURE, architecture_diagrams</td></tr>
+    <tr><td><strong>Audit table name</strong></td><td>JSONB before/after snapshots go to <code>audit_log</code> (singular, cols <code>old_values</code>/<code>new_values</code>). The user-facing feed is the separate <code>activity_logs</code> table.</td><td>SERVER_FIRST_INTERVIEW, backend README, API_TESTING_GUIDE, architecture_diagrams</td></tr>
+    <tr><td><strong><code>MAIL_FROM_NAME</code> / legacy SMTP</strong></td><td>There is <strong>no</strong> <code>MAIL_FROM_NAME</code> field; the "CareKosh" sender name is hardcoded in <code>email.py</code>. Only <code>MAIL_PASSWORD</code> + <code>MAIL_FROM</code> are real Render mail vars; <code>MAIL_SERVER/PORT/STARTTLS</code> are legacy unused.</td><td>PROJECT_LEARNINGS, DEVOPS_AND_ARCHITECTURE</td></tr>
+    <tr><td><strong>Windows-centric local docs</strong></td><td>Dev OS target is macOS (Apple Silicon + Intel). Two local-testing docs are framed for PowerShell / <code>adb.exe</code> / <code>C:\platform-tools</code>.</td><td>LOCAL_TESTING_INTERNALS, local_testing_field_manual</td></tr>
+    <tr><td><strong>App version</strong></td><td>Version is <code>1.0.0</code> everywhere; the About screen now reads it dynamically from expo-constants. Any user-facing <code>v2.0.0</code> is wrong.</td><td>PHASE2_ACCOUNT_DELETION (historical)</td></tr>
+  </table>
+
+  <!-- ===================== -->
+  <h2 id="priority">§2 Prioritized action list</h2><hr class="rule">
+  <h3>Do first — misleading to a developer today</h3>
+  <ul>
+    <li><span class="sev s-high">high</span> <strong>NEW_DEVELOPER_QUICKSTART.md</strong> — the prescribed Docker flow uses <code>REQUIRE_EMAIL_VERIFICATION=true</code> (from <code>docker-compose.dev.yml</code>), so "you're taken straight to the dashboard" is false; also the dev entrypoint is Uvicorn (<code>Dockerfile.dev</code>), not Gunicorn. Fix the doc <em>or</em> flip the compose flag to <code>false</code>.</li>
+    <li><span class="sev s-high">high</span> <strong>vitaltrack-backend/API_TESTING_GUIDE.md</strong> — current curl examples contain stale staging/prod base URLs, wrong item filter query names, stock update bodies missing <code>version</code>, stale item stats JSON, and an incomplete order-status flow. Fix before using it as the QA/operator API script source.</li>
+    <li><span class="sev s-med">med</span> <strong>setup-local-dev.sh / .bat</strong> — stop writing <code>MAIL_FROM=noreply@vitaltrack.app</code> (→ <code>carekosh.com</code>); the generated <code>FRONTEND_URL</code> points at the Metro port <code>:8081</code> instead of the backend <code>:8000/api/v1/auth</code>.</li>
+    <li><span class="sev s-med">med</span> <strong>docker-compose.dev.yml</strong> — hardcodes a Windows-only LAN IP <code>172.25.32.1</code> in <code>CORS_ORIGINS</code> + <code>FRONTEND_URL</code>; breaks for a macOS dev. Use <code>localhost</code> or a documented placeholder.</li>
+    <li><span class="sev s-med">med</span> <strong>vitaltrack-mobile/.env.example</strong> — production example still says <code>api.vitaltrack.app</code>; should be <code>api.carekosh.com</code> (+ staging).</li>
+    <li><span class="sev s-med">med</span> <strong>CAREKOSH_E2E_VERIFICATION_GUIDE.html</strong> — several wrong response bodies/fields developers would copy verbatim (see §3).</li>
+  </ul>
+  <h3>Then — accuracy polish (one pass across the themed docs)</h3>
+  <ul>
+    <li>Apply the <code>/live</code> vs <code>/health</code>, order-status enum, <code>audit_log</code> naming, and profile-UI corrections everywhere they appear.</li>
+    <li>Re-frame <code>LOCAL_TESTING_INTERNALS.md</code> and <code>local_testing_field_manual.html</code> for macOS.</li>
+    <li>Correct <code>vitaltrack-backend/README.md</code> and <code>vitaltrack-backend/DOCKER_GUIDE.md</code> so Docker dev commands consistently use <code>docker compose -f docker-compose.dev.yml ...</code>, and so the automatic migration entrypoint is described accurately.</li>
+    <li>Complete <code>vitaltrack-backend/.env.example</code> with the email/verification keys; add optional structured <code>env_file</code> loading to <code>docker-compose.yml</code> (or document that it's ignored).</li>
+    <li>Update <code>CAREKOSH_ROADMAP.md</code> to mark the custom domain + email as shipped (PRs #49/#50/#51) — only the hosted privacy policy remains open.</li>
+  </ul>
+  <h3>Optional — historical records (safe to leave)</h3>
+  <ul>
+    <li>The historical docs are mostly era-correct. Only fix one if you want it to double as current reference. Exception worth doing anyway: remove the non-existent <code>MAIL_FROM_NAME</code> row from <code>PROJECT_LEARNINGS_AND_JOURNEY.md</code> so nobody configures a setting that doesn't exist.</li>
+  </ul>
+
+  <!-- ===================== -->
+  <h2 id="current">§3 Current guidance — changes required</h2><hr class="rule">
+  <p>These are documents meant to be followed today. Each finding lists severity, location, and the exact change.</p>
+
+  <div class="doc"><h3><span class="fname">docs/NEW_DEVELOPER_QUICKSTART.md</span> <span class="badge b-out">outdated</span></h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-high">high</span></td><td>Step 5, line 89</td><td>"Since dev defaults REQUIRE_EMAIL_VERIFICATION=False, you're taken straight to the dashboard" is false — <code>docker-compose.dev.yml:43</code> sets it <code>true</code>. Either flip the compose value to <code>false</code>, or change the doc to say you must verify after Create Account.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Line 62</td><td>The dev path uses <code>Dockerfile.dev</code>'s entrypoint → <code>alembic upgrade head</code> → Uvicorn <code>--reload</code>, not <code>docker-entrypoint.sh</code> + Gunicorn (that's prod). Reword accordingly.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Step 2 (scripts it invokes)</td><td>The setup scripts seed <code>MAIL_FROM=noreply@vitaltrack.app</code>; fix the scripts to <code>noreply@carekosh.com</code> (no prose change needed here).</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">CAREKOSH_E2E_VERIFICATION_GUIDE.html</span> <span class="badge b-min">minor</span> · 9 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Step 5 (403) + troubleshooting</td><td>Unverified login returns <code>{"detail":"EMAIL_NOT_VERIFIED"}</code>, not <code>"Email not verified"</code>.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Step 11 (409)</td><td>OCC conflict body is keyed <code>"error"</code> not <code>"detail"</code>, and includes a <code>message</code>: <code>{"error":"Version conflict","message":"This item was modified by someone else. Please refresh and try again.","server_version":2,"server_quantity":12}</code>.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Steps 8/10/11 curl bodies</td><td>Field is <code>minimum_stock</code> (alias <code>minimumStock</code>), not <code>minimum_quantity</code>. Replace every occurrence.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Step 8 category create</td><td><code>CategoryCreate</code> has no <code>icon</code>/<code>color</code> fields — drop them: <code>-d '{"name":"Oxygen"}'</code>.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Step 7 (401)</td><td>Reused rotated refresh token returns <code>{"detail":"Token has been revoked"}</code>, not <code>"Invalid refresh token"</code>.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Step 15</td><td>DELETE /auth/me message is "A confirmation email has been sent. Please check your inbox and open the link… The link expires in 24 hours."</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Step 16</td><td>Cancel message is "Account deletion request has been cancelled."</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Step 21</td><td>Login with deleted account → <strong>401</strong> "Incorrect email/username or password", not 404.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Step 21 (About)</td><td>About is now the <code>AboutCareKoshDialog</code> modal (version via expo-constants + tappable support mailto), not an alert.</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">vitaltrack-backend/API_TESTING_GUIDE.md</span> <span class="badge b-out">outdated</span> · 8 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-high">high</span></td><td>Base URL table</td><td>Replace current staging/production values with <code>https://staging-api.carekosh.com</code> and <code>https://api.carekosh.com</code>. Raw <code>vitaltrack-api*.onrender.com</code> hosts belong only in historical migration notes or optional fallback notes.</td></tr>
+    <tr><td><span class="sev s-high">high</span></td><td>Items filters</td><td>Replace <code>?category_id=...</code> and <code>?low_stock=true</code> with the current aliases: <code>?categoryId=...</code>, <code>?lowStockOnly=true</code>, plus optional <code>isCritical</code>, <code>outOfStockOnly</code>, <code>isActive</code>, and <code>search</code>.</td></tr>
+    <tr><td><span class="sev s-high">high</span></td><td>PATCH /items/{id}/stock</td><td>Body must include optimistic-concurrency <code>version</code>: <code>{"quantity":20,"version":CURRENT_VERSION}</code>. The current example omits <code>version</code> and would fail against the schema.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Item stats response</td><td>Update snake_case response fields to current serialized aliases: <code>totalItems</code>, <code>totalCategories</code>, <code>outOfStockCount</code>, <code>lowStockCount</code>, <code>criticalItems</code>, <code>pendingOrdersCount</code>.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Orders status section</td><td>Add <code>partially_received</code> and the real transition flow: pending → ordered/received/declined; ordered → partially_received/received; partially_received → received; received → stock_updated only through <code>POST /orders/{id}/apply</code>.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Order apply endpoint</td><td>Ensure all examples use <code>POST /api/v1/orders/{ORDER_ID}/apply</code>; do not use the older <code>apply-stock</code> wording anywhere.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Health examples</td><td>Document both probes: <code>/live</code> is process-only and returns <code>database:"not_checked"</code>; <code>/health</code> is DB-backed and returns <code>status</code>, <code>version</code>, <code>environment</code>, <code>database</code>, and <code>timestamp</code>.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Account deletion examples</td><td>Request response should be the current long message: <code>A confirmation email has been sent. Please check your inbox and open the link to review and confirm account deletion. The link expires in 24 hours.</code></td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">vitaltrack-backend/README.md</span> <span class="badge b-min">minor</span> · 4 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Quick start</td><td>Change "Alembic migrations run automatically via <code>docker-entrypoint.sh</code>" to "Alembic migrations run automatically by the container entrypoint; production uses <code>docker-entrypoint.sh</code>, dev uses <code>Dockerfile.dev</code>'s inline entrypoint."</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Database schema diagram + migration list</td><td>Rename <code>audit_logs</code> to the actual table <code>audit_log</code> (singular). Keep <code>activity_logs</code> plural.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Orders endpoint table</td><td>Status flow omits <code>partially_received</code>. Add the full legal flow and clarify that <code>stock_updated</code> is reached by <code>POST /orders/{id}/apply</code>, not direct status PATCH.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Docker command block</td><td>After starting <code>docker-compose.dev.yml</code>, use <code>docker compose -f docker-compose.dev.yml exec ...</code> for db/api commands so the examples target the same compose project.</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">vitaltrack-backend/DOCKER_GUIDE.md</span> <span class="badge b-min">minor</span> · 4 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Common command examples</td><td>For current local development, prefer <code>docker compose -f docker-compose.dev.yml up --build -d</code>, <code>logs -f api</code>, and <code>exec ...</code>. Plain <code>docker compose up -d</code> uses <code>docker-compose.yml</code> and the production-target container.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>"Run command inside container"</td><td>Do not present <code>docker compose exec api alembic upgrade head</code> as the normal next manual step. Both dev and production containers run migrations automatically at startup; keep it only as a troubleshooting command.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Local-development diagrams</td><td>Replace Windows-only laptop labels with OS-neutral or macOS-primary wording. The current project requirement is MacBook-compatible onboarding.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Command fences</td><td>Use <code>bash</code> instead of <code>powershell</code> for cross-platform Docker commands, or provide explicit macOS and Windows variants.</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">vitaltrack-mobile/README.md</span> <span class="badge b-min">minor</span> · 6 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Line 5 badge</td><td>React Native badge says 0.76; <code>package.json</code> pins <code>0.81.5</code>. Change to 0.81.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Lines 75, 117</td><td>Profile is described as "change password" — there is no change-password UI post-PR-#50. Replace with: edit Name/Username (PATCH /auth/me) + request account deletion; email read-only.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Structure + screens table</td><td>Add the <code>app/search.tsx</code> global-search modal route (registered in <code>_layout.tsx</code>) — currently omitted.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Line 163</td><td><code>useAuthStore.ts</code> is ~423 lines, not ~385 (or drop the count).</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Line 117</td><td>Profile opens from the top-right profile button (a bottom-sheet menu), not a "swipe-down popup from top-right".</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Lines 125–134</td><td><code>useItems()</code> takes no args/filters; annotate the snippet as illustrative or align with the real signature, and verify the quoted <code>staleTime</code>.</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">docs/LOCAL_TESTING_COMPLETE_GUIDE.md</span> <span class="badge b-min">minor</span> · 5 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Lines 48, 144</td><td>Says dev defaults <code>REQUIRE_EMAIL_VERIFICATION=false</code>, but <code>docker-compose.dev.yml:43</code> hardcodes <code>true</code>. Add the caveat (or flip the compose value).</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Line 422</td><td>Activity event is <code>item_create</code>, not <code>item_created</code>.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Lines 219–220</td><td>The dev migration runs from <code>Dockerfile.dev</code>'s inline entrypoint, not <code>docker-entrypoint.sh</code>.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Lines 252–253</td><td>Startup log is "Database not ready yet… attempt X/30" probing <code>db:5432</code> — not "localhost:5432 failed". Remove the localhost-fallback framing.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Lines 364–368</td><td>Note that <code>setup-local-dev.sh</code> seeds the stale <code>MAIL_FROM=noreply@vitaltrack.app</code> — should be <code>carekosh.com</code>.</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">docs/EMAIL_VERIFICATION_GUIDE.md</span> <span class="badge b-min">minor</span> · 4 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>§8, lines 349–351</td><td>Remove the fabricated <code>[EMAIL] Mail not configured. Verification token for …</code> log block — no such line exists. When <code>MAIL_PASSWORD</code> is empty, <code>is_email_configured()</code> is False and no email/token is sent or logged.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>§3, lines 103–109</td><td>Login gate uses <code>is_email_configured()</code> (checks <code>mail_password_value.strip()</code>), not <code>settings.MAIL_PASSWORD</code> directly.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>§3 table, line 91</td><td>Optional: write login rate limit as <code>5/minute</code> to mirror the decorator.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>§5 step 6, checklist</td><td>Drop "Mailtrap" from the active-path instructions (Brevo is the send path); keep the historical Mailtrap note only in Step 1.</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">CAREKOSH_DEVELOPER_GUIDE.md</span> <span class="badge b-min">minor</span> · 3 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>§10, line 418</td><td>Profile is a full-screen card (not a "swipe-down popup menu"); Name/Username editable via PATCH /auth/me, email read-only, delete via native Alert. Reword.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>§3, line 129</td><td><code>useAuthStore.ts</code> is 423 lines, not 385.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>§3, line 102</td><td><code>requirements.txt</code> has 26 deps, not 23 (or drop the count).</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">CAREKOSH_SERVER_FIRST_INTERVIEW_GUIDE.html</span> <span class="badge b-min">minor</span> · 3 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>§7 + line 554</td><td>Atomic stock route is <code>POST /orders/{order_id}/apply</code>, not <code>/apply-stock</code>. Replace every occurrence.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>§7, line 532</td><td>Audit snapshots write to <code>audit_log</code> (singular), not <code>activity_log</code>.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>§7, lines 539–540</td><td>Audit JSON keys are <code>old_values</code>/<code>new_values</code>, not <code>before_snapshot</code>/<code>after_snapshot</code>.</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">docs/TECHNICAL_CHALLENGES.md</span> <span class="badge b-min">minor</span> · 3 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Line 702</td><td>Dev DB is named <code>vitaltrack</code> — change <code>psql … -d carekosh</code> to <code>-d vitaltrack</code> (and the compose file lives in <code>vitaltrack-backend/</code>).</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Line 611</td><td>React Query values: real config is <code>staleTime: 30_000</code> and <code>gcTime: 24h</code> — not 15s / 5min.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Lines 604–608</td><td>No <code>selectinload</code>/<code>.options(</code> in code; <code>Order.items</code> uses <code>lazy="selectin"</code>. Reword the eager-loading snippet.</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">docs/LOCAL_TESTING_INTERNALS.md</span> <span class="badge b-min">minor</span> · 3 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Lines 91, 150, 386–390</td><td>Re-frame for macOS: Terminal/zsh (not PowerShell), <code>adb</code> (not <code>adb.exe</code>), macOS platform-tools install (<code>brew install --cask android-platform-tools</code> or PATH in <code>~/.zshrc</code>).</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Line 292</td><td>Replace abbreviated <code>https://vitaltrack-...</code> with the canonical <code>https://staging-api.carekosh.com</code>.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Line 225</td><td>Update the "Windows firewall" cross-reference label to be OS-neutral.</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">docs/local_testing_field_manual.html</span> <span class="badge b-min">minor</span> · 3 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Lines 722, 2363</td><td>Broken ref: <code>CAREKOSH_DEVELOPER_GUIDE.md</code> doesn't exist in <code>docs/</code> — the file is <code>CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md</code>.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>FIG 3.1, PowerShell refs</td><td>Make OS-neutral / macOS-primary: change "YOUR LAPTOP · WINDOWS" → macOS, "PowerShell" → Terminal, <code>adb.exe</code> → <code>adb</code>.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>FIG 3.3, line 1706</td><td>Add the <code>/api/v1</code> prefix: <code>fetch(API_BASE_URL + '/api/v1/auth/me')</code>.</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">CAREKOSH_ROADMAP.md</span> <span class="badge b-min">minor</span> · 3 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Line 133</td><td>Domain/email is shipped: mark <code>noreply@carekosh.com</code> live, Brevo DKIM + Cloudflare SPF/DMARC/MX verified, prod/staging API cut over (PR #49). Not "SPF/DKIM pending".</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Line 22</td><td>Split "Domain + privacy policy hosted": domain is live ✅; only the hosted privacy policy remains 🔴.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Lines 9–29, 95–122</td><td>Add PR #49 (custom-domain cutover), #50 (profile UI launch), #51 (doc redaction) to the PR history + status tables.</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">docs/DEVOPS_AND_ARCHITECTURE.md</span> <span class="badge b-min">minor</span> · 2 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>§7, lines 499–503</td><td>Add <code>partially_received</code> to the order-status flow diagram.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>§4, lines 227–229</td><td>Trim the Render env-var list to the real set (SECRET_KEY, DATABASE_URL, ENVIRONMENT, CORS_ORIGINS, FRONTEND_URL, MAIL_PASSWORD, MAIL_FROM, REQUIRE_EMAIL_VERIFICATION); drop legacy <code>MAIL_USERNAME/SERVER/PORT/STARTTLS/SSL_TLS</code>.</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">docs/ENVIRONMENT_SPLIT.md</span> <span class="badge b-min">minor</span> · 2 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>§4.3, lines 176–182</td><td>The entrypoint ends with <code>exec "$@"</code> (runs the Dockerfile CMD gunicorn), not a literal gunicorn line — reword the simplified step.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>§7, lines 467–473</td><td>Staging <code>/health</code> expected JSON should include <code>version</code> and <code>timestamp</code> to match the real shape (and the prod example).</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">CAREKOSH_BUILD_DEPLOY_FLOW.html</span> <span class="badge b-min">minor</span> · 2 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td>Q5 callout, ~lines 176–179</td><td>Backwards: the entrypoint parses <code>DATABASE_URL</code> first and waits on the real Neon host with <code>pg_isready</code> (≤30×2s). <code>localhost</code>/<code>db</code> is only a parse-failure fallback — there's no "~30 failed attempts every deploy". Rewrite.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Q5 step 5, line 174</td><td>Distinguish the Docker <code>HEALTHCHECK</code> (<code>/health</code>) from Render's <code>healthCheckPath</code> (<code>/live</code>).</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">CAREKOSH_DOMAIN_AND_EMAIL_GUIDE.html</span> <span class="badge b-min">minor</span> · 2 findings</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>§02 "what changed" table</td><td>Prefix the smoke-script paths: <code>vitaltrack-backend/scripts/smoke_api.py</code> and <code>…/cold_start_load_smoke.py</code>.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>§07 step 6 + §13 callout</td><td>The "Still to confirm: set production MAIL_FROM" notes — verify in the Render prod dashboard and remove if done (or keep if genuinely open).</td></tr></table>
+  </div>
+
+  <div class="doc"><h3><span class="fname">docs/USB_ADB_REVERSE_GUIDE.md</span> <span class="badge b-min">minor</span> · 1 finding</h3>
+    <table><tr><th>Sev</th><th>Location</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-low">low</span></td><td>Line 120</td><td><code>/health</code> returns the full object (status/version/environment/database/timestamp), not just <code>{"status":"healthy"}</code>. Note <code>/health</code> is DB-backed; <code>/live</code> returns <code>database:"not_checked"</code>.</td></tr></table>
+  </div>
+
+  <!-- ===================== -->
+  <h2 id="historical">§4 Historical docs — leave as-is (with optional notes)</h2><hr class="rule">
+  <p>These are dated records (evidence, diagnosis, phase logs, journey, goal specs). Their older values are <em>correct to preserve</em>. The findings below are era-accuracy notes only — safe to skip, except the one flagged "worth doing".</p>
+  <table>
+    <tr><th>Document</th><th>Verdict</th><th>Note</th></tr>
+    <tr><td><code>carekosh_architecture_diagrams.html</code></td><td><span class="badge b-hist">historical-ok</span></td><td>5 era-notes (Settings row, items "unique index" that's app-level, <code>audit_log</code> singular, missing <code>partially_received</code>, <code>/live</code> vs <code>/health</code>). Refresh only if it's meant as current reference.</td></tr>
+    <tr><td><code>CAREKOSH_ENVIRONMENT_ARCHITECTURE.html</code></td><td><span class="badge b-hist">historical</span></td><td>2 low: deploy diagram shows <code>/health</code> as the Render check (it's <code>/live</code>); Alembic table lists filenames vs revision ids.</td></tr>
+    <tr><td><code>docs/PHASE2_ACCOUNT_DELETION.md</code></td><td><span class="badge b-hist">historical</span></td><td>med: documents the About subtitle as hardcoded <code>v2.0.0</code>; reword to dynamic <code>v{appVersion}</code> (currently 1.0.0). Plus a <code>§Task 3</code> cross-ref that should point to <code>§Task 2b</code>.</td></tr>
+    <tr><td><code>docs/PROJECT_LEARNINGS_AND_JOURNEY.md</code></td><td><span class="badge b-hist">historical</span></td><td><strong>Worth doing:</strong> remove the <code>MAIL_FROM_NAME=CareKosh</code> row (line 228) — no such config field exists; the name is hardcoded in <code>email.py</code>.</td></tr>
+    <tr><td><code>docs/PHASE1_AUTH_HARDENING.md</code></td><td><span class="badge b-hist">historical-ok</span></td><td>1 low: illustrative SECRET_KEY validator snippet predates the <code>SecretStr</code> handling. Fine to leave.</td></tr>
+    <tr><td><code>CAREKOSH_CUSTOM_DOMAIN_CONFIGURATION_GUIDE.html</code></td><td><span class="badge b-acc">accurate</span></td><td>Migration record; values match current state. No changes.</td></tr>
+    <tr><td><code>docs/CAREKOSH_PRODUCTION_GUARD_FINAL_AUDIT.html</code></td><td><span class="badge b-hist">historical-ok</span></td><td>Clean.</td></tr>
+    <tr><td><code>docs/LAUNCH_READINESS_EVIDENCE_GOAL_10.md</code></td><td><span class="badge b-hist">historical-ok</span></td><td>Clean evidence log.</td></tr>
+    <tr><td><code>docs/PROFILE_ACCOUNT_UI_LAUNCH_GOAL.md</code></td><td><span class="badge b-hist">historical-ok</span></td><td>The just-shipped goal spec. Clean.</td></tr>
+    <tr><td><code>docs/STAGING_DEPLOY_DIAGNOSIS.html</code></td><td><span class="badge b-hist">historical-ok</span></td><td>Clean diagnosis record.</td></tr>
+  </table>
+
+  <!-- ===================== -->
+  <h2 id="clean">§5 Clean / accounted-for documents</h2><hr class="rule">
+  <p>Verified accurate and in sync with the code, or explicitly accounted for as support/generated documentation:</p>
+  <ul>
+    <li><code>README.md</code> (root)</li>
+    <li><code>CAREKOSH_DEPLOYMENT_STRATEGY.html</code></li>
+    <li><code>docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md</code></li>
+    <li><code>docs/EXPO_AND_PLAY_STORE_GUIDE.md</code></li>
+    <li><code>docs/GIT_WORKFLOW_GUIDE.md</code></li>
+    <li><code>docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md</code></li>
+    <li><code>docs/PLAY_STORE_RELEASE_HARDENING_GOAL_9.md</code></li>
+    <li><code>.github/pull_request_template.md</code> — accurate PR checklist; no code/config drift found.</li>
+    <li><code>domain-email-img/README.md</code> — asset-folder README; accurate placeholder guidance.</li>
+    <li><code>vitaltrack-mobile/credentials/README.md</code> — accurate signing-key safety note; no changes.</li>
+    <li><code>docs/monitoring/carekosh-uptime-monitors.example.yml</code> — template/example only; confirm actual UptimeRobot dashboard separately if using it as operational proof.</li>
+    <li><code>vitaltrack-backend/.pytest_cache/README.md</code> — generated pytest cache README; not product documentation and should not be committed.</li>
+  </ul>
+
+  <!-- ===================== -->
+  <h2 id="devenv">§6 macOS dev-environment readiness</h2><hr class="rule">
+  <div class="callout tip"><span class="tag">Verdict: macOS-compatible ✓</span>
+    <p>A new developer on a MacBook (<strong>Apple Silicon arm64 and Intel</strong>) can set the project up end to end. The shell scripts use macOS-correct primitives (<code>ipconfig getifaddr en0/en1</code>, an <code>OSTYPE==darwin*</code> branch, no GNU-only <code>sed -i</code>/<code>readlink</code>/<code>realpath</code>), and both Docker images (<code>python:3.12-slim</code>, <code>postgres:16-alpine</code>) are multi-arch with <strong>no</strong> <code>linux/amd64</code> pin — they build natively on arm64. The fixes below are stale values and consistency gaps, not blockers.</p>
+  </div>
+  <table>
+    <tr><th>Sev</th><th>File</th><th>Required change</th></tr>
+    <tr><td><span class="sev s-med">med</span></td><td><code>setup-local-dev.sh</code> (L71)</td><td><code>MAIL_FROM=noreply@vitaltrack.app</code> → <code>noreply@carekosh.com</code>.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td><code>setup-local-dev.bat</code> (L73)</td><td>Same: <code>MAIL_FROM=noreply@carekosh.com</code>.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td><code>vitaltrack-mobile/.env.example</code> (L8)</td><td>Production example → <code>EXPO_PUBLIC_API_URL=https://api.carekosh.com</code>; add staging <code>https://staging-api.carekosh.com</code>. (Currently <code>api.vitaltrack.app</code>.)</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td><code>docker-compose.dev.yml</code> (L32, L44)</td><td>Replace the hardcoded Windows IP <code>172.25.32.1</code> in <code>CORS_ORIGINS</code> + <code>FRONTEND_URL</code> with <code>localhost</code> or a <code>${LOCAL_IP}</code> placeholder; fix the header comment referencing an absent <code>YOUR_LOCAL_IP</code> token.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td><code>setup-local-dev.sh</code> (L73) / .bat (L75)</td><td><code>FRONTEND_URL</code> points at Metro port <code>:8081</code>; it's the backend HTML base — set <code>http://${LOCAL_IP}:8000/api/v1/auth</code>.</td></tr>
+    <tr><td><span class="sev s-med">med</span></td><td><code>docker-compose.yml</code></td><td>No optional <code>env_file</code> on the api service, so the <code>.env</code> the setup scripts generate is silently ignored under <code>docker compose up</code>. Add <code>env_file</code> with <code>path: .env</code> and <code>required: false</code>, or document that values must be edited in the compose file.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td><code>docker-compose.yml</code> / <code>docker-compose.dev.yml</code></td><td>PgAdmin still uses <code>PGADMIN_DEFAULT_EMAIL=admin@vitaltrack.app</code>. This is local-only, but update to <code>admin@carekosh.com</code> for naming consistency.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td><code>vitaltrack-backend/.env.example</code></td><td>Add the email/verification keys it's missing: <code>MAIL_PASSWORD=</code> (blank disables sending), <code>MAIL_FROM=noreply@carekosh.com</code>, <code>FRONTEND_URL=http://localhost:8000/api/v1/auth</code>, <code>REQUIRE_EMAIL_VERIFICATION=false</code>. Note <code>MAIL_SERVER/PORT/STARTTLS</code> are legacy/unused.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td><code>setup-local-dev.sh</code> (L133) + compose headers</td><td>Use <code>docker compose</code> (v2, space form) instead of the deprecated hyphenated <code>docker-compose</code> for current macOS Docker Desktop.</td></tr>
+    <tr><td><span class="sev s-low">low</span></td><td><code>docker-compose.yml</code> (L39)</td><td>Drop the stale "Railway/Render" reference — it's Render only now.</td></tr>
+  </table>
+  <h3>Missing for a brand-new macOS developer</h3>
+  <ul>
+    <li><strong>Consistent env loading</strong> — because <code>docker-compose.yml</code> lacks optional <code>env_file</code> loading, the generated backend <code>.env</code> is ignored under Docker. Pick one source of truth and make script + compose agree.</li>
+    <li><strong>A documented local-venv (non-Docker) path</strong> — <code>requirements.txt</code> + Alembic support <code>pip install -r requirements.txt &amp;&amp; alembic upgrade head &amp;&amp; uvicorn app.main:app --reload</code>; worth documenting as the lightweight alternative to Docker.</li>
+    <li><strong>Correct prod/staging URLs in the mobile env example</strong> (see above).</li>
+    <li><strong>A hosted privacy policy + terms URL</strong> — absent anywhere in the repo. Not a dev-env blocker, but a Play Store submission blocker. Publish and reference in <code>app.json</code>/store listing.</li>
+  </ul>
+
+  <footer>
+    <p>Generated by Claude's initial read-only documentation audit, then expanded and corrected by Codex against the live checkout on 2026-06-19. This report was committed with the follow-up docs/setup alignment: product docs, setup scripts, and config examples were updated according to the findings, while backend business logic and mobile app behavior were not changed. Line numbers are accurate at audit time and may drift as files change. Historical/evidence documents are intentionally preserved as-is unless they make a false current-state claim.</p>
+  </footer>
+</div>
+</body>
+</html>

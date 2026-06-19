@@ -2,7 +2,7 @@
 
 > React Native + Expo mobile app for the CareKosh home-ICU medical inventory platform.
 
-[![React Native](https://img.shields.io/badge/React%20Native-0.76-61DAFB?logo=react)](https://reactnative.dev)
+[![React Native](https://img.shields.io/badge/React%20Native-0.81-61DAFB?logo=react)](https://reactnative.dev)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2054-000020?logo=expo)](https://expo.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://typescriptlang.org)
 [![TanStack Query](https://img.shields.io/badge/TanStack%20Query-v5-FF4154)](https://tanstack.com/query)
@@ -56,7 +56,7 @@ No `redux-persist`, no AsyncStorage-backed domain state, no `services/sync.ts`, 
 ```
 vitaltrack-mobile/
 ├── app/                          # expo-router file-based routing
-│   ├── _layout.tsx               # root Stack: (auth), (tabs), item/[id], order/create, builder, profile
+│   ├── _layout.tsx               # root Stack: (auth), (tabs), item/[id], order/create, builder, profile, search
 │   ├── (auth)/
 │   │   ├── _layout.tsx
 │   │   ├── login.tsx
@@ -72,7 +72,8 @@ vitaltrack-mobile/
 │   ├── item/[id].tsx             # item detail / edit modal
 │   ├── order/create.tsx          # new-order modal
 │   ├── builder.tsx               # bulk inventory seed modal
-│   └── profile.tsx               # account info, change password, delete account (PR #13)
+│   ├── profile.tsx               # edit name/username, read-only email, account deletion
+│   └── search.tsx                # global-search modal
 ├── components/                   # UI components
 │   ├── common/
 │   │   └── SkeletonLoader.tsx    # animated placeholders (dashboard/inventory/orders variants)
@@ -114,7 +115,8 @@ vitaltrack-mobile/
 | `item/[id]` | item detail + editor |
 | `order/create` | new order from low-stock suggestions |
 | `builder` | bulk inventory seed for first-time setup |
-| `profile` | account info, change password, **request account deletion** (PR #13) — reached via swipe-down popup menu from top-right |
+| `profile` | edit Name/Username (`PATCH /auth/me`), read-only email, and **request account deletion** — reached from the top-right profile button's bottom-sheet menu |
+| `search` | global-search modal route registered in the root stack |
 
 ---
 
@@ -124,11 +126,13 @@ vitaltrack-mobile/
 
 ```typescript
 // hooks/useServerData.ts
-export function useItems(filters?: ItemFilters) {
+export function useItems() {
   return useQuery({
-    queryKey: ['items', filters],
-    queryFn: () => api.get<ItemListResponse>('/items', { params: filters }),
-    staleTime: 30_000,
+    queryKey: queryKeys.items,
+    queryFn: async (): Promise<Item[]> => {
+      const response = await itemService.getAll({ limit: 999 });
+      return response.items;
+    },
   });
 }
 ```
@@ -160,7 +164,7 @@ export function useUpdateItemStock() {
 
 ### Stores
 
-- `store/useAuthStore.ts` (~385 lines) — user object, auth status, login/register/logout/updateUser/forgotPassword/resetPassword actions. Tokens persisted in SecureStore, **not** AsyncStorage.
+- `store/useAuthStore.ts` (~423 lines) — user object, auth status, login/register/logout/updateUser/forgotPassword/resetPassword actions. Tokens persisted in SecureStore, **not** AsyncStorage.
 - `store/useAppStore.ts` (~61 lines) — **UI-only state** (`isInitialized` flag). Domain data (items, categories, orders, activity) lives in the TanStack Query cache, not here.
 
 ---

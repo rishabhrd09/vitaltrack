@@ -50,7 +50,7 @@ Outputs "Setup complete!" and creates `.env` files seeded with your LAN IP.
 ```bash
 cd vitaltrack-backend
 docker compose -f docker-compose.dev.yml up --build -d
-docker compose logs -f api
+docker compose -f docker-compose.dev.yml logs -f api
 ```
 
 Wait for:
@@ -59,9 +59,9 @@ api-1  | INFO:     Application startup complete.
 api-1  | INFO:     Uvicorn running on http://0.0.0.0:8000
 ```
 
-`docker-entrypoint.sh` waits for Postgres, runs `alembic upgrade head`, then starts Gunicorn — you do not run migrations manually.
+The dev container uses `Dockerfile.dev`'s inline entrypoint: it waits for `db:5432`, runs `alembic upgrade head`, then starts Uvicorn with `--reload`. Production uses `docker-entrypoint.sh` + Gunicorn. You do not run migrations manually in either Docker flow.
 
-**Verify:** http://localhost:8000/health → `{"status":"healthy"}`
+**Verify:** http://localhost:8000/health → `status:"healthy"` with `database:"connected"`
 **API docs:** http://localhost:8000/docs
 
 Keep this terminal running. Open a new one for the next step.
@@ -86,7 +86,7 @@ Expect: QR code in the terminal + `Metro waiting on…`
 2. Scan the QR code.
 3. Wait ~30 s for the first-load Metro bundle.
 4. Tap **Create Account** — enter name, email, password.
-5. Since dev defaults `REQUIRE_EMAIL_VERIFICATION=False`, you're taken straight to the dashboard. (Staging + production require email verification — see [EMAIL_VERIFICATION_GUIDE.md](EMAIL_VERIFICATION_GUIDE.md).)
+5. The prescribed Docker dev flow sets `REQUIRE_EMAIL_VERIFICATION=true`. If `MAIL_PASSWORD` is configured, verify the account from the email before logging in. With `MAIL_PASSWORD` blank, the backend skips the email gate to avoid a local lockout. Staging + production require email verification — see [EMAIL_VERIFICATION_GUIDE.md](EMAIL_VERIFICATION_GUIDE.md).
 
 Success — CareKosh is running locally.
 
@@ -97,7 +97,7 @@ Success — CareKosh is running locally.
 ```
 □ Backend
   □ docker ps shows 2 containers (api + db)
-  □ http://localhost:8000/health returns {"status":"healthy"}
+  □ http://localhost:8000/health returns status healthy with database connected
   □ http://localhost:8000/docs shows Swagger UI
   □ alembic head matches newest file in vitaltrack-backend/alembic/versions/
     (as of PR #13: 20260419_add_account_deletion_token_fields)
@@ -123,7 +123,7 @@ Success — CareKosh is running locally.
 | Phone can't reach backend | Use USB: `adb reverse tcp:8000 tcp:8000` — see [USB_ADB_REVERSE_GUIDE.md](USB_ADB_REVERSE_GUIDE.md) |
 | `npm install` fails | Always `npm install --legacy-peer-deps` (React Native peer-dep weirdness) |
 | Port 5432 conflict | Local Postgres running; stop it, or edit the host-side port in `docker-compose.dev.yml` |
-| "Can't connect to database" in backend logs | Happens during the first 30 seconds — `docker-entrypoint.sh` is probing. Wait. |
+| "Database not ready... waiting 2s" in backend logs | Normal while the dev entrypoint waits for `db:5432`. Wait for the `Application startup complete` log. |
 
 Deep dive: [LOCAL_TESTING_COMPLETE_GUIDE.md](LOCAL_TESTING_COMPLETE_GUIDE.md).
 

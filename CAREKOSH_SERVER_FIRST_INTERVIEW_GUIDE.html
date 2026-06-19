@@ -338,7 +338,7 @@ DATA FLOWS IN BOTH DIRECTIONS:
 │ Optimistic Concurrency Control (version column)        │
 │ Audit log (JSONB before/after on every write)          │
 │ CHECK(quantity >= 0) at database level                 │
-│ Atomic apply-stock endpoint (single transaction)       │
+│ Atomic apply endpoint (single transaction)             │
 │                                                         │
 │ ✅ Server data can NEVER be overwritten by stale local │
 │ ✅ Every change is traceable via audit log              │
@@ -529,15 +529,15 @@ async def update_item(item_id, update_data, expected_version, db):
 
   <h3>2. Audit Log (JSONB Snapshots)</h3>
 
-  <p>Every write operation logs a before/after JSONB snapshot to the <code>activity_log</code> table. If data ever looks wrong, you can trace exactly what changed, when, and what the previous values were.</p>
+  <p>Every write operation logs a before/after JSONB snapshot to the <code>audit_log</code> table. If data ever looks wrong, you can trace exactly what changed, when, and what the previous values were.</p>
 
   <pre><code># Audit entry example:
 {
   "entity_type": "item",
   "entity_id": "uuid-...",
   "action": "update",
-  "before_snapshot": {"name": "Suction Machine", "quantity": 2, "version": 3},
-  "after_snapshot":  {"name": "Suction Machine", "quantity": 5, "version": 4},
+  "old_values": {"name": "Suction Machine", "quantity": 2, "version": 3},
+  "new_values": {"name": "Suction Machine", "quantity": 5, "version": 4},
   "created_at": "2026-04-19T14:30:00Z"
 }</code></pre>
 
@@ -549,9 +549,9 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
 
   <p>Even if application code has a bug that tries to set quantity to -1, PostgreSQL will reject it. Defense in depth.</p>
 
-  <h3>4. Atomic Apply-Stock Endpoint</h3>
+  <h3>4. Atomic Order Apply Endpoint</h3>
 
-  <p>When a purchase order is received and stock needs updating across multiple items, the <code>POST /orders/{id}/apply-stock</code> endpoint wraps all item updates in a single database transaction. Either all items update successfully, or none do. No partial stock updates.</p>
+  <p>When a purchase order is received and stock needs updating across multiple items, the <code>POST /orders/{id}/apply</code> endpoint wraps all item updates in a single database transaction. Either all items update successfully, or none do. No partial stock updates.</p>
 </div>
 
 <hr>
@@ -675,7 +675,7 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
     <div class="qa-q"><h4>How do you ensure data consistency in a mobile app where the network is unreliable?</h4></div>
     <div class="qa-a">
       <span class="qa-tag system">System Design</span>
-      <p>Four layers: (1) Server-side OCC prevents concurrent overwrites — version column + 409 Conflict. (2) JSONB audit log captures before/after snapshots for every write, enabling forensic analysis. (3) Database-level CHECK constraint (<code>quantity >= 0</code>) prevents invalid states even if application code has bugs. (4) Atomic transactions for multi-item operations (apply-stock endpoint wraps all item updates in a single transaction — all succeed or all rollback).</p>
+      <p>Four layers: (1) Server-side OCC prevents concurrent overwrites — version column + 409 Conflict. (2) JSONB audit log captures before/after snapshots for every write, enabling forensic analysis. (3) Database-level CHECK constraint (<code>quantity >= 0</code>) prevents invalid states even if application code has bugs. (4) Atomic transactions for multi-item operations (<code>POST /orders/{id}/apply</code> wraps all item updates in a single transaction — all succeed or all rollback).</p>
       <p>For network unreliability: TanStack Query retries failed requests automatically (configurable), shows stale cached data while retrying, and surfaces errors to the user explicitly rather than silently corrupting data. The app shows a clear "Unable to connect — server may be starting up" message with auto-retry on cold starts.</p>
     </div>
   </div>

@@ -4,7 +4,7 @@
 # =============================================================================
 # QUICK START (works out of the box for mobile testing):
 # =============================================================================
-#   docker-compose up --build
+#   docker compose up --build
 #
 # That's it! CORS is configured to allow ALL origins by default for development.
 # This means your mobile phone can connect without any IP configuration.
@@ -23,6 +23,10 @@ services:
     container_name: vitaltrack-api
     ports:
       - "8000:8000"
+    # `required: false` needs Docker Compose v2.24+; current Docker Desktop includes it.
+    env_file:
+      - path: .env
+        required: false
     environment:
       - ENVIRONMENT=development
       - DEBUG=true
@@ -36,7 +40,7 @@ services:
       # =======================================================================
       # DEFAULT: ["*"] allows ALL origins - perfect for local development
       # Your phone can connect to this backend without any configuration!
-      # For production: Set specific origins in Railway/Render environment vars
+      # For production: Set specific origins in Render environment vars
       # =======================================================================
       - CORS_ORIGINS=["*"]
     depends_on:
@@ -84,7 +88,7 @@ services:
     image: dpage/pgadmin4:latest
     container_name: vitaltrack-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@vitaltrack.app
+      PGADMIN_DEFAULT_EMAIL: admin@carekosh.com
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:

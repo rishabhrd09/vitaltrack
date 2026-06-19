@@ -67,10 +67,11 @@ DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/vitaltrack
 SECRET_KEY=local-dev-secret-key-change-in-production
 ENVIRONMENT=development
 CORS_ORIGINS=["*"]
+LOCAL_IP=${LOCAL_IP}
 REQUIRE_EMAIL_VERIFICATION=false
-MAIL_FROM=noreply@vitaltrack.app
+MAIL_FROM=noreply@carekosh.com
 MAIL_PASSWORD=
-FRONTEND_URL=http://${LOCAL_IP}:8081
+FRONTEND_URL=http://${LOCAL_IP}:8000/api/v1/auth
 EOF
     echo -e "${GREEN}✓ Backend .env created${NC}"
 else
@@ -130,7 +131,8 @@ echo "║   To start developing:                               ║"
 echo "║                                                      ║"
 echo "║   Terminal 1 — Backend:                              ║"
 echo "║     cd vitaltrack-backend                            ║"
-echo "║     docker-compose up --build                        ║"
+echo "║     docker compose -f docker-compose.dev.yml \\       ║"
+echo "║       up --build                                      ║"
 echo "║                                                      ║"
 echo "║   Terminal 2 — Mobile:                               ║"
 echo "║     cd vitaltrack-mobile                             ║"

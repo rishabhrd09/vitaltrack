@@ -1,6 +1,6 @@
 # CareKosh Roadmap
 
-**Last updated:** 2026-06-16
+**Last updated:** 2026-06-19
 
 CareKosh is a home-ICU medical inventory app for family caregivers. This document captures where the project has been, where it is today, and what remains before a Play Store launch.
 
@@ -19,7 +19,8 @@ CareKosh is a home-ICU medical inventory app for family caregivers. This documen
 | Account deletion (Play Store compliance) | ✅ shipped PR #13 |
 | Loading UX — skeleton screens | ✅ shipped PR #15 |
 | Loading UX — cache persistence + cold-start retry | ✅ shipped PR #16 |
-| Domain + privacy policy hosted | 🟡 in progress |
+| CareKosh API domains + email sender | ✅ shipped PR #49/#51 |
+| Hosted privacy policy | 🔴 not yet |
 | Play Console account + closed testing | 🟡 in progress |
 | Launch on Google Play | 🔴 not yet |
 | Automated test suite health | ✅ 123 backend tests passing with 85% total coverage in latest Goal 11 evidence |
@@ -43,7 +44,7 @@ Ripped out the offline-first architecture:
 - Deleted mobile `sync.ts`, `useSyncStore`, AsyncStorage-backed persistence of domain data.
 - Introduced `@tanstack/react-query` for all reads and writes.
 - Added optimistic concurrency control: `version` column on `items`, HTTP 409 response on stale updates with `server_version` + `server_quantity` in the body.
-- Added server-side audit log (`audit_logs` table) behind a non-negative-quantity CHECK constraint.
+- Added server-side audit log (`audit_log` table) behind a non-negative-quantity CHECK constraint.
 - Zustand reduced to UI-only state (`useAppStore.ts` is 61 lines).
 - Hosting migrated Railway → Render (PR #1, pre-phase).
 
@@ -69,9 +70,9 @@ Two-PR effort to close the "blank-screen while loading" gap without reintroducin
 Google Play policy requires in-app account deletion with full data erasure:
 - `DELETE /auth/me` → generates a `deletion_token` (24 h TTL), emails confirmation link.
 - `GET /auth/confirm-delete/{token}` → renders an HTML confirmation page.
-- `POST /auth/confirm-delete/{token}` → deletes the user. CASCADE unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
+- `POST /auth/confirm-delete/{token}` → deletes the user. CASCADE unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_log.
 - `POST /auth/cancel-delete` → lets a logged-in user abort a pending deletion.
-- Mobile: new `app/profile.tsx` screen with account info, change-password, delete-account flow, and a swipe-down-to-dismiss popup menu reached from the top-right of the app.
+- Mobile: `app/profile.tsx` lets users edit Name/Username, keeps email read-only, supports account deletion, and opens from the top-right profile button's bottom-sheet menu.
 
 ### Phase 8 — Backend production guard (PRs #37 → #43)
 The backend production-guard sequence closed the previously verified high-risk backend gaps:
@@ -105,7 +106,7 @@ The later goal work finished the post-pack backend security pass and moved Play/
 | #10 | `feature/rebrand-carekosh` | VitalTrack → CareKosh (user-visible rebrand) |
 | #11 | `feature/rebrand-carekosh` | Rebrand polish: app icon safe zone + order-ID mismatch in PDF |
 | #12 | `fix/auth-hardening` | Email required, session-revoke on password change, prod config validators |
-| #13 | `fix/account-deletion` | Email-confirmed account deletion + Profile screen + swipe-down menu |
+| #13 | `fix/account-deletion` | Email-confirmed account deletion + initial Profile screen |
 | #14 | `docs/carekosh-docs-overhaul` | Documentation overhaul — complete guide refresh for PRs #1–#13 |
 | #15 | `fix/skeleton-loading` | Skeleton loading screens for dashboard, inventory, orders tabs |
 | #16 | `fix/cache-persistence-cold-start` | TanStack Query cache persistence + cold-start auto-retry on login + focusManager wiring |
@@ -120,6 +121,9 @@ The later goal work finished the post-pack backend security pass and moved Play/
 | #45 | `security/post-pack-hardening` | Implement Goal 8 post-pack security hardening |
 | #46 | `mobile/playstore-release-hardening` | Finalize Goal 9 Android/Play Store release hardening |
 | #47 | `ops/launch-readiness-runbook` | Harden Goal 10/11 restore, smoke, monitoring-template, and redaction evidence |
+| #49 | `config/use-carekosh-custom-domains` | Cut production/staging APIs to `api.carekosh.com` / `staging-api.carekosh.com`; configure the `noreply@carekosh.com` sender path |
+| #50 | `profile-account-ui-launch` | Ship profile/account UI updates: editable Name/Username, read-only email, About modal, support mailto |
+| #51 | `docs/redact-personal-email` | Redact personal email and Brevo account identifiers from domain/email documentation |
 
 (PR #3 was rolled into #4 during review and does not appear as its own merge commit.)
 
@@ -130,7 +134,7 @@ The later goal work finished the post-pack backend security pass and moved Play/
 | Task | Owner | Status |
 |---|---|---|
 | Publish privacy policy at a stable URL | rishabhrd09 | 🟡 draft written, not hosted |
-| Register a production domain for email (`noreply@carekosh.com`) | rishabhrd09 | 🟡 domain registered, SPF/DKIM pending |
+| Register a production domain for email (`noreply@carekosh.com`) | rishabhrd09 | ✅ live; Brevo DKIM plus Cloudflare SPF/DMARC/MX verified, prod/staging APIs cut over in PR #49 |
 | Google Play Console account verification | rishabhrd09 | 🟡 paid, identity check in review |
 | Closed testing track with ≥12 testers for 14 days | rishabhrd09 | 🔴 not started |
 | Play Store listing assets (feature graphic, screenshots, description) | rishabhrd09 | 🟡 screenshots WIP |

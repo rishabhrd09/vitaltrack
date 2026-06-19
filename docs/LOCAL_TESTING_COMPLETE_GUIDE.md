@@ -45,7 +45,7 @@ Companion docs:
 - Backend (FastAPI + Postgres 16) runs in two Docker containers via `docker-compose.dev.yml`.
 - Metro bundler runs natively on your PC on port 8081.
 - Expo Go on the phone loads the JS bundle over Metro and talks to the API over HTTPS.
-- In dev, `REQUIRE_EMAIL_VERIFICATION` defaults to `false` — you can register and log in without an email round-trip.
+- `docker-compose.dev.yml` sets `REQUIRE_EMAIL_VERIFICATION=true`. With `MAIL_PASSWORD` blank, the backend skips the login gate to avoid local lockout; once you configure Brevo locally, you must verify the email before login.
 - The mobile app is **server-first** (TanStack Query). No offline queue, no AsyncStorage-backed domain data. If the backend is down, writes error out — they do not silently queue.
 
 ---
@@ -141,7 +141,7 @@ npx expo start --clear
 ### Step 5 — Test
 
 1. Scan the QR code in Expo Go.
-2. Register an account (dev defaults skip email verification).
+2. Register an account. If local email is configured, verify the email before login; with `MAIL_PASSWORD` blank, the backend skips the gate.
 3. Dashboard loads → you're in.
 
 ---
@@ -217,7 +217,7 @@ brew services stop postgresql
 Alternative: change the host-side port in `docker-compose.dev.yml` (e.g. `5433:5432`).
 
 ### "Database tables don't exist"
-`docker-entrypoint.sh` is supposed to run `alembic upgrade head` on startup. If you bypassed it:
+The dev container's inline entrypoint runs `alembic upgrade head` on startup. If you bypassed it:
 ```bash
 docker compose -f docker-compose.dev.yml exec api alembic upgrade head
 ```
@@ -249,8 +249,8 @@ docker compose -f docker-compose.dev.yml up --build -d
 docker compose -f docker-compose.dev.yml logs -f api
 ```
 
-### "localhost:5432 failed, retrying…" × 30 at startup
-Harmless. `docker-entrypoint.sh` probes a local-dev fallback before using the real `DATABASE_URL`. The Render logs show the same thing. Not a bug.
+### "Database not ready yet..." during API startup
+Normal while the dev entrypoint waits for Postgres at `db:5432`. If it keeps repeating until the container exits, inspect the `db` container health and `DATABASE_URL`.
 
 ---
 
@@ -374,6 +374,10 @@ Manual `.env` contents:
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/vitaltrack
 SECRET_KEY=<at-least-32-chars>
 ENVIRONMENT=development
+LOCAL_IP=YOUR_LAN_IP
+MAIL_FROM=noreply@carekosh.com
+MAIL_PASSWORD=
+FRONTEND_URL=http://YOUR_LAN_IP:8000/api/v1/auth
 ```
 
 **Mobile — `vitaltrack-mobile/.env`**
@@ -393,7 +397,7 @@ EXPO_PUBLIC_API_URL=http://YOUR_LAN_IP:8000
 □ http://localhost:8000/health → status healthy + database connected when DB is reachable
 □ http://localhost:8000/live → status healthy + database not_checked
 □ http://localhost:8000/docs loads Swagger UI
-□ docker compose logs api has no ERROR/CRITICAL lines
+□ docker compose -f docker-compose.dev.yml logs api has no ERROR/CRITICAL lines
 □ alembic current matches the newest migration filename
     (as of PR #13: 20260419_add_account_deletion_token_fields)
 ```
@@ -422,7 +426,7 @@ EXPO_PUBLIC_API_URL=http://YOUR_LAN_IP:8000
 □ Can register a new account
 □ Dashboard loads
 □ Can create an item → appears in Inventory
-□ Activity log shows the item_created entry
+□ Activity log shows the item_create entry
 □ Profile screen (top-right menu) opens, shows user info
 ```
 

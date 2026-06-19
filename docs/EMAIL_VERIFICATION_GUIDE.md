@@ -102,14 +102,14 @@ All under `/api/v1/auth` (see `vitaltrack-backend/app/api/v1/auth.py`).
 # vitaltrack-backend/app/api/v1/auth.py
 if (
     settings.REQUIRE_EMAIL_VERIFICATION
-    and settings.MAIL_PASSWORD      # email actually configured
+    and is_email_configured()       # MAIL_PASSWORD is non-empty after SecretStr handling
     and user.email                  # username-only accounts are exempt
     and not user.is_email_verified
 ):
     raise HTTPException(status_code=403, detail="EMAIL_NOT_VERIFIED")
 ```
 
-The `MAIL_PASSWORD` gate prevents a lockout if Brevo env vars were forgotten on a deploy. If the email service isn't configured, the guard is skipped.
+The `is_email_configured()` gate checks the resolved `MAIL_PASSWORD` value after SecretStr handling and prevents a lockout if Brevo env vars were forgotten on a deploy. If the email service isn't configured, the guard is skipped.
 
 ### Resend (enumeration-safe)
 
@@ -164,11 +164,11 @@ Startup fails fast on the two validators above rather than send broken verificat
 Current code has one active send path:
 
 - **Brevo with a verified sender** — real delivery through Brevo's HTTP API.
-- For local runs that should not send email, leave `MAIL_PASSWORD` empty and keep `REQUIRE_EMAIL_VERIFICATION=false`.
+- For local runs that should not send email, leave `MAIL_PASSWORD` empty. Outside Docker you can also set `REQUIRE_EMAIL_VERIFICATION=false`; the dev compose file sets it `true`, but the guard is skipped while email is unconfigured.
 
 ### Prerequisites
 - Docker Desktop running
-- Mailtrap account **or** Brevo account with a verified sender
+- Brevo account with a verified sender
 - Android phone on same Wi-Fi as PC (or USB debugging — see `docs/USB_ADB_REVERSE_GUIDE.md`)
 
 ### Step 1: Set up the email provider
@@ -211,13 +211,8 @@ services:
       - CORS_ORIGINS=["http://localhost:3000","http://localhost:8081","http://192.168.1.42:8081","exp://192.168.1.42:8081"]
 
       # Email (optional local real-email test through Brevo HTTP API)
-      - MAIL_USERNAME=
       - MAIL_PASSWORD=<brevo-api-key>
       - MAIL_FROM=noreply@carekosh.com
-      - MAIL_SERVER=sandbox.smtp.mailtrap.io
-      - MAIL_PORT=587
-      - MAIL_STARTTLS=true
-      - MAIL_SSL_TLS=false
 
       - REQUIRE_EMAIL_VERIFICATION=true
       - FRONTEND_URL=http://192.168.1.42:8000/api/v1/auth   # <-- your IP
@@ -255,7 +250,7 @@ cd vitaltrack-mobile
 npx expo start --clear
 ```
 
-Register an account — email arrives in Mailtrap/Gmail, click link, come back, log in.
+Register an account — email arrives through Brevo, click link, come back, log in.
 
 ---
 
@@ -277,13 +272,8 @@ SECRET_KEY=<32+ char random, NOT starting with CHANGE-THIS>
 ENVIRONMENT=production
 DATABASE_URL=postgresql+asyncpg://...@neon.../neondb
 
-MAIL_USERNAME=
 MAIL_PASSWORD=<Brevo API key>
 MAIL_FROM=noreply@carekosh.com
-MAIL_SERVER=sandbox.smtp.mailtrap.io  # legacy SMTP-era key; unused by Brevo HTTP send path
-MAIL_PORT=587                         # legacy SMTP-era key
-MAIL_STARTTLS=true
-MAIL_SSL_TLS=false
 
 REQUIRE_EMAIL_VERIFICATION=true
 FRONTEND_URL=https://api.carekosh.com/api/v1/auth
@@ -345,11 +335,8 @@ Since PR #12, new registrations **require email**. Existing username-only accoun
 
 ## 8. Troubleshooting
 
-### "Mail not configured" in logs
-```
-[EMAIL] Mail not configured. Verification token for user@email.com: abc123...
-```
-`MAIL_USERNAME`/`MAIL_PASSWORD` didn't reach the container. Rebuild:
+### No verification email is sent
+When `MAIL_PASSWORD` is empty, `is_email_configured()` is false. The backend skips sending email and does not print raw verification tokens to the logs. If you intended to test real email, confirm `MAIL_PASSWORD` reached the container, then rebuild:
 ```bash
 docker compose -f docker-compose.dev.yml down
 docker compose -f docker-compose.dev.yml up --build
@@ -442,11 +429,11 @@ curl -X POST http://localhost:8000/api/v1/auth/resend-verification \
 
 ### Local development
 ```
-[ ] Mailtrap inbox OR Brevo verified sender set up
+[ ] Brevo verified sender set up
 [ ] docker-compose.dev.yml has MAIL_* + REQUIRE_EMAIL_VERIFICATION + FRONTEND_URL
 [ ] FRONTEND_URL uses PC LAN IP (not localhost)
 [ ] Container rebuilt with --build after any env change
-[ ] Registered user → email captured in Mailtrap or received in Gmail
+[ ] Registered user → email received from Brevo
 [ ] Clicked link → HTML "Verified" page shown
 [ ] Login works after verification
 [ ] Resend button produces a new email

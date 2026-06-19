@@ -225,13 +225,13 @@ selector.
 |---|---|
 | `MAIL_PASSWORD` | Brevo API key (used as the `api-key` HTTP header — variable name kept for backward compatibility with the SMTP-era code) |
 | `MAIL_FROM` | `noreply@carekosh.com` |
-| `MAIL_FROM_NAME` | `CareKosh` |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` |
 
 `MAIL_SERVER`, `MAIL_PORT=587`, `MAIL_STARTTLS=True`, `MAIL_USERNAME` are
 still defined in `app/core/config.py` as legacy harmless config. The current
 `app/utils/email.py` sender does not use them; it always uses the REST transport
-when `MAIL_PASSWORD` is configured.
+when `MAIL_PASSWORD` is configured. The sender display name is hardcoded as
+`CareKosh` in `app/utils/email.py`; there is no `MAIL_FROM_NAME` config key.
 
 ### Safety guards in code
 

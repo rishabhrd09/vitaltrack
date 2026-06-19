@@ -178,12 +178,12 @@ Consequences:
 # 1. Parse DATABASE_URL → extract host + port
 # 2. pg_isready loop (30× retries)
 # 3. alembic upgrade head
-# 4. exec gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
+# 4. exec "$@" (the Dockerfile CMD starts gunicorn)
 ```
 
 When the staging service first boots with `DATABASE_URL` pointed at `vitaltrack_staging`, Alembic sees an empty DB and runs every migration from scratch, creating all tables automatically. No manual SQL required.
 
-> **Known quirk.** If `DATABASE_URL` resolves late, `pg_isready` spends its first ~30 attempts polling `localhost:5432` before the real Neon URL takes over. Cosmetic; the container still comes up healthy. Don't alarm on it.
+> **Startup wait behavior.** The entrypoint parses `DATABASE_URL` before the `pg_isready` loop, so normal Render boots wait on the real Neon host and port. `localhost:5432` is only a parse-failure fallback, not an expected sequence of failed attempts on every deploy.
 
 ### 4.4 Twelve-Factor compliance
 
@@ -468,8 +468,10 @@ curl -s https://staging-api.carekosh.com/health | python -m json.tool
 # Expected:
 # {
 #   "status": "healthy",
+#   "version": "1.0.0",
 #   "environment": "staging",
-#   "database": "connected"
+#   "database": "connected",
+#   "timestamp": "2026-..."
 # }
 
 # Production

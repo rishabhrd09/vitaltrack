@@ -187,7 +187,7 @@ curl -X POST $BASE/api/v1/auth/register \
   -d '{"identifier":"e2e+...@example.com","password":"TestPass123!"}'</code></pre>
     <div class="expect">
       <span class="expect-label">Expected (403)</span>
-      <code>{"detail":"Email not verified"}</code>
+      <code>{"detail":"EMAIL_NOT_VERIFIED"}</code>
     </div>
     <p>Click the verification link delivered by the configured Brevo HTTP email path, then retry login — it should now succeed.</p>
   </div>
@@ -220,7 +220,7 @@ echo "REFRESH: ${REFRESH:0:20}..."</code></pre>
   -d "{\"refresh_token\":\"$REFRESH\"}"</code></pre>
     <div class="expect">
       <span class="expect-label">Expected (401)</span>
-      <code>{"detail":"Invalid refresh token"}</code>
+      <code>{"detail":"Token has been revoked"}</code>
     </div>
   </div>
 </div>
@@ -240,17 +240,17 @@ echo "REFRESH: ${REFRESH:0:20}..."</code></pre>
 
 CAT=$(curl -s -X POST $BASE/api/v1/categories \
   -H "$AUTH" -H "Content-Type: application/json" \
-  -d '{"name":"Oxygen","icon":"o2","color":"#1d6b52"}' | jq -r '.id')
+  -d '{"name":"Oxygen"}' | jq -r '.id')
 
 ITEM=$(curl -s -X POST $BASE/api/v1/items \
   -H "$AUTH" -H "Content-Type: application/json" \
   -d "{
-    \"category_id\":\"$CAT\",
+    \"categoryId\":\"$CAT\",
     \"name\":\"Oxygen Mask (Adult)\",
     \"quantity\":10,
-    \"minimum_quantity\":5,
+    \"minimumStock\":5,
     \"unit\":\"pieces\",
-    \"is_critical\":true
+    \"isCritical\":true
   }" | jq -r '.id')
 
 echo "CAT=$CAT ITEM=$ITEM"</code></pre>
@@ -271,7 +271,7 @@ echo "CAT=$CAT ITEM=$ITEM"</code></pre>
     <h4>Update with correct version — version increments</h4>
     <pre><code>curl -s -X PUT $BASE/api/v1/items/$ITEM \
   -H "$AUTH" -H "Content-Type: application/json" \
-  -d '{"name":"Oxygen Mask (Adult)","quantity":12,"minimum_quantity":5,"version":1}' \
+  -d '{"name":"Oxygen Mask (Adult)","quantity":12,"minimumStock":5,"version":1}' \
   | jq '{name,quantity,version}'</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
@@ -284,10 +284,10 @@ echo "CAT=$CAT ITEM=$ITEM"</code></pre>
     <h4>Update with stale version — <strong>409 Conflict</strong> (OCC)</h4>
     <pre><code>curl -s -w "\nHTTP %{http_code}\n" -X PUT $BASE/api/v1/items/$ITEM \
   -H "$AUTH" -H "Content-Type: application/json" \
-  -d '{"name":"X","quantity":99,"minimum_quantity":5,"version":1}'</code></pre>
+  -d '{"name":"X","quantity":99,"minimumStock":5,"version":1}'</code></pre>
     <div class="expect">
       <span class="expect-label">Expected (409)</span>
-      <code>{"detail":"Version conflict","server_version":2,"server_quantity":12}</code>
+      <code>{"error":"Version conflict","message":"This item was modified by someone else. Please refresh and try again.","server_version":2,"server_quantity":12}</code>
     </div>
     <div class="callout success">
       <span class="callout-label">Why this matters</span>
@@ -312,7 +312,7 @@ echo "CAT=$CAT ITEM=$ITEM"</code></pre>
 
 <!-- PHASE 4 -->
 <div class="phase-bar" style="border-color:var(--info);background:var(--info-bg)">
-  <h2 style="color:var(--info)"><span class="tag" style="background:var(--info);color:#fff">Phase 4</span> Orders + apply-stock</h2>
+  <h2 style="color:var(--info)"><span class="tag" style="background:var(--info);color:#fff">Phase 4</span> Orders + apply endpoint</h2>
 </div>
 
 <div class="section">
@@ -348,7 +348,7 @@ curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{quantity,version}'</code></pr
     <pre><code>curl -s "$BASE/api/v1/activities?limit=10" -H "$AUTH" | jq '.[] | {action,item_name,created_at}'</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      Entries for: category create, item create, item update (×N), order create, order status × 2, apply-stock. Each with <code>created_at</code>.
+      Entries for: category create, item create, item update (×N), order create, order status × 2, order apply. Each with <code>created_at</code>.
     </div>
   </div>
 </div>
@@ -367,7 +367,7 @@ curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{quantity,version}'</code></pr
     <pre><code>curl -s -X DELETE $BASE/api/v1/auth/me -H "$AUTH"</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      <code>{"message":"Deletion confirmation email sent"}</code>. In the configured email provider, the message contains a browser link to <code>GET /api/v1/auth/confirm-delete/{token}</code> (token is raw; DB stores the SHA-256 hash with a 24 h TTL). The GET route renders a confirmation page only.
+      <code>{"message":"A confirmation email has been sent. Please check your inbox and open the link to review and confirm account deletion. The link expires in 24 hours."}</code>. In the configured email provider, the message contains a browser link to <code>GET /api/v1/auth/confirm-delete/{token}</code> (token is raw; DB stores the SHA-256 hash with a 24 h TTL). The GET route renders a confirmation page only.
     </div>
   </div>
 
@@ -377,7 +377,7 @@ curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{quantity,version}'</code></pr
     <pre><code>curl -s -X POST $BASE/api/v1/auth/cancel-delete -H "$AUTH"</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      <code>{"message":"Account deletion cancelled"}</code>. Trying to use the email link after cancel should return an HTML error (hash cleared).
+      <code>{"message":"Account deletion request has been cancelled."}</code>. Trying to use the email link after cancel should return an HTML error (hash cleared).
     </div>
   </div>
 
@@ -394,7 +394,7 @@ curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{quantity,version}'</code></pr
     <pre><code>curl -s -X POST https://staging-api.carekosh.com/api/v1/auth/confirm-delete/RAW_TOKEN</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      HTML completion page. User row is deleted; cascade unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
+      HTML completion page. User row is deleted; cascade unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_log.
     </div>
     <p>Prove cascade worked — any authenticated call with a saved access token should now 401:</p>
     <pre><code>curl -s -w "HTTP %{http_code}\n" $BASE/api/v1/items -H "$AUTH"</code></pre>
@@ -426,12 +426,12 @@ SELECT id, name, quantity, version FROM items ORDER BY updated_at DESC LIMIT 5;
 
 -- Audit log
 SELECT action, entity_type, created_at
-FROM audit_logs
+FROM audit_log
 ORDER BY created_at DESC
 LIMIT 10;</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      Item rows have <code>version &gt;= 1</code>. <code>audit_logs</code> has entries with JSONB <code>before_snapshot</code> / <code>after_snapshot</code> for every recent write.
+      Item rows have <code>version &gt;= 1</code>. <code>audit_log</code> has entries with JSONB <code>old_values</code> / <code>new_values</code> for every recent write.
     </div>
   </div>
 
@@ -473,10 +473,10 @@ eas build --profile preview --platform android</code></pre>
       <li>Create an item → PATCH stock → activity log updates</li>
       <li>Create an order → mark received → apply to stock → item quantity updates</li>
       <li>Export order PDF → no "unknown order ID" error (PR #11 fix)</li>
-      <li>Swipe down from top → profile menu opens → tap Edit Profile → profile screen opens (PR #13)</li>
-      <li>Profile screen → "About CareKosh" → alert shows updated description</li>
+      <li>Tap the top-right profile button → bottom-sheet menu opens → tap Edit Profile → profile screen opens</li>
+      <li>"About CareKosh" → modal opens with the app version from Expo constants and tappable support email</li>
       <li>Profile screen → Delete Account → receive email → confirm via link → forced logout</li>
-      <li>Try login with deleted account → 404 "account not found"</li>
+      <li>Try login with deleted account → 401 "Incorrect email/username or password"</li>
     </ul>
   </div>
 </div>
@@ -538,11 +538,11 @@ eas build --profile preview --platform android</code></pre>
     <tbody>
       <tr><td>502 on first request</td><td>Render cold start</td><td>Retry after 30 s; consider UptimeRobot warmup</td></tr>
       <tr><td>401 on every authenticated request</td><td>Access token expired (30 min)</td><td>Refresh, or login again</td></tr>
-      <tr><td>403 "Email not verified"</td><td>REQUIRE_EMAIL_VERIFICATION=true and user not verified</td><td>Click verification email; or <code>/resend-verification</code></td></tr>
+      <tr><td>403 <code>EMAIL_NOT_VERIFIED</code></td><td>REQUIRE_EMAIL_VERIFICATION=true and user not verified</td><td>Click verification email; or <code>/resend-verification</code></td></tr>
       <tr><td>409 on item update</td><td>OCC — stale version</td><td>GET the item, use new version in your next PUT</td></tr>
       <tr><td>422 on register</td><td>Missing required field (email, password)</td><td>Check JSON body matches <code>UserRegister</code> schema</td></tr>
       <tr><td>Alembic says "Can't locate revision"</td><td>DB is ahead of code</td><td>Rollback bad deploy first; never edit merged migration files</td></tr>
-      <tr><td>Apply-stock returns 400</td><td>Order status is not <code>received</code></td><td>PATCH status to <code>received</code> first</td></tr>
+      <tr><td>Order apply returns 400</td><td>Order status is not <code>received</code></td><td>PATCH status to <code>received</code> first</td></tr>
     </tbody>
   </table>
 </div>

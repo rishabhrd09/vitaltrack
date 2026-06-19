@@ -21,10 +21,10 @@
 cd vitaltrack-backend
 cp .env.example .env                             # edit SECRET_KEY (min 32 chars)
 docker compose -f docker-compose.dev.yml up --build -d
-docker compose logs -f api
+docker compose -f docker-compose.dev.yml logs -f api
 ```
 
-Alembic migrations run automatically via `docker-entrypoint.sh`. You don't run them manually.
+Alembic migrations run automatically by the container entrypoint. Production uses `docker-entrypoint.sh`; dev uses `Dockerfile.dev`'s inline entrypoint. You don't run migrations manually in the normal Docker flow.
 
 ### Without Docker
 ```bash
@@ -65,7 +65,7 @@ vitaltrack-backend/
 │       └── rate_limiter.py      # slowapi
 ├── docker-compose.dev.yml
 ├── Dockerfile                   # multi-stage, non-root runtime user
-├── docker-entrypoint.sh         # waits for DB, runs alembic, execs CMD
+├── docker-entrypoint.sh         # production DB wait + alembic, then execs CMD
 ├── render.yaml                  # Render service spec
 └── requirements.txt
 ```
@@ -132,9 +132,11 @@ Counts: 18 auth, 6 categories, 8 items, 6 orders, 1 activity = 39 total.
 | GET | `/orders` | pagination + status filter |
 | GET | `/orders/{id}` | get one |
 | POST | `/orders` | create |
-| PATCH | `/orders/{id}/status` | `pending → ordered/declined → received → stock_updated` |
+| PATCH | `/orders/{id}/status` | `pending → ordered / received / declined`; `ordered → partially_received / received`; `partially_received → received` |
 | POST | `/orders/{id}/apply` | apply a `received` order to inventory stock |
 | DELETE | `/orders/{id}` | only `pending` / `declined` |
+
+`stock_updated` is reached only by `POST /orders/{id}/apply`; clients should not PATCH directly to that status.
 
 ### Activity (`/api/v1/activities`) — 1 endpoint
 
@@ -240,7 +242,7 @@ users ──┬── categories ── items
         ├── orders ── order_items
         ├── refresh_tokens
         ├── activity_logs
-        └── audit_logs
+        └── audit_log
 ```
 
 Every child table has `ondelete="CASCADE"` on its `user_id` FK. `DELETE FROM users` leaves no orphans.
@@ -252,7 +254,7 @@ Every child table has `ondelete="CASCADE"` on its `user_id` FK. `DELETE FROM use
 | 1 | `20260117_000000_initial.py` | users, categories, items, orders, order_items, refresh_tokens, activity_logs |
 | 2 | `20260124_add_username.py` | `users.username` (unique, nullable) |
 | 3 | `20260125_add_email_verification.py` | email verification columns |
-| 4 | `20260406_add_version_audit_log_quantity_check.py` | `items.version` (OCC), `audit_logs` table, CHECK `items.quantity >= 0` |
+| 4 | `20260406_add_version_audit_log_quantity_check.py` | `items.version` (OCC), `audit_log` table, CHECK `items.quantity >= 0` |
 | 5 | `20260419_add_account_deletion_token_fields.py` | `users.deletion_token`, `deletion_token_expires` |
 
 ---
@@ -316,8 +318,8 @@ alembic current
 ```bash
 docker compose -f docker-compose.dev.yml up --build -d
 docker compose -f docker-compose.dev.yml logs -f api
-docker compose exec db psql -U postgres -d vitaltrack
-docker compose exec api alembic upgrade head
+docker compose -f docker-compose.dev.yml exec db psql -U postgres -d vitaltrack
+docker compose -f docker-compose.dev.yml exec api alembic upgrade head
 ```
 
 See [DOCKER_GUIDE.md](DOCKER_GUIDE.md) for Docker concepts walkthrough.

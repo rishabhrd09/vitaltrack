@@ -535,7 +535,7 @@ Google Play requires an in-app path to delete an account and all its data. The n
 ### Solution — two-step, email-confirmed deletion
 1. `DELETE /auth/me` — generate a raw token (`secrets.token_urlsafe(32)`), store `SHA-256(raw)` with a 24-hour expiry on the user row, send the raw token in a confirmation email via `BackgroundTask`. **No data deleted yet.**
 2. `GET /auth/confirm-delete/{token}` — user clicks email link. Backend hashes the incoming token, verifies the DB hash + expiry, then renders a confirmation page only. This prevents crawlers, link scanners, or accidental opens from deleting the account.
-3. `POST /auth/confirm-delete/{token}` — user submits the confirmation form. Backend verifies the token again, then `db.delete(user)`. DB-level `ondelete="CASCADE"` on every FK tears down categories, items, orders, order_items, activity_logs, refresh_tokens, audit_logs.
+3. `POST /auth/confirm-delete/{token}` — user submits the confirmation form. Backend verifies the token again, then `db.delete(user)`. DB-level `ondelete="CASCADE"` on every FK tears down categories, items, orders, order_items, activity_logs, refresh_tokens, audit_log.
 4. `POST /auth/cancel-delete` — authenticated nullifier for `deletion_token` and `deletion_token_expires`. Pending email link becomes invalid.
 
 Schema change: migration `20260419_add_account_deletion_token_fields.py` adds two nullable columns to `users`. Safe on a live DB with zero downtime.
@@ -602,13 +602,13 @@ Our `app.json` declares `CAMERA`, `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORA
 ## Performance Optimizations
 
 ### Eager loading for orders
-Prevents N+1 queries when listing orders with their items:
+Prevents N+1 queries when listing orders with their items. The current model sets this on the relationship:
 ```python
-select(Order).options(selectinload(Order.items))
+items = relationship(..., lazy="selectin")
 ```
 
 ### React Query stale/garbage time
-Short `staleTime` for dashboards (15 s) so refreshes feel live; longer `gcTime` (5 min) to avoid refetching when switching tabs.
+`QueryProvider.tsx` keeps `staleTime` at 30 seconds for medical freshness and `gcTime` at 24 hours so the persisted read-only cache can survive app restarts.
 
 ### Rate limiter in-memory fallback
 `swallow_errors=True` + `in_memory_fallback_enabled=True` — auth endpoints degrade gracefully if the limiter storage hiccups (Challenge 14).
@@ -699,7 +699,7 @@ After domain-data changes:
 docker compose -f docker-compose.dev.yml logs -f api
 
 # Postgres shell
-docker compose -f docker-compose.dev.yml exec db psql -U postgres -d carekosh
+docker compose -f docker-compose.dev.yml exec db psql -U postgres -d vitaltrack
 # then: SELECT name, quantity, version FROM items WHERE user_id = 'xxx';
 
 # Recently-touched items (sanity after a migration)
@@ -716,7 +716,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 *Original: 2026-04-19 (tracks changes through PR #13) · Last re-audited 2026-05-04 against PR #34.*
 
 > **Re-audit notes (2026-05-04):**
-> All 24 challenges plus the Architecture Decisions / Performance / Security / Testing sections re-verified against current code. Every "(historical)" tag is correctly applied. Every still-current claim (Argon2 + bcrypt fallback, JWT 30 min / 30 d rotation, OCC `version` column, rate-limiter proxy-IP fix, ADB reverse port mapping, account deletion 24-hour SHA-256 hashed token, `selectinload(Order.items)` eager loading, `useFocusEffect` on auth screens, `services/sync.ts` deleted) was verified file-and-line. No corrections needed in this doc.
+> All 24 challenges plus the Architecture Decisions / Performance / Security / Testing sections re-verified against current code. Every "(historical)" tag is correctly applied. Every still-current claim (Argon2 + bcrypt fallback, JWT 30 min / 30 d rotation, OCC `version` column, rate-limiter proxy-IP fix, ADB reverse port mapping, account deletion 24-hour SHA-256 hashed token, `Order.items` using `lazy="selectin"`, `useFocusEffect` on auth screens, `services/sync.ts` deleted) was verified file-and-line.
 >
 > One addition worth a future entry: a "Challenge 25 — fire-and-forget mutations during Render cold start" capturing the audit/cold-start-mutation-ux branch design (the observer-death bug, hook-level dispatch, mutateAsync().then() pattern, MutationResultDialog overlay). For now, that material lives in commit messages on the merged branch and in `docs/LOCAL_TESTING_INTERNALS.md`.
 >

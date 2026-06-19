@@ -117,7 +117,7 @@ Open the phone browser and visit:
 http://localhost:8000/health
 ```
 
-Expected: `{"status":"healthy"}`
+Expected: `/health` returns the DB-backed readiness object with `status`, `version`, `environment`, `database`, and `timestamp`; `database` should be `"connected"`. `/live` is the process-only liveness check and returns `database:"not_checked"`.
 
 Then scan the QR from Expo Go.
 
