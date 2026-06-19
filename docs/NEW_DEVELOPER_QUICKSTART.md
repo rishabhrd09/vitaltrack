@@ -123,7 +123,7 @@ Success — CareKosh is running locally.
 | Phone can't reach backend | Use USB: `adb reverse tcp:8000 tcp:8000` — see [USB_ADB_REVERSE_GUIDE.md](USB_ADB_REVERSE_GUIDE.md) |
 | `npm install` fails | Always `npm install --legacy-peer-deps` (React Native peer-dep weirdness) |
 | Port 5432 conflict | Local Postgres running; stop it, or edit the host-side port in `docker-compose.dev.yml` |
-| "Database not ready yet..." in backend logs | Normal while the dev entrypoint waits for `db:5432`. Wait for the `Application startup complete` log. |
+| "Database not ready... waiting 2s" in backend logs | Normal while the dev entrypoint waits for `db:5432`. Wait for the `Application startup complete` log. |
 
 Deep dive: [LOCAL_TESTING_COMPLETE_GUIDE.md](LOCAL_TESTING_COMPLETE_GUIDE.md).
 

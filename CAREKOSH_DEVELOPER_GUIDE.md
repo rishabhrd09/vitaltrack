@@ -336,9 +336,11 @@ Base URL: `https://api.carekosh.com/api/v1` (prod) · `https://staging-api.carek
 | GET | `/orders` | pagination + status filter |
 | GET | `/orders/{id}` | — |
 | POST | `/orders` | create |
-| PATCH | `/orders/{id}/status` | status flow: `pending → ordered/declined → received → stock_updated` |
+| PATCH | `/orders/{id}/status` | status flow: `pending → ordered / received / declined`; `ordered → partially_received / received`; `partially_received → received` |
 | POST | `/orders/{id}/apply` | apply a `received` order to inventory stock |
 | DELETE | `/orders/{id}` | only `pending` / `declined` |
+
+`stock_updated` is reached only by `POST /orders/{id}/apply`; clients should not PATCH directly to that status.
 
 ### Categories (`/categories`)
 

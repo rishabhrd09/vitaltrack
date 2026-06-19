@@ -549,7 +549,7 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
 
   <p>Even if application code has a bug that tries to set quantity to -1, PostgreSQL will reject it. Defense in depth.</p>
 
-  <h3>4. Atomic Apply-Stock Endpoint</h3>
+  <h3>4. Atomic Order Apply Endpoint</h3>
 
   <p>When a purchase order is received and stock needs updating across multiple items, the <code>POST /orders/{id}/apply</code> endpoint wraps all item updates in a single database transaction. Either all items update successfully, or none do. No partial stock updates.</p>
 </div>

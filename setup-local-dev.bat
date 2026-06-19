@@ -128,7 +128,8 @@ echo ╠════════════════════════
 echo ║                                                      ║
 echo ║   Terminal 1 - Backend:                              ║
 echo ║     cd vitaltrack-backend                            ║
-echo ║     docker compose -f docker-compose.dev.yml up --build ║
+echo ║     docker compose -f docker-compose.dev.yml ^^      ║
+echo ║       up --build                                      ║
 echo ║                                                      ║
 echo ║   Terminal 2 - Mobile:                               ║
 echo ║     cd vitaltrack-mobile                             ║

@@ -39,10 +39,10 @@ Think of it like cooking:
 │  CONTAINERS = Running Applications                           │
 ├──────────────────────────────────────────────────────────────┤
 │                                                               │
-│  🟢 vitaltrack-db     → PostgreSQL database running          │
+│  🟢 vitaltrack-db-dev → PostgreSQL database running          │
 │     Port: 5432:5432   → You can connect on port 5432         │
 │                                                               │
-│  🟢 vitaltrack-api    → Your FastAPI app running             │
+│  🟢 vitaltrack-api-dev → Your FastAPI app running            │
 │     Port: 8000:8000   → You can access on localhost:8000     │
 │                                                               │
 └──────────────────────────────────────────────────────────────┘
@@ -110,7 +110,7 @@ STEP BY STEP:
 
 2️⃣ For 'db' service:
    └── Download postgres:16-alpine image (if not exists)
-   └── Create container 'vitaltrack-db'
+   └── Create container 'vitaltrack-db-dev'
    └── Start PostgreSQL on port 5432
    └── Create database 'vitaltrack'
 
@@ -120,7 +120,7 @@ STEP BY STEP:
        ├── Start with Python 3.12
        ├── Install pip packages (FastAPI, SQLAlchemy, etc.)
        └── Copy your code
-   └── Create container 'vitaltrack-api'
+   └── Create container 'vitaltrack-api-dev'
    └── Start FastAPI on port 8000
 
 4️⃣ Connect both containers on same network
@@ -275,8 +275,8 @@ docker compose -f docker-compose.dev.yml up --build -d
 
 After running `docker compose -f docker-compose.dev.yml up --build -d`, you should have:
 
-- ✅ `vitaltrack-db` container running (PostgreSQL)
-- ✅ `vitaltrack-api` container running (FastAPI)
+- ✅ `vitaltrack-db-dev` container running (PostgreSQL)
+- ✅ `vitaltrack-api-dev` container running (FastAPI)
 - ✅ Network created (they can talk to each other)
 - ✅ Volume created (database data persists)
 

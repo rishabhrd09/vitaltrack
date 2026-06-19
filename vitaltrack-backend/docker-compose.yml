@@ -23,6 +23,7 @@ services:
     container_name: vitaltrack-api
     ports:
       - "8000:8000"
+    # `required: false` needs Docker Compose v2.24+; current Docker Desktop includes it.
     env_file:
       - path: .env
         required: false
