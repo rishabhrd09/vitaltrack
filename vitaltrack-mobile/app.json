@@ -14,14 +14,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.vitaltrack.mobile"
+      "bundleIdentifier": "com.carekosh.mobile"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F8EFE3"
       },
-      "package": "com.vitaltrack.mobile",
+      "package": "com.carekosh.mobile",
       "versionCode": 1,
       "permissions": [
         "android.permission.ACCESS_NETWORK_STATE"
