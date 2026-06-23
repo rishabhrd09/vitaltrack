@@ -1,5 +1,7 @@
 """Domain tests for inventory item endpoints."""
 
+import asyncio
+
 import pytest
 from httpx import AsyncClient
 
@@ -476,3 +478,47 @@ async def test_items_are_scoped_to_authenticated_user(client: AsyncClient):
     )
     assert owner_get_resp.status_code == 200
     assert owner_get_resp.json()["name"] == "Owner Private Item"
+
+
+async def test_item_stock_update_concurrent_version_conflict(client: AsyncClient):
+    """Two simultaneous stock edits with the same version: exactly one wins (CONC-1).
+
+    The optimistic-lock guard now lives in the UPDATE WHERE clause, so a true
+    concurrent race cannot let both writes through (no Python-side TOCTOU).
+    """
+    _, headers = await register_and_auth(
+        client,
+        name="Concurrent Version Owner",
+        email="concurrent-version-owner@test.com",
+    )
+    category = await create_category(client, headers, name="Concurrent Category")
+    item = await create_item(
+        client,
+        headers,
+        category_id=category["id"],
+        name="Concurrent Gauze",
+        quantity=10,
+    )
+
+    first, second = await asyncio.gather(
+        client.patch(
+            f"/api/v1/items/{item['id']}/stock",
+            headers=headers,
+            json={"version": item["version"], "quantity": 20},
+        ),
+        client.patch(
+            f"/api/v1/items/{item['id']}/stock",
+            headers=headers,
+            json={"version": item["version"], "quantity": 30},
+        ),
+    )
+
+    status_codes = sorted([first.status_code, second.status_code])
+    assert status_codes == [200, 409], [first.text, second.text]
+
+    # The item advanced by exactly one version, to exactly one of the two values.
+    final = await client.get(f"/api/v1/items/{item['id']}", headers=headers)
+    assert final.status_code == 200
+    body = final.json()
+    assert body["version"] == item["version"] + 1
+    assert body["quantity"] in (20, 30)

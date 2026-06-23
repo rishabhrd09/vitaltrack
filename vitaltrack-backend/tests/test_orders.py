@@ -655,3 +655,66 @@ async def test_order_delete_rules_for_pending_declined_received_and_applied(
         headers=headers,
     )
     assert applied_delete.status_code == 400
+
+
+async def test_order_create_rejects_non_positive_quantity(client: AsyncClient):
+    """Order-item quantity must be > 0 (VAL-1): zero/negative is rejected at the edge."""
+    _, headers = await register_and_auth(
+        client,
+        name="Quantity Guard Owner",
+        email="quantity-guard-owner@test.com",
+    )
+    item = await _inventory_item(client, headers, item_name="Guarded Syringe", quantity=10)
+
+    for bad_quantity in (0, -5):
+        resp = await client.post(
+            "/api/v1/orders",
+            headers=headers,
+            json={
+                "orderId": "CLIENT-SIDE-ID",
+                "items": [order_item_payload(item, quantity=bad_quantity)],
+                "notes": "invalid quantity",
+            },
+        )
+        assert resp.status_code == 422, resp.text
+
+
+async def test_order_status_transition_is_atomic_under_concurrency(client: AsyncClient):
+    """Two concurrent transitions from pending: exactly one wins (CONC-3).
+
+    The transition now runs as a conditional UPDATE guarded on the old status,
+    so two simultaneous changes cannot both commit (no last-writer-wins).
+    """
+    _, headers = await register_and_auth(
+        client,
+        name="Concurrent Status Owner",
+        email="concurrent-status-owner@test.com",
+    )
+    item = await _inventory_item(client, headers, item_name="Status Race Bags", quantity=5)
+    order = await create_order(
+        client,
+        headers,
+        items=[order_item_payload(item, quantity=2)],
+    )
+
+    received, declined = await asyncio.gather(
+        client.patch(
+            f"/api/v1/orders/{order['id']}/status",
+            headers=headers,
+            json={"status": "received"},
+        ),
+        client.patch(
+            f"/api/v1/orders/{order['id']}/status",
+            headers=headers,
+            json={"status": "declined"},
+        ),
+    )
+
+    codes = [received.status_code, declined.status_code]
+    # Exactly one transition wins; the loser is a 4xx (conflict or illegal-from-new-state).
+    assert codes.count(200) == 1, [received.text, declined.text]
+    assert all(code == 200 or code in (400, 409) for code in codes), codes
+
+    final = await client.get(f"/api/v1/orders/{order['id']}", headers=headers)
+    assert final.status_code == 200
+    assert final.json()["status"] in ("received", "declined")

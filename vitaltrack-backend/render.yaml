@@ -9,8 +9,14 @@ services:
     dockerfilePath: ./Dockerfile
     rootDir: ./vitaltrack-backend
     region: singapore
-    plan: free
+    # Paid always-on tier: removes free-tier spin-down / ~1-min cold start.
+    # Keep this in sync with the Render dashboard so a Blueprint re-sync can't
+    # silently downgrade the service back to free.
+    plan: starter
     branch: main
+    # Liveness-only on purpose: Render must NOT restart the instance when Neon
+    # is briefly unreachable (serverless cold start / scale-to-zero). Clients
+    # still probe /health for DB readiness. See test_render_health_check_uses_liveness_endpoint.
     healthCheckPath: /live
     envVars:
       - key: DATABASE_URL
@@ -29,3 +35,6 @@ services:
         sync: false
       - key: FRONTEND_URL
         value: https://api.carekosh.com/api/v1/auth
+      # Error tracking — paste your Sentry DSN here (leave unset to disable)
+      - key: SENTRY_DSN
+        sync: false

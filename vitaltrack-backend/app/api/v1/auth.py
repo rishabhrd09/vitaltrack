@@ -9,6 +9,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
+import anyio
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select, update
@@ -117,7 +118,7 @@ async def register(
     user = User(
         email=data.email.lower() if data.email else None,
         username=data.username.lower() if data.username else None,
-        hashed_password=hash_password(data.password),
+        hashed_password=await anyio.to_thread.run_sync(hash_password, data.password),
         name=data.name,
         phone=data.phone,
         is_active=True,
@@ -214,7 +215,9 @@ async def login(
     
     user = result.scalar_one_or_none()
     
-    if not user or not verify_password(data.password, user.hashed_password):
+    if not user or not await anyio.to_thread.run_sync(
+        verify_password, data.password, user.hashed_password
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email/username or password",
@@ -712,7 +715,9 @@ async def reset_password(
         )
     
     # Update password
-    target_user.hashed_password = hash_password(data.new_password)
+    target_user.hashed_password = await anyio.to_thread.run_sync(
+        hash_password, data.new_password
+    )
     target_user.password_reset_token = None
     target_user.password_reset_expiry = None
     
@@ -767,38 +772,39 @@ async def refresh_token(
     
     user_id, jti = result
     
-    # Check if token exists and is not revoked
-    token_result = await db.execute(
-        select(RefreshToken).where(
+    # Atomically claim (revoke) the presented refresh token. Only one concurrent
+    # request can flip is_revoked from false->true, so a single token can be
+    # rotated at most once even if it is submitted twice simultaneously.
+    claim_result = await db.execute(
+        update(RefreshToken)
+        .where(
             RefreshToken.jti == jti,
             RefreshToken.user_id == user_id,
+            RefreshToken.is_revoked.is_(False),
         )
+        .values(is_revoked=True)
+        .returning(RefreshToken.id)
     )
-    stored_token = token_result.scalar_one_or_none()
-    
-    if not stored_token or stored_token.is_revoked:
+    if claim_result.scalar_one_or_none() is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked",
+            detail="Invalid or expired refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Get user
     user_result = await db.execute(
         select(User).where(User.id == user_id)
     )
     user = user_result.scalar_one_or_none()
-    
+
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or disabled",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    # Revoke old token
-    stored_token.is_revoked = True
-    
+
     # Create new tokens (token rotation)
     new_jti = str(uuid4())
     tokens = create_token_pair(user.id, new_jti)
@@ -1199,13 +1205,17 @@ async def change_password(
     
     Requires current password for verification.
     """
-    if not verify_password(data.current_password, current_user.hashed_password):
+    if not await anyio.to_thread.run_sync(
+        verify_password, data.current_password, current_user.hashed_password
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect",
         )
     
-    current_user.hashed_password = hash_password(data.new_password)
+    current_user.hashed_password = await anyio.to_thread.run_sync(
+        hash_password, data.new_password
+    )
 
     await db.execute(
         update(RefreshToken)

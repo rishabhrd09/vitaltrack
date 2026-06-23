@@ -71,8 +71,15 @@ class UUIDMixin:
 # =============================================================================
 # ASYNC ENGINE & SESSION
 # =============================================================================
+# Cap every statement at 8s so one hung query can't pin a pooled connection
+# indefinitely and cascade into pool exhaustion (RESIL-1).
+_server_settings = {"statement_timeout": "8000"}
+
 # SSL required for Neon (staging + production) but not for local Docker or CI
-_connect_args = {"ssl": True} if settings.ENVIRONMENT not in ("development", "testing") else {}
+if settings.ENVIRONMENT not in ("development", "testing"):
+    _connect_args = {"ssl": True, "server_settings": _server_settings}
+else:
+    _connect_args = {"server_settings": _server_settings}
 
 engine = create_async_engine(
     settings.DATABASE_URL,

@@ -7,7 +7,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, update
 
 from app.api.deps import DB, CurrentUser
 from app.models import ActivityActionType, ActivityLog, Category, Item
@@ -369,19 +369,7 @@ async def update_item(
             detail="Item not found",
         )
 
-    # Optimistic concurrency control — version check
-    if item.version != data.version:
-        return JSONResponse(
-            status_code=409,
-            content={
-                "error": "Version conflict",
-                "message": "This item was modified by someone else. Please refresh and try again.",
-                "server_version": item.version,
-                "server_quantity": item.quantity,
-            },
-        )
-
-    # Snapshot old values for audit
+    # Snapshot old values for audit (read-time)
     old_values = {
         "name": item.name,
         "quantity": item.quantity,
@@ -409,6 +397,11 @@ async def update_item(
                 detail=f"An item named '{data.name}' already exists",
             )
 
+    # Build the set of columns to write (mirrors the previous conditional assigns).
+    # We never mutate the ORM object directly — the write happens in one atomic
+    # compare-and-swap UPDATE below so the version check is enforced by the DB.
+    values: dict = {}
+
     # Verify category if changing
     if data.category_id and data.category_id != item.category_id:
         cat_result = await db.execute(
@@ -422,62 +415,87 @@ async def update_item(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Category not found",
             )
-        item.category_id = data.category_id
+        values["category_id"] = data.category_id
         changes.append("category changed")
 
-    # Update fields
     if data.name is not None:
-        item.name = data.name
+        values["name"] = data.name
     if data.description is not None:
-        item.description = data.description
+        values["description"] = data.description
     if data.quantity is not None and data.quantity != item.quantity:
         changes.append(f"qty: {item.quantity} → {data.quantity}")
-        item.quantity = data.quantity
+        values["quantity"] = data.quantity
     if data.unit is not None:
-        item.unit = data.unit
+        values["unit"] = data.unit
     if data.minimum_stock is not None:
-        item.minimum_stock = data.minimum_stock
+        values["minimum_stock"] = data.minimum_stock
     if data.expiry_date is not None:
-        item.expiry_date = data.expiry_date
+        values["expiry_date"] = data.expiry_date
     if data.brand is not None:
-        item.brand = data.brand
+        values["brand"] = data.brand
     if data.notes is not None:
-        item.notes = data.notes
+        values["notes"] = data.notes
     if data.supplier_name is not None:
-        item.supplier_name = data.supplier_name
+        values["supplier_name"] = data.supplier_name
     if data.supplier_contact is not None:
-        item.supplier_contact = data.supplier_contact
+        values["supplier_contact"] = data.supplier_contact
     if data.purchase_link is not None:
-        item.purchase_link = data.purchase_link
+        values["purchase_link"] = data.purchase_link
     if data.image_uri is not None:
-        item.image_uri = data.image_uri
+        values["image_uri"] = data.image_uri
     if data.is_active is not None:
-        item.is_active = data.is_active
+        values["is_active"] = data.is_active
     if data.is_critical is not None:
-        item.is_critical = data.is_critical
+        values["is_critical"] = data.is_critical
 
-    # Increment version
-    item.version += 1
+    # Atomic optimistic-lock compare-and-swap: the version guard lives in the
+    # UPDATE WHERE clause, so two concurrent edits cannot both pass (no TOCTOU).
+    cas_result = await db.execute(
+        update(Item)
+        .where(
+            Item.id == item_id,
+            Item.user_id == current_user.id,
+            Item.version == data.version,
+        )
+        .values(**values, version=Item.version + 1)
+        .returning(Item.id)
+    )
+    if cas_result.scalar_one_or_none() is None:
+        # Stale version (or the row was deleted concurrently). Report the values
+        # we already loaded — never refresh a possibly-deleted row, which would
+        # raise and surface as a 500 instead of this clean 409.
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": "Version conflict",
+                "message": "This item was modified by someone else. Please refresh and try again.",
+                "server_version": item.version,
+                "server_quantity": item.quantity,
+            },
+        )
+
+    # Resolve the post-update field values for activity/audit logging.
+    new_name = values.get("name", old_values["name"])
+    new_values = {
+        "name": new_name,
+        "quantity": values.get("quantity", old_values["quantity"]),
+        "unit": values.get("unit", old_values["unit"]),
+        "minimum_stock": values.get("minimum_stock", old_values["minimum_stock"]),
+        "is_active": values.get("is_active", old_values["is_active"]),
+        "is_critical": values.get("is_critical", old_values["is_critical"]),
+    }
 
     # Log activity
     activity = ActivityLog(
         user_id=current_user.id,
         action=ActivityActionType.ITEM_UPDATE,
-        item_name=item.name,
+        item_name=new_name,
         item_id=item.id,
         details=", ".join(changes) if changes else "Updated",
     )
     db.add(activity)
 
     # Audit log with old/new snapshots
-    new_values = {
-        "name": item.name,
-        "quantity": item.quantity,
-        "unit": item.unit,
-        "minimum_stock": item.minimum_stock,
-        "is_active": item.is_active,
-        "is_critical": item.is_critical,
-    }
     await log_audit(
         db,
         user_id=current_user.id,
@@ -527,8 +545,24 @@ async def update_stock(
             detail="Item not found",
         )
 
-    # Optimistic concurrency control — version check
-    if item.version != data.version:
+    old_quantity = item.quantity
+
+    # Atomic optimistic-lock compare-and-swap: the version guard lives in the
+    # UPDATE WHERE clause so two concurrent stock edits cannot both pass.
+    cas_result = await db.execute(
+        update(Item)
+        .where(
+            Item.id == item_id,
+            Item.user_id == current_user.id,
+            Item.version == data.version,
+        )
+        .values(quantity=data.quantity, version=Item.version + 1)
+        .returning(Item.version)
+    )
+    if cas_result.scalar_one_or_none() is None:
+        # Stale version (or the row was deleted concurrently). Report the values
+        # we already loaded — never refresh a possibly-deleted row, which would
+        # raise and surface as a 500 instead of this clean 409.
         return JSONResponse(
             status_code=409,
             content={
@@ -538,10 +572,6 @@ async def update_stock(
                 "server_quantity": item.quantity,
             },
         )
-
-    old_quantity = item.quantity
-    item.quantity = data.quantity
-    item.version += 1
 
     # Log activity
     activity = ActivityLog(

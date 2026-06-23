@@ -12,6 +12,7 @@ Test users: 5 email-based + 4 username-only + dual-identifier
 13 test classes · 60 tests
 """
 
+import asyncio
 import hashlib
 import html
 import logging
@@ -368,6 +369,24 @@ class TestTokenLifecycle:
         await client.post("/api/v1/auth/refresh", json={"refresh_token": old})
         resp = await client.post("/api/v1/auth/refresh", json={"refresh_token": old})
         assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_concurrent_refresh_rotates_only_once(self, client: AsyncClient):
+        """Two simultaneous refreshes of the SAME token: exactly one wins (SEC-3).
+
+        Rotation is now an atomic conditional UPDATE claim, so a token can be
+        rotated at most once even if submitted twice at the same instant.
+        """
+        user = await register_user(client, name="Grace", username="grace")
+        token = user["refresh_token"]
+
+        first, second = await asyncio.gather(
+            client.post("/api/v1/auth/refresh", json={"refresh_token": token}),
+            client.post("/api/v1/auth/refresh", json={"refresh_token": token}),
+        )
+
+        codes = sorted([first.status_code, second.status_code])
+        assert codes == [200, 401], [first.text, second.text]
 
     @pytest.mark.asyncio
     async def test_new_refresh_works_after_rotation(self, client: AsyncClient):

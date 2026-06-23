@@ -24,7 +24,7 @@ class OrderItemBase(BaseModel):
     name: str
     brand: Optional[str] = None
     unit: str = "pieces"
-    quantity: int = 1
+    quantity: int = Field(1, gt=0, le=999999)
     current_stock: int = Field(default=0, alias="currentStock")
     minimum_stock: int = Field(default=0, alias="minimumStock")
     category_name: Optional[str] = Field(None, alias="categoryName")

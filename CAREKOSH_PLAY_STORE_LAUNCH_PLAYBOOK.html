@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh — Play Store Launch Playbook</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf9f7;--card:#fff;--card2:#f4f3f0;--border:#e5e3de;--text:#1a1a18;--muted:#6b6a65;--accent:#1d6b52;--accent-bg:#e8f5ef;--amber:#8a6830;--amber-bg:#fef8e8;--danger:#8b1a1a;--danger-bg:#fef0f0;--info:#1a4a8b;--info-bg:#eef4fc;--code-bg:#f0efeb;--done:#059669;--done-bg:#d1fae5}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e12;--card:#161619;--card2:#1c1c21;--border:#2a2a30;--text:#e4e4ec;--muted:#8a8a95;--accent:#5eead4;--accent-bg:#0d2626;--amber:#d4a574;--amber-bg:#1a1510;--danger:#e88;--danger-bg:#1a1010;--info:#7ab4f5;--info-bg:#0f1a2a;--code-bg:#1a1a20;--done:#34d399;--done-bg:#0a1a14}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.75;font-size:15px}
+.page{max-width:900px;margin:0 auto;padding:32px 24px 80px}
+.hero{text-align:center;padding:40px 0 30px;border-bottom:1px solid var(--border);margin-bottom:30px}
+.hero h1{font-family:'Instrument Serif',serif;font-size:2.5rem;font-weight:400;letter-spacing:-.02em;line-height:1.12;margin-bottom:12px}
+.hero h1 em{font-style:italic;color:var(--accent)}
+.hero .sub{color:var(--muted);font-size:.92rem;max-width:660px;margin:0 auto 10px}
+.hero .meta{color:var(--muted);font-size:.74rem;letter-spacing:.02em}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--code-bg);padding:2px 6px;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:14px 0;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.7}
+pre code{background:none;padding:0}
+.section{margin-bottom:14px;scroll-margin-top:20px}
+.section h2{font-family:'Sora',sans-serif;font-size:1.4rem;font-weight:700;margin-bottom:10px;letter-spacing:-.01em}
+.section h3{font-family:'Sora',sans-serif;font-size:1.02rem;font-weight:700;margin-top:22px;margin-bottom:8px}
+.section p{margin-bottom:12px}
+.section ul,.section ol{margin-bottom:14px;padding-left:22px}.section li{margin-bottom:6px;font-size:.93rem}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.85rem}
+th{text-align:left;font-family:'Sora',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:2px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+td:first-child{font-weight:600}
+.callout{border-radius:10px;padding:14px 18px;margin:18px 0;border-left:4px solid}
+.callout p{margin-bottom:6px;font-size:.9rem}.callout p:last-child{margin-bottom:0}
+.callout-label{font-family:'Sora',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;display:block}
+.callout.info{background:var(--info-bg);border-left-color:var(--info)}.callout.info .callout-label{color:var(--info)}
+.callout.warn{background:var(--amber-bg);border-left-color:var(--amber)}.callout.warn .callout-label{color:var(--amber)}
+.callout.danger{background:var(--danger-bg);border-left-color:var(--danger)}.callout.danger .callout-label{color:var(--danger)}
+.callout.success{background:var(--accent-bg);border-left-color:var(--accent)}.callout.success .callout-label{color:var(--accent)}
+.arch{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:18px;margin:16px 0;font-family:'JetBrains Mono',monospace;font-size:.72rem;line-height:1.7;overflow-x:auto;white-space:pre;text-align:center}
+.tag{display:inline-block;font-family:'Sora',sans-serif;font-size:.64rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:4px;margin-right:4px}
+.tag.good{background:var(--accent-bg);color:var(--accent)}
+.tag.warn{background:var(--amber-bg);color:var(--amber)}
+.tag.off{background:var(--danger-bg);color:var(--danger)}
+.tag.info{background:var(--info-bg);color:var(--info)}
+.tag.todo{background:var(--card2);color:var(--muted)}
+hr{border:none;border-top:1px solid var(--border);margin:34px 0}
+.footer{text-align:center;padding:28px 0;border-top:1px solid var(--border);color:var(--muted);font-size:.76rem;margin-top:40px}
+/* ---- TOC ---- */
+.toc{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 26px;margin-bottom:36px}
+.toc h2{font-family:'Sora',sans-serif;font-size:.74rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+.toc-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 28px}
+@media(max-width:640px){.toc-grid{grid-template-columns:1fr}}
+.toc a{display:block;color:var(--text);text-decoration:none;font-size:.86rem;padding:5px 0;border-bottom:1px solid transparent}
+.toc a:hover{color:var(--accent)}
+.toc a .n{display:inline-block;width:26px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.74rem}
+/* ---- Phase card ---- */
+.phase{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin:22px 0;scroll-margin-top:20px}
+.phase-head{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.phase-num{flex-shrink:0;width:40px;height:40px;border-radius:10px;background:var(--accent-bg);color:var(--accent);font-family:'Sora',sans-serif;font-weight:800;font-size:1.05rem;display:flex;align-items:center;justify-content:center}
+.phase-head h2{font-family:'Sora',sans-serif;font-size:1.18rem;font-weight:700;margin:0;line-height:1.25}
+.phase .lede{color:var(--muted);font-size:.9rem;margin-bottom:14px}
+/* ---- checklist ---- */
+.check{list-style:none;padding-left:0;margin:14px 0}
+.check li{position:relative;padding-left:30px;margin-bottom:9px;font-size:.9rem}
+.check li::before{content:"";position:absolute;left:0;top:4px;width:16px;height:16px;border:2px solid var(--border);border-radius:4px;background:var(--card)}
+.check li.done::before{content:"\2713";border-color:var(--done);background:var(--done-bg);color:var(--done);font-size:.7rem;font-weight:800;text-align:center;line-height:13px}
+/* ---- status legend ---- */
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+.kbd{font-family:'JetBrains Mono',monospace;font-size:.74rem;background:var(--card2);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;padding:1px 6px}
+.fact-tag{font-family:'JetBrains Mono',monospace;font-size:.76rem}
+.back{display:inline-block;font-size:.72rem;color:var(--muted);text-decoration:none;margin-top:6px}
+.back:hover{color:var(--accent)}
+.gate{background:var(--danger-bg);border:1px solid var(--danger);border-radius:12px;padding:18px 22px;margin:20px 0}
+.gate .callout-label{color:var(--danger)}
+</style>
+</head>
+<body>
+<div class="page" id="top">
+
+<div class="hero">
+  <h1>Play Store <em>Launch</em> Playbook</h1>
+  <p class="sub">One complete, verified guide from “preview APK tested, branch merged to <code>main</code>” all the way to a production release of <strong>CareKosh</strong> on the Google Play Store — every build step, every Play policy form, every testing requirement, and the rollback plan.</p>
+  <p class="meta">CareKosh · Home ICU / Household Care Inventory · Expo EAS + Render + Neon · Created 2026-06-21 · Updated 2026-06-22 (package renamed; preview + production AAB built)</p>
+</div>
+
+<div class="callout success">
+  <span class="callout-label">What this file is</span>
+  <p>A self-contained consolidation of the three docs you were told to read — <code>EXPO_AND_PLAY_STORE_GUIDE.md</code>, <code>PLAY_STORE_RELEASE_HARDENING_GOAL_9.md</code>, <code>LAUNCH_READINESS_RUNBOOK_GOAL_10.md</code> — plus the verified facts from <code>eas.json</code>, <code>app.json</code>, <code>app.config.js</code>, the backend health code, and official Expo + Google Play documentation. Where any older doc disagrees with the real config, <strong>the config wins</strong> and the difference is flagged. No application code was modified to produce this guide.</p>
+</div>
+
+<!-- ===================== TOC ===================== -->
+<div class="toc">
+  <h2>Jump to</h2>
+  <div class="toc-grid">
+    <a href="#reality"><span class="n">1</span>Reality check &amp; timeline</a>
+    <a href="#now"><span class="n">★</span>You are here: AAB built — next steps</a>
+    <a href="#facts"><span class="n">2</span>Ground-truth facts (verified)</a>
+    <a href="#package"><span class="n">3</span>Package name (locked: com.carekosh.mobile)</a>
+    <a href="#sync"><span class="n">4</span>Pre-flight: sync your repo</a>
+    <a href="#phaseA"><span class="n">A</span>Accounts &amp; tooling</a>
+    <a href="#phaseB"><span class="n">B</span>Play Console setup (policy forms)</a>
+    <a href="#phaseC"><span class="n">C</span>Service account key</a>
+    <a href="#phaseD"><span class="n">D</span>Verify backend is live</a>
+    <a href="#phaseE"><span class="n">E</span>Build the production AAB</a>
+    <a href="#phaseF"><span class="n">F</span>First upload (must be manual)</a>
+    <a href="#phaseG"><span class="n">G</span>Internal testing smoke</a>
+    <a href="#phaseH"><span class="n">H</span>Closed testing (12 / 14-day gate)</a>
+    <a href="#phaseI"><span class="n">I</span>Apply for production access</a>
+    <a href="#phaseJ"><span class="n">J</span>Production staged rollout</a>
+    <a href="#phaseK"><span class="n">K</span>Post-release &amp; monitoring</a>
+    <a href="#rollback"><span class="n">L</span>Rollback &amp; incident</a>
+    <a href="#cmds"><span class="n">+</span>Command cheat sheet</a>
+    <a href="#policies"><span class="n">+</span>Play policies checklist</a>
+    <a href="#datasafety"><span class="n">+</span>Data Safety inventory</a>
+    <a href="#reviewer"><span class="n">+</span>Reviewer text template</a>
+    <a href="#status"><span class="n">+</span>Master status checklist</a>
+    <a href="#gotchas"><span class="n">+</span>Sharp edges &amp; gotchas</a>
+  </div>
+</div>
+
+<!-- ===================== 1. REALITY ===================== -->
+<div class="section" id="reality">
+  <h2>1 · Reality check &amp; timeline</h2>
+  <p><strong>Where you are (2026-06-22):</strong> package renamed to <code>com.carekosh.mobile</code> (PR #53 merged) ✅ · preview APK built &amp; tested ✅ · production backend verified live on <code>api.carekosh.com</code> ✅ · <strong>production AAB built</strong> (EAS-managed keystore, versionCode auto-incremented) ✅. <strong>App-building is essentially done.</strong> The remaining work is <strong>almost entirely Google Play Console setup plus a mandatory testing window</strong> — your live next action is the <a href="#phaseF">first manual upload (Phase F)</a>. See the <a href="#now">★ next-steps section</a>.</p>
+  <div class="gate">
+    <span class="callout-label">The one unavoidable time wall</span>
+    <p>Because CareKosh ships from a <strong>personal</strong> Google Play developer account, Google requires a <strong>closed test with ≥ 12 testers, opted in for 14 continuous days</strong>, before you can even <em>apply</em> for production access. That is a hard ~2-week minimum that cannot be shortened. Plan around it, and start the slow items today.</p>
+  </div>
+  <h3>Realistic end-to-end order</h3>
+  <div class="arch">✅ Package renamed → com.carekosh.mobile   (PR #53 merged)
+        │
+        ▼
+✅ Preview APK built & tested
+        │
+        ▼
+✅ Production backend verified live   (api.carekosh.com /live + /health)
+        │
+        ▼
+✅ Production AAB built   (EAS keystore, versionCode auto-incremented)
+        │
+   ◀════ YOU ARE HERE ════▶
+        │
+        ▼
+⬜ Play Console one-time setup   (ID verify · privacy + deletion URL · Data Safety · listing · reviewer login · service-account JSON)
+        │
+        ▼
+⬜ FIRST upload — MANUAL → Internal testing   (Google Play API limitation)
+        │
+        ▼
+⬜ Internal testing smoke   (you + a few devices)
+        │
+        ▼
+⬜ CLOSED testing: 12 testers · 14 continuous days        ◀── ~2-week wall
+        │
+        ▼
+⬜ Apply for production access   (Google reviews)
+        │
+        ▼
+⬜ Production release · STAGED rollout (10% → 50% → 100%)
+        │
+        ▼
+⬜ Post-release monitoring + rollback plan ready</div>
+  <div class="callout info">
+    <span class="callout-label">Do these two slow things first, today, in parallel</span>
+    <p>(a) Play Console <strong>ID verification</strong>, and (b) <strong>hosting the privacy policy + web account-deletion URL</strong>. Everything else can proceed while those bake.</p>
+  </div>
+</div>
+
+<!-- ===================== NOW / YOU ARE HERE ===================== -->
+<div class="section" id="now">
+  <h2>★ You are here: production AAB built — do this next</h2>
+  <div class="callout success">
+    <span class="callout-label">Done so far (2026-06-22)</span>
+    <p>✅ Package renamed to <code>com.carekosh.mobile</code> (PR #53 merged) &nbsp;·&nbsp; ✅ Preview APK built &amp; tested &nbsp;·&nbsp; ✅ Backend verified live on <code>api.carekosh.com</code> (<code>/health</code> → <code>database:"connected"</code>) &nbsp;·&nbsp; ✅ Production AAB built with the EAS-managed keystore (versionCode auto-incremented). <strong>App-building is essentially complete.</strong></p>
+  </div>
+  <p class="lede">Everything left is Google Play Console work plus a mandatory testing window — <strong>no more app coding</strong>. Do it in this exact order:</p>
+  <ol>
+    <li><strong>Download the production AAB</strong> from the EAS build page. ⚠️ An <code>.aab</code> <strong>cannot be sideloaded</strong> like an APK — it's a publishing format for Play only, so don't try to install it on a phone. → <a href="#phaseE">Phase E</a></li>
+    <li><strong>Play Console one-time setup</strong> — Google won't let you release until ALL are green: developer-account ID verification cleared · privacy-policy URL hosted · web account-deletion URL · Data Safety form · content rating · target audience (13+) · App access reviewer login · store-listing assets (icon 512×512, feature 1024×500, ≥2 screenshots). → <a href="#phaseB">Phase B</a></li>
+    <li><strong>Service-account JSON</strong> → save as <code>vitaltrack-mobile/credentials/google-service-account.json</code> (enables <code>eas submit</code> for later releases). → <a href="#phaseC">Phase C</a></li>
+    <li><strong>FIRST upload — MANUAL</strong> → Play Console → Internal testing → upload the AAB. The very first upload <em>cannot</em> use <code>eas submit</code> (Google Play API limitation); after it, <code>eas submit</code> works. → <a href="#phaseF">Phase F</a></li>
+    <li><strong>Internal testing smoke</strong> on a real device (you + a couple of accounts). → <a href="#phaseG">Phase G</a></li>
+    <li><strong>Closed testing — the ~2-week wall:</strong> ≥12 testers, opted in <strong>14 continuous days</strong> (personal-account rule). Internal testing does <strong>NOT</strong> count toward this — it must be a <strong>closed</strong> test. → <a href="#phaseH">Phase H</a></li>
+    <li><strong>Apply for production access</strong> → Google reviews. → <a href="#phaseI">Phase I</a></li>
+    <li><strong>Production release with staged rollout</strong> (10–20% → 50% → 100%). → <a href="#phaseJ">Phase J</a></li>
+    <li><strong>Post-release monitoring</strong> + rollback plan ready. → <a href="#phaseK">Phase K</a></li>
+  </ol>
+  <div class="callout warn">
+    <span class="callout-label">Your immediate live blocker</span>
+    <p>The next real work is <strong>not</strong> another build — it's confirming your Play <strong>developer-account ID verification has cleared</strong> and completing the Play Console forms (steps 2–3). Until those are done, you can't do the first upload (step 4).</p>
+  </div>
+  <a class="back" href="#top">↑ back to top</a>
+</div>
+
+<!-- ===================== 2. FACTS ===================== -->
+<div class="section" id="facts">
+  <h2>2 · Ground-truth facts about your project (verified)</h2>
+  <p>Read directly from your files — trust these over any older doc.</p>
+  <table>
+    <thead><tr><th>Fact</th><th>Value</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>App display name</td><td>CareKosh</td><td><code>app.json</code></td></tr>
+      <tr><td>Android package</td><td><span class="fact-tag">com.carekosh.mobile</span> — renamed from <code>com.vitaltrack.mobile</code> (PR #53, merged); becomes permanent at first Play upload</td><td><code>app.json</code></td></tr>
+      <tr><td>Marketing version</td><td><code>1.0.0</code></td><td><code>app.json</code></td></tr>
+      <tr><td>versionCode</td><td><strong>Auto-managed by EAS</strong> (<code>autoIncrement:true</code> + <code>appVersionSource:"remote"</code>). The literal <code>versionCode:1</code> is never edited by hand.</td><td><code>eas.json</code></td></tr>
+      <tr><td>Store build profile</td><td><span class="tag good">production</span> → builds an <strong>AAB</strong> (<code>buildType:"app-bundle"</code>), API <code>https://api.carekosh.com</code></td><td><code>eas.json</code></td></tr>
+      <tr><td>Submit profile</td><td><span class="tag warn">production</span> → uploads to the Play <strong>internal</strong> track; key <code>./credentials/google-service-account.json</code></td><td><code>eas.json</code></td></tr>
+      <tr><td>Signing</td><td><strong>EAS-managed keystore created</strong> (generated on first build, reused every build = your Play <strong>upload key</strong>). Keep Expo account access; use Play App Signing.</td><td>EAS credentials</td></tr>
+      <tr><td>Cleartext HTTP</td><td><strong>Disabled</strong> for preview &amp; production; production build <em>throws</em> if URL ≠ <code>https://api.carekosh.com</code></td><td><code>app.config.js</code></td></tr>
+      <tr><td>Android permissions</td><td>Only <code>ACCESS_NETWORK_STATE</code> (+ auto <code>INTERNET</code>). Camera/mic/overlay/vibrate/legacy-storage <strong>blocked</strong>.</td><td><code>app.json</code></td></tr>
+      <tr><td>Auto-backup</td><td><code>allowBackup:false</code> (inventory/order data is health-adjacent)</td><td><code>app.json</code></td></tr>
+      <tr><td>Health URLs</td><td><code>/live</code> → always <code>200 {database:"not_checked"}</code>; <code>/health</code> → <code>200 {database:"connected"}</code> up, <strong>503</strong> when DB down</td><td><code>app/main.py</code></td></tr>
+      <tr><td>Production CI build</td><td><strong>Disabled</strong> (<code>build-production</code> has <code>if:false</code>). All prod build + submit is <strong>manual/local</strong>.</td><td><code>ci.yml</code></td></tr>
+    </tbody>
+  </table>
+  <div class="callout warn">
+    <span class="callout-label">Two things to internalize</span>
+    <p><strong>1.</strong> <code>eas submit --profile production</code> lands on the <strong>internal</strong> track, not production. Promotion to closed/production is a manual Play Console step.</p>
+    <p><strong>2.</strong> The production AAB <strong>bakes in <code>https://api.carekosh.com</code></strong>. If that host is not live and healthy at build time, the build is invalid. Verify it (Phase D) before building.</p>
+  </div>
+</div>
+
+<!-- ===================== 3. PACKAGE ===================== -->
+<div class="section" id="package">
+  <h2>3 · Package name — locked to <code>com.carekosh.mobile</code> <span class="tag good">done</span></h2>
+  <p>The Android <code>package</code> (and iOS <code>bundleIdentifier</code>) was <strong>renamed from <code>com.vitaltrack.mobile</code> to <code>com.carekosh.mobile</code></strong> to match the CareKosh brand (<code>carekosh.com</code>), committed and <strong>merged to <code>main</code> via PR #53</strong> — verified in <code>app.json</code>. The Expo project <em>folder</em> stays named <code>vitaltrack-mobile</code> (that's just the folder/slug, not the package id).</p>
+  <div class="callout success">
+    <span class="callout-label">Why this had to happen before the first upload</span>
+    <p>The package name becomes <strong>permanent the moment you do the first Play upload</strong> — afterward it can never change without publishing a brand-new listing (losing installs, reviews, URL). We locked in the right one <em>first</em>. Nothing is published yet, so it's simply finalized in config.</p>
+  </div>
+  <p>Everything downstream in this playbook assumes <code>com.carekosh.mobile</code>.</p>
+</div>
+
+<!-- ===================== 4. SYNC ===================== -->
+<div class="section" id="sync">
+  <h2>4 · Pre-flight: sync your local repo</h2>
+  <p>You are currently on the old PR branch <code>docs/align-current-state-docs-pr51-v2</code>. PR #52 was <strong>squash-merged</strong> into <code>main</code>, so all your work is already in <code>origin/main</code> (verified: <code>git diff origin/main HEAD</code> is empty — you lose nothing). Get onto a clean <code>main</code>:</p>
+  <pre><code>cd /Users/rishabh/courses_tutorials/vital_track/goal_9_fresh/vitaltrack
+git checkout main
+git pull --ff-only origin main
+git status --short --branch          # expect: clean, up to date with origin/main
+git rev-parse HEAD main origin/main  # all three should match</code></pre>
+  <p>Optional housekeeping — the branch is fully merged:</p>
+  <pre><code>git branch -d docs/align-current-state-docs-pr51-v2</code></pre>
+  <div class="callout warn">
+    <span class="callout-label">Do not build another preview APK</span>
+    <p>You already tested it; that was the staging build. The next build you make is the <strong>production AAB</strong>.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- ===================== PHASE A ===================== -->
+<div class="phase" id="phaseA">
+  <div class="phase-head"><div class="phase-num">A</div><h2>Accounts &amp; tooling</h2></div>
+  <p class="lede">Get Expo/EAS and your Play developer account ready. Start the ID check today — it is the longest pole.</p>
+  <h3>A1 · Expo / EAS account + CLI</h3>
+  <pre><code>npm install -g eas-cli
+eas login
+eas whoami        # should print your Expo username (owner: rishabhrd09)</code></pre>
+  <p>If the project was never linked on this machine (one-time — usually already done, your <code>app.json</code> has <code>extra.eas.projectId</code>):</p>
+  <pre><code>cd vitaltrack-mobile
+eas build:configure       # choose Android</code></pre>
+  <h3>A2 · Google Play Developer account ($25, one-time)</h3>
+  <ol>
+    <li>Go to <strong>play.google.com/console/signup</strong>.</li>
+    <li>Sign in with the Google account that will <strong>own publishing</strong> (permanent — choose carefully).</li>
+    <li>Pay the <strong>$25</strong> one-time fee.</li>
+    <li>Complete <strong>identity / address verification</strong> — allow <strong>1–3 days</strong>, sometimes longer. You cannot publish until it clears.</li>
+  </ol>
+  <div class="callout info"><span class="callout-label">Current status</span><p>Per your repo docs, the account is “paid, ID verification in review.” Confirm it has cleared before Phase F.</p></div>
+  <a class="back" href="#top">↑ back to top</a>
+</div>
+
+<!-- ===================== PHASE B ===================== -->
+<div class="phase" id="phaseB">
+  <div class="phase-head"><div class="phase-num">B</div><h2>Play Console one-time setup (all policy forms)</h2></div>
+  <p class="lede">In Play Console: <strong>Create app</strong> → name <strong>CareKosh</strong>, type App, Free, accept declarations. Then complete every section below — Google will not let you release until all required ones are green.</p>
+
+  <h3>B1 · Privacy policy URL <span class="tag off">required · not hosted</span></h3>
+  <ul>
+    <li>Host a <strong>publicly resolvable</strong> policy (GitHub Pages, public Notion page, any static host).</li>
+    <li>It must cover what CareKosh stores/transmits: name, email, username, optional supplier/contact phone, inventory, orders, categories, activity, selected photos, generated PDFs, clipboard export, auth tokens (SecureStore only), and processors (Render, Neon, Brevo, Google Play).</li>
+    <li>Enter it in <strong>App content → Privacy policy</strong> and link it from the in-app About screen.</li>
+  </ul>
+
+  <h3>B2 · Account deletion <span class="tag off">required · web URL not hosted</span></h3>
+  <ul>
+    <li><strong>In-app path already ships:</strong> Profile → Delete Account → email confirmation; server deletion completes only after the user confirms by email (<code>DELETE /auth/me</code>, PR #13).</li>
+    <li>Google <strong>also</strong> requires a public web “request account deletion” URL. Host it with the privacy policy and enter it under <strong>App content → Data deletion</strong>. Missing this = instant rejection for new apps.</li>
+  </ul>
+
+  <h3>B3 · Data safety form <span class="tag off">required · not submitted</span></h3>
+  <ul>
+    <li>Fill it from the <a href="#datasafety">full inventory below</a> (reproduced so you don't have to flip docs).</li>
+    <li>Declare <strong>data encrypted in transit</strong> (preview &amp; production are HTTPS-only; dev HTTP is never shipped) and that users can request account deletion.</li>
+    <li>Before submitting, re-verify against the <em>deployed</em> backend schema + current SDK list. Also declare the <strong>email-verification, password-reset, and account-deletion token columns + expiry timestamps</strong> as PII storage touchpoints (Goal 9 re-audit).</li>
+  </ul>
+
+  <h3>B4 · Content rating <span class="tag warn">required</span></h3>
+  <p>Complete the questionnaire. Category: <strong>Medical / health-adjacent utility</strong>. No violence, sexual content, gambling, ads, or user-to-user communication/UGC.</p>
+
+  <h3>B5 · Target audience &amp; content <span class="tag warn">required</span></h3>
+  <p>Target audience <strong>13+</strong>, not directed to children (so the Families policy does not apply).</p>
+
+  <h3>B6 · App access — reviewer sign-in <span class="tag off">required · use real creds</span></h3>
+  <p>CareKosh is login-gated, so Google reviewers need a working account. Provide a <strong>real reviewer email + password</strong> (not a placeholder) plus the cold-start note — use the <a href="#reviewer">template below</a>. Create it as a dedicated production smoke account (Phase G) and rotate the password after review.</p>
+
+  <h3>B7 · Store listing &amp; assets <span class="tag warn">required</span></h3>
+  <table>
+    <thead><tr><th>Asset</th><th>Spec</th></tr></thead>
+    <tbody>
+      <tr><td>App icon</td><td><strong>512 × 512</strong> PNG (exact — 1px off is rejected)</td></tr>
+      <tr><td>Feature graphic</td><td><strong>1024 × 500</strong> PNG (exact)</td></tr>
+      <tr><td>Phone screenshots</td><td><strong>≥ 2</strong> (show Dashboard, Inventory, item detail, PDF export)</td></tr>
+      <tr><td>Descriptions</td><td>Short + full; plain language; no medical <em>claims</em></td></tr>
+    </tbody>
+  </table>
+
+  <h3>B8 · Health apps note</h3>
+  <p>CareKosh is a household inventory/care-supply tracker — <strong>not</strong> a medical device, with no diagnostic/treatment claims. If Play prompts a <strong>Health apps declaration</strong>, answer truthfully: no Health Connect access, no medical advice, only user-entered inventory data.</p>
+  <a class="back" href="#top">↑ back to top</a>
+</div>
+
+<!-- ===================== PHASE C ===================== -->
+<div class="phase" id="phaseC">
+  <div class="phase-head"><div class="phase-num">C</div><h2>Service account key for <code>eas submit</code></h2></div>
+  <p class="lede">Lets your laptop (or CI later) upload AABs without a browser. A local secret file — <strong>not</strong> a code change.</p>
+  <ol>
+    <li><strong>Play Console → Users &amp; Permissions → API access</strong> → <strong>Create new service account</strong> → follow the Google Cloud link.</li>
+    <li>In <strong>Google Cloud</strong>: create a service account <code>eas-submit</code>, role <strong>Service Account User</strong>.</li>
+    <li><strong>Manage keys → Add key → JSON → download.</strong></li>
+    <li>Back in Play Console: <strong>Done</strong>, find the new email, <strong>Manage Play Console permissions</strong>, grant <strong>Admin</strong> (or at least “Release to testing tracks”).</li>
+    <li>Save the file exactly here (folder is already gitignored — never commit it):
+      <pre><code>vitaltrack-mobile/credentials/google-service-account.json</code></pre>
+    </li>
+  </ol>
+  <div class="callout warn"><span class="callout-label">Note</span><p>Without this file, <code>eas submit</code> fails. You can skip it for the <em>first</em> upload (which must be manual anyway — Phase F), but you need it for every automated submit after that.</p></div>
+  <a class="back" href="#top">↑ back to top</a>
+</div>
+
+<!-- ===================== PHASE D ===================== -->
+<div class="phase" id="phaseD">
+  <div class="phase-head"><div class="phase-num">D</div><h2>Verify the production backend is live</h2></div>
+  <p class="lede">The production AAB hardcodes <code>https://api.carekosh.com</code>. Confirm it is live, healthy, and configured <strong>before</strong> you build.</p>
+  <h3>D1 · Health checks</h3>
+  <pre><code>curl https://api.carekosh.com/live      # expect 200  {status:"healthy",  database:"not_checked"}
+curl https://api.carekosh.com/health    # expect 200  {status:"healthy",  database:"connected"}</code></pre>
+  <ul>
+    <li><code>/health</code> returns <strong>503</strong> (<code>unhealthy</code>/<code>unavailable</code>) if the DB probe fails.</li>
+    <li>On Render's free tier the <em>first</em> request after idle can take ~1 minute (cold start). Retry 2–3×; only <strong>sustained</strong> failure is a real problem.</li>
+  </ul>
+  <h3>D2 · Production Render env vars present</h3>
+  <p>Confirm these exist on the <strong>production</strong> Render service:</p>
+  <p><code>DATABASE_URL</code> · <code>SECRET_KEY</code> · <code>ENVIRONMENT=production</code> · <code>CORS_ORIGINS</code> · <code>REQUIRE_EMAIL_VERIFICATION=true</code> · <code>MAIL_PASSWORD</code> (Brevo) · <code>MAIL_FROM</code> · <code>FRONTEND_URL</code></p>
+  <div class="callout danger"><span class="callout-label">Domain check</span><p>If <code>api.carekosh.com</code> is not yet pointed at the live production backend (Goal 10 evidence verified a Render <code>*.onrender.com</code> host), fix the custom-domain mapping first — otherwise the AAB ships pointing at a dead host. The build <em>will</em> use <code>api.carekosh.com</code> regardless.</p></div>
+  <a class="back" href="#top">↑ back to top</a>
+</div>
+
+<!-- ===================== PHASE E ===================== -->
+<div class="phase" id="phaseE">
+  <div class="phase-head"><div class="phase-num">E</div><h2>Build the production AAB <span class="tag good">done 2026-06-22</span></h2></div>
+  <p class="lede">✅ The production AAB has been built (<code>com.carekosh.mobile</code> → <code>https://api.carekosh.com</code>, versionCode auto-incremented, EAS-managed keystore). Commands kept below for future re-builds.</p>
+  <pre><code>cd vitaltrack-mobile
+npm install --legacy-peer-deps     # local tooling only (RN peer-dep quirk); EAS builds in the cloud from package-lock.json
+npx expo-doctor                    # sanity check the project
+eas whoami                         # confirm logged in (eas login if not)
+eas build --profile production --platform android</code></pre>
+  <ul>
+    <li>Produces a <strong>Play-ready AAB</strong> with <code>EXPO_PUBLIC_API_URL=https://api.carekosh.com</code> baked in.</li>
+    <li><strong>Signing (already done):</strong> the first build generated an EAS cloud keystore and now reuses it (shown as <code>Build Credentials … (default)</code>). That is your permanent Play <strong>upload key</strong> — keep Expo account access and keep Play App Signing enabled. Re-builds reuse it automatically; never generate a different one.</li>
+    <li><strong>versionCode:</strong> do nothing. EAS auto-increments remotely each build. Only bump the human-facing <code>version</code> (<code>"1.0.0"</code>) when you want a new marketing string — optional.</li>
+  </ul>
+  <p>When it finishes, <strong>download the AAB</strong> from the EAS build page (needed for Phase F).</p>
+  <h3>E1 · Permissions spot-check (Goal 9 gate)</h3>
+  <p>Inspect the generated AAB's manifest. Expect <strong>only</strong> <code>ACCESS_NETWORK_STATE</code> + <code>INTERNET</code> (and, if the image picker pulls one in, a single user-photo media permission). Anything unexpected (camera, mic, broad storage) → stop and investigate before uploading.</p>
+  <a class="back" href="#top">↑ back to top</a>
+</div>
+
+<!-- ===================== PHASE F ===================== -->
+<div class="phase" id="phaseF">
+  <div class="phase-head"><div class="phase-num">F</div><h2>First upload to Play — must be MANUAL</h2></div>
+  <div class="callout danger">
+    <span class="callout-label">Google Play API limitation (verified with Expo docs)</span>
+    <p>The <strong>very first</strong> Android upload for a new app <strong>cannot</strong> go through the API / <code>eas submit</code>. You must upload it <strong>manually</strong> through the Play Console once. After that, <code>eas submit</code> works for all future releases.</p>
+  </div>
+  <h3>First upload (manual)</h3>
+  <ol>
+    <li>Play Console → <strong>CareKosh</strong> → <strong>Testing → Internal testing</strong> → <strong>Create new release</strong>.</li>
+    <li><strong>Upload</strong> the AAB downloaded in Phase E.</li>
+    <li>Add release notes → <strong>Save</strong> → <strong>Review release</strong> → <strong>Start rollout to Internal testing</strong>.</li>
+  </ol>
+  <h3>Every release after this one</h3>
+  <pre><code>cd vitaltrack-mobile
+eas build  --profile production --platform android
+eas submit --profile production --platform android   # → lands on the INTERNAL track (per eas.json)</code></pre>
+  <p><code>eas submit</code> only reaches the <strong>internal</strong> track. Promotion to closed/production is always a manual Console step (Phases H–J).</p>
+  <a class="back" href="#top">↑ back to top</a>
+</div>
+
+<!-- ===================== PHASE G ===================== -->
+<div class="phase" id="phaseG">
+  <div class="phase-head"><div class="phase-num">G</div><h2>Internal testing smoke</h2></div>
+  <p class="lede">For you and a few trusted devices, to confirm the production build works against the production backend. Note: internal testing does <strong>not</strong> count toward the 12-tester / 14-day requirement — that must be <em>closed</em> testing (Phase H).</p>
+  <ol>
+    <li>Add your own Google account as an internal tester; open the opt-in link; install from Play.</li>
+    <li>Create <strong>one production smoke account</strong> (small fake data only — one category, one item; never real patient/caregiver/supplier data). Store creds in your password manager as <code>CAREKOSH_SMOKE_IDENTIFIER</code> / <code>CAREKOSH_SMOKE_PASSWORD</code>.</li>
+  </ol>
+  <h3>Smoke checklist (real Android device)</h3>
+  <ul class="check">
+    <li>App installs and launches from Play internal testing</li>
+    <li>Register → email-verification pending route works</li>
+    <li>Login (handle Render cold-start “server waking up” gracefully)</li>
+    <li>Inventory / categories load from the <strong>production</strong> backend</li>
+    <li>Create + edit an item, including a <strong>photo from the library</strong></li>
+    <li>Inventory <strong>PDF export</strong> + share (with and without photos)</li>
+    <li>Order create / export PDF / receive / apply stock</li>
+    <li>Profile / About screen renders</li>
+    <li><strong>Logout</strong>, then log in as a <em>second</em> account → first user's cached data is gone (no shared-device leakage)</li>
+    <li>(Optional) Account deletion path: Profile → Delete Account → email confirm</li>
+    <li>No cleartext HTTP and no sensitive logs in a production build</li>
+  </ul>
+  <a class="back" href="#top">↑ back to top</a>
+</div>
+
+<!-- ===================== PHASE H ===================== -->
+<div class="phase" id="phaseH">
+  <div class="phase-head"><div class="phase-num">H</div><h2>Closed testing — the mandatory 12 / 14-day gate</h2></div>
+  <div class="gate">
+    <span class="callout-label">Applies to you</span>
+    <p>The publisher is a <strong>personal</strong> developer account created after <strong>Nov 13, 2023</strong>. (Organization accounts, or personal accounts created before that date, are exempt — if that's you, skip to Phase J.)</p>
+  </div>
+  <h3>The rule (verified with Google Play support docs)</h3>
+  <ul>
+    <li>Run a <strong>Closed test</strong> (not internal) with <strong>≥ 12 testers</strong> who <strong>opt in</strong> and stay opted in for <strong>14 continuous days</strong>.</li>
+    <li>The 12-tester minimum was reduced from 20 on <strong>Dec 11, 2024</strong>; the 14-day duration is unchanged.</li>
+    <li>Only after meeting this can you <strong>apply for production access</strong>.</li>
+  </ul>
+  <h3>How to run it</h3>
+  <ol>
+    <li>Play Console → <strong>Testing → Closed testing</strong> → create a track (e.g. “Alpha”) and an email list of testers.</li>
+    <li>Recruit <strong>≥ 12 real testers</strong>. Each must accept the opt-in link, <strong>install</strong>, and <strong>remain opted in</strong> for the full 14 days.</li>
+    <li>Promote your build to the closed track (promote the internal release, or <code>eas submit</code> then promote in Console).</li>
+    <li>Keep the build <strong>live and installed</strong> across the <strong>14 continuous days</strong> — don't remove testers mid-window or the clock can reset.</li>
+    <li>Encourage real usage, collect feedback, ship fixes (each <code>eas build</code> auto-bumps the version code).</li>
+  </ol>
+  <div class="callout info"><span class="callout-label">Tip</span><p>Line up your 12 testers <strong>before</strong> you start the window so day 1 actually has 12 opted-in installs. The clock is unforgiving.</p></div>
+  <a class="back" href="#top">↑ back to top</a>
+</div>
+
+<!-- ===================== PHASE I ===================== -->
+<div class="phase" id="phaseI">
+  <div class="phase-head"><div class="phase-num">I</div><h2>Apply for production access</h2></div>
+  <p class="lede">After the closed-testing requirement is satisfied.</p>
+  <ol>
+    <li>Play Console → <strong>Dashboard</strong> (or the production-access prompt) → <strong>Apply for production access</strong>.</li>
+    <li>Answer Google's short questionnaire about your testing and your app.</li>
+    <li>Google reviews the application (can take a few days). You cannot create a production release until it's granted.</li>
+  </ol>
+  <p>While waiting, ensure <strong>every</strong> App-content section from Phase B is green (privacy policy, data safety, content rating, target audience, app access, data deletion).</p>
+  <a class="back" href="#top">↑ back to top</a>
+</div>
+
+<!-- ===================== PHASE J ===================== -->
+<div class="phase" id="phaseJ">
+  <div class="phase-head"><div class="phase-num">J</div><h2>Production release with staged rollout</h2></div>
+  <ol>
+    <li>Build/submit the final AAB if anything changed since closed testing:
+      <pre><code>cd vitaltrack-mobile
+eas build  --profile production --platform android
+eas submit --profile production --platform android   # lands on internal; then promote in Console</code></pre>
+    </li>
+    <li>Play Console → <strong>Production</strong> → <strong>Create new release</strong> → add the AAB, <strong>or promote</strong> the tested closed-testing release straight to Production (preferred — it's the exact build your testers used).</li>
+    <li>Add release notes.</li>
+    <li><strong>Set a staged rollout percentage</strong> — a manual Console choice (your <code>eas.json</code> has no rollout config). Recommended first launch:
+      <ul><li>Start at <strong>10–20%</strong>, watch Android vitals + backend for a day or two.</li><li>Increase to <strong>50%</strong>, then <strong>100%</strong> if crash-free rate and <code>/health</code> stay clean.</li></ul>
+    </li>
+    <li><strong>Review release → Start rollout to Production.</strong> Google does a final production review before it goes live.</li>
+  </ol>
+  <a class="back" href="#top">↑ back to top</a>
+</div>
+
+<!-- ===================== PHASE K ===================== -->
+<div class="phase" id="phaseK">
+  <div class="phase-head"><div class="phase-num">K</div><h2>Post-release verification &amp; monitoring</h2></div>
+  <h3>Immediately after rollout (Goal 10 runbook)</h3>
+  <pre><code>curl https://api.carekosh.com/live      # 200, database:"not_checked"
+curl https://api.carekosh.com/health    # 200, database:"connected"</code></pre>
+  <ul class="check">
+    <li>Render <strong>Events</strong> show latest deploy live; <strong>Logs</strong> show no repeated startup/DB/secret errors</li>
+    <li><strong>Neon</strong> dashboard: no unusual connection/compute errors</li>
+    <li><strong>Brevo</strong> dashboard: no unexpected auth/bounce spike (email path healthy)</li>
+    <li>Play Console: testers/users can install the expected (auto-incremented) version</li>
+    <li>Real-device smoke on the production track (smoke account, fake data only)</li>
+  </ul>
+  <h3>Set up uptime monitors <span class="tag off">template only</span></h3>
+  <p>Use <code>docs/monitoring/carekosh-uptime-monitors.example.yml</code> as the template in UptimeRobot / Better Stack:</p>
+  <ul>
+    <li>Production <code>/live</code>: every 5 min, alert after 2 consecutive failures (also keeps the free Render service warm).</li>
+    <li>Production <code>/health</code>: every 5 min, alert after 2 consecutive failures (DB readiness).</li>
+    <li>Staging <code>/live</code> + <code>/health</code>: every 10 min during launch.</li>
+  </ul>
+  <div class="callout warn"><span class="callout-label">Cold-start decision</span><p>Render free instances spin down after ~15 min idle; the first request can take ~1 min. If real users depend on the app, <strong>consider a paid Render instance</strong> or accept the risk explicitly (Goal 9 pre-launch item).</p></div>
+  <p>Record evidence in <code>docs/LAUNCH_READINESS_EVIDENCE_GOAL_10.md</code>: branch/clean status, <code>/live</code> + <code>/health</code> outputs, smoke output paths, monitor links — <strong>never</strong> tokens, passwords, DB URLs, or user emails.</p>
+  <a class="back" href="#top">↑ back to top</a>
+</div>
+
+<!-- ===================== ROLLBACK ===================== -->
+<div class="section" id="rollback">
+  <h2>L · Rollback &amp; incident response</h2>
+  <div class="callout danger">
+    <span class="callout-label">Roll back the backend if</span>
+    <p><code>/live</code> fails &gt; 2 consecutive external checks after deploy · <code>/health</code> fails and Neon/Render logs show a deploy-caused DB readiness failure · smoke-account login or inventory list fails due to server errors.</p>
+  </div>
+  <div class="callout success">
+    <span class="callout-label">Do NOT roll back for</span>
+    <p>A known free-tier cold start that recovers · a single credential typo · a Play review/opt-in delay.</p>
+  </div>
+  <h3>Backend rollback</h3>
+  <ol>
+    <li>Render service → <strong>Events</strong> → select last known-good deploy → <strong>Rollback</strong>.</li>
+    <li>Render disables auto-deploys on rollback (prevents the bad commit redeploying) — keep off until the fix lands.</li>
+    <li>Verify <code>/live</code>, <code>/health</code>, smoke login, inventory list.</li>
+    <li><strong>Render rollback does NOT roll back Neon data.</strong> If a data mutation caused it, use the backup/restore runbook in <code>LAUNCH_READINESS_RUNBOOK_GOAL_10.md</code> and get explicit approval before any production restore.</li>
+  </ol>
+  <h3>Mobile bad-release recovery</h3>
+  <p>There is <strong>no</strong> true Play rollback for already-installed users:</p>
+  <ol>
+    <li><strong>Pause/halt the staged rollout</strong> in Play Console.</li>
+    <li>Build a <strong>fixed AAB with a higher version code</strong> (<code>eas build</code> auto-increments).</li>
+    <li>Upload to internal → smoke on a real device → promote only after app access, Data Safety, login, inventory, and cold-start are verified.</li>
+    <li>Keep the backend <strong>compatible</strong> with the bad version while users may still have it installed.</li>
+  </ol>
+</div>
+
+<hr>
+
+<!-- ===================== CMDS ===================== -->
+<div class="section" id="cmds">
+  <h2>Appendix · Copy-paste command cheat sheet</h2>
+  <pre><code># 0. Sync onto clean main
+cd /Users/rishabh/courses_tutorials/vital_track/goal_9_fresh/vitaltrack
+git checkout main &amp;&amp; git pull --ff-only origin main &amp;&amp; git status --short --branch
+
+# 1. Tooling
+npm install -g eas-cli
+eas login &amp;&amp; eas whoami
+
+# 2. Verify production backend BEFORE building
+curl https://api.carekosh.com/live
+curl https://api.carekosh.com/health
+
+# 3. Build the production AAB
+cd vitaltrack-mobile
+npm install --legacy-peer-deps
+npx expo-doctor
+eas build --profile production --platform android
+#   -> download the AAB from the EAS build page
+
+# 4. FIRST upload: MANUAL in Play Console -> Internal testing (Google API limitation)
+
+# 5. Every later release:
+eas build  --profile production --platform android
+eas submit --profile production --platform android   # -> internal track; promote in Console
+
+# 6. Post-release verify
+curl https://api.carekosh.com/live
+curl https://api.carekosh.com/health</code></pre>
+  <p><strong>Track promotion (all manual in Play Console):</strong></p>
+  <div class="arch">Internal testing  →  Closed testing (12 testers / 14 days)  →  apply for production access  →  Production (staged rollout %)</div>
+</div>
+
+<!-- ===================== POLICIES ===================== -->
+<div class="section" id="policies">
+  <h2>Appendix · Google Play policies that apply to CareKosh</h2>
+  <p>Every item is a Play <strong>requirement</strong>. Tick each before submitting for production.</p>
+  <ul class="check">
+    <li>Developer identity verification completed (personal account)</li>
+    <li>Privacy policy hosted at a public URL and entered in App content</li>
+    <li>Account deletion: in-app path <strong>and</strong> a public web deletion-request URL</li>
+    <li>Data safety form completed and accurate (see inventory below)</li>
+    <li>Content rating questionnaire completed (Medical, no violence/ads/UGC)</li>
+    <li>Target audience set to 13+ (not directed to children)</li>
+    <li>App access (reviewer login) provided with real credentials</li>
+    <li>Permissions: only <code>ACCESS_NETWORK_STATE</code> (+ <code>INTERNET</code>); justify any media permission the picker adds</li>
+    <li>App signing: Play App Signing enabled (EAS-generated upload key)</li>
+    <li>App Bundle (.aab) used for upload — your <code>production</code> profile already does this</li>
+    <li>Target API level: an app submitted now must target <strong>API 35 (Android 15)</strong> — Expo SDK 54 meets this. From <strong>Aug 31, 2026</strong>, new apps/updates must target <strong>API 36 (Android 16)</strong> — a future Expo SDK bump handles it; not needed for this launch</li>
+    <li>Health apps declaration (if prompted): answered truthfully — no medical claims, no Health Connect</li>
+    <li>Closed testing (12 testers / 14 days) completed → production access granted</li>
+  </ul>
+</div>
+
+<!-- ===================== DATA SAFETY ===================== -->
+<div class="section" id="datasafety">
+  <h2>Appendix · Full Data Safety inventory</h2>
+  <p>Reproduced from <code>PLAY_STORE_RELEASE_HARDENING_GOAL_9.md</code> so you can fill the form from this one file. <strong>Verify against the deployed backend + current SDK list before submitting.</strong> Declare <strong>encrypted in transit</strong> and <strong>account deletion available</strong>.</p>
+  <table>
+    <thead><tr><th>Data area</th><th>Examples</th><th>Req/Opt</th><th>Stored / transmitted</th></tr></thead>
+    <tbody>
+      <tr><td>Name</td><td>Full / display name</td><td>Required</td><td>Sent to API, stored server-side; light auth state in SecureStore</td></tr>
+      <tr><td>Email</td><td>Login, verification, reset, deletion confirm</td><td>Required</td><td>Sent to API, server-side; light auth state in SecureStore</td></tr>
+      <tr><td>Username</td><td>Optional username</td><td>Optional</td><td>Sent to API if provided; light auth state in SecureStore</td></tr>
+      <tr><td>Phone/contact</td><td>Supplier/contact fields if entered</td><td>Optional</td><td>Sent to API as item metadata; may appear in cache/export</td></tr>
+      <tr><td>Password / secrets</td><td>Password, access + refresh tokens</td><td>Required</td><td>Password over HTTPS; tokens <strong>only</strong> in SecureStore; passwords not stored on device</td></tr>
+      <tr><td>Inventory</td><td>Item/category names, qty, thresholds, expiry, brands, notes, supplier, links</td><td>Required</td><td>API, server-side, AsyncStorage display snapshot</td></tr>
+      <tr><td>Orders</td><td>IDs, items, quantities, statuses, timestamps, PDF path</td><td>Optional</td><td>API, server-side, cached snapshot</td></tr>
+      <tr><td>Categories</td><td>Names, descriptions, colors/icons/order</td><td>Req/Opt</td><td>API, server-side, cached snapshot</td></tr>
+      <tr><td>Activity</td><td>Activity feed entries + timestamps</td><td>Generated</td><td>Server-side + display-snapshot cache</td></tr>
+      <tr><td>Images/photos</td><td>Selected item photo URI; photos in user PDFs</td><td>Optional</td><td>Library asset; URI may be item metadata; processed locally for preview/PDF</td></tr>
+      <tr><td>PDF/files</td><td>Inventory/order PDFs, JSON backups</td><td>Optional</td><td>Generated in app sandbox; shared only via system share sheet</td></tr>
+      <tr><td>Clipboard export</td><td>Inventory JSON to clipboard</td><td>Optional</td><td>Written to OS clipboard on request</td></tr>
+      <tr><td>Diagnostics/crash</td><td>No app analytics/crash SDK; prod console logs off</td><td>Not collected</td><td>Play/Android platform may provide vitals outside app code</td></tr>
+      <tr><td>Third-party processors</td><td>Expo, React Native, TanStack Query, Zustand, Render, Neon, Brevo, Google Play</td><td>Depends</td><td>Review each provider's privacy docs before submitting</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Also declare</strong> (Goal 9 re-audit): the email-verification, password-reset, and account-deletion token columns + their expiry timestamps are server-side PII storage touchpoints.</p>
+</div>
+
+<!-- ===================== REVIEWER ===================== -->
+<div class="section" id="reviewer">
+  <h2>Appendix · Play reviewer “App access” text template</h2>
+  <p>Paste into <strong>Play Console → App content → App access → Sign-in details</strong>, filling in a real reviewer account (from Goal 9 doc).</p>
+  <pre><code>CareKosh requires sign-in to inspect the app.
+
+Use the supplied reviewer account:
+Email: &lt;reviewer email&gt;
+Password: &lt;reviewer password&gt;
+
+If the Render backend is cold-starting, the app may show a short "server waking
+up" message. Wait up to 60 seconds and retry sign-in. After login, review these
+flows: Dashboard, Inventory, add/edit item, image picker from library, export
+inventory PDF, create order and export PDF, receive/apply stock, Profile &gt;
+Delete Account.</code></pre>
+  <p>Use a <strong>production-backed AAB</strong> for the submission path and a dedicated reviewer/smoke account with <strong>fake data only</strong>. Rotate the password after review.</p>
+</div>
+
+<!-- ===================== STATUS ===================== -->
+<div class="section" id="status">
+  <h2>Appendix · Master readiness checklist (current status)</h2>
+  <div class="legend">
+    <span class="tag good">✅ done</span><span class="tag warn">🟡 in progress</span><span class="tag off">🔴 blocking</span><span class="tag todo">⬜ upcoming</span>
+  </div>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Expo account + <code>EXPO_TOKEN</code> in GitHub</td><td><span class="tag good">done</span></td></tr>
+      <tr><td><code>eas.json</code> dev/preview/production profiles</td><td><span class="tag good">done</span></td></tr>
+      <tr><td>Preview APK built + device-tested</td><td><span class="tag good">done</span></td></tr>
+      <tr><td><code>FRONTEND_URL</code> set on production Render</td><td><span class="tag good">done</span></td></tr>
+      <tr><td>Goal 9 Data Safety inventory documented</td><td><span class="tag good">done</span></td></tr>
+      <tr><td>Goal 10 runbook + evidence</td><td><span class="tag good">done</span></td></tr>
+      <tr><td>Package name → <code>com.carekosh.mobile</code></td><td><span class="tag good">done · renamed &amp; merged (PR #53)</span></td></tr>
+      <tr><td>Play Console developer account</td><td><span class="tag warn">paid, ID in review</span></td></tr>
+      <tr><td>App listing (title, icons, screenshots)</td><td><span class="tag warn">WIP</span></td></tr>
+      <tr><td>Privacy policy hosted at stable URL</td><td><span class="tag off">not hosted</span></td></tr>
+      <tr><td>Web account-deletion URL hosted</td><td><span class="tag off">not hosted</span></td></tr>
+      <tr><td>Data Safety form submitted</td><td><span class="tag off">not submitted</span></td></tr>
+      <tr><td>Reviewer (App access) credentials</td><td><span class="tag off">placeholder</span></td></tr>
+      <tr><td>Service-account JSON in <code>credentials/</code></td><td><span class="tag off">not created</span></td></tr>
+      <tr><td>Production backend live + healthy on <code>api.carekosh.com</code></td><td><span class="tag good">done · verified live &amp; healthy</span></td></tr>
+      <tr><td>Uptime monitors live</td><td><span class="tag off">template only</span></td></tr>
+      <tr><td>Cold-start mitigation (paid Render / keep-warm)</td><td><span class="tag off">decide</span></td></tr>
+      <tr><td>App signing keystore (EAS-managed, Play App Signing)</td><td><span class="tag good">done · created &amp; in use</span></td></tr>
+      <tr><td>Production AAB built</td><td><span class="tag good">done</span></td></tr>
+      <tr><td>First manual upload (Internal testing)</td><td><span class="tag todo">Phase F</span></td></tr>
+      <tr><td>Closed testing (≥12 testers, 14 days)</td><td><span class="tag off">not started</span></td></tr>
+      <tr><td>Production access granted</td><td><span class="tag todo">Phase I</span></td></tr>
+      <tr><td>Production staged rollout</td><td><span class="tag todo">Phase J</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===================== GOTCHAS ===================== -->
+<div class="section" id="gotchas">
+  <h2>Appendix · Sharp edges &amp; gotchas</h2>
+  <table>
+    <thead><tr><th>Gotcha</th><th>Why it bites</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>Package name is permanent</td><td>Can't rename after first upload</td><td>✅ Already locked to <code>com.carekosh.mobile</code> (PR #53)</td></tr>
+      <tr><td>First upload must be manual</td><td>Google API blocks API for the first release</td><td>Upload by hand to Internal testing once; <code>eas submit</code> after</td></tr>
+      <tr><td><code>eas submit</code> → internal only</td><td>Profile named production but <code>track:internal</code></td><td>Promote internal→closed→production manually</td></tr>
+      <tr><td>AAB bakes <code>api.carekosh.com</code></td><td>Build throws if URL wrong; ships dead host if domain not live</td><td>Verify Phase D before building</td></tr>
+      <tr><td>versionCode is remote/auto</td><td>Editing <code>app.json versionCode:1</code> does nothing</td><td>Leave it; EAS auto-increments</td></tr>
+      <tr><td>Signing key loss</td><td>Can't update the app ever again</td><td>Use Play App Signing; let EAS generate + Google hold</td></tr>
+      <tr><td>ID verification delay</td><td>Blocks all publishing 1–3 days</td><td>Start day one</td></tr>
+      <tr><td>Asset pixel strictness</td><td>1px off = rejected</td><td>Icon 512×512, feature 1024×500 exactly</td></tr>
+      <tr><td>Closed-test clock resets</td><td>Drop below 12 testers / remove build mid-window</td><td>Line up 12 up front; keep live 14 continuous days</td></tr>
+      <tr><td>Render free-tier cold start</td><td>First request ~1 min; looks like an outage</td><td>Retry; <code>/live</code> monitor as keep-warm; consider paid</td></tr>
+      <tr><td>Expo token expiry</td><td>CI fails months later</td><td>Set expiry None or schedule yearly rotation</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  CareKosh Play Store Launch Playbook · Created 2026-06-21 · Verified against repo config, backend code, the three launch docs, and official Expo + Google Play documentation · No application code was modified to produce this guide.
+  <br><a class="back" href="#top">↑ back to top</a>
+</div>
+
+</div>
+</body>
+</html>

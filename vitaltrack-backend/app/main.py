@@ -6,6 +6,7 @@ FastAPI application with middleware, CORS, rate limiting, and lifecycle events
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -32,6 +33,20 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("vitaltrack.main")
+
+# Error tracking — only active when SENTRY_DSN is configured (OBS-1).
+if settings.SENTRY_DSN:
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.ENVIRONMENT,
+            traces_sample_rate=0.1,
+        )
+        logger.info("Sentry error tracking initialised")
+    except Exception:  # pragma: no cover - telemetry must never break startup
+        logger.exception("Failed to initialise Sentry")
 
 DATABASE_HEALTH_TIMEOUT_SECONDS = 2.0
 
@@ -108,6 +123,16 @@ def create_app() -> FastAPI:
             expose_headers=["X-Total-Count", "X-Page", "X-Page-Size"],
         )
     
+    # =========================================================================
+    # CORRELATION ID — stamp every request/response with X-Request-ID (OBS-1)
+    # =========================================================================
+    @app.middleware("http")
+    async def add_request_id(request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID") or uuid4().hex
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
     # =========================================================================
     # SECURITY HEADERS (OWASP recommended)
     # =========================================================================
