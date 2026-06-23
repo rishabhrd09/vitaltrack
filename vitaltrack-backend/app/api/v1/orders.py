@@ -371,19 +371,36 @@ async def update_order_status(
     if old_status == new_status:
         return OrderResponse.model_validate(order)
     
-    # Update status and timestamp
-    order.status = new_status
-    
+    # Apply the transition atomically: the UPDATE only fires while the order is
+    # still in the status we validated against, so two concurrent transitions
+    # cannot both win (no read-then-write race / last-writer-wins).
+    status_values: dict = {"status": new_status}
     if new_status == OrderStatus.ORDERED:
-        order.ordered_at = now
+        status_values["ordered_at"] = now
     elif new_status == OrderStatus.RECEIVED:
-        order.received_at = now
+        status_values["received_at"] = now
     elif new_status == OrderStatus.DECLINED:
-        order.declined_at = now
-    
+        status_values["declined_at"] = now
+
     if data.notes:
-        order.notes = data.notes
-    
+        status_values["notes"] = data.notes
+
+    transition_result = await db.execute(
+        update(Order)
+        .where(
+            Order.id == order.id,
+            Order.user_id == current_user.id,
+            Order.status == old_status,
+        )
+        .values(**status_values)
+        .returning(Order.id)
+    )
+    if transition_result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Order was modified by another request. Please refresh and try again.",
+        )
+
     # Log activity
     action_type = {
         OrderStatus.RECEIVED: ActivityActionType.ORDER_RECEIVED,

@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh — Backend System-Design &amp; SOLID Audit</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf9f7;--card:#fff;--card2:#f4f3f0;--border:#e5e3de;--text:#1a1a18;--muted:#6b6a65;--accent:#1d6b52;--accent-bg:#e8f5ef;--amber:#8a6830;--amber-bg:#fef8e8;--danger:#8b1a1a;--danger-bg:#fef0f0;--info:#1a4a8b;--info-bg:#eef4fc;--code-bg:#f0efeb;--gold:#b8860b;--gold-bg:#fef7df}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e12;--card:#161619;--card2:#1c1c21;--border:#2a2a30;--text:#e4e4ec;--muted:#8a8a95;--accent:#5eead4;--accent-bg:#0d2626;--amber:#d4a574;--amber-bg:#1a1510;--danger:#e88;--danger-bg:#1a1010;--info:#7ab4f5;--info-bg:#0f1a2a;--code-bg:#1a1a20;--gold:#e8c868;--gold-bg:#1a1710}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72;font-size:15px}
+.page{max-width:920px;margin:0 auto;padding:32px 24px 80px}
+.hero{text-align:center;padding:44px 0 36px;border-bottom:1px solid var(--border);margin-bottom:36px}
+.hero h1{font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:500;letter-spacing:-.02em;line-height:1.05;margin-bottom:12px}
+.hero h1 em{font-style:italic;color:var(--accent);font-weight:600}
+.hero .sub{color:var(--muted);font-size:.95rem;max-width:660px;margin:0 auto 10px}
+.hero .meta{color:var(--muted);font-size:.76rem;font-family:'JetBrains Mono',monospace}
+code{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:var(--code-bg);padding:2px 6px;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;overflow-x:auto;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:.76rem;line-height:1.6}
+pre code{background:none;padding:0}
+.section{margin-bottom:46px;scroll-margin-top:18px}
+.section h2{font-family:'Cormorant Garamond',serif;font-size:1.85rem;font-weight:600;margin-bottom:6px;letter-spacing:-.01em}
+.section .lead{color:var(--muted);font-size:.92rem;margin-bottom:18px}
+.section h3{font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;margin-top:24px;margin-bottom:8px}
+.section p{margin-bottom:12px}
+.section ul,.section ol{margin-bottom:14px;padding-left:22px}.section li{margin-bottom:6px;font-size:.93rem}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.84rem}
+th{text-align:left;font-family:'Sora',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:9px 11px;border-bottom:2px solid var(--border)}
+td{padding:9px 11px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:hover td{background:var(--card2)}
+.callout{border-radius:10px;padding:14px 18px;margin:18px 0;border-left:4px solid}
+.callout p{margin-bottom:6px;font-size:.9rem}.callout p:last-child{margin-bottom:0}
+.callout-label{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;display:block}
+.callout.info{background:var(--info-bg);border-left-color:var(--info)}.callout.info .callout-label{color:var(--info)}
+.callout.warn{background:var(--amber-bg);border-left-color:var(--amber)}.callout.warn .callout-label{color:var(--amber)}
+.callout.danger{background:var(--danger-bg);border-left-color:var(--danger)}.callout.danger .callout-label{color:var(--danger)}
+.callout.success{background:var(--accent-bg);border-left-color:var(--accent)}.callout.success .callout-label{color:var(--accent)}
+hr{border:none;border-top:1px solid var(--border);margin:38px 0}
+.footer{text-align:center;padding:28px 0;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;margin-top:40px}
+
+.sev{display:inline-block;padding:3px 9px;border-radius:20px;font-family:'Sora',sans-serif;font-size:.64rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.sev.high{background:var(--danger-bg);color:var(--danger)}
+.sev.medium{background:var(--amber-bg);color:var(--amber)}
+.sev.low{background:var(--info-bg);color:var(--info)}
+.sev.pass{background:var(--accent-bg);color:var(--accent)}
+.chip{display:inline-block;padding:2px 8px;border-radius:5px;font-family:'Sora',sans-serif;font-size:.64rem;font-weight:700;letter-spacing:.04em;background:var(--card2);color:var(--muted);border:1px solid var(--border)}
+.chip.eff::before{content:"EFFORT ";opacity:.55}
+
+.toc{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 34px}
+.toc h4{font-family:'Sora',sans-serif;font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.toc ol{columns:2;column-gap:28px;list-style:none;padding:0;margin:0}
+.toc li{margin-bottom:7px;font-size:.85rem;break-inside:avoid}
+.toc a{color:var(--text);text-decoration:none;border-bottom:1px solid transparent}
+.toc a:hover{border-bottom-color:var(--accent);color:var(--accent)}
+.toc .n{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--muted);margin-right:8px}
+.toc li.star a{color:var(--accent);font-weight:600}
+@media(max-width:640px){.toc ol{columns:1}}
+
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0 8px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 12px;text-align:center}
+.kpi .num{font-family:'Cormorant Garamond',serif;font-size:2.3rem;font-weight:700;line-height:1}
+.kpi .lbl{font-family:'Sora',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-top:7px}
+.kpi.high .num{color:var(--danger)}.kpi.medium .num{color:var(--amber)}.kpi.low .num{color:var(--info)}.kpi.pass .num{color:var(--accent)}
+@media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}
+
+.verdict{border:2px solid var(--accent);background:var(--accent-bg);border-radius:16px;padding:24px 28px;margin:24px 0}
+.verdict .tag{display:inline-flex;align-items:center;gap:8px;font-family:'Sora',sans-serif;font-weight:800;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.verdict h3{font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:600;margin:0 0 10px}
+.verdict .big{font-size:1.4rem;font-weight:800}
+
+.risks{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}
+.risk{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--danger);border-radius:12px;padding:16px 18px}
+.risk .r{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--danger);font-weight:600}
+.risk h4{font-family:'Sora',sans-serif;font-size:.92rem;font-weight:700;margin:6px 0 6px}
+.risk p{font-size:.82rem;color:var(--muted);margin:0}
+@media(max-width:640px){.risks{grid-template-columns:1fr}}
+
+.finding{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin:16px 0;border-left:4px solid var(--border)}
+.finding.high{border-left-color:var(--danger)}
+.finding.medium{border-left-color:var(--amber)}
+.finding.low{border-left-color:var(--info)}
+.finding.pass{border-left-color:var(--accent)}
+.finding .fh{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-bottom:6px}
+.finding .fid{font-family:'JetBrains Mono',monospace;font-size:.74rem;font-weight:600;color:var(--muted)}
+.finding .ft{font-family:'Sora',sans-serif;font-size:1.02rem;font-weight:700;flex:1;min-width:200px;letter-spacing:-.01em}
+.finding .row{display:grid;grid-template-columns:84px 1fr;gap:6px 14px;margin-top:10px;font-size:.88rem}
+.finding .row .k{font-family:'Sora',sans-serif;font-size:.64rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+.finding .row .v{margin:0}
+.finding .fix{background:var(--accent-bg);border-radius:8px;padding:9px 13px;font-size:.86rem}
+.finding .ev{font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--muted)}
+@media(max-width:560px){.finding .row{grid-template-columns:1fr}.finding .row .k{padding-top:8px}}
+
+.grouphdr{font-family:'Sora',sans-serif;font-size:.74rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:30px 0 4px;display:flex;align-items:center;gap:10px}
+.grouphdr .ln{flex:1;height:1px;background:var(--border)}
+.action{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:16px 18px;margin:12px 0}
+.action.ops{border-left-color:var(--info)}
+.action.infra{border-left-color:var(--amber)}
+.action .ah{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.action .step{width:25px;height:25px;border-radius:50%;background:var(--accent);color:#fff;font-family:'Sora',sans-serif;font-weight:800;font-size:.76rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.action.ops .step{background:var(--info)}.action.infra .step{background:var(--amber)}
+.action .at{font-family:'Sora',sans-serif;font-weight:700;font-size:.96rem;flex:1;min-width:180px}
+.action .file{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);background:var(--card2);border:1px solid var(--border);border-radius:5px;padding:2px 7px}
+.action .why{font-size:.85rem;color:var(--muted);margin:9px 0 2px}
+.action pre{margin-bottom:4px}
+.cl{width:100%;font-size:.84rem;margin:14px 0}
+.cl th{padding:8px 10px}.cl td{padding:8px 10px}
+.cl .b{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:600}
+.bite .y{color:var(--accent);font-weight:700}.bite .n{color:var(--muted)}
+.arch{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:18px;margin:14px 0;font-family:'JetBrains Mono',monospace;font-size:.71rem;line-height:1.65;overflow-x:auto;white-space:pre;color:var(--text)}
+.yes{color:var(--accent);font-weight:700}.gap{color:var(--amber);font-weight:700}
+
+.roadmap{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0}
+.lane{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 18px;border-top:4px solid}
+.lane.now{border-top-color:var(--danger)}.lane.soon{border-top-color:var(--amber)}.lane.later{border-top-color:var(--accent)}
+.lane h3{font-family:'Sora',sans-serif;font-size:.82rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin:0 0 4px}
+.lane.now h3{color:var(--danger)}.lane.soon h3{color:var(--amber)}.lane.later h3{color:var(--accent)}
+.lane .when{font-size:.74rem;color:var(--muted);margin-bottom:12px;font-style:italic}
+.lane ul{list-style:none;padding:0;margin:0}
+.lane li{font-size:.85rem;margin-bottom:11px}
+.lane li b{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text)}
+.lane li .e{font-family:'Sora',sans-serif;font-size:.6rem;font-weight:800;color:var(--muted);background:var(--card2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;margin-left:4px}
+@media(max-width:760px){.roadmap{grid-template-columns:1fr}}
+
+.tag-good{color:var(--accent);font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.78rem;color:var(--muted);margin:10px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.dot.high{background:var(--danger)}.dot.medium{background:var(--amber)}.dot.low{background:var(--info)}.dot.pass{background:var(--accent)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="hero">
+  <h1>Backend <em>Audit</em></h1>
+  <p class="sub">An evidence-based review of the CareKosh backend — behaviour under concurrency &amp; load, SOLID / clean-architecture quality, how it deploys as part of the full stack, and a concrete go/no-go plan for the first Play Store deploy.</p>
+  <p class="meta">vitaltrack-backend/ · FastAPI + SQLAlchemy 2.0 async + asyncpg → Neon · GitHub Actions → Render (Docker, free) · target ≈ 100 concurrent / ~500 total users · June 2026 · read-only · reconciled with 2 independent reviews</p>
+</div>
+
+<nav class="toc">
+  <h4>Contents</h4>
+  <ol>
+    <li><span class="n">01</span><a href="#summary">Executive summary</a></li>
+    <li class="star"><span class="n">02</span><a href="#decision">Launch decision — your scale</a></li>
+    <li class="star"><span class="n">03</span><a href="#plan">★ Pre-launch action plan (code changes)</a></li>
+    <li class="star"><span class="n">04</span><a href="#deploy">Deployment model &amp; what's still needed</a></li>
+    <li><span class="n">05</span><a href="#verdict">Verdict — apply-stock safety</a></li>
+    <li><span class="n">06</span><a href="#glance">At a glance &amp; top risks</a></li>
+    <li><span class="n">07</span><a href="#scoreboard">Severity scoreboard</a></li>
+    <li><span class="n">08</span><a href="#parta">Part A — system design</a></li>
+    <li><span class="n">09</span><a href="#partb">Part B — SOLID &amp; architecture</a></li>
+    <li><span class="n">10</span><a href="#scale">Scale scenarios</a></li>
+    <li class="star"><span class="n">11</span><a href="#scaleup">Future scale-up plan (when &amp; why)</a></li>
+  </ol>
+</nav>
+
+<!-- 01 SUMMARY -->
+<div class="section" id="summary">
+  <h2>01 · Executive summary</h2>
+  <div class="callout success">
+    <span class="callout-label">The one paragraph a non-engineer can act on</span>
+    <p>This backend is <b>correct and safe for your launch scale</b> — ~100 concurrent and ~500 total users is modest for this design. The security-critical paths are well built: every data query is scoped to the logged-in user (<b>no cross-user leaks — verified in code <em>and</em> covered by tests</b>), the order&nbsp;→&nbsp;apply-stock flow is genuinely concurrency-safe, refresh tokens rotate, and secrets/tokens are handled properly. The deployment setup (GitHub Actions CI → Render Docker → Neon, with an EAS mobile pipeline) is already a mature, modern solo-dev stack.</p>
+    <p><b>You do not need any big scaling work</b> — no Redis, no caching layer, no microservices, no Kubernetes, no service-layer rewrite. The scary numbers in this report are all <em>worst-case saturation</em> figures that only bite at 1,000–10,000 concurrent users, far beyond your needs.</p>
+    <p><b>Before the first public deploy, do a focused ~1-day hardening branch</b> (§03): a handful of small correctness/validation fixes that can bite even with 5 users, add error tracking so you aren't blind in production, and — most important in the real world — <b>move off Render's free tier</b> so cold starts don't make the app feel broken to your first users and the Play reviewer (§04).</p>
+  </div>
+  <div class="callout info">
+    <span class="callout-label">This revision — reconciled with two independent audits &amp; the test suite</span>
+    <p>Findings were cross-checked against a second independent review and re-verified against the code and tests. New issue added &amp; verified: <b>negative order-item quantities (<a href="#f-val1" style="color:inherit">VAL-1</a>)</b>. Two races folded in: refresh rotation (<a href="#f-sec3" style="color:inherit">SEC-3</a>) and order-status (<a href="#f-conc3" style="color:inherit">CONC-3</a>). <b>Correction:</b> an earlier draft claimed items/categories had no IDOR tests — that was wrong; <code>test_items.py:404</code> and <code>test_categories.py:233</code> both exist. The genuine test gap is <em>concurrency</em> tests (see <a href="#testability" style="color:inherit">§09</a>). All three passes reached the <b>same launch decision</b>.</p>
+  </div>
+</div>
+
+<!-- 02 DECISION -->
+<div class="section" id="decision">
+  <h2>02 · Launch decision for your scale</h2>
+  <p class="lead">Target: a maximum of ~100 users active at once and ~400–500 total registrations.</p>
+
+  <div class="verdict">
+    <div class="tag">🚀 Go / no-go</div>
+    <h3><span class="big">Ship it</span> — after a ~1-day pre-launch hardening branch.</h3>
+    <p style="font-size:.9rem;margin-bottom:0">Scale is <b>not</b> the blocker. "100 users at a time" is not 100 simultaneous requests — a medical-inventory app is bursty and mostly idle, so realistic peak in-flight requests is more like <b>10–30 at once</b>. Every load-related risk below has large headroom at that level.</p>
+  </div>
+
+  <h3>Does each "High" finding actually bite at ~100 concurrent / ~500 total?</h3>
+  <table class="bite">
+    <thead><tr><th>High finding</th><th>Worst case in this audit</th><th>Bites at your scale?</th></tr></thead>
+    <tbody>
+      <tr><td>DB-2 · connection ceiling</td><td>60 conns vs Neon's ~97 app-available</td><td class="n">No — you'll use ~15–30. Big headroom.</td></tr>
+      <tr><td>DB-1 · whole-account load</td><td>~6 queries per request</td><td class="n">Not fatal — adds latency, won't fall over <span class="ev">(small fix → do it)</span></td></tr>
+      <tr><td>BLOCK-1 · Argon2 blocks loop</td><td>collapses at 1,000 logins/sec</td><td class="n">No — login concurrency is tiny</td></tr>
+      <tr><td>RESIL-1 · no statement timeout</td><td>pool exhaustion under load</td><td class="n">Low — few connections competing <span class="ev">(cheap insurance → do it)</span></td></tr>
+      <tr><td>RATE-1 · weak rate limiting</td><td>brute-force protection ~4× loose</td><td class="y">Independent of your size — harden, don't block</td></tr>
+      <tr><td>OBS-1 · no error tracking</td><td>blind in production</td><td class="y">Yes — matters at <em>any</em> size</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <span class="callout-label">The real #1 risk for your launch isn't capacity — it's the cold start</span>
+    <p>Render free spins down after ~15&nbsp;min idle and takes ~1&nbsp;minute to wake. With ~100 daily users there will be frequent idle gaps, so a real fraction of users — <b>and the Play Store reviewer</b> — will hit a 1-minute "is this broken?" wait. This outranks everything else in the audit. Move to <b>paid Render</b> (or add a keep-warm ping) before launch. Details in §04.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- 03 PRE-LAUNCH ACTION PLAN -->
+<div class="section" id="plan">
+  <h2>03 · Pre-launch action plan — code changes &amp; immediate actions</h2>
+  <p class="lead">Everything to do before the first Play Store deploy, sized for your current needs. Budget <b>≈ 1 focused day</b> (2 if the new concurrency tests surface edge cases) + <b>one infra change</b>. Nothing here is a rewrite. Groups: <span style="color:var(--accent);font-weight:700">A — correctness</span>, <span style="color:var(--info);font-weight:700">B — operability</span>, <span style="color:var(--amber);font-weight:700">C — infra</span>.</p>
+
+  <div class="callout success">
+    <span class="callout-label">At-a-glance checklist — branch: codex/backend-prelaunch-hardening</span>
+    <table class="cl">
+      <thead><tr><th>#</th><th>Do this</th><th>File</th><th>Why it can't wait</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td class="b">Block negative/zero order quantities</td><td>schemas/order.py</td><td>Can silently corrupt stock — bites at any size</td><td>S</td></tr>
+        <tr><td>2</td><td class="b">Atomic item version update</td><td>api/v1/items.py</td><td>Concurrent edits lose updates (sync/2 devices)</td><td>S→M</td></tr>
+        <tr><td>3</td><td class="b">Atomic refresh-token rotation</td><td>api/v1/auth.py</td><td>Security correctness — token single-use</td><td>S</td></tr>
+        <tr><td>4</td><td class="b">Conditional order-status update</td><td>api/v1/orders.py</td><td>Status race; same cheap pattern as #2</td><td>S</td></tr>
+        <tr><td>5</td><td class="b">Concurrent tests for #2–#4</td><td>tests/</td><td>The one real test gap (see §09)</td><td>M</td></tr>
+        <tr><td>6</td><td class="b">Add Sentry + request IDs</td><td>main.py</td><td>Otherwise blind to production errors</td><td>S</td></tr>
+        <tr><td>7</td><td class="b">Health check &amp; migration safety</td><td>render.yaml · entrypoint</td><td>Honest health + safe deploys</td><td>S</td></tr>
+        <tr><td>8</td><td class="b">Statement timeout · surgical auth load · workers→2</td><td>database.py · deps.py · Dockerfile</td><td>Cheap safety + biggest per-request win</td><td>S</td></tr>
+        <tr><td>9</td><td class="b">(Optional) hash off the event loop</td><td>core/security.py</td><td>Low impact at your scale, but small</td><td>S</td></tr>
+        <tr><td>10</td><td class="b">Move off Render free / keep-warm</td><td>infra</td><td>Cold start = "app looks broken"</td><td>S</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- GROUP A -->
+  <div class="grouphdr"><span style="color:var(--accent)">Group A · Correctness &amp; validation (code + tests)</span><span class="ln"></span></div>
+
+  <div class="action">
+    <div class="ah"><span class="step">1</span><span class="at">Block negative / zero order-item quantities</span><span class="file">app/schemas/order.py:27</span><span class="chip eff">S</span></div>
+    <div class="why">Today <code>quantity: int = 1</code> has no lower bound, so a negative quantity flows into <code>quantity = Item.quantity + order_item.quantity</code> on apply and <em>reduces</em> stock. Self-scoped (your own inventory only), but it breaks the "orders only add stock" invariant and can make <code>total_units</code> negative.</div>
+<pre><code># app/schemas/order.py — OrderItemBase
+- quantity: int = 1
++ quantity: int = Field(1, gt=0, le=999999)
+
+# (optional) belt-and-braces DB guard via a new Alembic migration:
+op.create_check_constraint("chk_order_items_quantity_positive", "order_items", "quantity &gt; 0")</code></pre>
+  </div>
+
+  <div class="action">
+    <div class="ah"><span class="step">2</span><span class="at">Make item stock/version updates atomic (real optimistic lock)</span><span class="file">app/api/v1/items.py:373, 531</span><span class="chip eff">S→M</span></div>
+    <div class="why">The version check runs in Python and the flushed UPDATE has no <code>version</code> in its <code>WHERE</code> — so two concurrent edits both pass and the second silently overwrites the first. (A <em>sequential</em> stale submit is already caught; the <em>concurrent</em> race is not.) Push the compare-and-swap into SQL. Apply to both <code>update_stock</code> and <code>update_item</code>.</div>
+<pre><code># app/api/v1/items.py — update_stock (same shape for update_item's field set)
+res = await db.execute(
+    update(Item)
+    .where(Item.id == item_id,
+           Item.user_id == current_user.id,
+           Item.version == data.version)          # &lt;-- the guard the DB enforces
+    .values(quantity=data.quantity, version=Item.version + 1)
+    .returning(Item.version)
+)
+if res.scalar_one_or_none() is None:               # 0 rows = stale version or not found
+    return JSONResponse(status_code=409, content={"error": "Version conflict", ...})</code></pre>
+  </div>
+
+  <div class="action">
+    <div class="ah"><span class="step">3</span><span class="at">Make refresh-token rotation a single-use atomic claim</span><span class="file">app/api/v1/auth.py:771–814</span><span class="chip eff">S</span></div>
+    <div class="why">Rotation reads the token, checks <code>is_revoked</code> in Python, then revokes + mints a new one. Two simultaneous refreshes of one token can both pass and both mint valid tokens. Replace the read-check with an atomic conditional claim.</div>
+<pre><code># app/api/v1/auth.py — refresh_token, replacing the select + Python is_revoked check
+claim = await db.execute(
+    update(RefreshToken)
+    .where(RefreshToken.jti == jti,
+           RefreshToken.user_id == user_id,
+           RefreshToken.is_revoked.is_(False))
+    .values(is_revoked=True)
+    .returning(RefreshToken.id)
+)
+if claim.scalar_one_or_none() is None:
+    raise HTTPException(status_code=401, detail="Token has been revoked")
+# ... then mint + insert the new refresh token as before</code></pre>
+  </div>
+
+  <div class="action">
+    <div class="ah"><span class="step">4</span><span class="at">Make order-status transitions conditional (no last-writer-wins)</span><span class="file">app/api/v1/orders.py:352–402</span><span class="chip eff">S</span></div>
+    <div class="why">Optional but cheap and the same pattern. Two concurrent transitions (e.g. <code>pending→received</code> and <code>pending→declined</code>) can both validate and the last commit wins, with both activity logs written. Guard the UPDATE on the old status.</div>
+<pre><code># app/api/v1/orders.py — update_order_status, after validating the transition
+res = await db.execute(
+    update(Order)
+    .where(Order.id == order.id,
+           Order.user_id == current_user.id,
+           Order.status == old_status)             # only transition from the state we read
+    .values(status=new_status, **timestamps)
+    .returning(Order.id)
+)
+if res.scalar_one_or_none() is None:
+    raise HTTPException(status_code=409, detail="Order changed, please refresh and retry")</code></pre>
+  </div>
+
+  <div class="action">
+    <div class="ah"><span class="step">5</span><span class="at">Add concurrent tests for #2–#4 (close the one real test gap)</span><span class="file">tests/test_items.py · test_auth.py · test_orders.py</span><span class="chip eff">M</span></div>
+    <div class="why">IDOR, the order state machine, and <em>sequential</em> version/refresh conflicts are already well tested. The only gap is <em>concurrent</em> tests — today the only <code>asyncio.gather</code> test is order-apply (test_orders.py:424). Mirror it for the three fixes above so the races can't regress.</div>
+<pre><code># pattern (reuse the existing register_and_auth + asyncio.gather helpers)
+r1, r2 = await asyncio.gather(
+    client.put(f"/api/v1/items/{item_id}", headers=h, json={"version": v, "quantity": 10}),
+    client.put(f"/api/v1/items/{item_id}", headers=h, json={"version": v, "quantity": 20}),
+)
+assert sorted([r1.status_code, r2.status_code]) == [200, 409]   # exactly one wins</code></pre>
+  </div>
+
+  <!-- GROUP B -->
+  <div class="grouphdr"><span style="color:var(--info)">Group B · Operability &amp; deploy safety</span><span class="ln"></span></div>
+
+  <div class="action ops">
+    <div class="ah"><span class="step">6</span><span class="at">Add Sentry + a request-ID middleware</span><span class="file">app/main.py · requirements.txt</span><span class="chip eff">S</span></div>
+    <div class="why">Highest operability ROI for a solo dev. Without it, your first production bug is invisible — a user says "it's broken" and you have only unstructured stdout. Sentry's free tier is enough.</div>
+<pre><code># requirements.txt:  sentry-sdk[fastapi]==2.*
+# app/main.py
+import sentry_sdk
+if settings.ENVIRONMENT == "production" and settings.SENTRY_DSN:
+    sentry_sdk.init(dsn=settings.SENTRY_DSN, environment=settings.ENVIRONMENT,
+                    traces_sample_rate=0.1)
+
+@app.middleware("http")
+async def request_id(request, call_next):
+    rid = request.headers.get("X-Request-ID") or uuid4().hex
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = rid
+    return response</code></pre>
+  </div>
+
+  <div class="action ops">
+    <div class="ah"><span class="step">7</span><span class="at">Point the platform health check at the DB probe &amp; stop swallowing migration failures</span><span class="file">render.yaml · docker-entrypoint.sh:49</span><span class="chip eff">S</span></div>
+    <div class="why"><code>/live</code> is process-only, so Render keeps routing to an instance whose DB is dead. And <code>alembic upgrade head || echo</code> boots the app on a schema mismatch → confusing 500s. (Migrations run inside the container entrypoint on every deploy — see §04.)</div>
+<pre><code># render.yaml
+- healthCheckPath: /live
++ healthCheckPath: /health
+
+# docker-entrypoint.sh  (let a failed migration abort the deploy; Render keeps the old instance)
+- alembic upgrade head || echo "Migration warning (might already be up to date)"
++ alembic upgrade head</code></pre>
+  </div>
+
+  <div class="action ops">
+    <div class="ah"><span class="step">8</span><span class="at">DB statement timeout · surgical auth load · trim workers</span><span class="file">database.py:75 · deps.py:55 · Dockerfile:81</span><span class="chip eff">S</span></div>
+    <div class="why">Three tiny changes. A statement timeout stops one hung query pinning a connection. For DB-1, the <b>safe</b> fix is surgical — stop the eager <code>selectin</code> cascade <em>only</em> in the auth dependency (which uses just scalar fields), rather than changing the model globally (which could trigger <code>MissingGreenlet</code> elsewhere). Two workers fit the free/small tier far better than four.</div>
+<pre><code># app/core/database.py — add a per-query ceiling (merge with the existing ssl logic)
+_connect_args = {"ssl": True, "server_settings": {"statement_timeout": "8000"}}  # 8s
+
+# app/api/deps.py — get_current_user: don't eager-load the whole account
+from sqlalchemy.orm import noload   # or raiseload for a strict guard
+result = await db.execute(
+    select(User).where(User.id == user_id).options(noload("*"))
+)
+# (broader model-level fix — drop lazy="selectin" in user.py — is a TEST-GATED follow-up, not pre-launch)
+
+# Dockerfile (CMD)
+- --workers 4
++ --workers 2</code></pre>
+  </div>
+
+  <div class="action ops">
+    <div class="ah"><span class="step">9</span><span class="at">(Optional) Run password hashing off the event loop</span><span class="file">app/core/security.py:27–34</span><span class="chip eff">S</span></div>
+    <div class="why">Low impact at your login volume, but small and future-proof: Argon2 is CPU/memory-bound and currently freezes the worker's event loop for every hash/verify.</div>
+<pre><code># app/core/security.py
+import anyio
+async def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return await anyio.to_thread.run_sync(pwd_context.verify, plain_password, hashed_password)
+async def hash_password(password: str) -> str:
+    return await anyio.to_thread.run_sync(pwd_context.hash, password)
+# (await them at the call sites in auth.py)</code></pre>
+  </div>
+
+  <!-- GROUP C -->
+  <div class="grouphdr"><span style="color:var(--amber)">Group C · Infrastructure (the real #1)</span><span class="ln"></span></div>
+
+  <div class="action infra">
+    <div class="ah"><span class="step">10</span><span class="at">Move off Render free tier — or keep the instance warm</span><span class="file">infra · render.yaml plan</span><span class="chip eff">S</span></div>
+    <div class="why">The cold-start delay is what users and the Play reviewer actually notice. A small paid Render instance removes spin-down entirely. If you must stay free a little longer, a cron/uptime pinger hitting <code>/health</code> every ~10&nbsp;min keeps it warm (a partial mitigation, not a full fix).</div>
+<pre><code># render.yaml
+- plan: free
++ plan: starter        # smallest paid tier removes spin-down / cold start
+
+# Stop-gap if still on free: external uptime monitor → GET https://api.carekosh.com/health every 10 min</code></pre>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-label">How to land this safely (full-stack discipline)</span>
+    <p>CI gates the merge: backend tests (pytest on Postgres 16), <code>ruff</code>, a <b>route-count check (expects 39)</b>, and <b>70% coverage floors on <code>items.py</code>/<code>orders.py</code></b>. None of the §03 fixes add/remove routes, so keep the count at 39 and the new tests will lift coverage. Sequence: open the branch → PR → CI green → push the preview APK to staging (<code>staging-api.carekosh.com</code>) and smoke-test register/login/add-item/order-apply → merge → verify production <code>/health</code> returns 200 → then proceed to the Play build.</p>
+  </div>
+
+  <div class="callout danger">
+    <span class="callout-label">Do NOT do these before launch — they're premature for ~500 users</span>
+    <p>Redis-backed rate limiter · Neon pooled endpoint + split migration URL · stats caching · composite indexes · email outbox queue · service/repository refactor. These only matter near <b>~1,000 concurrent</b> users — see the triggers in §11.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- 04 DEPLOYMENT MODEL -->
+<div class="section" id="deploy">
+  <h2>04 · Deployment model &amp; what's still needed</h2>
+  <p class="lead">How CareKosh actually ships as a full stack today, how that compares to the modern solo-dev norm, and the short list of what's genuinely missing before the first deploy.</p>
+
+  <h3>How it deploys today (verified from <code>.github/workflows/ci.yml</code>, <code>render.yaml</code>, <code>docker-entrypoint.sh</code>)</h3>
+  <div class="arch">feature/*  ─►  PR to main  ─►  GitHub Actions CI  (concurrency-cancel; gates PR merge)
+                                 ├─ Backend tests   pytest + Postgres 16 service · ruff · route-count=39 · coverage ≥70% (items, orders)
+                                 ├─ Frontend tests  tsc · eslint · expo-doctor
+                                 └─ Advisory only   mypy · Trivy (HIGH/CRITICAL)
+                                 │
+                    merge main  ─►  deploy-backend job  ─►  Render deploy hook  (or Render GitHub auto-deploy)
+                                                              └─ Docker build  ─►  docker-entrypoint.sh
+                                                                     ├─ alembic upgrade head      ◄── migrations run on EVERY deploy, in-container
+                                                                     └─ gunicorn -w 4 (→2) UvicornWorker
+                    label 'build-apk'  ─►  EAS preview APK  ─►  staging-api.carekosh.com   (vitaltrack_staging)
+                    Play Store AAB     ─►  EAS production build   (CI job currently disabled: `if: false` → built manually)
+
+  Hosting:  Render (Docker, free)  ·  DB: Neon Postgres (free)  ·  prod api.carekosh.com  +  staging staging-api.carekosh.com  ·  Cloudflare in front</div>
+
+  <div class="callout info">
+    <span class="callout-label">Two deployment facts worth knowing</span>
+    <p><b>1. Migrations run inside the container entrypoint on every deploy.</b> Fine on a single free instance (one entrypoint runs). The moment you run <b>2+ instances</b>, every instance races <code>alembic upgrade head</code> on boot → move migrations to a one-off release/pre-deploy step (see §11). Step 7 (removing <code>|| echo</code>) already makes a failed migration abort the deploy.</p>
+    <p><b>2. The production AAB build is disabled in CI</b> (<code>if: false</code>, "while we iterate on the server-first refactor"), so the Play Store artifact is currently produced manually via <code>eas build --profile production</code>. Re-enabling it (or building manually) is part of the launch path — not a backend blocker.</p>
+  </div>
+
+  <h3>How this compares to the modern solo-dev norm (2025–2026)</h3>
+  <p>The current "boring, managed" default for a solo dev shipping to a small audience is: a <b>managed PaaS</b> running a <b>single container monolith</b>, a <b>managed serverless Postgres</b>, <b>CI/CD from Git</b>, <b>managed error tracking</b>, and <b>no premature infrastructure</b> (no self-run Redis/Kafka/K8s until there's real load). CareKosh already matches almost all of it:</p>
+  <table>
+    <thead><tr><th>Modern solo-dev default</th><th>CareKosh today</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>Managed PaaS, push-to-deploy, IaC</td><td>Render + Docker + <code>render.yaml</code> blueprint</td><td><span class="yes">✔ matches</span></td></tr>
+      <tr><td>Single-container monolith (no microservices)</td><td>One FastAPI app, one image</td><td><span class="yes">✔ matches</span></td></tr>
+      <tr><td>Managed serverless Postgres (Neon/Supabase)</td><td>Neon Postgres</td><td><span class="yes">✔ matches</span></td></tr>
+      <tr><td>Light async via framework tasks, not a queue</td><td>FastAPI <code>BackgroundTasks</code> for email</td><td><span class="yes">✔ matches</span></td></tr>
+      <tr><td>CI on PR, deploy on merge, preview builds</td><td>GitHub Actions + EAS preview APK on label</td><td><span class="yes">✔ matches</span></td></tr>
+      <tr><td>Always-on small instance for a real launch</td><td>Render <b>free</b> (scale-to-zero → cold start)</td><td><span class="gap">✖ gap</span></td></tr>
+      <tr><td>Managed error tracking (Sentry free tier)</td><td>None wired up</td><td><span class="gap">✖ gap</span></td></tr>
+      <tr><td>Pooled DB endpoint for web apps</td><td>Direct Neon endpoint (fine until multi-instance)</td><td><span class="gap">~ later</span></td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:.9rem;color:var(--muted)">Verdict: your stack <b>already follows current best practice</b> for this stage. The only two deviations to close <em>before</em> launch are the always-on tier and Sentry; the pooled-endpoint move is a "before scaling" item, not now.</p>
+
+  <div class="callout success">
+    <span class="callout-label">✅ What is still needed before your first Play Store deploy — the complete list</span>
+    <p><b>1 · Code (the §03 branch, ~1 day):</b> block negative order quantity, make item-version / refresh-rotation / order-status updates atomic, add the matching concurrent tests, add Sentry + request IDs, fix the health-check path &amp; migration-failure handling, add a DB statement timeout, make auth stop eager-loading the account, drop workers 4→2.</p>
+    <p><b>2 · Infra (the real #1):</b> move Render free → smallest paid (always-on) tier, or run a keep-warm pinger as a temporary fallback.</p>
+    <p><b>3 · Release hygiene:</b> keep CI green (route-count 39, coverage floors), smoke-test on staging via the preview APK, verify production <code>/health</code> = 200 post-deploy, then build/submit the Play AAB.</p>
+    <p style="margin-top:6px"><b>That's it.</b> Everything else in this report is explicitly deferred (§11). Nothing else is required to launch for ~100 concurrent / ~500 total users.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- 05 VERDICT -->
+<div class="section" id="verdict">
+  <h2>05 · Verdict — order&nbsp;→&nbsp;apply-stock concurrency</h2>
+  <div class="verdict">
+    <div class="tag">✅ Concurrency-safety verdict</div>
+    <h3>The apply-stock path is <span class="big">SAFE</span> — proven, with one scope caveat.</h3>
+    <p style="font-size:.9rem;margin-bottom:0"><code>POST /orders/{id}/apply</code> is safe against N concurrent applies to the same item <em>and</em> against duplicate/retried requests, on two independent grounds. (There is even a passing concurrent test for it — <code>test_orders.py:424</code>.)</p>
+  </div>
+
+  <h3>① Double-apply is blocked by an atomic compare-and-swap claim</h3>
+  <p class="ev">vitaltrack-backend/app/api/v1/orders.py:479–498</p>
+  <pre><code>update(Order)
+  .where(Order.id == order.id, Order.user_id == current_user.id,
+         Order.status == OrderStatus.RECEIVED)        # &lt;-- the guard
+  .values(status=OrderStatus.STOCK_UPDATED, applied_at=now)
+  .returning(Order.id)
+# losers match 0 rows → claimed_order_id is None → HTTP 400, no stock touched</code></pre>
+  <p>Under Read Committed, two concurrent applies of the same order serialize on the order row lock. The first flips <code>RECEIVED → STOCK_UPDATED</code>; the loser re-evaluates the <code>WHERE</code> against the committed row, matches <b>zero rows</b>, and 400s <b>before touching inventory</b>. <code>STOCK_UPDATED</code> is terminal, so this is effectively idempotent.</p>
+
+  <h3>② The stock increment is a DB-atomic read-modify-write</h3>
+  <p class="ev">vitaltrack-backend/app/api/v1/orders.py:503–514</p>
+  <pre><code>update(Item).where(Item.id == order_item.item_id, Item.user_id == current_user.id)
+    .values(quantity=Item.quantity + order_item.quantity,   # evaluated server-side
+            version=Item.version + 1)
+    .returning(Item.id, Item.name, Item.quantity)</code></pre>
+  <p><code>Item.quantity + order_item.quantity</code> is computed inside Postgres under a row lock — re-reads the latest committed value, adds, writes. Two different orders touching one item serialize on that lock; no lost update. All writes ride the single <code>get_db</code> transaction and commit together — no partial commit.</p>
+
+  <div class="callout warn">
+    <span class="callout-label">Scope caveat — this is where the real bugs live</span>
+    <p>The <b>order apply</b> path is safe, but the <b>direct stock-edit endpoints are not</b> (<a href="#f-conc1" style="color:inherit"><b>CONC-1</b></a>), and order-item quantity isn't validated (<a href="#f-val1" style="color:inherit"><b>VAL-1</b></a>). Both are fixed in §03, steps 1–2.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- 06 AT A GLANCE -->
+<div class="section" id="glance">
+  <h2>06 · At a glance</h2>
+  <p class="lead">30 findings + 1 explicit pass. Severity reflects blast-radius under concurrent load, sized for a solo dev on Render&nbsp;+&nbsp;Neon.</p>
+  <div class="kpis">
+    <div class="kpi high"><div class="num">7</div><div class="lbl">High</div></div>
+    <div class="kpi medium"><div class="num">14</div><div class="lbl">Medium</div></div>
+    <div class="kpi low"><div class="num">8</div><div class="lbl">Low</div></div>
+    <div class="kpi pass"><div class="num">1</div><div class="lbl">Pass — no IDOR</div></div>
+    <div class="kpi"><div class="num">0</div><div class="lbl">Critical</div></div>
+  </div>
+  <div class="legend">
+    <span><i class="dot high"></i>High — fix before scaling</span>
+    <span><i class="dot medium"></i>Medium — plan it in</span>
+    <span><i class="dot low"></i>Low — polish</span>
+    <span><i class="dot pass"></i>Verified strong</span>
+  </div>
+
+  <h3 style="margin-top:26px">The three risks to fix first</h3>
+  <div class="risks">
+    <div class="risk">
+      <div class="r">VAL-1 · Medium (do it — 1 line)</div>
+      <h4>Negative order quantities reduce stock</h4>
+      <p>Order-item <code>quantity</code> has no <code>gt=0</code>, so a negative value flows into the stock increment on apply and silently reduces inventory.</p>
+    </div>
+    <div class="risk">
+      <div class="r">CONC-1 · High</div>
+      <h4>Optimistic lock is fake under concurrency</h4>
+      <p>Direct stock edits check <code>version</code> in Python, not in the SQL <code>WHERE</code>. Two concurrent edits both pass; the second silently overwrites the first.</p>
+    </div>
+    <div class="risk">
+      <div class="r">DB-1 · High</div>
+      <h4>Whole account loaded every request</h4>
+      <p>All five <code>User</code> relationships are <code>lazy="selectin"</code>, so authenticating fires ~6 SELECTs loading every item, order, and (unbounded) activity log. Fix surgically in the auth dep.</p>
+    </div>
+  </div>
+  <div class="callout success">
+    <span class="callout-label">What's already strong</span>
+    <p><b>No IDOR anywhere</b> — every item/category/order/activity query is scoped to <code>user_id</code> (verified endpoint-by-endpoint <b>and</b> covered by stranger-access tests in <code>test_items.py:404</code> / <code>test_categories.py:233</code> / <code>test_orders.py</code>). Parameterised queries (no SQLi), no mass-assignment, high-entropy hashed tokens, pinned JWT algorithm, refresh-token rotation, truthful <code>/health</code> DB probe, graceful engine disposal on shutdown, email off the request path, a real concurrent apply-stock test, and a mature branch-gated CI/CD.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- 07 SCOREBOARD -->
+<div class="section" id="scoreboard">
+  <h2>07 · Severity scoreboard</h2>
+  <p class="lead">Every finding, sortable by eye. Detail cards follow in Parts&nbsp;A&nbsp;&amp;&nbsp;B. <span class="ev">★ = addressed in the §03 pre-launch plan.</span></p>
+  <table>
+    <thead><tr><th>ID</th><th>Finding</th><th>Category</th><th>Sev</th><th>Pre-launch</th></tr></thead>
+    <tbody>
+      <tr><td><b>DB-1</b></td><td><code>User.*</code> relationships are <code>lazy="selectin"</code> → whole account loaded every authenticated request</td><td>Database / Perf</td><td><span class="sev high">High</span></td><td>★</td></tr>
+      <tr><td><b>DB-2</b></td><td>Worst-case 60 connections (15×4 workers) vs Neon free ~97 app-available; no deploy / 2nd-instance headroom</td><td>Database</td><td><span class="sev high">High</span></td><td>partial (workers→2)</td></tr>
+      <tr><td><b>CONC-1</b></td><td>Direct stock edits' version check is a Python TOCTOU → lost update under concurrency</td><td>Concurrency</td><td><span class="sev high">High</span></td><td>★</td></tr>
+      <tr><td><b>BLOCK-1</b></td><td>Argon2 hashing runs synchronously on the event loop (blocks the worker)</td><td>Performance</td><td><span class="sev high">High</span></td><td>★ (optional)</td></tr>
+      <tr><td><b>RESIL-1</b></td><td>No DB statement/command timeout → a hung query pins a connection indefinitely</td><td>Resilience</td><td><span class="sev high">High</span></td><td>★</td></tr>
+      <tr><td><b>RATE-1</b></td><td>Rate limiter per-process in-memory + per-IP only, no lockout → ~4× looser &amp; spoofable</td><td>Security / Scale</td><td><span class="sev high">High</span></td><td>defer*</td></tr>
+      <tr><td><b>OBS-1</b></td><td>No error tracking (Sentry), no correlation IDs, no metrics — blind in production</td><td>Observability</td><td><span class="sev high">High</span></td><td>★</td></tr>
+      <tr><td id="row-val1"><b>VAL-1</b></td><td>Order-item <code>quantity</code> has no <code>gt=0</code> → negative quantity reduces stock on apply</td><td>Data integrity</td><td><span class="sev medium">Medium</span></td><td>★</td></tr>
+      <tr><td><b>SEC-1</b></td><td>Access tokens are not revocable (logout / password-change revoke refresh only)</td><td>Security</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
+      <tr><td><b>SEC-2</b></td><td>Email-verify / password-reset load ALL pending-token users and loop in Python</td><td>Security / Perf</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
+      <tr><td><b>SEC-3</b></td><td>Refresh-token rotation not atomic + no reuse detection</td><td>Security</td><td><span class="sev medium">Medium</span></td><td>★ (atomic part)</td></tr>
+      <tr><td><b>OBS-2</b></td><td>Render <code>healthCheckPath: /live</code> (process-only) never probes the DB</td><td>Observability</td><td><span class="sev medium">Medium</span></td><td>★</td></tr>
+      <tr><td><b>OBS-3</b></td><td><code>alembic upgrade head || echo</code> swallows migration failures; app boots on schema mismatch</td><td>Observability</td><td><span class="sev medium">Medium</span></td><td>★</td></tr>
+      <tr><td><b>DB-5</b></td><td><code>/items/stats</code> &amp; <code>/needs-attention</code> count in Python instead of SQL aggregates</td><td>Database</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
+      <tr><td><b>DB-6</b></td><td>Missing composite indexes (<code>user_id+status</code>, <code>user_id+is_active</code>, <code>user_id+created_at</code>)</td><td>Database</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
+      <tr><td><b>DB-3</b></td><td><code>statement_cache_size=0</code> not set → pooled / PgBouncer Neon endpoint breaks asyncpg</td><td>Database</td><td><span class="sev medium">Medium</span></td><td>defer*</td></tr>
+      <tr><td><b>DB-4</b></td><td>No <code>pool_recycle</code> → relies solely on <code>pre_ping</code> for Neon idle drops</td><td>Database</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
+      <tr><td><b>RESIL-2</b></td><td>No retry/backoff on Brevo email (timeouts exist, but single-shot, no persistence)</td><td>Resilience</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
+      <tr><td><b>SOLID-1</b></td><td>Fat handlers: validation + business rules + persistence + notification in one function; no service layer</td><td>SOLID</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
+      <tr><td><b>SOLID-2</b></td><td>DIP: routers depend directly on <code>AsyncSession</code> + Brevo client; no repository/mailer abstraction</td><td>SOLID</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
+      <tr><td><b>ARCH-1</b></td><td>"get-or-404 + ownership filter" duplicated 12+ times (the IDOR guard has no single home)</td><td>SOLID</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
+      <tr><td><b>CONC-2</b></td><td>CHECK <code>quantity&gt;=0</code> doesn't prevent lost update; only converts negative drives into 500s</td><td>Concurrency</td><td><span class="sev low">Low</span></td><td>—</td></tr>
+      <tr><td id="row-conc3"><b>CONC-3</b></td><td>Order-status transitions race (read-then-write, no conditional <code>WHERE</code>)</td><td>Concurrency</td><td><span class="sev low">Low</span></td><td>★ (cheap)</td></tr>
+      <tr><td><b>OBS-4</b></td><td><code>CORS_ORIGINS '["*"]'</code> shipped as the production value</td><td>Security</td><td><span class="sev low">Low</span></td><td>defer</td></tr>
+      <tr><td><b>SOLID-3</b></td><td><code>update_item</code>/<code>update_stock</code> declare <code>response_model</code> but return raw <code>JSONResponse</code> on 409</td><td>SOLID</td><td><span class="sev low">Low</span></td><td>defer</td></tr>
+      <tr><td><b>ARCH-2</b></td><td>Leaky <code>OrderCreate</code> schema accepts client <code>status</code>/totals/timestamps the server ignores</td><td>SOLID</td><td><span class="sev low">Low</span></td><td>defer</td></tr>
+      <tr><td><b>ARCH-3</b></td><td><code>verify_email_html</code> swallows all exceptions, no logging</td><td>Resilience</td><td><span class="sev low">Low</span></td><td>defer</td></tr>
+      <tr><td><b>DB-7</b></td><td><code>apply_order_to_stock</code> does one SELECT per order item (N+1 round-trips)</td><td>Database</td><td><span class="sev low">Low</span></td><td>defer</td></tr>
+      <tr><td><b>SCALE-2</b></td><td>No cache layer (acceptable now; note invalidation hazard before adding)</td><td>Performance</td><td><span class="sev low">Low</span></td><td>defer</td></tr>
+      <tr><td><b>SEC-5</b></td><td>Resource scoping correct across <b>all</b> endpoints — no IDOR (code + tests)</td><td>Security</td><td><span class="sev pass">Pass</span></td><td>—</td></tr>
+    </tbody>
+  </table>
+  <p class="ev">* RATE-1 / DB-3 are "before scaling," not pre-launch — see §11. RATE-1's brute-force exposure exists at any size but the realistic threat to a ~500-user app is low; harden soon after launch.</p>
+</div>
+
+<hr>
+
+<!-- 08 PART A -->
+<div class="section" id="parta">
+  <h2>08 · Part A — System-design findings</h2>
+  <p class="lead">Each finding states current behaviour (with evidence), the failure mode under load, the blast radius, and a concrete fix sized S / M / L.</p>
+
+  <h3>A1 · Concurrency &amp; data consistency</h3>
+
+  <div class="finding medium" id="f-val1">
+    <div class="fh"><span class="fid">VAL-1</span><span class="ft">Negative order-item quantity can reduce stock on apply</span><span class="sev medium">Medium</span><span class="chip eff">S</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">schemas/order.py:27 — <code>quantity: int = 1</code> (no <code>gt=0</code>); orders.py:292 stores it; orders.py:510 applies it</span>
+<pre><code>quantity: int = 1                                  # OrderItemBase — unbounded sign
+# apply:  quantity = Item.quantity + order_item.quantity   # negative → stock goes DOWN</code></pre></div>
+      <div class="k">Impact</div><div class="v">A crafted or buggy-client order with a negative quantity reduces inventory through receive→apply (as long as the result stays ≥0, so the CHECK constraint doesn't catch it), and makes <code>total_units</code> negative. <b>Self-scoped</b> — orders only reference the caller's own items (validated at orders.py:115–140), so no cross-tenant impact and a user can already set their own stock via the stock endpoint. Genuine input-validation gap that breaks the "orders only add stock" invariant. <i>Surfaced by the second audit (F04) and verified here.</i></div>
+      <div class="k">Fix</div><div class="v fix">One line: <code>quantity: int = Field(1, gt=0, le=999999)</code>, optionally backed by a DB <code>CHECK (quantity &gt; 0)</code> on <code>order_items</code>. §03 step 1.</div>
+    </div>
+  </div>
+
+  <div class="finding high" id="f-conc1">
+    <div class="fh"><span class="fid">CONC-1</span><span class="ft">Direct stock-edit optimistic lock is a Python TOCTOU — lost updates</span><span class="sev high">High</span><span class="chip eff">S→M</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">items.py:530–544 (<code>update_stock</code>); same pattern items.py:373–460 (<code>update_item</code>)</span>
+<pre><code>if item.version != data.version:          # check, in Python
+    return JSONResponse(status_code=409, ...)
+item.quantity = data.quantity             # act
+item.version += 1
+await db.commit()    # UPDATE items SET quantity=?, version=? WHERE id=?  (no version predicate)</code></pre>
+        Verified: no <code>__mapper_args__ = {"version_id_col": ...}</code> and no <code>with_for_update</code> anywhere — the flushed UPDATE carries no <code>version</code> in its WHERE.</div>
+      <div class="k">Impact</div><div class="v">Two requests with the same <code>data.version=N</code> both pass the <code>!=</code> check, both write <code>version=N+1</code>; the second silently overwrites the first. A <em>sequential</em> stale submit is correctly rejected (test_items.py:146), which can give false confidence — but the <em>concurrent</em> race is real. Blast radius is one user's own data, but this is an <b>offline-first app</b> (<code>local_id</code>/<code>version</code> exist for sync) — two devices or a replayed sync queue is a realistic trigger, and for medical stock a vanished decrement matters.</div>
+      <div class="k">Fix</div><div class="v fix">Push the compare-and-swap into the statement (add <code>Item.version == data.version</code> to the UPDATE <code>WHERE</code>, treat 0 rows as the 409) — or set <code>version_id_col</code> on the model. §03 step 2. Add the concurrent test (§03 step 5).</div>
+    </div>
+  </div>
+
+  <div class="finding low" id="f-conc3">
+    <div class="fh"><span class="fid">CONC-3</span><span class="ft">Order-status transitions can race (read-then-write)</span><span class="sev low">Low</span><span class="chip eff">S</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">orders.py:352 reads order, :367 derives old status, :375 <code>order.status = new_status</code>, :402 commit — no conditional WHERE</span></div>
+      <div class="k">Impact</div><div class="v">Concurrent <code>pending→received</code> and <code>pending→declined</code> can both validate; last commit wins and both activity logs are written (one "lies"). Single-user, low probability. <i>Raised by the second audit (F05).</i></div>
+      <div class="k">Fix</div><div class="v fix">Conditional <code>UPDATE … WHERE status=:old_status RETURNING id</code>; 0 rows → 409. Same shape as CONC-1; §03 step 4.</div>
+    </div>
+  </div>
+
+  <div class="finding low">
+    <div class="fh"><span class="fid">CONC-2</span><span class="ft">CHECK <code>quantity&gt;=0</code> is a backstop, not a race guard</span><span class="sev low">Low</span><span class="chip eff">—</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">migration 20260406…:48 — <code>quantity &gt;= 0</code></span></div>
+      <div class="k">Impact</div><div class="v">Prevents negative stock but does nothing for the lost-update race (both writes are non-negative). Keep it — just don't mistake it for concurrency protection.</div>
+    </div>
+  </div>
+
+  <h3>A2 · Database tier &amp; connection pooling</h3>
+
+  <div class="finding high">
+    <div class="fh"><span class="fid">DB-1</span><span class="ft">Every authenticated request eager-loads the entire account</span><span class="sev high">High</span><span class="chip eff">S</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">user.py:116–145 — all five relationships; deps.py:55–57</span>
+<pre><code>categories / items / orders / activity_logs / refresh_tokens = relationship(..., lazy="selectin")
+# get_current_user: select(User).where(User.id == user_id)  → fires ~6 extra SELECTs</code></pre></div>
+      <div class="k">Impact</div><div class="v">One <code>select(User)</code> triggers selectin loads of all items, categories, orders (and <code>Order.items</code> is selectin too → order_items), activity logs and refresh tokens — on <b>every authenticated call</b>, even <code>GET /items</code>. <code>activity_logs</code> grows unbounded, so per-request cost rises over the account's lifetime. Dominant latency cost; amplifies DB-2.</div>
+      <div class="k">Fix</div><div class="v fix"><b>Surgical (pre-launch):</b> in <code>get_current_user</code> add <code>.options(noload("*"))</code> (or <code>raiseload("*")</code>) — the auth user is used for scalar fields only, so this kills the cascade with zero risk. <b>Broader (later, test-gated):</b> drop <code>lazy="selectin"</code> on the model + add explicit <code>selectinload(...)</code> where needed (a blind model change risks <code>MissingGreenlet</code> elsewhere). §03 step 8.</div>
+    </div>
+  </div>
+
+  <div class="finding high">
+    <div class="fh"><span class="fid">DB-2</span><span class="ft">Connection math has no headroom on Neon free</span><span class="sev high">High</span><span class="chip eff">S</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">database.py:77–85 (<code>pool_size=5, max_overflow=10</code>) · Dockerfile CMD <code>--workers 4</code></span></div>
+      <div class="k">Impact</div><div class="v">Each worker = its own pool. <b>Worst case 15 × 4 = 60 connections per instance.</b> Neon free (0.25 CU) allows ~104 max / ~97 app-available. A rolling deploy briefly runs old+new (~120 → "too many connections"); two instances steady = 120, over the ceiling. <span class="ev">At your scale you'll use ~15–30 — a "before scaling" risk; trim workers→2 now.</span></div>
+      <div class="k">Fix</div><div class="v fix">Pre-launch: <code>--workers 2</code>. Before scaling: Neon pooled (<code>-pooler</code>) endpoint <b>with</b> <code>statement_cache_size=0</code> (DB-3), or smaller pools. §11.</div>
+    </div>
+  </div>
+
+  <div class="finding medium">
+    <div class="fh"><span class="fid">DB-3 · DB-4</span><span class="ft">asyncpg + PgBouncer caveat, and no <code>pool_recycle</code></span><span class="sev medium">Medium</span><span class="chip eff">S</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">database.py:84 (<code>connect_args</code>); config.py:55 strips Neon <code>?sslmode</code> query params; alembic/env.py reuses the same URL</span></div>
+      <div class="k">Impact</div><div class="v">When you adopt the pooled endpoint (DB-2 fix), asyncpg's prepared-statement cache breaks under PgBouncer transaction pooling. Alembic would then also run through the pooler — migrations should use a direct URL. No <code>pool_recycle</code> means Neon idle drops rely solely on <code>pre_ping</code>.</div>
+      <div class="k">Fix</div><div class="v fix">Set <code>statement_cache_size=0</code>; add <code>pool_recycle=300</code>; use <code>DATABASE_URL</code> (pooler) for the app and a separate <code>DATABASE_DIRECT_URL</code> for Alembic. <i>(Second audit's F08 — agreed.)</i></div>
+    </div>
+  </div>
+
+  <div class="finding medium">
+    <div class="fh"><span class="fid">DB-5 · DB-6</span><span class="ft">Stats count in Python; missing composite indexes</span><span class="sev medium">Medium</span><span class="chip eff">M</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">items.py:128–139 loads all items then <code>sum(1 for …)</code>; orders <code>status</code> unindexed (migration:114); activity orders by <code>created_at</code></span></div>
+      <div class="k">Impact</div><div class="v">Stats/feed endpoints scale with total rows per user; fine at your size, degrades as inventories grow. Compounded by DB-1.</div>
+      <div class="k">Fix</div><div class="v fix">SQL conditional aggregates (<code>count() filter</code>); composite indexes <code>(user_id,status,exported_at)</code>, <code>(user_id,created_at)</code>, <code>(user_id,is_active)</code>. <span class="ev">DB-7 (Low): collapse the per-item SELECT in apply into one <code>IN (...)</code>.</span></div>
+    </div>
+  </div>
+
+  <h3>A3–A5 · Statelessness, blocking work &amp; rate limiting</h3>
+
+  <div class="finding high">
+    <div class="fh"><span class="fid">RATE-1</span><span class="ft">Rate limiter is per-process, in-memory, per-IP, no lockout</span><span class="sev high">High</span><span class="chip eff">M</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">rate_limiter.py:38–42 — no <code>storage_uri</code>; trusts CF/XFF headers; auth.py:185 <code>5/minute</code> login</span></div>
+      <div class="k">Impact</div><div class="v"><b>(1) Not global</b> — each worker keeps its own bucket, so <code>5/min</code> is ~20/min per IP per box and resets on spin-down. <b>(2) Per-IP, no account lockout</b> — IP rotation defeats it; no failed-login counter. <b>(3) Spoofable</b> — direct-to-origin requests forge the client IP. Otherwise the app is stateless (JWT + Postgres refresh state).</div>
+      <div class="k">Fix</div><div class="v fix"><span class="ev">Before scaling, not pre-launch.</span> Redis-backed slowapi (Upstash) for a global limit; per-account failed-login backoff; restrict trusted proxy headers to Cloudflare ranges. §11.</div>
+    </div>
+  </div>
+
+  <div class="finding high">
+    <div class="fh"><span class="fid">BLOCK-1</span><span class="ft">Argon2 hashing blocks the event loop</span><span class="sev high">High</span><span class="chip eff">S</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">security.py:27–34; called directly at auth.py:120/715/1208 (hash) and 217/1202 (verify)</span></div>
+      <div class="k">Impact</div><div class="v">Argon2 is CPU- and memory-bound (~50–150ms + tens of MB/hash). On Render free (0.1 CPU / 512 MB) each hash is slow; while it runs the worker's event loop is frozen. <span class="ev">At your login volume this is minor — but the fix is small.</span></div>
+      <div class="k">Fix</div><div class="v fix"><code>await anyio.to_thread.run_sync(...)</code> / threadpool. §03 step 9.</div>
+    </div>
+  </div>
+
+  <div class="callout success">
+    <span class="callout-label">Confirmed good — email is NOT in the request path</span>
+    <p>Register/reset enqueue email via <code>background_tasks.add_task(...)</code> (auth.py:161/452/519/730/1012) and the Brevo HTTP call has <code>timeout=10.0</code>. Request latency is decoupled from Brevo, and a Brevo outage doesn't 500 the registration.</p>
+  </div>
+
+  <h3>A6 · Resilience &amp; failure modes</h3>
+
+  <div class="finding high">
+    <div class="fh"><span class="fid">RESIL-1</span><span class="ft">No database statement timeout</span><span class="sev high">High</span><span class="chip eff">S</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">database.py:77–85 — no <code>statement_timeout</code> / asyncpg <code>command_timeout</code></span></div>
+      <div class="k">Impact</div><div class="v">A slow/hung Neon query blocks its request indefinitely and holds its pooled connection. A handful of stuck queries exhausts the 15-conn pool; new requests wait <code>pool_timeout=30s</code> then 500. One slow query → cascading outage.</div>
+      <div class="k">Fix</div><div class="v fix"><code>connect_args={"server_settings": {"statement_timeout": "8000"}}</code> (8s). §03 step 8.</div>
+    </div>
+  </div>
+
+  <div class="finding medium">
+    <div class="fh"><span class="fid">RESIL-2</span><span class="ft">Brevo has timeouts but no retry / persistence</span><span class="sev medium">Medium</span><span class="chip eff">M</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">email.py:102–118 — single attempt, returns False on failure; runs in an in-process BackgroundTask</span></div>
+      <div class="k">Impact</div><div class="v">A transient Brevo blip or a worker restart mid-task loses the verification email with no retry — the user is stuck unverified.</div>
+      <div class="k">Fix</div><div class="v fix">A small retry inside the task, or an <code>email_outbox</code> table + resweep. <i>Defer.</i> <span class="ev">Confirmed good: <code>pool_pre_ping=True</code>; <code>dispose_engine()</code> on shutdown.</span></div>
+    </div>
+  </div>
+
+  <h3>A7 · Multi-tenant security</h3>
+
+  <div class="finding pass">
+    <div class="fh"><span class="fid">SEC-5</span><span class="ft">No IDOR — every resource query is user-scoped (code + tests)</span><span class="sev pass">Pass</span><span class="chip">verified</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v">Every CRUD handler filters on <code>user_id == current_user.id</code> (items.py:59/226/…; categories.py:43/114/…; orders.py:163/213/…; activity.py:34). And it's <b>test-covered</b>: stranger-access returns 404 in <code>test_items.py:404</code>, <code>test_categories.py:233</code>, and order scoping in <code>test_orders.py</code>; stats scoping in <code>test_items.py:308</code>.</div>
+      <div class="k">Impact</div><div class="v">User A guessing user B's id gets <b>404</b>. Schemas don't expose <code>user_id</code>/<code>id</code>/<code>is_verified</code>/<code>is_superuser</code> → no mass-assignment. All queries parameterised → no SQLi. Tokens use <code>secrets.token_urlsafe(32)</code> stored as SHA-256, compared with <code>compare_digest</code>; JWT algorithm pinned. Strongest part of the codebase.</div>
+    </div>
+  </div>
+
+  <div class="finding medium">
+    <div class="fh"><span class="fid">SEC-1</span><span class="ft">Access tokens are not revocable</span><span class="sev medium">Medium</span><span class="chip eff">M</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">deps.py:47–58 trusts any unexpired access JWT; logout/reset/change revoke refresh only</span></div>
+      <div class="k">Impact</div><div class="v">A stolen or post-logout access token works for ≤30 min. Standard stateless-JWT tradeoff, self-healing, no privilege escalation — Medium.</div>
+      <div class="k">Fix</div><div class="v fix"><i>Defer.</i> Add a <code>token_version</code> / <code>password_changed_at</code> claim and check it in <code>get_current_user</code>.</div>
+    </div>
+  </div>
+
+  <div class="finding medium" id="f-sec3">
+    <div class="fh"><span class="fid">SEC-2 · SEC-3</span><span class="ft">Token-scan lookups; refresh rotation not atomic &amp; no reuse detection</span><span class="sev medium">Medium</span><span class="chip eff">S</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">SEC-2: auth.py:300–312 loads all unexpired-token users and loops in Python. SEC-3: auth.py:771–814 read-check-write rotation; a revoked token just 401s</span></div>
+      <div class="k">Impact</div><div class="v"><b>SEC-2:</b> O(N) over pending users, on the event loop (the deletion flow already does the indexed lookup). <b>SEC-3:</b> two simultaneous refreshes of one token can both mint valid tokens; and presenting a revoked token doesn't revoke the family (reuse detection). <i>SEC-3's atomicity was raised by the second audit (F03).</i></div>
+      <div class="k">Fix</div><div class="v fix">SEC-3 atomic claim is in §03 step 3 (pre-launch). SEC-2 indexed token lookup + family revocation: <i>defer.</i></div>
+    </div>
+  </div>
+
+  <h3>A8 · Observability &amp; operability</h3>
+
+  <div class="finding high">
+    <div class="fh"><span class="fid">OBS-1</span><span class="ft">Effectively blind in production</span><span class="sev high">High</span><span class="chip eff">S</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">main.py:29–34 — <code>logging.basicConfig</code> plain text; requirements.txt has no sentry/otel/prometheus</span></div>
+      <div class="k">Impact</div><div class="v">No JSON logs, no request/correlation IDs, no error tracking, no metrics. When something breaks you have unstructured stdout and nothing to correlate.</div>
+      <div class="k">Fix</div><div class="v fix">Sentry + a request-ID middleware. §03 step 6. Highest operability ROI.</div>
+    </div>
+  </div>
+
+  <div class="finding medium">
+    <div class="fh"><span class="fid">OBS-2 · OBS-3</span><span class="ft">Health check probes the wrong endpoint; migration failures swallowed</span><span class="sev medium">Medium</span><span class="chip eff">S</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v"><span class="ev">render.yaml <code>healthCheckPath: /live</code> (process-only); the real DB probe is <code>/health</code>; docker-entrypoint.sh <code>alembic upgrade head || echo</code></span></div>
+      <div class="k">Impact</div><div class="v">Render keeps routing to instances whose DB is dead; a failed migration boots the app against a schema-mismatched DB → confusing 500s. (Migrations run in the entrypoint on every deploy — §04.)</div>
+      <div class="k">Fix</div><div class="v fix"><code>healthCheckPath: /health</code>; drop <code>|| echo</code>. §03 step 7.</div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- 09 PART B -->
+<div class="section" id="partb">
+  <h2>09 · Part B — SOLID &amp; clean architecture</h2>
+  <p class="lead">Clean <em>layout</em>, shallow <em>layering</em>. Models/schemas import nothing from <code>api/</code> or <code>services/</code>; no circular imports. But there is no service/repository layer — <code>services/</code> contains only <code>audit.py</code> — so routers do everything. "Shallow but not tangled": the risk is duplication and untestable logic, not spaghetti. <b>None of this blocks your launch</b> — it's maintainability for later.</p>
+
+  <table>
+    <thead><tr><th>Principle</th><th>Verdict</th><th>Evidence &amp; note</th></tr></thead>
+    <tbody>
+      <tr><td><b>SRP</b></td><td><span class="sev medium">Bad</span></td><td><b>Fat handlers</b> — <code>apply_order_to_stock</code> (orders.py:416–556), <code>register</code> (auth.py:69–174), <code>update_item</code> (items.py:347–494) each mix parsing + validation + business rules + ORM + commit + audit + activity + (auth) email. <span class="tag-good">Good:</span> <code>services/audit.py</code> is a clean single-responsibility helper.</td></tr>
+      <tr><td><b>OCP</b></td><td><span class="sev low">Mixed</span></td><td><span class="tag-good">Good:</span> <code>LEGAL_STATUS_TRANSITIONS</code> (orders.py:27–45) is a data-driven transition table. <span style="color:var(--amber)">Bad:</span> the status→side-effect <code>if/elif</code> (orders.py:377–391) could be table-driven.</td></tr>
+      <tr><td><b>LSP</b></td><td><span class="sev low">1 break</span></td><td>Mostly N/A. One: <code>update_item</code>/<code>update_stock</code> declare <code>response_model=ItemResponse</code> but <code>return JSONResponse(...)</code> on conflict (items.py:374/532) — breaks the contract &amp; second 409 body shape (<b>SOLID-3</b>).</td></tr>
+      <tr><td><b>ISP</b></td><td><span class="sev pass">Good</span></td><td><code>deps.py:170–177</code> segregates auth into narrow aliases. Counter-smell: <code>get_item_stats</code> reaches across three domains with function-local imports.</td></tr>
+      <tr><td><b>DIP</b></td><td><span class="sev medium">Bad</span></td><td>Handlers depend directly on concrete <code>AsyncSession</code> + the Brevo client; no repository/mailer abstraction — which is why unit tests need a live Postgres (<b>SOLID-2</b>).</td></tr>
+    </tbody>
+  </table>
+
+  <div class="finding medium">
+    <div class="fh"><span class="fid">SOLID-1 · ARCH-1</span><span class="ft">No service layer + the IDOR guard is copy-pasted 12+ times</span><span class="sev medium">Medium</span><span class="chip eff">M→L</span></div>
+    <div class="row">
+      <div class="k">Evidence</div><div class="v">"get-or-404 + ownership filter" repeats across orders.py (212/352/428/577), items.py (225/358/516/589), categories.py (112/210/273). Business logic lives inline in 600–1250-line routers.</div>
+      <div class="k">Impact</div><div class="v">This duplicated block <em>is</em> the IDOR-critical guard — one forgotten <code>user_id</code> clause silently leaks data, with no single place to test it. Logic can't be unit-tested without the full HTTP+DB stack.</div>
+      <div class="k">Fix</div><div class="v fix"><i>Later.</i> One <code>get_owned_or_404(db, Model, user_id, ident)</code> helper; then extract per-domain <code>services/</code> functions one endpoint at a time. No framework rewrite.</div>
+    </div>
+  </div>
+
+  <div class="callout success" id="testability">
+    <span class="callout-label">Testability — stronger than first reported</span>
+    <p>DB is injected via <code>Depends(get_db)</code> and overridden in <code>conftest.py</code>; email is monkeypatchable; CI runs the suite against a real Postgres 16. The suite <b>already</b> covers: IDOR/cross-user scoping for <b>orders, items <em>and</em> categories</b> (<code>test_items.py:404</code>, <code>test_categories.py:233</code>), the full order state machine, concurrent apply-stock (<code>test_orders.py:424</code>), <em>sequential</em> item version conflicts (<code>test_items.py:146</code>), and refresh rotation/reuse + token-type confusion (<code>test_auth.py</code>). <b>The one real gap is concurrency tests:</b> the only <code>asyncio.gather</code> test is order-apply — there is no concurrent test for the item-version race (CONC-1), refresh-rotation race (SEC-3), order-status race (CONC-3), or the <code>create_order</code> ID race. §03 step 5 closes exactly these.</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- 10 SCALE -->
+<div class="section" id="scale">
+  <h2>10 · Scale scenarios — what breaks first</h2>
+  <table>
+    <thead><tr><th style="width:30%">Scenario</th><th>Predicted behaviour</th><th style="width:24%">First thing to break</th></tr></thead>
+    <tbody>
+      <tr><td><b>~100</b> (your peak)</td><td>Comfortable once warm. Realistic in-flight requests ~10–30; ~15–30 connections; latency dominated by the DB-1 load (which step 8 removes).</td><td>Nothing — cold start is the only felt issue.</td></tr>
+      <tr><td><b>1,000</b> concurrent</td><td>Pool (60) saturates; requests queue to <code>pool_timeout=30s</code> then 500. DB-1 multiplies query volume ~6×.</td><td><span class="sev high">Pool exhaustion</span> (DB-1 + DB-2)</td></tr>
+      <tr><td><b>10,000</b> concurrent</td><td>Free tier can't serve this — pool + Neon ceiling + 0.1 CPU all wall out.</td><td>Connections <em>and</em> CPU; needs pooled endpoint + paid compute.</td></tr>
+      <tr><td><b>50 applies</b> same item / sec</td><td><span class="tag-good">Correct.</span> Atomic claim → exactly one order applies; atomic increment never loses an update.</td><td>Nothing — but 50 concurrent <em>stock-edits</em> would (CONC-1).</td></tr>
+      <tr><td><b>1,000 logins</b> / sec</td><td>Argon2 (BLOCK-1) freezes the loop; RATE-1's limit is ~4× looser &amp; IP-spoofable.</td><td><span class="sev high">Argon2 on event loop</span>, then RATE-1</td></tr>
+      <tr><td><b>Burst registrations</b></td><td>Requests return fast (email backgrounded ✅); Argon2 hashes inline; a Brevo blip silently drops emails (RESIL-2).</td><td>Argon2 hashing stalls the worker.</td></tr>
+      <tr><td><b>3 instances × 2 workers</b></td><td>RATE-1: 6 buckets → ~6× looser. DB-2: 6 × ~15 = ~90 conns → near Neon ceiling. Migrations race on boot (§04).</td><td><span class="sev high">Rate-limit correctness</span> + Neon ceiling + migration race</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<hr>
+
+<!-- 11 SCALE-UP PLAN -->
+<div class="section" id="scaleup">
+  <h2>11 · Future scale-up plan — what, when &amp; why</h2>
+  <p class="lead">Everything deferred from §03, with the <b>trigger</b> that should make you do it and the <b>use-case</b> it unlocks. Don't pull these forward — doing them now is wasted effort for ~500 users.</p>
+
+  <table>
+    <thead><tr><th>Item</th><th>Do it WHEN (trigger)</th><th>WHY / use-case</th><th>Effort</th></tr></thead>
+    <tbody>
+      <tr><td><b>Always-on tier</b> (paid Render)</td><td><b>Before launch</b> — or first user complaint about load time</td><td>Kills the ~1-min cold start; the app feels instant. Non-negotiable for a public, reviewer-facing launch.</td><td>S</td></tr>
+      <tr><td><b>Neon pooled endpoint</b> + <code>statement_cache_size=0</code> + split migration URL (DB-2/DB-3)</td><td>When you add a <b>2nd instance / worker bump</b>, or see "too many connections"</td><td>Raises the client connection ceiling from ~97 to thousands; lets you run multiple workers/instances safely.</td><td>S</td></tr>
+      <tr><td><b>Migrations as a release step</b> (not in entrypoint)</td><td>The moment you run <b>2+ instances</b></td><td>Stops every instance racing <code>alembic upgrade head</code> on boot. Use a Render pre-deploy / one-off job.</td><td>S</td></tr>
+      <tr><td><b>Redis-backed rate limiter</b> + per-account lockout (RATE-1)</td><td>Multi-worker/instance, <b>or</b> any brute-force/credential-stuffing signal</td><td>Global, correct throttling across processes; real brute-force protection. (Upstash free tier.)</td><td>M</td></tr>
+      <tr><td><b>SQL aggregates + composite indexes</b> (DB-5/DB-6)</td><td>Dashboard/list <b>p95 latency climbs</b>, or power users with large inventories</td><td>Keeps stats/feed fast as rows-per-user grows; removes Python-side counting.</td><td>M</td></tr>
+      <tr><td><b>Revocable access tokens</b> + indexed token lookup (SEC-1/SEC-2)</td><td>Security review, <b>or</b> first "I changed my password but old session still works" report</td><td>Force-kill sessions on password change; O(1) verification/reset lookups.</td><td>M</td></tr>
+      <tr><td><b>Durable email outbox</b> (RESIL-2)</td><td>You see <b>dropped verification emails</b> in logs</td><td>Retries survive restarts; no user stuck unverified after a Brevo blip.</td><td>M</td></tr>
+      <tr><td><b>Service/repository extraction</b> (SOLID-1/ARCH-1)</td><td>The codebase <b>hurts to change</b> / you onboard a collaborator</td><td>Unit-testable business logic, one home for the IDOR guard, reusable from jobs.</td><td>L</td></tr>
+      <tr><td><b>Cache layer</b> for stats (SCALE-2)</td><td><b>Only after</b> aggregates+indexes aren't enough</td><td>Last-resort read speedup; adds invalidation complexity — avoid until needed.</td><td>M</td></tr>
+    </tbody>
+  </table>
+
+  <h3>The same plan as three time-boxed lanes</h3>
+  <div class="roadmap">
+    <div class="lane now">
+      <h3>🔴 Do now (= §03)</h3>
+      <div class="when">pre-launch — ~1 focused day</div>
+      <ul>
+        <li><b>VAL-1</b> Validate order quantity <code>gt=0</code>.<span class="e">S</span></li>
+        <li><b>CONC-1</b> Atomic item version update.<span class="e">S</span></li>
+        <li><b>SEC-3</b> Atomic refresh rotation.<span class="e">S</span></li>
+        <li><b>CONC-3</b> Conditional order-status update.<span class="e">S</span></li>
+        <li><b>Tests</b> Concurrent tests for the above.<span class="e">M</span></li>
+        <li><b>OBS-1</b> Sentry + request IDs.<span class="e">S</span></li>
+        <li><b>OBS-2/3</b> <code>/health</code> check; no <code>|| echo</code>.<span class="e">S</span></li>
+        <li><b>RESIL-1·DB-1·workers→2</b> timeout, surgical auth load, fewer workers.<span class="e">S</span></li>
+        <li><b>Infra</b> Paid Render / keep-warm.<span class="e">S</span></li>
+      </ul>
+    </div>
+    <div class="lane soon">
+      <h3>🟠 Before scaling</h3>
+      <div class="when">trigger: free→paid, single→multi-instance, or &gt;~300 active users</div>
+      <ul>
+        <li><b>DB-2 / DB-3</b> Neon pooled endpoint + <code>statement_cache_size=0</code> + split migration URL.<span class="e">S</span></li>
+        <li><b>Migrations</b> Move out of the container entrypoint.<span class="e">S</span></li>
+        <li><b>RATE-1</b> Redis limiter + per-account lockout + proxy hardening.<span class="e">M</span></li>
+        <li><b>DB-5 / DB-6</b> SQL aggregates; composite indexes.<span class="e">M</span></li>
+        <li><b>SEC-1 / SEC-2</b> <code>token_version</code> claim; indexed token lookups.<span class="e">M</span></li>
+        <li><b>RESIL-2</b> Durable email outbox.<span class="e">M</span></li>
+      </ul>
+    </div>
+    <div class="lane later">
+      <h3>🟢 Later</h3>
+      <div class="when">maintainability &amp; polish</div>
+      <ul>
+        <li><b>SOLID-1 / ARCH-1</b> Extract <code>services/</code> + a single <code>get_owned_or_404</code>; unit tests for the state machine, CONC-1, SEC-3.<span class="e">L</span></li>
+        <li><b>SOLID-3 / ARCH-2 / ARCH-3</b> Consistent 409 contract; slim <code>OrderCreate</code>; log <code>verify_email_html</code> errors.<span class="e">S</span></li>
+        <li><b>SCALE-2 / DB-7 / OBS-4</b> Cache dashboard stats w/ invalidation; collapse per-item SELECT; tighten prod CORS.<span class="e">S</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-label">Bottom line</span>
+    <p>The dangerous-by-default things — multi-tenant isolation, the order→apply-stock race, token handling — were done <b>right</b>, and the deployment stack already matches modern solo-dev practice. The exposure is operational scale (whole-account eager load + connection ceiling + no statement timeout) and a few cheap correctness gaps (CONC-1, VAL-1, SEC-3). The §03 list is ~1 focused day and removes the launch-relevant risks. <b>For ~100 concurrent / ~500 total users: do §03, move off free tier, then ship.</b></p>
+  </div>
+</div>
+
+<div class="footer">
+  CareKosh Backend Audit · read-only, evidence-based · revised June 2026 (reconciled with a second independent review &amp; verified against tests + CI/CD) · all citations verified against <code>vitaltrack-backend/</code> at the audited commit
+</div>
+
+</div>
+</body>
+</html>

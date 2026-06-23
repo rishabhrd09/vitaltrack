@@ -77,7 +77,7 @@ ENTRYPOINT ["./docker-entrypoint.sh"]
 # Run the application (Shell form to allow variable expansion)
 CMD gunicorn app.main:app \
     --worker-class uvicorn.workers.UvicornWorker \
-    --workers 4 \
+    --workers 2 \
     --bind 0.0.0.0:${PORT:-8000} \
     --access-logfile - \
     --error-logfile - \

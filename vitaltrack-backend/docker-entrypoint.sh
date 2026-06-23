@@ -47,7 +47,12 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
 fi
 
 echo "Running database migrations..."
-alembic upgrade head || echo "Migration warning (might already be up to date)"
+# Abort startup if migrations fail — booting against a schema-mismatched DB
+# produces confusing runtime 500s. A failed deploy keeps the previous instance.
+if ! alembic upgrade head; then
+    echo "ERROR: Database migration failed. Aborting startup."
+    exit 1
+fi
 echo "Migrations complete."
 
 echo "Starting application server..."

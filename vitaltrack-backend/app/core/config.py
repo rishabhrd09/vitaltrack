@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     ENVIRONMENT: str = "development"  # development, staging, production
 
+    # Observability — error tracking (optional; leave empty to disable Sentry)
+    SENTRY_DSN: str = ""
+
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
