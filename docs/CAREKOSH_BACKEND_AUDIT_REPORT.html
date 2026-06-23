@@ -218,7 +218,7 @@ hr{border:none;border-top:1px solid var(--border);margin:38px 0}
         <tr><td>4</td><td class="b">Conditional order-status update</td><td>api/v1/orders.py</td><td>Status race; same cheap pattern as #2</td><td>S</td></tr>
         <tr><td>5</td><td class="b">Concurrent tests for #2–#4</td><td>tests/</td><td>The one real test gap (see §09)</td><td>M</td></tr>
         <tr><td>6</td><td class="b">Add Sentry + request IDs</td><td>main.py</td><td>Otherwise blind to production errors</td><td>S</td></tr>
-        <tr><td>7</td><td class="b">Health check &amp; migration safety</td><td>render.yaml · entrypoint</td><td>Honest health + safe deploys</td><td>S</td></tr>
+        <tr><td>7</td><td class="b">Migration-failure safety (keep <code>/live</code>)</td><td>docker-entrypoint.sh</td><td>Don't boot the app on a schema mismatch</td><td>S</td></tr>
         <tr><td>8</td><td class="b">Statement timeout · surgical auth load · workers→2</td><td>database.py · deps.py · Dockerfile</td><td>Cheap safety + biggest per-request win</td><td>S</td></tr>
         <tr><td>9</td><td class="b">(Optional) hash off the event loop</td><td>core/security.py</td><td>Low impact at your scale, but small</td><td>S</td></tr>
         <tr><td>10</td><td class="b">Move off Render free / keep-warm</td><td>infra</td><td>Cold start = "app looks broken"</td><td>S</td></tr>
@@ -322,11 +322,10 @@ async def request_id(request, call_next):
   </div>
 
   <div class="action ops">
-    <div class="ah"><span class="step">7</span><span class="at">Point the platform health check at the DB probe &amp; stop swallowing migration failures</span><span class="file">render.yaml · docker-entrypoint.sh:49</span><span class="chip eff">S</span></div>
-    <div class="why"><code>/live</code> is process-only, so Render keeps routing to an instance whose DB is dead. And <code>alembic upgrade head || echo</code> boots the app on a schema mismatch → confusing 500s. (Migrations run inside the container entrypoint on every deploy — see §04.)</div>
-<pre><code># render.yaml
-- healthCheckPath: /live
-+ healthCheckPath: /health
+    <div class="ah"><span class="step">7</span><span class="at">Stop swallowing migration failures — and KEEP <code>/live</code> for the platform health check</span><span class="file">docker-entrypoint.sh:49</span><span class="chip eff">S</span></div>
+    <div class="why"><b>Correction:</b> an earlier draft of this report recommended pointing Render at <code>/health</code> — that is <b>wrong for this stack</b> and has been reverted. A DB-probing platform check would mark the instance unhealthy and restart it whenever Neon is briefly unreachable (serverless cold start / scale-to-zero), causing restart loops — and restarting the app can't fix an external DB anyway. Render must stay liveness-only (<code>/live</code>); clients/monitoring still probe <code>/health</code> for readiness. The real fix here is migration safety: <code>alembic upgrade head || echo</code> boots the app on a schema mismatch → make it abort.</div>
+<pre><code># render.yaml — KEEP liveness-only (do NOT switch to /health)
+healthCheckPath: /live
 
 # docker-entrypoint.sh  (let a failed migration abort the deploy; Render keeps the old instance)
 - alembic upgrade head || echo "Migration warning (might already be up to date)"
@@ -434,7 +433,7 @@ async def hash_password(password: str) -> str:
 
   <div class="callout success">
     <span class="callout-label">✅ What is still needed before your first Play Store deploy — the complete list</span>
-    <p><b>1 · Code (the §03 branch, ~1 day):</b> block negative order quantity, make item-version / refresh-rotation / order-status updates atomic, add the matching concurrent tests, add Sentry + request IDs, fix the health-check path &amp; migration-failure handling, add a DB statement timeout, make auth stop eager-loading the account, drop workers 4→2.</p>
+    <p><b>1 · Code (the §03 branch, ~1 day):</b> block negative order quantity, make item-version / refresh-rotation / order-status updates atomic, add the matching concurrent tests, add Sentry + request IDs, abort startup on migration failure (keep <code>/live</code> for the Render health check), add a DB statement timeout, make auth stop eager-loading the account, drop workers 4→2.</p>
     <p><b>2 · Infra (the real #1):</b> move Render free → smallest paid (always-on) tier, or run a keep-warm pinger as a temporary fallback.</p>
     <p><b>3 · Release hygiene:</b> keep CI green (route-count 39, coverage floors), smoke-test on staging via the preview APK, verify production <code>/health</code> = 200 post-deploy, then build/submit the Play AAB.</p>
     <p style="margin-top:6px"><b>That's it.</b> Everything else in this report is explicitly deferred (§11). Nothing else is required to launch for ~100 concurrent / ~500 total users.</p>
@@ -540,7 +539,7 @@ async def hash_password(password: str) -> str:
       <tr><td><b>SEC-1</b></td><td>Access tokens are not revocable (logout / password-change revoke refresh only)</td><td>Security</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
       <tr><td><b>SEC-2</b></td><td>Email-verify / password-reset load ALL pending-token users and loop in Python</td><td>Security / Perf</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
       <tr><td><b>SEC-3</b></td><td>Refresh-token rotation not atomic + no reuse detection</td><td>Security</td><td><span class="sev medium">Medium</span></td><td>★ (atomic part)</td></tr>
-      <tr><td><b>OBS-2</b></td><td>Render <code>healthCheckPath: /live</code> (process-only) never probes the DB</td><td>Observability</td><td><span class="sev medium">Medium</span></td><td>★</td></tr>
+      <tr><td><b>OBS-2</b></td><td><s>Render <code>healthCheckPath</code> should probe the DB</s> — <b>corrected:</b> <code>/live</code> is a deliberate liveness-only choice (avoids restart loops on Neon cold start). Keep as-is.</td><td>Observability</td><td><span class="sev pass">Resolved</span></td><td>—</td></tr>
       <tr><td><b>OBS-3</b></td><td><code>alembic upgrade head || echo</code> swallows migration failures; app boots on schema mismatch</td><td>Observability</td><td><span class="sev medium">Medium</span></td><td>★</td></tr>
       <tr><td><b>DB-5</b></td><td><code>/items/stats</code> &amp; <code>/needs-attention</code> count in Python instead of SQL aggregates</td><td>Database</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
       <tr><td><b>DB-6</b></td><td>Missing composite indexes (<code>user_id+status</code>, <code>user_id+is_active</code>, <code>user_id+created_at</code>)</td><td>Database</td><td><span class="sev medium">Medium</span></td><td>defer</td></tr>
@@ -741,11 +740,11 @@ await db.commit()    # UPDATE items SET quantity=?, version=? WHERE id=?  (no ve
   </div>
 
   <div class="finding medium">
-    <div class="fh"><span class="fid">OBS-2 · OBS-3</span><span class="ft">Health check probes the wrong endpoint; migration failures swallowed</span><span class="sev medium">Medium</span><span class="chip eff">S</span></div>
+    <div class="fh"><span class="fid">OBS-2 · OBS-3</span><span class="ft">Migration failures swallowed (OBS-2 health-check recommendation withdrawn)</span><span class="sev medium">Medium</span><span class="chip eff">S</span></div>
     <div class="row">
-      <div class="k">Evidence</div><div class="v"><span class="ev">render.yaml <code>healthCheckPath: /live</code> (process-only); the real DB probe is <code>/health</code>; docker-entrypoint.sh <code>alembic upgrade head || echo</code></span></div>
-      <div class="k">Impact</div><div class="v">Render keeps routing to instances whose DB is dead; a failed migration boots the app against a schema-mismatched DB → confusing 500s. (Migrations run in the entrypoint on every deploy — §04.)</div>
-      <div class="k">Fix</div><div class="v fix"><code>healthCheckPath: /health</code>; drop <code>|| echo</code>. §03 step 7.</div>
+      <div class="k">Evidence</div><div class="v"><span class="ev">docker-entrypoint.sh <code>alembic upgrade head || echo</code>; render.yaml <code>healthCheckPath: /live</code></span></div>
+      <div class="k">Impact</div><div class="v"><b>OBS-3:</b> a failed migration boots the app against a schema-mismatched DB → confusing 500s (migrations run in the entrypoint on every deploy — §04). <b>OBS-2 correction:</b> an earlier draft flagged <code>/live</code> as "wrong" and recommended <code>/health</code>. That was incorrect for Render + serverless Neon — a DB-probing platform check causes restart loops during Neon cold starts, and restarting can't fix an external DB. The <code>/live</code> choice is deliberate and correct (enforced by <code>test_render_health_check_uses_liveness_endpoint</code>); <code>/health</code> remains for client/monitoring readiness probes.</div>
+      <div class="k">Fix</div><div class="v fix">OBS-3: drop <code>|| echo</code> so a failed migration aborts startup. OBS-2: <b>no change</b> — keep <code>/live</code>. §03 step 7.</div>
     </div>
   </div>
 </div>
@@ -836,7 +835,7 @@ await db.commit()    # UPDATE items SET quantity=?, version=? WHERE id=?  (no ve
         <li><b>CONC-3</b> Conditional order-status update.<span class="e">S</span></li>
         <li><b>Tests</b> Concurrent tests for the above.<span class="e">M</span></li>
         <li><b>OBS-1</b> Sentry + request IDs.<span class="e">S</span></li>
-        <li><b>OBS-2/3</b> <code>/health</code> check; no <code>|| echo</code>.<span class="e">S</span></li>
+        <li><b>OBS-3</b> migration abort (no <code>|| echo</code>); keep <code>/live</code>.<span class="e">S</span></li>
         <li><b>RESIL-1·DB-1·workers→2</b> timeout, surgical auth load, fewer workers.<span class="e">S</span></li>
         <li><b>Infra</b> Paid Render / keep-warm.<span class="e">S</span></li>
       </ul>

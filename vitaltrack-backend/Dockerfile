@@ -67,9 +67,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Expose port
 EXPOSE 8000
 
-# Health check
+# Container liveness check — process only (matches render.yaml's /live decision).
+# Must NOT probe the DB, or a brief Neon outage would mark the container
+# unhealthy and trigger restart loops under any orchestrator.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/live || exit 1
 
 # Set entrypoint
 ENTRYPOINT ["./docker-entrypoint.sh"]
