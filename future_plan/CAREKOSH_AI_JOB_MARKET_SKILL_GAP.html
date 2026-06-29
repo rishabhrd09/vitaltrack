@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh — AI Job-Market Skill-Gap Analysis (2026)</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf9f7;--card:#fff;--card2:#f4f3f0;--border:#e5e3de;--text:#1a1a18;--muted:#6b6a65;--accent:#1d6b52;--accent-bg:#e8f5ef;--code-bg:#f0efeb;--done:#059669;--danger:#8b1a1a}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e12;--card:#161619;--card2:#1c1c21;--border:#2a2a30;--text:#e4e4ec;--muted:#8a8a95;--accent:#5eead4;--accent-bg:#0d2626;--code-bg:#1a1a20;--done:#34d399;--danger:#e88}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.75;font-size:15px}
+.page{max-width:900px;margin:0 auto;padding:32px 24px 80px}
+.hero{text-align:center;padding:36px 0 26px;border-bottom:1px solid var(--border);margin-bottom:28px}
+.hero h1{font-family:'Instrument Serif',serif;font-size:2.4rem;font-weight:400;letter-spacing:-.02em;line-height:1.12;margin-bottom:10px;border:none;padding:0}
+.hero .meta{color:var(--muted);font-size:.76rem;letter-spacing:.02em}
+h1,h2,h3,h4{font-family:'Sora',sans-serif;letter-spacing:-.01em;line-height:1.25}
+h1{font-size:1.9rem;font-weight:800;margin:30px 0 12px}
+h2{font-size:1.35rem;font-weight:700;margin:30px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+h3{font-size:1.05rem;font-weight:700;margin:22px 0 8px}
+h4{font-size:.95rem;font-weight:600;margin:18px 0 6px;color:var(--muted)}
+p{margin-bottom:12px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+ul,ol{margin:0 0 14px 0;padding-left:24px}
+li{margin-bottom:6px;font-size:.93rem}
+strong{font-weight:700}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--code-bg);padding:2px 6px;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:14px 0}
+pre code{background:none;padding:0;font-size:.78rem;line-height:1.7}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.86rem}
+th{text-align:left;font-family:'Sora',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:2px solid var(--border)}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+blockquote{background:var(--accent-bg);border-left:4px solid var(--accent);border-radius:8px;padding:12px 18px;margin:18px 0}
+blockquote p{margin-bottom:6px}blockquote p:last-child{margin-bottom:0}
+hr{border:none;border-top:1px solid var(--border);margin:30px 0}
+ul:has(.done),ul:has(.todo){list-style:none;padding-left:6px}
+li.done,li.todo{position:relative;padding-left:28px}
+li.done::before{content:"\2713";position:absolute;left:0;top:1px;width:18px;height:18px;border-radius:4px;background:var(--accent-bg);color:var(--done);font-weight:800;font-size:.72rem;text-align:center;line-height:18px}
+li.todo::before{content:"";position:absolute;left:2px;top:3px;width:15px;height:15px;border:2px solid var(--border);border-radius:4px}
+.footer{text-align:center;padding:26px 0;border-top:1px solid var(--border);color:var(--muted);font-size:.76rem;margin-top:40px}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="hero"><h1>CareKosh — AI Job-Market Skill-Gap Analysis (2026)</h1><p class="meta">CareKosh · AI job-market skill-gap analysis · 2026</p></div>
+<blockquote>
+<p><strong>Goal:</strong> map the most-demanded skills in remote-India Generative-AI / LLM / Python-AI-backend
+roles (&gt;₹20 LPA, mid-senior) against the CareKosh project — what's covered, what's a gap, and
+what's worth building next on a free/solo stack.</p>
+<p><strong>Methodology note:</strong> the percentages are <strong>evidence-based estimates</strong> from surveyed listings +
+2026 India market reports (not a strict count of a fixed sample). Each item is classified
+<strong>must-have</strong> (in most JDs) vs <strong>nice-to-have</strong> (occasional) — the decision-useful part.
+Listings are time-sensitive; verify before applying.</p>
+</blockquote>
+<hr />
+<h2>B · Top-10 most-demanded (composite — start here)</h2>
+<ol>
+<li><strong>Python</strong> — universal (~95%+)</li>
+<li><strong>RAG</strong> (retrieval-augmented generation) — the #1 Gen-AI concept</li>
+<li><strong>LLM APIs + prompt engineering</strong> (OpenAI / Anthropic / Gemini)</li>
+<li><strong>LangChain</strong> (+ rising <strong>LangGraph</strong>) — dominant named framework</li>
+<li><strong>Vector DBs + embeddings + semantic search</strong> (Pinecone / FAISS / pgvector)</li>
+<li><strong>Agentic AI / tool-calling / multi-agent</strong> — fastest-growing (+300% YoY)</li>
+<li><strong>FastAPI + REST / microservices</strong></li>
+<li><strong>Production deployment + LLMOps / evals</strong> ("ship safely, keep it alive")</li>
+<li><strong>Cloud (AWS/GCP/Azure) + Docker</strong></li>
+<li><strong>SQL / Postgres</strong> + rising <strong>MLOps (MLflow)</strong></li>
+</ol>
+<blockquote>
+<p>The 2026 market shifted from "can you build a model?" to <strong>"can you ship AI safely, at scale,
+and keep it alive in production?"</strong> — which is exactly CareKosh's strength.</p>
+</blockquote>
+<hr />
+<h2>A · Frequency by bucket (must-have vs nice-to-have)</h2>
+<p><strong>Language + backend</strong>
+| Item | Demand |
+|---|---|
+| Python | must (~95%) |
+| FastAPI | must (~70% of AI-backend roles) |
+| REST / microservices | must |
+| Docker | must |
+| Cloud (AWS/GCP/Azure) | must |
+| SQL / NoSQL | must |
+| async, CI/CD | common |
+| Kubernetes | nice (senior / MLOps) |
+| Flask / Django | occasional (FastAPI now dominant) |
+| gRPC / Celery / Kafka / Redis | role-specific |</p>
+<p><strong>Gen-AI concepts</strong>
+| Item | Demand |
+|---|---|
+| RAG | must (~80%) |
+| Agentic / tool-calling / multi-agent | must &amp; rising (+300% YoY) |
+| Embeddings + semantic search | must |
+| Prompt engineering | must |
+| LLMOps / evals | must (~60%) |
+| Function-calling, guardrails/safety | common, rising |
+| Fine-tuning / LoRA / PEFT | nice (listed more than used) |
+| <strong>MCP (Model Context Protocol)</strong> | emerging (~10–20%, rising fast) |
+| Streaming / structured output / context engineering | occasional, rising |</p>
+<p><strong>Frameworks</strong> — LangChain <code>must (~70%)</code> · LangGraph <code>rising (~35%)</code> · LlamaIndex <code>common ("LangChain or LlamaIndex")</code> · CrewAI / AutoGen <code>rising (agentic)</code> · Haystack / DSPy / Semantic Kernel / Pydantic-AI <code>niche</code></p>
+<p><strong>Vector DB</strong> — "vector DB" generic <code>must</code> · Pinecone <code>most-named</code> · FAISS <code>common</code> · Chroma / Weaviate / Qdrant / Milvus <code>occasional</code> · <strong>pgvector <code>occasional but growing</code></strong></p>
+<p><strong>LLM providers</strong> — OpenAI/GPT <code>must</code> · Claude <code>common</code> · Gemini / Llama / Mistral <code>common</code> · Bedrock / Azure-OpenAI / Vertex <code>enterprise</code> · <strong>Groq / Ollama <code>occasional (cost-conscious)</code></strong></p>
+<p><strong>Observability / eval</strong> — LangSmith / Langfuse <code>rising (~30%)</code> · Ragas / DeepEval <code>occasional</code> · W&amp;B / Arize <code>ML-heavy</code></p>
+<p><strong>Data / MLOps</strong> — pandas / numpy <code>must for ML roles</code> · MLflow <code>common</code> · Airflow / Kafka / Spark <code>data-eng-adjacent</code></p>
+<hr />
+<h2>C · Gap table — CareKosh status</h2>
+<table>
+<thead>
+<tr>
+<th>Demanded skill</th>
+<th>CareKosh</th>
+<th>Smallest free/solo step</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python · FastAPI · REST</td>
+<td>✅ shipped</td>
+<td>—</td>
+</tr>
+<tr>
+<td>SQL / Postgres</td>
+<td>✅ Neon</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Docker + deployed-in-prod</td>
+<td>✅ Render/Docker</td>
+<td>—</td>
+</tr>
+<tr>
+<td>RAG</td>
+<td>🟡 planned</td>
+<td>pgvector + embed item text (V2.1)</td>
+</tr>
+<tr>
+<td>LLM APIs + prompt eng</td>
+<td>🟡 planned</td>
+<td>Groq/Gemini free tier (V2.0)</td>
+</tr>
+<tr>
+<td><strong>LangChain / LangGraph</strong></td>
+<td>🟡 planned</td>
+<td>build the agent <em>on LangGraph</em> (V2.0)</td>
+</tr>
+<tr>
+<td>Vector DB + embeddings</td>
+<td>🟡 planned</td>
+<td>enable pgvector + e5-small (V2.1)</td>
+</tr>
+<tr>
+<td>Agentic / tool-calling</td>
+<td>🟡 planned</td>
+<td>the V2.0 MVP agent</td>
+</tr>
+<tr>
+<td>LLMOps / evals</td>
+<td>🟡 partial</td>
+<td>app deployed ✅; add <strong>Langfuse + Ragas</strong></td>
+</tr>
+<tr>
+<td><strong>MCP</strong></td>
+<td>🟡 planned</td>
+<td>expose tools as an MCP server (V2.1) — differentiator</td>
+</tr>
+<tr>
+<td>Cloud big-3 (AWS/GCP/Azure)</td>
+<td>🔴 gap</td>
+<td>optional; Render+Neon deploy proves the concept</td>
+</tr>
+<tr>
+<td>Fine-tuning / LoRA</td>
+<td>🔴 gap</td>
+<td><strong>skip &amp; talk</strong> — know why RAG beats it here</td>
+</tr>
+<tr>
+<td>Kubernetes / MLOps-heavy</td>
+<td>🔴 gap</td>
+<td><strong>skip</strong> — overkill for solo</td>
+</tr>
+<tr>
+<td>pandas / numpy / MLflow</td>
+<td>🔴 gap</td>
+<td>skip unless a role is ML-heavy</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Verdict:</strong> the shipped/backend half is ✅ today; the entire Gen-AI half is 🟡 <em>planned</em> (all buildable on the free stack). The only true 🔴 gaps are things to <strong>deliberately skip</strong> (fine-tuning, K8s, heavy MLOps).</p>
+<hr />
+<h2>D · Cover-next (high ROI) vs skip</h2>
+<p><strong>Build (high-demand × low-effort × free):</strong>
+1. <strong>Agentic tool-calling agent on LangGraph</strong> (Groq/Gemini free) — hits RAG + agentic + LangChain + LLM APIs at once.
+2. <strong>pgvector semantic search + embeddings</strong> — vector-DB keyword, no new infra.
+3. <strong>MCP server</strong> — rare, current, low effort = outsized signal.
+4. <strong>Langfuse tracing + Ragas evals</strong> — turns "LLMOps" from claim into artifact.
+5. <strong>Prompt engineering + structured output + guardrails</strong> (already in the design).
+6. <strong>Token streaming</strong> — small, production-AI signal.</p>
+<p><strong>Skip / deprioritize</strong> (high effort or low relevance for a solo, free, GPU-less stack):
+- Large-scale fine-tuning / LoRA / PEFT (RAG is the right choice; just be able to <em>discuss</em> it)
+- Kubernetes · distributed training
+- Heavy MLOps (Airflow / Kafka / Spark)
+- Big-3 cloud certs (nice, not gating)</p>
+<hr />
+<h2>E · Résumé-keyword checklist (truthfully claimable)</h2>
+<ul>
+<li><strong>After V2.0:</strong> Python · FastAPI · RAG · LLM tool-calling · <strong>LangChain/LangGraph</strong> · vector DB (pgvector) · embeddings/semantic search · agentic AI · prompt engineering · guardrails · production deployment · <strong>Langfuse (LLMOps)</strong>.</li>
+<li><strong>After V2.1:</strong> + <strong>MCP server</strong> · <strong>Ragas evals</strong> · multilingual (Hindi-English) · streaming · multi-agent (if the CrewAI demo is added).</li>
+</ul>
+<hr />
+<h2>F · Honest caveats</h2>
+<ul>
+<li><strong>What GATES hiring (pass regardless of the project):</strong> DSA/coding rounds, system design, databases, distributed-systems fundamentals. The AI project <strong>does not replace</strong> them — keep DSA at ~45–55% of prep time.</li>
+<li><strong>What DIFFERENTIATES (wins the room):</strong> a <em>deployed, production</em> agentic system + <strong>medical-grade guardrails</strong> + the "ship &amp; keep alive" story. Most applicants only have a notebook RAG demo.</li>
+<li><strong>Recruiter-bait vs real:</strong> "fine-tuning" and "multi-agent" are <em>listed</em> far more than they're <em>used day-to-day</em>. Real production GenAI work is overwhelmingly <strong>RAG + prompting + tool-calling agents + vector search</strong> — which is precisely the plan. Don't panic over every keyword; nail the <strong>core six</strong> (Python, FastAPI, RAG, LangChain/LangGraph, vector DB, agentic) + production.</li>
+</ul>
+<hr />
+<h2>Sources</h2>
+<ul>
+<li><a href="https://www.buildfastwithai.com/blogs/ai-jobs-india-salary-2026">BuildFastWithAI — AI Jobs India Salary 2026</a></li>
+<li><a href="https://taggd.in/blogs/ai-engineer/">Taggd — AI Engineer roles/skills/salary 2026</a></li>
+<li><a href="https://futurense.com/blog/ai-skills-in-demand">Futurense — AI skills in demand 2026</a></li>
+<li><a href="https://blog.huntingcube.ai/machine-learning-generative-ai-engineer-jobs-india-2026/">HuntingCube — ML &amp; GenAI Engineer jobs India 2026</a></li>
+<li><a href="https://www.tredence.com/blog/generative-ai-llm-engineer-careers-2025">Tredence — GenAI/LLM engineer careers</a></li>
+<li><a href="https://cambridgeinfotech.io/agentic-ai-career-in-india/">Cambridge Infotech — agentic AI career (300% growth)</a></li>
+<li>Listings (time-sensitive): <a href="https://in.linkedin.com/jobs/view/llm-engineer-remote-at-joveo-ai-4404314000">Joveo LLM Engineer</a> · <a href="https://in.linkedin.com/jobs/view/rag-+-agentic-ai-engineer-india-remote-at-codvo-ai-4324072259">Codvo RAG + Agentic</a> · <a href="https://www.sarvam.ai/careers">Sarvam careers</a></li>
+</ul>
+<hr />
+<p><em>Companion to <code>future_plan/CAREKOSH_AI_FEATURES_FEASIBILITY_AND_ROADMAP.html</code> (§10 Job-market alignment). Forward-looking (V2+); the first Play Store release ships foundation-only.</em></p>
+<div class="footer">CareKosh · generated from CAREKOSH_AI_JOB_MARKET_SKILL_GAP.md · 2026-06-29 — keep edits in the .md source</div>
+</div>
+</body>
+</html>

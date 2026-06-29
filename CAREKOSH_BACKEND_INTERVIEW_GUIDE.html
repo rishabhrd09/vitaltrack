@@ -340,7 +340,7 @@ ol.steps>li b{color:var(--terra-deep)}
     <li><a href="#ch-scaling"><span class="tn">16</span><span>System Design & Scaling</span></a></li>
     <li><a href="#ch-patterns"><span class="tn">17</span><span>Design Patterns & SOLID</span></a></li>
     <li class="toc-group">Interview Prep</li>
-    <li><a href="#ch-faq"><span class="tn">18</span><span>The Interview FAQ Bank (27)</span></a></li>
+    <li><a href="#ch-faq"><span class="tn">18</span><span>The Interview FAQ Bank (33)</span></a></li>
     <li><a href="#ch-rapidfire"><span class="tn">19</span><span>Rapid-Fire & Brainstorming</span></a></li>
     <li class="toc-group">Reference</li>
     <li><a href="#ch-resources"><span class="tn">20</span><span>Resources & Study Plan</span></a></li>
@@ -358,7 +358,7 @@ ol.steps>li b{color:var(--terra-deep)}
   <div class="meta">
     <span class="chip"><b>~6,000</b> LOC analyzed</span>
     <span class="chip"><b>22</b> chapters</span>
-    <span class="chip"><b>27</b> interview FAQs</span>
+    <span class="chip"><b>33</b> interview FAQs</span>
     <span class="chip"><b>6</b> architecture diagrams</span>
     <span class="chip">Async SQLAlchemy 2.0 · JWT rotation · Docker · Render</span>
     <span class="chip">Grounded in real <b>file:line</b> code</span>
@@ -3921,7 +3921,7 @@ DB            = Annotated[AsyncSession, Depends(get_db)]</code></pre>
 <section class="chapter" id="ch-faq">
   <p class="section-eyebrow">The night-before cram</p>
   <h2 class="chapter-title"><span class="chapter-num">18</span> The Interview FAQ Bank</h2>
-  <p class="lead">Twenty-seven interview questions — foundational to staff level — each answered in depth and mapped to the exact lines of the CareKosh backend. Click any question to expand. If you can speak to all of these cold, you can defend this system in any room.</p>
+  <p class="lead">Thirty-three interview questions — foundational to staff level — each answered in depth and mapped to the exact lines of the CareKosh backend. Click any question to expand. If you can speak to all of these cold, you can defend this system in any room.</p>
   <div class="tags" style="margin-bottom:6px">
     <span class="tag hot">Foundations</span><span class="tag hot">Async</span><span class="tag hot">FastAPI</span><span class="tag hot">SQLAlchemy</span><span class="tag hot">Concurrency</span><span class="tag hot">Auth &amp; Security</span><span class="tag hot">System Design</span><span class="tag hot">DevOps</span>
   </div>
@@ -4225,12 +4225,65 @@ if claim.scalar_one_or_none() is None:
       <div class="faq-tags tags"><span class="tag">CI/CD</span><span class="tag">Docker</span><span class="tag">Alembic</span></div>
     </div>
   </details>
+<details class="faq">
+    <summary><span class="qn">Q28</span><span class="q-badge advanced">Advanced</span>"Pin the algorithm" — what are the <code class="inline">alg:none</code> and RS256/HS256 confusion attacks?<span class="chev">&#8250;</span></summary>
+    <div class="faq-body">
+      <p>A JWT's <code class="inline">header</code> declares the signing algorithm in an <code class="inline">alg</code> field — and the classic vulnerability is a verifier that <em>trusts that field</em>. Two attacks follow. <strong>(1) <code class="inline">alg:none</code></strong>: the attacker sets <code class="inline">"alg":"none"</code> and strips the signature; a naive library reads "none," concludes the token is already verified, and accepts it. <strong>(2) RS256→HS256 confusion</strong>: the server expects asymmetric RS256 (verify with the <em>public</em> key). The attacker re-signs the token as HS256 (symmetric HMAC) using that <em>public key as the HMAC secret</em>; a library that picks the algorithm from the header verifies it successfully, because the public key is, by definition, public. (RFC 8725, the JWT Best Current Practices, exists largely to codify the fix.)</p>
+      <p>The defense is to <strong>pin the algorithm at verification time</strong> — never let the token choose. CareKosh does exactly this: <code class="inline">jwt.decode(token, secret, algorithms=[settings.JWT_ALGORITHM])</code> passes an explicit allow-list of one (<code class="inline">HS256</code>), so a forged <code class="inline">none</code> or a swapped <code class="inline">RS256</code> token is rejected before its claims are ever read <span class="fileref">app/core/security.py:160-178</span>. Strong answer names both attacks <em>and</em> the one-line fix; weak answer just says "JWTs are signed so they're safe."</p>
+      <div class="faq-tags tags"><span class="tag">JWT</span><span class="tag">RFC 8725</span><span class="tag">OWASP</span></div>
+    </div>
+  </details>
+
+  <details class="faq">
+    <summary><span class="qn">Q29</span><span class="q-badge advanced">Advanced</span>Argon2id vs bcrypt vs scrypt vs PBKDF2 — which, with what parameters, and what's bcrypt's gotcha?<span class="chev">&#8250;</span></summary>
+    <div class="faq-body">
+      <p>OWASP's Password Storage cheat sheet gives an explicit order of preference: <strong>Argon2id first</strong>, then <strong>scrypt</strong>, then <strong>bcrypt</strong> (acceptable for legacy), and <strong>PBKDF2</strong> when FIPS-140 compliance forces it. The baseline Argon2id parameters are <code class="inline">m=19456</code> (19&nbsp;MiB memory), <code class="inline">t=2</code> (iterations), <code class="inline">p=1</code> (parallelism). The ranking is about <em>memory-hardness</em>: Argon2id and scrypt force an attacker to spend RAM per guess, which defeats the cheap massive parallelism of GPUs/ASICs; bcrypt is only CPU-hard. A fast general-purpose hash like SHA-256 is <em>disqualified</em> — its speed is exactly what lets an attacker try billions of guesses per second against a stolen dump.</p>
+      <p>The interview gotcha is <strong>bcrypt's 72-byte limit</strong>: most implementations silently truncate the password at 72 bytes (and the original truncates at the first null byte). Teams that "fix" long passwords by pre-hashing with SHA-256 then feeding the digest to bcrypt can introduce a <em>null-byte collision</em> if they're not careful. CareKosh sidesteps all of this by defaulting to Argon2 (no 72-byte cap, self-describing PHC string) with bcrypt only as a verify-and-upgrade fallback <span class="fileref">app/core/security.py:21-34</span>. (Source: OWASP Password Storage cheat sheet.)</p>
+      <div class="faq-tags tags"><span class="tag">Argon2</span><span class="tag">bcrypt</span><span class="tag">OWASP</span></div>
+    </div>
+  </details>
+
+  <details class="faq">
+    <summary><span class="qn">Q30</span><span class="q-badge intermediate">Intermediate</span>Which HTTP methods are idempotent/safe, and what's the difference between "idempotent" and "double-apply-safe"?<span class="chev">&#8250;</span></summary>
+    <div class="faq-body">
+      <p>RFC 9110 (HTTP Semantics) defines a method as <strong>idempotent</strong> if "the intended effect on the server of multiple identical requests is the same as for a single such request." <code class="inline">GET</code>, <code class="inline">HEAD</code>, <code class="inline">PUT</code>, <code class="inline">DELETE</code>, <code class="inline">OPTIONS</code>, and <code class="inline">TRACE</code> are idempotent; <strong><code class="inline">POST</code> and <code class="inline">PATCH</code> are not</strong>. <strong>Safe</strong> methods (read-only, no intended state change) are <code class="inline">GET</code>, <code class="inline">HEAD</code>, <code class="inline">OPTIONS</code>, <code class="inline">TRACE</code> — and all safe methods are also idempotent.</p>
+      <p>The senior distinction interviewers probe: <strong>"idempotent" ≠ "double-apply-safe."</strong> A <em>truly idempotent</em> endpoint returns the <em>same successful response</em> on every repeat (a <code class="inline">PUT</code> that sets a resource to a target state). CareKosh's <code class="inline">POST /orders/{id}/apply</code> is <em>not</em> idempotent in that sense — it is <strong>exactly-once / double-apply-safe</strong>: the guarded compare-and-swap (<code class="inline">UPDATE … WHERE status='received' RETURNING</code>) lets the first call succeed and <em>rejects</em> the second with <strong>400</strong>, so stock is never credited twice <span class="fileref">app/api/v1/orders.py:495-515</span>. Both are correct designs; conflating "it won't double-apply" with "it's idempotent" is the trap. The truly-idempotent upgrade would be an idempotency key (see next).</p>
+      <div class="faq-tags tags"><span class="tag">Idempotency</span><span class="tag">RFC 9110</span><span class="tag">REST</span></div>
+    </div>
+  </details>
+
+  <details class="faq">
+    <summary><span class="qn">Q31</span><span class="q-badge advanced">Advanced</span>How does HTTP's <code class="inline">ETag</code>/<code class="inline">If-Match</code> relate to the <code class="inline">version</code> column you use for optimistic concurrency?<span class="chev">&#8250;</span></summary>
+    <div class="faq-body">
+      <p>They are the <em>same idea</em> at two layers. CareKosh's item update is a database-level compare-and-swap: <code class="inline">UPDATE items … WHERE id=:id AND version=:client_version</code> — zero rows matched ⇒ <strong>409</strong> with the current server version <span class="fileref">app/api/v1/items.py:467-475</span>. HTTP standardizes the <em>transport-level</em> version of this: the server returns an <code class="inline">ETag</code> (a version token for the representation), and the client sends it back in an <code class="inline">If-Match</code> precondition on its write. RFC 9110/7232 say that if <code class="inline">If-Match</code> evaluates false — the resource changed since the client read it — the origin server <strong>MUST NOT</strong> perform the method and responds <strong>412 Precondition Failed</strong>. That's the "lost update" defense, spelled out in the spec, with a strong-comparison requirement so any change at all blocks the write.</p>
+      <p>So the family is: <code class="inline">version</code> column → <code class="inline">ETag</code>/<code class="inline">If-Match</code> (HTTP) → DynamoDB conditional writes → Kubernetes <code class="inline">resourceVersion</code>. All are <strong>optimistic concurrency control</strong>: no lock, carry a version, reject the stale writer (409/412) instead of overwriting. Naming that the version column and <code class="inline">If-Match</code> are the same pattern is a strong signal.</p>
+      <div class="faq-tags tags"><span class="tag">Optimistic locking</span><span class="tag">ETag</span><span class="tag">RFC 9110</span></div>
+    </div>
+  </details>
+
+  <details class="faq">
+    <summary><span class="qn">Q32</span><span class="q-badge staff">Staff</span>How would you make <code class="inline">POST /orders</code> <em>truly</em> idempotent against client retries?<span class="chev">&#8250;</span></summary>
+    <div class="faq-body">
+      <p>The standard pattern is a client-supplied <strong>idempotency key</strong> (Stripe popularized it). The client generates a unique key per logical operation and sends it in an <code class="inline">Idempotency-Key</code> header. The server, on first sight of a key, processes the request and <strong>stores the key alongside the resulting status code and response body</strong>; on any retry with the same key, it returns the <em>stored</em> response without re-executing — so a network retry that already succeeded server-side can't create a second order.</p>
+      <p>Concretely for CareKosh: a small <code class="inline">idempotency_keys</code> table (<code class="inline">key</code>, <code class="inline">user_id</code>, <code class="inline">request_fingerprint</code>, <code class="inline">response_status</code>, <code class="inline">response_body</code>, <code class="inline">created_at</code>), a unique constraint on <code class="inline">(user_id, key)</code> to win the race atomically (insert-or-conflict), and replay the saved body on a hit. Two details interviewers reward: <strong>(1)</strong> store and replay <em>failures too</em> (even a 500) so a retry is deterministic, and <strong>(2)</strong> compare the request fingerprint to the stored one and reject (422) if the same key is reused with <em>different</em> parameters — that's misuse, not a retry. Note the relationship to delivery semantics: networks give you <em>at-least-once</em>; true <em>exactly-once</em> is a fiction unless the <em>consumer</em> is idempotent — the key is what makes the consumer idempotent. (Source: Stripe idempotency docs.)</p>
+      <div class="faq-tags tags"><span class="tag">Idempotency keys</span><span class="tag">Exactly-once</span><span class="tag">System design</span></div>
+    </div>
+  </details>
+
+  <details class="faq">
+    <summary><span class="qn">Q33</span><span class="q-badge advanced">Advanced</span>Can you share one <code class="inline">AsyncSession</code> across <code class="inline">asyncio.gather</code> to parallelize queries?<span class="chev">&#8250;</span></summary>
+    <div class="faq-body">
+      <p>No — and it's a deliberate interview trap. An <code class="inline">AsyncSession</code> is a <strong>single, stateful, in-progress transaction on one connection</strong>, with no internal locking. The SQLAlchemy async docs state it plainly: <em>"a single instance of AsyncSession is not safe for use in multiple, concurrent tasks."</em> Fan out three queries with <code class="inline">asyncio.gather(q1(db), q2(db), q3(db))</code> sharing the same <code class="inline">db</code>, and their I/O interleaves on one connection mid-statement, corrupting session state and raising errors. The mnemonic is <strong>"Session per thread (sync), AsyncSession per task (async)."</strong></p>
+      <p>To genuinely parallelize, give each task its <em>own</em> session from the sessionmaker (each checks out its own pooled connection). CareKosh never hits this because every request gets one session from <code class="inline">get_db</code> and handlers <code class="inline">await</code> their queries <em>sequentially</em> <span class="fileref">app/core/database.py:106-123</span> — which, for a per-user CRUD workload, is the right and simplest choice. The moment you reach for concurrent DB fan-out, you reach for a session per task. (Source: SQLAlchemy 2.0 asyncio docs.)</p>
+      <div class="faq-tags tags"><span class="tag">AsyncSession</span><span class="tag">Concurrency</span><span class="tag">SQLAlchemy</span></div>
+    </div>
+  </details>
 <div class="callout tip"><div class="ct">✅ Pro Tip</div><p>When you answer any of these, follow the same three-beat structure: <strong>(1)</strong> name the concept and the trade-off, <strong>(2)</strong> point to how <em>this</em> codebase implements it (with the file), <strong>(3)</strong> say what you'd do differently at 100× the scale. That arc — concept → concrete → scale — is exactly what separates a senior signal from a junior one.</p></div>
 </section>
 <section class="chapter" id="ch-rapidfire">
   <p class="section-eyebrow">Quick recall + open-ended</p>
   <h2 class="chapter-title"><span class="chapter-num">19</span> Rapid-Fire &amp; Brainstorming</h2>
-  <p class="lead">Two gears of an interview. First the staccato volley — twenty-five definitions an interviewer fires to map the surface area of what you actually know. Then the slow burn — open-ended "how would you extend CareKosh" prompts that test whether you can architect, not just recite. This chapter drills both, grounded in the real backend you have been studying.</p>
+  <p class="lead">Two gears of an interview. First the staccato volley — thirty-five definitions an interviewer fires to map the surface area of what you actually know. Then the slow burn — open-ended "how would you extend CareKosh" prompts that test whether you can architect, not just recite. This chapter drills both, grounded in the real backend you have been studying.</p>
 
   <div class="tldr"><b>In one line</b> Rapid-fire answers must be one breath long and exactly right; design prompts must start by naming the constraint, then sketch the shape — and CareKosh's existing primitives (<code class="inline">local_id</code>, <code class="inline">version</code>, the audit ledger, the DI auth chain) are your raw material for every "add a feature" question.</div>
 
@@ -4267,6 +4320,16 @@ if claim.scalar_one_or_none() is None:
       <tr><td>What is backpressure?</td><td>Bounding work in flight so a slow downstream slows the upstream instead of unbounded queuing. Here: <code>pool_timeout=30</code> makes excess requests wait, then fail, rather than pile up.</td></tr>
       <tr><td>JWT vs session cookie?</td><td>JWT = self-contained signed token, sent in a header, stateless, hard to revoke. Session cookie = opaque ID referencing server-side state, revocable, browser-managed, CSRF-prone.</td></tr>
       <tr><td>What is CSRF? Does a Bearer-token API need CSRF protection?</td><td>CSRF tricks a browser into sending its <em>ambient</em> credentials (cookies) cross-site. A Bearer-token API does <strong>not</strong> need CSRF defense — the token is attached explicitly by JS, never auto-sent by the browser. CareKosh uses Bearer, so it's exempt.</td></tr>
+      <tr><td>Why can't <code>Allow-Origin: *</code> be combined with credentials?</td><td>The Fetch/CORS spec forbids it — a wildcard origin with <code>Access-Control-Allow-Credentials: true</code> is rejected by the browser, since returning <code>*</code> while allowing cookies/Authorization would let <em>any</em> site read authenticated responses. Use an explicit origin with credentials (CareKosh: wildcard+no-creds in dev, named origins+creds in prod).</td></tr>
+      <tr><td>Is a JWT encrypted?</td><td>No. Header and payload are base64url-<em>encoded</em>, not encrypted — anyone can read the claims. The signature guarantees <em>integrity</em>, not confidentiality. Never put secrets in a JWT (use JWE if you must).</td></tr>
+      <tr><td>Rate-limiting algorithms?</td><td>Fixed window (cheap, allows boundary bursts) · sliding window (smooths the boundary) · token bucket (bursts up to capacity, refills at a rate) · leaky bucket (constant drain). slowapi here uses window counters keyed per client IP.</td></tr>
+      <tr><td>When can you trust <code>X-Forwarded-For</code>?</td><td>Only behind a proxy you control — clients can spoof it, so you read a fixed number of trusted hops, not the leftmost value. CareKosh's key_func honors <code>CF-Connecting-IP</code>/<code>X-Forwarded-For</code> because it sits behind a known proxy. <span class="fileref">app/utils/rate_limiter.py</span></td></tr>
+      <tr><td>Read replicas &amp; replication lag?</td><td>Replicas scale read-heavy load but lag behind the primary, so a read-after-write may miss your own write. Fix "read-your-writes" by routing that read to the primary (or pinning briefly).</td></tr>
+      <tr><td>PgBouncer transaction pooling — what breaks?</td><td>It reuses one server connection per <em>transaction</em> (massive connection fan-in), but session state doesn't survive across transactions: server-side prepared statements, <code>SET</code>/advisory locks, <code>LISTEN/NOTIFY</code>. Disable client prepared-statement caching.</td></tr>
+      <tr><td>The 40-thread sync ceiling?</td><td>FastAPI/Starlette run sync <code>def</code> handlers <em>and</em> sync deps in AnyIO's worker-thread pool — default <code>CapacityLimiter</code> = 40 tokens, shared process-wide and <em>independent</em> of the DB <code>pool_size</code>. Request 41 queues.</td></tr>
+      <tr><td>Two triggers of <code>MissingGreenlet</code>?</td><td>(1) post-commit expired-attribute reload — fixed by <code>expire_on_commit=False</code>; (2) touching an <em>unloaded relationship</em> lazily — fixed only by eager loading (selectin/joined). Different causes, different fixes.</td></tr>
+      <tr><td>at-least-once vs exactly-once delivery?</td><td>Networks/queues deliver <em>at-least-once</em> (retries duplicate). "Exactly-once" is a fiction unless the <em>consumer</em> is idempotent (dedupe on a key) — the receiver guarantees it, not the transport.</td></tr>
+      <tr><td>Thread pool vs process pool for CPU work?</td><td>Default: process pool for CPU-bound (GIL blocks true thread parallelism), thread pool for blocking I/O. Exception: GIL-releasing C extensions (Argon2, numpy) run truly parallel in a <em>thread</em> pool — why hashing goes to a thread, not a process.</td></tr>
     </tbody>
   </table></div>
 

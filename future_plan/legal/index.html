@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!--
+  CAREKOSH landing page for carekosh.com (Cloudflare Pages).
+  Lives alongside privacy-policy.html and account-deletion.html so the apex domain
+  is not a dead page and Google's reviewers can find the legal links.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh</title>
+<style>
+:root{--bg:#fbf7f0;--text:#2a241c;--muted:#6f6555;--accent:#1d6b52;--border:#e7ddc9;--card:#fffdf9}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;font-size:16px;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.wrap{max-width:560px;margin:0 auto;padding:48px 24px;text-align:center}
+h1{font-size:2.4rem;letter-spacing:-.01em;margin-bottom:8px}
+.tag{color:var(--muted);margin-bottom:32px}
+.links{display:flex;flex-direction:column;gap:12px;max-width:340px;margin:0 auto}
+a.btn{display:block;background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:8px;padding:14px 18px;color:var(--accent);text-decoration:none;font-weight:600}
+a.btn:hover{background:#fff}
+footer{margin-top:36px;color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CareKosh</h1>
+  <p class="tag">A simple, private inventory tracker for households and home-care families — items, stock levels, and expiry dates.</p>
+  <div class="links">
+    <a class="btn" href="/privacy-policy.html">Privacy Policy</a>
+    <a class="btn" href="/account-deletion.html">Delete your account &amp; data</a>
+  </div>
+  <footer>© 2026 CareKosh · operated by Rishabh Dongre · support@carekosh.com</footer>
+</div>
+</body>
+</html>
