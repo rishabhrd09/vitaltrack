@@ -11,6 +11,8 @@
 > - `docs/LAUNCH_READINESS_EVIDENCE_GOAL_10.md` (evidence log to fill in)
 >
 > Where those docs and the real config ever disagree, **the config wins** and the difference is flagged in this guide.
+>
+> **Updated 2026-06-29 (verified against current Google Play Help):** added two newly-enforced gates this playbook originally predated — the **Financial features declaration** (mandatory for *every* app since Oct 30 2025; blocks all updates account-wide until submitted) and the **Health apps declaration** (a health-adjacent app like CareKosh is in scope). See **§B9–B11**. Also re-verified: Expo SDK 54 targets **API 36**, which exceeds Play's **API 35** minimum for new apps — **no target-API action needed**. Identity/D-U-N-S unchanged (D-U-N-S is organizations-only; personal accounts use gov-ID, already done). The new "Android developer verification" program does **not** enforce in India until 2027+ — ignore for this launch.
 
 ---
 
@@ -208,6 +210,23 @@ In Play Console, **Create app** → name **`CareKosh`**, type **App** (not game)
 
 ### B8. Health apps note
 CareKosh is a household **inventory/care-supply tracker**, not a medical device and it makes **no diagnostic/treatment claims**. If Play prompts a **Health apps declaration** during submission, answer truthfully: it does not access Health Connect, does not provide medical advice, and stores only user-entered inventory data. Do not overstate it as a medical product.
+
+### B9. Financial features declaration (🔴 NEW — mandatory for *every* app since Oct 30 2025)
+- **This is the #1 silent blocker.** Since **Oct 30, 2025**, Google requires a **Financial features declaration on every app — even apps with no financial features at all.** Until you submit it, Google **blocks all updates to your app(s), account-wide.**
+- For CareKosh, answer **"My app doesn't provide any financial features."** You still **must submit** the form — leaving it blank silently blocks releases.
+- Location: **App content → Financial features.**
+- *Verified 2026 against Google Play Help (answer/16550159, answer/13849271).*
+
+### B10. Health apps declaration (🔴 NEW — mandatory; CareKosh is in scope)
+- Google now requires a **Health apps declaration form** for published apps (including testing tracks), and a **health-adjacent** app like CareKosh is in scope — so this is **not** optional anymore (supersedes the "if prompted" framing in B8).
+- Answer **truthfully**, same posture as B8: CareKosh **does not access Health Connect**, provides **no medical advice/diagnosis**, and stores only **user-entered care-supply inventory**. Declare minimal/no health-app categories accordingly; do **not** present it as a medical device.
+- Expect it may add a little extra review time. Location: **App content → Health apps** (or prompted at submission).
+- *Verified 2026 against Google Play Help (answer/14738291).*
+
+### B11. Other App-content declarations (quick, but required)
+- **Advertising ID:** CareKosh shows no ads and collects **no advertising ID** → declare **"No"**.
+- **Government apps:** CareKosh is **not** a government app → declare accordingly.
+- Both live under **App content** and must be green before release.
 
 ---
 
@@ -472,6 +491,9 @@ Every item below is a Google Play **requirement** for your app. Tick each before
 - [ ] **Content rating** questionnaire completed (Medical, no violence/ads/UGC).
 - [ ] **Target audience** set to 13+ (not directed to children).
 - [ ] **App access** (reviewer login) provided with real credentials (Appendix 4).
+- [ ] **Financial features declaration** submitted — answer **"no financial features"** (🔴 mandatory since Oct 30 2025; blocks ALL updates account-wide until done).
+- [ ] **Health apps declaration** submitted — truthful (no Health Connect, no medical claims).
+- [ ] **Advertising ID** declaration (No) **+ Government apps** declaration completed.
 - [ ] **Permissions**: only `ACCESS_NETWORK_STATE` (+ `INTERNET`); justify any media permission the picker adds.
 - [ ] **App signing**: Play App Signing enabled (EAS-generated upload key).
 - [ ] **App Bundle (.aab)** used for upload (not APK) — your `production` profile already does this.
@@ -551,6 +573,8 @@ Status carried over from your repo docs (`EXPO_AND_PLAY_STORE_GUIDE.md` §6 + Go
 | Web account-deletion URL hosted | 🔴 not hosted |
 | Data Safety form submitted in Play Console | 🔴 not submitted |
 | Reviewer (App access) credentials | 🔴 placeholder → make real |
+| Financial features declaration (no financial features) | 🔴 NEW — required before any release/update (Oct 30 2025) |
+| Health apps declaration | 🔴 NEW — required (health-adjacent app) |
 | Service-account JSON placed in `credentials/` | 🔴 not created |
 | Production backend live + healthy on `api.carekosh.com` | ✅ verified (`/live` + `/health` green) |
 | Uptime monitors live (UptimeRobot/Better Stack) | 🔴 template only |

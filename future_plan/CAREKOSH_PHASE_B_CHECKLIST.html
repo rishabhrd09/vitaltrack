@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh — Play Console One-Time Setup (Phase B) — Tickable Checklist</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf9f7;--card:#fff;--card2:#f4f3f0;--border:#e5e3de;--text:#1a1a18;--muted:#6b6a65;--accent:#1d6b52;--accent-bg:#e8f5ef;--code-bg:#f0efeb;--done:#059669;--danger:#8b1a1a}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e12;--card:#161619;--card2:#1c1c21;--border:#2a2a30;--text:#e4e4ec;--muted:#8a8a95;--accent:#5eead4;--accent-bg:#0d2626;--code-bg:#1a1a20;--done:#34d399;--danger:#e88}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.75;font-size:15px}
+.page{max-width:900px;margin:0 auto;padding:32px 24px 80px}
+.hero{text-align:center;padding:36px 0 26px;border-bottom:1px solid var(--border);margin-bottom:28px}
+.hero h1{font-family:'Instrument Serif',serif;font-size:2.4rem;font-weight:400;letter-spacing:-.02em;line-height:1.12;margin-bottom:10px;border:none;padding:0}
+.hero .meta{color:var(--muted);font-size:.76rem;letter-spacing:.02em}
+h1,h2,h3,h4{font-family:'Sora',sans-serif;letter-spacing:-.01em;line-height:1.25}
+h1{font-size:1.9rem;font-weight:800;margin:30px 0 12px}
+h2{font-size:1.35rem;font-weight:700;margin:30px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+h3{font-size:1.05rem;font-weight:700;margin:22px 0 8px}
+h4{font-size:.95rem;font-weight:600;margin:18px 0 6px;color:var(--muted)}
+p{margin-bottom:12px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+ul,ol{margin:0 0 14px 0;padding-left:24px}
+li{margin-bottom:6px;font-size:.93rem}
+strong{font-weight:700}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--code-bg);padding:2px 6px;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:14px 0}
+pre code{background:none;padding:0;font-size:.78rem;line-height:1.7}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.86rem}
+th{text-align:left;font-family:'Sora',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:2px solid var(--border)}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+blockquote{background:var(--accent-bg);border-left:4px solid var(--accent);border-radius:8px;padding:12px 18px;margin:18px 0}
+blockquote p{margin-bottom:6px}blockquote p:last-child{margin-bottom:0}
+hr{border:none;border-top:1px solid var(--border);margin:30px 0}
+ul:has(.done),ul:has(.todo){list-style:none;padding-left:6px}
+li.done,li.todo{position:relative;padding-left:28px}
+li.done::before{content:"\2713";position:absolute;left:0;top:1px;width:18px;height:18px;border-radius:4px;background:var(--accent-bg);color:var(--done);font-weight:800;font-size:.72rem;text-align:center;line-height:18px}
+li.todo::before{content:"";position:absolute;left:2px;top:3px;width:15px;height:15px;border:2px solid var(--border);border-radius:4px}
+.footer{text-align:center;padding:26px 0;border-top:1px solid var(--border);color:var(--muted);font-size:.76rem;margin-top:40px}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="hero"><h1>CareKosh — Play Console One-Time Setup (Phase B) — Tickable Checklist</h1><p class="meta">CareKosh · Phase B — Play Console one-time setup checklist</p></div>
+<blockquote>
+<p>Source: <code>CAREKOSH_PLAY_STORE_LAUNCH_PLAYBOOK.html</code> (Phase B + Data Safety / App-access appendices).
+<strong>All of this can be done now, while the EAS build quota resets (~Jul 1).</strong> None of it needs the AAB.
+Ordered by external lead time — do the top group first.</p>
+</blockquote>
+<hr />
+<h2>⏱️ Start first (longest lead time — depends on others)</h2>
+<ul>
+<li class="todo"><strong>Google Play Developer account</strong> — $25 one-time <strong>+ ID verification</strong> (can take a few days to clear). <em>Do this today.</em></li>
+<li class="todo"><strong>Host a public Privacy Policy URL</strong> (GitHub Pages / public Notion / any static host). Must cover what CareKosh stores/transmits:</li>
+<li>name, email, username, optional supplier/contact phone, inventory, orders, categories, activity feed, selected photos, generated PDFs, clipboard export, auth tokens (SecureStore only)</li>
+<li>processors: <strong>Render, Neon, Brevo, Google Play</strong></li>
+<li>→ enter in <strong>App content → Privacy policy</strong>; also link it from the in-app About screen.</li>
+<li class="todo"><strong>Host a public "Request account deletion" URL</strong> (alongside the policy) → <strong>App content → Data deletion</strong>. <em>Missing this = instant rejection.</em></li>
+<li>(In-app Profile → Delete Account already ships; Google additionally requires the <strong>web</strong> URL.)</li>
+<li class="todo"><strong>Recruit ≥ 12 closed-test testers</strong> (the later 14-day clock won't start without 12 opted-in installs on day 1).</li>
+</ul>
+<hr />
+<h2>📋 Play Console → App content forms</h2>
+<ul>
+<li class="todo"><strong>Create app</strong>: name <strong>CareKosh</strong>, type App, <strong>Free</strong>, accept declarations.</li>
+<li class="todo"><strong>B3 · Data Safety form</strong> — fill from the inventory below. Declare:</li>
+<li class="todo"><strong>Encrypted in transit</strong> (HTTPS-only; dev HTTP is never shipped)</li>
+<li class="todo"><strong>Account deletion available</strong></li>
+<li class="todo">email-verification / password-reset / account-deletion <strong>token columns + expiry</strong> as server-side PII</li>
+<li class="todo"><em>Re-verify against the deployed backend + current SDK list before submitting</em></li>
+<li class="todo"><strong>B4 · Content rating</strong> — questionnaire. Category <strong>Medical / health-adjacent utility</strong>; <strong>no</strong> violence, sexual content, gambling, ads, or user-to-user/UGC.</li>
+<li class="todo"><strong>B5 · Target audience &amp; content</strong> — <strong>13+</strong>, <em>not</em> directed to children (keeps the Families policy out of scope).</li>
+<li class="todo"><strong>B6 · App access (reviewer sign-in)</strong> — provide a <strong>real</strong> reviewer email + password (create one now on the live backend <code>api.carekosh.com</code>). Paste the template below. Rotate the password after review.</li>
+<li class="todo"><strong>B8 · Health apps declaration</strong> (if Play prompts) — truthfully: <strong>not</strong> a medical device, <strong>no</strong> Health Connect access, no medical advice, only user-entered inventory data.</li>
+</ul>
+<hr />
+<h2>🖼️ B7 · Store listing &amp; assets (exact specs — 1px off is rejected)</h2>
+<ul>
+<li class="todo">App icon — <strong>512 × 512 PNG</strong></li>
+<li class="todo">Feature graphic — <strong>1024 × 500 PNG</strong></li>
+<li class="todo"><strong>≥ 2 phone screenshots</strong> — Dashboard, Inventory, item detail, PDF export</li>
+<li class="todo">Short + full descriptions — plain language, <strong>no medical claims</strong></li>
+</ul>
+<hr />
+<h2>🔑 C · Service account JSON (for <code>eas submit</code> <em>after</em> the first manual upload)</h2>
+<ul>
+<li class="todo">Play Console → <strong>Users &amp; Permissions → API access → Create service account</strong> → in Google Cloud make <code>eas-submit</code> (role <em>Service Account User</em>) → <strong>Manage keys → Add key → JSON → download</strong>.</li>
+<li class="todo">Grant it <strong>Admin</strong> (or "Release to testing tracks") in Play Console.</li>
+<li class="todo">Save to <code>vitaltrack-mobile/credentials/google-service-account.json</code> (already gitignored — <strong>never commit</strong>).</li>
+<li class="todo"><em>Not needed for the first upload (manual, Phase F) — needed for every automated submit after.</em></li>
+</ul>
+<hr />
+<h2>📎 Copy-paste 1 — Data Safety inventory (fill the form from this)</h2>
+<table>
+<thead>
+<tr>
+<th>Data area</th>
+<th>Examples</th>
+<th>Req/Opt</th>
+<th>Stored / transmitted</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Name</td>
+<td>Full/display name</td>
+<td>Required</td>
+<td>API + server-side; light auth state in SecureStore</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>Login, verify, reset, deletion confirm</td>
+<td>Required</td>
+<td>API + server-side; SecureStore</td>
+</tr>
+<tr>
+<td>Username</td>
+<td>Optional username</td>
+<td>Optional</td>
+<td>API if provided; SecureStore</td>
+</tr>
+<tr>
+<td>Phone/contact</td>
+<td>Supplier/contact fields if entered</td>
+<td>Optional</td>
+<td>API as item metadata; may appear in cache/export</td>
+</tr>
+<tr>
+<td>Password / secrets</td>
+<td>Password, access + refresh tokens</td>
+<td>Required</td>
+<td>Password over HTTPS; tokens <strong>only</strong> in SecureStore; passwords not stored on device</td>
+</tr>
+<tr>
+<td>Inventory</td>
+<td>Item/category names, qty, thresholds, expiry, brands, notes, supplier, links</td>
+<td>Required</td>
+<td>API, server-side, AsyncStorage display snapshot</td>
+</tr>
+<tr>
+<td>Orders</td>
+<td>IDs, items, qty, statuses, timestamps, PDF path</td>
+<td>Optional</td>
+<td>API, server-side, cached snapshot</td>
+</tr>
+<tr>
+<td>Categories</td>
+<td>Names, descriptions, colors/icons/order</td>
+<td>Req/Opt</td>
+<td>API, server-side, cached snapshot</td>
+</tr>
+<tr>
+<td>Activity</td>
+<td>Activity feed entries + timestamps</td>
+<td>Generated</td>
+<td>Server-side + display-snapshot cache</td>
+</tr>
+<tr>
+<td>Images/photos</td>
+<td>Selected item photo URI; photos in PDFs</td>
+<td>Optional</td>
+<td>Library asset; processed locally for preview/PDF</td>
+</tr>
+<tr>
+<td>PDF/files</td>
+<td>Inventory/order PDFs, JSON backups</td>
+<td>Optional</td>
+<td>Generated in app sandbox; shared via system share sheet</td>
+</tr>
+<tr>
+<td>Clipboard export</td>
+<td>Inventory JSON to clipboard</td>
+<td>Optional</td>
+<td>Written to OS clipboard on request</td>
+</tr>
+<tr>
+<td>Diagnostics/crash</td>
+<td>No analytics/crash SDK; prod console logs off</td>
+<td>Not collected</td>
+<td>Play/Android platform vitals only</td>
+</tr>
+<tr>
+<td>Third-party processors</td>
+<td>Expo, RN, TanStack Query, Zustand, Render, Neon, Brevo, Google Play</td>
+<td>Depends</td>
+<td>Review each provider's privacy docs</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>📎 Copy-paste 2 — Reviewer "App access" text</h2>
+<p>Paste into <strong>Play Console → App content → App access → Sign-in details</strong> (fill in a real reviewer account):</p>
+<pre><code>CareKosh requires sign-in to inspect the app.
+
+Use the supplied reviewer account:
+Email: &lt;reviewer email&gt;
+Password: &lt;reviewer password&gt;
+
+If the Render backend is cold-starting, the app may show a short &quot;server waking
+up&quot; message. Wait up to 60 seconds and retry sign-in. After login, review these
+flows: Dashboard, Inventory, add/edit item, image picker from library, export
+inventory PDF, create order and export PDF, receive/apply stock, Profile &gt;
+Delete Account.
+</code></pre>
+<blockquote>
+<p>Use a dedicated reviewer/smoke account with <strong>fake data only</strong>; rotate the password after review.</p>
+</blockquote>
+<hr />
+<h2>✅ When this is all green</h2>
+<p>You'll be cleared to go straight from the AAB (once the EAS quota resets ~Jul 1) to:
+<strong>First manual upload (Phase F) → Internal-testing smoke (Phase G) → ⛔ Closed testing: 12 testers / 14 continuous days (Phase H) → apply for production access → Production staged rollout.</strong></p>
+<p>The closed-testing window is the ~2-week wall — having 12 testers lined up <em>before</em> day 1 is the single most important scheduling move.</p>
+<div class="footer">CareKosh · generated from CAREKOSH_PHASE_B_CHECKLIST.md · 2026-06-29 — keep edits in the .md source</div>
+</div>
+</body>
+</html>
