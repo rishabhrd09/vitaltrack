@@ -125,7 +125,7 @@ Your Android applicationId is **`com.carekosh.mobile`** — renamed from `com.vi
 All launch-relevant work is already merged into `main` and deployed: **PR #53** (package rename) and **PR #54** (backend pre-launch hardening) are both squash-merged. Make sure your local `main` is clean and synced before any release work:
 
 ```bash
-cd /Users/rishabh/courses_tutorials/vital_track/goal_9_fresh/vitaltrack
+cd /Users/rishabh/courses_tutorials/vital_track/first_playstore_version/vitaltrack
 git checkout main
 git pull --ff-only origin main
 git status --short --branch          # expect: clean, up to date with origin/main
@@ -138,6 +138,8 @@ git branch -d fix/backend-prelaunch-hardening 2>/dev/null || true
 ```
 
 > **Do NOT build another preview APK.** You already tested it; that was the staging build. The next build you make is the **production AAB**.
+
+> **Building from a feature branch is fine.** The mobile app code in `vitaltrack-mobile/` is identical on `main` and on doc-only branches (e.g. `docs/future-plan-launch-and-legal`), so a production AAB built from such a branch is equivalent. EAS will warn about a non-`main` / "dirty" git state (e.g. an untracked doc at the repo root) — that's expected; proceed. Just don't ship app-code changes that exist only on an unmerged branch.
 
 ---
 
@@ -189,7 +191,7 @@ In Play Console, **Create app** → name **`CareKosh`**, type **App** (not game)
 - **Before you submit it**, re-verify against the *deployed* backend schema and the current third-party SDK list — Data Safety mistakes are a suspension risk. Note specifically (per Goal 9 re-audit): also declare the **email-verification, password-reset, and account-deletion token columns + their expiry timestamps** as PII storage touchpoints.
 
 ### B4. Content rating (required)
-- Complete the questionnaire. Category: **Medical / health-adjacent utility**.
+- Complete the questionnaire. Pick a **Utility / Productivity / Other** category (CareKosh is a household supply-inventory tool) — do **not** classify it as a medical product.
 - Answers: **no** violence, sexual content, gambling, ads, or user-to-user communication/UGC.
 
 ### B5. Target audience & content (required)
@@ -197,7 +199,7 @@ In Play Console, **Create app** → name **`CareKosh`**, type **App** (not game)
 
 ### B6. App access — reviewer sign-in (required, because login is mandatory) — 🔴 use real creds
 - CareKosh is login-gated, so Google reviewers need a working account.
-- Provide a **real reviewer email + password** (not a placeholder) plus the cold-start note. Use the exact template in **[Appendix 4](#appendix-4-reviewer-text)**.
+- Provide a **real reviewer email + password** (not a placeholder). Use the exact template in **[Appendix 4](#appendix-4-reviewer-text)**.
 - Create this as a dedicated **production smoke account** (see Phase G); rotate its password after the review.
 
 ### B7. Store listing & assets (required)
@@ -217,10 +219,11 @@ CareKosh is a household **inventory/care-supply tracker**, not a medical device 
 - Location: **App content → Financial features.**
 - *Verified 2026 against Google Play Help (answer/16550159, answer/13849271).*
 
-### B10. Health apps declaration (🔴 NEW — mandatory; CareKosh is in scope)
-- Google now requires a **Health apps declaration form** for published apps (including testing tracks), and a **health-adjacent** app like CareKosh is in scope — so this is **not** optional anymore (supersedes the "if prompted" framing in B8).
-- Answer **truthfully**, same posture as B8: CareKosh **does not access Health Connect**, provides **no medical advice/diagnosis**, and stores only **user-entered care-supply inventory**. Declare minimal/no health-app categories accordingly; do **not** present it as a medical device.
-- Expect it may add a little extra review time. Location: **App content → Health apps** (or prompted at submission).
+### B10. Health apps declaration (🔴 NEW — complete it truthfully)
+- Google requires a **Health apps declaration form** for health/medical apps (including testing tracks); complete it for CareKosh. Answer **truthfully**: CareKosh **does not access Health Connect**, requests **no health-data permissions**, provides **no medical advice/diagnosis**, and stores only **user-entered care-supply inventory**.
+- **Stay out of the health-app bucket on purpose.** Because CareKosh reads no Health Connect / health-records data, it is **not** in the category that requires a verified **Organization account** (that requirement targets apps that read health data or are regulated medical devices — neither applies). To avoid unnecessary review, choose a **non-medical store category** (e.g. *House & Home*, *Tools*, or *Productivity*) — not "Medical" or "Health & Fitness" — and never present the app as a medical device.
+- **Add the standard disclaimer.** 2026 health rules expect health-adjacent apps without regulatory clearance to state: *"This app is not a medical device and does not diagnose, treat, or prevent any condition."* Put it in the store listing (and optionally the in-app About screen).
+- Location: **App content → Health apps** (or prompted at submission); may add a little review time.
 - *Verified 2026 against Google Play Help (answer/14738291).*
 
 ### B11. Other App-content declarations (quick, but required)
@@ -260,7 +263,7 @@ curl https://api.carekosh.com/live      # expect 200  {status:"healthy",  databa
 curl https://api.carekosh.com/health    # expect 200  {status:"healthy",  database:"connected"}
 ```
 - `/health` returns **503** (`unhealthy` / `unavailable`) if the DB probe fails.
-- On Render's free tier a **first** request after idle can take ~1 minute (cold start). Retry 2–3 times; only **sustained** failure is a real problem.
+- Render runs on the always-on **Starter** plan, so there is **no free-tier spin-down / cold start** — both endpoints should respond in well under a second. (Neon's serverless DB can have a brief first-query warm-up; `/live` stays green through it and `/health` may blip once before recovering.) Only **sustained** failure is a real problem.
 
 ### D2. Production Render env vars present (from the Goal 10 runbook)
 Confirm these exist on the **production** Render service:
@@ -326,7 +329,7 @@ Internal testing is for **you and a few trusted devices** to confirm the product
 **Smoke checklist (run on a real Android device):**
 - [ ] App installs and launches from Play internal testing
 - [ ] Register → **email-verification** pending route works
-- [ ] Login (handle Render cold-start "server waking up" gracefully)
+- [ ] Login succeeds against the **production** backend (responds promptly — Render is always-on)
 - [ ] Inventory / categories load from the **production** backend
 - [ ] Create + edit an item, including a **photo from the library**
 - [ ] **Inventory PDF export** + share (with and without photos)
@@ -406,11 +409,11 @@ curl https://api.carekosh.com/health    # 200, database:"connected"
 - [ ] Real-device smoke on the production track (use the smoke account, fake data only)
 
 **Set up uptime monitors** (Goal 10 runbook — currently 🔴 not proven). Use `docs/monitoring/carekosh-uptime-monitors.example.yml` as the template in UptimeRobot / Better Stack:
-- Production `/live`: every 5 min, alert after 2 consecutive failures (also keeps the free Render service warm).
+- Production `/live`: every 5 min, alert after 2 consecutive failures (uptime + lightweight external pulse; the Starter plan is already always-on).
 - Production `/health`: every 5 min, alert after 2 consecutive failures (DB readiness).
 - Staging `/live` + `/health`: every 10 min during launch.
 
-**Cold-start note:** Render free instances spin down after ~15 min idle; the first request can take ~1 min. If real users depend on the app, **consider a paid Render instance** or accept the cold-start risk explicitly (Goal 9 flags this as a pre-launch decision).
+**Always-on note:** Render runs on the **Starter** plan (no spin-down / cold start), so first-request latency is a non-issue. Keep the plan in sync with `render.yaml` (`plan: starter`) so a Blueprint re-sync can't silently downgrade it back to free.
 
 **Record evidence** in `docs/LAUNCH_READINESS_EVIDENCE_GOAL_10.md`: branch/clean status, `/live` + `/health` outputs, smoke output paths, monitor links — **never** tokens, passwords, DB URLs, or user emails.
 
@@ -424,7 +427,7 @@ curl https://api.carekosh.com/health    # 200, database:"connected"
 - `/health` fails and Neon/Render logs show a deploy-caused DB readiness failure, or
 - smoke-account login or inventory list fails due to server errors.
 
-**Do NOT roll back for:** a known free-tier cold start that recovers, a single credential typo, or a Play review/opt-in delay.
+**Do NOT roll back for:** a brief Neon serverless warm-up that recovers, a single credential typo, or a Play review/opt-in delay.
 
 **Backend rollback procedure:**
 1. Render service → **Events** → select the last known-good deploy → **Rollback**.
@@ -435,7 +438,7 @@ curl https://api.carekosh.com/health    # 200, database:"connected"
 **Mobile bad-release recovery** (there is **no** true Play rollback for already-installed users):
 1. **Pause/halt the staged rollout** in Play Console.
 2. Build a **fixed AAB with a higher version code** (`eas build` auto-increments).
-3. Upload to internal → smoke on a real device → promote only after app access, Data Safety, login, inventory, and cold-start are verified.
+3. Upload to internal → smoke on a real device → promote only after app access, Data Safety, login, and inventory are verified.
 4. Keep the backend **compatible** with the bad version while users may still have it installed.
 
 ---
@@ -445,7 +448,7 @@ curl https://api.carekosh.com/health    # 200, database:"connected"
 
 ```bash
 # 0. Sync onto clean main
-cd /Users/rishabh/courses_tutorials/vital_track/goal_9_fresh/vitaltrack
+cd /Users/rishabh/courses_tutorials/vital_track/first_playstore_version/vitaltrack
 git checkout main && git pull --ff-only origin main && git status --short --branch
 
 # 1. Tooling
@@ -488,7 +491,7 @@ Every item below is a Google Play **requirement** for your app. Tick each before
 - [ ] **Privacy policy** hosted at a public URL and entered in App content.
 - [ ] **Account deletion**: in-app path **and** a public web deletion-request URL.
 - [ ] **Data safety** form completed and accurate (see Appendix 3).
-- [ ] **Content rating** questionnaire completed (Medical, no violence/ads/UGC).
+- [ ] **Content rating** questionnaire completed (Utility/Productivity category, no violence/ads/UGC).
 - [ ] **Target audience** set to 13+ (not directed to children).
 - [ ] **App access** (reviewer login) provided with real credentials (Appendix 4).
 - [ ] **Financial features declaration** submitted — answer **"no financial features"** (🔴 mandatory since Oct 30 2025; blocks ALL updates account-wide until done).
@@ -498,7 +501,6 @@ Every item below is a Google Play **requirement** for your app. Tick each before
 - [ ] **App signing**: Play App Signing enabled (EAS-generated upload key).
 - [ ] **App Bundle (.aab)** used for upload (not APK) — your `production` profile already does this.
 - [ ] **Target API level**: Expo SDK 54 targets a current Android API level that meets Play's latest requirement for new apps — confirm the value in the build output; if Google flags it, it's a config bump, not a rewrite.
-- [ ] **Health apps declaration** (if prompted): answered truthfully — no medical claims, no Health Connect.
 - [ ] **Closed testing** (12 testers / 14 days) completed → production access granted.
 
 ---
@@ -541,11 +543,9 @@ Use the supplied reviewer account:
 Email: <reviewer email>
 Password: <reviewer password>
 
-If the Render backend is cold-starting, the app may show a short "server waking
-up" message. Wait up to 60 seconds and retry sign-in. After login, review these
-flows: Dashboard, Inventory, add/edit item, image picker from library, export
-inventory PDF, create order and export PDF, receive/apply stock, Profile >
-Delete Account.
+After login, review these flows: Dashboard, Inventory, add/edit item, image
+picker from library, export inventory PDF, create order and export PDF,
+receive/apply stock, Profile > Delete Account.
 ```
 
 Use a **production-backed AAB** for the Play submission path and a dedicated reviewer/smoke account with **fake data only**. Rotate the password after review.
@@ -603,7 +603,7 @@ Legend: ✅ done · 🟡 in progress · 🔴 blocking, not done · ⬜ upcoming 
 | **ID verification delay** | Blocks all publishing 1–3 days | Start day one |
 | **Asset pixel strictness** | 1px off = rejected | Export icon 512×512, feature 1024×500 exactly |
 | **Closed-test clock resets** | Drop below 12 testers / remove build mid-window | Line up 12 testers up front; keep build live 14 continuous days |
-| **Render free-tier cold start** | First request ~1 min; can look like an outage | Retry; add `/live` monitor as keep-warm; consider paid tier |
+| **Neon serverless warm-up** | Render is always-on (Starter); only Neon's DB may have a brief first-query warm-up | `/live` stays green; a single `/health` blip that recovers is not an outage |
 | **Expo token expiry** | CI fails months later | Set expiry None or schedule yearly rotation |
 
 ---
