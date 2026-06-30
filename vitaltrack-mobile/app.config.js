@@ -27,10 +27,10 @@ module.exports = ({ config }) => {
   return {
     ...config,
     ...appJson.expo,
-    android: {
-      ...appJson.expo.android,
-      usesCleartextTraffic,
-    },
+    plugins: [
+      ...(appJson.expo.plugins || []),
+      ['expo-build-properties', { android: { usesCleartextTraffic } }],
+    ],
     extra: {
       ...appJson.expo.extra,
       androidCleartextTrafficMode: usesCleartextTraffic ? 'development-only' : 'disabled',
