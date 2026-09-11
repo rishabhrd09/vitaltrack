@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CareKosh Voice Inventory Agent — Production Decision Guide</title>
+  <style>
+    :root {
+      --paper: #f7f1e7;
+      --surface: #fffdf8;
+      --ink: #2d2925;
+      --muted: #6d6258;
+      --line: #ded2c2;
+      --teal: #176b68;
+      --sage: #58736b;
+      --amber: #b96f2d;
+      --brick: #a54e43;
+      --navy: #324b59;
+      --code: #f0e8dc;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font: 16px/1.58 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    a { color: var(--teal); text-underline-offset: 3px; }
+    a:hover { color: var(--navy); }
+    main { width: min(1120px, calc(100% - 32px)); margin: 0 auto 64px; }
+    header {
+      border-bottom: 1px solid var(--line);
+      padding: 68px max(16px, calc((100vw - 1120px) / 2)) 40px;
+      background: #fbf7ef;
+    }
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--teal);
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 { line-height: 1.18; letter-spacing: -.025em; }
+    h1 { max-width: 890px; margin: 0; font-size: clamp(2.1rem, 5vw, 4.15rem); font-weight: 760; }
+    h2 { margin: 64px 0 18px; font-size: clamp(1.55rem, 3vw, 2.35rem); }
+    h3 { margin: 32px 0 10px; font-size: 1.2rem; }
+    p { max-width: 900px; }
+    .lede { max-width: 840px; margin: 22px 0 0; color: #4c433c; font-size: 1.13rem; }
+    .meta { margin-top: 18px; color: var(--muted); font-size: .9rem; }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px 17px;
+      margin: 22px 0 0;
+      font-size: .88rem;
+    }
+    nav a { text-decoration: none; }
+    .rule { height: 1px; margin: 48px 0; background: var(--line); }
+    .callout, .decision, .warning, .note {
+      max-width: 980px;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--teal);
+      background: var(--surface);
+    }
+    .decision { border-left-color: var(--sage); }
+    .warning { border-left-color: var(--amber); }
+    .warning.critical { border-left-color: var(--brick); }
+    .note { border-left-color: var(--navy); }
+    .callout strong, .decision strong, .warning strong, .note strong { display: block; margin-bottom: 5px; }
+    .callout p, .decision p, .warning p, .note p { margin: 0; }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: 1 / -1; }
+    .tile { padding: 18px; border: 1px solid var(--line); background: var(--surface); }
+    .tile h3 { margin: 0 0 7px; font-size: 1.02rem; }
+    .tile p { margin: 0; font-size: .94rem; }
+    .tag {
+      display: inline-block;
+      margin-bottom: 8px;
+      padding: 2px 8px;
+      border: 1px solid currentColor;
+      border-radius: 99px;
+      color: var(--teal);
+      font-size: .7rem;
+      font-weight: 750;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .tag.later { color: var(--amber); }
+    .tag.no { color: var(--brick); }
+    table { width: 100%; border-collapse: collapse; margin: 18px 0; background: var(--surface); font-size: .93rem; }
+    th, td { padding: 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: #3e352e; background: #efe6d8; font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; }
+    ul, ol { max-width: 930px; padding-left: 1.25rem; }
+    li { margin: 7px 0; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    code { padding: 2px 5px; border-radius: 3px; background: var(--code); font-size: .89em; }
+    pre { overflow: auto; padding: 17px; border: 1px solid var(--line); background: var(--code); font-size: .84rem; line-height: 1.45; }
+    .flow { max-width: 980px; padding: 22px; border: 1px solid var(--line); background: #fcf8f1; overflow-x: auto; }
+    .flow-row { display: flex; align-items: stretch; min-width: 760px; }
+    .flow-step { flex: 1; padding: 12px; border: 1px solid var(--line); background: var(--surface); font-size: .87rem; }
+    .flow-step b { display: block; color: var(--teal); margin-bottom: 5px; }
+    .arrow { align-self: center; padding: 0 8px; color: var(--amber); font-size: 1.35rem; }
+    .mini { color: var(--muted); font-size: .84rem; }
+    details { max-width: 980px; margin: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    summary { padding: 13px 0; cursor: pointer; font-weight: 700; }
+    details > div { padding: 0 0 14px; }
+    .check { padding-left: 0; list-style: none; }
+    .check li { position: relative; padding-left: 26px; }
+    .check li::before { content: "□"; position: absolute; left: 0; color: var(--teal); font-weight: 800; }
+    .source-list { font-size: .9rem; }
+    footer { margin-top: 68px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: .86rem; }
+    @media (max-width: 760px) {
+      header { padding-top: 42px; }
+      main { width: min(100% - 24px, 1120px); }
+      .span-4, .span-6, .span-8 { grid-column: 1 / -1; }
+      th, td { padding: 9px; }
+      table { font-size: .84rem; }
+    }
+    @media print {
+      body, header { background: #fff; }
+      main { width: 100%; }
+      nav { display: none; }
+      h2 { break-after: avoid; }
+      .tile, .callout, .decision, .warning, .note, .flow, table { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="eyebrow">CareKosh · Product / architecture decision guide</p>
+    <h1>A voice inventory agent that remains truthful, useful, and buildable</h1>
+    <p class="lede">A production plan for asking CareKosh about medical-supply stock already loaded in the mobile app, receiving a fixed-format overlay, and hearing the answer in the approved Iris “Alba” synthetic voice—without letting a model invent quantities, leak API keys, or turn a medical-inventory application into an unsafe chatbot.</p>
+    <p class="meta">Research snapshot: 11 September 2026 · Scope: read-only assistant first; no code is implemented by this guide.</p>
+    <nav aria-label="Contents">
+      <a href="#recommendation">Recommendation</a>
+      <a href="#truth">Truth architecture</a>
+      <a href="#cache">Cache-first policy</a>
+      <a href="#voice">Alba voice</a>
+      <a href="#models">Models &amp; keys</a>
+      <a href="#phases">Delivery phases</a>
+      <a href="#learning">Learning &amp; tests</a>
+      <a href="#sources">Sources</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="recommendation">
+      <h2>The recommendation in one page</h2>
+      <div class="decision">
+        <strong>Build a “truth-preserving voice inventory assistant,” not a free-form medical chatbot.</strong>
+        <p>For a normal stock question, CareKosh identifies the requested item in the active mobile inventory snapshot, generates a typed answer card, and generates the spoken sentence—without another database request. The app refreshes its existing inventory query only when the snapshot is stale or the user explicitly requires the newest server-confirmed result. A language model may classify unclear wording; it never supplies a quantity, supplier, expiry date, medical recommendation, UI markup, or a database query.</p>
+      </div>
+
+      <div class="grid" style="margin-top:16px">
+        <article class="tile span-4">
+          <span class="tag">First product slice</span>
+          <h3>Text question → fixed overlay</h3>
+          <p>“How many hand gloves are left?” and “Where do we order them?” are answered from the inventory data already loaded for the active session. Missing supplier data is stated precisely; it is never guessed.</p>
+        </article>
+        <article class="tile span-4">
+          <span class="tag">Then</span>
+          <h3>Alba speaks a deterministic script</h3>
+          <p>Use the approved Piper <code>en_GB-alba-medium</code> voice through an isolated TTS provider. The visual card remains the primary record.</p>
+        </article>
+        <article class="tile span-4">
+          <span class="tag later">After validation</span>
+          <h3>Press-to-talk, never always-listening</h3>
+          <p>Speech is transcribed, shown for edit/confirmation, then treated exactly like typed text. “Close this overlay” is a local UI command, not an LLM request.</p>
+        </article>
+      </div>
+
+      <div class="warning critical" style="margin-top:16px">
+        <strong>Do not expose your own provider key to app users.</strong>
+        <p>A ChatGPT Free/Plus/Pro chat subscription must not be treated as a shared API allowance, and a permanent OpenAI or other provider key must never appear in a mobile build, client-side JavaScript, logs, screenshots, or a Settings field. The provider documentation explicitly says API keys are secrets and must be loaded on a server. Use a server-owned key with per-user budgets, or defer bring-your-own-key (BYOK) entirely.</p>
+      </div>
+    </section>
+
+    <section id="baseline">
+      <h2>What CareKosh already has—and what it does not</h2>
+      <p>CareKosh is unusually well positioned for this feature because its backend is the source of truth and the mobile app already keeps a read-only inventory snapshot for display. The assistant does not need RAG or a duplicate data store to discover stock; it needs narrow local tools over that active snapshot plus an honest freshness policy.</p>
+      <table>
+        <thead><tr><th>Available today</th><th>How the assistant will use it</th><th>Gap to plan for</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET /items?search=</code>, item detail, category filter</td><td>The existing <code>items</code> query already loads up to 999 items. A local adapter locates “hand gloves,” including safe disambiguation when multiple matches exist.</td><td>Alias/synonym table later; never let approximate matching silently choose the wrong item.</td></tr>
+          <tr><td><code>quantity</code>, <code>unit</code>, <code>minimum_stock</code>, <code>is_critical</code></td><td>Render the quantity, status, and urgency badge from the cached server snapshot.</td><td>None for the first answer card.</td></tr>
+          <tr><td><code>supplier_name</code>, <code>supplier_contact</code>, <code>purchase_link</code></td><td>Answer “where do we normally order?” only when the cached item field exists.</td><td>Supplier completion UX, not an AI problem.</td></tr>
+          <tr><td><code>GET /items/stats</code>, <code>/needs-attention</code></td><td>Compute low-stock and inventory-summary overlays from the loaded <code>items</code> snapshot; use a normal app refresh when it is not current enough.</td><td>Structured summary renderer.</td></tr>
+          <tr><td><code>expiry_date</code>, activity/audit history</td><td>Future expiry and stock-check views.</td><td>A purpose-built expiring-soon query; a dedicated physical-count timestamp for a real stock audit.</td></tr>
+          <tr><td>Item version compare-and-swap, audit log</td><td>Supports a future human-confirmed stock change.</td><td>All agent writes are deferred from the first release.</td></tr>
+        </tbody>
+      </table>
+      <div class="note">
+        <strong>Current repository fact</strong>
+        <p>There is no AI router, LLM configuration, provider adapter, voice dependency, TTS endpoint, STT module, mobile Ask screen, or microphone permission today. Android currently blocks <code>RECORD_AUDIO</code>. The relevant foundation already exists: TanStack Query retains a read-only inventory snapshot for 24 hours, marks it stale after 30 seconds, refreshes on app foreground/reconnect, and clears it across logout/login. The first AI work is new application code, not a switch waiting to be enabled.</p>
+      </div>
+    </section>
+
+    <section id="truth">
+      <h2>The architecture: a model understands; CareKosh answers</h2>
+      <p>The safest architecture makes an LLM optional and non-authoritative. It is also cache-first: the assistant reuses the same active inventory snapshot that powers the mobile screens, rather than creating a second database read for every spoken question. This makes normal answers fast, cheap, private, and easy to test.</p>
+      <div class="flow" aria-label="Cache-first voice inventory agent request flow">
+        <div class="flow-row">
+          <div class="flow-step"><b>1 · Mobile prompt</b>Typed question or press-to-talk transcript. Local UI commands run here.</div>
+          <span class="arrow">→</span>
+          <div class="flow-step"><b>2 · Intent layer</b>Deterministic matcher first; optional LLM returns one small, validated intent only.</div>
+          <span class="arrow">→</span>
+          <div class="flow-step"><b>3 · Cache adapter</b>Allow-listed local functions read the active <code>items</code> snapshot and its timestamp.</div>
+          <span class="arrow">→</span>
+          <div class="flow-step"><b>4 · Freshness + renderer</b>Refresh the existing query only when policy requires it; create a typed card and speech text from the snapshot.</div>
+          <span class="arrow">→</span>
+          <div class="flow-step"><b>5 · Reply</b>Mobile shows the fixed card with freshness state; optional Alba audio renders the same verified text.</div>
+        </div>
+      </div>
+
+      <h3>One concrete question, end to end</h3>
+      <p><b>User:</b> “What is the quantity of hand gloves left, and from where do we normally order them?”</p>
+      <ol>
+        <li>The app accepts typed text, or first shows the recognized transcript for correction.</li>
+        <li>A local parser identifies a composite request: <code>item_status</code> + <code>supplier_info</code>. If common rules cannot parse it, the optional LLM receives only the user’s question and returns that same small intent envelope—not inventory data or a tool call.</li>
+        <li>The mobile cache adapter matches only active items from the existing <code>queryKeys.items</code> snapshot. If two exact/approved aliases match, it asks the user to choose; it never silently guesses.</li>
+        <li>The freshness policy decides whether the snapshot can answer immediately or whether the app should run its normal, deduplicated inventory-query refresh. There is no assistant-specific database route or new “sync” endpoint.</li>
+        <li>A deterministic mobile renderer creates the overlay. If <code>supplier_name</code> is empty, it states <em>Supplier information is not recorded</em>, never an invented store.</li>
+        <li>The identical verified facts become a short speech script and are sent to the Alba TTS provider only if the user presses Speak or has explicitly enabled reply audio.</li>
+      </ol>
+
+      <h3>The fixed answer contract</h3>
+      <p>The mobile screen renders a known card type. The LLM never returns React Native layout, HTML, a stock number, a freshness claim, or a proposed medical action. The client owns the answer envelope; a remote intent service validates only its own tiny input/output contract.</p>
+      <pre>{
+  "answerType": "item_status_supplier",
+  "generatedAt": "2026-09-11T10:42:00Z",
+  "source": "react_query_inventory_snapshot",
+  "dataFreshness": {
+    "status": "fresh | refreshing | stale_offline | unavailable",
+    "lastServerConfirmedAt": "2026-09-11T10:41:44Z",
+    "refreshAttempted": false
+  },
+  "item": {
+    "id": "cached-item-id",
+    "name": "Hand Gloves",
+    "quantityText": "18 pairs",
+    "minimumText": "10 pairs",
+    "status": "ok",
+    "isCritical": false
+  },
+  "supplier": {
+    "name": null,
+    "contact": null,
+    "purchaseLink": null,
+    "availability": "not_recorded"
+  },
+  "displayTitle": "Hand Gloves",
+  "displayMessage": "18 pairs are in stock. Supplier information is not recorded.",
+  "speechText": "Hand gloves: 18 pairs are in stock. Supplier information is not recorded."
+}</pre>
+      <p class="mini">Other initial answer types: <code>low_stock_summary</code>, <code>inventory_summary</code>, <code>expiring_soon</code>, <code>ambiguous_item</code>, <code>item_not_found</code>, <code>missing_data</code>, and <code>overlay_closed</code>. Use a versioned TypeScript discriminated union for the mobile answer cards; use Pydantic only where the FastAPI intent/feedback boundary needs runtime validation.</p>
+
+      <div class="warning">
+        <strong>No RAG for live stock.</strong>
+        <p>Retrieval-augmented generation is useful later for user-authored notes, manuals, or policy documents. It is the wrong source for “how many gloves are left?” The active inventory snapshot is structured, user-scoped, and already present on the device. Start with cache tools; add RAG only after a real document-use case and permission boundary exist.</p>
+      </div>
+    </section>
+
+    <section id="cache">
+      <h2>Cache-first answers: fast without pretending stale data is live</h2>
+      <div class="decision">
+        <strong>Your proposed boundary is correct.</strong>
+        <p>The assistant should not hit the database whenever someone asks a question. CareKosh is not “serverless”—it has a FastAPI backend and database that remain authoritative—but the assistant can be client-cache-first because the app already loads the user’s inventory into TanStack Query. The cache is a read-only server snapshot, never a second source of truth and never a write queue.</p>
+      </div>
+      <table>
+        <thead><tr><th>Snapshot state</th><th>Assistant behavior</th><th>What the overlay / voice may say</th></tr></thead>
+        <tbody>
+          <tr><td><b>Fresh</b><br><span class="mini">At or below the existing 30-second freshness window.</span></td><td>Read the local <code>items</code> snapshot. No inventory network request is made for the question.</td><td>“18 pairs are in stock.” Footer: “Server snapshot confirmed at 10:42.”</td></tr>
+          <tr><td><b>Stale, online</b><br><span class="mini">Older than the window, while connectivity is available.</span></td><td>Render the cached answer immediately with a visible refreshing state, and start one normal, deduplicated refresh of the existing items query. Re-render the card if newer data arrives.</td><td>“Last confirmed at 10:41. Refreshing inventory…” Never label the old value “live.”</td></tr>
+          <tr><td><b>“Current / now / latest” asked while stale</b></td><td>Request the normal items-query refresh before claiming a latest result. If it fails or times out, retain the cached answer only with its timestamp and failure state.</td><td>“I could not refresh. Last server-confirmed quantity at 10:41 was 18 pairs.”</td></tr>
+          <tr><td><b>Offline or refresh failed</b></td><td>Use a retained snapshot only if one exists. Do not invent a refresh, make a database claim, or hide the age.</td><td>“Offline — last confirmed at 10:41: 18 pairs.”</td></tr>
+          <tr><td><b>No relevant snapshot</b></td><td>Ask the app to load the normal inventory query once. If unavailable, show a fixed unavailable card.</td><td>“Inventory is not available on this device yet. Please refresh and try again.”</td></tr>
+        </tbody>
+      </table>
+      <p><b>Terminology matters:</b> call this a <em>refresh</em>, not an assistant “sync request.” CareKosh already has a user-facing Refresh from Server recovery path, but normal assistant refreshes must not clear the whole query cache. They should use the same narrow <code>queryKeys.items</code> query function that screens use, preserving active UI and allowing TanStack Query to deduplicate in-flight work.</p>
+      <p><b>The only normal network events are:</b> the app’s existing initial/foreground/reconnect fetches; invalidation after a successful server mutation; an explicit user refresh; a stale question needing a newer result; and, only when rules cannot understand wording, a small remote intent call that does not query the inventory database. Fresh stock questions make none of these extra inventory calls.</p>
+      <div class="note">
+        <strong>Privacy and reliability benefit</strong>
+        <p>The optional remote LLM need see only the question the user chose to ask. It does not receive the cached inventory list, supplier contacts, notes, identifiers, tokens, or a database connection. If it is unavailable, local intent rules still cover the named first-release questions; the cache adapter and fixed renderer continue to work.</p>
+      </div>
+    </section>
+
+    <section id="voice">
+      <h2>Using the existing Iris “Alba” voice responsibly</h2>
+      <p>Read-only inspection of the supplied Iris DeskBuddy project confirms that the voice is not a cloud voice model. It is Piper’s British-English <code>en_GB-alba-medium</code> ONNX voice. Iris verifies the model before speaking and the installer pins its exact MD5:</p>
+      <pre>Voice:      en_GB-alba-medium
+Language:   en_GB (British English)
+Quality:    medium · 22,050 Hz
+Model file: 63,201,294 bytes
+MD5:        c07f313752bb3aba8061041666251654</pre>
+      <p>The hash exactly matches the published Piper voice manifest. The voice model card lists an MIT model repository license and a CC BY 4.0 source dataset, so a redistribution/attribution record is required. The maintained Piper runtime used by Iris, however, is GPL-3.0. This is a separate runtime-license question; do not package the current runtime into the Play app or copy a binary between products until the distribution approach has had a focused OSS-license review.</p>
+
+      <table>
+        <thead><tr><th>Option</th><th>Use in CareKosh</th><th>Recommendation</th></tr></thead>
+        <tbody>
+          <tr><td><b>Piper Alba in a dedicated TTS service</b></td><td>The backend sends only the deterministic <code>speechText</code>; the service returns audio for playback.</td><td><b>Recommended for the Alba-branded experience.</b> Keep it a separate, authenticated worker or a validated home gateway—not inside the existing small API process. Record source, hash, license notices, and attribution.</td></tr>
+          <tr><td><b>Piper compiled into the mobile binary</b></td><td>Offline voice on every phone.</td><td>Not first. It creates native Android/iOS work, increases app size, and makes GPL/distribution analysis more important.</td></tr>
+          <tr><td><b><code>expo-speech</code></b></td><td>Uses a device voice; does not reproduce Alba.</td><td>A simple accessibility fallback or prototype path. It is not the requested voice identity.</td></tr>
+          <tr><td><b>OpenAI TTS / Realtime voice</b></td><td>Natural hosted speech, separate voice choice.</td><td>Optional paid alternative only. It replaces Alba rather than using it, adds an external processor, and should not be the first dependency.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <strong>Speaking and listening are different systems.</strong>
+        <p>Alba is TTS: it speaks validated text. It does not hear, transcribe, understand, search stock, or control an overlay. The Iris project’s Vosk <code>vosk-model-small-en-in-0.4</code> is a separate, closed-grammar listener intended for a few safety-limited commands. Its published result for Indian English is not appropriate as the only recognizer for open inventory questions with arbitrary product and supplier names.</p>
+      </div>
+
+      <h3>Voice settings that communicate the truth</h3>
+      <table>
+        <thead><tr><th>Control</th><th>Default</th><th>Behavior</th></tr></thead>
+        <tbody>
+          <tr><td>Enable assistant</td><td>Off until server capability is enabled</td><td>Shows or hides Ask CareKosh. A server-side kill switch remains authoritative.</td></tr>
+          <tr><td>Voice replies</td><td>Off</td><td>Allows an explicit Speak button and optional chosen reply playback. Never auto-speaks sensitive inventory in a shared room by default.</td></tr>
+          <tr><td>Voice: Alba</td><td>Selected only when the validated provider is available</td><td>Shows “Alba — British English, synthetic voice” plus a Test voice action and a captions-only fallback.</td></tr>
+          <tr><td>Microphone / voice input</td><td>Off</td><td>Separate consent screen, OS permission request, press-to-talk only, visible transcript, Send/Edit/Cancel gate.</td></tr>
+          <tr><td>Stop speaking</td><td>Always available</td><td>Immediately stops local audio playback. It is local UI behavior, not an AI command.</td></tr>
+        </tbody>
+      </table>
+      <p>“Close this overlay,” “stop speaking,” “cancel,” and “show the previous result” are local, allow-listed commands. They bypass LLMs and network calls. A close command should be honored only after the user explicitly presses Talk and sends a transcript; CareKosh must not run a wake word or continuously listen.</p>
+    </section>
+
+    <section id="models">
+      <h2>Understanding, transcription, and LLM choices</h2>
+      <h3>The primary recommendation: tool-first, hosted text model optional</h3>
+      <p>For the first production assistant, implement a deterministic parser for the common intents, then use one server-held text LLM only to return an allow-listed intent object when wording is ambiguous. The remote request contains the user’s question and a constrained intent schema—not a tool schema that can reach inventory. It does not receive the cached item list, notes, supplier contacts, user identifiers, tokens, or database rows. The small <code>POST /ai/interpret</code> endpoint is an intent proxy only; it does not open an inventory database session.</p>
+
+      <pre>{
+  "intent": "item_status | supplier_info | low_stock | inventory_summary | close_overlay | unknown",
+  "itemQuery": "hand gloves",
+  "requestedFields": ["quantity", "supplier"],
+  "confidence": "high | needs_disambiguation"
+}</pre>
+
+      <table>
+        <thead><tr><th>Path</th><th>Best role</th><th>Practical verdict</th></tr></thead>
+        <tbody>
+          <tr><td><b>Server-owned hosted text LLM</b></td><td>Parse unusual English/Hinglish wording into the small intent envelope.</td><td><b>Recommended initial LLM path.</b> It is operationally simpler than self-hosting and can be disabled without affecting deterministic cache answers. Choose the provider only after current data-use terms, regional requirements, quota, and cost controls are accepted.</td></tr>
+          <tr><td><b>Qwen3-4B-Instruct, local</b></td><td>Offline/private NLU experiment through <code>llama.cpp</code> or Ollama on a suitable machine.</td><td>Good candidate to benchmark: its published model card is Apache-2.0. It does <em>not</em> fit the current Render starter deployment as a reliable production service. Treat it as a private gateway or developer/demo option and measure real tool-selection accuracy.</td></tr>
+          <tr><td><b>OpenAI Realtime</b></td><td>Premium low-latency speech-to-speech conversations.</td><td>Technically capable of native audio input/output over WebRTC/WebSocket/SIP, but it is paid, uses its own voices, and makes the model too central to the first safety-critical path. Consider only after the tool-first system is proven.</td></tr>
+          <tr><td><b>OpenAI audio/TTS</b></td><td>Hosted speech alternative.</td><td>It offers supported TTS models and built-in/custom voice references, but it does not make the Iris Alba voice portable. Use only after a separate cost/privacy decision.</td></tr>
+          <tr><td><b>“Free” hosted inference endpoints</b></td><td>Prototype experiments.</td><td>Do not make them the medical-inventory production dependency. Quotas, terms, model availability, and data processing can change. The fallback must always be the deterministic renderer.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Speech-to-text options</h3>
+      <table>
+        <thead><tr><th>Option</th><th>Strength</th><th>Limitation / decision</th></tr></thead>
+        <tbody>
+          <tr><td><b>Platform STT through a maintained Expo-compatible native module</b></td><td>Fastest press-to-talk pilot.</td><td>Requires a development/production build, microphone permission, and a transparent privacy review because transcription may use the operating system’s network service. Always display the transcript.</td></tr>
+          <tr><td><b>Whisper / faster-whisper / whisper.cpp, self-hosted</b></td><td>Multilingual recognition with no per-minute API bill after hardware.</td><td><b>Best privacy-oriented future option.</b> Whisper code and model weights are MIT, but run it on a separate capable machine/service, not the current API process. Measure Hindi/English and medicine-name errors on consented test phrases.</td></tr>
+          <tr><td><b>Vosk small Indian English</b></td><td>Small, Apache-2.0, offline, dynamic grammar.</td><td>Use only for a closed grammar such as “stop,” “close,” or “again.” Its published accuracy is not enough to trust open-ended stock queries without transcript confirmation.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="warning">
+        <strong>No Kaggle dataset is needed to answer a user’s current stock.</strong>
+        <p>External datasets cannot know a family’s current item quantity or supplier. Do not fine-tune an LLM for this requirement. Instead build a versioned, consent-safe evaluation set of 75–100 synthetic or de-identified English/Hinglish utterances: item status, low-stock summary, supplier lookup, missing data, ambiguous names, refusal, UI commands, and all five freshness states. The existing client snapshot is the read source; its server-confirmed timestamp makes the answer honest.</p>
+      </div>
+
+      <h3>API keys and BYOK: the safe policy</h3>
+      <table>
+        <thead><tr><th>Proposal</th><th>Decision</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Put CareKosh’s provider API key in the mobile app</td><td><b>Never</b></td><td>Anyone can extract it, spend against it, and impersonate the service. Provider documentation explicitly forbids exposing API secrets in client code.</td></tr>
+          <tr><td>Let all users share the founder’s API key</td><td><b>Never</b></td><td>It has the same breach problem plus uncontrolled spend and no fair per-user usage boundary.</td></tr>
+          <tr><td>Server-held service key + per-user budgets</td><td><b>Recommended</b></td><td>Keep the secret only in the deployment’s secret manager; enforce authenticated daily provider-request budgets, concurrency caps, global spend ceiling, timeouts, and auditable redacted metrics.</td></tr>
+          <tr><td>User enters OpenAI/Claude/etc. key in Settings</td><td>Defer from v1</td><td>It adds secret custody, provider-specific terms, recovery, billing confusion, encrypted storage, and support burden. It does not improve correct stock retrieval.</td></tr>
+          <tr><td>Future BYOK experiment</td><td>Only with a separate threat model</td><td>Keep a key in memory for one session at most; never send it to the CareKosh backend or logs; do not promise cross-provider compatibility; require the user to obtain/bear cost for their own key. Do not use this to evade a provider’s client-key rules.</td></tr>
+        </tbody>
+      </table>
+      <p>For OpenAI specifically, ChatGPT product access and API access must be treated as separate services. Configure API usage and billing at the API organization/project level; do not claim that a free chat plan gives application API calls. If Realtime is ever used in a client environment, the app must receive a short-lived session credential minted by the server—not the server’s long-lived project key.</p>
+    </section>
+
+    <section id="local">
+      <h2>Local model architecture: feasible, but not on the current API host</h2>
+      <p>CareKosh’s Render service is a small server-first API connected to Neon. It should continue to serve requests and database transactions, not hold a local LLM, Whisper, or Piper synthesizer. One slow model turn must never hold the inventory database session or make standard stock updates slow.</p>
+      <div class="grid">
+        <article class="tile span-6">
+          <span class="tag">Good local use</span>
+          <h3>Developer/demo or an opted-in household gateway</h3>
+          <p>Run <code>llama.cpp</code>/Ollama with a benchmarked Qwen model, plus optional Whisper/Piper, on a Mac, Linux mini-PC, or dedicated household node. CareKosh calls it only through a protected adapter with a strict allowlist, private-network/TLS authentication, health checks, short timeouts, and a deterministic fallback.</p>
+        </article>
+        <article class="tile span-6">
+          <span class="tag no">Do not do this</span>
+          <h3>Expose Ollama or llama.cpp to the public internet</h3>
+          <p>An unauthenticated local inference port is not a production integration. Do not put a home IP, tunnel token, or local-model URL in the mobile client. A public API must authenticate CareKosh users and the server must own the provider connection.</p>
+        </article>
+      </div>
+      <p>Use the Iris architecture as an engineering pattern, not as a literal dependency: it already shows an OpenAI-compatible local adapter, bounded output JSON, a semaphore, health check, timeout, and cancellation. Those concepts can become a small CareKosh <code>AiProvider</code> interface with three implementations: <code>deterministic</code>, <code>hosted_text</code>, and <code>local_gateway</code>.</p>
+      <div class="note">
+        <strong>Local acceptance gate</strong>
+        <p>A model is admitted only after a repeatable benchmark reports tool-selection accuracy on the golden set, p50/p95 latency, timeout behavior, memory/cost, transcript quality for target language, and clean fallback behavior. “It responded once on my laptop” is not an admission criterion.</p>
+      </div>
+    </section>
+
+    <section id="phases">
+      <h2>Phased implementation plan</h2>
+      <table>
+        <thead><tr><th>Phase</th><th>Outcome</th><th>What ships</th><th>Explicitly excluded</th></tr></thead>
+        <tbody>
+          <tr><td><b>0 · Design &amp; gates</b></td><td>Safe foundation before any visible AI</td><td>ADR for cache-first freshness policy and provider/license choice; Alba model provenance + attribution review; threat model; 75–100-case golden set; fixed answer schemas; user research on stock wording.</td><td>Provider key, microphone, AI screen, data migration.</td></tr>
+          <tr><td><b>1 · Cache truth engine</b></td><td>Typed text assistant works without an LLM or an assistant database route</td><td>Local cache adapter over <code>queryKeys.items</code>; local command parser; freshness badges and targeted query refresh; fixed overlays for item status, supplier, low stock, summary, missing data; session-isolation tests; feature kill switch.</td><td>Writes, audio, RAG, WhatsApp, user API keys, a <code>/ai/turn</code> database endpoint.</td></tr>
+          <tr><td><b>2 · Controlled LLM assist</b></td><td>Natural questions improve without changing facts</td><td>One <code>/ai/interpret</code> provider adapter that accepts question text and returns strict intent only; timeout/budget/fallback; PII allowlist; redacted metrics; live-model evaluation run.</td><td>LLM-authored quantities, inventory database calls, direct model chat, automatic provider failover maze.</td></tr>
+          <tr><td><b>3 · Alba voice output</b></td><td>Agent speaks the verified card</td><td>Dedicated Piper Alba TTS adapter; audio playback; Settings controls; Test voice; Stop; captions fallback; no auto-play by default.</td><td>Microphone, wake word, packaging Piper into the app without license sign-off.</td></tr>
+          <tr><td><b>4 · Press-to-talk</b></td><td>Voice input becomes a convenience layer</td><td>Prominent disclosure; Android/iOS permission; Talk button; STT provider; transcript Send/Edit/Cancel; close/stop local commands; Data Safety/privacy policy update.</td><td>Always-on listening and AI stock updates.</td></tr>
+          <tr><td><b>5 · Proven extensions</b></td><td>Useful depth after real use</td><td>Expiry alert views, optional semantic aliases, private local-gateway evaluation, MCP read-only demo, later document RAG.</td><td>Forecasting without enough history; unbounded multi-agent workflows.</td></tr>
+          <tr><td><b>6 · Human-confirmed actions</b></td><td>Only if users need it and the prior phases pass</td><td>Propose—not execute—stock deltas; show before/after; read current version; explicit confirmation; use existing version-CAS endpoint; audit record.</td><td>Silent updates, model-selected absolute quantities, medical advice.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Phase 1 backlog, in the correct order</h3>
+      <ol class="check">
+        <li>Define the mobile answer-card discriminated union, cache-freshness contract, and renderer catalogue before selecting any LLM. Define Pydantic contracts only for the later intent/feedback API boundaries.</li>
+        <li>Write the golden and adversarial test sets first: vague questions, exact names, duplicate names, Hinglish, missing suppliers, injection attempts in item names, five freshness states, logout/login cache clearing, and “close overlay.”</li>
+        <li>Implement cache tools as pure TypeScript functions over the existing item snapshot and query metadata. Test that a fresh question makes <em>zero</em> inventory network calls and that no snapshot can cross an account boundary.</li>
+        <li>Add one narrow refresh coordinator for the existing <code>queryKeys.items</code> query. Test stale-online, stale-offline, failed-refresh, deduplication, and re-render-on-refresh; never call the destructive recovery <code>qc.clear()</code> path for a normal question.</li>
+        <li>Build deterministic response and speech renderers. Test that every displayed/spoken quantity is a field from the cache adapter result and every freshness claim uses query metadata.</li>
+        <li>Add capability/kill-switch data and <code>/api/v1/ai/feedback</code>; update the repository’s exact API-route-count gate in the same pull request if that server endpoint ships.</li>
+        <li>Only then add <code>/api/v1/ai/interpret</code> behind timeout, per-user budget, global ceiling, structured validation, one retry at most, and deterministic fallback. It must not query inventory data.</li>
+      </ol>
+    </section>
+
+    <section id="overlay">
+      <h2>Overlay UX: fixed, readable, and honest</h2>
+      <p>The interface should feel calm rather than like a chat transcript. The answer panel opens over the active screen, respects the existing light/dark theme, remains accessible, and always displays the exact item/data source and generation time.</p>
+      <div class="grid">
+        <article class="tile span-8">
+          <h3>Item status overlay</h3>
+          <p><b>Header:</b> Hand Gloves · <span style="color:var(--sage)">In stock</span><br>
+          <b>Primary number:</b> 18 pairs<br>
+          <b>Threshold:</b> Minimum 10 pairs<br>
+          <b>Supplier:</b> No supplier information recorded<br>
+          <b>Footer:</b> Server snapshot confirmed at 10:42 · Speak · Close · Report AI response</p>
+        </article>
+        <article class="tile span-4">
+          <h3>Typography rules</h3>
+          <p>Primary quantity: 32–40 sp. Item title: 20–24 sp. Labels/body: at least 16 sp. Do not encode criticality with color alone; include text and an icon/shape.</p>
+        </article>
+        <article class="tile span-6">
+          <h3>Low-stock summary</h3>
+          <p>Count first, then rows sorted by out-of-stock, criticality, and item name. Critical supplies get a textual “Critical” label. The voice gives a short summary and invites the user to open the list.</p>
+        </article>
+        <article class="tile span-6">
+          <h3>Ambiguity</h3>
+          <p>“I found two items: Nitrile Hand Gloves and Sterile Hand Gloves. Which one do you mean?” Show selection buttons. Never pick based solely on fuzzy similarity.</p>
+        </article>
+      </div>
+      <div class="warning" style="margin-top:16px">
+        <strong>Do not let speech be the only response.</strong>
+        <p>Audio may be inaudible, interrupted, inappropriate in a shared room, or misunderstood. The readable, fixed-format visual overlay is the authoritative response; audio is an optional rendering of it.</p>
+      </div>
+    </section>
+
+    <section id="safety">
+      <h2>Production, privacy, and Play Store requirements</h2>
+      <table>
+        <thead><tr><th>Risk</th><th>Control</th></tr></thead>
+        <tbody>
+          <tr><td>Hallucinated quantity, supplier, or freshness</td><td>LLM cannot author data. The overlay and speech string are rendered from typed cache-adapter output; freshness is derived from query metadata, not model wording.</td></tr>
+          <tr><td>Wrong person’s inventory</td><td>Assistant reads only the active session’s existing query cache. Preserve the repository’s clear-on-logout/login behavior and test shared-device account switching. Normal server fetches remain authenticated.</td></tr>
+          <tr><td>Mic hears private surroundings</td><td>Off by default, press-to-talk, clear disclosure, minimal retention, transcript gate, no wake word, and a Settings revocation path.</td></tr>
+          <tr><td>Third-party data exposure</td><td>Send only the user’s selected question to the LLM intent service and only the deterministic speech string to TTS. Do not send cached inventory lists, email, identifiers, supplier contact, notes, purchase link, JWT, or whole history. Re-check processor terms before launch.</td></tr>
+          <tr><td>Prompt injection or unsafe tool selection</td><td>Keep commands and cache tools allow-listed; validate the intent enum and fields; treat item names as data; never let model output choose executable code, an endpoint, or a database query.</td></tr>
+          <tr><td>Provider outage or cost spike</td><td>Per-user and global budgets, short timeout, concurrency cap, circuit breaker, and deterministic response path. Never block normal inventory routes on an LLM call.</td></tr>
+          <tr><td>Unsafe medical advice</td><td>Scope to inventory facts only. Refuse diagnosis, dosage, suitability, or emergency-care questions with a fixed, tested message.</td></tr>
+          <tr><td>AI policy non-compliance</td><td>Show an AI label and visible Report control on each AI-assisted response; add <code>/ai/feedback</code>, Data Safety updates for chat/audio where applicable, privacy policy changes, and re-review health-app declarations.</td></tr>
+        </tbody>
+      </table>
+      <details>
+        <summary>Why “gigantic AI application” is not the first milestone</summary>
+        <div><p>The strongest portfolio architecture is narrow and reliable: a data-bound assistant with typed tools, model isolation, audio consent, evaluable behavior, cost controls, and evidence of safe failure. RAG, autonomous writes, WhatsApp, image extraction, forecasting, multi-agent choreography, and local-model hosting are independent projects. Adding them before the core is measured turns a good agent story into an untestable collection of integrations.</p></div>
+      </details>
+      <details>
+        <summary>What evidence makes this a serious job portfolio feature</summary>
+        <div><p>Publish an architecture decision record for cache freshness, provider choice, and Piper licensing; a threat model; anonymized intent/cache-tool golden-set results; shared-device isolation tests; latency/fallback/cost dashboards; an honest limitations section; and a short demo that shows a question, local cache tool, typed response, Alba playback, and a stale/offline fallback. That demonstrates FastAPI, typed agent/tool design, evaluation, LLMOps, mobile privacy, and incident-minded engineering without overstating what the model does.</p></div>
+      </details>
+    </section>
+
+    <section id="learning">
+      <h2>Focused learning and test path</h2>
+      <p>This feature is a strong portfolio project precisely because it combines mobile state, bounded AI, typed server boundaries, evaluation, and privacy. Study only what directly improves those decisions; do not begin with a generic “agent framework” tutorial.</p>
+      <table>
+        <thead><tr><th>Learn / use</th><th>Why it belongs in this build</th><th>Concrete outcome</th></tr></thead>
+        <tbody>
+          <tr><td><a href="https://tanstack.com/query/v4/docs/framework/react/guides/important-defaults">TanStack Query: Important Defaults</a></td><td>It explains stale data and automatic refresh on mount, focus, and reconnect—the exact behavior the assistant must describe honestly.</td><td>One documented freshness policy and automated cache-state tests.</td></tr>
+          <tr><td><a href="https://fastapi.tiangolo.com/tutorial/response-model/">FastAPI response models</a> and <a href="https://fastapi.tiangolo.com/tutorial/security/">security guide</a></td><td>Needed only for the small intent and feedback boundaries, not for inventory retrieval.</td><td>Separate Pydantic input/output models, authenticated endpoints, and no accidental data fields in responses.</td></tr>
+          <tr><td><a href="https://developers.openai.com/api/docs/guides/function-calling">OpenAI function calling</a> and <a href="https://developers.openai.com/api/docs/guides/evals">evaluation guidance</a></td><td>Useful patterns for strict structured intent and a repeatable test harness. In this design, functions remain local allow-listed cache operations, not model-authorized backend access.</td><td>Intent-schema pass rate, ambiguity rate, refusal correctness, and freshness-rendering test results for every release.</td></tr>
+          <tr><td><a href="https://genai.owasp.org/llm-top-10/">OWASP Top 10 for LLM/GenAI applications</a></td><td>Grounds the threat model in prompt injection, sensitive-data disclosure, output handling, excessive agency, misinformation, and unbounded consumption.</td><td>Controls mapped to each risk before a provider key or microphone is released.</td></tr>
+          <tr><td><a href="https://www.oreilly.com/library/view/ai-engineering/9781098166298/">AI Engineering</a> by Chip Huyen; <a href="https://www.oreilly.com/library/view/designing-machine-learning/9781098107956/">Designing Machine Learning Systems</a> by Chip Huyen</td><td>Both build the production mindset behind evaluation, latency, monitoring, data boundaries, and maintenance—not just prompting.</td><td>An ADR, golden set, latency/cost dashboard, failure-mode tests, and an evidence-backed demo.</td></tr>
+        </tbody>
+      </table>
+      <div class="note">
+        <strong>Minimum acceptance suite for Phase 1</strong>
+        <p>Test the deterministic parser, exact/ambiguous item matching, every fixed card, cache freshness states, refresh deduplication, offline fallbacks, account switching, closing/stopping commands, and proof that a fresh question generates no inventory HTTP request. Phase 2 adds intent-schema validation, prompt-injection cases, provider timeout/cost caps, and a deterministic fallback. A model is not “working” until it passes this suite on a versioned golden set.</p>
+      </div>
+    </section>
+
+    <section id="decision">
+      <h2>The decisions to make before implementation</h2>
+      <ol>
+        <li><b>Alba distribution:</b> Is CareKosh allowed to use the existing model file, and has the team accepted the required attribution plus the Piper runtime distribution obligations? If uncertain, do a short OSS/legal review before shipping audio.</li>
+        <li><b>Voice hosting:</b> Choose a dedicated, authenticated Alba TTS service versus a later on-device native integration. Do not place it inside the current API process by default.</li>
+        <li><b>Initial LLM provider:</b> Select one server-owned provider only after reading the current data-use terms and setting a small project budget. Its only first-release role is text-to-intent; it receives no inventory snapshot. The product works deterministically when that provider is disabled.</li>
+        <li><b>Voice input privacy:</b> Decide whether the first STT trial can use a platform service or must wait for self-hosted Whisper. Either path has a transcript-confirmation gate.</li>
+        <li><b>Launch timing:</b> Ship this after the current Play launch cycle, in a separate build/review cycle. Do not mix a novel microphone/AI surface into the production-access submission.</li>
+      </ol>
+      <div class="decision">
+        <strong>Recommended decision set</strong>
+        <p>Start with Phase 1 deterministic text overlays from the existing mobile inventory snapshot, with an explicit freshness badge and targeted normal-query refresh only when necessary. Add a single server-owned text LLM only as structured text-to-intent fallback, with no inventory data. Deploy Alba as a separately validated TTS provider after license review. Add press-to-talk only after the text assistant, audio output, feedback control, Data Safety update, and transcript UX have passed testing. Keep BYOK, local LLMs, RAG, and AI stock updates outside the first public release.</p>
+      </div>
+    </section>
+
+    <section id="sources">
+      <h2>Sources and verification notes</h2>
+      <p>External facts are time-sensitive. Re-check provider terms, quotas, model catalogues, and Play requirements in the week implementation begins. Repository facts below were inspected directly in the CareKosh and supplied Iris DeskBuddy folders on 11 September 2026.</p>
+      <ol class="source-list">
+        <li>OpenAI, <a href="https://platform.openai.com/docs/api-reference/realtime?lang=javascript">Realtime API reference</a> — native real-time audio interfaces, voice configuration, and session behavior.</li>
+        <li>OpenAI, <a href="https://developers.openai.com/api/docs/models/gpt-realtime">GPT-Realtime model documentation</a> — current capabilities and pricing reference; verify before choosing it.</li>
+        <li>OpenAI, <a href="https://platform.openai.com/docs/api-reference/backward-compatibility?lang=ruby">API authentication documentation</a> — API keys are secrets and must not be exposed in client-side code.</li>
+        <li>OpenAI, <a href="https://platform.openai.com/docs/models/default-usage-policies-by-endpoint">API data controls</a> — endpoint retention/data-control reference.</li>
+        <li>Rhasspy/Piper Voices, <a href="https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_GB/alba/medium/MODEL_CARD">Alba model card</a> and <a href="https://huggingface.co/rhasspy/piper-voices/blob/217ddc79818708b078d0d14a8fae9608b9d77141/voices.json">voice manifest</a> — language, sample rate, dataset license, exact model hash and file size.</li>
+        <li>Open Home Foundation, <a href="https://github.com/OHF-Voice/piper1-gpl">Piper runtime repository</a> — current GPL-3.0 runtime license. This guide is not legal advice.</li>
+        <li>Vosk, <a href="https://alphacephei.com/vosk/models">model catalogue</a> — Indian-English small model size, published error rate, dynamic grammar, and Apache-2.0 listing.</li>
+        <li>OpenAI, <a href="https://github.com/openai/whisper">Whisper repository</a> — multilingual speech-recognition role and MIT code/model-weight license.</li>
+        <li>Qwen, <a href="https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507">Qwen3-4B-Instruct-2507 model card</a> — local-model candidate and Apache-2.0 license.</li>
+        <li>Expo, <a href="https://docs.expo.dev/versions/latest/sdk/speech/">Speech documentation</a> and <a href="https://docs.expo.dev/guides/permissions/">permissions guide</a> — mobile TTS and native build-time permission behavior.</li>
+        <li>Google Play, <a href="https://support.google.com/googleplay/android-developer/answer/14094294?hl=en">AI-Generated Content policy</a> and <a href="https://support.google.com/googleplay/android-developer/answer/10787469?hl=en">Data Safety guidance</a> — AI reporting/flagging and voice-recording declaration considerations.</li>
+        <li>TanStack Query, <a href="https://tanstack.com/query/v4/docs/framework/react/guides/important-defaults">Important Defaults</a> — <code>staleTime</code> and background refetch behavior used as the basis for the cache-first policy.</li>
+        <li>FastAPI, <a href="https://fastapi.tiangolo.com/tutorial/response-model/">response-model guide</a> and <a href="https://fastapi.tiangolo.com/tutorial/security/">security guide</a> — typed and filtered API-boundary design for the later intent/feedback endpoints.</li>
+        <li>OpenAI, <a href="https://developers.openai.com/api/docs/guides/function-calling">function-calling guide</a> and <a href="https://developers.openai.com/api/docs/guides/evals">evaluation guide</a> — structured-output and evaluation patterns; no provider-specific model is required by this plan.</li>
+        <li>OWASP, <a href="https://genai.owasp.org/llm-top-10/">Top 10 for LLM and GenAI applications</a> — security-threat reference for the bounded-agent controls.</li>
+        <li>Chip Huyen, <a href="https://www.oreilly.com/library/view/ai-engineering/9781098166298/">AI Engineering</a> and <a href="https://www.oreilly.com/library/view/designing-machine-learning/9781098107956/">Designing Machine Learning Systems</a> — production/evaluation learning references.</li>
+        <li>CareKosh repository: <code>vitaltrack-backend/app/api/v1/items.py</code>, <code>app/schemas/item.py</code>, <code>app/models/item.py</code>, <code>render.yaml</code>, <code>vitaltrack-mobile/app.json</code>, <code>vitaltrack-mobile/providers/QueryProvider.tsx</code>, <code>vitaltrack-mobile/hooks/useServerData.ts</code>, <code>vitaltrack-mobile/hooks/useForceSync.ts</code>, and <code>future_plan/first_agentic_integration.html</code>.</li>
+        <li>Supplied Iris DeskBuddy repository: <code>gateway/iris_gateway/audio/tts.py</code>, <code>scripts/install_voice.sh</code>, <code>gateway/iris_gateway/providers/local_llama.py</code>, and <code>gateway/iris_gateway/vision/tuning.py</code>.</li>
+      </ol>
+    </section>
+
+    <footer>
+      CareKosh voice inventory agent decision guide · Warm, self-contained HTML planning artifact · No source code or production configuration was changed while preparing this guide.
+    </footer>
+  </main>
+</body>
+</html>

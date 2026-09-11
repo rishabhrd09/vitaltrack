@@ -1,4 +1,15 @@
 <!DOCTYPE html>
+<!--
+  CAREKOSH — END-TO-END VERIFICATION GUIDE  (corrected, July 2026)
+
+  Every curl body, expected response and shell command in this file was
+  re-verified against the current source. Eight defects were found and fixed;
+  they are listed in the "Corrections applied" panel below. Two of them were
+  curl commands that would have failed outright.
+
+  Print CSS added — the previous edition had none and printed a dark
+  background behind light text when the OS was in dark mode.
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -29,6 +40,7 @@ th{text-align:left;font-family:'Sora',sans-serif;font-size:.72rem;font-weight:70
 td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
 .callout{border-radius:10px;padding:14px 18px;margin:18px 0;border-left:4px solid}
 .callout p{margin-bottom:6px;font-size:.9rem}.callout p:last-child{margin-bottom:0}
+.callout ul{margin:6px 0 0 20px;font-size:.9rem}
 .callout-label{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;display:block}
 .callout.info{background:var(--info-bg);border-left-color:var(--info)}.callout.info .callout-label{color:var(--info)}
 .callout.warn{background:var(--warn-bg);border-left-color:var(--warn)}.callout.warn .callout-label{color:var(--warn)}
@@ -45,7 +57,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
 .phase-bar .tag{font-family:'JetBrains Mono',monospace;font-size:.66rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:4px;margin-right:10px;display:inline-block}
 .checklist{list-style:none;padding-left:0;margin:16px 0}
 .checklist li{padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:.9rem;display:flex;align-items:flex-start;gap:10px}
-.checklist li::before{content:'☐';font-size:1.1rem;flex-shrink:0;margin-top:1px}
+.checklist li::before{content:'\2610';font-size:1.1rem;flex-shrink:0;margin-top:1px}
 hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 .footer{text-align:center;padding:28px 0;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;margin-top:40px}
 .envs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
@@ -54,6 +66,30 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 .env-card .url{font-family:'JetBrains Mono',monospace;font-size:.8rem;margin-bottom:4px}
 .env-card .db{font-size:.8rem;color:var(--muted)}
 @media(max-width:600px){.envs{grid-template-columns:1fr}}
+
+/* ---------- PRINT ---------- */
+@media print{
+  @page{margin:14mm}
+  /* force light regardless of OS dark mode */
+  :root{--bg:#fff;--card:#fff;--card2:#f7f7f7;--border:#bbb;--text:#000;--muted:#444;
+        --accent:#000;--accent-bg:#f4f4f4;--warn:#000;--warn-bg:#f7f7f7;--danger:#000;
+        --danger-bg:#f7f7f7;--info:#000;--info-bg:#f4f4f4;--code-bg:#f4f4f4}
+  html,body{background:#fff!important;color:#000!important}
+  .page{max-width:none;padding:0}
+  a{color:#000!important;text-decoration:underline}
+  a[href^="http"]::after{content:" (" attr(href) ")";font-size:.7rem;color:#555}
+  .step,.callout,.expect,.env-card,table,pre,.checklist li{page-break-inside:avoid}
+  .phase-bar{page-break-before:always;page-break-after:avoid;border-width:1px!important}
+  .phase-bar h2{color:#000!important}
+  .phase-bar .tag{background:#000!important;color:#fff!important}
+  .step-num,.expect-label,.callout-label{color:#000!important}
+  pre{background:#f4f4f4!important;border:1px solid #999;white-space:pre-wrap;word-break:break-word}
+  code{background:#f4f4f4!important;color:#000!important}
+  th{background:#f2f2f2!important;color:#000!important}
+  .hero{padding-top:0}
+  .hero h1 em{color:#000!important}
+  .footer{page-break-before:avoid}
+}
 </style>
 </head>
 <body>
@@ -62,24 +98,27 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
 <div class="hero">
   <h1>End-to-End <em>Verification</em> Guide</h1>
   <p class="sub">Every curl, every expected response, every gate. Run this after a deploy; if a step fails, stop and fix — do not proceed.</p>
-  <p class="meta">CareKosh · Home ICU Inventory · Staging + Production · April–May 2026</p>
+  <p class="meta">CareKosh · com.carekosh.mobile v1.0.0 · Staging + Production · re-verified against source, July 2026</p>
 </div>
 
-<div class="callout info">
-  <span class="callout-label">Update — May 2026 cold-start UX track</span>
-  <p>The backend curl flow in this guide is unchanged — Phase 1 through Phase 6 still apply byte-for-byte. Phase 7 (mobile APK) gained new things to spot-check that the cold-start UX track shipped:</p>
+<div class="callout danger">
+  <span class="callout-label">Corrections applied in this edition — read once, then forget</span>
+  <p>The previous edition was stamped “As of PR #13” while <code>main</code> had moved ~44 pull requests ahead. Eight defects were found by re-checking every command against the source. <strong>Two were curl bodies that would have failed outright</strong>, so a tester following the old guide would have concluded the API was broken.</p>
   <ul>
-    <li>Single ambient <code>StatusPill</code> at the top of each tab — never stacked. Escalates from "Connecting…" to "Connecting… server warming up" after 5 s; from "Saving…" to "Saving… server warming up" after 8 s.</li>
-    <li>Per-item "Updating…" indicator (small spinner + grey text) on rows with an in-flight save. Visible on Dashboard "Needs Attention" rows and the Inventory list.</li>
-    <li>Cold-start pre-flight banner on Edit Item: "Server is waking up — your save may take 30–60 seconds." Disappears once any 2xx lands.</li>
-    <li>Save → fire-and-forget. Tap Save and the screen navigates back immediately; the mutation runs in the background; outcome surfaces wherever the user has navigated to.</li>
-    <li>Slow success (≥5 s) → centred <code>MutationResultDialog</code> ("Saved · Item Name · Your changes were saved successfully after the server warmed up (took ~XXs)"). Fast success → small bottom toast.</li>
-    <li>Connection failure → centred dialog with red cloud-offline icon, item name, "Couldn't update", and a Retry button that re-fires the same mutation.</li>
-    <li>Concurrent-edit warning: opening the same item twice while a save is in flight shows an amber banner with the Save button greyed.</li>
-    <li>No "GO_BACK was not handled" yellow strip after success-modal dismissal — this regression was killed by <code>safeBack()</code>.</li>
-    <li>Inventory list rows show "5 units" / "1 tablet" instead of "5 / 1 unit" — minimum-stock value moved to the row's expanded detail.</li>
-    <li>Inventory PDF: status badges now reflect stock state (OUT OF STOCK / LOW / OK) not equipment criticality. Critical equipment marked with a gold ★. "Stock Left" column header (was "Qty"). Navy header band, app-palette colours, gap between category sections.</li>
+    <li><strong>Step 13 order create would 422.</strong> It sent <code>title</code> (not a field) and omitted <code>orderId</code>, which is required. Order items also require <code>name</code>. Fixed.</li>
+    <li><strong>Step 14 jq path was wrong.</strong> <code>/activities</code> returns <code>{activities:[…], total:N}</code>, not a bare array, so <code>jq '.[]'</code> failed. Now <code>jq '.activities[]'</code>.</li>
+    <li><strong>Step 7 expected the wrong 401 body.</strong> It expected <code>"Token has been revoked"</code> — a string that exists nowhere in the codebase. The real detail is <code>"Invalid or expired refresh token"</code>.</li>
+    <li><strong>Step 3 pinned a stale Alembic head</strong> (<code>0005</code>). Real head is <code>0006_order_item_qty_positive</code>, so the check failed if followed literally.</li>
+    <li><strong>Step 22 used <code>com.vitaltrack.mobile</code></strong>. The package is <code>com.carekosh.mobile</code>, so that <code>adb</code> command silently did nothing.</li>
+    <li><strong>Step 1 understated the <code>/health</code> body</strong> and described production as free-tier with 15-minute sleep. Production is <code>plan: starter</code> — always-on.</li>
+    <li><strong>“Neon branch”</strong> was wrong in three places; staging and production are two <em>databases</em> inside one branch.</li>
+    <li><strong>No print styles existed.</strong> In OS dark mode the page printed a dark background behind light text.</li>
   </ul>
+</div>
+
+<div class="callout warn">
+  <span class="callout-label">Ground rules</span>
+  <p>1. Run the full flow on staging first. 2. Only hit production with read-only and idempotent requests, unless you are deliberately cleaning up your own test account. 3. Never create real-looking data on production. 4. <strong>Phase 5 is irreversible</strong> — only run it against a throwaway staging account.</p>
 </div>
 
 <!-- ENVIRONMENTS -->
@@ -89,17 +128,18 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
     <div class="env-card">
       <h4>Staging</h4>
       <div class="url">staging-api.carekosh.com</div>
-      <div class="db">Neon branch: vitaltrack_staging · Test data only · Safe to wipe</div>
+      <div class="db">Neon <strong>database</strong>: <code>vitaltrack_staging</code> · test data only · safe to wipe</div>
     </div>
     <div class="env-card">
       <h4>Production</h4>
       <div class="url">api.carekosh.com</div>
-      <div class="db">Neon branch: neondb · Real user data · Never wipe</div>
+      <div class="db">Neon <strong>database</strong>: <code>neondb</code> · real user data · never wipe</div>
     </div>
   </div>
-  <div class="callout warn">
-    <span class="callout-label">Ground rules</span>
-    <p>1. Run the full flow on staging first. 2. Only hit production with read-only + idempotent requests unless you are intentionally cleaning up your own test account. 3. Do not create real-looking data on production.</p>
+  <div class="callout info">
+    <span class="callout-label">Two clarifications worth internalising</span>
+    <p><strong>Databases, not branches.</strong> Both are databases inside the <em>same</em> Neon branch, sharing one connection host — created with <code>CREATE DATABASE vitaltrack_staging</code>. Looking for a Neon “branch” named <code>vitaltrack_staging</code> will waste your time.</p>
+    <p><strong>Only production is in <code>render.yaml</code>.</strong> The service defined as infrastructure-as-code is <code>vitaltrack-api</code> on <code>plan: starter</code>. Staging is managed entirely from the Render dashboard, so its plan is not knowable from the repo — check it there before trusting any cold-start expectation below.</p>
   </div>
 </div>
 
@@ -112,15 +152,27 @@ hr{border:none;border-top:1px solid var(--border);margin:40px 0}
   <div class="step">
     <div class="step-num">Step 1</div>
     <h4>Both services healthy</h4>
-    <pre><code>curl https://staging-api.carekosh.com/health
-curl https://api.carekosh.com/health</code></pre>
+    <p>Two endpoints, two different jobs. Check both — they fail differently and that difference is the diagnosis.</p>
+    <pre><code># liveness — never touches the database, should ALWAYS be 200
+curl -s https://staging-api.carekosh.com/live
+curl -s https://api.carekosh.com/live
+
+# readiness — runs SELECT 1 under a 2 s timeout
+curl -s https://staging-api.carekosh.com/health
+curl -s https://api.carekosh.com/health</code></pre>
     <div class="expect">
-      <span class="expect-label">Expected</span>
-      <code>{"status":"healthy","environment":"staging"}</code> (or <code>"production"</code>)
+      <span class="expect-label">Expected — /health (200)</span>
+      <code>{"status":"healthy","version":"…","environment":"production","database":"connected","timestamp":"…"}</code>
+    </div>
+    <div class="expect">
+      <span class="expect-label">Expected — /live (200)</span>
+      <code>{"status":"…","database":"not_checked",…}</code> — no database probe, so this stays up even when Neon is asleep.
     </div>
     <div class="callout warn">
-      <span class="callout-label">Cold start</span>
-      <p>Free Render tier sleeps after 15 min idle. The first request takes 30–60 s to wake the container; subsequent calls are fast. If you get a 502 then a 200, that's cold start — not a bug.</p>
+      <span class="callout-label">What a failure actually means</span>
+      <p><strong>Production is <code>plan: starter</code> — always-on.</strong> There is no 15-minute container sleep to wait out. If you see a slow first response it is <strong>Neon</strong> waking from scale-to-zero, not Render.</p>
+      <p>A single <code>/health</code> <strong>503</strong> that recovers on retry is <strong>by design</strong>: the readiness probe times out at 2 s while Neon wakes. It is not an outage. That is also exactly why <code>render.yaml</code> sets <code>healthCheckPath: /live</code> — so Render never restarts the instance over a transient database blip — and why any uptime monitor you create should point at <code>/live</code>, not <code>/health</code>.</p>
+      <p><strong>Both</strong> endpoints failing, or <code>/live</code> failing at all, is a genuine incident.</p>
     </div>
   </div>
 
@@ -128,21 +180,31 @@ curl https://api.carekosh.com/health</code></pre>
     <div class="step-num">Step 2</div>
     <h4>Latest deploy is live</h4>
     <ol>
-      <li>Open <a href="https://dashboard.render.com" target="_blank">dashboard.render.com</a></li>
-      <li>Click <code>vitaltrack-api-staging</code> → <strong>Events</strong> tab → top entry should say "Deploy live"</li>
-      <li>Repeat for <code>vitaltrack-api</code> (production)</li>
-      <li>Check commit hash matches the last merge on <code>main</code></li>
+      <li>Open <a href="https://dashboard.render.com">dashboard.render.com</a></li>
+      <li>Staging service → <strong>Events</strong> tab → the top entry should read “Deploy live”</li>
+      <li>Repeat for <code>vitaltrack-api</code> (production — this is the name in <code>render.yaml</code>)</li>
+      <li>Confirm the commit hash matches the last merge on <code>main</code></li>
     </ol>
+    <div class="callout info">
+      <span class="callout-label">Expect a slow-looking boot</span>
+      <p><code>docker-entrypoint.sh</code> cannot parse a port-less Neon URL, so <code>DATABASE_HOST</code> falls back to <code>localhost</code> and every boot burns the full 60-second <code>pg_isready</code> loop before migrations run. Harmless, but it makes deploys look hung. Setting <code>DATABASE_HOST</code> in Render removes the delay.</p>
+    </div>
   </div>
 
   <div class="step">
     <div class="step-num">Step 3</div>
     <h4>Alembic head matches code</h4>
-    <p>In Render shell for each service:</p>
+    <p>In the Render shell for each service:</p>
     <pre><code>alembic current</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      Latest revision id, matching the filename of the newest file in <code>vitaltrack-backend/alembic/versions/</code>. As of PR #13: <code>20260419_add_account_deletion_token_fields</code>.
+      <code>0006_order_item_qty_positive</code> — from <code>alembic/versions/20260623_order_item_quantity_positive.py</code>. That migration adds the <code>CHECK (quantity &gt; 0)</code> constraint on <code>order_items</code>.
+    </div>
+    <p>Rather than trusting this printed value forever, confirm it against the tree — the newest file wins:</p>
+    <pre><code>ls -1 vitaltrack-backend/alembic/versions/ | tail -1</code></pre>
+    <div class="callout warn">
+      <span class="callout-label">A failed migration is a failed deploy, not a broken service</span>
+      <p>The entrypoint wraps <code>alembic upgrade head</code> in a guard and exits non-zero on failure, so Render keeps the previous instance serving. That is the desired behaviour — do not “fix” it by bypassing the guard.</p>
     </div>
   </div>
 </div>
@@ -159,68 +221,88 @@ curl https://api.carekosh.com/health</code></pre>
     <div class="step-num">Step 4</div>
     <h4>Register a test user</h4>
     <pre><code>BASE=https://staging-api.carekosh.com
+EMAIL="e2e+$(date +%s)@example.com"
 
-curl -X POST $BASE/api/v1/auth/register \
+curl -s -X POST $BASE/api/v1/auth/register \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "E2E Test",
-    "email": "e2e+'$(date +%s)'@example.com",
-    "username": "e2etest",
-    "password": "TestPass123!"
-  }'</code></pre>
+  -d "{
+    \"name\": \"E2E Test\",
+    \"email\": \"$EMAIL\",
+    \"password\": \"TestPass123!\"
+  }" | jq '{access_token: .access_token[0:20], expires_in, user: .user.email}'</code></pre>
     <div class="expect">
       <span class="expect-label">Expected (201)</span>
-      <code>{"access_token":"...","refresh_token":"...","token_type":"bearer","expires_in":1800,"user":{...}}</code>
+      <code>{"access_token":"…","refresh_token":"…","token_type":"bearer","expires_in":1800,"user":{…}}</code>
     </div>
     <div class="callout info">
-      <span class="callout-label">PR #12</span>
-      <p><code>email</code> is required (was optional pre-PR-#12). Registering without it returns <code>422</code>.</p>
+      <span class="callout-label">Schema notes</span>
+      <p><code>email</code> is <strong>required</strong>; omitting it returns <code>422</code>. <code>username</code> is <strong>optional</strong> — if you send one it must match <code>^[a-z0-9_]+$</code>, 3–50 characters, so <code>"e2etest"</code> is valid but any capital letter is not. Password policy: at least 8 characters with one uppercase, one lowercase and one digit.</p>
+      <p>Rate limit: <strong>3 registrations per hour per IP.</strong> Loop this step four times and the fourth returns <code>429</code>.</p>
+    </div>
+    <div class="callout warn">
+      <span class="callout-label">Register hands you tokens even when unverified</span>
+      <p>This is worth noticing rather than glossing over: registration returns a full access + refresh pair regardless of verification state. The verification gate lives at <em>login</em> (Step 5), so a client that never logs out is never re-checked.</p>
     </div>
   </div>
 
   <div class="step">
     <div class="step-num">Step 5</div>
-    <h4>Verify-email gate (if REQUIRE_EMAIL_VERIFICATION=true)</h4>
-    <p>Without clicking the verification link in the email first, login should fail:</p>
-    <pre><code>curl -X POST $BASE/api/v1/auth/login \
+    <h4>Verify-email gate</h4>
+    <p>Applies only when <code>REQUIRE_EMAIL_VERIFICATION=true</code> <strong>and</strong> a mail password is configured. Without clicking the link first, login should fail:</p>
+    <pre><code>curl -s -w "\nHTTP %{http_code}\n" -X POST $BASE/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"identifier":"e2e+...@example.com","password":"TestPass123!"}'</code></pre>
+  -d "{\"identifier\":\"$EMAIL\",\"password\":\"TestPass123!\"}"</code></pre>
     <div class="expect">
       <span class="expect-label">Expected (403)</span>
       <code>{"detail":"EMAIL_NOT_VERIFIED"}</code>
     </div>
-    <p>Click the verification link delivered by the configured Brevo HTTP email path, then retry login — it should now succeed.</p>
+    <p>Click the verification link from the email, then retry — login should now succeed.</p>
+    <div class="callout info">
+      <span class="callout-label">If you get 200 instead of 403</span>
+      <p>The gate is deliberately <strong>fail-open</strong>: it requires <em>both</em> the flag and a configured mail password, so a deploy that forgets the mail credential cannot lock out every user. A 200 here therefore means the mail password is missing in that environment — check it before assuming the gate is broken.</p>
+    </div>
   </div>
 
   <div class="step">
     <div class="step-num">Step 6</div>
-    <h4>Login + extract token</h4>
+    <h4>Login + extract tokens</h4>
     <pre><code>LOGIN=$(curl -s -X POST $BASE/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"identifier":"e2e+...@example.com","password":"TestPass123!"}')
+  -d "{\"identifier\":\"$EMAIL\",\"password\":\"TestPass123!\"}")
 ACCESS=$(echo $LOGIN | jq -r '.access_token')
 REFRESH=$(echo $LOGIN | jq -r '.refresh_token')
-echo "ACCESS: ${ACCESS:0:20}..."
-echo "REFRESH: ${REFRESH:0:20}..."</code></pre>
+echo "ACCESS:  ${ACCESS:0:20}…"
+echo "REFRESH: ${REFRESH:0:20}…"</code></pre>
+    <div class="callout info">
+      <span class="callout-label">Note</span>
+      <p><code>identifier</code> accepts an email <em>or</em> a username. Rate limit is <strong>5 per minute</strong>, so a fumbled password a few times over will lock you out briefly — this is the same limit a Play reviewer can hit.</p>
+    </div>
   </div>
 
   <div class="step">
     <div class="step-num">Step 7</div>
     <h4>Refresh with rotation</h4>
-    <pre><code>curl -X POST $BASE/api/v1/auth/refresh \
+    <pre><code>OLD=$REFRESH
+
+curl -s -X POST $BASE/api/v1/auth/refresh \
   -H "Content-Type: application/json" \
-  -d "{\"refresh_token\":\"$REFRESH\"}"</code></pre>
+  -d "{\"refresh_token\":\"$OLD\"}" | jq '{access: .access_token[0:20], refresh: .refresh_token[0:20]}'</code></pre>
     <div class="expect">
-      <span class="expect-label">Expected</span>
-      New access + refresh tokens. Old <code>$REFRESH</code> is now revoked.
+      <span class="expect-label">Expected (200)</span>
+      A new access + refresh pair. The old token's row now has <code>is_revoked = true</code>.
     </div>
-    <p>Prove the rotation worked — try the old refresh again:</p>
-    <pre><code>curl -X POST $BASE/api/v1/auth/refresh \
+    <p>Now prove the rotation is single-use by replaying the <em>same</em> old token:</p>
+    <pre><code>curl -s -w "\nHTTP %{http_code}\n" -X POST $BASE/api/v1/auth/refresh \
   -H "Content-Type: application/json" \
-  -d "{\"refresh_token\":\"$REFRESH\"}"</code></pre>
+  -d "{\"refresh_token\":\"$OLD\"}"</code></pre>
     <div class="expect">
       <span class="expect-label">Expected (401)</span>
-      <code>{"detail":"Token has been revoked"}</code>
+      <code>{"detail":"Invalid or expired refresh token"}</code>
+    </div>
+    <div class="callout success">
+      <span class="callout-label">What you just verified — and how to describe it</span>
+      <p>Rotation is a single-statement <strong>compare-and-swap</strong>, not a delete: <code>UPDATE refresh_tokens SET is_revoked=true WHERE jti=? AND user_id=? AND is_revoked=false RETURNING id</code>. Only one concurrent request can flip <code>false → true</code>, so a token submitted twice simultaneously rotates <strong>at most once</strong> — the loser gets the 401 above. The row is never deleted.</p>
+      <p>The deliberately generic message is anti-enumeration: “already used”, “expired” and “never existed” are indistinguishable to a caller.</p>
     </div>
   </div>
 </div>
@@ -229,13 +311,14 @@ echo "REFRESH: ${REFRESH:0:20}..."</code></pre>
 
 <!-- PHASE 3 -->
 <div class="phase-bar" style="border-color:var(--warn);background:var(--warn-bg)">
-  <h2 style="color:var(--warn)"><span class="tag" style="background:var(--warn);color:#fff">Phase 3</span> CRUD + OCC</h2>
+  <h2 style="color:var(--warn)"><span class="tag" style="background:var(--warn);color:#fff">Phase 3</span> CRUD + optimistic concurrency</h2>
 </div>
 
 <div class="section">
   <div class="step">
     <div class="step-num">Step 8</div>
     <h4>Create category → create item</h4>
+    <p>Request bodies use <strong>camelCase aliases</strong> (<code>categoryId</code>, <code>minimumStock</code>, <code>isCritical</code>); snake_case also works because the schemas set <code>populate_by_name</code>.</p>
     <pre><code>AUTH="Authorization: Bearer $ACCESS"
 
 CAT=$(curl -s -X POST $BASE/api/v1/categories \
@@ -253,12 +336,16 @@ ITEM=$(curl -s -X POST $BASE/api/v1/items \
     \"isCritical\":true
   }" | jq -r '.id')
 
-echo "CAT=$CAT ITEM=$ITEM"</code></pre>
+echo "CAT=$CAT  ITEM=$ITEM"</code></pre>
+    <div class="expect">
+      <span class="expect-label">Expected</span>
+      Two non-empty UUIDs. An empty <code>ITEM</code> almost always means the <code>categoryId</code> did not belong to you — ownership is re-checked on every write.
+    </div>
   </div>
 
   <div class="step">
     <div class="step-num">Step 9</div>
-    <h4>Read back, confirm version=1</h4>
+    <h4>Read back, confirm version = 1</h4>
     <pre><code>curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{name,quantity,version}'</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
@@ -268,7 +355,7 @@ echo "CAT=$CAT ITEM=$ITEM"</code></pre>
 
   <div class="step">
     <div class="step-num">Step 10</div>
-    <h4>Update with correct version — version increments</h4>
+    <h4>Update with the correct version — it increments</h4>
     <pre><code>curl -s -X PUT $BASE/api/v1/items/$ITEM \
   -H "$AUTH" -H "Content-Type: application/json" \
   -d '{"name":"Oxygen Mask (Adult)","quantity":12,"minimumStock":5,"version":1}' \
@@ -281,7 +368,7 @@ echo "CAT=$CAT ITEM=$ITEM"</code></pre>
 
   <div class="step">
     <div class="step-num">Step 11</div>
-    <h4>Update with stale version — <strong>409 Conflict</strong> (OCC)</h4>
+    <h4>Update with a stale version — <strong>409 Conflict</strong></h4>
     <pre><code>curl -s -w "\nHTTP %{http_code}\n" -X PUT $BASE/api/v1/items/$ITEM \
   -H "$AUTH" -H "Content-Type: application/json" \
   -d '{"name":"X","quantity":99,"minimumStock":5,"version":1}'</code></pre>
@@ -291,7 +378,7 @@ echo "CAT=$CAT ITEM=$ITEM"</code></pre>
     </div>
     <div class="callout success">
       <span class="callout-label">Why this matters</span>
-      <p>This is the single reason the server-first migration was worth doing. Two caregivers editing the same item at the same second no longer silently overwrite each other.</p>
+      <p>This is the single reason the server-first migration was worth doing. Two caregivers editing the same item in the same second no longer silently overwrite each other — and the 409 body carries the server's <em>current</em> truth, so the app can say “someone changed this to 12” instead of only “that failed”.</p>
     </div>
   </div>
 
@@ -304,6 +391,10 @@ echo "CAT=$CAT ITEM=$ITEM"</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
       <code>{"quantity":8,"version":3}</code>
+    </div>
+    <div class="callout info">
+      <span class="callout-label">Absolute, never a delta</span>
+      <p><code>quantity</code> is the resulting absolute value, not an adjustment — so a replayed or double-tapped request cannot double-apply. Keep the value you send in mind for Step 13's arithmetic.</p>
     </div>
   </div>
 </div>
@@ -319,36 +410,65 @@ echo "CAT=$CAT ITEM=$ITEM"</code></pre>
   <div class="step">
     <div class="step-num">Step 13</div>
     <h4>Create order, mark received, apply to stock</h4>
-    <pre><code># Create order
+    <div class="callout danger">
+      <span class="callout-label">This command was broken in the previous edition</span>
+      <p>It sent <code>{"title": …}</code> — <code>orders</code> has no <code>title</code> column — and omitted <code>orderId</code>, which is <strong>required</strong>. Each order item also requires <code>name</code>, not just <code>itemId</code> and <code>quantity</code>. The old body returned <code>422</code>, so this phase could never pass.</p>
+    </div>
+    <pre><code># --- create -------------------------------------------------------------
 ORDER=$(curl -s -X POST $BASE/api/v1/orders \
   -H "$AUTH" -H "Content-Type: application/json" \
-  -d "{\"title\":\"Restock\",\"items\":[{\"item_id\":\"$ITEM\",\"quantity\":20}]}" \
-  | jq -r '.id')
+  -d "{
+    \"orderId\": \"ORD-E2E-$(date +%s)\",
+    \"totalItems\": 1,
+    \"totalUnits\": 20,
+    \"items\": [{
+      \"itemId\": \"$ITEM\",
+      \"name\": \"Oxygen Mask (Adult)\",
+      \"unit\": \"pieces\",
+      \"quantity\": 20,
+      \"currentStock\": 8,
+      \"minimumStock\": 5
+    }]
+  }" | jq -r '.id')
 
-# Transition: pending → ordered → received
+echo "ORDER=$ORDER"
+
+# --- transition: pending -> ordered -> received --------------------------
 curl -s -X PATCH $BASE/api/v1/orders/$ORDER/status \
-  -H "$AUTH" -H "Content-Type: application/json" -d '{"status":"ordered"}' > /dev/null
+  -H "$AUTH" -H "Content-Type: application/json" \
+  -d '{"status":"ordered"}'  | jq -r '.status'
 curl -s -X PATCH $BASE/api/v1/orders/$ORDER/status \
-  -H "$AUTH" -H "Content-Type: application/json" -d '{"status":"received"}' > /dev/null
+  -H "$AUTH" -H "Content-Type: application/json" \
+  -d '{"status":"received"}' | jq -r '.status'
 
-# Apply to stock
-curl -s -X POST $BASE/api/v1/orders/$ORDER/apply -H "$AUTH" | jq '.status'
+# --- apply to stock -----------------------------------------------------
+curl -s -X POST $BASE/api/v1/orders/$ORDER/apply -H "$AUTH" | jq -r '.status'
 
-# Verify item quantity increased by 20
+# --- verify the item went 8 -> 28 ---------------------------------------
 curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{quantity,version}'</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      Order status → <code>"stock_updated"</code>. Item quantity was 8, now 28. Version increments on every update.
+      Status prints <code>ordered</code>, then <code>received</code>, then <code>stock_updated</code>. Item quantity moves from 8 to <strong>28</strong> and the version increments.
+    </div>
+    <div class="callout success">
+      <span class="callout-label">The state machine is the safety property</span>
+      <p>Legal transitions are enforced server-side: <code>pending → ordered | received | declined</code>, <code>ordered → partially_received | received</code>, <code>partially_received → received</code>. <code>stock_updated</code> is reachable <strong>only</strong> through <code>POST /apply</code> and has no outgoing edge, so a retried apply cannot add the same stock twice. Try the apply a second time — it should be rejected.</p>
     </div>
   </div>
 
   <div class="step">
     <div class="step-num">Step 14</div>
     <h4>Activity log records every write</h4>
-    <pre><code>curl -s "$BASE/api/v1/activities?limit=10" -H "$AUTH" | jq '.[] | {action,item_name,created_at}'</code></pre>
+    <pre><code>curl -s "$BASE/api/v1/activities?limit=10" -H "$AUTH" \
+  | jq '{total, recent: [.activities[] | {action, item_name, created_at}]}'</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      Entries for: category create, item create, item update (×N), order create, order status × 2, order apply. Each with <code>created_at</code>.
+      Entries for category create, item create, item updates, order create, two status changes and the apply — each with a <code>created_at</code>.
+    </div>
+    <div class="callout info">
+      <span class="callout-label">Response is an object, not an array</span>
+      <p><code>/activities</code> returns <code>{"activities":[…],"total":N}</code>. The previous edition used <code>jq '.[]'</code>, which fails on an object — hence <code>.activities[]</code> above. <code>limit</code> accepts 1–200 and defaults to 50.</p>
+      <p><code>item_name</code> is stored denormalised on purpose, so the feed still reads correctly after the underlying item is deleted.</p>
     </div>
   </div>
 </div>
@@ -357,50 +477,56 @@ curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{quantity,version}'</code></pr
 
 <!-- PHASE 5 -->
 <div class="phase-bar" style="border-color:var(--danger);background:var(--danger-bg)">
-  <h2 style="color:var(--danger)"><span class="tag" style="background:var(--danger);color:#fff">Phase 5</span> Account deletion (PR #13)</h2>
+  <h2 style="color:var(--danger)"><span class="tag" style="background:var(--danger);color:#fff">Phase 5</span> Account deletion — irreversible</h2>
 </div>
 
 <div class="section">
+  <div class="callout danger">
+    <span class="callout-label">Staging only</span>
+    <p>Step 17 permanently destroys the account and every row it owns. Run it only against the throwaway account created in Step 4, and never against production.</p>
+  </div>
+
   <div class="step">
     <div class="step-num">Step 15</div>
-    <h4>Request deletion — email sent</h4>
-    <pre><code>curl -s -X DELETE $BASE/api/v1/auth/me -H "$AUTH"</code></pre>
+    <h4>Request deletion — email sent, nothing deleted</h4>
+    <pre><code>curl -s -X DELETE $BASE/api/v1/auth/me -H "$AUTH" | jq -r '.message'</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      <code>{"message":"A confirmation email has been sent. Please check your inbox and open the link to review and confirm account deletion. The link expires in 24 hours."}</code>. In the configured email provider, the message contains a browser link to <code>GET /api/v1/auth/confirm-delete/{token}</code> (token is raw; DB stores the SHA-256 hash with a 24 h TTL). The GET route renders a confirmation page only.
+      <code>A confirmation email has been sent. Please check your inbox and open the link to review and confirm account deletion. The link expires in 24 hours.</code>
     </div>
+    <p>The email contains a link to <code>GET /api/v1/auth/confirm-delete/{token}</code>. The token in the link is raw; the database stores only its SHA-256 hash with a 24-hour expiry. <strong>The GET route renders a page and deletes nothing.</strong></p>
   </div>
 
   <div class="step">
     <div class="step-num">Step 16</div>
-    <h4>Cancel pending deletion</h4>
-    <pre><code>curl -s -X POST $BASE/api/v1/auth/cancel-delete -H "$AUTH"</code></pre>
+    <h4>Cancel a pending deletion</h4>
+    <pre><code>curl -s -X POST $BASE/api/v1/auth/cancel-delete -H "$AUTH" | jq -r '.message'</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      <code>{"message":"Account deletion request has been cancelled."}</code>. Trying to use the email link after cancel should return an HTML error (hash cleared).
+      <code>Account deletion request has been cancelled.</code> — and the emailed link now fails, because the stored hash was cleared.
     </div>
   </div>
 
   <div class="step">
     <div class="step-num">Step 17</div>
-    <h4>Confirm deletion (testing only — irreversible)</h4>
-    <p>Request deletion again (Step 15), open the email, then load the GET confirmation page:</p>
-    <pre><code>curl -s https://staging-api.carekosh.com/api/v1/auth/confirm-delete/RAW_TOKEN</code></pre>
+    <h4>Confirm deletion — irreversible</h4>
+    <p>Re-run Step 15, open the email, then load the confirmation page:</p>
+    <pre><code>curl -s $BASE/api/v1/auth/confirm-delete/RAW_TOKEN | head -20</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      HTML confirmation page only. No data is deleted by the GET request.
+      An HTML confirmation page. <strong>No data deleted.</strong> This is the whole point of the two-verb design — mail clients and link scanners follow <code>GET</code> links automatically, so a destructive <code>GET</code> would fire on prefetch with no human involved.
     </div>
-    <p>Submit the confirmation form, or reproduce it with POST:</p>
-    <pre><code>curl -s -X POST https://staging-api.carekosh.com/api/v1/auth/confirm-delete/RAW_TOKEN</code></pre>
+    <p>Submit the form in the page, or reproduce it directly:</p>
+    <pre><code>curl -s -X POST $BASE/api/v1/auth/confirm-delete/RAW_TOKEN | head -20</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      HTML completion page. User row is deleted; cascade unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_log.
+      An HTML completion page. The user row is deleted and the cascade unwinds <code>categories</code>, <code>items</code>, <code>orders</code>, <code>order_items</code>, <code>activity_logs</code>, <code>refresh_tokens</code> and <code>audit_log</code>.
     </div>
-    <p>Prove cascade worked — any authenticated call with a saved access token should now 401:</p>
-    <pre><code>curl -s -w "HTTP %{http_code}\n" $BASE/api/v1/items -H "$AUTH"</code></pre>
+    <p>Prove it — any authenticated call with the old access token:</p>
+    <pre><code>curl -s -w "HTTP %{http_code}\n" -o /dev/null $BASE/api/v1/items -H "$AUTH"</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      <code>HTTP 401</code>. Access token decodes but the user no longer exists.
+      <code>HTTP 401</code>. The token still decodes and its signature is still valid — the user simply no longer exists, which is what <code>get_current_user</code> checks.
     </div>
   </div>
 </div>
@@ -415,34 +541,48 @@ curl -s $BASE/api/v1/items/$ITEM -H "$AUTH" | jq '{quantity,version}'</code></pr
 <div class="section">
   <div class="step">
     <div class="step-num">Step 18</div>
-    <h4>Row counts + version spot check</h4>
-    <p>Connect to Neon via Neon Console SQL editor (or <code>psql</code> with the connection string) on the <code>vitaltrack_staging</code> branch:</p>
+    <h4>Row counts + optimistic-locking evidence</h4>
+    <p>Connect via the Neon Console SQL editor, or <code>psql</code> with the connection string, against the <code>vitaltrack_staging</code> <strong>database</strong>:</p>
     <pre><code>SELECT count(*) FROM users;
 SELECT count(*) FROM items;
 SELECT count(*) FROM activity_logs;
 
--- OCC evidence
-SELECT id, name, quantity, version FROM items ORDER BY updated_at DESC LIMIT 5;
+-- optimistic-locking evidence
+SELECT id, name, quantity, version
+FROM items
+ORDER BY updated_at DESC
+LIMIT 5;
 
--- Audit log
-SELECT action, entity_type, created_at
+-- audit ledger  (note: the table is SINGULAR)
+SELECT action, entity_type, old_values, new_values, created_at
 FROM audit_log
 ORDER BY created_at DESC
 LIMIT 10;</code></pre>
     <div class="expect">
       <span class="expect-label">Expected</span>
-      Item rows have <code>version &gt;= 1</code>. <code>audit_log</code> has entries with JSONB <code>old_values</code> / <code>new_values</code> for every recent write.
+      Item rows have <code>version &gt;= 1</code>, and the item you edited shows <code>version = 3</code> or higher. <code>audit_log</code> carries JSONB <code>old_values</code> / <code>new_values</code> for recent writes.
+    </div>
+    <div class="callout warn">
+      <span class="callout-label">Two names people get wrong</span>
+      <p>The audit table is <code>audit_log</code>, <strong>singular</strong> — <code>audit_logs</code> does not exist. Its JSON columns are <code>old_values</code> and <code>new_values</code>. And the item threshold column is <code>minimum_stock</code>, not <code>minimum_quantity</code>.</p>
     </div>
   </div>
 
   <div class="step">
     <div class="step-num">Step 19</div>
-    <h4>Cascade check (post-deletion)</h4>
-    <pre><code>-- After Step 17, should all return 0
-SELECT count(*) FROM categories WHERE user_id = 'DELETED_USER_ID';
-SELECT count(*) FROM items      WHERE user_id = 'DELETED_USER_ID';
-SELECT count(*) FROM orders     WHERE user_id = 'DELETED_USER_ID';
-SELECT count(*) FROM refresh_tokens WHERE user_id = 'DELETED_USER_ID';</code></pre>
+    <h4>Cascade check (after Step 17)</h4>
+    <pre><code>-- substitute the deleted user's id; all of these must return 0
+SELECT count(*) FROM categories     WHERE user_id = 'DELETED_USER_ID';
+SELECT count(*) FROM items          WHERE user_id = 'DELETED_USER_ID';
+SELECT count(*) FROM orders         WHERE user_id = 'DELETED_USER_ID';
+SELECT count(*) FROM activity_logs  WHERE user_id = 'DELETED_USER_ID';
+SELECT count(*) FROM refresh_tokens WHERE user_id = 'DELETED_USER_ID';
+SELECT count(*) FROM audit_log      WHERE user_id = 'DELETED_USER_ID';
+
+-- order_items has no user_id — it cascades via its parent order
+SELECT count(*) FROM order_items oi
+LEFT JOIN orders o ON o.id = oi.order_id
+WHERE o.id IS NULL;   -- orphans; must be 0</code></pre>
   </div>
 </div>
 
@@ -456,74 +596,96 @@ SELECT count(*) FROM refresh_tokens WHERE user_id = 'DELETED_USER_ID';</code></p
 <div class="section">
   <div class="step">
     <div class="step-num">Step 20</div>
-    <h4>Build preview APK</h4>
+    <h4>Build a preview APK</h4>
     <pre><code>cd vitaltrack-mobile
 eas build --profile preview --platform android</code></pre>
-    <p>Or: add the <code>build-apk</code> label to a PR and let CI do it. APK bakes <code>EXPO_PUBLIC_API_URL = https://staging-api.carekosh.com</code>.</p>
+    <p>Or add the <code>build-apk</code> label to a pull request and let CI do it. The <strong>preview</strong> profile builds an APK with <code>EXPO_PUBLIC_API_URL = https://staging-api.carekosh.com</code> baked in; the <strong>production</strong> profile builds an app bundle pointing at <code>https://api.carekosh.com</code>. The URL is compiled in at build time — it cannot be changed afterwards.</p>
+    <div class="callout info">
+      <span class="callout-label">Version codes live on EAS</span>
+      <p><code>eas.json</code> sets <code>appVersionSource: remote</code> with <code>autoIncrement</code> on production, so the <code>versionCode</code> in <code>app.json</code> is inert. Read the real value with <code>eas build:version:get --platform android</code>; never hand-edit it.</p>
+    </div>
   </div>
 
   <div class="step">
     <div class="step-num">Step 21</div>
-    <h4>Device checklist (Pixel 9 Pro XL · Android 16)</h4>
+    <h4>Device checklist</h4>
     <ul class="checklist">
-      <li>Install APK via <code>adb install -r app.apk</code></li>
-      <li>Register new account → receive verification email → verify</li>
+      <li>Install with <code>adb install -r app.apk</code></li>
+      <li>Register a new account → receive the verification email → verify</li>
       <li>Login → dashboard loads</li>
-      <li>Builder → seed inventory → items appear in Inventory tab</li>
-      <li>Create an item → PATCH stock → activity log updates</li>
-      <li>Create an order → mark received → apply to stock → item quantity updates</li>
-      <li>Export order PDF → no "unknown order ID" error (PR #11 fix)</li>
-      <li>Tap the top-right profile button → bottom-sheet menu opens → tap Edit Profile → profile screen opens</li>
-      <li>"About CareKosh" → modal opens with the app version from Expo constants and tappable support email</li>
-      <li>Profile screen → Delete Account → receive email → confirm via link → forced logout</li>
-      <li>Try login with deleted account → 401 "Incorrect email/username or password"</li>
+      <li>Builder → seed inventory → items appear in the Inventory tab</li>
+      <li>Create an item → PATCH stock → the activity feed updates</li>
+      <li>Create an order → mark received → apply → item quantity updates</li>
+      <li>Export an order PDF → opens with no “unknown order ID” error</li>
+      <li>Export an inventory PDF → status badges reflect stock state (OUT OF STOCK / LOW / OK), critical items marked ★</li>
+      <li>Tap the profile button → bottom sheet opens → Edit Profile → profile screen opens</li>
+      <li>“About CareKosh” → modal shows the app version from Expo constants and a tappable support email</li>
+      <li><strong>Shared-device privacy:</strong> log out, log in as a second account → the first user's inventory must <strong>not</strong> appear</li>
+      <li>Profile → Delete Account → receive email → confirm → forced logout</li>
+      <li>Try logging in with the deleted account → 401</li>
     </ul>
+    <div class="callout warn">
+      <span class="callout-label">Permissions to expect in the build</span>
+      <p>Exactly three, all “normal” protection level, so no runtime prompts should ever appear: <code>INTERNET</code>, <code>ACCESS_NETWORK_STATE</code>, <code>ACCESS_WIFI_STATE</code>. If the app asks for camera, microphone or storage, something regressed — those are all in <code>blockedPermissions</code>. Verify in Play Console → App bundle explorer → Permissions.</p>
+    </div>
   </div>
 </div>
 
 <hr>
 
-<!-- PHASE 8: LOADING UX (PRs #15, #16) -->
-<div class="section">
-  <h2 style="color:var(--accent)"><span class="tag" style="background:var(--accent);color:#fff">Phase 8</span> Loading UX — skeletons, cache persistence, cold-start retry (PRs #15, #16)</h2>
+<!-- PHASE 8 -->
+<div class="phase-bar" style="border-color:var(--accent);background:var(--accent-bg)">
+  <h2 style="color:var(--accent)"><span class="tag" style="background:var(--accent);color:#fff">Phase 8</span> Loading UX — skeletons, cache persistence, cold-start retry</h2>
 </div>
 
 <div class="section">
   <div class="step">
     <div class="step-num">Step 22</div>
-    <h4>Skeleton loading verification</h4>
+    <h4>Skeleton loading</h4>
     <ul class="checklist">
-      <li>Clear app data (<code>adb shell pm clear com.vitaltrack.mobile</code>) or first install → login</li>
-      <li>Dashboard tab → animated skeleton placeholders visible during initial fetch</li>
-      <li>Inventory tab → skeleton placeholders (list-shaped)</li>
-      <li>Orders tab → skeleton placeholders (card-shaped)</li>
-      <li>After data loads, skeletons replaced by real content (header/SafeAreaView stays stable — no layout jump)</li>
+      <li>Clear app data — <code>adb shell pm clear com.carekosh.mobile</code> — or use a fresh install, then log in</li>
+      <li>Dashboard → animated skeleton placeholders during the initial fetch</li>
+      <li>Inventory → list-shaped skeletons</li>
+      <li>Orders → card-shaped skeletons</li>
+      <li>Skeletons give way to real content with no layout jump (header and safe area stay put)</li>
     </ul>
+    <div class="callout info">
+      <span class="callout-label">Package name</span>
+      <p>It is <code>com.carekosh.mobile</code>. The previous edition said <code>com.vitaltrack.mobile</code>, which <code>adb</code> accepts silently while clearing nothing — so the test appeared to pass while doing nothing at all.</p>
+    </div>
   </div>
 
   <div class="step">
     <div class="step-num">Step 23</div>
-    <h4>Cache persistence verification</h4>
+    <h4>Cache persistence</h4>
     <ul class="checklist">
-      <li>Open app with logged-in session, browse dashboard/inventory/orders (populates cache)</li>
-      <li>Kill app from recents; wait 1 minute; re-open → cached data visible <strong>instantly</strong>, then refreshes within 30 s (<code>staleTime</code>)</li>
-      <li>Toggle airplane mode on; re-open app → cached data still visible (read-only snapshot)</li>
-      <li>Logout → login as a different user → previous user's inventory must NOT appear (cache cleared on both sides for shared-device privacy)</li>
-      <li>Optional — flip <code>ENABLE_CACHE_PERSISTENCE</code> to <code>false</code> in <code>providers/QueryProvider.tsx</code>, restart Metro → app behaves as before PR #16 (no persistence, no instant load)</li>
+      <li>Browse dashboard, inventory and orders while logged in, to populate the cache</li>
+      <li>Kill the app from recents, wait a minute, reopen → cached data appears <strong>instantly</strong>, then refreshes (30 s <code>staleTime</code>)</li>
+      <li>Enable airplane mode and reopen → cached data still renders as a read-only snapshot</li>
+      <li>Log out, log in as a different user → the previous user's inventory must <strong>not</strong> appear</li>
+      <li>Optional: set <code>ENABLE_CACHE_PERSISTENCE = false</code> in <code>providers/QueryProvider.tsx</code> and restart Metro → no instant load</li>
     </ul>
+    <div class="callout info">
+      <span class="callout-label">What persists where</span>
+      <p>The query cache lives in <strong>AsyncStorage</strong> under the key <code>carekosh-query-cache</code>, with a 24-hour retention and a buster tied to the app version — so a version bump discards a stale cache automatically. <strong>Tokens never go there</strong>; they live in <code>expo-secure-store</code>. And <code>allowBackup=false</code> means Android Auto Backup copies neither.</p>
+    </div>
   </div>
 
   <div class="step">
     <div class="step-num">Step 24</div>
-    <h4>Cold-start auto-retry verification</h4>
+    <h4>Cold-start auto-retry</h4>
+    <div class="callout warn">
+      <span class="callout-label">Reproducing this is harder than it used to be</span>
+      <p>The old instruction — “wait 15 minutes for Render to sleep” — no longer works against <strong>production</strong>, which is <code>plan: starter</code> and always-on. Check your staging service's plan in the Render dashboard: if staging is also paid, the only remaining warm-up is <strong>Neon</strong> scale-to-zero, which is shorter and less predictable. To exercise the retry path deliberately, point the app at an unreachable host or stop the staging service instead of waiting.</p>
+    </div>
     <ul class="checklist">
-      <li>Wait 15+ minutes with no staging activity so Render sleeps the service</li>
-      <li>Open app, go to login, enter valid credentials, tap Sign In</li>
-      <li>"CareKosh server is waking up..." card appears with spinner + "Attempt X of 12" + Cancel button</li>
-      <li>After ~4 attempts, copy changes to "Still connecting... This can take up to 60 seconds after inactivity."</li>
-      <li>When server wakes, auto-login completes and dashboard loads — no manual re-tap required</li>
-      <li>Repeat with a deliberately <strong>wrong password</strong> → immediate "Incorrect password or account not found" error; <strong>no retry loop</strong> (auth errors must never trigger retry)</li>
-      <li>Tap Cancel during a retry → interval stops, form re-enables, state resets cleanly</li>
+      <li>With the backend unreachable, open the app, enter valid credentials, tap Sign In</li>
+      <li>A “server is waking up” card appears with a spinner, an attempt counter and a Cancel button</li>
+      <li>Copy escalates after several attempts to indicate a longer wait</li>
+      <li>Retry stops after the configured maximum (12 attempts at 5-second intervals)</li>
+      <li>When the backend returns, login completes automatically — no manual re-tap</li>
+      <li><strong>Wrong password → immediate error, no retry loop.</strong> 401 and 403 must never be retried</li>
+      <li>Tap Cancel mid-retry → the interval stops, the form re-enables, state resets cleanly</li>
     </ul>
   </div>
 </div>
@@ -536,19 +698,28 @@ eas build --profile preview --platform android</code></pre>
   <table>
     <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
     <tbody>
-      <tr><td>502 on first request</td><td>Render cold start</td><td>Retry after 30 s; consider UptimeRobot warmup</td></tr>
-      <tr><td>401 on every authenticated request</td><td>Access token expired (30 min)</td><td>Refresh, or login again</td></tr>
-      <tr><td>403 <code>EMAIL_NOT_VERIFIED</code></td><td>REQUIRE_EMAIL_VERIFICATION=true and user not verified</td><td>Click verification email; or <code>/resend-verification</code></td></tr>
-      <tr><td>409 on item update</td><td>OCC — stale version</td><td>GET the item, use new version in your next PUT</td></tr>
-      <tr><td>422 on register</td><td>Missing required field (email, password)</td><td>Check JSON body matches <code>UserRegister</code> schema</td></tr>
-      <tr><td>Alembic says "Can't locate revision"</td><td>DB is ahead of code</td><td>Rollback bad deploy first; never edit merged migration files</td></tr>
-      <tr><td>Order apply returns 400</td><td>Order status is not <code>received</code></td><td>PATCH status to <code>received</code> first</td></tr>
+      <tr><td>Single <code>/health</code> 503 that recovers</td><td>Neon waking from scale-to-zero; the readiness probe times out at 2 s</td><td><strong>Not an outage.</strong> Retry. Point uptime monitors at <code>/live</code></td></tr>
+      <tr><td><code>/live</code> failing</td><td>Genuine incident — the process itself is not serving</td><td>Check Render Events and logs; consider rollback</td></tr>
+      <tr><td>Deploy looks hung for ~60 s</td><td>Entrypoint cannot parse a port-less Neon URL, so it waits on <code>localhost</code></td><td>Harmless. Set <code>DATABASE_HOST</code> in Render to remove the delay</td></tr>
+      <tr><td>401 on every authenticated request</td><td>Access token expired (30 minutes)</td><td>Refresh, or log in again</td></tr>
+      <tr><td>401 <code>Invalid or expired refresh token</code></td><td>That refresh token was already rotated once — it is single-use</td><td>Log in again. Generic by design, to prevent enumeration</td></tr>
+      <tr><td>403 <code>EMAIL_NOT_VERIFIED</code></td><td>Verification required and the user has not verified</td><td>Click the email link, or call <code>/resend-verification</code></td></tr>
+      <tr><td>Login returns 200 when you expected 403</td><td>Mail password is not configured, so the gate fails open</td><td>Set the mail credential in the Render dashboard</td></tr>
+      <tr><td>409 on item update</td><td>Optimistic locking — stale <code>version</code></td><td>Re-read the item and use <code>server_version</code> from the 409 body</td></tr>
+      <tr><td>422 on register</td><td>Missing <code>email</code>, or a <code>username</code> with capitals</td><td>Username must match <code>^[a-z0-9_]+$</code></td></tr>
+      <tr><td>422 on order create</td><td><code>orderId</code> omitted, or an item missing <code>name</code></td><td>Use the Step 13 body exactly — both fields are required</td></tr>
+      <tr><td>429 on register or login</td><td>3 registrations/hour, 5 logins/minute, per IP</td><td>Wait it out. Limits are in-memory and reset on deploy</td></tr>
+      <tr><td>Order apply returns 400</td><td>Status is not <code>received</code>, or stock was already applied</td><td>PATCH to <code>received</code> first. <code>stock_updated</code> is terminal by design</td></tr>
+      <tr><td><code>jq</code> returns null on <code>/activities</code></td><td>Response is an object, not an array</td><td>Use <code>.activities[]</code>, not <code>.[]</code></td></tr>
+      <tr><td>Alembic “Can't locate revision”</td><td>Database is ahead of the code</td><td>Roll back the bad deploy first; never edit a merged migration</td></tr>
+      <tr><td><code>adb shell pm clear</code> appears to do nothing</td><td>Wrong package name</td><td>It is <code>com.carekosh.mobile</code></td></tr>
     </tbody>
   </table>
 </div>
 
 <div class="footer">
-  CareKosh · End-to-End Verification Guide · April–May 2026 · PRs #4–#34
+  CareKosh · End-to-End Verification Guide · re-verified against source, July 2026<br>
+  Every curl body, expected response and SQL identifier checked against <code>app/api/v1/</code>, <code>app/schemas/</code>, <code>app/models/</code>, <code>app/main.py</code>, <code>render.yaml</code>, <code>eas.json</code> and <code>app.json</code>.
 </div>
 
 </div>

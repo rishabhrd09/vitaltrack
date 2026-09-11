@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<!--
+  CAREKOSH — FIRST AGENTIC INTEGRATION
+  The decision record for CareKosh's first AI feature: "Ask CareKosh".
+  Produced 2026-07 from a 14-agent research workflow (3 code/doc grounding agents,
+  5 web-research agents, 3 competing architecture proposals, 1 synthesizer,
+  2 adversarial verifiers). Every claim carries an evidence grade.
+  Supersedes the self-hosting and compliance sections of CAREKOSH_AI_IMPLEMENTATION_PLAN.html.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh — First Agentic Integration</title>
+<style>
+:root{
+  --bg:#fbf7f0; --card:#fffdf9; --ink:#2a241c; --muted:#6f6555;
+  --green:#1d6b52; --green-soft:#e4efe9; --gold:#89672f; --gold-soft:#f1e6d2;
+  --border:#e7ddc9; --red:#9c2b1e; --red-soft:#f7e6e3;
+  --code-bg:#241f18; --code-ink:#f3ead9; --code-accent:#d9b98a;
+  --blue:#2a5d78; --blue-soft:#e3edf2;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.75;font-size:16.5px}
+.wrap{max-width:880px;margin:0 auto;padding:56px 28px 110px}
+a{color:var(--green)}
+.cover{text-align:center;padding:70px 20px 60px;border-bottom:3px double var(--border);margin-bottom:34px}
+.cover .kicker{letter-spacing:.34em;text-transform:uppercase;font-size:.78rem;color:var(--gold);font-weight:700;margin-bottom:18px}
+.cover h1{font-family:Georgia,'Times New Roman',serif;font-size:3rem;line-height:1.15;letter-spacing:-.01em;margin-bottom:14px}
+.cover .sub{color:var(--muted);font-size:1.12rem;max-width:640px;margin:0 auto 26px}
+.cover .rules{display:inline-flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.pill{display:inline-block;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:5px 16px;font-size:.85rem;color:var(--muted)}
+.pill b{color:var(--green)}
+.toc{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:30px 34px;margin:36px 0 60px}
+.toc h2{font-family:Georgia,serif;font-size:1.35rem;margin-bottom:16px}
+.toc ol{list-style:none;counter-reset:ch -1}
+.toc li{counter-increment:ch;padding:9px 0;border-bottom:1px dashed var(--border);display:flex;gap:14px;align-items:baseline}
+.toc li:last-child{border-bottom:none}
+.toc li::before{content:counter(ch,decimal-leading-zero);font-family:Georgia,serif;color:var(--gold);font-weight:700;font-size:1.05rem;min-width:34px}
+.toc a{text-decoration:none;color:var(--ink);font-weight:600}
+.toc a:hover{color:var(--green)}
+.toc .t-sub{color:var(--muted);font-weight:400;font-size:.9rem}
+.chapter{margin:78px 0 0;padding-top:26px}
+.ch-label{letter-spacing:.3em;text-transform:uppercase;font-size:.75rem;color:var(--gold);font-weight:700}
+.chapter h2{font-family:Georgia,serif;font-size:2.05rem;line-height:1.2;margin:6px 0 4px}
+.ch-tag{color:var(--muted);font-size:1rem;margin-bottom:20px}
+.chapter h3{font-family:Georgia,serif;font-size:1.28rem;margin:34px 0 12px;color:var(--green)}
+.chapter h4{font-size:1.02rem;margin:20px 0 8px}
+p{margin-bottom:13px}
+ul,ol{margin:0 0 15px 24px}
+li{margin-bottom:7px}
+strong{color:var(--ink)}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px}
+.b{display:inline-block;border-radius:6px;padding:2.5px 11px;font-size:.78rem;font-weight:700;letter-spacing:.02em}
+.b-free{background:var(--green-soft);color:var(--green)}
+.b-gold{background:var(--gold-soft);color:var(--gold)}
+.b-red{background:var(--red-soft);color:var(--red)}
+.b-mut{background:#efe9dc;color:var(--muted)}
+.b-blue{background:var(--blue-soft);color:var(--blue)}
+.note{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--green);border-radius:10px;padding:14px 18px;margin:18px 0;font-size:.95rem}
+.warn{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:10px;padding:14px 18px;margin:18px 0;font-size:.95rem}
+.danger{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--red);border-radius:10px;padding:14px 18px;margin:18px 0;font-size:.95rem}
+.steel{background:#f6f1e6;border:1px dashed var(--gold);border-radius:10px;padding:14px 18px;margin:18px 0;font-size:.95rem}
+table{width:100%;border-collapse:collapse;margin:16px 0 22px;font-size:.92rem;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;background:#f6efe2}
+tr:last-child td{border-bottom:none}
+.tbl-wrap{overflow-x:auto}
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.83rem;line-height:1.6;margin:14px 0 22px;border:1px solid #3a3226}
+code{font-family:"SF Mono",ui-monospace,Consolas,monospace}
+p code,li code,td code{background:#f1ead9;color:var(--ink);padding:1.5px 6px;border-radius:4px;font-size:.85em}
+pre .c{color:#9b8b72}
+pre .k{color:#e8c284}
+pre .s{color:#a8c8a2}
+.file-tree{background:var(--card);border:1px dashed var(--gold);border-radius:10px;padding:14px 20px;font-family:"SF Mono",ui-monospace,Consolas,monospace;font-size:.82rem;line-height:1.7;margin:14px 0 20px;white-space:pre;overflow-x:auto;color:var(--ink)}
+.file-tree .new{color:var(--green);font-weight:700}
+.file-tree .mod{color:var(--gold);font-weight:700}
+.diagram{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin:16px 0 24px;overflow-x:auto}
+.diagram svg{display:block;margin:0 auto;max-width:100%}
+.dg-cap{text-align:center;color:var(--muted);font-size:.85rem;margin-top:8px;font-style:italic}
+.sec{display:flex;align-items:center;gap:10px}
+.sec .ico{font-size:1.1rem}
+.verdict{background:linear-gradient(180deg,#fffdf9,#f7f1e5);border:2px solid var(--green);border-radius:16px;padding:24px 28px;margin:26px 0}
+.verdict .v-head{font-family:Georgia,serif;font-size:1.5rem;color:var(--green);margin-bottom:8px}
+.verdict .v-sub{color:var(--muted);font-size:.95rem}
+.ev{display:inline-block;border-radius:5px;padding:1px 8px;font-size:.72rem;font-weight:700;letter-spacing:.03em;vertical-align:middle;white-space:nowrap}
+.ev-v{background:var(--green-soft);color:var(--green)}
+.ev-d{background:var(--gold-soft);color:var(--gold)}
+.ev-r{background:var(--red-soft);color:var(--red)}
+.ev-repo{background:var(--blue-soft);color:var(--blue)}
+.legend{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin:20px 0;font-size:.9rem}
+.legend div{margin:6px 0}
+.retract{background:#fdf6f4;border:1px solid #e8cfc9;border-left:4px solid var(--red);border-radius:10px;padding:14px 18px;margin:16px 0;font-size:.93rem}
+.retract .r-was{color:var(--red);font-weight:700}
+.retract .r-is{color:var(--green);font-weight:700}
+.phone{max-width:330px;margin:18px auto;background:var(--card);border:2px solid var(--border);border-radius:26px;padding:18px 16px;box-shadow:0 6px 24px rgba(42,36,28,.08)}
+.phone .bubble-u{background:var(--green);color:#fff;border-radius:16px 16px 4px 16px;padding:9px 14px;margin:8px 0 8px auto;max-width:85%;width:fit-content;font-size:.9rem}
+.phone .bubble-a{background:#f3ecdd;border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:9px 14px;margin:8px auto 8px 0;max-width:88%;width:fit-content;font-size:.9rem}
+.itemcard{border:1.5px solid var(--gold);border-radius:14px;padding:12px 14px;margin:8px 0;background:#fffdf7;font-size:.86rem}
+.itemcard .ic-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.itemcard .ic-name{font-weight:700;font-size:.98rem}
+.itemcard .crit{background:var(--red-soft);color:var(--red);border-radius:5px;padding:1px 8px;font-size:.72rem;font-weight:700}
+.meter{height:9px;background:#eee4d0;border-radius:6px;overflow:hidden;margin:7px 0}
+.meter i{display:block;height:100%;background:var(--red);width:20%}
+.itemcard .row{display:flex;justify-content:space-between;color:var(--muted);font-size:.82rem;padding:2.5px 0;border-bottom:1px dotted var(--border)}
+.itemcard .row:last-child{border-bottom:none}
+.itemcard .row b{color:var(--ink)}
+.steps{counter-reset:st;list-style:none;margin-left:0}
+.steps li{counter-increment:st;position:relative;padding-left:44px;margin-bottom:14px}
+.steps li::before{content:counter(st);position:absolute;left:0;top:1px;width:29px;height:29px;border-radius:50%;background:var(--green);color:#fff;font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+footer{margin-top:80px;padding-top:24px;border-top:3px double var(--border);color:var(--muted);font-size:.87rem;text-align:center}
+hr.chsep{border:none;border-top:3px double var(--border);margin:70px auto 0;width:60%}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ======================= COVER ======================= -->
+<div class="cover">
+  <div class="kicker">CareKosh · Future Plan · Volume IV</div>
+  <h1>First Agentic Integration</h1>
+  <p class="sub">The decision record for CareKosh's first AI feature — what to build, what to refuse to build, and exactly why. Grounded in the live codebase, checked against primary sources, and adversarially reviewed before it reached you.</p>
+  <div class="rules">
+    <span class="pill">Decision: <b>hosted API, not self-hosted</b></span>
+    <span class="pill">Provider: <b>Groq, paid tier</b></span>
+    <span class="pill">Pattern: <b>deterministic-first</b></span>
+    <span class="pill">Voice: <b>output only in V1</b></span>
+  </div>
+</div>
+
+<!-- ======================= METHOD ======================= -->
+<section class="chapter" id="method" style="margin-top:20px">
+  <div class="ch-label">How this document was produced</div>
+  <h2>The evidence standard</h2>
+  <p class="ch-tag">Read this before trusting a single number below.</p>
+
+  <p>This document is the output of a <strong>14-agent research workflow</strong>: three agents audited the actual <code>vitaltrack-backend</code> and <code>vitaltrack-mobile</code> source and the three existing AI planning documents; five agents researched the open web (self-hosting economics, hosted-provider terms of service, the Expo voice stack, the 2026 AI-engineer job market, agent frameworks); three independent architects then proposed <em>competing</em> V1 designs under different priorities (ship-fastest, maximum hiring signal, lowest cost and risk); one synthesizer adjudicated the disagreements; and finally <strong>two adversarial verifiers</strong> — a skeptical staff engineer and a skeptical hiring-manager-plus-Play-policy-reviewer — attempted to refute the conclusions.</p>
+
+  <p><strong>The verifiers succeeded in several places.</strong> They found that a benchmark number doing heavy argumentative work could not be located at its cited source, that a "free tier" comparison quoted the wrong model's limits, that a cost estimate was low by roughly an order of magnitude, and — most importantly — that the compliance analysis had <em>missed a mandatory Google Play requirement</em> while inventing a different one that does not apply. Those corrections are not hidden. They are set out in full in <a href="#ch09">Chapter 09</a>, and every number they invalidated has been removed from the rest of this document rather than quietly softened.</p>
+
+  <div class="legend">
+    <strong>Evidence grades used throughout:</strong>
+    <div><span class="ev ev-repo">REPO</span> &nbsp;Verified directly against your source code in this session. Highest confidence — re-checkable in seconds.</div>
+    <div><span class="ev ev-v">VERIFIED</span> &nbsp;Confirmed against the primary source (vendor docs, Google Play policy pages, official terms of service).</div>
+    <div><span class="ev ev-d">DIRECTIONAL</span> &nbsp;The trend is well supported; the exact figure is not reliable. Useful for deciding, unsafe for quoting.</div>
+    <div><span class="ev ev-r">RETRACTED</span> &nbsp;Claimed during research, refuted on verification. Recorded so it is not repeated. Do not cite.</div>
+  </div>
+
+  <div class="warn"><strong>A note on how to use this.</strong> Anything graded <span class="ev ev-d">DIRECTIONAL</span> is fine for making your own decision but should <em>never</em> be quoted as a statistic in an interview or a document. A hiring manager who checks one fabricated-precision number discards everything else you said. The <span class="ev ev-repo">REPO</span> and <span class="ev ev-v">VERIFIED</span> claims are the ones you can defend.</div>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= TOC ======================= -->
+<div class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#ch00">The question, and the answer in one page</a> <span class="t-sub">· the decision table</span></li>
+    <li><a href="#ch01">Should you self-host a local LLM?</a> <span class="t-sub">· the steelman, the four tests, the honest verdict</span></li>
+    <li><a href="#ch02">Choosing the provider</a> <span class="t-sub">· terms of service as an engineering constraint</span></li>
+    <li><a href="#ch03">The architecture — deterministic first</a> <span class="t-sub">· the inversion that makes this safe and testable</span></li>
+    <li><a href="#ch04">Tools and the guardrail ladder</a> <span class="t-sub">· six read-only tools, six layers of grounding</span></li>
+    <li><a href="#ch05">Voice — output now, input later</a> <span class="t-sub">· the permission cliff and how to stay off it</span></li>
+    <li><a href="#ch06">Play Store compliance</a> <span class="t-sub">· the mandatory requirement both earlier plans missed</span></li>
+    <li><a href="#ch07">Does this get you hired?</a> <span class="t-sub">· yes — with one tension worth confronting</span></li>
+    <li><a href="#ch08">Build plan, effort and sequencing</a> <span class="t-sub">· ~16 days, and the order that de-risks your launch</span></li>
+    <li><a href="#ch09">Corrections, retractions and the risk register</a> <span class="t-sub">· what the verifiers overturned</span></li>
+    <li><a href="#ch10">Appendix — verified facts ledger</a> <span class="t-sub">· every load-bearing number, graded and sourced</span></li>
+  </ol>
+</div>
+
+<!-- ======================= CH 00 ======================= -->
+<section class="chapter" id="ch00">
+  <div class="ch-label">Chapter 00 · Executive summary</div>
+  <h2>The question, and the answer in one page</h2>
+  <p class="ch-tag">If you read nothing else, read this.</p>
+
+  <h3><span class="sec"><span class="ico">❓</span> What you asked</span></h3>
+  <p>Build a conversational agent into CareKosh: ask about an item in ordinary English, have it check the real data, answer reliably, present the answer attractively, and <strong>speak it aloud</strong>. Your stated preference was to <strong>self-host a local LLM</strong> on your own backend rather than use API keys, because managing keys felt difficult. And you asked whether this genuinely makes CareKosh a "production AI agent app" that helps you get hired as a generative-AI engineer.</p>
+
+  <div class="verdict">
+    <div class="v-head">Build it — but not the way you planned it.</div>
+    <p class="v-sub" style="margin-top:10px">Use a hosted API (Groq) rather than self-hosting; make a <em>deterministic</em> engine the primary answer path with the model as a rewriting layer on top; ship voice output only; and treat the eval harness — not the chat box — as the artifact that gets you hired. The self-hosting instinct was reasonable and is worth documenting, but it loses on your actual infrastructure, and the premise behind it ("API keys are hard") is factually wrong for this repo.</p>
+  </div>
+
+  <h3><span class="sec"><span class="ico">📋</span> The decision table</span></h3>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>Question</th><th>Decision</th><th>The one-line reason</th></tr>
+    <tr><td><b>Self-host a local LLM?</b></td><td><span class="b b-red">No</span></td><td>Your Render plan is 512 MB / 0.5 vCPU with no GPU. Nothing useful fits. <span class="ev ev-repo">REPO</span></td></tr>
+    <tr><td><b>Is self-hosting legal?</b></td><td><span class="b b-free">Yes</span></td><td>Apache-2.0 models are fine commercially — but it is moot via a hosted API. <span class="ev ev-v">VERIFIED</span></td></tr>
+    <tr><td><b>Which provider?</b></td><td><b>Groq, paid</b></td><td>Contractual no-training clause. Gemini's free tier forbids sensitive data outright. <span class="ev ev-v">VERIFIED</span></td></tr>
+    <tr><td><b>Agent framework?</b></td><td><b>None — hand-rolled loop</b></td><td><code>httpx</code> and <code>pydantic</code> are already pinned. Zero new runtime deps on a 512 MB box. <span class="ev ev-repo">REPO</span></td></tr>
+    <tr><td><b>Who answers first?</b></td><td><b>A deterministic engine</b></td><td>Correct with no API key at all; the LLM only rephrases. Testable, cheap, outage-proof.</td></tr>
+    <tr><td><b>Can the model emit numbers?</b></td><td><span class="b b-red">Never</span></td><td>Your code renders every digit from Postgres — including the spoken string.</td></tr>
+    <tr><td><b>Voice input (speech-to-text)?</b></td><td><span class="b b-mut">Deferred to V2</span></td><td>Needs <code>RECORD_AUDIO</code>, a disclosure screen and a Data Safety audio entry. <span class="ev ev-repo">REPO</span></td></tr>
+    <tr><td><b>Voice output (text-to-speech)?</b></td><td><span class="b b-free">V1</span></td><td><code>expo-speech</code> needs no permission and no Data Safety change. <span class="ev ev-v">VERIFIED</span></td></tr>
+    <tr><td><b>Writes / stock updates by AI?</b></td><td><span class="b b-mut">Deferred</span></td><td>Read-only collapses the entire write-safety surface to zero. <span class="ev ev-repo">REPO</span></td></tr>
+    <tr><td><b>WhatsApp channel?</b></td><td><span class="b b-mut">Cut from near-term</span></td><td>Bypasses every cost control built for the in-app path; adds no hiring signal.</td></tr>
+    <tr><td><b>Ship with the launch build?</b></td><td><span class="b b-red">No</span></td><td>Launch first with <code>AI_ENABLED=false</code>. AI in the next build cycle.</td></tr>
+    <tr><td><b>Does it help you get hired?</b></td><td><span class="b b-free">Yes</span></td><td>But via evals + decision records, not the chat UI. See <a href="#ch07">Ch 07</a>.</td></tr>
+  </table>
+  </div>
+
+  <div class="danger"><strong>🚨 Two things that are genuinely urgent, before any AI work begins.</strong><br>
+  <b>1 · A mandatory Play requirement is missing from every plan so far.</b> Apps that generate content with AI <em>must</em> provide an in-app way for users to report or flag offensive output. This is not optional and not a nice-to-have. Full detail in <a href="#ch06">Chapter 06</a>.<br>
+  <b>2 · Unrelated to AI, but time-boxed.</b> Render's legacy workspaces auto-migrate on <b>1 August 2026</b>, cutting included bandwidth from 100 GB to 25 GB with overage billing. Your <code>render.yaml</code> is on a legacy plan. Check your egress in the Render dashboard this week — this could cost more than the LLM ever will.</div>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 01 ======================= -->
+<section class="chapter" id="ch01">
+  <div class="ch-label">Chapter 01 · The central decision</div>
+  <h2>Should you self-host a local LLM?</h2>
+  <p class="ch-tag">Short answer: no. But the instinct was sound, and the reasoning is worth keeping.</p>
+
+  <h3><span class="sec"><span class="ico">🛡️</span> First, the strongest honest case <em>for</em> your idea</span></h3>
+  <p>This deserves to be argued properly before it is dismissed, because three of these points are genuinely good engineering instincts.</p>
+
+  <div class="steel">
+    <b>1 · Privacy is a real asset, not sentiment.</b> CareKosh holds household medical-supply data. Keeping inference on your own machine is a defensible privacy posture for a health-adjacent product.<br><br>
+    <b>2 · API keys are a real operational surface.</b> Keys leak. Providers deprecate models without warning. And because <code>updates.enabled</code> is <code>false</code> in your <code>app.json</code> <span class="ev ev-repo">REPO</span>, you have <em>no over-the-air update channel</em> — you cannot hotfix the mobile app. That makes external dependencies genuinely scarier for you than for most teams.<br><br>
+    <b>3 · Fixed cost, no runaway bill.</b> A self-hosted model cannot generate a surprise invoice from a buggy retry loop.<br><br>
+    <b>4 · There is a real free option.</b> Oracle Cloud's Always-Free ARM tier is genuinely free and genuinely private — a far better comparison than Render.<br><br>
+    <b>5 · In some markets, self-hosting is the differentiator.</b> Regulated, on-premise and healthcare AI infrastructure is a real hiring segment, and CareKosh sits adjacent to it.
+  </div>
+
+  <h3><span class="sec"><span class="ico">⚖️</span> The four tests it has to pass</span></h3>
+
+  <h4>Test 1 — Does it physically fit? <span class="b b-red">Fails</span></h4>
+  <p>Your <a href="../vitaltrack-backend/render.yaml">render.yaml</a> pins <code>plan: starter</code> <span class="ev ev-repo">REPO</span>, which is <strong>512 MB RAM and 0.5 vCPU</strong> <span class="ev ev-v">VERIFIED</span>. Render offers <strong>no GPU instances of any kind</strong> <span class="ev ev-d">DIRECTIONAL</span>. That memory has to hold FastAPI, SQLAlchemy, asyncpg and two Gunicorn workers <em>before</em> a model is loaded. A 4-bit quantised model costs roughly 0.6 GB per billion parameters, so even a 3B model needs several times the entire box. Only sub-1B models would fit, and those are not reliable enough to decide which database function to call.</p>
+
+  <h4>Test 2 — What would it cost to make it fit? <span class="b b-red">Fails badly</span></h4>
+  <p>Scaling Render to a machine that could serve a small model means a plan roughly <strong>two orders of magnitude</strong> more expensive per month than the hosted API alternative — and on CPU only, so it would still be slow. Meanwhile the hosted path costs a few dollars a month. You would be paying dramatically more for a materially worse agent.</p>
+  <div class="note"><strong>Intellectual honesty:</strong> this test is unfair to your idea, because Render is the weak version of self-hosting. The strong version — Oracle's free ARM tier — was never properly costed by the research, and one verifier called this out. It would fit a 3–4B model. The reason self-hosting still loses is <em>Test 3</em>, which is independent of hardware.</div>
+
+  <h4>Test 3 — Would a small model actually be reliable enough? <span class="b b-red">Unproven, and the risk is asymmetric</span></h4>
+  <p>The task is not chatting; it is <strong>choosing the right database function and passing the right arguments</strong>, sometimes across two steps (find the item, then read its status). Small models degrade sharply on exactly this multi-step tool-calling axis.</p>
+  <div class="retract"><span class="r-was">Retracted:</span> earlier research put precise benchmark percentages here and called them "the real killer". A verifier fetched the cited page and <strong>the numbers were not on it</strong> — and the model named was not even the model benchmarked. <span class="ev ev-r">RETRACTED</span> <br><span class="r-is">What stands:</span> the <em>direction</em> is well established — small models are meaningfully worse at multi-step tool selection. But you should <strong>measure it, not cite it</strong>. See the "$0.50 experiment" below.</div>
+  <p>On an app tracking medical supplies, a confidently wrong stock number is a <strong>safety</strong> problem, not a UX annoyance. That asymmetry is what settles this test.</p>
+
+  <h4>Test 4 — Does it help your career? <span class="b b-red">Fails</span></h4>
+  <p>Industry practice is overwhelmingly hosted-API-first, and self-hosting signals read as <em>infrastructure</em> work — LLM serving and inference optimisation — rather than applied AI engineering. That is a different, narrower job family than the one you are targeting. <span class="ev ev-d">DIRECTIONAL</span></p>
+
+  <h3><span class="sec"><span class="ico">🔑</span> The premise that has to be corrected</span></h3>
+  <p>Your reason for wanting to self-host was that creating and managing API keys is difficult. <strong>For this repository, that is simply not true</strong> — and since it was the load-bearing reason, it deserves a direct answer.</p>
+  <p>You <em>already</em> manage three secrets by exactly the mechanism a Groq key needs <span class="ev ev-repo">REPO</span>:</p>
+  <pre><code><span class="c"># vitaltrack-backend/render.yaml — the pattern you already use</span>
+envVars:
+  - key: DATABASE_URL
+    sync: <span class="k">false</span>          <span class="c"># ← paste the value in the Render dashboard</span>
+  - key: MAIL_PASSWORD
+    sync: <span class="k">false</span>
+  - key: SENTRY_DSN
+    sync: <span class="k">false</span>
+
+  <span class="c"># adding the LLM is a fourth line of the same shape:</span>
+  - key: GROQ_API_KEY
+    sync: <span class="k">false</span></code></pre>
+  <p>Getting the key itself is: open the Groq console → sign up → API Keys → Create. <strong>No command line, no service account, no IAM roles, no approval queue, no credit card for the free tier.</strong> <span class="ev ev-v">VERIFIED</span></p>
+  <div class="note"><strong>Where the confusion probably comes from.</strong> Google has two products with similar names. <b>AI Studio</b> is a button that gives you a key in seconds. <b>Vertex AI</b> is the enterprise platform — <code>gcloud</code>, service accounts, IAM bindings, regional endpoints — and it is genuinely a slog. You will never touch Vertex AI. <br><br><strong>The comparison that matters:</strong> self-hosting means choosing a model, quantising it, provisioning a VM, installing a runtime, managing memory, monitoring, patching and keeping it alive — <em>tens of times more operational work</em> than the four-line paste you were trying to avoid.</div>
+
+  <h3><span class="sec"><span class="ico">⚖️</span> Is it legal? You asked, so here is the real answer</span></h3>
+  <p><strong>Yes, self-hosting open-weight models commercially is legal</strong> — but the licences differ in ways that matter specifically for a health app. <span class="ev ev-v">VERIFIED</span></p>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>Model family</th><th>Licence</th><th>Relevance to a care-supply app</th></tr>
+    <tr><td>Qwen, Mistral</td><td>Apache 2.0</td><td><span class="b b-free">Clean</span> Permissive; no field-of-use restrictions.</td></tr>
+    <tr><td>Llama 3.x / 4</td><td>Meta Community Licence + Acceptable Use Policy</td><td><span class="b b-gold">Caution</span> The AUP restricts unlicensed medical use and misleading health-expertise claims — a live surface for CareKosh.</td></tr>
+    <tr><td>Gemma</td><td>Gemma terms + Prohibited Use Policy</td><td><span class="b b-gold">Caution</span> Same category of health-use restriction.</td></tr>
+  </table>
+  </div>
+  <div class="note"><strong>But this is mostly moot for you.</strong> Those obligations attach to whoever <em>receives and runs the weights</em>. Using a hosted API, you never download or redistribute weights — that relationship sits between the model owner and the inference provider, not between them and you. Choosing hosted inference sidesteps the licensing question almost entirely. <em>(An earlier draft claimed picking an Apache-2.0 model "deletes a compliance surface"; a verifier correctly noted this is overstated in a hosted context.)</em></div>
+
+  <h3><span class="sec"><span class="ico">💡</span> Keep 90% of the value for two hours of work</span></h3>
+  <p>Here is the move that turns this rejected idea into an asset. <strong>Write the decision down.</strong> Create <code>docs/adr/0001-hosted-vs-selfhosted-llm.md</code> containing: the constraint (your actual instance specs), the options considered, the break-even arithmetic, and — critically — <strong>the explicit threshold at which you would switch</strong> (say, sustained spend above a set figure, or a hard data-residency requirement from a customer).</p>
+  <div class="warn"><strong>Why this matters more than the code.</strong> "I self-hosted a local LLM" is a weak interview line. <em>"I evaluated self-hosting against a hosted API, measured the break-even, documented the switch threshold, and shipped the hosted path"</em> is a senior one. <strong>The reasoning is the hiring signal. The act is not.</strong></div>
+
+  <h4>Optional: the $0.50 experiment that replaces every retracted benchmark</h4>
+  <p>Rather than citing a number you cannot defend, generate your own. Once your 50-case golden set exists (<a href="#ch08">Ch 08</a>), run it against a small model and record the real tool-selection accuracy. That is roughly fifty cents of tokens and it converts the weakest section of this analysis into your own measurement — the single most defensible thing you could put in the ADR.</p>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 02 ======================= -->
+<section class="chapter" id="ch02">
+  <div class="ch-label">Chapter 02 · Provider selection</div>
+  <h2>Choosing the provider</h2>
+  <p class="ch-tag">Terms of service are an engineering constraint, not paperwork.</p>
+
+  <p>The usual way to pick an LLM provider is speed and price. For CareKosh the <strong>terms of service decide it before performance is even considered</strong>, because your users' data is household medical-supply information.</p>
+
+  <h3><span class="sec"><span class="ico">📜</span> The comparison that actually matters</span></h3>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>Provider</th><th>Data used for training?</th><th>Verdict</th></tr>
+    <tr><td><b>Groq</b> (paid or free)</td><td>Its services agreement states it <em>"is not permitted to use Inputs or Outputs for training or fine-tuning"</em>, plus deletion of customer data within 30 days. <span class="ev ev-v">VERIFIED</span></td><td><span class="b b-free">Chosen</span></td></tr>
+    <tr><td><b>Google Gemini</b> — free tier</td><td>Terms state Google uses submitted content to develop its products, that human reviewers may read it, and explicitly: <em>"Do not submit sensitive, confidential, or personal information to the Unpaid Services."</em> <span class="ev ev-v">VERIFIED</span></td><td><span class="b b-red">Disqualified</span></td></tr>
+    <tr><td><b>Google Gemini</b> — paid</td><td>Attaching billing changes the terms materially.</td><td><span class="b b-mut">Viable alternative</span></td></tr>
+    <tr><td><b>GitHub Models</b></td><td>Pre-release terms prohibit use in any production environment or to process live customer data. <span class="ev ev-v">VERIFIED</span></td><td><span class="b b-red">Contractually barred</span></td></tr>
+  </table>
+  </div>
+
+  <div class="danger"><strong>This is the single most important finding in the chapter.</strong> Gemini's <em>free</em> tier is not merely inadvisable for CareKosh — its terms explicitly instruct you not to send personal information through it. Any plan that routes household medical inventory through the unpaid Gemini API is in direct conflict with the terms you agreed to. If you later prefer Gemini, use the <em>paid</em> tier.</div>
+
+  <h3><span class="sec"><span class="ico">💳</span> Attach a card on day one</span></h3>
+  <p>Two reasons, and the first is the one people miss:</p>
+  <ul>
+    <li><strong>Free-tier rate limits apply at the organisation level</strong>, not per user <span class="ev ev-v">VERIFIED</span> — so every one of your users shares one small quota. A handful of simultaneous conversations exhausts it for everybody.</li>
+    <li><strong>The bill is trivially small.</strong> Realistically <strong>a few dollars a month</strong> at your scale. Set a spend alert and stop thinking about it.</li>
+  </ul>
+  <div class="retract"><span class="r-was">Retracted:</span> an earlier estimate of "$0.38/month" was quoted repeatedly. A verifier showed it omitted <em>reasoning tokens</em> and the fact that a multi-round tool-calling turn re-sends the whole growing context on every round — understating cost by roughly an order of magnitude. <span class="ev ev-r">RETRACTED</span><br><span class="r-is">What stands:</span> the conclusion is unchanged — the cost is negligible. Budget <strong>single-digit dollars per month</strong>, and never quote a to-the-cent figure you have not measured.</div>
+
+  <h3><span class="sec"><span class="ico">🔀</span> One LLM lane, and one deterministic lane</span></h3>
+  <p>The instinct is to build a failover chain: Groq, then Gemini, then something else. <strong>Resist it.</strong> Every extra provider is another terms-of-service document to comply with, another key to rotate, another data processor to declare, and another code path that is never exercised until the day it matters.</p>
+  <pre><code>Groq  ──▶ (fails: timeout / quota / outage / model retired)
+            │
+            └──▶ deterministic renderer   <span class="c">← always correct, always available</span></code></pre>
+  <p>The fallback that keeps you alive is not a second model. It is <strong>your own code</strong>, which is the subject of the next chapter.</p>
+
+  <div class="warn"><strong>Two operational rules.</strong> Put the model name in an environment variable (<code>GROQ_MODEL</code>), never a constant in code — providers retire models on short notice and you have no over-the-air update path. And make <em>model-not-found</em> an explicit trigger for the deterministic fallback, alongside timeout and quota errors.</div>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 03 ======================= -->
+<section class="chapter" id="ch03">
+  <div class="ch-label">Chapter 03 · Architecture</div>
+  <h2>The architecture — deterministic first</h2>
+  <p class="ch-tag">The counterintuitive inversion that makes this safe, cheap and testable.</p>
+
+  <h3><span class="sec"><span class="ico">🔄</span> The idea in one sentence</span></h3>
+  <p>The obvious design is: user asks → LLM decides what to do → LLM writes the answer. <strong>Do the opposite.</strong> Build a plain, deterministic engine that answers correctly <em>with no API key at all</em>, and let the LLM do nothing but rephrase an answer that is already right.</p>
+
+  <div class="verdict">
+    <div class="v-head">The model's job is not "answer this". It is "say this more naturally."</div>
+    <p class="v-sub" style="margin-top:10px">Shrinking the model's responsibility is what makes a small, cheap model sufficient; makes every answer testable without a network call; makes your outage fallback the <em>primary</em> code path instead of untested dead code; and means you can demo the whole feature — and pass a Play review — with the AI provider switched off entirely.</p>
+  </div>
+
+  <h3><span class="sec"><span class="ico">🗺️</span> Request flow</span></h3>
+  <div class="diagram">
+  <svg viewBox="0 0 820 742" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Request flow diagram: the deterministic renderer is the spine, the LLM is an optional rewriting layer">
+    <defs>
+      <marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#6f6555"/>
+      </marker>
+      <marker id="arg" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#1d6b52"/>
+      </marker>
+      <marker id="arr" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#9c2b1e"/>
+      </marker>
+    </defs>
+    <style>
+      .bx{fill:#fffdf9;stroke:#e7ddc9;stroke-width:1.5;rx:9}
+      .lbl{font:600 13px -apple-system,'Segoe UI',sans-serif;fill:#2a241c}
+      .sml{font:11px -apple-system,'Segoe UI',sans-serif;fill:#6f6555}
+      .ln{stroke:#6f6555;stroke-width:1.6;fill:none;marker-end:url(#ar)}
+      .lng{stroke:#1d6b52;stroke-width:2.6;fill:none;marker-end:url(#arg)}
+      .lnr{stroke:#9c2b1e;stroke-width:1.6;fill:none;marker-end:url(#arr);stroke-dasharray:4 3}
+      .lnd{stroke:#89672f;stroke-width:1.6;fill:none;marker-end:url(#ar);stroke-dasharray:5 4}
+    </style>
+
+    <rect class="bx" x="290" y="12" width="240" height="44"/>
+    <text class="lbl" x="410" y="32" text-anchor="middle">Mobile · “Ask CareKosh”</text>
+    <text class="sml" x="410" y="47" text-anchor="middle">“oxygen kitne bache hain?”</text>
+    <path class="ln" d="M410,56 L410,84"/>
+
+    <rect class="bx" x="270" y="86" width="280" height="46"/>
+    <text class="lbl" x="410" y="106" text-anchor="middle">POST /api/v1/ai/chat</text>
+    <text class="sml" x="410" y="121" text-anchor="middle">JWT · rate limit · per-user daily budget</text>
+    <path class="ln" d="M410,132 L410,160"/>
+
+    <rect class="bx" x="270" y="162" width="280" height="46" style="stroke:#9c2b1e"/>
+    <text class="lbl" x="410" y="182" text-anchor="middle">Safety gate (deterministic)</text>
+    <text class="sml" x="410" y="197" text-anchor="middle">medical-advice keywords → refuse</text>
+    <path class="lnr" d="M550,185 L648,185"/>
+    <rect class="bx" x="650" y="162" width="152" height="46" style="stroke:#9c2b1e"/>
+    <text class="lbl" x="726" y="182" text-anchor="middle" style="fill:#9c2b1e">Fixed refusal</text>
+    <text class="sml" x="726" y="197" text-anchor="middle">LLM never called</text>
+    <path class="ln" d="M410,208 L410,236"/>
+
+    <rect class="bx" x="270" y="238" width="280" height="44"/>
+    <text class="lbl" x="410" y="258" text-anchor="middle">Intent → tool selection</text>
+    <text class="sml" x="410" y="273" text-anchor="middle">keyword rules, or model-assisted</text>
+    <path class="ln" d="M410,282 L410,310"/>
+
+    <rect class="bx" x="212" y="312" width="396" height="60" style="stroke:#2a5d78"/>
+    <text class="lbl" x="410" y="333" text-anchor="middle">Six read-only tools</text>
+    <text class="sml" x="410" y="349" text-anchor="middle">every query filtered by user_id · SELECT only</text>
+    <text class="sml" x="410" y="364" text-anchor="middle">find_item · get_item_status · list_needs_attention · …</text>
+    <path class="ln" d="M608,342 L688,342"/>
+    <rect class="bx" x="690" y="320" width="112" height="44" style="stroke:#2a5d78"/>
+    <text class="lbl" x="746" y="340" text-anchor="middle">Postgres</text>
+    <text class="sml" x="746" y="355" text-anchor="middle">Neon</text>
+    <path class="lng" d="M410,372 L410,402"/>
+
+    <rect x="180" y="404" width="460" height="72" rx="11" fill="#e4efe9" stroke="#1d6b52" stroke-width="2.5"/>
+    <text class="lbl" x="410" y="428" text-anchor="middle" style="fill:#1d6b52;font-size:14px">⬛ DETERMINISTIC RENDERER — the spine</text>
+    <text class="sml" x="410" y="446" text-anchor="middle">produces a complete, correct answer + every number</text>
+    <text class="sml" x="410" y="462" text-anchor="middle">works with AI_ENABLED=false and no API key</text>
+
+    <path class="lnd" d="M640,440 L706,440 L706,506 L640,506"/>
+    <rect class="bx" x="470" y="490" width="170" height="52" style="stroke:#89672f"/>
+    <text class="lbl" x="555" y="510" text-anchor="middle" style="fill:#89672f">LLM rewrite</text>
+    <text class="sml" x="555" y="525" text-anchor="middle">“phrase this naturally”</text>
+    <text class="sml" x="555" y="538" text-anchor="middle">Groq · optional</text>
+
+    <path class="lng" d="M410,476 L410,560"/>
+    <path class="lnd" d="M470,516 L412,516"/>
+
+    <rect class="bx" x="250" y="562" width="320" height="52" style="stroke:#89672f"/>
+    <text class="lbl" x="410" y="582" text-anchor="middle">Validator</text>
+    <text class="sml" x="410" y="597" text-anchor="middle">any number not from a tool → discard rewrite</text>
+    <path class="lnr" d="M250,588 L188,588 L188,440 L178,440"/>
+    <text class="sml" x="150" y="520" text-anchor="middle" style="fill:#9c2b1e">reject →</text>
+    <text class="sml" x="150" y="535" text-anchor="middle" style="fill:#9c2b1e">use spine</text>
+
+    <path class="lng" d="M410,614 L410,644"/>
+    <rect class="bx" x="212" y="646" width="396" height="76" style="stroke:#1d6b52;stroke-width:2"/>
+    <text class="lbl" x="410" y="668" text-anchor="middle">Response</text>
+    <text class="sml" x="410" y="686" text-anchor="middle">text · speech string (rendered deterministically)</text>
+    <text class="sml" x="410" y="702" text-anchor="middle">card refs → app renders every digit from Postgres</text>
+    <text class="sml" x="410" y="716" text-anchor="middle" style="fill:#1d6b52;font-weight:700">the model never emits a number</text>
+  </svg>
+  <div class="dg-cap">The green path is always available. The gold path is an enhancement that can fail safely at any point.</div>
+  </div>
+
+  <h3><span class="sec"><span class="ico">📁</span> Where the code goes</span></h3>
+  <p>Your <code>app/services/</code> currently contains only <code>__init__.py</code> and <code>audit.py</code> <span class="ev ev-repo">REPO</span> — so the new AI service package follows the pattern <code>audit.py</code> already establishes: plain async functions taking a database session, not classes.</p>
+  <div class="file-tree">vitaltrack-backend/
+├── app/
+│   ├── api/v1/
+│   │   ├── <span class="mod">__init__.py</span>            ← register the ai router
+│   │   ├── <span class="new">ai.py</span>                  ← POST /ai/chat, POST /ai/feedback
+│   │   └── <span class="mod">auth.py</span>                ← add aiEnabled to GET /auth/me
+│   ├── services/
+│   │   ├── audit.py                (existing — the pattern to copy)
+│   │   └── <span class="new">ai/</span>
+│   │       ├── <span class="new">render.py</span>          ← THE DETERMINISTIC ENGINE — build first
+│   │       ├── <span class="new">tools.py</span>           ← six read-only tools
+│   │       ├── <span class="new">guards.py</span>          ← safety gate, PII allowlist, validator
+│   │       ├── <span class="new">client.py</span>          ← httpx wrapper around Groq
+│   │       ├── <span class="new">loop.py</span>            ← the tool-calling loop
+│   │       └── <span class="new">prompts.py</span>
+│   ├── schemas/<span class="new">ai.py</span>
+│   └── core/<span class="mod">config.py</span>            ← GROQ_API_KEY (SecretStr), GROQ_MODEL, AI_ENABLED
+├── tests/<span class="new">ai/</span>
+│   ├── <span class="new">golden_set.jsonl</span>           ← 50 cases — WRITE THIS ON DAY ONE
+│   ├── <span class="new">test_tools.py</span>              ← cross-user isolation, one test per tool
+│   └── <span class="new">test_guards.py</span>
+└── <span class="mod">render.yaml</span>                    ← GROQ_API_KEY: sync false
+
+vitaltrack-mobile/
+├── app/<span class="new">ask.tsx</span>                    ← the chat screen
+├── components/<span class="new">ask/</span>                ← MessageBubble, AnswerCard, SpeakButton, ReportButton
+├── services/<span class="new">chat.ts</span>
+├── hooks/<span class="new">useAskCareKosh.ts</span>
+└── store/<span class="new">useChatStore.ts</span>          ← in-memory only, never persisted</div>
+
+  <div class="note"><strong>No new database table, no migration.</strong> The conversation lives in memory on the device and is gone when the screen closes. That removes a migration, a new category of personal data at rest, a Data Safety line item, and a deletion obligation. It also matters operationally: your container runs <code>alembic upgrade head</code> on boot and <strong>aborts startup if it fails</strong> <span class="ev ev-repo">REPO</span> — zero migrations means zero deploy-abort risk during a launch window.</div>
+
+  <h3><span class="sec"><span class="ico">🧰</span> Why no agent framework</span></h3>
+  <p>LangGraph, PydanticAI and the rest solve problems this feature does not have: multi-agent handoffs, durable long-running state, human-in-the-loop gates spanning requests. You have six tools and one loop.</p>
+  <p>Decisively: <code>httpx==0.28.1</code> and <code>pydantic==2.10.3</code> are <strong>already pinned in your requirements</strong> <span class="ev ev-repo">REPO</span>. A hand-rolled loop adds <strong>zero new runtime dependencies</strong> — which on a 512 MB instance is a first-order engineering constraint, not a matter of taste.</p>
+  <div class="warn"><strong>The career-flavoured counter-argument, answered.</strong> LangChain and LangGraph appear in job descriptions and a hand-rolled loop does not. The right response is not to adopt a framework you do not need — it is to <em>write the comparison down</em> in <code>docs/adr/0002-agent-framework-choice.md</code>. "I built it two ways, shipped the simpler one, and here is the memory and latency difference" outperforms framework loyalty in any real interview.</div>
+
+  <h3><span class="sec"><span class="ico">🔌</span> The kill switch — your only hotfix mechanism</span></h3>
+  <p>Because <code>updates.enabled</code> is <code>false</code> <span class="ev ev-repo">REPO</span>, you cannot push a fix to an installed app without a new store build. So the feature must be remotely disableable from the server.</p>
+  <pre><code><span class="c"># app/api/v1/auth.py — GET /auth/me gains one field.</span>
+<span class="c"># No new route, so the CI route-count gate is unaffected.</span>
+{
+  <span class="s">"id"</span>: ..., <span class="s">"email"</span>: ..., <span class="s">"name"</span>: ...,
+  <span class="s">"aiEnabled"</span>: <span class="k">True</span>        <span class="c"># ← mobile hides the Ask button entirely when false</span>
+}</code></pre>
+  <p>One environment-variable flip in the Render dashboard removes the feature from every installed copy of the app within seconds — no rebuild, no review, no store involvement. <strong>These are the highest-value twenty lines in the whole plan.</strong></p>
+  <p>The same reasoning applies to every user-visible string. The refusal message, the error copy, the system prompt and the model name must all live <strong>on the server</strong>; the app renders whatever it is given and hardcodes nothing.</p>
+
+  <div class="danger"><strong>Do not forget the CI gate.</strong> Your pipeline asserts an exact API route count — <code>scripts/check_api_routes.py --expected 39</code> appears in both the script default and <code>.github/workflows/ci.yml</code> <span class="ev ev-repo">REPO</span>. Adding the AI routes means <strong>bumping both numbers in the same pull request</strong>, or CI hard-fails.</div>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 04 ======================= -->
+<section class="chapter" id="ch04">
+  <div class="ch-label">Chapter 04 · Tools &amp; safety</div>
+  <h2>Tools and the guardrail ladder</h2>
+  <p class="ch-tag">Six read-only tools. Six layers ensuring the model can never invent a number.</p>
+
+  <h3><span class="sec"><span class="ico">🧰</span> The six tools</span></h3>
+  <p>All read-only, all filtered by the authenticated user, all returning typed objects with <strong>numbers already formatted as strings</strong> so the model has nothing to compute.</p>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>Tool</th><th>Answers</th></tr>
+    <tr><td><code>find_item</code></td><td>“do I have paracetamol?” — fuzzy name match</td></tr>
+    <tr><td><code>get_item_status</code></td><td>“how much oxygen is left?” — stock vs minimum, criticality</td></tr>
+    <tr><td><code>list_needs_attention</code></td><td>“what am I running low on?”</td></tr>
+    <tr><td><code>get_inventory_summary</code></td><td>“how are we doing overall?”</td></tr>
+    <tr><td><code>list_expiring</code></td><td>“anything expiring soon?”</td></tr>
+    <tr><td><code>list_by_category</code></td><td>“what's in wound care?”</td></tr>
+  </table>
+  </div>
+
+  <div class="danger"><strong>The single most important test file you will write.</strong> There is no repository layer and no row-level security in this codebase — <strong>ownership is enforced manually in every query</strong> <span class="ev ev-repo">REPO</span>. Every tool must re-apply its <code>user_id</code> filter, and <code>tests/ai/test_tools.py</code> must contain a cross-user isolation test <em>per tool</em> proving user A can never see user B's items. This is also the first thing a technical interviewer will probe.</div>
+
+  <pre><code><span class="c"># app/services/ai/tools.py — the shape every tool follows</span>
+
+<span class="k">async def</span> get_item_status(db: AsyncSession, user_id: str, item_id: str) -> ItemStatus:
+    stmt = select(Item).where(
+        Item.id == item_id,
+        Item.user_id == user_id,      <span class="c"># ← NEVER omit. No RLS backstop exists.</span>
+        Item.is_active.is_(<span class="k">True</span>),
+    )
+    item = (<span class="k">await</span> db.execute(stmt)).scalar_one_or_none()
+    <span class="k">if</span> item <span class="k">is</span> <span class="k">None</span>:
+        <span class="k">raise</span> ItemNotFound(item_id)
+
+    <span class="c"># Every number is computed HERE and shipped as a formatted string.</span>
+    <span class="c"># The model receives words, never operands — it cannot do arithmetic wrong</span>
+    <span class="c"># if it is never given arithmetic to do.</span>
+    <span class="k">return</span> ItemStatus(
+        ref=item.id,
+        name=item.name,
+        quantity_text=<span class="s">f"{item.quantity} {item.unit}"</span>,
+        minimum_text=<span class="s">f"{item.minimum_stock} {item.unit}"</span>,
+        status=_derive_status(item),        <span class="c"># Literal["ok","low","out"] — server-side</span>
+        is_critical=item.is_critical,
+    )</code></pre>
+
+  <h3><span class="sec"><span class="ico">🪜</span> The guardrail ladder</span></h3>
+  <p>Six layers, each independently sufficient to prevent a fabricated number from reaching the user.</p>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>Layer</th><th>Rule</th><th>Why</th></tr>
+    <tr><td><b>L0</b></td><td>The model never performs arithmetic</td><td>Every figure is pre-computed and pre-formatted in the tool result</td></tr>
+    <tr><td><b>L1</b></td><td>Numbers travel as references, not values</td><td>The app renders each digit from Postgres; status is derived server-side</td></tr>
+    <tr><td><b>L2</b></td><td>Validator rejects any number absent from tool output</td><td>One retry, then fall back to the deterministic answer</td></tr>
+    <tr><td><b>L3</b></td><td>Refuse if the model called no tool</td><td>An answer with no data behind it is a hallucination by definition</td></tr>
+    <tr><td><b>L4</b></td><td>Strict allowlist of what leaves your server</td><td>Message text and item name/quantity/unit only. <b>Never</b> email, user id, supplier name or contact, purchase link, or notes</td></tr>
+    <tr><td><b>L5</b></td><td>Tool results injected as typed data, never concatenated into the prompt</td><td>Item names are user-authored free text — an untrusted prompt-injection surface</td></tr>
+  </table>
+  </div>
+
+  <div class="danger"><strong>⚠️ The hole a verifier caught — fix this or the whole ladder leaks.</strong><br>
+  The spoken answer needs numbers as <em>words</em> — “four packs”, not “4 pcs”. But the L2 validator looks for <em>numerals</em>. It will never catch <code>four</code>, <code>a dozen</code>, or <code>about half</code>. If the model authors the speech string, <strong>the spoken channel becomes the one unguarded path in a system built specifically to prevent unguarded numbers</strong> — on a medical-supply app, read aloud with the authority of a voice assistant.<br><br>
+  <strong>The fix:</strong> render the speech string <em>deterministically</em> from the same data as the visual card. Never let the model author it.</div>
+
+  <h3><span class="sec"><span class="ico">🚑</span> The medical-advice gate</span></h3>
+  <p>Your Play Store submission commits to CareKosh <strong>not offering medical advice</strong>. That promise must be enforced in code, before the model is ever called — a keyword gate that short-circuits to a fixed, hardcoded response.</p>
+  <div class="warn"><strong>Be honest about this gate's limits.</strong> A verifier pointed out, correctly, that an English keyword list does not fire on natural Hinglish phrasing — “<em>kitna lena chahiye</em>”, “<em>ye kis liye hai</em>”, “<em>papa ke liye theek hai kya</em>”. And a golden set you write yourself cannot prove its own coverage; scoring 100% against your own examples is circular.<br><br><strong>Therefore:</strong> (1) cover Hinglish phrasings explicitly, (2) add a conservative refusal instruction in the system prompt as a second line of defence, and (3) write a small <em>adversarial</em> set separate from the golden set — jailbreak attempts, indirect phrasings, and injection through item names.</div>
+
+  <div class="note"><strong>Rehearse the reviewer's session.</strong> Play reviewers get a login for your app. Handed a care-supply app with an “Ask” button, a reviewer will type medical questions at it — that <em>is</em> the review. Sit down before submitting and try to break your own gate for twenty minutes.</div>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 05 ======================= -->
+<section class="chapter" id="ch05">
+  <div class="ch-label">Chapter 05 · Voice</div>
+  <h2>Voice — output now, input later</h2>
+  <p class="ch-tag">There is a permission cliff between the two. V1 stays on the safe side of it.</p>
+
+  <h3><span class="sec"><span class="ico">🔊</span> Why the split</span></h3>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th></th><th>Speaking (TTS) — <span class="b b-free">V1</span></th><th>Listening (STT) — <span class="b b-mut">V2</span></th></tr>
+    <tr><td>Package</td><td><code>expo-speech</code></td><td><code>expo-speech-recognition</code></td></tr>
+    <tr><td>Android permission</td><td><b>None</b></td><td><code>RECORD_AUDIO</code> — currently in your <code>blockedPermissions</code> <span class="ev ev-repo">REPO</span></td></tr>
+    <tr><td>Play Data Safety</td><td>No change</td><td>New entry: “Voice or sound recordings”</td></tr>
+    <tr><td>Prominent disclosure screen</td><td>Not required</td><td>Required</td></tr>
+    <tr><td>Play Console declaration form</td><td>None</td><td>None — microphone is <em>not</em> on Play's declaration list <span class="ev ev-v">VERIFIED</span></td></tr>
+  </table>
+  </div>
+  <p>Shipping speech output alone gets you the demo-defining moment — the app <em>talks back</em> — while adding <strong>no permission, no disclosure flow and no Data Safety change</strong>. That is an unusually good trade.</p>
+
+  <div class="note"><strong>You still need a new store build.</strong> <code>expo-speech</code> is not currently in your dependencies <span class="ev ev-repo">REPO</span>, and it is a native module — so a new AAB is required regardless. The point is that this build carries a <strong>zero-permission delta</strong>, which is what keeps the review boring.</div>
+
+  <h3><span class="sec"><span class="ico">⚠️</span> Three implementation traps</span></h3>
+  <ul>
+    <li><strong>Android throws above a maximum utterance length.</strong> Read the limit at runtime and chunk on sentence boundaries. LLM-length answers <em>will</em> exceed it — this is the most likely crash in a naive implementation.</li>
+    <li><strong>Android has no pause or resume.</strong> Stop speech explicitly when the screen unmounts and when the app is backgrounded, or it keeps talking.</li>
+    <li><strong>iOS silent mode mutes it entirely.</strong> The written transcript must always be visible — never make speech the only channel for an answer.</li>
+  </ul>
+  <div class="warn"><strong>Auto-speak defaults to OFF.</strong> Speech is triggered by an explicit tap. Automatically reading medical-supply levels aloud in a shared household is a privacy problem, not a feature.</div>
+
+  <h3><span class="sec"><span class="ico">📱</span> What the user sees</span></h3>
+  <div class="phone">
+    <div class="bubble-u">oxygen kitne bache hain?</div>
+    <div class="bubble-a">You're running low on oxygen cylinders — below your minimum. Worth reordering.</div>
+    <div class="itemcard">
+      <div class="ic-head"><span class="ic-name">Oxygen Cylinder</span><span class="crit">CRITICAL</span></div>
+      <div class="meter"><i></i></div>
+      <div class="row"><span>In stock</span><b>2 cylinders</b></div>
+      <div class="row"><span>Minimum</span><b>10 cylinders</b></div>
+      <div class="row"><span>Brand</span><b>Inox Air</b></div>
+      <div class="row"><span>Supplier</span><b>Sharma Medicals</b></div>
+    </div>
+    <div style="display:flex;gap:8px;font-size:.78rem;color:#6f6555;padding:4px 2px">
+      <span style="border:1px solid #e7ddc9;border-radius:999px;padding:3px 11px">🔊 Speak</span>
+      <span style="border:1px solid #e7ddc9;border-radius:999px;padding:3px 11px">⚑ Report</span>
+    </div>
+    <div style="font-size:.7rem;color:#6f6555;text-align:center;padding-top:6px;font-style:italic">AI-generated · always verify critical supplies</div>
+  </div>
+  <p style="text-align:center;color:#6f6555;font-size:.88rem;font-style:italic">Every number on that card is rendered from Postgres, not written by the model. Note the <b>Report</b> control and the AI disclosure line — both are compliance requirements, not decoration. See the next chapter.</p>
+
+  <h3><span class="sec"><span class="ico">🎙️</span> When you do add voice input (V2)</span></h3>
+  <ul>
+    <li><strong>Pin the package version exactly.</strong> The tag matching your Expo SDK is not <code>latest</code> — <code>latest</code> targets a newer SDK and will break your build. <span class="ev ev-v">VERIFIED</span></li>
+    <li><strong>Do not use <code>@react-native-voice/voice</code></strong> — it is archived and read-only. <span class="ev ev-v">VERIFIED</span></li>
+    <li><strong>Speech recognition is not on-device by default</strong> — audio routes through Google's servers unless explicitly configured, and true on-device mode depends on a system setting you cannot control. Your Data Safety entry must reflect what actually happens. <span class="ev ev-v">VERIFIED</span></li>
+    <li><strong>Always show a transcript gate:</strong> “You said: … [Send] [Edit]”. Speech recognition mishears medicine names and Hinglish, and a misheard medical item is the one unforgivable bug.</li>
+  </ul>
+  <div class="danger"><strong>Never build wake-word detection.</strong> Commercial wake-word engines are expensive, and an always-listening microphone forces a foreground service with its own Play Console declaration. Press-to-talk avoids the entire category.</div>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 06 ======================= -->
+<section class="chapter" id="ch06">
+  <div class="ch-label">Chapter 06 · Compliance</div>
+  <h2>Play Store compliance</h2>
+  <p class="ch-tag">Including one mandatory requirement that every previous plan — including my own — missed.</p>
+
+  <div class="danger"><strong>🚨 REQUIRED, NOT OPTIONAL.</strong> Google Play's AI-Generated Content policy requires that apps generating content with AI provide <strong>in-app reporting or flagging</strong>, so users can report offensive output <em>without leaving the app</em>. A chat assistant where AI interaction is a central feature is squarely in scope. <span class="ev ev-v">VERIFIED</span><br><br>
+  <b>What this changes:</b> the plan to add exactly one endpoint is wrong. You need <code>POST /api/v1/ai/feedback</code> <em>and</em> a visible Report control on every AI message. Deferring it is not a scoping choice — it is a policy violation. <em>(Reference: Play Console Help, “AI-Generated Content” policy, article 13985936.)</em></div>
+
+  <h3><span class="sec"><span class="ico">🗂️</span> Data Safety — the correction</span></h3>
+  <div class="retract"><span class="r-was">Earlier claim:</span> sending item names to Groq is “third-party sharing” and must be declared as such; and self-hosting would delete that declaration entirely. <span class="ev ev-r">RETRACTED</span><br>
+  <span class="r-is">Correct position:</span> Play's own guidance <strong>excludes service providers</strong> from the definition of sharing — parties that process data on your instructions. A provider under a contractual no-training and deletion commitment fits that description. So there is likely <em>no</em> third-party-sharing line to declare — which also means <strong>self-hosting would have changed your Data Safety form by roughly zero fields</strong>, collapsing the strongest privacy argument for it.</div>
+  <p>The real change is different, and simpler: <strong>your users' typed chat messages are a new category of data leaving the device.</strong> Because nothing is persisted, this is likely ephemeral processing — which is declared in the form but not displayed publicly.</p>
+  <div class="warn"><strong>Audit the existing form first — this predates AI.</strong> Your app already sends data to <strong>Neon</strong> (database), <strong>Sentry</strong> (error tracking) and an <strong>SMTP provider</strong> (email) <span class="ev ev-repo">REPO</span>. If your current Data Safety declaration omits those, that is a live compliance gap on the <em>launch</em> build, independent of anything AI-related. Check it this week.</div>
+
+  <h3><span class="sec"><span class="ico">✅</span> Compliance checklist before the AI build ships</span></h3>
+  <ol class="steps">
+    <li><strong>In-app AI reporting.</strong> Endpoint plus a visible Report control on every AI message. Mandatory.</li>
+    <li><strong>AI disclosure in the UI.</strong> Label AI-generated responses clearly. Cheap to add, awkward to retrofit.</li>
+    <li><strong>Data Safety update.</strong> Declare chat messages; verify the pre-existing processors are declared too.</li>
+    <li><strong>Privacy policy.</strong> Name the AI processor, the data categories sent, the purpose, and the no-training commitment.</li>
+    <li><strong>Health apps declaration.</strong> Re-review it. Note that Play requires this of <em>all</em> published apps — do not wait to be prompted, and do not assume your existing answers still hold once an AI assistant exists. <span class="ev ev-v">VERIFIED</span></li>
+    <li><strong>Content rating questionnaire.</strong> Re-check it. Your current answers state there is no user-to-user communication; Play's AI policy explicitly draws an analogy to user-generated-content reporting rules, so confirm whether an AI chat surface changes any answer.</li>
+    <li><strong>Store listing language.</strong> If Groq is down, users get deterministic template answers. Keep bold AI claims out of the listing, or gate them behind the same <code>aiEnabled</code> flag, so an outage cannot become a misrepresentation.</li>
+  </ol>
+
+  <div class="note"><strong>Beyond Play: India's DPDP Act.</strong> Your allowlist permits item names to leave the country, and in a care-supply app item names <em>are</em> medicine names. That is health-adjacent personal data crossing a border to a foreign processor. Notice-and-consent obligations under India's data protection law are not addressed in any planning document so far. This is a legal question rather than a Play question — worth a professional opinion before scale, not before your first tester.</div>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 07 ======================= -->
+<section class="chapter" id="ch07">
+  <div class="ch-label">Chapter 07 · Career</div>
+  <h2>Does this get you hired?</h2>
+  <p class="ch-tag">Yes. But not for the reason you expect, and there is a tension worth confronting.</p>
+
+  <h3><span class="sec"><span class="ico">✅</span> What you already have that most applicants do not</span></h3>
+  <p>Before adding anything: CareKosh is <strong>deployed, authenticated, database-migrated, CI-gated, and in front of real users on a real store</strong>. The consistent complaint from people hiring AI engineers is not that candidates cannot train models — it is that they cannot <em>ship and operate</em> them. You are already on the right side of that gap. <span class="ev ev-d">DIRECTIONAL</span></p>
+
+  <h3><span class="sec"><span class="ico">🎯</span> The highest-leverage artifact is the eval harness</span></h3>
+  <p>Not the chat screen. Anyone can build a chat screen. The differentiator is being able to say, with numbers you measured:</p>
+  <div class="verdict">
+    <div class="v-head">“Ungrounded-number rate: 0 of 50.”</div>
+    <p class="v-sub" style="margin-top:10px">“Fifty golden-set answers, zero containing a numeral absent from tool output. Cross-user leakage: zero. Tool-selection accuracy, p50 and p95 latency, and cost per turn are all in the README — measured, not estimated.”</p>
+  </div>
+  <p>That sentence is the interview. It demonstrates that you understand an LLM feature is a <em>reliability</em> problem, which is precisely the thing most candidates have never had to confront.</p>
+  <div class="retract"><span class="r-was">Retracted:</span> an earlier draft argued evals are rare in job descriptions and therefore a rare skill. A verifier found the cited source reports, eight lines apart, both the low figure quoted <em>and</em> a much higher one showing evaluation is a <em>commonly stated</em> requirement. The cherry-pick inverted the meaning. <span class="ev ev-r">RETRACTED</span><br>
+  <span class="r-is">What stands:</span> evaluation skills are genuinely in demand — that is <em>better</em> for you, not worse. But drop the scarcity story; it is not supported.</div>
+
+  <h3><span class="sec"><span class="ico">⚔️</span> The tension you should confront, not hide</span></h3>
+  <div class="danger"><strong>A hiring manager could reasonably push back.</strong> If the deterministic renderer produces the answer and the model only rephrases it, then “I built an agent” and “the agent's output is never load-bearing” cannot both be true. Strip away everything deferred — writes, retrieval, streaming, multi-agent — and what remains is six read-only queries with a paraphraser attached. The safety reasoning that makes this a <em>good health app</em> is the same reasoning that makes it a <em>modest agent showcase</em>.</div>
+  <p><strong>Do not paper over this. Answer it directly, because the honest answer is the strong one:</strong></p>
+  <div class="note">“I built it deterministic-first deliberately. It tracks medical supplies, so a confidently wrong number is a safety issue, not a UX bug. I measured where a deterministic tool beats a model call and put the model only where it adds value — phrasing. Here's the eval harness that proves the numbers are grounded, and here's the decision record with the threshold at which I'd hand more control to the model.”</div>
+  <p>That is a <strong>senior</strong> answer. “I let the LLM decide everything and it usually works” is not.</p>
+
+  <h3><span class="sec"><span class="ico">📌</span> What to build for signal, and what not to say</span></h3>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>Build this</th><th>Skip this</th></tr>
+    <tr><td>50-case golden set gating CI</td><td>Framework keyword-shopping</td></tr>
+    <tr><td>Published metrics: grounding, isolation, latency, cost/turn</td><td>Bolted-on vector search over ~40 items</td></tr>
+    <tr><td>Two decision records (hosted-vs-self-hosted, framework choice)</td><td>Self-hosting for its own sake</td></tr>
+    <tr><td>An honest limitations section</td><td>Notebook collections</td></tr>
+    <tr><td>An adversarial/red-team set</td><td>Quoting statistics you did not measure</td></tr>
+  </table>
+  </div>
+  <div class="warn"><strong>The strongest deferred item, worth pulling forward.</strong> An <strong>MCP server</strong> exposing your six tools is roughly a day of work and is a far better interview artifact than a chat box — connecting a desktop AI client to your live inventory <em>in front of an interviewer</em> is genuinely memorable. Consider building it <em>before</em> the mobile chat UI if the job is the goal.</div>
+
+  <div class="danger"><strong>Do not quote the job-market percentages from any of these documents.</strong> They were generated by keyword-counting over corpora assembled during research, cited to sources that cannot support them, and reported to two decimal places. The <em>direction</em> is usable for your own decisions. One checkable fabricated number in an interview discards everything else you said. <span class="ev ev-r">RETRACTED</span></div>
+
+  <div class="note"><strong>On balance, for your situation.</strong> This project should be part of your preparation, not all of it. Data-structures work and system design still gate most target roles, and broad engineering skill — Docker, CI/CD, cloud, data pipelines — remains highly visible in the Indian market. Hold this to its share of your time.</div>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 08 ======================= -->
+<section class="chapter" id="ch08">
+  <div class="ch-label">Chapter 08 · Execution</div>
+  <h2>Build plan, effort and sequencing</h2>
+  <p class="ch-tag">The order matters more than the estimate.</p>
+
+  <div class="danger"><strong>Rule one: do not ship AI in the same submission as your production launch build.</strong> Launch first with <code>AI_ENABLED=false</code>. Ship AI in the next build cycle. Your closed-testing clock and production-access application are already in motion; adding a novel AI surface to that submission introduces review risk for no benefit.</div>
+
+  <h3><span class="sec"><span class="ico">🧭</span> The build order</span></h3>
+  <p>This ordering is the most important decision in the chapter, and it is deliberately backwards from the obvious one.</p>
+  <ol class="steps">
+    <li><strong>Days 1–2 · Write the tests before the feature.</strong> The 50-case golden set and guard tests, running against a scripted fake model. <em>No API key needed.</em> Doing this first means the code structurally cannot be built without them — which is the only defence against the eval layer being cut later.</li>
+    <li><strong>Days 3–4 · Build the deterministic engine and the six tools.</strong> Ship a version of the endpoint that answers correctly with <code>AI_ENABLED=false</code> and <em>no API key configured at all</em>, passing the entire golden set.</li>
+    <li><strong>Day 5+ · Add the LLM as a rewriting layer</strong> on top of an answer that is already correct.</li>
+    <li><strong>Then the guardrails, the mobile screen, voice output, and compliance</strong> — in that order.</li>
+  </ol>
+  <div class="note"><strong>Why this ordering wins.</strong> It narrows the model's job to phrasing; it makes every answer testable without a network call; it means your fallback is the <em>primary</em> path rather than a rarely-exercised branch; and it lets you demo the entire feature with the AI provider switched off.</div>
+
+  <h3><span class="sec"><span class="ico">⏱️</span> Effort</span></h3>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>Area</th><th>Days</th><th>Contains</th></tr>
+    <tr><td><b>Backend</b></td><td>~9.5</td><td>Deterministic engine, six tools, agent loop, guardrails, router, tests, CI gate bumps</td></tr>
+    <tr><td><b>Mobile</b></td><td>~5.0</td><td>Ask screen (both light and dark palettes), message components, speech, report control, entry point</td></tr>
+    <tr><td><b>Compliance &amp; docs</b></td><td>~1.5</td><td>Privacy policy, Data Safety, health declaration re-review, two decision records, metrics README</td></tr>
+    <tr><td colspan="2"><b>Total</b></td><td><b>~16 engineering days</b> (~19–20 calendar days with a build/review cycle)</td></tr>
+  </table>
+  </div>
+  <div class="warn"><strong>The existing plan documents estimate this at “about three weekends”. That is optimistic by roughly 2.5×</strong> — and essentially the entire gap is the evals, guardrails, compliance and documentation layer. Which is, inconveniently, the only part that produces hiring signal. Budget it deliberately or it will be silently dropped.</div>
+
+  <h3><span class="sec"><span class="ico">🚦</span> Two milestones, decoupled</span></h3>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>Milestone</th><th>Effort</th><th>Play Store exposure</th></tr>
+    <tr><td><b>A · Backend agent</b> — demoable through Swagger or curl</td><td>~9.5 days</td><td><b>None.</b> Backend deploys are fully decoupled from Play</td></tr>
+    <tr><td><b>B · Mobile experience</b> — chat screen, voice, compliance</td><td>~6.5 days</td><td>New AAB, Data Safety update, review cycle</td></tr>
+  </table>
+  </div>
+  <div class="note"><strong>A useful consequence.</strong> If the near-term goal is the job rather than the feature, <strong>Milestone A alone</strong> — tools, guardrails, golden set, decision records, published metrics — delivers nearly all of the hiring signal with <em>zero</em> store exposure and no compliance surface. Milestone B can then follow on a user-driven schedule rather than a résumé-driven one. Pulling the MCP server forward into Milestone A is worth considering for the same reason.</div>
+
+  <h3><span class="sec"><span class="ico">🧪</span> The measurement you must not skip</span></h3>
+  <p>The golden set run against a fake model tests <em>your loop</em>, not the model. Before committing, spend roughly fifty cents running the same set against the <strong>live</strong> model and record real tool-selection accuracy. If it falls short, change the model name in an environment variable — no code change, no rebuild. That is exactly why the model name is configuration and not a constant.</p>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 09 ======================= -->
+<section class="chapter" id="ch09">
+  <div class="ch-label">Chapter 09 · Honesty</div>
+  <h2>Corrections, retractions and the risk register</h2>
+  <p class="ch-tag">What the adversarial review overturned, recorded so it is not repeated.</p>
+
+  <h3><span class="sec"><span class="ico">↩️</span> Retractions</span></h3>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>Claimed during research</th><th>What verification found</th><th>Does the conclusion survive?</th></tr>
+    <tr><td>Precise tool-calling benchmark figures, called “the real killer” for self-hosting</td><td><b>Not present at the cited source</b>, and the model named differed from the model benchmarked</td><td><b>Yes</b> — direction holds; measure it yourself instead</td></tr>
+    <tr><td>The free-tier hardware “steelman” specification</td><td><b>Halved</b> by the provider weeks before the research ran</td><td><b>Yes</b>, but the strongest version of your idea was never properly costed</td></tr>
+    <tr><td>“$0.38 per month”</td><td>Omitted reasoning tokens and multi-round context re-send — <b>low by ~10×</b></td><td><b>Yes</b> — cost is still negligible; use “single-digit dollars”</td></tr>
+    <tr><td>Free-tier rate limits used to justify paying</td><td>Quoted the <b>wrong model's</b> limits</td><td><b>Yes</b> — pay anyway; org-level scoping is confirmed</td></tr>
+    <tr><td>Choosing a permissive licence “deletes a compliance surface”</td><td>Overstated — via a hosted API you never receive the weights at all</td><td>Partly — licence choice matters less than claimed</td></tr>
+    <tr><td>Self-hosting removes a Data Safety declaration</td><td><b>Backwards.</b> Service providers are excluded from “sharing”; the delta was ~zero</td><td><b>No</b> — this argument for self-hosting is void</td></tr>
+    <tr><td>Evals are rare in job descriptions, hence a rare skill</td><td><b>Cherry-picked</b> — the same source page reports a far higher figure eight lines away</td><td><b>No</b> — evals are commonly required; that is better for you</td></tr>
+    <tr><td>All job-market percentages</td><td>Self-generated keyword counts, cited to sources that cannot support them</td><td>Direction only — <b>never quote them</b></td></tr>
+    <tr><td>Compliance is handled by three items</td><td><b>Missed the mandatory AI-reporting requirement entirely</b></td><td><b>No</b> — see <a href="#ch06">Chapter 06</a></td></tr>
+  </table>
+  </div>
+  <div class="note"><strong>Why this table exists.</strong> Every one of these survived several rounds of confident-sounding analysis before an adversarial pass caught it. That is exactly the failure mode this document is meant to protect you from — and it is the same reason the architecture above refuses to let a model's fluent output reach a user unchecked.</div>
+
+  <h3><span class="sec"><span class="ico">🛑</span> Risk register</span></h3>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>Risk</th><th>Mitigation</th></tr>
+    <tr><td><b>The deterministic engine is load-bearing but least exercised.</b> Every failure path degrades into it — quota, outage, timeout, kill switch, validator rejection, refusal gate</td><td>The build-order inversion. It ships first and passes the golden set before any LLM code exists, making it the primary path, not a rare branch</td></tr>
+    <tr><td><b>The ~40% of work with no user-visible value gets cut</b> — and it is the only part producing hiring signal</td><td>Write the golden set and guard tests on days 1–2, so the code cannot run without them</td></tr>
+    <tr><td><b>No over-the-air update channel</b> <span class="ev ev-repo">REPO</span> — nothing in the mobile app can be hotfixed</td><td>Model name in config; all user-visible strings server-authored; <code>aiEnabled</code> kill switch on <code>/auth/me</code></td></tr>
+    <tr><td><b>Spoken numbers bypass the numeral validator</b></td><td>Render the speech string deterministically. Never let the model author it</td></tr>
+    <tr><td><b>Database pool exhaustion.</b> A pooled session is held for the whole request including the LLM call; pool size 5 + overflow 10 across 2 workers <span class="ev ev-repo">REPO</span></td><td>Cap concurrent AI requests per worker and return a busy response above it. Note the database statement timeout is 8 seconds <span class="ev ev-repo">REPO</span> — all tool queries must finish inside it</td></tr>
+    <tr><td><b>Rate limiting keys on IP</b> — wrong key for mobile users behind carrier NAT, and in-memory per process</td><td>The real control is a <b>per-user daily turn budget</b>. Denominate it in <em>provider requests</em>, not turns — one turn can be several requests</td></tr>
+    <tr><td><b>One user could exhaust a shared provider quota for everyone</b></td><td>Per-user budget plus a global daily ceiling, both below the provider's limits</td></tr>
+    <tr><td><b>The provider retires the model</b> mid-quarter, app already shipped</td><td>Model-not-found must trigger the deterministic fallback, alongside timeout and quota</td></tr>
+    <tr><td><b>Refusal gate misses Hinglish phrasing</b></td><td>Explicit Hinglish coverage, a conservative system prompt, and a separate adversarial set</td></tr>
+    <tr><td><b>No mobile test infrastructure exists</b> — <code>package.json</code> declares a test script but no framework or tests <span class="ev ev-repo">REPO</span></td><td>Not budgeted in the estimate above. Decide deliberately whether to add it</td></tr>
+    <tr><td><b>⚠️ Render legacy workspace auto-migration, 1 August 2026</b> — included bandwidth drops with overage billing</td><td>Unrelated to AI and time-boxed. Check your egress in the dashboard this week</td></tr>
+  </table>
+  </div>
+
+  <h3><span class="sec"><span class="ico">🔍</span> Re-verify before you start</span></h3>
+  <p>Provider quotas, pricing and model catalogues are the most volatile inputs here, and these findings are dated. <strong>Re-check pricing, rate limits and the available model list in the provider console during the week you begin</strong> — and pin nothing in code that you would need a store release to change.</p>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 10 ======================= -->
+<section class="chapter" id="ch10">
+  <div class="ch-label">Chapter 10 · Appendix</div>
+  <h2>Verified facts ledger</h2>
+  <p class="ch-tag">Every load-bearing claim, graded. Re-checkable in minutes.</p>
+
+  <h3><span class="sec"><span class="ico">📦</span> From your repository <span class="ev ev-repo">REPO</span></span></h3>
+  <p>All confirmed directly against source in this session.</p>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>Fact</th><th>Where</th></tr>
+    <tr><td>Backend runs on Render's <code>starter</code> plan, Singapore region</td><td><code>vitaltrack-backend/render.yaml</code></td></tr>
+    <tr><td>Three secrets already managed via <code>sync: false</code> + dashboard paste</td><td><code>render.yaml</code></td></tr>
+    <tr><td>CI asserts exactly 39 versioned API routes, in two places</td><td><code>scripts/check_api_routes.py</code>, <code>.github/workflows/ci.yml:107</code></td></tr>
+    <tr><td><code>app/services/</code> contains only <code>__init__.py</code> and <code>audit.py</code></td><td><code>app/services/</code></td></tr>
+    <tr><td><code>httpx==0.28.1</code>, <code>pydantic==2.10.3</code>, <code>slowapi==0.1.9</code> already pinned</td><td><code>requirements.txt</code></td></tr>
+    <tr><td>Database pool size 5, max overflow 10; statement timeout 8000&nbsp;ms</td><td><code>app/core/config.py</code>, <code>app/core/database.py:76</code></td></tr>
+    <tr><td>Only permission requested: <code>ACCESS_NETWORK_STATE</code></td><td><code>vitaltrack-mobile/app.json</code></td></tr>
+    <tr><td><code>RECORD_AUDIO</code>, <code>CAMERA</code>, <code>VIBRATE</code> and others are in <code>blockedPermissions</code></td><td><code>app.json</code></td></tr>
+    <tr><td><code>updates.enabled = false</code> — no over-the-air update channel</td><td><code>app.json</code></td></tr>
+    <tr><td><code>expo-speech</code> is <b>not</b> currently a dependency — a new AAB is required</td><td><code>vitaltrack-mobile/package.json</code></td></tr>
+    <tr><td>Item ownership enforced manually per query; no RLS, no repository layer</td><td><code>app/api/v1/items.py</code></td></tr>
+    <tr><td>Container runs <code>alembic upgrade head</code> on boot and aborts startup on failure</td><td><code>docker-entrypoint.sh</code></td></tr>
+  </table>
+  </div>
+
+  <h3><span class="sec"><span class="ico">🌐</span> From primary sources <span class="ev ev-v">VERIFIED</span></span></h3>
+  <ul>
+    <li>Render <code>starter</code> = <b>512 MB RAM / 0.5 vCPU</b>.</li>
+    <li>Groq's services agreement contains an explicit <b>no-training</b> commitment plus 30-day data deletion.</li>
+    <li>Gemini's unpaid tier terms state content is used to develop Google products, may be read by human reviewers, and instruct users <b>not to submit sensitive or personal information</b>.</li>
+    <li>GitHub Models' pre-release terms <b>prohibit production use</b> and processing live customer data.</li>
+    <li>Free-tier rate limits apply at the <b>organisation</b> level, not per key or per user.</li>
+    <li>Google Play requires <b>in-app reporting/flagging of AI-generated content</b> (policy article 13985936).</li>
+    <li>Play's Data Safety guidance <b>excludes service providers</b> from the definition of “sharing”.</li>
+    <li>Play requires the <b>Health apps declaration from all published apps</b>, including test tracks.</li>
+    <li><code>RECORD_AUDIO</code> is <b>not</b> on Play's list of permissions requiring a Console declaration form.</li>
+    <li><code>expo-speech</code> requires no Android permission; it throws above the platform's maximum utterance length, has no pause/resume on Android, and is muted by iOS silent mode.</li>
+    <li>The speech-recognition package must be pinned to the tag matching your SDK — <code>latest</code> targets a newer SDK.</li>
+    <li><code>@react-native-voice/voice</code> is <b>archived and read-only</b>.</li>
+    <li>Speech recognition is <b>not</b> on-device by default; audio routes to Google's servers unless explicitly configured.</li>
+    <li>Llama and Gemma use policies restrict unlicensed medical/health use; Qwen and Mistral are Apache-2.0.</li>
+    <li>Render legacy workspaces <b>auto-migrate 1 August 2026</b>, reducing included bandwidth with overage billing.</li>
+  </ul>
+
+  <h3><span class="sec"><span class="ico">⚠️</span> Directional only — decide with these, never quote them <span class="ev ev-d">DIRECTIONAL</span></span></h3>
+  <ul>
+    <li>Render offers no GPU instances.</li>
+    <li>Small models degrade substantially on multi-step tool selection.</li>
+    <li>Industry practice is overwhelmingly hosted-API-first; self-hosting signals infrastructure rather than applied AI work.</li>
+    <li>Hiring managers weight production/reliability experience over modelling ability.</li>
+    <li>Agent-titled roles are more concentrated in the US market; the Indian market skews more towards classic ML and MLOps.</li>
+    <li>MCP adoption is growing quickly and remains a genuine differentiator.</li>
+  </ul>
+
+  <div class="danger"><strong>Everything in the last list is a judgement, not a measurement.</strong> Use it to choose what to build. Do not put a number on it in a document, a README, or an interview.</div>
+
+  <h3><span class="sec"><span class="ico">🔗</span> Relationship to the other planning documents</span></h3>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>Document</th><th>Status after this one</th></tr>
+    <tr><td><code>CAREKOSH_AI_IMPLEMENTATION_PLAN.html</code></td><td>Still the broad feature catalogue. <b>Its self-hosting, Data Safety and compliance sections are superseded here.</b></td></tr>
+    <tr><td><code>CAREKOSH_AI_FEATURES_FEASIBILITY_AND_ROADMAP</code></td><td>Its WhatsApp-first ordering is <b>reversed</b> — in-app first; WhatsApp cut from the near term</td></tr>
+    <tr><td><code>CAREKOSH_AI_JOB_MARKET_SKILL_GAP</code></td><td>Directionally sound; <b>its statistics should not be quoted</b></td></tr>
+    <tr><td><code>CAREKOSH_PLAY_STORE_LAUNCH_PLAYBOOK</code></td><td>Unchanged for launch. Add the AI-reporting requirement and the Data Safety audit before the AI build</td></tr>
+  </table>
+  </div>
+
+  <div class="note"><strong>One correction to the older plans worth flagging.</strong> Both earlier documents gate work on adding an <code>updated_at</code> bump, on the belief that the current update path does not refresh it. That was tested against the real update shape and <strong>it does bump correctly</strong> — the stated rationale is wrong and the prerequisite can be dropped. The genuine problem is different and still unaddressed: <code>updated_at</code> changes on <em>any</em> edit, so it cannot distinguish “someone recounted the shelf” from “someone fixed a typo in the brand”. If you later build a stock-audit feature, that needs its own dedicated timestamp column.</div>
+</section>
+
+<footer>
+  <p><strong>CareKosh · First Agentic Integration</strong> — decision record, July 2026.</p>
+  <p>Produced from a 14-agent research workflow and revised after adversarial review.<br>
+  Repository facts verified in-session · external facts graded · retractions recorded in Chapter 09.</p>
+  <p style="margin-top:14px;font-style:italic">Re-verify provider pricing, quotas and model availability during the week you begin building.</p>
+</footer>
+
+</div>
+</body>
+</html>

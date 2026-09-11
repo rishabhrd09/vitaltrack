@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<!--
+  CAREKOSH AI IMPLEMENTATION PLAN — "The CareKosh AI Book"
+  Textbook-style implementation guide: one chapter per AI feature.
+  Derived from CAREKOSH_AI_FEATURES_FEASIBILITY_AND_ROADMAP.html (the "what & whether")
+  and CAREKOSH_AI_JOB_MARKET_SKILL_GAP.md (the "why it matters for hiring").
+  This file is the "how": architecture, code prototypes, file placement, UI, feasibility, job signal.
+  Constraints inherited & non-negotiable: WhatsApp-only (no Telegram) · free LLMs only · V2+ (post-launch).
+  2026-07 · keep in sync with the two parent docs.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareKosh — AI Implementation Plan (The Book)</title>
+<style>
+:root{
+  --bg:#fbf7f0; --card:#fffdf9; --ink:#2a241c; --muted:#6f6555;
+  --green:#1d6b52; --green-soft:#e4efe9; --gold:#89672f; --gold-soft:#f1e6d2;
+  --border:#e7ddc9; --red:#9c2b1e; --red-soft:#f7e6e3;
+  --code-bg:#241f18; --code-ink:#f3ead9; --code-accent:#d9b98a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.75;font-size:16.5px}
+.wrap{max-width:880px;margin:0 auto;padding:56px 28px 110px}
+a{color:var(--green)}
+/* ---------- cover ---------- */
+.cover{text-align:center;padding:70px 20px 60px;border-bottom:3px double var(--border);margin-bottom:34px}
+.cover .kicker{letter-spacing:.34em;text-transform:uppercase;font-size:.78rem;color:var(--gold);font-weight:700;margin-bottom:18px}
+.cover h1{font-family:Georgia,'Times New Roman',serif;font-size:3rem;line-height:1.15;letter-spacing:-.01em;margin-bottom:14px}
+.cover .sub{color:var(--muted);font-size:1.12rem;max-width:620px;margin:0 auto 26px}
+.cover .rules{display:inline-flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.pill{display:inline-block;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:5px 16px;font-size:.85rem;color:var(--muted)}
+.pill b{color:var(--green)}
+/* ---------- toc ---------- */
+.toc{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:30px 34px;margin:36px 0 60px}
+.toc h2{font-family:Georgia,serif;font-size:1.35rem;margin-bottom:16px}
+.toc ol{list-style:none;counter-reset:ch -1}
+.toc li{counter-increment:ch;padding:9px 0;border-bottom:1px dashed var(--border);display:flex;gap:14px;align-items:baseline}
+.toc li:last-child{border-bottom:none}
+.toc li::before{content:counter(ch,decimal-leading-zero);font-family:Georgia,serif;color:var(--gold);font-weight:700;font-size:1.05rem;min-width:34px}
+.toc a{text-decoration:none;color:var(--ink);font-weight:600}
+.toc a:hover{color:var(--green)}
+.toc .t-sub{color:var(--muted);font-weight:400;font-size:.9rem}
+/* ---------- chapters ---------- */
+.chapter{margin:78px 0 0;padding-top:26px}
+.ch-label{letter-spacing:.3em;text-transform:uppercase;font-size:.75rem;color:var(--gold);font-weight:700}
+.chapter h2{font-family:Georgia,serif;font-size:2.05rem;line-height:1.2;margin:6px 0 4px}
+.ch-tag{color:var(--muted);font-size:1rem;margin-bottom:20px}
+.chapter h3{font-family:Georgia,serif;font-size:1.28rem;margin:34px 0 12px;color:var(--green)}
+.chapter h4{font-size:1.02rem;margin:20px 0 8px}
+p{margin-bottom:13px}
+ul,ol{margin:0 0 15px 24px}
+li{margin-bottom:7px}
+strong{color:var(--ink)}
+/* badges */
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px}
+.b{display:inline-block;border-radius:6px;padding:2.5px 11px;font-size:.78rem;font-weight:700;letter-spacing:.02em}
+.b-free{background:var(--green-soft);color:var(--green)}
+.b-gold{background:var(--gold-soft);color:var(--gold)}
+.b-red{background:var(--red-soft);color:var(--red)}
+.b-mut{background:#efe9dc;color:var(--muted)}
+/* callouts */
+.note{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--green);border-radius:10px;padding:14px 18px;margin:18px 0;font-size:.95rem}
+.warn{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:10px;padding:14px 18px;margin:18px 0;font-size:.95rem}
+.danger{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--red);border-radius:10px;padding:14px 18px;margin:18px 0;font-size:.95rem}
+/* tables */
+table{width:100%;border-collapse:collapse;margin:16px 0 22px;font-size:.92rem;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;background:#f6efe2}
+tr:last-child td{border-bottom:none}
+/* code */
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.83rem;line-height:1.6;margin:14px 0 22px;border:1px solid #3a3226}
+code{font-family:"SF Mono",ui-monospace,Consolas,monospace}
+p code,li code,td code{background:#f1ead9;color:var(--ink);padding:1.5px 6px;border-radius:4px;font-size:.85em}
+pre .c{color:#9b8b72}         /* comment */
+pre .k{color:#e8c284}         /* keyword-ish highlight */
+pre .s{color:#a8c8a2}         /* string-ish */
+.file-tree{background:var(--card);border:1px dashed var(--gold);border-radius:10px;padding:14px 20px;font-family:"SF Mono",ui-monospace,Consolas,monospace;font-size:.82rem;line-height:1.7;margin:14px 0 20px;white-space:pre;overflow-x:auto;color:var(--ink)}
+.file-tree .new{color:var(--green);font-weight:700}
+.file-tree .mod{color:var(--gold);font-weight:700}
+/* diagrams */
+.diagram{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin:16px 0 24px;overflow-x:auto}
+.diagram svg{display:block;margin:0 auto;max-width:100%}
+.dg-cap{text-align:center;color:var(--muted);font-size:.85rem;margin-top:8px;font-style:italic}
+/* section icons */
+.sec{display:flex;align-items:center;gap:10px}
+.sec .ico{font-size:1.1rem}
+/* phone mock */
+.phone{max-width:330px;margin:18px auto;background:var(--card);border:2px solid var(--border);border-radius:26px;padding:18px 16px;box-shadow:0 6px 24px rgba(42,36,28,.08)}
+.phone .bubble-u{background:var(--green);color:#fff;border-radius:16px 16px 4px 16px;padding:9px 14px;margin:8px 0 8px auto;max-width:85%;width:fit-content;font-size:.9rem}
+.phone .bubble-a{background:#f3ecdd;border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:9px 14px;margin:8px auto 8px 0;max-width:88%;width:fit-content;font-size:.9rem}
+.itemcard{border:1.5px solid var(--gold);border-radius:14px;padding:12px 14px;margin:8px 0;background:#fffdf7;font-size:.86rem}
+.itemcard .ic-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.itemcard .ic-name{font-weight:700;font-size:.98rem}
+.itemcard .crit{background:var(--red-soft);color:var(--red);border-radius:5px;padding:1px 8px;font-size:.72rem;font-weight:700}
+.meter{height:9px;background:#eee4d0;border-radius:6px;overflow:hidden;margin:7px 0}
+.meter i{display:block;height:100%;background:var(--red);width:20%}
+.itemcard .row{display:flex;justify-content:space-between;color:var(--muted);font-size:.82rem;padding:2.5px 0;border-bottom:1px dotted var(--border)}
+.itemcard .row:last-child{border-bottom:none}
+.itemcard .row b{color:var(--ink)}
+footer{margin-top:80px;padding-top:24px;border-top:3px double var(--border);color:var(--muted);font-size:.87rem;text-align:center}
+hr.chsep{border:none;border-top:3px double var(--border);margin:70px auto 0;width:60%}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ======================= COVER ======================= -->
+<div class="cover">
+  <div class="kicker">CareKosh · Future Plan · Volume III</div>
+  <h1>The CareKosh AI Book</h1>
+  <p class="sub">A chapter-by-chapter implementation plan for turning the shipped inventory tracker into a conversational, agentic AI product — architecture, code prototypes, file placement, UI, feasibility and job-market value for every feature.</p>
+  <div class="rules">
+    <span class="pill">Channel: <b>WhatsApp-only</b> (no Telegram)</span>
+    <span class="pill">Models: <b>free LLMs only</b> (~₹0/month)</span>
+    <span class="pill">Timing: <b>V2+, post-launch</b> (~50 active users)</span>
+    <span class="pill">Grounded in <b>vitaltrack-backend + vitaltrack-mobile</b></span>
+  </div>
+</div>
+
+<!-- ======================= TOC ======================= -->
+<div class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#ch0">Preface — the vision, the constraints, and the system you already have</a></li>
+    <li><a href="#ch1">Ask CareKosh — the conversational inventory agent</a> <span class="t-sub">· chat → stock answer → spoken summary → rich item card</span></li>
+    <li><a href="#ch2">Voice mode — hands-free stock audit</a> <span class="t-sub">· STT in, TTS out, physical-list verification</span></li>
+    <li><a href="#ch3">The WhatsApp companion</a> <span class="t-sub">· free reply bot, daily digest, sync &amp; low-stock reminders</span></li>
+    <li><a href="#ch4">The proactive brain — alerts, digests &amp; sync-audit engine</a> <span class="t-sub">· criticality-aware, event-driven, multi-channel</span></li>
+    <li><a href="#ch5">Semantic search &amp; RAG over your inventory</a> <span class="t-sub">· pgvector on Neon, multilingual embeddings</span></li>
+    <li><a href="#ch6">The label scanner — photo → item details</a> <span class="t-sub">· free multimodal extraction, no camera permission</span></li>
+    <li><a href="#ch7">Consumption forecasting &amp; smart reorder</a> <span class="t-sub">· days-to-stockout from your own activity log</span></li>
+    <li><a href="#ch8">Guardrails, evals &amp; LLMOps</a> <span class="t-sub">· the medical-safety spine that makes it hireable</span></li>
+    <li><a href="#ch9">The MCP server — your tools as a protocol</a> <span class="t-sub">· the 2026 differentiator almost nobody ships</span></li>
+    <li><a href="#ch10">The build order — roadmap, cost ledger, risks</a> <span class="t-sub">· V2.0 → V2.1 → V3, and what to skip</span></li>
+  </ol>
+</div>
+
+<!-- ======================= CH 0 ======================= -->
+<section class="chapter" id="ch0">
+  <div class="ch-label">Chapter 00 · Preface</div>
+  <h2>The vision, the constraints, and the system you already have</h2>
+  <p class="ch-tag">Read this first — every later chapter assumes it.</p>
+
+  <h3><span class="sec"><span class="ico">🎯</span> What we are building, in one paragraph</span></h3>
+  <p>CareKosh today is a hardened, launched inventory tracker: a caregiver types, taps and reads. The AI layer turns it into something you can <em>talk to</em>: <strong>“oxygen kitne bache hain?”</strong> → the app answers in plain language, <strong>speaks the vital numbers aloud</strong>, and renders a <strong>beautiful item card</strong> — photo, current stock vs minimum, brand, supplier, expiry — right on screen. The same brain lives on <strong>WhatsApp</strong>, where it answers the family for free and (with consent) sends the morning stock report, low-stock warnings, and “this item hasn’t been synced in a while — is the count still right?” nudges. Everything is grounded in the live Postgres data through the REST endpoints you already shipped; the model never invents a number.</p>
+
+  <div class="note"><strong>The three inherited rules (from the parent feasibility doc — unchanged):</strong><br>
+  <b>1 · Foundation first.</b> None of this ships in the first Play Store release. The AI layer is gated on launch + roughly the first 50 active users.<br>
+  <b>2 · WhatsApp-only, and inbound-first.</b> No Telegram, ever. Replies to user-initiated WhatsApp messages are free; business-initiated (proactive) templates cost a few paise — so proactive alerts default to <em>free in-app push</em>, with WhatsApp templates as an explicit opt-in.<br>
+  <b>3 · Free LLMs only.</b> Groq (Llama 3.1 8B, native tool-calling, 14,400 req/day) as primary; Google Gemini Flash free tier as failover; Cloudflare Workers AI / OpenRouter <code>:free</code> as emergency lanes; deterministic non-LLM answers straight from the DB when everything throttles. Recurring cost target: <strong>~₹0/month</strong>.</div>
+
+  <h3><span class="sec"><span class="ico">🗺️</span> The system you already have (the AI layer is ~70% pre-built)</span></h3>
+  <p>The single most important fact in this book: <strong>the agent’s tools already exist as production endpoints.</strong> The AI work is mostly orchestration at the edges.</p>
+  <table>
+    <thead><tr><th>A user will say…</th><th>The tool that already answers it</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>“what’s running low / out of stock?”</td><td><code>GET /items/needs-attention</code> — pre-sorted, critical first</td><td>items.py</td></tr>
+      <tr><td>“oxygen kitne hain?” / “find gauze”</td><td><code>GET /items?search=</code> — ilike over name/brand</td><td>items.py</td></tr>
+      <tr><td>“add 5 suction catheters”</td><td><code>PATCH /items/{id}/stock</code> — atomic version-CAS write</td><td>items.py</td></tr>
+      <tr><td>“show me the emergency items”</td><td><code>GET /items?isCritical=true</code> — the V in ABC-VED, already modelled</td><td>items.py</td></tr>
+      <tr><td>“what changed recently?”</td><td><code>GET /activities</code> — “Stock: 6 → 4”</td><td>activity.py</td></tr>
+      <tr><td>the whole morning report</td><td><code>GET /items/stats</code> — one call</td><td>items.py</td></tr>
+      <tr><td>“email me the report”</td><td>Brevo send — production-working</td><td>email service</td></tr>
+    </tbody>
+  </table>
+  <p>Fields the AI leans on, all present in <code>app/models/item.py</code>: <code>quantity</code>, <code>minimum_stock</code>, <code>is_critical</code>, <code>expiry_date</code>, <code>brand</code>, <code>supplier_name</code>, <code>purchase_link</code>, <code>image_uri</code>, <code>version</code> (optimistic locking), plus <code>updated_at</code> for staleness. The activity log gives consumption history for forecasting (Chapter 7).</p>
+
+  <h3><span class="sec"><span class="ico">🧭</span> How every chapter is organised</span></h3>
+  <p>Each feature chapter follows the same six movements, so you can skim or deep-read consistently:</p>
+  <ol>
+    <li><strong>Overview</strong> — what the feature is and why CareKosh needs it;</li>
+    <li><strong>Architecture</strong> — a diagram of how it plugs into the existing system;</li>
+    <li><strong>Code &amp; placement</strong> — a rough prototype (not final code) and exactly which files go where;</li>
+    <li><strong>What the user sees</strong> — the UI and the end-user utility;</li>
+    <li><strong>Feasibility</strong> — the free-tier math, effort size (S/M/L), and honest catches;</li>
+    <li><strong>Job relevance</strong> — what this feature proves to the 2026 hiring market, from the skill-gap analysis.</li>
+  </ol>
+
+  <div class="warn"><strong>One backend pre-requisite before any AI ships:</strong> verify that <code>updated_at</code> actually bumps on the atomic stock-CAS write (the Core-style update may bypass the ORM <code>onupdate</code>). If it doesn’t, add <code>updated_at=func.now()</code> to the CAS statement. Chapters 3, 4 and 7 (staleness, sync-audit, forecasting) all key off this column.</div>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 1 ======================= -->
+<section class="chapter" id="ch1">
+  <div class="ch-label">Chapter 01 · The flagship</div>
+  <h2>Ask CareKosh — the conversational inventory agent</h2>
+  <p class="ch-tag">Type or say an item’s name → get its live quantity, stock status and a spoken summary, plus a rich on-screen item card. This chapter is the brain every other chapter reuses.</p>
+  <div class="badges"><span class="b b-free">₹0 · Groq + Gemini free</span><span class="b b-gold">Effort M</span><span class="b b-mut">V2.0 — build first</span><span class="b b-free">Job signal: agentic tool-calling (must-have, +300% YoY)</span></div>
+
+  <h3><span class="sec"><span class="ico">📖</span> 1.1 Overview — what &amp; why</span></h3>
+  <p><strong>What.</strong> A chat surface inside the app (and later on WhatsApp and voice) where the caregiver asks in plain English or Hinglish — <em>“oxygen kitne bache hain?”, “what’s running low?”, “show me the critical items”</em> — and CareKosh answers from the live database: the quantity, whether it’s below minimum, whether it’s a critical item, and everything needed to act (brand, supplier, reorder link). The reply arrives three ways at once: <strong>text</strong>, a <strong>spoken summary</strong> of the vital numbers (expo-speech), and an <strong>item card</strong> — an aesthetic inline panel with the item photo, a stock-vs-minimum meter, brand and expiry.</p>
+  <p><strong>Why.</strong> A home-ICU caregiver is often mid-task, gloved, or holding equipment. Scrolling a list is friction; asking is instant. And because the family thinks in mixed Hindi-English item names, natural language beats exact-match search. Crucially, this is not a chatbot bolted on: every answer is a read of your own Postgres rows through the endpoints you already hardened — the model routes, the database speaks.</p>
+  <div class="note"><strong>Design law №1 (repeated all book long): the model never emits a number.</strong> It selects <em>tools</em>; quantities come from tool JSON. For writes it proposes a <em>signed delta</em> (“+5”), the app computes <code>new_qty = max(0, current + delta)</code> and writes through the existing version-CAS endpoint with a confirm card on critical items. A hallucination cannot corrupt stock.</div>
+
+  <h3><span class="sec"><span class="ico">🏛</span> 1.2 Architecture</span></h3>
+  <div class="diagram">
+  <svg viewBox="0 0 820 330" xmlns="http://www.w3.org/2000/svg" font-family="Arial" font-size="12.5">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#89672f"/></marker></defs>
+    <!-- mobile -->
+    <rect x="20" y="30" width="180" height="120" rx="12" fill="#fffdf9" stroke="#c9b9a0" stroke-width="1.5"/>
+    <text x="110" y="52" text-anchor="middle" font-weight="bold" fill="#1d6b52">Mobile · assistant.tsx</text>
+    <text x="110" y="74" text-anchor="middle" fill="#6f6555">chat input / mic (Ch.2)</text>
+    <text x="110" y="92" text-anchor="middle" fill="#6f6555">ItemSummaryCard</text>
+    <text x="110" y="110" text-anchor="middle" fill="#6f6555">expo-speech TTS 🔊</text>
+    <text x="110" y="132" text-anchor="middle" fill="#89672f">quick chips: “What’s low?”</text>
+    <!-- api -->
+    <rect x="290" y="42" width="200" height="96" rx="12" fill="#fffdf9" stroke="#c9b9a0" stroke-width="1.5"/>
+    <text x="390" y="66" text-anchor="middle" font-weight="bold" fill="#1d6b52">FastAPI · POST /api/v1/ai/chat</text>
+    <text x="390" y="86" text-anchor="middle" fill="#6f6555">auth (JWT) · rate-limit 20/min</text>
+    <text x="390" y="104" text-anchor="middle" fill="#6f6555">PII strip · turn log</text>
+    <text x="390" y="122" text-anchor="middle" fill="#6f6555">schemas/ai.py contracts</text>
+    <!-- agent -->
+    <rect x="560" y="20" width="240" height="140" rx="12" fill="#f6efe2" stroke="#89672f" stroke-width="1.5"/>
+    <text x="680" y="44" text-anchor="middle" font-weight="bold" fill="#89672f">Agent core (LangGraph)</text>
+    <text x="680" y="64" text-anchor="middle" fill="#6f6555">Groq Llama 3.1 8B — tool-calling</text>
+    <text x="680" y="82" text-anchor="middle" fill="#6f6555">↳ failover: Gemini Flash (free)</text>
+    <text x="680" y="100" text-anchor="middle" fill="#6f6555">↳ both down: deterministic DB reply</text>
+    <text x="680" y="124" text-anchor="middle" fill="#2a241c" font-weight="bold">tools = search_item · needs_attention</text>
+    <text x="680" y="142" text-anchor="middle" fill="#2a241c" font-weight="bold">stats · item_detail · propose_delta</text>
+    <!-- services/db -->
+    <rect x="290" y="210" width="200" height="84" rx="12" fill="#fffdf9" stroke="#c9b9a0" stroke-width="1.5"/>
+    <text x="390" y="236" text-anchor="middle" font-weight="bold" fill="#1d6b52">Existing services layer</text>
+    <text x="390" y="256" text-anchor="middle" fill="#6f6555">items / activity / stats queries</text>
+    <text x="390" y="274" text-anchor="middle" fill="#6f6555">version-CAS writes + audit log</text>
+    <rect x="590" y="222" width="180" height="60" rx="12" fill="#e4efe9" stroke="#1d6b52" stroke-width="1.5"/>
+    <text x="680" y="248" text-anchor="middle" font-weight="bold" fill="#1d6b52">Neon Postgres</text>
+    <text x="680" y="266" text-anchor="middle" fill="#6f6555">the only source of numbers</text>
+    <!-- arrows -->
+    <line x1="200" y1="90" x2="288" y2="90" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar)"/>
+    <line x1="490" y1="90" x2="558" y2="90" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar)"/>
+    <line x1="662" y1="160" x2="500" y2="230" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar)"/>
+    <line x1="490" y1="252" x2="588" y2="252" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar)"/>
+    <text x="252" y="80" fill="#6f6555" font-size="11">HTTPS</text>
+    <text x="520" y="80" fill="#6f6555" font-size="11">1 turn</text>
+    <text x="560" y="205" fill="#6f6555" font-size="11">tool calls (in-process)</text>
+  </svg>
+  <div class="dg-cap">One tool-calling agent; tools are thin wrappers over the services you already trust. Reply = {text, speech, cards[]}.</div>
+  </div>
+
+  <h3><span class="sec"><span class="ico">🧩</span> 1.3 Code &amp; placement</span></h3>
+  <div class="file-tree">vitaltrack-backend/
+├── app/api/v1/<span class="new">ai.py</span>                    ← NEW router: POST /ai/chat
+├── app/api/v1/<span class="mod">__init__.py</span>              ← MOD: router.include_router(ai.router)
+├── app/services/<span class="new">ai/</span>
+│     ├── <span class="new">__init__.py</span>
+│     ├── <span class="new">llm.py</span>                       ← Groq→Gemini failover client (httpx — already a dep)
+│     ├── <span class="new">tools.py</span>                     ← tool registry → existing service calls
+│     ├── <span class="new">agent.py</span>                     ← LangGraph loop (intent → tools → answer)
+│     └── <span class="new">prompts.py</span>                   ← system prompt + few-shot Hinglish examples
+├── app/schemas/<span class="new">ai.py</span>                  ← ChatRequest / ChatReply / ItemCard
+└── app/core/<span class="mod">config.py</span>                 ← MOD: GROQ_API_KEY, GEMINI_API_KEY, AI_ENABLED
+
+vitaltrack-mobile/
+├── app/<span class="new">assistant.tsx</span>                  ← NEW screen (entry: sparkle icon in VitalTrackTopBar)
+├── components/ai/<span class="new">ItemSummaryCard.tsx</span>  ← the aesthetic card
+├── components/ai/<span class="new">ChatBubble.tsx</span>
+├── services/<span class="new">ai.ts</span>                      ← postChat() → /api/v1/ai/chat
+└── hooks/<span class="new">useAssistant.ts</span>               ← state + TTS (expo-speech)</div>
+
+  <h4>The reply contract — one schema drives text, speech and the card</h4>
+  <pre><code><span class="c"># app/schemas/ai.py  (prototype)</span>
+class ItemCard(BaseModel):
+    item_id: str
+    name: str
+    quantity: int
+    minimum_stock: int
+    unit: str
+    status: Literal["ok", "low", "out"]        <span class="c"># derived server-side, never by the LLM</span>
+    is_critical: bool
+    brand: str | None = None
+    supplier_name: str | None = None
+    purchase_link: str | None = None
+    expiry_date: date | None = None
+    image_uri: str | None = None
+
+class ChatReply(BaseModel):
+    text: str            <span class="c"># what the bubble shows</span>
+    speech: str          <span class="c"># short spoken summary — “Oxygen: 2 units, LOW, critical item.”</span>
+    cards: list[ItemCard] = []
+    proposal: StockProposal | None = None   <span class="c"># set only when the user asked to change stock</span></code></pre>
+
+  <h4>The free-only LLM client with failover</h4>
+  <pre><code><span class="c"># app/services/ai/llm.py  (prototype — httpx is already a backend dependency)</span>
+class LLMClient:
+    async def chat(self, messages, tools) -&gt; LLMResult:
+        try:
+            return await self._groq(messages, tools, model="llama-3.1-8b-instant")
+        except (RateLimited, ProviderDown):
+            try:
+                return await self._gemini(messages, tools, model="gemini-flash")
+            except (RateLimited, ProviderDown):
+                raise AllProvidersDown       <span class="c"># caller renders deterministic DB answer</span></code></pre>
+
+  <h4>Tools — thin, typed, least-privilege wrappers over the existing services</h4>
+  <pre><code><span class="c"># app/services/ai/tools.py  (prototype)</span>
+<span class="c"># Read tools return exactly the JSON the answer may use. No tool ⇒ “I don’t know.”</span>
+async def search_item(db, user_id: str, query: str) -&gt; list[ItemCard]: ...
+async def needs_attention(db, user_id: str) -&gt; list[ItemCard]: ...
+async def get_stats(db, user_id: str) -&gt; StatsOut: ...
+async def critical_low(db, user_id: str) -&gt; list[ItemCard]: ...
+
+<span class="c"># The ONLY write-adjacent tool. It does not write — it returns a proposal.</span>
+async def propose_stock_delta(db, user_id, item_id: str, delta: int, reason: str) -&gt; StockProposal:
+    item = await get_item(db, user_id, item_id)          <span class="c"># fresh read: quantity + version</span>
+    return StockProposal(item_id=item.id, current=item.quantity,
+                         new_qty=max(0, item.quantity + delta),
+                         version=item.version, reason=reason,
+                         needs_confirm=item.is_critical)  <span class="c"># confirm card on critical items</span></code></pre>
+
+  <h4>The agent loop (LangGraph — same effort as hand-rolled, instant JD keyword)</h4>
+  <pre><code><span class="c"># app/services/ai/agent.py  (prototype)</span>
+<span class="c"># StateGraph: plan → call_tools → (maybe more tools) → compose</span>
+graph = StateGraph(TurnState)
+graph.add_node("llm",     run_llm_with_tools)     <span class="c"># Groq function-calling</span>
+graph.add_node("tools",   execute_tool_calls)     <span class="c"># dispatch to tools.py, collect JSON</span>
+graph.add_node("compose", compose_reply)          <span class="c"># text + speech + cards from tool JSON only</span>
+graph.add_conditional_edges("llm", wants_tools, {True: "tools", False: "compose"})
+graph.add_edge("tools", "llm")                    <span class="c"># let the model read results, then answer</span>
+agent = graph.compile()</code></pre>
+
+  <h4>The endpoint</h4>
+  <pre><code><span class="c"># app/api/v1/ai.py  (prototype)</span>
+router = APIRouter(prefix="/ai", tags=["AI"])
+
+@router.post("/chat", response_model=ChatReply)
+@limiter.limit("20/minute")                        <span class="c"># slowapi, same as auth endpoints</span>
+async def chat(request: Request, body: ChatRequest, user: CurrentUser, db: DB):
+    if not settings.AI_ENABLED:
+        raise HTTPException(503, "AI assistant is not enabled")
+    <span class="c"># PII guard: only the message text enters the LLM — never email/user_id/supplier_contact</span>
+    return await agent.run(db=db, user_id=user.id, message=body.message[:500])</code></pre>
+
+  <h4>Mobile — the hook that types, listens and speaks</h4>
+  <pre><code><span class="c">// hooks/useAssistant.ts  (prototype)</span>
+export function useAssistant() {
+  const [turns, setTurns] = useState&lt;Turn[]&gt;([]);
+  const send = async (message: string) =&gt; {
+    setTurns(t =&gt; [...t, { role: "user", text: message }]);
+    const reply = await postChat(message);            <span class="c">// services/ai.ts → /api/v1/ai/chat</span>
+    setTurns(t =&gt; [...t, { role: "assistant", ...reply }]);
+    if (reply.speech) Speech.speak(reply.speech, { language: "en-IN" }); <span class="c">// expo-speech</span>
+  };
+  return { turns, send };
+}</code></pre>
+
+  <h4>The item card — the “beautiful summary” itself</h4>
+  <pre><code><span class="c">// components/ai/ItemSummaryCard.tsx  (prototype, theme-aware)</span>
+export function ItemSummaryCard({ card }: { card: ItemCard }) {
+  const pct = Math.min(1, card.quantity / Math.max(1, card.minimum_stock));
+  return (
+    &lt;Pressable onPress={() =&gt; router.push(`/item/${card.item_id}`)} style={s.card}&gt;
+      {card.image_uri ? &lt;Image source={{ uri: card.image_uri }} style={s.img}/&gt; : null}
+      &lt;View style={s.head}&gt;
+        &lt;Text style={s.name}&gt;{card.name}&lt;/Text&gt;
+        {card.is_critical &amp;&amp; &lt;Badge label="CRITICAL" tone="red"/&gt;}
+      &lt;/View&gt;
+      &lt;Meter value={pct} tone={card.status}/&gt;          <span class="c">// stock vs minimum bar</span>
+      &lt;Row k="In stock"  v={`${card.quantity} ${card.unit}`}/&gt;
+      &lt;Row k="Minimum"   v={`${card.minimum_stock} ${card.unit}`}/&gt;
+      {card.brand    &amp;&amp; &lt;Row k="Brand"    v={card.brand}/&gt;}
+      {card.supplier_name &amp;&amp; &lt;Row k="Supplier" v={card.supplier_name}/&gt;}
+      {card.expiry_date   &amp;&amp; &lt;Row k="Expiry"   v={fmtDate(card.expiry_date)}/&gt;}
+      {card.purchase_link &amp;&amp; &lt;OrderButton href={card.purchase_link}/&gt;}
+    &lt;/Pressable&gt;
+  );
+}</code></pre>
+
+  <h3><span class="sec"><span class="ico">📱</span> 1.4 What the user sees</span></h3>
+  <p>A note on your wording: on a touch screen there is no literal “hover”, so the hover-summary you described becomes an <strong>inline rich card in the chat thread</strong> — same information, tap to open the full item screen. This is the strictly better mobile translation of the idea.</p>
+  <div class="phone">
+    <div class="bubble-u">oxygen kitne bache hain?</div>
+    <div class="bubble-a">Oxygen Cylinder is <b>LOW</b> — 2 of minimum 10 units. It’s a <b>critical</b> item. 🔊 <i>(spoken aloud)</i>
+      <div class="itemcard">
+        <div class="ic-head"><span class="ic-name">🫁 Oxygen Cylinder</span><span class="crit">CRITICAL</span></div>
+        <div class="meter"><i></i></div>
+        <div class="row"><span>In stock</span><b>2 units</b></div>
+        <div class="row"><span>Minimum</span><b>10 units</b></div>
+        <div class="row"><span>Brand</span><b>Linde MedOx</b></div>
+        <div class="row"><span>Supplier</span><b>City Med Supply</b></div>
+        <div class="row"><span>Expiry</span><b>—</b></div>
+      </div>
+      Reorder from City Med Supply? <b>[Open order →]</b>
+    </div>
+    <div class="bubble-u">what else needs attention?</div>
+    <div class="bubble-a">3 items: <b>Oxygen (2, critical)</b>, Gauze Pads (3), Saline (1). Cards below ⌄</div>
+  </div>
+  <p><strong>Utility:</strong> zero-navigation answers; spoken vital numbers for gloved/busy hands; the card carries everything needed to verify against the physical shelf or reorder immediately; quick-chips (“What’s low?” · “Critical items” · “Expiring soon”) make the common questions one tap. Entry point: a sparkle ✦ button in the existing top bar (components/common/VitalTrackTopBar.tsx) plus a long-press on the Inventory tab.</p>
+
+  <h3><span class="sec"><span class="ico">⚖️</span> 1.5 Feasibility</span></h3>
+  <table>
+    <thead><tr><th>Dimension</th><th>Reading</th></tr></thead>
+    <tbody>
+      <tr><td>Model cost</td><td><span class="b b-free">FREE</span> Groq Llama 3.1 8B — 30 RPM / 14,400 req-day / native tool-calling; Gemini Flash free failover (best Hinglish). A 5-member family asking 50 questions/day uses ~0.3% of the daily cap.</td></tr>
+      <tr><td>Latency</td><td>Groq is the fastest free inference on the market; a 2-tool turn lands ~1–2 s. Stream tokens later (Ch.8) for perceived instant.</td></tr>
+      <tr><td>New dependencies</td><td>Backend: <code>langgraph</code> (small, pure-python) — the HTTP calls ride the existing <code>httpx</code>. Mobile: <code>expo-speech</code> only (TTS; already in the Expo SDK family).</td></tr>
+      <tr><td>Effort</td><td><span class="b b-gold">M</span> — ~2–3 focused weekends: 1 for agent+endpoint, 1 for the chat UI + card, buffer for evals (Ch.8 golden set).</td></tr>
+      <tr><td>Catches</td><td>PII: only message text + item names/quantities go to the free tier — strip user identity and <code>supplier_contact</code>. Offline/throttled: deterministic reply rendered straight from <code>/needs-attention</code> keeps the feature alive with zero LLM.</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec"><span class="ico">💼</span> 1.6 Job relevance — is this worth learning in 2026?</span></h3>
+  <p><strong>Yes — this chapter alone is the single highest-value build in the whole book.</strong> From the skill-gap analysis: <em>agentic AI / tool-calling</em> is a must-have and the fastest-growing JD keyword (+300% YoY); <em>LangChain/LangGraph</em> is the most-filtered framework name (~70% of listings); <em>LLM APIs + prompt engineering</em> are universal. One deployed feature truthfully claims all three, plus “production AI on a no-GPU budget” — the 2026 market’s stated shift is exactly “can you ship AI safely and keep it alive?”, and a live, guard-railed, medical-adjacent agent is the rare artifact most applicants don’t have (notebook demos are the norm). The résumé line it unlocks: <em>“Production agentic assistant (LangGraph) over FastAPI tools with confirm-before-write guardrails on optimistically-locked medical inventory, ~₹0 on free tiers with vendor failover.”</em></p>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 2 ======================= -->
+<section class="chapter" id="ch2">
+  <div class="ch-label">Chapter 02 · Ears &amp; mouth</div>
+  <h2>Voice mode — hands-free stock audit</h2>
+  <p class="ch-tag">Tap-to-talk on top of the Chapter 1 brain: speak the question, hear the answer, verify the physical shelf without touching the screen.</p>
+  <div class="badges"><span class="b b-free">₹0 · on-device STT + TTS</span><span class="b b-red">Effort L (permission + store build)</span><span class="b b-mut">V3 — after the text agent proves out</span><span class="b b-free">Job signal: voice AI pipelines</span></div>
+
+  <h3><span class="sec"><span class="ico">📖</span> 2.1 Overview — what &amp; why</span></h3>
+  <p><strong>What.</strong> A microphone button on the assistant screen. Speech is transcribed <em>on the device</em> (nothing leaves the phone), shown as text for confirmation, sent through the same <code>/ai/chat</code> brain, and the reply is spoken back. On top of single questions sits <strong>Audit Mode</strong>: the app walks you item-by-item through the stale/critical list — “Oxygen shows 2 — is that right?” — you answer “yes” or “no, it’s 4”, and each correction goes through the delta-proposal + CAS write. This is your “verify against the physical list” requirement, made hands-free.</p>
+  <p><strong>Why.</strong> The core caregiver moment is standing at the supply shelf, hands full. Voice turns a 90-second phone session into a 15-second exchange — and Audit Mode attacks the #1 real-world failure of every inventory app: digital counts drifting from physical reality.</p>
+
+  <h3><span class="sec"><span class="ico">🏛</span> 2.2 Architecture</span></h3>
+  <div class="diagram">
+  <svg viewBox="0 0 820 150" xmlns="http://www.w3.org/2000/svg" font-family="Arial" font-size="12.5">
+    <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#89672f"/></marker></defs>
+    <rect x="10" y="35" width="130" height="70" rx="12" fill="#fffdf9" stroke="#c9b9a0" stroke-width="1.5"/>
+    <text x="75" y="65" text-anchor="middle" font-weight="bold" fill="#1d6b52">🎙 Mic</text>
+    <text x="75" y="86" text-anchor="middle" fill="#6f6555" font-size="11">tap-to-talk</text>
+    <rect x="180" y="25" width="190" height="90" rx="12" fill="#f6efe2" stroke="#89672f" stroke-width="1.5"/>
+    <text x="275" y="50" text-anchor="middle" font-weight="bold" fill="#89672f">On-device STT</text>
+    <text x="275" y="70" text-anchor="middle" fill="#6f6555" font-size="11">expo-speech-recognition</text>
+    <text x="275" y="88" text-anchor="middle" fill="#6f6555" font-size="11">native iOS/Android engines · ₹0</text>
+    <text x="275" y="106" text-anchor="middle" fill="#6f6555" font-size="11">audio never leaves the phone</text>
+    <rect x="410" y="25" width="150" height="90" rx="12" fill="#fffdf9" stroke="#9c2b1e" stroke-width="1.5"/>
+    <text x="485" y="55" text-anchor="middle" font-weight="bold" fill="#9c2b1e">Transcript gate</text>
+    <text x="485" y="76" text-anchor="middle" fill="#6f6555" font-size="11">“You said: …”</text>
+    <text x="485" y="94" text-anchor="middle" fill="#6f6555" font-size="11">edit / retry / go</text>
+    <rect x="600" y="25" width="200" height="90" rx="12" fill="#e4efe9" stroke="#1d6b52" stroke-width="1.5"/>
+    <text x="700" y="55" text-anchor="middle" font-weight="bold" fill="#1d6b52">Ch.1 agent → reply</text>
+    <text x="700" y="76" text-anchor="middle" fill="#6f6555" font-size="11">same /ai/chat, unchanged</text>
+    <text x="700" y="94" text-anchor="middle" fill="#6f6555" font-size="11">expo-speech reads it back 🔊</text>
+    <line x1="140" y1="70" x2="178" y2="70" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar2)"/>
+    <line x1="370" y1="70" x2="408" y2="70" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar2)"/>
+    <line x1="560" y1="70" x2="598" y2="70" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar2)"/>
+  </svg>
+  <div class="dg-cap">Voice is a peripheral: ears (on-device STT) and mouth (TTS) around the unchanged Chapter 1 brain. Optional server lane: Groq Whisper large-v3 (free, 2,000 req/day) or the Apache-2.0 Whisper-Hindi2Hinglish model for heavy code-switching.</div>
+  </div>
+
+  <h3><span class="sec"><span class="ico">🧩</span> 2.3 Code &amp; placement</span></h3>
+  <div class="file-tree">vitaltrack-mobile/
+├── <span class="mod">app.json</span>                          ← MOD: remove "android.permission.RECORD_AUDIO"
+│                                        from blockedPermissions (it is actively blocked today)
+├── components/ai/<span class="new">VoiceButton.tsx</span>      ← NEW: mic button + transcript gate
+├── app/<span class="new">audit.tsx</span>                      ← NEW: guided Audit Mode screen
+└── package: <span class="new">expo-speech-recognition</span>   ← community lib (jamsch), config-plugin, dev build required</div>
+  <pre><code><span class="c">// components/ai/VoiceButton.tsx  (prototype)</span>
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-speech-recognition";
+
+export function VoiceButton({ onFinal }: { onFinal: (text: string) =&gt; void }) {
+  const [partial, setPartial] = useState("");
+  useSpeechRecognitionEvent("result", (e) =&gt; {
+    setPartial(e.results[0]?.transcript ?? "");
+    if (e.isFinal) onFinal(e.results[0].transcript);   <span class="c">// → transcript gate, NOT straight to send</span>
+  });
+  const start = () =&gt; ExpoSpeechRecognitionModule.start({
+    lang: "en-IN",              <span class="c">// hi-IN also works; native engine handles code-mixing tolerably</span>
+    interimResults: true,
+    requiresOnDeviceRecognition: true,   <span class="c">// privacy: no network audio</span>
+  });
+  return &lt;MicButton onPressIn={start} partial={partial}/&gt;;
+}</code></pre>
+  <p><strong>Audit Mode sketch:</strong> <code>app/audit.tsx</code> pulls the stale + critical queue (Ch.4 endpoint), loops: speak “Item shows N — correct?” → listen for “yes / no, it’s M” → yes logs a verification touch (bumps <code>updated_at</code> via a no-op-delta endpoint), no routes through <code>propose_stock_delta</code> with the confirm card. Ten items ≈ one minute, hands-free.</p>
+
+  <h3><span class="sec"><span class="ico">📱</span> 2.4 What the user sees</span></h3>
+  <p>Mic button pulses while listening and prints the live partial transcript. On finish, the <strong>gate</strong>: “You said: <em>add five oxygen</em>” with <b>[Send] [Edit] [Retry]</b> — a deliberate friction, because STT mishears medicine names and Hinglish, and a mis-write on a medical item is the one unforgivable bug. Then the normal Chapter 1 reply, spoken aloud. In Audit Mode the screen shows a big per-item card with ✓/✗ voice or tap — designed to be glanceable from arm’s length.</p>
+
+  <h3><span class="sec"><span class="ico">⚖️</span> 2.5 Feasibility</span></h3>
+  <ul>
+    <li><span class="b b-free">FREE</span> STT on-device (native engines) and TTS via <code>expo-speech</code> — ₹0, private, offline-capable. Server Whisper lanes stay free (Groq 2,000 req/day) if Hinglish accuracy demands them.</li>
+    <li><span class="b b-gold">Verified specifics (2026-07):</span> pin <code>expo-speech-recognition@sdk-54</code> (v3.1.3) — do <em>not</em> install <code>latest</code> into this SDK 54 app; it needs a dev build (never Expo Go); true on-device recognition requires <b>Android 13+ / iOS 17+</b> (network-based is the default below that — check <code>getSupportedLocales()</code> for Hindi per device). TTS quirks: no pause/resume on Android, ~4,000-char input cap, silent-mode mutes it on iOS.</li>
+    <li><span class="b b-red">The real cost is procedural, not monetary:</span> <code>RECORD_AUDIO</code> is currently <em>blocked</em> in app.json — unblocking it changes the permission manifest ⇒ a new store build + Play review, and permission changes cannot ship via OTA. It also reopens the Data-safety form (“Audio: not collected — processed on device, never transmitted” if on-device only).</li>
+    <li>Hence the sequencing verdict: <strong>ship Chapter 1 as text first</strong> (zero new permissions), add voice when the brain has proven itself. Effort L overall; the code itself is small.</li>
+  </ul>
+
+  <h3><span class="sec"><span class="ico">💼</span> 2.6 Job relevance</span></h3>
+  <p><strong>Moderate-to-strong, and differentiating.</strong> Voice AI is a named niche (Sarvam-class voice roles; “speech pipelines” in multimodal JDs) rather than a universal must-have — but a <em>working multilingual voice + confirm-gate pipeline on a medical app</em> is a memorable demo, and the STT-gate design is a great interview story about human-in-the-loop safety. Learn it after Chapters 1/3/5/8, not before.</p>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 3 ======================= -->
+<section class="chapter" id="ch3">
+  <div class="ch-label">Chapter 03 · The channel</div>
+  <h2>The WhatsApp companion</h2>
+  <p class="ch-tag">The same Chapter 1 brain, living where the family already is: a free reply bot, plus the daily stock report, low-stock warnings and “please sync this item” reminders you asked for — routed to keep the bill at ≈₹0.</p>
+  <div class="badges"><span class="b b-free">Inbound replies: FREE &amp; unlimited</span><span class="b b-gold">Proactive templates: ~₹0.115/msg (utility, India)</span><span class="b b-gold">Effort M</span><span class="b b-mut">V2.0–V2.1</span></div>
+
+  <h3><span class="sec"><span class="ico">📖</span> 3.1 Overview — what &amp; why</span></h3>
+  <p><strong>What.</strong> A WhatsApp number for CareKosh. Anyone in the family messages it — “kya kya low hai?”, “oxygen?” — and the agent replies with the grounded answer, formatted for WhatsApp (list + bold numbers). On top of Q&amp;A sit the proactive flows you specified: the <strong>morning stock report</strong>, <strong>low-stock / out-of-stock warnings</strong>, and the <strong>sync nudges</strong> — “Ambu Bag hasn’t been updated in 9 days and shows 1 unit. Is the physical count still right? Reply YES to confirm or send the new count.”</p>
+  <p><strong>Why.</strong> The caregiver’s family coordinates on WhatsApp already; meeting them there removes the app-open barrier entirely for the most common question (“what do we need to buy?”). And WhatsApp’s reply pricing makes a support-style bot literally free.</p>
+  <div class="note"><strong>2026 pricing facts (re-verified this month — they supersede older notes):</strong> since Nov 2024 <em>all service messages are free and unlimited</em> — the old “1,000 free conversations/month” tier no longer exists. Since Jul 2025 Meta bills <em>per delivered template</em>: in India ≈ <b>₹0.115</b> per utility template (reminders/alerts) and ≈ <b>₹0.86</b> per marketing template — but <b>utility templates sent while a 24-hour customer-service window is open are free</b>. The Cloud API itself costs nothing. So: replies = ₹0 forever; a scheduled 8 AM report to a user who hasn’t messaged since yesterday = ~11.5 paise; the same report to someone who chatted with the bot today = ₹0.</div>
+
+  <h3><span class="sec"><span class="ico">🏛</span> 3.2 Architecture</span></h3>
+  <div class="diagram">
+  <svg viewBox="0 0 820 300" xmlns="http://www.w3.org/2000/svg" font-family="Arial" font-size="12.5">
+    <defs><marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#89672f"/></marker></defs>
+    <rect x="15" y="30" width="150" height="70" rx="12" fill="#fffdf9" stroke="#c9b9a0" stroke-width="1.5"/>
+    <text x="90" y="58" text-anchor="middle" font-weight="bold" fill="#1d6b52">Family member</text>
+    <text x="90" y="80" text-anchor="middle" fill="#6f6555" font-size="11">WhatsApp message</text>
+    <rect x="215" y="30" width="160" height="70" rx="12" fill="#fffdf9" stroke="#c9b9a0" stroke-width="1.5"/>
+    <text x="295" y="58" text-anchor="middle" font-weight="bold" fill="#1d6b52">Meta Cloud API</text>
+    <text x="295" y="80" text-anchor="middle" fill="#6f6555" font-size="11">(hosted by Meta, $0)</text>
+    <rect x="430" y="18" width="230" height="96" rx="12" fill="#f6efe2" stroke="#89672f" stroke-width="1.5"/>
+    <text x="545" y="42" text-anchor="middle" font-weight="bold" fill="#89672f">POST /integrations/whatsapp/webhook</text>
+    <text x="545" y="62" text-anchor="middle" fill="#6f6555" font-size="11">HMAC signature verify (app secret)</text>
+    <text x="545" y="80" text-anchor="middle" fill="#6f6555" font-size="11">wa_id → user_id lookup (wa_links)</text>
+    <text x="545" y="98" text-anchor="middle" fill="#6f6555" font-size="11">→ Chapter 1 agent, unchanged</text>
+    <rect x="700" y="30" width="105" height="70" rx="12" fill="#e4efe9" stroke="#1d6b52" stroke-width="1.5"/>
+    <text x="752" y="58" text-anchor="middle" font-weight="bold" fill="#1d6b52">free reply</text>
+    <text x="752" y="78" text-anchor="middle" fill="#6f6555" font-size="10.5">24h window</text>
+    <line x1="165" y1="65" x2="213" y2="65" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar3)"/>
+    <line x1="375" y1="65" x2="428" y2="65" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar3)"/>
+    <line x1="660" y1="65" x2="698" y2="65" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar3)"/>
+    <!-- proactive lane -->
+    <rect x="15" y="185" width="170" height="70" rx="12" fill="#fffdf9" stroke="#c9b9a0" stroke-width="1.5"/>
+    <text x="100" y="212" text-anchor="middle" font-weight="bold" fill="#1d6b52">Render Cron (free)</text>
+    <text x="100" y="234" text-anchor="middle" fill="#6f6555" font-size="11">8:00 AM daily</text>
+    <rect x="235" y="173" width="230" height="94" rx="12" fill="#f6efe2" stroke="#89672f" stroke-width="1.5"/>
+    <text x="350" y="197" text-anchor="middle" font-weight="bold" fill="#89672f">POST /jobs/daily  (CRON_SECRET)</text>
+    <text x="350" y="217" text-anchor="middle" fill="#6f6555" font-size="11">Ch.4 engine: digest + low-stock</text>
+    <text x="350" y="235" text-anchor="middle" fill="#6f6555" font-size="11">+ stale-item sync nudges</text>
+    <text x="350" y="253" text-anchor="middle" fill="#6f6555" font-size="11">channel router per user prefs</text>
+    <rect x="520" y="173" width="285" height="94" rx="12" fill="#fffdf9" stroke="#1d6b52" stroke-width="1.5"/>
+    <text x="662" y="197" text-anchor="middle" font-weight="bold" fill="#1d6b52">Delivery ladder (cheapest first)</text>
+    <text x="662" y="218" text-anchor="middle" fill="#6f6555" font-size="11">1 · in-app push — always, ₹0</text>
+    <text x="662" y="236" text-anchor="middle" fill="#6f6555" font-size="11">2 · WhatsApp free (window open) — ₹0</text>
+    <text x="662" y="254" text-anchor="middle" fill="#6f6555" font-size="11">3 · WhatsApp utility template (opt-in) — ₹0.115</text>
+    <line x1="185" y1="220" x2="233" y2="220" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar3)"/>
+    <line x1="465" y1="220" x2="518" y2="220" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar3)"/>
+  </svg>
+  <div class="dg-cap">Two lanes: the free inbound reply loop (top) and the scheduled proactive lane (bottom) with a cost-aware delivery ladder.</div>
+  </div>
+
+  <h3><span class="sec"><span class="ico">🧩</span> 3.3 Code &amp; placement</span></h3>
+  <div class="file-tree">vitaltrack-backend/
+├── app/api/v1/<span class="new">webhooks.py</span>            ← NEW: GET verify + POST receive (Meta webhook)
+├── app/api/v1/<span class="new">jobs.py</span>                ← NEW: POST /jobs/daily (CRON_SECRET-protected)
+├── app/services/<span class="new">whatsapp.py</span>          ← NEW: send_text / send_buttons / send_template (httpx)
+├── app/models/<span class="new">wa_link.py</span>             ← NEW: wa_id ↔ user_id (+ opt_in_report bool)
+├── app/models/<span class="mod">__init__.py</span> + alembic  ← MOD: migration for wa_links
+└── app/core/<span class="mod">config.py</span>               ← MOD: WA_TOKEN, WA_PHONE_ID, WA_VERIFY_TOKEN, WA_APP_SECRET, CRON_SECRET</div>
+  <pre><code><span class="c"># app/api/v1/webhooks.py  (prototype)</span>
+@router.get("/integrations/whatsapp/webhook")        <span class="c"># Meta's one-time subscribe handshake</span>
+async def verify(mode: str = Query(alias="hub.mode"),
+                 token: str = Query(alias="hub.verify_token"),
+                 challenge: str = Query(alias="hub.challenge")):
+    if mode == "subscribe" and token == settings.WA_VERIFY_TOKEN:
+        return PlainTextResponse(challenge)
+    raise HTTPException(403)
+
+@router.post("/integrations/whatsapp/webhook")
+async def receive(request: Request, db: DB):
+    verify_hmac(await request.body(), request.headers["X-Hub-Signature-256"],
+                settings.WA_APP_SECRET)                       <span class="c"># reject forgeries</span>
+    msg = parse_inbound(await request.json())                 <span class="c"># text or button reply</span>
+    link = await get_wa_link(db, wa_id=msg.wa_id)
+    if link is None:
+        return await wa.send_text(msg.wa_id, LINK_INSTRUCTIONS)   <span class="c"># “open CareKosh → Connect WhatsApp”</span>
+    reply = await agent.run(db=db, user_id=link.user_id, message=msg.text)
+    if reply.proposal and reply.proposal.needs_confirm:           <span class="c"># critical write → buttons</span>
+        return await wa.send_buttons(msg.wa_id, reply.text,
+                                     yes=f"confirm:{reply.proposal.token}", no="cancel")
+    await wa.send_text(msg.wa_id, format_for_wa(reply))          <span class="c"># free service reply</span></code></pre>
+  <pre><code><span class="c"># app/services/whatsapp.py  (prototype — plain httpx, no SDK needed)</span>
+GRAPH = "https://graph.facebook.com/v21.0"
+async def send_text(wa_id: str, body: str):
+    await http.post(f"{GRAPH}/{settings.WA_PHONE_ID}/messages",
+        headers={"Authorization": f"Bearer {settings.WA_TOKEN}"},
+        json={"messaging_product": "whatsapp", "to": wa_id,
+              "type": "text", "text": {"body": body[:4096]}})</code></pre>
+  <p><strong>Account linking (one-time, in-app):</strong> a “Connect WhatsApp” row in Profile opens <code>wa.me/&lt;bot-number&gt;?text=LINK-&lt;short-lived-code&gt;</code>; the webhook sees the code, binds <code>wa_id → user_id</code>, done. No passwords over chat, and an unlinked number can never read any inventory.</p>
+  <p><strong>Scheduling:</strong> a free <strong>Render Cron Job</strong> hits <code>POST /jobs/daily</code> with <code>CRON_SECRET</code> — fires exactly once regardless of your 2 gunicorn workers (an in-process APScheduler would double-fire). The job itself is Chapter 4’s engine.</p>
+
+  <h3><span class="sec"><span class="ico">📱</span> 3.4 What the user sees</span></h3>
+  <div class="phone">
+    <div class="bubble-a">☀️ <b>CareKosh morning report</b> — Stock health 82%.<br>⚠️ Needs attention (3): <b>Oxygen 2/10 (critical)</b> · Gauze 3/5 · Saline 1/4.<br>⏳ Expiring soon: Betadine (12 Jul).<br>🔄 Not synced 7+ days: Ambu Bag, Nebulizer Mask — reply SYNC to verify counts.</div>
+    <div class="bubble-u">oxygen?</div>
+    <div class="bubble-a"><b>Oxygen Cylinder: 2 units</b> — LOW (min 10) · critical item.<br>Brand: Linde MedOx · Supplier: City Med Supply.<br>Reply <b>ORDER</b> to draft a reorder, or send “add N” after restocking.</div>
+    <div class="bubble-u">add 5</div>
+    <div class="bubble-a">Set Oxygen <b>2 → 7</b>? This is a <b>critical</b> item.<br>[ ✅ Confirm ]  [ ❌ Cancel ]</div>
+  </div>
+  <p><strong>Utility:</strong> the family’s daily coordination happens with zero app-opens; warnings arrive where they’ll actually be seen; the sync nudge closes the digital-vs-physical drift loop; and the confirm buttons keep critical writes deliberate even over chat.</p>
+
+  <h3><span class="sec"><span class="ico">⚖️</span> 3.5 Feasibility</span></h3>
+  <table>
+    <thead><tr><th>Aspect</th><th>Reading</th></tr></thead>
+    <tbody>
+      <tr><td>Inbound Q&amp;A</td><td><span class="b b-free">FREE, unlimited</span> — service replies inside the 24 h window cost nothing, uncapped (2026 rule).</td></tr>
+      <tr><td>Daily report / alerts</td><td><span class="b b-free">₹0 default</span> via in-app push (Ch.4); WhatsApp copy is free whenever the user has messaged in the last 24 h, else an <b>opt-in utility template ≈ ₹0.115</b>. Even daily templates to a silent user ≈ ₹42/year — but keep it opt-in.</td></tr>
+      <tr><td>Setup friction</td><td>The honest cost: Meta developer app + WABA + webhook (an afternoon), then <b>business verification</b> for a real number (days; the free test number only reaches 5 pre-registered recipients — fine for the MVP demo). Unverified accounts are also capped at 250 business-initiated conversations/day — irrelevant for replies.</td></tr>
+      <tr><td>Effort</td><td><span class="b b-gold">M</span> — webhook + sender + linking ≈ 1 weekend on top of Chapter 1; templates + verification add calendar time, not code.</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec"><span class="ico">💼</span> 3.6 Job relevance</span></h3>
+  <p><strong>Strong as a product story, moderate as a keyword.</strong> “WhatsApp bot” rarely appears as a JD skill — but 500M+ Indian WhatsApp users and ~80% of Indian businesses adopting WhatsApp automation by 2026 make this the single most <em>commercially literate</em> feature in the book, and the implementation exercises real production muscles JDs do name: <strong>webhooks, HMAC signature verification, idempotent external APIs, channel routing, cost-aware system design</strong>. In an interview this chapter is your “I built for real users on real infrastructure” evidence.</p>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 4 ======================= -->
+<section class="chapter" id="ch4">
+  <div class="ch-label">Chapter 04 · The heartbeat</div>
+  <h2>The proactive brain — alerts, digests &amp; the sync-audit engine</h2>
+  <p class="ch-tag">Everything CareKosh tells you without being asked: criticality-aware low-stock alerts, expiry watch, the daily digest, and the “this item hasn’t been synced” audit nudges — one engine, many channels.</p>
+  <div class="badges"><span class="b b-free">₹0 · push + email + free-window WA</span><span class="b b-gold">Effort M</span><span class="b b-mut">V2.0–V2.1</span><span class="b b-free">No LLM required (LLM only phrases)</span></div>
+
+  <h3><span class="sec"><span class="ico">📖</span> 4.1 Overview — what &amp; why</span></h3>
+  <p><strong>What.</strong> A scanner that runs on a schedule (and on stock-write events) and produces four intelligence products: <b>①</b> immediate red alerts when a <em>critical</em> item hits/falls below minimum (event-driven, not polled); <b>②</b> the 8 AM digest — stock-health %, needs-attention list, expiring-soon list; <b>③</b> expiry watch over the <code>expiry_date</code> you already store; <b>④</b> the <strong>sync-audit queue</strong> — items whose <code>updated_at</code> is stale (default 7 days), i.e. counts nobody has touched or verified, surfaced as “is this still right?” nudges in-app, on WhatsApp (Ch.3) and in voice Audit Mode (Ch.2).</p>
+  <p><strong>Why.</strong> This is the ABC-VED principle from the parent doc made executable: a Vital item running low is a zero-tolerance event; a routine item is a gentle line in the digest. And the sync-audit is the feature no consumer inventory app ships — it keeps the digital numbers honest, which is what makes every other feature trustworthy.</p>
+
+  <h3><span class="sec"><span class="ico">🏛</span> 4.2 Architecture</span></h3>
+  <div class="diagram">
+  <svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" font-family="Arial" font-size="12.5">
+    <defs><marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#89672f"/></marker></defs>
+    <rect x="15" y="20" width="185" height="76" rx="12" fill="#fffdf9" stroke="#c9b9a0" stroke-width="1.5"/>
+    <text x="107" y="46" text-anchor="middle" font-weight="bold" fill="#1d6b52">Triggers</text>
+    <text x="107" y="66" text-anchor="middle" fill="#6f6555" font-size="11">Render Cron → /jobs/daily</text>
+    <text x="107" y="84" text-anchor="middle" fill="#6f6555" font-size="11">stock-write BackgroundTask (critical)</text>
+    <rect x="255" y="12" width="250" height="180" rx="12" fill="#f6efe2" stroke="#89672f" stroke-width="1.5"/>
+    <text x="380" y="36" text-anchor="middle" font-weight="bold" fill="#89672f">services/alerts.py — the engine</text>
+    <text x="380" y="60" text-anchor="middle" fill="#2a241c" font-size="11.5">scan_critical_low()   · zero-tolerance</text>
+    <text x="380" y="80" text-anchor="middle" fill="#2a241c" font-size="11.5">scan_needs_attention() · routine</text>
+    <text x="380" y="100" text-anchor="middle" fill="#2a241c" font-size="11.5">scan_expiring(days=14)</text>
+    <text x="380" y="120" text-anchor="middle" fill="#2a241c" font-size="11.5">scan_stale(days=7)     · sync-audit</text>
+    <text x="380" y="144" text-anchor="middle" fill="#6f6555" font-size="11">→ AlertBundle per user</text>
+    <text x="380" y="164" text-anchor="middle" fill="#6f6555" font-size="11">(optional: LLM phrases the digest text)</text>
+    <rect x="560" y="12" width="245" height="180" rx="12" fill="#fffdf9" stroke="#1d6b52" stroke-width="1.5"/>
+    <text x="682" y="36" text-anchor="middle" font-weight="bold" fill="#1d6b52">Channel router (user prefs)</text>
+    <text x="682" y="62" text-anchor="middle" fill="#6f6555" font-size="11.5">Expo Push — always on, ₹0</text>
+    <text x="682" y="84" text-anchor="middle" fill="#6f6555" font-size="11.5">Email digest (Brevo, existing) — ₹0</text>
+    <text x="682" y="106" text-anchor="middle" fill="#6f6555" font-size="11.5">WhatsApp — free window else template</text>
+    <text x="682" y="128" text-anchor="middle" fill="#6f6555" font-size="11.5">In-app banner — critical red overlay</text>
+    <text x="682" y="156" text-anchor="middle" fill="#89672f" font-size="11.5">critical ⇒ loud &amp; instant</text>
+    <text x="682" y="174" text-anchor="middle" fill="#89672f" font-size="11.5">routine ⇒ digest only (no fatigue)</text>
+    <line x1="200" y1="58" x2="253" y2="58" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar4)"/>
+    <line x1="505" y1="100" x2="558" y2="100" stroke="#89672f" stroke-width="1.6" marker-end="url(#ar4)"/>
+  </svg>
+  <div class="dg-cap">Pure-SQL scans; the LLM is optional garnish (phrasing), never the source of an alert.</div>
+  </div>
+
+  <h3><span class="sec"><span class="ico">🧩</span> 4.3 Code &amp; placement</span></h3>
+  <div class="file-tree">vitaltrack-backend/
+├── app/services/<span class="new">alerts.py</span>            ← NEW: the four scans + AlertBundle composer
+├── app/services/<span class="new">push.py</span>              ← NEW: Expo push sender (exp.host API via httpx)
+├── app/api/v1/<span class="new">jobs.py</span>                ← (shared with Ch.3) daily entrypoint
+├── app/api/v1/<span class="mod">items.py</span>              ← MOD: BackgroundTask on stock-CAS when critical &amp; below min
+├── app/models/<span class="new">device_token.py</span>       ← NEW: user_id ↔ Expo push token (+ migration)
+└── app/api/v1/<span class="new">devices.py</span>            ← NEW: POST /devices/token (mobile registers)
+
+vitaltrack-mobile/
+├── hooks/<span class="new">usePushRegistration.ts</span>     ← NEW: expo-notifications token → POST /devices/token
+└── <span class="mod">app/_layout.tsx</span>                  ← MOD: register on login; notification tap → deep link</div>
+  <pre><code><span class="c"># app/services/alerts.py  (prototype — the queries ARE the feature)</span>
+async def scan_stale(db, user_id, days=7) -&gt; list[Item]:
+    cutoff = now_utc() - timedelta(days=days)
+    q = (select(Item).where(Item.user_id == user_id, Item.is_active,
+                            Item.updated_at &lt; cutoff)
+         .order_by(Item.is_critical.desc(), Item.updated_at))   <span class="c"># critical first</span>
+    return (await db.execute(q)).scalars().all()
+
+async def build_daily_bundle(db, user) -&gt; AlertBundle:
+    return AlertBundle(
+        stats     = await get_stats(db, user.id),
+        attention = await needs_attention(db, user.id),
+        expiring  = await scan_expiring(db, user.id, days=14),
+        stale     = await scan_stale(db, user.id, days=7),
+    )   <span class="c"># channel router formats per channel; LLM may rewrite `text` nicely — numbers untouched</span></code></pre>
+  <pre><code><span class="c"># app/api/v1/items.py  (MOD — event-driven critical alert, rides the existing CAS write)</span>
+<span class="c"># after a successful stock CAS:</span>
+if item.is_critical and new_qty &lt;= item.minimum_stock:
+    background_tasks.add_task(send_critical_alert, user_id=user.id, item_id=item.id)</code></pre>
+
+  <h3><span class="sec"><span class="ico">📱</span> 4.4 What the user sees</span></h3>
+  <ul>
+    <li><b>Critical alert:</b> a push that ignores quiet hours by design choice — “🔴 Oxygen Cylinder at 2 (min 10). Tap to reorder.” Tapping deep-links to the item screen.</li>
+    <li><b>8 AM digest:</b> one push + optional email/WhatsApp — the same content as the Ch.3 mock.</li>
+    <li><b>Sync nudges:</b> a small “🔄 3 items need a sync check” chip on the Dashboard; tapping opens the audit queue (or voice Audit Mode). Confirming “still correct” bumps <code>updated_at</code> via a no-op-delta write, so verified items leave the queue.</li>
+  </ul>
+
+  <h3><span class="sec"><span class="ico">⚖️</span> 4.5 Feasibility</span></h3>
+  <ul>
+    <li><span class="b b-free">FREE</span> Expo Push is ₹0 at this scale; Brevo email already runs in production; the scans are four simple indexed queries over ≤ a few hundred rows.</li>
+    <li><span class="b b-gold">Pre-req</span> the Chapter 0 <code>updated_at</code> fix — without it every item looks stale forever.</li>
+    <li>Alert-fatigue guardrail is a <em>product</em> rule enforced in code: only <code>is_critical</code> items may interrupt; everything else waits for the digest. Effort <b>M</b> (push plumbing is most of it).</li>
+  </ul>
+
+  <h3><span class="sec"><span class="ico">💼</span> 4.6 Job relevance</span></h3>
+  <p><strong>Quietly strong.</strong> No “alerts engine” keyword exists — but this chapter is the system-design interview in miniature: idempotent cron entrypoints on multi-worker deployments, event-driven vs polled triggers, notification fan-out, quiet-hours policy, dedupe windows. Paired with Ch.8’s observability it demonstrates the 2026 market’s highest-praised trait: <em>production reliability thinking around AI features</em>, not just prompts.</p>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 5 ======================= -->
+<section class="chapter" id="ch5">
+  <div class="ch-label">Chapter 05 · The memory</div>
+  <h2>Semantic search &amp; RAG over your inventory</h2>
+  <p class="ch-tag">“O2 cylinder”, “oxygen”, “ऑक्सीजन” and “that breathing tank thing” should all find the same row. pgvector on the Neon you already run — no new infrastructure.</p>
+  <div class="badges"><span class="b b-free">₹0 · pgvector + local embeddings</span><span class="b b-gold">Effort M</span><span class="b b-mut">V2.1</span><span class="b b-free">Job signal: RAG (~65% of applied-LLM JDs)</span></div>
+
+  <h3><span class="sec"><span class="ico">📖</span> 5.1 Overview — what &amp; why</span></h3>
+  <p><strong>What.</strong> An <code>embedding</code> column on <code>items</code>, filled from <code>name + brand + notes + category</code> with a multilingual sentence-embedding model, plus a <code>/items/semantic-search</code> endpoint the agent uses as a smarter <code>search_item</code> tool. Retrieval is hybrid: exact <code>ilike</code> first (fast, precise), vector similarity as the fallback for fuzzy/Hinglish/synonym queries.</p>
+  <p><strong>Why.</strong> The Chapter 1 agent is only as good as its retrieval: <code>ilike '%oxygen%'</code> misses “O2 concentrator”. Families name items inconsistently across languages; embeddings bridge that. This is also, verbatim, the RAG pattern the job market screens for — grounded retrieval feeding generation.</p>
+
+  <h3><span class="sec"><span class="ico">🏛</span> 5.2 Architecture &amp; 🧩 code</span></h3>
+  <div class="file-tree">vitaltrack-backend/
+├── alembic: <span class="new">enable pgvector + items.embedding vector(384) + ivfflat index</span>
+├── app/services/<span class="new">embeddings.py</span>        ← NEW: encode() via fastembed (multilingual-e5-small, CPU, ~120 MB)
+├── app/api/v1/<span class="mod">items.py</span>              ← MOD: /items/semantic-search + re-embed on create/update
+└── app/services/ai/<span class="mod">tools.py</span>          ← MOD: search_item → hybrid exact-then-vector</div>
+  <pre><code><span class="c">-- migration (prototype)</span>
+CREATE EXTENSION IF NOT EXISTS vector;               <span class="c">-- Neon ships pgvector natively</span>
+ALTER TABLE items ADD COLUMN embedding vector(384);  <span class="c">-- e5-small dimension</span>
+CREATE INDEX items_embedding_idx ON items
+  USING ivfflat (embedding vector_cosine_ops);</code></pre>
+  <pre><code><span class="c"># app/services/embeddings.py  (prototype)</span>
+<span class="c"># fastembed runs the quantised e5-small on CPU — fine for ≤ a few hundred items;</span>
+<span class="c"># embed on write (create/update), never at query-time-for-all-rows.</span>
+model = TextEmbedding("intfloat/multilingual-e5-small")
+def encode(text: str) -&gt; list[float]:
+    return list(model.embed([f"passage: {text}"]))[0]
+
+<span class="c"># hybrid search (tools.py)</span>
+hits = await exact_ilike(db, user_id, q)
+if not hits:
+    qv = encode(f"query: {q}")
+    hits = await db.execute(
+        select(Item).where(Item.user_id == user_id, Item.is_active)
+        .order_by(Item.embedding.cosine_distance(qv)).limit(5))</code></pre>
+  <div class="warn"><strong>Render Starter reality check (0.5 vCPU / 512 MB):</strong> e5-small quantised fits but is snug next to 2 gunicorn workers. Plan B if memory squeaks: call the <b>Gemini embedding model’s free tier</b> instead (same code shape, zero RAM) — accepting the free-tier-data caveat for item names only. Both paths stay ₹0.</div>
+
+  <h3><span class="sec"><span class="ico">📱</span> 5.3 What the user sees</span></h3>
+  <p>Nothing new — and that’s the point. Search (app search bar, agent, WhatsApp) simply stops missing: “breathing mask” finds “BiPAP/Ventilator Mask”, Hinglish finds English rows. The existing <code>search.tsx</code> screen gains a subtle “similar items” section under exact matches.</p>
+
+  <h3><span class="sec"><span class="ico">⚖️</span> 5.4 Feasibility</span></h3>
+  <p><span class="b b-free">FREE</span> — pgvector is already in Neon; fastembed is Apache-2.0; at ≤500 items even a sequential scan would be instant (the index is future-proofing). Effort <b>M</b>: one migration, one service, one endpoint, tool swap. Re-embedding on item edit is a background task off the write path.</p>
+
+  <h3><span class="sec"><span class="ico">💼</span> 5.5 Job relevance</span></h3>
+  <p><strong>Must-have tier.</strong> RAG appears in ~65% of applied-LLM listings — the single most-cited concrete skill — and “vector DB / embeddings / semantic search” is a standard screen. One framing tip from the research: recruiters name-check Pinecone/Weaviate/Qdrant more than pgvector, so present this as <em>“production RAG with hybrid retrieval and multilingual embeddings on Postgres”</em> (architecture first, tool second) — which also showcases your Postgres operational depth. Interview bonus: you can explain <em>why</em> hybrid beats pure-vector on a 300-row corpus.</p>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 6 ======================= -->
+<section class="chapter" id="ch6">
+  <div class="ch-label">Chapter 06 · The eyes</div>
+  <h2>The label scanner — photo → item details</h2>
+  <p class="ch-tag">Pick a photo of the box or strip; CareKosh reads the name, brand and expiry and pre-fills the item form. Two free paths — private on-device OCR, or a free multimodal LLM.</p>
+  <div class="badges"><span class="b b-free">₹0 · both paths</span><span class="b b-gold">Effort S–M</span><span class="b b-mut">V2.1</span><span class="b b-free">No camera permission needed</span></div>
+
+  <h3><span class="sec"><span class="ico">📖</span> 6.1 Overview — what &amp; why</span></h3>
+  <p><strong>What.</strong> A “📷 Scan label” button on the add/edit item screen (<code>app/item/[id].tsx</code> — the image picker is already wired there). The user picks a photo of the medicine strip or supply box; the scanner extracts <code>{name, brand, expiry_date}</code> and pre-fills the form. The user reviews and saves — extraction proposes, the human confirms, consistent with the book’s safety law.</p>
+  <p><strong>Why.</strong> Typing “Ipratropium Bromide Nebulizer Solution” on a phone is the highest-friction moment in the app, and expiry dates are exactly the field people skip when entry is tedious — which silently breaks Chapter 4’s expiry watch. A 5-second scan fixes the data-quality problem at its source.</p>
+
+  <h3><span class="sec"><span class="ico">🏛</span> 6.2 Architecture — two free lanes, pick per privacy taste</span></h3>
+  <table>
+    <thead><tr><th></th><th>Lane A · on-device ML Kit</th><th>Lane B · Gemini Flash vision (free tier)</th></tr></thead>
+    <tbody>
+      <tr><td>How</td><td><code>@react-native-ml-kit/text-recognition</code> → raw text → tiny parse step (regex dates + LLM cleanup via Ch.1 backend)</td><td>photo (base64) → <code>POST /ai/extract-label</code> → Gemini Flash multimodal with a JSON schema → fields</td></tr>
+      <tr><td>Privacy</td><td><b>Photo never leaves the device</b></td><td>Photo goes to Google free tier (may train) — item labels only, still flag it</td></tr>
+      <tr><td>Build cost</td><td>Native module ⇒ dev build (fine — you ship dev builds anyway); Devanagari/Hindi script supported</td><td>Pure HTTPS — zero native code, works everywhere immediately</td></tr>
+      <tr><td>Accuracy</td><td>Classic OCR: great glyphs, no understanding — needs the parse step</td><td>Multimodal models read <em>meaning</em> (“which of these strings is the brand?”) — research pegs multimodal extraction &gt;95% vs ~80% legacy OCR</td></tr>
+      <tr><td>Verdict</td><td colspan="2"><b>Start with Lane B</b> (an afternoon, smarter output), keep Lane A as the privacy-first upgrade if users scan sensitive prescriptions.</td></tr>
+    </tbody>
+  </table>
+  <pre><code><span class="c"># app/api/v1/ai.py  (add — Lane B prototype)</span>
+@router.post("/extract-label", response_model=LabelFields)
+@limiter.limit("10/minute")
+async def extract_label(body: LabelImage, user: CurrentUser):
+    <span class="c"># Gemini Flash free tier: vision + JSON schema output, no billing account needed</span>
+    return await gemini.extract(
+        image_b64=body.image_b64,
+        schema=LabelFields,        <span class="c"># {name, brand, expiry_date|null} — nothing else leaves the model</span>
+        prompt="Read this medical supply label. Return ONLY the fields in the schema. "
+               "If a field is not visible, return null. Never guess an expiry date.")</code></pre>
+  <p><strong>Placement:</strong> backend adds one endpoint + schema; mobile adds <code>services/labelScan.ts</code> and a button + “✨ extracted — please verify” banner in <code>app/item/[id].tsx</code>. The picked photo uses the existing permission-less system Photo Picker — <b>no CAMERA permission change, no store-review implications</b> (unlike Chapter 2).</p>
+
+  <h3><span class="sec"><span class="ico">📱</span> 6.3 What the user sees</span></h3>
+  <p>Add item → “Scan label” → pick photo → half a second later the name/brand/expiry fields fill in with a soft gold highlight and a “please verify” note. Wrong guess? Edit inline — the scan is a head start, never an authority. Expiry field filled by scan gets a small ✨ marker so the user knows to double-check it.</p>
+
+  <h3><span class="sec"><span class="ico">⚖️</span> 6.4 Feasibility &amp; 💼 job relevance</span></h3>
+  <p><span class="b b-free">FREE</span> both lanes; Lane B is Effort <b>S</b>. Gemini free-tier vision limits (~10–15 RPM, ~1,500 req/day, verify in AI Studio — Google trimmed quotas Dec 2025) dwarf a family’s scanning rate. <strong>Job signal:</strong> multimodal document extraction (IDP) is a fast-growing market (~$3.4B → $13.5B by 2035) and “vision extraction with schema-constrained output” is a credible, current portfolio line — moderate keyword frequency, high demo value. The Lane A/B tradeoff itself (privacy vs capability) is a strong interview answer.</p>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 7 ======================= -->
+<section class="chapter" id="ch7">
+  <div class="ch-label">Chapter 07 · The oracle</div>
+  <h2>Consumption forecasting &amp; smart reorder</h2>
+  <p class="ch-tag">“At this pace, Oxygen runs out next Tuesday — reorder by Saturday.” Plain arithmetic over your own activity log, verbalised by the agent. No ML infrastructure, honest about its limits.</p>
+  <div class="badges"><span class="b b-free">₹0 · pure SQL + arithmetic</span><span class="b b-free">Effort S</span><span class="b b-mut">V3 (needs weeks of history)</span></div>
+
+  <h3><span class="sec"><span class="ico">📖</span> 7.1 Overview — what &amp; why</span></h3>
+  <p><strong>What.</strong> The activity log already records every stock change (“Stock: 6 → 4”). From the negative deltas over a trailing window we compute a <em>daily consumption rate</em> per item, then <code>days_to_stockout = quantity / rate</code> and a suggested reorder date (stockout minus lead-time buffer). Surfaced three places: a line on the item card (“≈ 9 days left at current pace”), a digest section (“reorder this week: …”), and the agent (“when will saline run out?”).</p>
+  <p><strong>Why.</strong> Minimum-stock thresholds are static; consumption is not. A family using 2 oxygen cylinders/week and one using 2/day need different warnings — this feature personalises urgency from data the app already collects, for free.</p>
+
+  <h3><span class="sec"><span class="ico">🧩</span> 7.2 Code &amp; placement</span></h3>
+  <div class="file-tree">vitaltrack-backend/
+├── app/services/<span class="new">forecast.py</span>          ← NEW: rate + days-to-stockout (window: 30d, min 3 events)
+├── app/api/v1/<span class="mod">items.py</span>              ← MOD: forecast fields on GET /items/{id} (+ /stats)
+└── app/services/ai/<span class="mod">tools.py</span>          ← MOD: forecast_item tool for the agent</div>
+  <pre><code><span class="c"># app/services/forecast.py  (prototype — deliberately boring math)</span>
+async def consumption_rate(db, user_id, item_id, window_days=30) -&gt; float | None:
+    <span class="c"># sum of negative stock deltas from activity_log over the window</span>
+    used = await sum_negative_deltas(db, user_id, item_id, since=days_ago(window_days))
+    events = await count_stock_events(db, user_id, item_id, since=days_ago(window_days))
+    if events &lt; 3 or used &lt;= 0:
+        return None                       <span class="c"># honesty rule: too little history ⇒ say nothing</span>
+    return used / window_days
+
+def days_to_stockout(qty: int, rate: float | None) -&gt; int | None:
+    return None if not rate else max(0, floor(qty / rate))</code></pre>
+  <div class="note"><strong>Honesty rule (product + prompt):</strong> below 3 consumption events in the window, the app shows nothing and the agent says “not enough history yet” — a wrong forecast on a medical item is worse than no forecast. The LLM verbalises the number; it never computes it.</div>
+
+  <h3><span class="sec"><span class="ico">📱</span> 7.3 UI · ⚖️ feasibility · 💼 job relevance</span></h3>
+  <p><strong>UI:</strong> one quiet line on the item card + a “Reorder this week” digest block + agent answers. <strong>Feasibility:</strong> <span class="b b-free">FREE</span>, Effort <b>S</b> — two SQL aggregates and division; ships in a day once history exists (hence V3 timing). <strong>Job relevance:</strong> classic-ML forecasting is a <em>declining</em> JD differentiator (generic ML postings −18% since 2024) — so don’t oversell it; its real interview value is judgment: “I chose transparent arithmetic over an ML model because n≈30 rows/item, explainability beats accuracy at this scale, and the failure mode of silence is safer than a confident wrong prediction.” That answer outperforms a TensorFlow name-drop in 2026 rooms.</p>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 8 ======================= -->
+<section class="chapter" id="ch8">
+  <div class="ch-label">Chapter 08 · The spine</div>
+  <h2>Guardrails, evals &amp; LLMOps</h2>
+  <p class="ch-tag">The chapter that turns “I called an LLM” into “I run one safely in production on medical-adjacent data” — the exact trait the 2026 market screens hardest for.</p>
+  <div class="badges"><span class="b b-free">₹0 · Langfuse free + pytest evals</span><span class="b b-gold">Effort S–M, continuous</span><span class="b b-mut">Starts WITH V2.0, not after</span><span class="b b-free">Job signal: evals = fastest-rising differentiator</span></div>
+
+  <h3><span class="sec"><span class="ico">📖</span> 8.1 Overview — the safety spine in one table</span></h3>
+  <table>
+    <thead><tr><th>Threat</th><th>Guardrail (where it lives)</th></tr></thead>
+    <tbody>
+      <tr><td>Hallucinated quantities</td><td><b>Delta-not-number law</b> — model proposes signed deltas; values come from Postgres via tools; “if no tool returned it, say you don’t know” (prompts.py + compose step).</td></tr>
+      <tr><td>Bad writes</td><td>All writes go through the existing validated REST endpoints with version-CAS + audit log — the agent has no SQL, no ORM, no bypass (tools.py).</td></tr>
+      <tr><td>Mis-heard / mis-typed critical change</td><td>Confirm card required when <code>is_critical</code> (agent + WA buttons + voice gate) — and <em>only</em> then, to avoid alert fatigue.</td></tr>
+      <tr><td>PII to free tiers</td><td>Strip layer in ai.py: only message text + item names/quantities leave the box — never email, user_id, supplier_contact. Free tiers may train on inputs; this bounds the blast radius.</td></tr>
+      <tr><td>Prompt injection via item names</td><td>Tool results are data, not instructions: compose step renders from typed JSON fields, never re-feeds raw strings as system text.</td></tr>
+      <tr><td>Provider outage / throttle</td><td>Groq → Gemini → deterministic DB-rendered reply (Ch.1) — the feature degrades to “dumb but correct”, never to “down”.</td></tr>
+      <tr><td>Runaway cost</td><td>All-free providers + per-user rate limit (20/min) + <code>AI_ENABLED</code> kill switch in config — flip one env var to turn the whole layer off.</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec"><span class="ico">🧩</span> 8.2 Evals &amp; observability — code &amp; placement</span></h3>
+  <div class="file-tree">vitaltrack-backend/
+├── tests/ai/<span class="new">golden_set.jsonl</span>         ← NEW: 50–100 real Hinglish+English utterances → expected {intent, tool, delta_sign}
+├── tests/ai/<span class="new">test_agent_evals.py</span>      ← NEW: pytest harness, mocked tools, runs in CI
+└── app/services/ai/<span class="mod">agent.py</span>          ← MOD: Langfuse tracing decorator per turn (free tier / self-host)</div>
+  <pre><code><span class="c"># tests/ai/golden_set.jsonl  (samples)</span>
+{"say": "oxygen kitne bache hain?",        "intent": "query",  "tool": "search_item"}
+{"say": "kya kya khatam ho raha hai",      "intent": "query",  "tool": "needs_attention"}
+{"say": "add 5 gauze",                     "intent": "write",  "tool": "propose_stock_delta", "delta_sign": "+"}
+{"say": "2 saline use ho gaye",            "intent": "write",  "tool": "propose_stock_delta", "delta_sign": "-"}
+{"say": "delete my account",               "intent": "refuse"}   <span class="c"># out-of-scope → polite refusal</span>
+
+<span class="c"># tests/ai/test_agent_evals.py  (prototype)</span>
+@pytest.mark.parametrize("case", load_golden())
+async def test_intent_and_tool(case, mocked_tools):
+    turn = await agent.run_dry(case["say"])          <span class="c"># dry: record tool choice, no execution</span>
+    assert turn.intent == case["intent"]
+    if "delta_sign" in case:
+        assert sign(turn.proposal.delta) == case["delta_sign"]   <span class="c"># the metric that matters</span></code></pre>
+  <p><strong>Observability:</strong> every turn logs {latency, provider used, tools called, token counts, failover?} to Langfuse (free cloud tier or self-host) and errors to the Sentry you already wired. One dashboard answers “is the free tier about to throttle us?” before users feel it. <strong>Streaming</strong> (SSE from <code>/ai/chat</code>, token-by-token into the bubble) is the polish item that makes the demo feel production-grade.</p>
+
+  <h3><span class="sec"><span class="ico">⚖️</span> 8.3 Feasibility · 💼 8.4 job relevance</span></h3>
+  <p><span class="b b-free">FREE</span> — Langfuse free tier, pytest in existing CI, golden set is an evening of honest transcript-writing (do it in Hinglish, that <em>is</em> the moat). Effort S–M, then continuous. <strong>Job relevance: this is the differentiator chapter.</strong> The research is unambiguous: eval literacy is called “the single biggest signal that this person actually built with LLMs”; dedicated eval/observability roles now exist; the screening triad of 2026 is <b>RAG + agents + evals</b> — Chapters 5, 1, and 8 respectively. Ship this chapter and the résumé line “CI-gated golden-set evals (intent + delta-sign accuracy) with Langfuse tracing over a guard-railed medical agent” puts you in the small minority who’ve done it for real.</p>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 9 ======================= -->
+<section class="chapter" id="ch9">
+  <div class="ch-label">Chapter 09 · The flag</div>
+  <h2>The MCP server — your tools as a protocol</h2>
+  <p class="ch-tag">Wrap the six inventory tools in a Model Context Protocol server so any MCP client — Claude, IDE agents, future assistants — can operate CareKosh. Tiny effort, rare keyword.</p>
+  <div class="badges"><span class="b b-free">₹0</span><span class="b b-free">Effort S</span><span class="b b-mut">V2.1 · portfolio-weighted</span><span class="b b-gold">Emerging keyword (~10–20% of JDs, rising)</span></div>
+
+  <h3><span class="sec"><span class="ico">📖</span> 9.1 Overview &amp; 🧩 code</span></h3>
+  <p>MCP standardises “here are my tools” the way REST standardised “here is my data”. You already have the tool layer (Ch.1); exposing it is mostly declarations. Run it as a separate small process (stdio for local demos; streamable-HTTP later if wanted) that calls the same service functions with a scoped API token — read-only scope by default, the same delta-proposal guard for writes.</p>
+  <div class="file-tree">vitaltrack-backend/
+└── <span class="new">mcp_server.py</span>                     ← NEW: MCP (python-sdk) exposing search_item / needs_attention /
+                                          get_stats / critical_low / forecast_item / propose_stock_delta</div>
+  <pre><code><span class="c"># mcp_server.py  (prototype — official python `mcp` SDK)</span>
+from mcp.server.fastmcp import FastMCP
+mcp = FastMCP("carekosh-inventory")
+
+@mcp.tool()
+async def needs_attention() -&gt; list[dict]:
+    """Items at/below minimum stock, critical first."""
+    return [c.model_dump() for c in await tools.needs_attention(db, USER_ID)]
+
+@mcp.tool()
+async def propose_stock_delta(item_id: str, delta: int, reason: str) -&gt; dict:
+    """Propose (not execute) a stock change; a human confirms in the app."""
+    return (await tools.propose_stock_delta(db, USER_ID, item_id, delta, reason)).model_dump()
+
+if __name__ == "__main__":
+    mcp.run()      <span class="c"># stdio — plug into Claude Desktop / any MCP client and demo live</span></code></pre>
+
+  <h3><span class="sec"><span class="ico">📱</span> 9.2 What it looks like · ⚖️ feasibility · 💼 job relevance</span></h3>
+  <p><strong>Demo:</strong> open an MCP client, ask “what’s low in my home ICU?” and watch it call <em>your</em> production tools — a 90-second wow moment in any interview. <strong>Feasibility:</strong> <span class="b b-free">FREE</span>, Effort <b>S</b> — the guardrails came free because the tool layer already enforces them. <strong>Job relevance:</strong> MCP sits at ~10–20% of JDs and climbing fast; almost no applicant has <em>shipped</em> one against a live production system. Low cost, loud signal — the classic portfolio arbitrage.</p>
+</section>
+
+<hr class="chsep">
+
+<!-- ======================= CH 10 ======================= -->
+<section class="chapter" id="ch10">
+  <div class="ch-label">Chapter 10 · The plan</div>
+  <h2>The build order — roadmap, cost ledger, risks</h2>
+  <p class="ch-tag">Sequencing that respects the launch gate, the ₹0 budget, and your interview calendar.</p>
+
+  <h3><span class="sec"><span class="ico">🗓</span> 10.1 Roadmap</span></h3>
+  <table>
+    <thead><tr><th>Phase</th><th>Gate</th><th>Ships (chapters)</th><th>Effort</th></tr></thead>
+    <tbody>
+      <tr><td><b>V1 — now</b></td><td>—</td><td><b>Nothing AI.</b> Finish the Play Store launch: closed test → production. Only prep: the <code>updated_at</code> CAS fix + add <code>AI_ENABLED=false</code> scaffolding to config.</td><td>—</td></tr>
+      <tr><td><b>V2.0 — Agentic MVP</b></td><td>launched + ~50 active users</td><td>Ch.1 agent (text, in-app) + Ch.8 guardrails/evals from day one + Ch.4 push alerts &amp; digest + Ch.3 WhatsApp reply bot (test number first)</td><td>~3 weekends</td></tr>
+      <tr><td><b>V2.1 — Depth</b></td><td>V2.0 retained</td><td>Ch.5 pgvector search · Ch.6 label scanner (Lane B) · Ch.3 opt-in report templates + business verification · Ch.9 MCP server</td><td>~2–3 weekends</td></tr>
+      <tr><td><b>V3 — Senses</b></td><td>engaged cohort + history accrued</td><td>Ch.2 voice + Audit Mode (permission change ⇒ new store build) · Ch.7 forecasting · streaming polish</td><td>~2 weekends + review cycle</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec"><span class="ico">💰</span> 10.2 Cost ledger (steady state)</span></h3>
+  <table>
+    <thead><tr><th>Layer</th><th>Path</th><th>₹/month</th></tr></thead>
+    <tbody>
+      <tr><td>LLM</td><td>Groq free (Llama 3.1 8B primary; 70B for hard turns) → Gemini Flash free failover → deterministic fallback</td><td>0</td></tr>
+      <tr><td>Voice</td><td>expo-speech TTS + on-device STT (pin <code>expo-speech-recognition@sdk-54</code>)</td><td>0</td></tr>
+      <tr><td>Embeddings</td><td>fastembed e5-small on Render CPU (or Gemini embeddings free)</td><td>0</td></tr>
+      <tr><td>Push / email</td><td>Expo Push + existing Brevo</td><td>0</td></tr>
+      <tr><td>WhatsApp inbound + in-window sends</td><td>free &amp; unlimited (2026 rules)</td><td>0</td></tr>
+      <tr><td>WhatsApp opt-in proactive templates</td><td>utility ≈ ₹0.115/msg — e.g. 2 users × daily ≈ ₹7/mo</td><td>0–10</td></tr>
+      <tr><td>Observability</td><td>Langfuse free tier + existing Sentry</td><td>0</td></tr>
+    </tbody>
+  </table>
+  <div class="warn"><strong>Free-tier weather report (verified 2026-07):</strong> free quotas are the most volatile part of this plan. Gemini cut free limits in Dec 2025 and now shows per-account numbers only in AI Studio; <b>never attach billing to the Gemini free project</b> (billing permanently converts the project to paid). Groq TPM is tight (6k/min on 8B) — keep prompts lean and tool JSON compact. Re-verify all quotas the week you start V2.0.</div>
+
+  <h3><span class="sec"><span class="ico">⚠️</span> 10.3 Condensed risk register</span></h3>
+  <table>
+    <thead><tr><th>Risk</th><th>Sev</th><th>Mitigation (chapter)</th></tr></thead>
+    <tbody>
+      <tr><td>Hallucinated stock number reaches a caregiver</td><td><b>Critical</b></td><td>Delta-not-number + tool-JSON-only answers + confirm-on-critical (Ch.1/8)</td></tr>
+      <tr><td>PII/PHI leaks into a free tier that trains on data</td><td><b>High</b></td><td>Strip layer; item-names-only; Lane A OCR if prescriptions get scanned (Ch.6/8)</td></tr>
+      <tr><td>Free-tier quota collapse mid-demo</td><td>Medium</td><td>Three-provider ladder + deterministic fallback + Langfuse quota dashboard (Ch.1/8)</td></tr>
+      <tr><td>Meta business verification stalls the WhatsApp report</td><td>Medium</td><td>Reply bot works on the test number day one; templates are V2.1, never the critical path (Ch.3)</td></tr>
+      <tr><td>Alert fatigue erodes trust</td><td>High</td><td>Only <code>is_critical</code> interrupts; all else digested (Ch.4)</td></tr>
+      <tr><td>Voice permission re-review surprises</td><td>Low</td><td>Voice is V3, isolated in its own store build with an updated Data-safety answer (Ch.2)</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec"><span class="ico">🚫</span> 10.4 Deliberately not building</span></h3>
+  <ul>
+    <li><b>Telegram / any second chat channel</b> — hard product constraint; WhatsApp is where the users are.</li>
+    <li><b>Fine-tuning / LoRA</b> — wrong tool for a 300-row, fast-changing corpus; be ready to <em>explain why</em> (that answer is itself a JD keyword).</li>
+    <li><b>Kubernetes, Airflow, heavy MLOps</b> — solo-scale anti-patterns; Render Cron + CI is the honest right size.</li>
+    <li><b>Anomaly-detection ML</b> — revisit only after months of real usage history.</li>
+  </ul>
+
+  <h3><span class="sec"><span class="ico">🏁</span> 10.5 The closing verdict</span></h3>
+  <p>The plan converts a shipped, hardened tracker into an agentic product for <strong>≈₹0/month</strong>, in an order where every phase is independently shippable and interview-ready: the <b>agent + evals</b> first (the 2026 screening triad’s core), the <b>channel</b> where your users live second, the <b>senses</b> (voice, vision) once the brain has earned trust. Every number a user ever hears comes from Postgres; every risky write passes a human; every provider has a free fallback. Build V2.0 after the first 50 users — and rehearse the mutation-safety pitch, because it is the best story this codebase can tell.</p>
+</section>
+
+<footer>
+  CareKosh · The AI Book — implementation companion to <em>CAREKOSH_AI_FEATURES_FEASIBILITY_AND_ROADMAP.html</em> (feasibility) and <em>CAREKOSH_AI_JOB_MARKET_SKILL_GAP.md</em> (market)<br>
+  Free-tier &amp; pricing facts re-verified 2026-07 (Groq/Gemini/Cloudflare/OpenRouter · Meta WhatsApp per-message pricing · Expo SDK 54 voice/vision) · WhatsApp-only · free-LLM-only · V2+, foundation first<br>
+  No application code was modified to produce this plan.
+</footer>
+</div>
+</body>
+</html>
