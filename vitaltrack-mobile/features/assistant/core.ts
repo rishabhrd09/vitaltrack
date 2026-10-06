@@ -5,35 +5,118 @@ export type Field = 'quantity' | 'supplier' | 'status';
 export type Intent = { intent: IntentName; item_query: string | null; reference: 'named' | 'previous' | 'none'; fields: Field[] };
 export type Answer = { title: string; text: string; items: Item[]; choices: Item[]; resolvedId?: string; timestamp: number; stale: boolean };
 export const command = (intent: IntentName): Intent => ({ intent, item_query: null, reference: 'none', fields: [] });
-const normalize = (text: string) => text.trim().toLowerCase().replace(/[’‘]/g, "'").replace(/[?!.]+$/g, '').replace(/\s+/g, ' ');
+// Lower-case, unify apostrophes and drop the sentence punctuation that speech transcripts add.
+// Used for questions and item names alike, so exact name matching stays consistent.
+// Decimal points and thousands separators ("0.9%", "1,000") are kept.
+const normalize = (text: string) => text.toLowerCase().replace(/[’‘]/g, "'").replace(/[?!]+/g, ' ')
+  .replace(/[.,;:]+(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim();
 
 export const commandExamples = [
-  'Show me low stock', 'What are we running low on?', 'Which items are out of stock?',
-  'Give me a stock summary', 'How many hand gloves do we have?', 'What is the stock status of hand gloves?',
-  'Where do we normally order hand gloves from?', 'How many hand gloves are left and who supplies them?',
-  'Who supplies those?', 'Close this overlay', 'Stop speaking',
+  'Show me low stock', 'What are we running low on?', 'Which items are low?', 'Which items are out of stock?',
+  'Give me a stock summary', 'How many hand gloves do we have?', 'How many hand gloves are there?', 'Check hand gloves',
+  'What is the stock status of hand gloves?', 'Where do we normally order hand gloves from?',
+  'How many hand gloves are left and who supplies them?', 'Who supplies those?', 'Close this overlay', 'Stop speaking',
 ];
 
+// Whole-utterance list commands, looked up as said and again without articles ("show me all the low stock items").
+// A Map, so words like "constructor" can never hit an inherited object key.
+const phrases = (intent: IntentName, list: string[]) => list.map((phrase): [string, IntentName] => [phrase, intent]);
+const LIST_COMMANDS = new Map<string, IntentName>([
+  ...phrases('summary', ['summary', 'stock summary', 'show summary', 'show stock summary', 'show me a stock summary', 'give me a stock summary',
+    'give me an inventory summary', 'inventory summary', 'summarize our stock', 'show me summary', 'show me stock summary', 'show inventory summary',
+    'show me inventory summary', 'give me summary', 'give me stock summary', 'give me inventory summary', 'summary of stock', 'summary of inventory',
+    'summarize stock', 'summarize inventory', 'summarise stock', 'summarise inventory', 'stock overview', 'inventory overview', 'stock status',
+    'inventory status', 'what is stock status', 'check stock', 'check inventory', 'check summary', 'stock check', 'how is stock', 'how is stock looking',
+    'how is inventory looking', 'how many items do we have', 'how many items are there', 'how many items']),
+  ...phrases('low_stock', ['low stock', 'show low stock', 'show low stock items', 'show me low stock', 'show me low stock items',
+    'what are we running low on', 'which items are low in stock', 'what is running low', 'low stock items', 'low stock list', 'low items',
+    'items low on stock', 'items low in stock', 'items running low', 'items that are low', 'items that are running low', 'list low stock',
+    'list low stock items', 'check low stock', 'what is low', 'what is low on stock', 'what is low in stock', 'what are we low on',
+    'what items are low', 'what items are low on stock', 'what items are low in stock', 'what items are running low', 'which items are low',
+    'which items are low on stock', 'which items are running low', 'which ones are low', 'is anything low', 'is anything low on stock',
+    'is anything running low', 'is there anything low', 'is there anything running low', 'anything low', 'anything running low',
+    'are there low stock items', 'are there items low on stock', 'are there items running low', 'how many items are low',
+    'how many items are low on stock', 'how many items are running low', 'what needs restocking']),
+  ...phrases('out_of_stock', ['out of stock', 'show out of stock', 'show out of stock items', 'show me out of stock items',
+    'which items are out of stock', 'what is out of stock', 'show me out of stock', 'out of stock items', 'out of stock list', 'items out of stock',
+    'list out of stock', 'list out of stock items', 'check out of stock', 'what items are out of stock', 'which ones are out of stock',
+    'what are we out of', 'what have we run out of', 'what has run out', 'is anything out of stock', 'is there anything out of stock',
+    'anything out of stock', 'are there items out of stock', 'how many items are out of stock']),
+  ...phrases('close', ['close', 'close this overlay', 'close this overlay screen', 'close the assistant', 'close this screen', 'dismiss this overlay',
+    'close assistant']),
+  ...phrases('stop_speaking', ['stop speaking', 'stop', 'stop talking', 'stop reading']),
+]);
+const withoutArticles = (q: string) => q.replace(/\b(?:the|a|an|all|our|my|any)\b/g, ' ').replace(/\s+/g, ' ').trim();
+// Summary, low-stock or out-of-stock list named inside a read form ("check low stock items"), never close/stop.
+function listIntent(phrase: string): IntentName | undefined {
+  const found = LIST_COMMANDS.get(phrase) ?? LIST_COMMANDS.get(withoutArticles(phrase));
+  return found === 'summary' || found === 'low_stock' || found === 'out_of_stock' ? found : undefined;
+}
+
+// How people end a current-stock question: "... in stock", "... right now".
+const TAIL = '(?: (?:left|remaining|available|in (?:our |the )?(?:stock|inventory)|on hand|in hand|in total|total|altogether|right now|currently|now|at the moment|today))*';
+// The verb part between the item and the end: "do we have", "are there", "is left".
+const HAVE = '(?:do (?:we|i) (?:still |currently )?(?:have|got)|have (?:we|i) (?:still )?(?:got|left)|(?:we|i) (?:still )?(?:have|got)|(?:are|is) there'
+  + '|(?:are|is) (?:still )?(?:left|remaining|available|in stock|in (?:our |the )?inventory))';
+// In the looser forms, a "name" holding these words is really a clause ("gloves should I order"), so no item is guessed.
+const CLAUSE_WORDS = new Set(['i', 'we', 'you', 'they', 'he', 'she', 'should', 'would', 'could', 'will', 'shall', 'must', 'did', 'does', 'need',
+  'needs', 'if', 'whether', 'when', 'why', 'what', 'which', 'who', 'where', 'how', 'is', 'are']);
+type ReadPattern = { pattern: RegExp; fields: Field[]; loose: boolean };
+const readForm = (source: string, fields: Field[], loose = false): ReadPattern => ({ pattern: new RegExp(`^${source}$`), fields, loose });
+const READ_PATTERNS: ReadPattern[] = [
+  readForm(`how (?:many|much) (.+?) ${HAVE}${TAIL}`, ['quantity'], true),
+  readForm(`how (?:many|much) (.+?) (?:still )?(?:left|remaining|available|remain|remains)${TAIL}`, ['quantity'], true),
+  readForm(`(?:what is|how is) (?:the |our )?(?:current )?(?:quantity|count) (?:of|for) (.+?)${TAIL}`, ['quantity']),
+  readForm('(?:quantity|count) (?:of|for) (.+)', ['quantity']),
+  readForm('(?:check|show|tell me) (?:me )?(?:the )?(?:quantity|count) (?:of|for) (.+)', ['quantity']),
+  readForm('(?:who supplies|who is the supplier (?:of|for)|(?:what is |check |find |show (?:me )?)?(?:the )?supplier (?:of|for)) (.+)', ['supplier']),
+  readForm('where do (?:we|i) (?:normally |usually )?(?:order|buy|get) (.+?)(?: from)?', ['supplier']),
+  readForm('who do (?:we|i) (?:normally |usually )?(?:order|buy|get) (.+?) from', ['supplier']),
+  readForm('(?:what is|how is|show|check) (?:me )?(?:the )?(?:current )?(?:stock )?status (?:of|for) (.+)', ['quantity', 'status']),
+  readForm('(?:what is |how is |check |show (?:me )?)?(?:the |our )?(?:current )?(?:stock|stock level|inventory|inventory level) (?:of|for) (.+)', ['quantity', 'status']),
+  readForm(`(?:do|have) (?:we|i) (?:still )?(?:have|stock|got) (?:any |some )?(.+?)${TAIL}`, ['quantity', 'status'], true),
+  readForm(`(?:is|are) there (?:still )?(?:any |some )?(.+?)${TAIL}`, ['quantity', 'status'], true),
+  // Loosest forms last: "how many hand gloves?", "check hand gloves".
+  readForm(`how (?:many|much) (.+?)${TAIL}`, ['quantity'], true),
+  readForm(`(?:check on|check|look up|find|show me|show) (?:the )?(.+?)(?: (?:stock|stock level|quantity|count|status))?${TAIL}`, ['quantity', 'status'], true),
+];
+// "of the", "any" and "boxes of" are how people say a name, not part of it.
+const itemName = (raw: string) => raw.trim().replace(/^(?:of (?:the |our )?|the |our |any |some )/, '')
+  .replace(/^(?:boxes|packs|packets|pairs|bottles|units|pieces|rolls|strips|tubes|vials|bags|cartons|cases|sachets) of /, '').trim();
+
 function readPhrase(q: string): Intent | null {
-  const patterns: [RegExp, Field[]][] = [
-    [/^how many (.+?) (?:are (?:left|remaining|available)|do we (?:have|currently have)|have we got)(?: (?:in (?:our )?stock|right now))?$/, ['quantity']],
-    [/^how many (.+?) (?:left|remaining|available)(?: in (?:our )?stock)?$/, ['quantity']],
-    [/^(?:what is|what's) (?:the |our )?(?:current )?(?:quantity|count) of (.+?)(?: (?:left )?in (?:our )?stock)?$/, ['quantity']],
-    [/^(?:quantity|count) of (.+)$/, ['quantity']],
-    [/^(?:check|show|tell me) (?:the )?(?:quantity|count) (?:of|for) (.+)$/, ['quantity']],
-    [/^(?:who supplies|who is the supplier (?:of|for)|supplier (?:of|for)) (.+)$/, ['supplier']],
-    [/^where do we (?:normally |usually )?(?:order|buy|get) (.+?)(?: from)?$/, ['supplier']],
-    [/^(?:what is|what's|show|check) (?:the )?(?:current )?(?:stock )?status (?:of|for) (.+)$/, ['quantity', 'status']],
-    [/^do we (?:have|stock) (.+?)(?: in stock)?$/, ['quantity', 'status']],
-    [/^(?:stock|stock level) (?:of|for) (.+)$/, ['quantity', 'status']],
-  ];
-  for (const [pattern, fields] of patterns) {
-    const name = q.match(pattern)?.[1]?.trim();
+  // "look up low stock" names a list, not an item; checked before any item form can split it.
+  const list = listIntent(q) ?? listIntent(q.replace(/^(?:check on|check|look up|find|show me|show|list|give me|tell me) /, ''));
+  if (list) return command(list);
+  for (const { pattern, fields, loose } of READ_PATTERNS) {
+    const raw = q.match(pattern)?.[1];
+    if (!raw) continue;
+    const name = itemName(raw);
     if (!name || name.length > 160) continue;
+    if (loose) {
+      const named = listIntent(name); // "how many low stock items"
+      if (named) return command(named);
+      if (name.split(' ').some(word => CLAUSE_WORDS.has(word))) return null;
+    }
     const previous = /^(those|it|that|them|these|that item)$/.test(name);
     return { intent: 'read_item', item_query: previous ? null : name, reference: previous ? 'previous' : 'named', fields };
   }
   return null;
+}
+
+// Speech adds fillers ("okay", "um"), contractions and courtesy wrappers. Peel whole wrappers off the
+// ends only; never fish a command out of a longer sentence.
+function tidy(question: string): string {
+  let q = ` ${question} `.replace(/ (?:um+|uh+|uhm|erm|hmm+)(?= )/g, '').trim();
+  q = q.replace(/\b(what|who|where|how|that|there)'s\b/g, '$1 is').replace(/\bwhats\b/g, 'what is');
+  for (let previous = ''; previous !== q;) {
+    previous = q;
+    q = q.replace(/^(?:ok|okay|um+|uh+|uhm|erm|er|hmm+|so|well|alright|all right|right|yeah|yes|hi|hey|hello|and|also)(?: |$)/, '')
+      .replace(/^(?:hey |hello |hi )?care ?[ck]osh(?: |$)/, '').replace(/^please(?: |$)/, '')
+      .replace(/^(?:can|could|would) you (?:please )?/, '').replace(/^(?:tell|show) me (?:please )?(?=how many |how much |what is |who supplies |where do we )/, '')
+      .replace(/ (?:please|thanks|thank you|for me|okay|ok|right now|now|at the moment|today)$/, '').trim();
+  }
+  return q;
 }
 
 /** Intentionally conservative: match the entire utterance, not a keyword. */
@@ -42,29 +125,17 @@ export function parseLocal(text: string): Intent | null {
   if (!q || q.length > 600) return command('clarify');
   if (/\b(yesterday|tomorrow|last (?:week|month|year|time)|previous (?:week|month|year)|history|ordered|bought|sold|used|prescribe|dosage)\b/.test(q)) return command('unsupported_action');
   if (/\b(not|never|don't|dont|cannot|can't|isn't|aren't|without|except|but|instead)\b/.test(q)) return command('clarify');
-  // Only remove whole courtesy wrappers. Never fish a command out of a longer sentence.
-  q = q.replace(/^(?:hey |hello )?carekosh[, ]+/, '').replace(/^please /, '')
-    .replace(/^(?:can|could|would) you (?:please )?/, '').replace(/^(?:tell|show) me (?:please )?(?=how many |what is |who supplies |where do we )/, '')
-    .replace(/(?:,? please)$/, '');
+  q = tidy(q);
+  if (!q) return command('clarify'); // only filler, e.g. "um" or "okay"
   // Reject action clauses, not product words ("dressing set" is a valid item).
   if (/(?:^|\b(?:and|then|also) )(?:please )?(?:delete|remove|update|change|increase|decrease|add|buy|send|create|set|order)\b/.test(q)) return command('unsupported_action');
-  const direct: Record<string, IntentName> = {
-    'summary': 'summary', 'stock summary': 'summary', 'show summary': 'summary', 'show stock summary': 'summary',
-    'low stock': 'low_stock', 'show low stock': 'low_stock', 'show low stock items': 'low_stock', 'show me low stock': 'low_stock', 'show me low stock items': 'low_stock',
-    'out of stock': 'out_of_stock', 'show out of stock': 'out_of_stock', 'show out of stock items': 'out_of_stock', 'show me out of stock items': 'out_of_stock',
-    'close': 'close', 'close this overlay': 'close', 'close this overlay screen': 'close',
-    'stop speaking': 'stop_speaking', 'stop': 'stop_speaking',
-    'show me a stock summary': 'summary', 'give me a stock summary': 'summary',
-    'give me an inventory summary': 'summary', 'inventory summary': 'summary', 'summarize our stock': 'summary',
-    'what are we running low on': 'low_stock', 'which items are low in stock': 'low_stock', 'what is running low': 'low_stock',
-    'which items are out of stock': 'out_of_stock', 'what is out of stock': 'out_of_stock', 'show me out of stock': 'out_of_stock',
-    'close the assistant': 'close', 'close this screen': 'close', 'dismiss this overlay': 'close',
-  };
-  if (direct[q]) return command(direct[q]);
+  const direct = LIST_COMMANDS.get(q) ?? LIST_COMMANDS.get(withoutArticles(q));
+  if (direct) return command(direct);
   const clauses = q.split(/,? and (?:also )?/);
   if (clauses.length === 2) {
     const first = readPhrase(clauses[0]), second = readPhrase(clauses[1]);
-    if (first && second && (second.reference === 'previous' ||
+    // Only two reads of the same item combine; a list command never merges with anything.
+    if (first?.intent === 'read_item' && second?.intent === 'read_item' && (second.reference === 'previous' ||
       (first.reference === 'named' && first.item_query === second.item_query))) {
       return { ...first, fields: [...new Set([...first.fields, ...second.fields])] };
     }
