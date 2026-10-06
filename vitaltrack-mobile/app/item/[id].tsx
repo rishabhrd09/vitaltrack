@@ -107,6 +107,10 @@ export default function ItemFormScreen() {
   const [notes, setNotes] = useState(existingItem?.notes || '');
   const [imageUri, setImageUri] = useState(existingItem?.imageUri || '');
   const [isCritical, setIsCritical] = useState(existingItem?.isCritical || false);
+  // The fields above are seeded once, on first render. If the item list had not
+  // loaded yet, the edit form started blank, and saving it would overwrite the
+  // item's stock, category and details with defaults.
+  const [formSeededFromItem] = useState(!!existingItem);
 
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showUnitPicker, setShowUnitPicker] = useState(false);
@@ -141,6 +145,13 @@ export default function ItemFormScreen() {
       // and the rapid-double-tap-on-this-screen case. Toast (not Alert)
       // keeps the screen flow consistent with the rest of the app.
       toast.info('Still saving previous changes', 'Please wait a moment');
+      return;
+    }
+    if (!isNew && !formSeededFromItem) {
+      Alert.alert(
+        'Item details not loaded',
+        'This item had not loaded when the screen opened, so the form is empty. Go back and open the item again before saving.'
+      );
       return;
     }
     if (!name.trim()) {
@@ -195,7 +206,20 @@ export default function ItemFormScreen() {
         createItemMutation.mutate(itemData);
       }
     } else {
-      updateItemMutation.mutate({ id, ...itemData, version: existingItem?.version ?? 1 });
+      // A cleared optional field must reach the server as null: undefined is
+      // dropped from the request, so the old value would come back on refetch.
+      // A non-blank but invalid purchase link stays undefined (left unchanged).
+      updateItemMutation.mutate({
+        id,
+        ...itemData,
+        description: itemData.description ?? null,
+        brand: itemData.brand ?? null,
+        supplierName: itemData.supplierName ?? null,
+        supplierContact: itemData.supplierContact ?? null,
+        purchaseLink: purchaseLink.trim() ? itemData.purchaseLink : null,
+        notes: itemData.notes ?? null,
+        version: existingItem?.version ?? 1,
+      });
     }
     safeBack();
   };

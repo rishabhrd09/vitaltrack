@@ -1,5 +1,5 @@
 /**
- * Force-sync hook — drops the entire React Query cache and re-fetches
+ * Force-sync hook — invalidates inventory reads and re-fetches
  * items and categories from the server. Used by the Help & Support
  * "Refresh from server" button as a last-resort recovery from cache drift
  * (phantom IDs locally, shadow records on server) without requiring the
@@ -16,17 +16,18 @@ export function useForceSync() {
   const qc = useQueryClient();
 
   return async (): Promise<{ itemCount: number; categoryCount: number }> => {
-    // qc.clear() drops every cached query, forcing a cold read on next
-    // subscribe. We then explicitly fetch items and categories into the
-    // cache using the same unwrap shape useItems/useCategories expect
-    // (Item[] / Category[]), so consumers get correctly-shaped data.
-    qc.clear();
+    if (qc.isMutating()) throw new Error('Wait for pending changes before refreshing.');
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: queryKeys.items, refetchType: 'none' }),
+      qc.invalidateQueries({ queryKey: queryKeys.categories, refetchType: 'none' }),
+    ]);
 
     const [items, categories] = await Promise.all([
       qc.fetchQuery<Item[]>({
         queryKey: queryKeys.items,
-        queryFn: async () => {
-          const resp = await itemService.getAll({ limit: 999 });
+        structuralSharing: false,
+        queryFn: async ({ signal }) => {
+          const resp = await itemService.getAll({ limit: 999 }, signal);
           return resp.items;
         },
       }),

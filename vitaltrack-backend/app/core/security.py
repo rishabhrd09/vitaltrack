@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.config import settings
 
@@ -45,6 +45,7 @@ class TokenPayload(BaseModel):
     iat: datetime  # Issued at
     type: str  # Token type: "access" or "refresh"
     jti: Optional[str] = None  # JWT ID (for refresh token tracking)
+    session_version: int = Field(default=0, ge=0, strict=True)
 
 
 class TokenResponse(BaseModel):
@@ -102,6 +103,7 @@ def create_access_token(
 def create_refresh_token(
     subject: str | UUID,
     jti: Optional[str] = None,
+    session_version: int = 0,
 ) -> str:
     """
     Create a JWT refresh token.
@@ -122,6 +124,7 @@ def create_refresh_token(
         "iat": now,
         "type": "refresh",
         "jti": jti or str(uuid4()),
+        "session_version": session_version,
     }
 
     return jwt.encode(
@@ -131,7 +134,9 @@ def create_refresh_token(
     )
 
 
-def create_token_pair(user_id: str | UUID, jti: Optional[str] = None) -> TokenResponse:
+def create_token_pair(
+    user_id: str | UUID, jti: Optional[str] = None, session_version: int = 0,
+) -> TokenResponse:
     """
     Create both access and refresh tokens.
 
@@ -143,8 +148,8 @@ def create_token_pair(user_id: str | UUID, jti: Optional[str] = None) -> TokenRe
         TokenResponse with both tokens
     """
     token_jti = jti or str(uuid4())
-    access_token = create_access_token(subject=user_id)
-    refresh_token = create_refresh_token(subject=user_id, jti=token_jti)
+    access_token = create_access_token(subject=user_id, additional_claims={"session_version": session_version})
+    refresh_token = create_refresh_token(subject=user_id, jti=token_jti, session_version=session_version)
 
     return TokenResponse(
         access_token=access_token,
@@ -174,7 +179,7 @@ def decode_token(token: str) -> Optional[TokenPayload]:
             algorithms=[settings.JWT_ALGORITHM],
         )
         return TokenPayload(**payload)
-    except JWTError:
+    except (JWTError, ValueError):
         return None
 
 

@@ -19,12 +19,16 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.api.v1 import router as api_v1_router
+from app.services.ai_body_limit import AIBodyLimit
 from app.core.config import settings
 from app.core.database import create_tables, dispose_engine, get_db_context
+from app.core.logging import configure_safe_logging, scrub_telemetry_event
 from app.schemas import HealthCheck
 from app.utils.rate_limiter import limiter
 
 import logging
+
+configure_safe_logging()
 
 # Configure structured logging (12-Factor: treat logs as event streams)
 logging.basicConfig(
@@ -43,6 +47,11 @@ if settings.SENTRY_DSN:
             dsn=settings.SENTRY_DSN,
             environment=settings.ENVIRONMENT,
             traces_sample_rate=0.1,
+            send_default_pii=False,
+            max_request_body_size="never",
+            include_local_variables=False,
+            before_send=scrub_telemetry_event,
+            before_send_transaction=scrub_telemetry_event,
         )
         logger.info("Sentry error tracking initialised")
     except Exception:  # pragma: no cover - telemetry must never break startup
@@ -150,6 +159,7 @@ def create_app() -> FastAPI:
 
     # Include API routers
     app.include_router(api_v1_router)
+    app.add_middleware(AIBodyLimit)
     
     # Configure rate limiter
     app.state.limiter = limiter

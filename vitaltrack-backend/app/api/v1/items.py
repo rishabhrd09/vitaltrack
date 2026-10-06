@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import and_, func, or_, select, update
 
+from app.services.inventory_lock import lock_inventory_names
 from app.api.deps import DB, CurrentUser
 from app.models import ActivityActionType, ActivityLog, Category, Item
 from app.schemas import (
@@ -96,7 +97,7 @@ async def list_items(
     total = count_result.scalar() or 0
 
     # Order by name
-    query = query.order_by(Item.name)
+    query = query.order_by(Item.name, Item.id)
     
     # Apply pagination
     offset = (page - 1) * page_size
@@ -262,9 +263,11 @@ async def create_item(
     - **minimumStock**: Reorder threshold
     - **isCritical**: Mark as critical equipment
     """
+    await lock_inventory_names(db, current_user.id, "item")
+
     # Verify category exists and belongs to user
     cat_result = await db.execute(
-        select(Category).where(
+        select(Category.id).where(
             Category.id == data.category_id,
             Category.user_id == current_user.id,
         )
@@ -277,12 +280,12 @@ async def create_item(
     
     # Check for duplicate item name (case-insensitive) within this user's items
     dup_result = await db.execute(
-        select(Item).where(
+        select(Item.id).where(
             Item.user_id == current_user.id,
             func.lower(Item.name) == data.name.strip().lower(),
         )
     )
-    if dup_result.scalar_one_or_none():
+    if dup_result.scalars().first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"An item named '{data.name}' already exists",
@@ -354,7 +357,11 @@ async def update_item(
     Update an existing item.
     
     All fields are optional - only provided fields will be updated.
+    An explicit null clears an optional field; it is ignored for required fields.
     """
+    if data.name is not None:
+        await lock_inventory_names(db, current_user.id, "item")
+
     result = await db.execute(
         select(Item).where(
             Item.id == item_id,
@@ -385,13 +392,13 @@ async def update_item(
     # Check for duplicate item name if renaming
     if data.name is not None and data.name.strip().lower() != item.name.strip().lower():
         dup_result = await db.execute(
-            select(Item).where(
+            select(Item.id).where(
                 Item.user_id == current_user.id,
                 Item.id != item_id,
                 func.lower(Item.name) == data.name.strip().lower(),
             )
         )
-        if dup_result.scalar_one_or_none():
+        if dup_result.scalars().first():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"An item named '{data.name}' already exists",
@@ -418,9 +425,12 @@ async def update_item(
         values["category_id"] = data.category_id
         changes.append("category changed")
 
+    # Nullable columns are written whenever the client sent them, so an explicit
+    # null clears the value; omitted fields stay unchanged. Required columns
+    # treat None as "not sent" and are never set to NULL.
     if data.name is not None:
         values["name"] = data.name
-    if data.description is not None:
+    if "description" in data.model_fields_set:
         values["description"] = data.description
     if data.quantity is not None and data.quantity != item.quantity:
         changes.append(f"qty: {item.quantity} → {data.quantity}")
@@ -429,19 +439,19 @@ async def update_item(
         values["unit"] = data.unit
     if data.minimum_stock is not None:
         values["minimum_stock"] = data.minimum_stock
-    if data.expiry_date is not None:
+    if "expiry_date" in data.model_fields_set:
         values["expiry_date"] = data.expiry_date
-    if data.brand is not None:
+    if "brand" in data.model_fields_set:
         values["brand"] = data.brand
-    if data.notes is not None:
+    if "notes" in data.model_fields_set:
         values["notes"] = data.notes
-    if data.supplier_name is not None:
+    if "supplier_name" in data.model_fields_set:
         values["supplier_name"] = data.supplier_name
-    if data.supplier_contact is not None:
+    if "supplier_contact" in data.model_fields_set:
         values["supplier_contact"] = data.supplier_contact
-    if data.purchase_link is not None:
+    if "purchase_link" in data.model_fields_set:
         values["purchase_link"] = data.purchase_link
-    if data.image_uri is not None:
+    if "image_uri" in data.model_fields_set:
         values["image_uri"] = data.image_uri
     if data.is_active is not None:
         values["is_active"] = data.is_active

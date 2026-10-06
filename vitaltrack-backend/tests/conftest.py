@@ -7,11 +7,15 @@ VitalTrack — Test Configuration
 """
 
 import asyncio
+from pathlib import Path
 from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -89,14 +93,31 @@ def event_loop():
 # =============================================================================
 # DATABASE ISOLATION — drop + recreate ALL tables before each test
 # =============================================================================
+def pytest_addoption(parser):
+    parser.addoption("--migrated-schema", action="store_true", help="Build each disposable test schema through Alembic")
+
+
+def upgrade_test_schema(connection):
+    backend = Path(__file__).resolve().parents[1]
+    config = Config(str(backend / "alembic.ini"))
+    config.set_main_option("script_location", str(backend / "alembic"))
+    config.attributes["connection"] = connection
+    command.upgrade(config, "head")
+
+
 @pytest_asyncio.fixture(autouse=True)
-async def fresh_database():
+async def fresh_database(request):
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        if request.config.getoption("--migrated-schema"):
+            await conn.run_sync(upgrade_test_schema)
+        else:
+            await conn.run_sync(Base.metadata.create_all)
     yield
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+        await conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
 
 
 # =============================================================================

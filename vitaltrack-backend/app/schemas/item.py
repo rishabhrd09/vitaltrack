@@ -45,7 +45,8 @@ class ItemCreate(BaseModel):
         v = re.sub(r"<[^>]*>", "", v)
         # Remove dangerous characters for XSS
         v = re.sub(r"javascript:", "", v, flags=re.IGNORECASE)
-        v = re.sub(r"on\w+=", "", v, flags=re.IGNORECASE)
+        # No `on...=` stripping: with tags removed it is inert text, and it deleted
+        # real content ("Ondansetron=4mg" became "4mg"). Outputs escape HTML.
         return v.strip()
 
     @field_validator("supplier_contact")
@@ -100,7 +101,6 @@ class ItemUpdate(BaseModel):
             return v
         v = re.sub(r"<[^>]*>", "", v)
         v = re.sub(r"javascript:", "", v, flags=re.IGNORECASE)
-        v = re.sub(r"on\w+=", "", v, flags=re.IGNORECASE)
         return v.strip()
 
     @field_validator("purchase_link")

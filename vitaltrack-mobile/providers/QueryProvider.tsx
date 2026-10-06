@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppState } from 'react-native';
-import { MutationCache, QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
+import { MutationCache, QueryClient, QueryClientProvider, focusManager, onlineManager } from '@tanstack/react-query';
+import NetInfo from '@react-native-community/netinfo';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,6 +29,10 @@ focusManager.setEventListener((handleFocus) => {
   });
   return () => subscription.remove();
 });
+
+onlineManager.setEventListener((setOnline) => NetInfo.addEventListener((state) => {
+  setOnline(state.isConnected === true && state.isInternetReachable !== false);
+}));
 
 /**
  * Set to false to instantly disable cache persistence.
@@ -63,9 +68,7 @@ const queryClient = new QueryClient({
   }),
   defaultOptions: {
     queries: {
-      // 30 seconds — medical inventory needs fresh data. Two caregivers on two
-      // devices must see each other's updates within 30 seconds. staleTime controls
-      // refetch frequency; gcTime below controls persistence lifetime. Independent concerns.
+      // Freshness threshold, NOT polling or a guarantee of real-time updates.
       staleTime: 30_000,
       gcTime: 1000 * 60 * 60 * 24, // 24 hours — cache survives on disk between app sessions
       retry: 3,
@@ -80,8 +83,27 @@ const queryClient = new QueryClient({
     },
     mutations: {
       retry: 0,
+      // Writes are server-first: offline they must fail fast (toast + Retry).
+      // With onlineManager fed by NetInfo, the default 'online' mode would
+      // instead pause them silently and send them whenever the connection
+      // returns, possibly much later.
+      networkMode: 'always',
     },
   },
+});
+
+// A mutation that arrives already paused and with no mutationFn can only have
+// been restored from storage (earlier builds persisted paused saves). It can
+// never run, and a pending mutation is never garbage-collected, so it would keep
+// isMutating() above 0 and block the assistant and "Refresh from server". Drop it
+// on arrival, whichever persister restored it.
+queryClient.getMutationCache().subscribe((event) => {
+  if (event.type !== 'added') return;
+  const { mutation } = event;
+  if (mutation.state.isPaused && !mutation.options.mutationFn) {
+    queryClient.getMutationCache().remove(mutation);
+    mutation.destroy();
+  }
 });
 
 const asyncStoragePersister = createAsyncStoragePersister({
@@ -126,6 +148,10 @@ export function QueryProvider({ children }: QueryProviderProps) {
               const isAuthQuery = key === 'auth' || key === 'user' || key === 'me';
               return query.state.data !== undefined && !isAuthQuery;
             },
+            // Never persist mutations. A restored mutation has no mutationFn and
+            // nothing resumes it, so it would stay "pending" and keep
+            // isMutating() > 0, blocking the assistant and Refresh from server.
+            shouldDehydrateMutation: () => false,
           },
         }}
       >

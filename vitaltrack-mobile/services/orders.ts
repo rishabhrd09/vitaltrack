@@ -12,6 +12,12 @@ interface OrdersListResponse {
   total: number;
 }
 
+interface OrdersPage extends OrdersListResponse {
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
 // Create order item request — must include all fields backend OrderItemCreate expects
 interface CreateOrderItemRequest {
   itemId: string;
@@ -30,6 +36,9 @@ interface CreateOrderItemRequest {
 interface CreateOrderRequest {
   items: CreateOrderItemRequest[];
   notes?: string;
+  // One UUID per submission. Retry re-sends these same variables, so the
+  // server returns the order it already created instead of a duplicate.
+  localId: string;
 }
 
 // Generate a client-side order ID (backend overrides this with its own counter,
@@ -50,7 +59,18 @@ export const orderService = {
    * Get all orders
    */
   async getAll(): Promise<OrdersListResponse> {
-    return api.get<OrdersListResponse>('/orders');
+    const first = await api.get<OrdersPage>('/orders?page=1&pageSize=100');
+    const orders = new Map(first.orders.map(order => [order.id, order]));
+    // Keep the existing all-orders UI contract. Bound this fetch to the first
+    // page's total so concurrent new orders cannot make the loop endless.
+    const pageCount = Math.ceil(first.total / 100);
+    let hasMore = first.hasMore;
+    for (let page = 2; hasMore && page <= pageCount; page++) {
+      const next = await api.get<OrdersPage>(`/orders?page=${page}&pageSize=100`);
+      for (const order of next.orders) orders.set(order.id, order);
+      hasMore = next.hasMore && next.orders.length > 0;
+    }
+    return { orders: [...orders.values()], total: first.total };
   },
 
   /**
@@ -77,6 +97,7 @@ export const orderService = {
       exportedAt: new Date().toISOString(),
       items: data.items,
       notes: data.notes,
+      localId: data.localId,
     });
   },
 

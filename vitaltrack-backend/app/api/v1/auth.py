@@ -13,11 +13,13 @@ import anyio
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select, update
+from sqlalchemy.orm import noload
 
-from app.api.deps import DB, CurrentUser
+from app.api.deps import DB, CurrentUser, require_email_verification
 from app.core.config import settings
 from app.core.security import (
     create_token_pair,
+    decode_token,
     hash_password,
     verify_password,
     verify_refresh_token,
@@ -41,7 +43,6 @@ from app.utils.email import (
     generate_verification_token,
     is_email_configured,
     test_email_service,
-    verify_token,
     get_email_verification_expiry,
     get_password_reset_expiry,
     send_verification_email,
@@ -55,6 +56,31 @@ from app.utils.rate_limiter import limiter
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 logger = logging.getLogger("carekosh.auth")
+
+
+async def _lock_current_user(db: DB, current_user: User) -> User:
+    """Refresh under a row lock; reject a credential revoked while we waited."""
+    generation = current_user.session_version
+    user = await db.scalar(
+        select(User).where(User.id == current_user.id).options(noload("*"))
+        .with_for_update().execution_options(populate_existing=True)
+    )
+    if user is None or not user.is_active or user.session_version != generation:
+        raise HTTPException(status_code=401, detail="Session expired. Please log in again.", headers={"WWW-Authenticate": "Bearer"})
+    return user
+
+
+async def _consume_verification_token(token: str, db: DB) -> bool:
+    result = await db.execute(
+        update(User).where(
+            User.email_verification_token == hashlib.sha256(token.encode()).hexdigest(),
+            User.email_verification_expiry > datetime.now(timezone.utc),
+        ).values(
+            is_email_verified=True, email_verification_token=None,
+            email_verification_expiry=None,
+        ).returning(User.id)
+    )
+    return result.scalar_one_or_none() is not None
 
 
 # =============================================================================
@@ -87,7 +113,7 @@ async def register(
     # Check if email exists (if provided)
     if data.email:
         result = await db.execute(
-            select(User).where(User.email == data.email.lower())
+            select(User).options(noload("*")).where(User.email == data.email.lower())
         )
         if result.scalar_one_or_none():
             raise HTTPException(
@@ -98,7 +124,7 @@ async def register(
     # Check if username exists (if provided)
     if data.username:
         result = await db.execute(
-            select(User).where(User.username == data.username.lower())
+            select(User).options(noload("*")).where(User.username == data.username.lower())
         )
         if result.scalar_one_or_none():
             raise HTTPException(
@@ -132,7 +158,7 @@ async def register(
     
     # Create tokens
     jti = str(uuid4())
-    tokens = create_token_pair(user.id, jti)
+    tokens = create_token_pair(user.id, jti, user.session_version)
     
     # Store refresh token
     refresh_token = RefreshToken(
@@ -155,7 +181,8 @@ async def register(
     db.add(activity)
     
     await db.commit()
-    await db.refresh(user)
+    # No db.refresh(user): it reloads every selectin collection (all items,
+    # orders, activity and refresh tokens). Scalars stay loaded (expire_on_commit=False).
     
     # Send verification email in background (only if email service is configured)
     if user.email and unhashed_token and is_email_configured():
@@ -206,11 +233,11 @@ async def login(
     # normalisation was added on register).
     if "@" in identifier:
         result = await db.execute(
-            select(User).where(func.lower(User.email) == identifier)
+            select(User).options(noload("*")).where(func.lower(User.email) == identifier).with_for_update()
         )
     else:
         result = await db.execute(
-            select(User).where(func.lower(User.username) == identifier)
+            select(User).options(noload("*")).where(func.lower(User.username) == identifier).with_for_update()
         )
     
     user = result.scalar_one_or_none()
@@ -245,7 +272,7 @@ async def login(
     
     # Create tokens
     jti = str(uuid4())
-    tokens = create_token_pair(user.id, jti)
+    tokens = create_token_pair(user.id, jti, user.session_version)
     
     # Store refresh token
     refresh_token = RefreshToken(
@@ -271,7 +298,8 @@ async def login(
     db.add(activity)
     
     await db.commit()
-    await db.refresh(user)
+    # No db.refresh(user): it reloads every selectin collection (all items,
+    # orders, activity and refresh tokens). Scalars stay loaded (expire_on_commit=False).
     
     return AuthResponse(
         access_token=tokens.access_token,
@@ -299,20 +327,7 @@ async def verify_email_html(
     Authentication-friendly view for email links.
     """
     try:
-        # Find users with pending verification
-        result = await db.execute(
-            select(User).where(
-                User.email_verification_token.isnot(None),
-                User.email_verification_expiry > datetime.now(timezone.utc),
-            )
-        )
-        users = result.scalars().all()
-        
-        verified_user = None
-        for user in users:
-            if verify_token(token, user.email_verification_token):
-                verified_user = user
-                break
+        verified_user = await _consume_verification_token(token, db)
         
         if not verified_user:
             return HTMLResponse(content="""
@@ -324,11 +339,6 @@ async def verify_email_html(
             </html>
             """, status_code=400)
             
-        # Mark as verified
-        verified_user.is_email_verified = True
-        verified_user.email_verification_token = None
-        verified_user.email_verification_expiry = None
-        
         await db.commit()
         
         return HTMLResponse(content="""
@@ -342,6 +352,7 @@ async def verify_email_html(
         """)
         
     except Exception:
+        await db.rollback()
         return HTMLResponse(content="""
         <html>
             <body style="font-family: Arial; text-align: center; padding: 50px;">
@@ -366,32 +377,13 @@ async def verify_email(
     
     The token is included in the verification link sent to the user's email.
     """
-    # Find users with pending verification (non-expired tokens)
-    result = await db.execute(
-        select(User).where(
-            User.email_verification_token.isnot(None),
-            User.email_verification_expiry > datetime.now(timezone.utc),
-        )
-    )
-    users = result.scalars().all()
-    
-    # Check token against all users with pending verification
-    verified_user = None
-    for user in users:
-        if verify_token(token, user.email_verification_token):
-            verified_user = user
-            break
+    verified_user = await _consume_verification_token(token, db)
     
     if not verified_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired verification token",
         )
-    
-    # Mark email as verified
-    verified_user.is_email_verified = True
-    verified_user.email_verification_token = None
-    verified_user.email_verification_expiry = None
     
     await db.commit()
     
@@ -427,7 +419,7 @@ async def resend_verification_email(
 
     # Find user by email
     result = await db.execute(
-        select(User).where(User.email == data.email.lower())
+        select(User).options(noload("*")).where(User.email == data.email.lower()).with_for_update()
     )
     user = result.scalar_one_or_none()
     
@@ -494,7 +486,7 @@ async def forgot_password(
 
     # Find user by email
     result = await db.execute(
-        select(User).where(User.email == data.email.lower())
+        select(User).options(noload("*")).where(User.email == data.email.lower()).with_for_update()
     )
     user = result.scalar_one_or_none()
     
@@ -692,22 +684,16 @@ async def reset_password(
     Rate limited: 5 attempts per hour per IP.
     Revokes all existing sessions for security.
     """
-    # Find users with valid reset token
-    result = await db.execute(
-        select(User).where(
-            User.password_reset_token.isnot(None),
+    # The same user row is locked by refresh/login/change-password first.
+    # PostgreSQL rechecks this token predicate after a competing reset commits.
+    target_user = await db.scalar(
+        select(User).options(noload("*")).where(
+            User.password_reset_token == hashlib.sha256(data.token.encode()).hexdigest(),
             User.password_reset_expiry > datetime.now(timezone.utc),
-        )
+            User.is_active.is_(True),
+        ).with_for_update()
     )
-    users = result.scalars().all()
-    
-    # Check token against all users with pending reset
-    target_user = None
-    for user in users:
-        if verify_token(data.token, user.password_reset_token):
-            target_user = user
-            break
-    
+
     if not target_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -720,6 +706,9 @@ async def reset_password(
     )
     target_user.password_reset_token = None
     target_user.password_reset_expiry = None
+    target_user.session_version += 1
+    target_user.deletion_token = None
+    target_user.deletion_token_expires = None
     
     # Revoke all existing refresh tokens (security measure)
     await db.execute(
@@ -761,17 +750,20 @@ async def refresh_token(
     
     Also rotates the refresh token for security.
     """
-    # Verify refresh token
-    result = verify_refresh_token(data.refresh_token)
-    if not result:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    user_id, jti = result
-    
+    payload = decode_token(data.refresh_token)
+    if not payload or payload.type != "refresh" or not payload.jti:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token", headers={"WWW-Authenticate": "Bearer"})
+    user_id, jti = payload.sub, payload.jti
+    # Always lock user before refresh rows: revocation and issuance share this
+    # ordering, so a descendant cannot escape a password-change snapshot.
+    user = await db.scalar(
+        select(User).where(User.id == user_id).options(noload("*"))
+        .with_for_update()
+    )
+    if not user or not user.is_active or user.session_version != payload.session_version:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token", headers={"WWW-Authenticate": "Bearer"})
+    require_email_verification(user)
+
     # Atomically claim (revoke) the presented refresh token. Only one concurrent
     # request can flip is_revoked from false->true, so a single token can be
     # rotated at most once even if it is submitted twice simultaneously.
@@ -781,6 +773,7 @@ async def refresh_token(
             RefreshToken.jti == jti,
             RefreshToken.user_id == user_id,
             RefreshToken.is_revoked.is_(False),
+            RefreshToken.expires_at > datetime.now(timezone.utc),
         )
         .values(is_revoked=True)
         .returning(RefreshToken.id)
@@ -792,22 +785,9 @@ async def refresh_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Get user
-    user_result = await db.execute(
-        select(User).where(User.id == user_id)
-    )
-    user = user_result.scalar_one_or_none()
-
-    if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or disabled",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
     # Create new tokens (token rotation)
     new_jti = str(uuid4())
-    tokens = create_token_pair(user.id, new_jti)
+    tokens = create_token_pair(user.id, new_jti, user.session_version)
     
     # Store new refresh token
     new_refresh_token = RefreshToken(
@@ -820,7 +800,8 @@ async def refresh_token(
     db.add(new_refresh_token)
     
     await db.commit()
-    await db.refresh(user)
+    # No db.refresh(user): it reloads every selectin collection (all items,
+    # orders, activity and refresh tokens). Scalars stay loaded (expire_on_commit=False).
     
     return AuthResponse(
         access_token=tokens.access_token,
@@ -908,24 +889,16 @@ async def update_profile(
     """
     Update the current user's profile.
     
-    Can also add email or username to an existing account.
+    Email changes remain support-only, matching the existing Android profile.
     """
-    # Check if new email is unique
-    if data.email is not None:
-        result = await db.execute(
-            select(User).where(User.email == data.email.lower(), User.id != current_user.id)
-        )
-        if result.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already in use by another account",
-            )
-        current_user.email = data.email.lower()
-    
+    current_user = await _lock_current_user(db, current_user)
+    if data.email is not None and data.email.lower() != (current_user.email or "").lower():
+        raise HTTPException(status_code=400, detail="To change your email, contact support.")
+
     # Check if new username is unique
     if data.username is not None:
         result = await db.execute(
-            select(User).where(User.username == data.username.lower(), User.id != current_user.id)
+            select(User).options(noload("*")).where(User.username == data.username.lower(), User.id != current_user.id)
         )
         if result.scalar_one_or_none():
             raise HTTPException(
@@ -940,7 +913,8 @@ async def update_profile(
         current_user.phone = data.phone
     
     await db.commit()
-    await db.refresh(current_user)
+    # No db.refresh(current_user): it reloads every selectin collection (all items,
+    # orders, activity and refresh tokens). Scalars stay loaded (expire_on_commit=False).
 
     return UserResponse.model_validate(current_user)
 
@@ -961,6 +935,7 @@ async def request_account_deletion(
     Sends a confirmation email with a deletion link valid for 24 hours.
     Account is NOT deleted until the user submits the confirmation page.
     """
+    current_user = await _lock_current_user(db, current_user)
     if not current_user.email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1024,7 +999,7 @@ async def request_account_deletion(
     )
 
     logger.warning(
-        f"Account deletion requested: user_id={current_user.id} email={current_user.email}"
+        "Account deletion requested: user_id=%s", current_user.id
     )
 
     return MessageResponse(
@@ -1032,16 +1007,16 @@ async def request_account_deletion(
     )
 
 
-async def _get_user_for_deletion_token(token: str, db: DB) -> User | None:
+async def _get_user_for_deletion_token(token: str, db: DB, *, lock: bool = False) -> User | None:
     hashed_token = hashlib.sha256(token.encode()).hexdigest()
 
-    result = await db.execute(
-        select(User).where(
-            User.deletion_token == hashed_token,
-            User.deletion_token_expires > datetime.now(timezone.utc),
-        )
+    statement = select(User).options(noload("*")).where(
+        User.deletion_token == hashed_token,
+        User.deletion_token_expires > datetime.now(timezone.utc),
     )
-    return result.scalar_one_or_none()
+    if lock:
+        statement = statement.with_for_update()
+    return await db.scalar(statement)
 
 
 def _invalid_deletion_link_response() -> HTMLResponse:
@@ -1147,24 +1122,23 @@ async def confirm_account_deletion(
     Step 2b: User submits the confirmation form.
     Verifies the token, deletes the account, returns an HTML completion page.
     """
-    user = await _get_user_for_deletion_token(token, db)
+    user = await _get_user_for_deletion_token(token, db, lock=True)
 
     if not user:
         return _invalid_deletion_link_response()
 
     user_id = str(user.id)
     user_email = user.email or "no-email"
-    user_name = user.username or user.name or "unknown"
 
     logger.warning(
-        f"Account deletion CONFIRMED: user_id={user_id} email={user_email} username={user_name}"
+        "Account deletion confirmed: user_id=%s", user_id
     )
 
     await db.delete(user)
     await db.commit()
 
     logger.warning(
-        f"Account deletion COMPLETED: user_id={user_id} email={user_email}"
+        "Account deletion completed: user_id=%s", user_id
     )
 
     return _deletion_completed_response(user_email)
@@ -1180,6 +1154,7 @@ async def cancel_account_deletion(
     current_user: CurrentUser,
 ) -> MessageResponse:
     """Cancel a pending deletion request by clearing the deletion token."""
+    current_user = await _lock_current_user(db, current_user)
     current_user.deletion_token = None
     current_user.deletion_token_expires = None
     await db.commit()
@@ -1205,6 +1180,7 @@ async def change_password(
     
     Requires current password for verification.
     """
+    current_user = await _lock_current_user(db, current_user)
     if not await anyio.to_thread.run_sync(
         verify_password, data.current_password, current_user.hashed_password
     ):
@@ -1217,6 +1193,12 @@ async def change_password(
         hash_password, data.new_password
     )
 
+    current_user.session_version += 1
+    current_user.password_reset_token = None
+    current_user.password_reset_expiry = None
+    current_user.deletion_token = None
+    current_user.deletion_token_expires = None
+
     await db.execute(
         update(RefreshToken)
         .where(RefreshToken.user_id == current_user.id)
@@ -1225,7 +1207,7 @@ async def change_password(
 
     await db.commit()
 
-    return MessageResponse(message="Password changed successfully. Please log in again on your other devices.")
+    return MessageResponse(message="Password changed successfully. Please log in again.")
 
 
 # =============================================================================

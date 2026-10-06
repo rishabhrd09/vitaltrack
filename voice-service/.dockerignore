@@ -1,0 +1,8 @@
+*
+!app.py
+!requirements.txt
+!Dockerfile
+# Optional Kokoro image (docker build -f Dockerfile.kokoro .) needs these too.
+!kokoro_app.py
+!requirements.kokoro.txt
+!Dockerfile.kokoro

@@ -20,9 +20,9 @@ yarn-error.log*
 *.swp
 *.swo
 
-# Android/iOS (if ejected or prebuild)
-android/
-ios/
+# Android/iOS (if ejected or prebuild). Anchored so local modules/*/android stays tracked.
+/android/
+/ios/
 *.jks
 *.keystore
 

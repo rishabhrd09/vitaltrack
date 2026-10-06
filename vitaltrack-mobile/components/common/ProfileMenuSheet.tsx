@@ -8,6 +8,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Switch, Modal, Pressable, Pan
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 
@@ -40,6 +41,7 @@ export default function ProfileMenuSheet({
     onLogout,
 }: ProfileMenuSheetProps) {
     const { colors } = useTheme();
+    const router = useRouter();
     const insets = useSafeAreaInsets();
     const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -238,6 +240,13 @@ export default function ProfileMenuSheet({
                             onEditProfile?.();
                             onDismiss();
                         }}
+                    />
+
+                    <MenuItem
+                        icon="mic-outline"
+                        title="AI & Voice"
+                        subtitle="Read-only stock assistant and settings"
+                        onPress={() => { onDismiss(); router.navigate('/assistant'); }}
                     />
 
                     <MenuItem

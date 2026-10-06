@@ -30,8 +30,9 @@ export const queryKeys = {
 export function useItems() {
   return useQuery({
     queryKey: queryKeys.items,
-    queryFn: async (): Promise<Item[]> => {
-      const response = await itemService.getAll({ limit: 999 });
+    structuralSharing: false,
+    queryFn: async ({ signal }): Promise<Item[]> => {
+      const response = await itemService.getAll({ limit: 999 }, signal);
       return response.items;
     },
   });

@@ -74,12 +74,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: 'pip'
           cache-dependency-path: vitaltrack-backend/requirements.txt
       
       - name: Install dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
           cd vitaltrack-backend
           pip install -r requirements.txt
       
@@ -95,7 +97,7 @@ jobs:
           ENVIRONMENT: testing
         run: |
           cd vitaltrack-backend
-          python -m pytest tests/ -q --cov=app --cov-report=term-missing --cov-report=json
+          python -m pytest tests/ -q --migrated-schema --cov=app --cov-report=term-missing --cov-report=json
       
       - name: Verify API route count
         env:
@@ -104,7 +106,7 @@ jobs:
           ENVIRONMENT: testing
         run: |
           cd vitaltrack-backend
-          python scripts/check_api_routes.py --expected 39
+          python scripts/check_api_routes.py --expected 44
 
       - name: Verify item/order coverage floors
         run: |
@@ -128,7 +130,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: 'pip'
           cache-dependency-path: vitaltrack-backend/requirements.txt
 
@@ -176,11 +178,31 @@ jobs:
           cd vitaltrack-mobile
           npm install --legacy-peer-deps
       
+      # EAS uploads skip git-ignored files and offlineVoice.ts loads the module with
+      # requireOptionalNativeModule, so a missing native module never fails a build.
+      - name: Verify carekosh-voice native module is autolinked
+        run: |
+          cd vitaltrack-mobile
+          node node_modules/expo-modules-autolinking/bin/expo-modules-autolinking.js resolve --platform android --json > "$RUNNER_TEMP/autolinking-android.json"
+          node -e '
+            const { modules } = require(process.argv[1]);
+            if (!modules.some((m) => m.packageName === "carekosh-voice")) {
+              console.error("::error::carekosh-voice is missing from Android autolinking. Commit modules/carekosh-voice/android/ and keep it out of .gitignore, or builds ship without offline voice.");
+              process.exit(1);
+            }
+          ' "$RUNNER_TEMP/autolinking-android.json"
+          echo "✅ carekosh-voice is autolinked for Android"
+
       - name: Run TypeScript type check
         run: |
           cd vitaltrack-mobile
           npx tsc --noEmit
           echo "✅ TypeScript check passed"
+
+      - name: Test API session recovery
+        run: |
+          cd vitaltrack-mobile
+          npm test
       
       - name: Run ESLint
         run: |
@@ -272,9 +294,9 @@ jobs:
         if: steps.check-hook.outputs.has_hook == 'true'
         run: |
           echo "🚀 Triggering Render deployment..."
-          curl -s "${{ secrets.RENDER_DEPLOY_HOOK }}"
+          curl --fail --silent --show-error --connect-timeout 10 --max-time 30 "${{ secrets.RENDER_DEPLOY_HOOK }}"
           echo ""
-          echo "✅ Deploy triggered successfully"
+          echo "✅ Deployment request accepted; verify the expected revision is healthy in Render"
 
       - name: Deployment summary
         run: |
@@ -313,7 +335,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: vitaltrack-mobile/package-lock.json
       

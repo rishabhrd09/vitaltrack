@@ -26,7 +26,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import type { Item } from '@/types';
 import { isOutOfStock, isLowStock, isCriticalEquipment } from '@/types';
-import { formatDate, now } from '@/utils/helpers';
+import { formatDate, generateId, now } from '@/utils/helpers';
 import { escapeHtml, validateImageUri } from '@/utils/sanitize';
 import { useItems } from '@/hooks/useServerData';
 import { useCreateOrder } from '@/hooks/useServerMutations';
@@ -278,8 +278,13 @@ export default function CreateOrderScreen() {
     // independent of observer lifecycle. PDF success is silent (the order
     // dialog already covers that); PDF failure surfaces as a separate
     // toast pointing at the manual re-export path.
+    //
+    // localId is generated once per submission and travels in the mutation
+    // variables, which Retry re-executes unchanged. If the first attempt was
+    // saved but its response was lost, the server returns that order instead
+    // of creating a duplicate with a new ORD- number.
     createOrderMutation
-      .mutateAsync({ items: orderItems })
+      .mutateAsync({ items: orderItems, localId: generateId() })
       .then(async (createdOrder: any) => {
         const serverOrderId =
           createdOrder.orderId ||

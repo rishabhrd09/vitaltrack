@@ -6,12 +6,13 @@ CRUD operations for purchase orders
 from datetime import datetime, timezone
 from typing import Optional, Union
 
-from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import func, select, update
+from fastapi import APIRouter, HTTPException, Query, Response, status
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import DB, CurrentUser
-from app.models import ActivityActionType, ActivityLog, Item, Order, OrderItem, OrderStatus
+from app.models import ActivityActionType, ActivityLog, Item, Order, OrderItem, OrderNumberCounter, OrderStatus
 from app.schemas import (
     OrderCreate,
     OrderListResponse,
@@ -45,11 +46,17 @@ LEGAL_STATUS_TRANSITIONS = {
 }
 
 
-def generate_order_id(existing_count: int) -> str:
-    """Generate a unique order ID like ORD-20260115-0001."""
-    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
-    sequence = str(existing_count + 1).zfill(4)
-    return f"ORD-{date_str}-{sequence}"
+async def allocate_order_id(db: DB, now: datetime) -> str:
+    """Atomically allocate the existing public ID format, surviving deletions."""
+    day = now.strftime("%Y%m%d")
+    result = await db.execute(
+        insert(OrderNumberCounter).values(day=day, last_value=1)
+        .on_conflict_do_update(
+            index_elements=[OrderNumberCounter.day],
+            set_={"last_value": OrderNumberCounter.last_value + 1},
+        ).returning(OrderNumberCounter.last_value)
+    )
+    return f"ORD-{day}-{result.scalar_one():04d}"
 
 
 def _normalize_order_status(status_value: Optional[Union[str, OrderStatus]]) -> OrderStatus:
@@ -140,6 +147,25 @@ async def _validate_order_items_belong_to_user(
         )
 
 
+async def _find_order_by_local_id(
+    db: DB,
+    user_id: str,
+    local_id: str,
+) -> Optional[Order]:
+    """Return the order an earlier submission with this localId created.
+
+    Oldest first: migration 0010 keeps any legacy duplicates as stored and
+    leaves the oldest row of each group under the unique index.
+    """
+    result = await db.execute(
+        select(Order)
+        .where(Order.user_id == user_id, Order.local_id == local_id)
+        .order_by(Order.created_at, Order.id)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
 # =============================================================================
 # LIST ORDERS
 # =============================================================================
@@ -166,7 +192,7 @@ async def list_orders(
         query = query.where(Order.status == status_filter)
     
     # Order by most recent first
-    query = query.order_by(Order.exported_at.desc())
+    query = query.order_by(Order.exported_at.desc(), Order.id.desc())
     
     # Get total count with the same filters as the list query
     count_query = select(func.count()).select_from(Order).where(
@@ -233,97 +259,102 @@ async def get_order(
     "",
     response_model=OrderResponse,
     status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_200_OK: {
+            "model": OrderResponse,
+            "description": "Replayed submission (same localId): the order it already created",
+        },
+    },
     summary="Create a new order",
 )
 async def create_order(
     data: OrderCreate,
     db: DB,
     current_user: CurrentUser,
+    response: Response,
 ) -> OrderResponse:
     """
     Create a new purchase order.
     
     - **items**: List of items to order
     - **notes**: Optional notes
+    - **localId**: Optional per-submission key. Sending the same key again
+      returns the order it created (200) instead of creating another one.
     """
-    await _validate_order_items_belong_to_user(db, current_user.id, data.items)
+    # Read before the rollback below can expire the session's User instance.
+    user_id = current_user.id
 
-    # Count existing orders today globally for ID generation
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    count_result = await db.execute(
-        select(func.count()).where(
-            Order.exported_at >= today_start,
-        )
-    )
-    today_count = count_result.scalar() or 0
+    if data.local_id is not None:
+        existing = await _find_order_by_local_id(db, user_id, data.local_id)
+        if existing is not None:
+            response.status_code = status.HTTP_200_OK
+            return OrderResponse.model_validate(existing)
 
-    # Calculate totals
+    await _validate_order_items_belong_to_user(db, user_id, data.items)
+
+    now = datetime.now(timezone.utc)
+    order_id = await allocate_order_id(db, now)
     total_items = len(data.items)
     total_units = sum(item.quantity for item in data.items)
 
-    for attempt in range(3):
-        order_id = generate_order_id(today_count + attempt)
-        now = datetime.now(timezone.utc)
-
-        # Create order
-        order = Order(
-            user_id=current_user.id,
-            order_id=order_id,
-            total_items=total_items,
-            total_units=total_units,
-            status=OrderStatus.PENDING,
-            exported_at=now,
-            notes=data.notes,
-            local_id=data.local_id,
-        )
-        db.add(order)
-
-        try:
-            await db.flush()
-
-            # Create order items
-            for item_data in data.items:
-                order_item = OrderItem(
-                    order_id=order.id,
-                    item_id=item_data.item_id,
-                    name=item_data.name,
-                    brand=item_data.brand,
-                    unit=item_data.unit,
-                    quantity=item_data.quantity,
-                    current_stock=item_data.current_stock,
-                    minimum_stock=item_data.minimum_stock,
-                    image_uri=item_data.image_uri,
-                    supplier_name=item_data.supplier_name,
-                    purchase_link=item_data.purchase_link,
-                )
-                db.add(order_item)
-
-            # Log activity
-            activity = ActivityLog(
-                user_id=current_user.id,
-                action=ActivityActionType.ORDER_CREATED,
-                item_name=f"Order {order_id}",
-                order_id=order_id,
-                details=f"{total_items} items, {total_units} units",
-            )
-            db.add(activity)
-
-            await db.commit()
-            await db.refresh(order)
-
-            return OrderResponse.model_validate(order)
-        except IntegrityError:
-            await db.rollback()
-            if attempt == 2:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Order ID conflict. Please try again.",
-                )
-
-    raise HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail="Order ID conflict. Please try again.",
+    # Create order
+    order = Order(
+        user_id=user_id,
+        order_id=order_id,
+        total_items=total_items,
+        total_units=total_units,
+        status=OrderStatus.PENDING,
+        exported_at=now,
+        notes=data.notes,
+        local_id=data.local_id,
     )
+    db.add(order)
+
+    try:
+        await db.flush()
+    except IntegrityError:
+        if data.local_id is None:
+            raise
+        # A concurrent request with the same localId committed first. The
+        # rollback also releases the number allocated above; return its order.
+        await db.rollback()
+        existing = await _find_order_by_local_id(db, user_id, data.local_id)
+        if existing is None:
+            raise
+        response.status_code = status.HTTP_200_OK
+        return OrderResponse.model_validate(existing)
+
+    # Create order items
+    for item_data in data.items:
+        order_item = OrderItem(
+            order_id=order.id,
+            item_id=item_data.item_id,
+            name=item_data.name,
+            brand=item_data.brand,
+            unit=item_data.unit,
+            quantity=item_data.quantity,
+            current_stock=item_data.current_stock,
+            minimum_stock=item_data.minimum_stock,
+            image_uri=item_data.image_uri,
+            supplier_name=item_data.supplier_name,
+            purchase_link=item_data.purchase_link,
+        )
+        db.add(order_item)
+
+    # Log activity
+    activity = ActivityLog(
+        user_id=user_id,
+        action=ActivityActionType.ORDER_CREATED,
+        item_name=f"Order {order_id}",
+        order_id=order_id,
+        details=f"{total_items} items, {total_units} units",
+    )
+    db.add(activity)
+
+    await db.commit()
+    await db.refresh(order)
+
+    return OrderResponse.model_validate(order)
 
 
 # =============================================================================
@@ -514,9 +545,10 @@ async def apply_order_to_stock(
             detail="Order must be in 'received' status to apply to stock",
         )
 
-    # Update stock for each item in one transaction.
+    # Update stock for each item in one transaction. Lock rows in item-id order so
+    # two concurrent applies that share items queue instead of deadlocking.
     updated_items = []
-    for order_item in order.items:
+    for order_item in sorted(order.items, key=lambda line: (line.item_id, line.id)):
         item_update_result = await db.execute(
             update(Item)
             .where(
@@ -612,8 +644,43 @@ async def delete_order(
         )
     
     order_display_id = order.order_id
-    
-    await db.delete(order)
+    # Snapshot before the DELETE: afterwards the session treats `order` as deleted.
+    order_pk = order.id
+    deleted_values = {
+        "order_id": order_display_id,
+        "status": _status_text(order.status),
+        "total_items": order.total_items,
+        "total_units": order.total_units,
+    }
+
+    deleted = await db.execute(
+        delete(Order).where(
+            Order.id == order_pk,
+            Order.user_id == current_user.id,
+            Order.status.in_([OrderStatus.PENDING, OrderStatus.DECLINED]),
+        ).returning(Order.id)
+    )
+    if deleted.scalar_one_or_none() is None:
+        raise HTTPException(status_code=400, detail="Only pending or declined orders can be deleted")
+
+    # Keep the deletion in history (same convention as category deletes).
+    db.add(
+        ActivityLog(
+            user_id=current_user.id,
+            action=ActivityActionType.ITEM_DELETE,
+            item_name=f"Order {order_display_id}",
+            order_id=order_display_id,
+            details="Order deleted",
+        )
+    )
+    await log_audit(
+        db,
+        user_id=current_user.id,
+        entity_type="order",
+        entity_id=order_pk,
+        action="delete",
+        old_values=deleted_values,
+    )
     await db.commit()
-    
+
     return SuccessResponse(message=f"Order '{order_display_id}' deleted")

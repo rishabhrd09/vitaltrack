@@ -513,3 +513,22 @@ class TestRestoreDrillGuards:
         assert "supersecret" not in redacted
         assert "hunter2" not in redacted
         assert "<redacted>" in redacted
+
+
+class TestDefaultSecretRejectedWhenDeployed:
+    DEFAULT_SECRET = "CHANGE-THIS-IN-PRODUCTION-MIN-32-CHARS-LONG-RANDOM-STRING"
+
+    @pytest.mark.parametrize("environment", ["staging", "production"])
+    def test_default_secret_is_rejected_outside_development_and_testing(self, environment):
+        with pytest.raises(ValueError, match="SECRET_KEY must be set"):
+            Settings(
+                ENVIRONMENT=environment,
+                SECRET_KEY=self.DEFAULT_SECRET,
+                FRONTEND_URL="https://api.example.com/api/v1/auth",
+                _env_file=None,
+            )
+
+    @pytest.mark.parametrize("environment", ["development", "testing"])
+    def test_default_secret_still_allowed_locally(self, environment):
+        configured = Settings(ENVIRONMENT=environment, SECRET_KEY=self.DEFAULT_SECRET, _env_file=None)
+        assert configured.secret_key_value == self.DEFAULT_SECRET

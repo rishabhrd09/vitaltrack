@@ -995,14 +995,14 @@ class TestHealthDiagnostics:
         assert body["health"] == "/health"
         assert body["live"] == "/live"
 
-    def test_api_v1_route_count_remains_39(self):
+    def test_api_v1_route_count_remains_44(self):
         api_v1_routes = [
             route
             for route in main_module.app.routes
             if getattr(route, "path", "").startswith("/api/v1")
         ]
 
-        assert len(api_v1_routes) == 39
+        assert len(api_v1_routes) == 44
         assert all(route.path not in {"/api/v1/health", "/api/v1/live"} for route in api_v1_routes)
 
     def test_render_health_check_uses_liveness_endpoint(self):
@@ -1011,3 +1011,61 @@ class TestHealthDiagnostics:
 
         assert "healthCheckPath: /live" in render_config
         assert "healthCheckPath: /health" not in render_config
+
+
+async def test_auth_responses_do_not_load_account_history(client: AsyncClient):
+    """Login, refresh, register and profile edits must not load the user's collections.
+
+    db.refresh(user) used to reload every selectin relationship (all categories,
+    items, orders, activity logs and refresh tokens) on each login and refresh.
+    """
+    from sqlalchemy import event
+
+    from tests.conftest import test_engine
+
+    registered = await register_user(client, name="History Owner", email="history@test.com")
+    headers = auth_header(registered["access_token"])
+    for i in range(3):  # some history to (not) load
+        await client.post("/api/v1/categories", headers=headers, json={"name": f"Ward {i}"})
+
+    statements: list[str] = []
+
+    def capture(conn, cursor, statement, parameters, context, executemany):
+        statements.append(" ".join(statement.split()))
+
+    collection_tables = ("categories", "items", "orders", "activity_logs", "refresh_tokens")
+
+    def collection_selects() -> list[str]:
+        return [
+            s for s in statements
+            if s.startswith("SELECT") and any(f"FROM {t}" in s for t in collection_tables)
+        ]
+
+    event.listen(test_engine.sync_engine, "before_cursor_execute", capture)
+    try:
+        calls = {
+            "register": lambda: client.post(
+                "/api/v1/auth/register",
+                json={"name": "Fresh", "email": "fresh-history@test.com", "password": "TestPass1"},
+            ),
+            "login": lambda: client.post(
+                "/api/v1/auth/login",
+                json={"identifier": "history@test.com", "password": "TestPass1"},
+            ),
+            "refresh": lambda: client.post(
+                "/api/v1/auth/refresh", json={"refresh_token": registered["refresh_token"]}
+            ),
+            "update profile": lambda: client.patch(
+                "/api/v1/auth/me", headers=headers, json={"name": "History Owner Renamed"}
+            ),
+        }
+        for label, call in calls.items():
+            statements.clear()
+            response = await call()
+            assert response.status_code in (200, 201), (label, response.text)
+            body = response.json()
+            user = body.get("user", body)
+            assert user["updatedAt"] and user["createdAt"], label
+            assert collection_selects() == [], (label, collection_selects())
+    finally:
+        event.remove(test_engine.sync_engine, "before_cursor_execute", capture)

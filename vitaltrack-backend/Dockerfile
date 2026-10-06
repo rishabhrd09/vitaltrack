@@ -35,6 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
     postgresql-client \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -76,11 +77,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Set entrypoint
 ENTRYPOINT ["./docker-entrypoint.sh"]
 
-# Run the application (Shell form to allow variable expansion)
-CMD gunicorn app.main:app \
-    --worker-class uvicorn.workers.UvicornWorker \
-    --workers 2 \
-    --bind 0.0.0.0:${PORT:-8000} \
-    --access-logfile - \
-    --error-logfile - \
-    --capture-output
+# The entrypoint expands PORT and execs Gunicorn directly so TERM reaches it.
+CMD ["gunicorn", "app.main:app", "--worker-class", "uvicorn.workers.UvicornWorker", "--workers", "2", "--access-logfile", "-", "--error-logfile", "-", "--capture-output"]

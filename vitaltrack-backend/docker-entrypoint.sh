@@ -56,4 +56,7 @@ fi
 echo "Migrations complete."
 
 echo "Starting application server..."
+if [ "$1" = "gunicorn" ]; then
+    set -- "$@" --bind "0.0.0.0:${PORT:-8000}"
+fi
 exec "$@"

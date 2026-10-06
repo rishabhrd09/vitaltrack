@@ -11,7 +11,9 @@ Replace your app/schemas/order.py with this file.
 from datetime import datetime
 from typing import Optional, List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+INT32_MAX = 2_147_483_647
 
 
 # =============================================================================
@@ -38,9 +40,31 @@ class OrderItemBase(BaseModel):
 
 
 class OrderItemCreate(OrderItemBase):
-    """Create order item schema."""
+    """Create order item schema.
+
+    Bounds mirror the database columns, so oversized input is a 422 instead of a
+    500. They apply to requests only: rows already stored must still serialise.
+    """
     id: Optional[str] = None
     order_id: Optional[str] = Field(None, alias="orderId")
+    item_id: str = Field(alias="itemId", min_length=1, max_length=36)
+    name: str = Field(min_length=1, max_length=255)
+    brand: Optional[str] = Field(None, max_length=255)
+    unit: str = Field("pieces", max_length=50)
+    current_stock: int = Field(default=0, ge=0, le=INT32_MAX, alias="currentStock")
+    minimum_stock: int = Field(default=0, ge=0, le=INT32_MAX, alias="minimumStock")
+    image_uri: Optional[str] = Field(None, max_length=500, alias="imageUri")
+    supplier_name: Optional[str] = Field(None, max_length=255, alias="supplierName")
+    purchase_link: Optional[str] = Field(None, max_length=500, alias="purchaseLink")
+
+    @field_validator("purchase_link")
+    @classmethod
+    def http_links_only(cls, v: Optional[str]) -> Optional[str]:
+        """Keep http(s) links; drop anything else (e.g. javascript:) instead of storing it."""
+        if v is None or not v.strip():
+            return None
+        v = v.strip()
+        return v if v.lower().startswith(("http://", "https://")) else None
 
 
 class OrderItemResponse(OrderItemBase):
@@ -69,10 +93,12 @@ class OrderCreate(BaseModel):
     received_at: Optional[datetime] = Field(None, alias="receivedAt")
     applied_at: Optional[datetime] = Field(None, alias="appliedAt")
     declined_at: Optional[datetime] = Field(None, alias="declinedAt")
-    local_id: Optional[str] = Field(None, alias="localId")
+    # Per-submission idempotency key; blank would merge unrelated orders.
+    local_id: Optional[str] = Field(None, min_length=1, max_length=36, alias="localId")
     notes: Optional[str] = None
-    # Include items for creation
-    items: List[OrderItemCreate] = Field(default_factory=list)
+    # Include items for creation. An order needs at least one line (an empty
+    # order can never be applied); the cap keeps total_units within int32.
+    items: List[OrderItemCreate] = Field(min_length=1, max_length=1000)
 
     model_config = {"populate_by_name": True}
 

@@ -54,8 +54,9 @@ web-build/
 *.key
 *.mobileprovision
 *.orig.*
-android/
-ios/
+# Generated native projects only. Local Expo modules (modules/*/android) are source.
+vitaltrack-mobile/android/
+vitaltrack-mobile/ios/
 
 # ============================================
 # Environment Files (NEVER COMMIT SECRETS!)
@@ -135,3 +136,10 @@ docs/development_stories.claude/
 
 # Claude Code local config (per-developer, never committed)
 .claude/
+
+# Private speech evaluation recordings and licensed model weights must not be public.
+*.wav
+*.m4a
+*.onnx
+*.onnx.json
+private-voice-evaluation/

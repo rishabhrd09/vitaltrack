@@ -7,7 +7,7 @@ import json
 from functools import lru_cache
 from typing import List, Union
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,6 +29,41 @@ class Settings(BaseSettings):
 
     # Observability — error tracking (optional; leave empty to disable Sentry)
     SENTRY_DSN: str = ""
+
+    # Server-owned AI credentials. All outbound processing is opt-in and off by default.
+    AI_ENABLED: bool = False
+    AI_TRANSCRIBE_ENABLED: bool = False
+    AI_SPEECH_ENABLED: bool = False
+    AI_DATA_CONTROLS_REVIEWED: bool = False
+    AI_ALBA_RIGHTS_APPROVED: bool = False
+    GROQ_API_KEY: SecretStr = SecretStr("")
+    GROQ_STT_MODEL: str = "whisper-large-v3"
+    GROQ_INTENT_MODEL: str = "openai/gpt-oss-20b"
+    AI_TIMEOUT_SECONDS: int = Field(default=25, ge=1, le=60)
+    AI_USER_DAILY_REQUESTS: int = Field(default=50, ge=0, le=10000)
+    AI_GLOBAL_DAILY_REQUESTS: int = Field(default=500, ge=0, le=100000)
+    AI_GLOBAL_CONCURRENCY: int = Field(default=4, ge=1, le=32)
+    # Conservative credits, millionths of USD. Not a provider billing cap.
+    AI_USER_DAILY_BUDGET_MICROUSD: int = Field(default=100_000, ge=0)
+    AI_GLOBAL_DAILY_BUDGET_MICROUSD: int = Field(default=1_000_000, ge=0)
+    AI_INTERPRET_RESERVE_MICROUSD: int = Field(default=5_000, ge=1)
+    AI_TRANSCRIBE_RESERVE_MICROUSD: int = Field(default=1_000, ge=1)
+    AI_SPEAK_RESERVE_MICROUSD: int = Field(default=1_000, ge=1)
+    PIPER_SERVICE_URL: str = ""
+    PIPER_SERVICE_TOKEN: SecretStr = SecretStr("")
+    # Optional, explicitly consented providers. Offline phone speech needs none of these.
+    SARVAM_API_KEY: SecretStr = SecretStr("")
+    AI_SARVAM_ENABLED: bool = False
+    AI_SARVAM_DATA_CONTROLS_REVIEWED: bool = False
+    SARVAM_STT_MODEL: str = "saaras:v4"
+    SARVAM_TTS_MODEL: str = "bulbul:v3"
+    SARVAM_SPEAKER: str = "shubh"
+    AI_SARVAM_TRANSCRIBE_RESERVE_MICROUSD: int = Field(default=5_000, ge=1)
+    AI_SARVAM_SPEAK_RESERVE_MICROUSD: int = Field(default=20_000, ge=1)
+    AI_KOKORO_ENABLED: bool = False
+    AI_KOKORO_RIGHTS_APPROVED: bool = False
+    KOKORO_SERVICE_URL: str = ""
+    KOKORO_SERVICE_TOKEN: SecretStr = SecretStr("")
 
     # Server
     HOST: str = "0.0.0.0"
@@ -78,9 +113,11 @@ class Settings(BaseSettings):
     def reject_weak_secret_in_production(cls, v, info):
         secret_value = v.get_secret_value() if isinstance(v, SecretStr) else str(v)
         env = info.data.get("ENVIRONMENT", "development")
-        if env == "production" and secret_value.startswith("CHANGE-THIS"):
+        # The default is public: any deployed environment (staging included) using
+        # it would accept forged tokens. Only local development and tests may.
+        if env not in ("development", "testing") and secret_value.startswith("CHANGE-THIS"):
             raise ValueError(
-                "SECRET_KEY must be set to a strong random value in production. "
+                "SECRET_KEY must be set to a strong random value outside development and testing. "
                 'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
             )
         if len(secret_value) < 32:

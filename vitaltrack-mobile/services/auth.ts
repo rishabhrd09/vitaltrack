@@ -33,6 +33,13 @@ export const authService = {
             const refreshToken = await tokenStorage.getRefreshToken();
             if (refreshToken) {
                 await api.post('/auth/logout', { refresh_token: refreshToken });
+                // An expired access token makes the API client refresh first, which
+                // rotates the refresh token; the retried logout then revokes only the
+                // old one. Revoke the rotated token too, or it stays valid server-side.
+                const rotated = await tokenStorage.getRefreshToken();
+                if (rotated && rotated !== refreshToken) {
+                    await api.post('/auth/logout', { refresh_token: rotated });
+                }
             }
         } finally {
             await tokenStorage.clearTokens();

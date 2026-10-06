@@ -88,6 +88,7 @@ engine = create_async_engine(
     pool_timeout=settings.DATABASE_POOL_TIMEOUT,
     pool_pre_ping=True,  # Enable connection health check
     echo=settings.DEBUG,  # Log SQL statements in debug mode
+    hide_parameters=True,
     connect_args=_connect_args,
 )
 

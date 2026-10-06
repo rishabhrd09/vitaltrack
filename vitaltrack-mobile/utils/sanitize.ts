@@ -32,7 +32,8 @@ export const sanitizeString = (input: string | undefined | null, maxLength = 500
     return String(input)
         .replace(/<[^>]*>/g, '') // Remove all HTML tags
         .replace(/javascript:/gi, '') // Remove JS protocol
-        .replace(/on\w+=/gi, '') // Remove event handlers
+        // No `on…=` stripping: with tags removed it is inert text, and it deleted
+        // real content ("Dose once=daily" → "Dose daily"). PDFs escape on output.
         .replace(/data:/gi, '') // Remove data URIs
         .trim()
         .slice(0, maxLength);

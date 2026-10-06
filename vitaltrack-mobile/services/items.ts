@@ -6,6 +6,7 @@
 import { api, ApiClientError } from './api';
 import type { Item, DashboardStats } from '@/types';
 import { logger } from '@/utils/logger';
+import { captureSession, assertSession, stampSnapshot } from './assistantSession';
 
 // Response types
 interface ItemsListResponse {
@@ -54,20 +55,21 @@ interface CreateItemRequest {
   isCritical?: boolean;
 }
 
-// Update item request
+// Update item request. Omitted fields are left unchanged; null clears an
+// optional field.
 interface UpdateItemRequest {
   categoryId?: string;
   name?: string;
-  description?: string;
+  description?: string | null;
   quantity?: number;
   unit?: string;
   minimumStock?: number;
   expiryDate?: string;
-  brand?: string;
-  notes?: string;
-  supplierName?: string;
-  supplierContact?: string;
-  purchaseLink?: string;
+  brand?: string | null;
+  notes?: string | null;
+  supplierName?: string | null;
+  supplierContact?: string | null;
+  purchaseLink?: string | null;
   imageUri?: string;
   isCritical?: boolean;
   isActive?: boolean;
@@ -80,7 +82,8 @@ interface StockUpdateRequest {
   version: number;
 }
 
-// Drop undefined and empty-string fields. Keeps falsy values like 0 and false.
+// Drop undefined and empty-string fields. Keeps falsy values like 0 and false,
+// and keeps null so an update can clear an optional field.
 // Avoids sending empty `expiryDate: ""` (fails date parsing) or `purchaseLink: ""`
 // (fails URL validator) while still allowing required fields and zero quantities.
 function stripEmpty<T extends Record<string, unknown>>(data: T): Partial<T> {
@@ -129,7 +132,7 @@ export const itemService = {
   /**
    * Get all items with optional filters
    */
-  async getAll(params?: ItemsQueryParams): Promise<ItemsListResponse> {
+  async getAll(params?: ItemsQueryParams, signal?: AbortSignal): Promise<ItemsListResponse> {
     if (
       params?.limit !== undefined &&
       params.limit > MAX_PAGE_SIZE &&
@@ -139,6 +142,9 @@ export const itemService = {
       const items: Item[] = [];
       let total = 0;
       let page = 1;
+      const session = captureSession();
+      const ids = new Set<string>();
+      let expectedTotal: number | undefined;
 
       while (true) {
         const queryString = buildQueryString({
@@ -148,14 +154,26 @@ export const itemService = {
           page,
           pageSize: MAX_PAGE_SIZE,
         });
-        const response = await api.get<ItemsListResponse>(`/items${queryString}`);
+        assertSession(session);
+        const response = await api.get<ItemsListResponse>(`/items${queryString}`, true, signal);
+        assertSession(session);
+        if (!Number.isInteger(response.total) || response.total < 0 || (expectedTotal !== undefined && expectedTotal !== response.total)) {
+          throw new Error('Inventory changed during refresh. Please refresh again.');
+        }
+        expectedTotal = response.total;
+        for (const item of response.items) {
+          if (ids.has(item.id)) throw new Error('Inventory pages overlapped. Please refresh again.');
+          ids.add(item.id);
+        }
         items.push(...response.items);
         total = response.total;
 
-        if (items.length >= total || response.items.length === 0) break;
+        if (items.length === total) break;
+        if (items.length > total || response.items.length === 0 || page >= 1000) throw new Error('Inventory refresh was incomplete.');
         page += 1;
       }
 
+      stampSnapshot(items, session);
       return { items, total };
     }
 

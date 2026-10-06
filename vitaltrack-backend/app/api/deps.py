@@ -12,8 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import noload
 
 from app.core.database import get_db
-from app.core.security import verify_access_token
+from app.core.config import settings
+from app.core.security import decode_token
 from app.models.user import User
+from app.utils.email import is_email_configured
 
 
 # =============================================================================
@@ -45,8 +47,8 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    user_id = verify_access_token(credentials.credentials)
-    if not user_id:
+    payload = decode_token(credentials.credentials)
+    if not payload or payload.type != "access":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -56,11 +58,11 @@ async def get_current_user(
     # noload("*") stops the User's eager selectin relationships from firing on
     # every authenticated request — this dependency only reads scalar fields (DB-1).
     result = await db.execute(
-        select(User).where(User.id == user_id).options(noload("*"))
+        select(User).where(User.id == payload.sub).options(noload("*"))
     )
     user = result.scalar_one_or_none()
 
-    if not user:
+    if not user or payload.session_version != user.session_version:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
@@ -73,7 +75,17 @@ async def get_current_user(
             detail="User account is disabled",
         )
     
+    require_email_verification(user)
     return user
+
+
+def require_email_verification(user: User) -> None:
+    """Apply the existing login policy consistently to bearer/refresh paths."""
+    if (
+        settings.REQUIRE_EMAIL_VERIFICATION and is_email_configured()
+        and user.email and not user.is_email_verified
+    ):
+        raise HTTPException(status_code=403, detail="EMAIL_NOT_VERIFIED")
 
 
 async def get_current_active_user(
@@ -94,7 +106,7 @@ async def get_current_verified_user(
     Raises:
         HTTPException: If user is not verified
     """
-    if not user.is_verified:
+    if not user.email or not user.is_email_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Email verification required",
@@ -135,16 +147,20 @@ async def get_optional_user(
     if not credentials:
         return None
     
-    user_id = verify_access_token(credentials.credentials)
-    if not user_id:
+    payload = decode_token(credentials.credentials)
+    if not payload or payload.type != "access":
         return None
 
     result = await db.execute(
-        select(User).where(User.id == user_id).options(noload("*"))
+        select(User).where(User.id == payload.sub).options(noload("*"))
     )
     user = result.scalar_one_or_none()
 
-    if user and user.is_active:
+    if user and user.is_active and payload.session_version == user.session_version:
+        try:
+            require_email_verification(user)
+        except HTTPException:
+            return None
         return user
     
     return None

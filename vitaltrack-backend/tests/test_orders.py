@@ -1,12 +1,16 @@
 """Domain tests for order endpoints."""
 
 import asyncio
+import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import func, select
 
 from app.api.v1 import orders as orders_api
+from app.models import OrderNumberCounter
 from tests.conftest import (
+    TestSession,
     create_category,
     create_item,
     create_order,
@@ -718,3 +722,345 @@ async def test_order_status_transition_is_atomic_under_concurrency(client: Async
     final = await client.get(f"/api/v1/orders/{order['id']}", headers=headers)
     assert final.status_code == 200
     assert final.json()["status"] in ("received", "declined")
+
+
+async def _allocated_order_numbers() -> int:
+    async with TestSession() as db:
+        return await db.scalar(select(func.coalesce(func.sum(OrderNumberCounter.last_value), 0)))
+
+
+async def test_order_create_replay_with_same_local_id_returns_original_order(
+    client: AsyncClient,
+):
+    """Retry after a lost response returns the first order, not a duplicate (F-2)."""
+    _, headers = await register_and_auth(
+        client,
+        name="Replay Order Owner",
+        email="replay-order-owner@test.com",
+    )
+    item = await _inventory_item(client, headers, item_name="Replay Gauze")
+    payload = {
+        "orderId": "CLIENT-SIDE-ID",
+        "localId": str(uuid.uuid4()),
+        "items": [order_item_payload(item, quantity=2)],
+    }
+
+    first = await client.post("/api/v1/orders", headers=headers, json=payload)
+    replay = await client.post("/api/v1/orders", headers=headers, json=payload)
+
+    assert first.status_code == 201, first.text
+    assert replay.status_code == 200, replay.text
+    assert replay.json()["id"] == first.json()["id"]
+    assert replay.json()["orderId"] == first.json()["orderId"]
+    assert replay.json()["localId"] == payload["localId"]
+    assert replay.json()["items"] == first.json()["items"]
+
+    list_resp = await client.get("/api/v1/orders", headers=headers)
+    assert list_resp.json()["total"] == 1
+    activity_resp = await client.get("/api/v1/activities", headers=headers)
+    created = [
+        activity
+        for activity in activity_resp.json()["activities"]
+        if activity["action"] == "order_created"
+    ]
+    assert len(created) == 1
+    assert await _allocated_order_numbers() == 1
+
+
+async def test_order_create_different_local_ids_create_separate_orders(
+    client: AsyncClient,
+):
+    _, headers = await register_and_auth(
+        client,
+        name="Separate Orders Owner",
+        email="separate-orders-owner@test.com",
+    )
+    item = await _inventory_item(client, headers, item_name="Separate Syringes")
+
+    keyed = [
+        await create_order(
+            client,
+            headers,
+            items=[order_item_payload(item, quantity=1)],
+            localId=str(uuid.uuid4()),
+        )
+        for _ in range(2)
+    ]
+    # Clients that send no localId keep the old behaviour: every POST is new.
+    keyless = [
+        await create_order(client, headers, items=[order_item_payload(item, quantity=1)])
+        for _ in range(2)
+    ]
+
+    orders = keyed + keyless
+    assert len({order["id"] for order in orders}) == 4
+    assert len({order["orderId"] for order in orders}) == 4
+    list_resp = await client.get("/api/v1/orders", headers=headers)
+    assert list_resp.json()["total"] == 4
+
+
+async def test_order_local_id_never_matches_another_account(client: AsyncClient):
+    _, owner_headers = await register_and_auth(
+        client,
+        name="Local Key Owner",
+        email="local-key-owner@test.com",
+    )
+    _, other_headers = await register_and_auth(
+        client,
+        name="Local Key Other",
+        email="local-key-other@test.com",
+    )
+    owner_item = await _inventory_item(
+        client,
+        owner_headers,
+        category_name="Local Key Owner Items",
+        item_name="Owner Bandage",
+    )
+    other_item = await _inventory_item(
+        client,
+        other_headers,
+        category_name="Local Key Other Items",
+        item_name="Other Bandage",
+    )
+    local_id = str(uuid.uuid4())
+    owner_payload = {
+        "orderId": "CLIENT-SIDE-ID",
+        "localId": local_id,
+        "items": [order_item_payload(owner_item, quantity=1)],
+    }
+    owner_order = (
+        await client.post("/api/v1/orders", headers=owner_headers, json=owner_payload)
+    ).json()
+
+    # Replaying the owner's exact submission from another account must not
+    # return (and so leak) the owner's order.
+    foreign_replay = await client.post(
+        "/api/v1/orders", headers=other_headers, json=owner_payload
+    )
+    assert foreign_replay.status_code == 400, foreign_replay.text
+
+    other_order = await create_order(
+        client,
+        other_headers,
+        items=[order_item_payload(other_item, quantity=1)],
+        localId=local_id,
+    )
+    assert other_order["id"] != owner_order["id"]
+    assert other_order["orderId"] != owner_order["orderId"]
+    assert other_order["userId"] != owner_order["userId"]
+
+    owner_replay = await client.post(
+        "/api/v1/orders", headers=owner_headers, json=owner_payload
+    )
+    assert owner_replay.status_code == 200
+    assert owner_replay.json()["id"] == owner_order["id"]
+    for headers in (owner_headers, other_headers):
+        list_resp = await client.get("/api/v1/orders", headers=headers)
+        assert list_resp.json()["total"] == 1
+
+
+async def test_order_create_concurrent_replays_create_one_order(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Replays that all miss the lookup race on the unique index; losers re-read."""
+    _, headers = await register_and_auth(
+        client,
+        name="Replay Race Owner",
+        email="replay-race-owner@test.com",
+    )
+    item = await _inventory_item(client, headers, item_name="Replay Race Masks")
+    payload = {
+        "orderId": "CLIENT-SIDE-ID",
+        "localId": str(uuid.uuid4()),
+        "items": [order_item_payload(item, quantity=1)],
+    }
+
+    original_allocate = orders_api.allocate_order_id
+    arrived = 0
+    all_looked_up = asyncio.Event()
+
+    async def allocate_after_every_lookup(db, now):
+        nonlocal arrived
+        arrived += 1
+        if arrived == 3:
+            all_looked_up.set()
+        await asyncio.wait_for(all_looked_up.wait(), timeout=5)
+        return await original_allocate(db, now)
+
+    monkeypatch.setattr(orders_api, "allocate_order_id", allocate_after_every_lookup)
+
+    responses = await asyncio.gather(
+        *(client.post("/api/v1/orders", headers=headers, json=payload) for _ in range(3))
+    )
+
+    assert sorted(resp.status_code for resp in responses) == [200, 200, 201], [
+        resp.text for resp in responses
+    ]
+    assert len({resp.json()["id"] for resp in responses}) == 1
+    assert len({resp.json()["orderId"] for resp in responses}) == 1
+    list_resp = await client.get("/api/v1/orders", headers=headers)
+    assert list_resp.json()["total"] == 1
+    # The losers' rollback also released the numbers they had allocated.
+    assert await _allocated_order_numbers() == 1
+
+
+@pytest.mark.parametrize("with_local_id", [True, False])
+async def test_order_create_other_integrity_errors_are_not_treated_as_replays(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    with_local_id: bool,
+):
+    """Only a localId conflict is answered with the existing order."""
+    _, headers = await register_and_auth(
+        client,
+        name="Integrity Owner",
+        email="integrity-owner@test.com",
+    )
+    item = await _inventory_item(client, headers, item_name="Integrity Tape")
+    taken = await create_order(client, headers, items=[order_item_payload(item, quantity=1)])
+
+    async def reuse_taken_number(db, now):
+        return taken["orderId"]
+
+    monkeypatch.setattr(orders_api, "allocate_order_id", reuse_taken_number)
+    payload = {"orderId": "CLIENT-SIDE-ID", "items": [order_item_payload(item, quantity=1)]}
+    if with_local_id:
+        payload["localId"] = str(uuid.uuid4())
+
+    resp = await client.post("/api/v1/orders", headers=headers, json=payload)
+
+    assert resp.status_code == 409, resp.text
+    list_resp = await client.get("/api/v1/orders", headers=headers)
+    assert list_resp.json()["total"] == 1
+
+async def test_order_create_rejects_blank_or_oversized_local_id(client: AsyncClient):
+    _, headers = await register_and_auth(
+        client,
+        name="Local Key Bounds Owner",
+        email="local-key-bounds-owner@test.com",
+    )
+    item = await _inventory_item(client, headers, item_name="Bounded Swabs")
+
+    for bad_local_id in ("", "x" * 37):
+        resp = await client.post(
+            "/api/v1/orders",
+            headers=headers,
+            json={
+                "orderId": "CLIENT-SIDE-ID",
+                "localId": bad_local_id,
+                "items": [order_item_payload(item, quantity=1)],
+            },
+        )
+        assert resp.status_code == 422, resp.text
+
+    list_resp = await client.get("/api/v1/orders", headers=headers)
+    assert list_resp.json()["total"] == 0
+
+
+async def test_concurrent_applies_sharing_items_do_not_deadlock(client: AsyncClient):
+    """Applies lock items in item-id order, so overlapping orders queue instead of deadlocking."""
+    _, headers = await register_and_auth(client, name="Apply Order Owner", email="apply-order@test.com")
+    category = await create_category(client, headers, name="Apply Order Category")
+    items = [
+        await create_item(client, headers, category_id=category["id"], name=f"Line {i}", quantity=1)
+        for i in range(20)
+    ]
+    forward = await create_order(client, headers, items=[order_item_payload(i, quantity=1) for i in items])
+    backward = await create_order(
+        client, headers, items=[order_item_payload(i, quantity=1) for i in reversed(items)]
+    )
+    for order in (forward, backward):
+        resp = await client.patch(
+            f"/api/v1/orders/{order['id']}/status", headers=headers, json={"status": "received"}
+        )
+        assert resp.status_code == 200, resp.text
+
+    results = await asyncio.gather(
+        client.post(f"/api/v1/orders/{forward['id']}/apply", headers=headers),
+        client.post(f"/api/v1/orders/{backward['id']}/apply", headers=headers),
+    )
+    assert [r.status_code for r in results] == [200, 200], [r.text for r in results]
+    listed = (await client.get("/api/v1/items?pageSize=100", headers=headers)).json()["items"]
+    assert {i["quantity"] for i in listed} == {3}  # 1 + 1 from each order, applied once each
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"name": "N" * 256},
+        {"unit": "u" * 51},
+        {"brand": "b" * 256},
+        {"supplierName": "s" * 256},
+        {"imageUri": "file:///" + "x" * 500},
+        {"currentStock": 2**31},
+        {"currentStock": -1},
+        {"minimumStock": -1},
+        {"itemId": ""},
+    ],
+)
+async def test_order_item_fields_out_of_range_are_rejected_not_500(client: AsyncClient, overrides):
+    _, headers = await register_and_auth(client, name="Bounds Owner", email="bounds-owner@test.com")
+    category = await create_category(client, headers, name="Bounds Category")
+    item = await create_item(client, headers, category_id=category["id"], name="Saline")
+    resp = await client.post(
+        "/api/v1/orders",
+        headers=headers,
+        json={"orderId": "CLIENT", "items": [order_item_payload(item, quantity=1, **overrides)]},
+    )
+    assert resp.status_code == 422, resp.text
+    assert (await client.get("/api/v1/orders", headers=headers)).json()["total"] == 0
+
+
+@pytest.mark.parametrize("payload", [{"orderId": "CLIENT", "items": []}, {"orderId": "CLIENT"}])
+async def test_order_without_lines_is_rejected(client: AsyncClient, payload):
+    _, headers = await register_and_auth(client, name="Empty Owner", email="empty-owner@test.com")
+    resp = await client.post("/api/v1/orders", headers=headers, json=payload)
+    assert resp.status_code == 422, resp.text
+
+
+async def test_order_item_non_http_purchase_link_is_dropped(client: AsyncClient):
+    _, headers = await register_and_auth(client, name="Link Owner", email="link-owner@test.com")
+    category = await create_category(client, headers, name="Link Category")
+    item = await create_item(client, headers, category_id=category["id"], name="Gauze")
+    order = await create_order(
+        client,
+        headers,
+        items=[order_item_payload(item, quantity=1, purchaseLink="javascript:alert(1)")],
+    )
+    assert order["items"][0]["purchaseLink"] is None
+    kept = await create_order(
+        client,
+        headers,
+        items=[order_item_payload(item, quantity=1, purchaseLink=" https://example.com/x ")],
+    )
+    assert kept["items"][0]["purchaseLink"] == "https://example.com/x"
+
+
+async def test_order_delete_is_recorded_in_activity_and_audit(client: AsyncClient):
+    from app.models import ActivityLog, AuditLog
+
+    _, headers = await register_and_auth(client, name="Delete Owner", email="delete-owner@test.com")
+    category = await create_category(client, headers, name="Delete Category")
+    item = await create_item(client, headers, category_id=category["id"], name="Swabs")
+    order = await create_order(client, headers, items=[order_item_payload(item, quantity=2)])
+    resp = await client.delete(f"/api/v1/orders/{order['id']}", headers=headers)
+    assert resp.status_code == 200, resp.text
+
+    async with TestSession() as session:
+        activity = (
+            await session.scalars(select(ActivityLog).where(ActivityLog.details == "Order deleted"))
+        ).one()
+        audit = (
+            await session.scalars(
+                select(AuditLog).where(AuditLog.entity_type == "order", AuditLog.action == "delete")
+            )
+        ).one()
+    assert activity.order_id == order["orderId"] and activity.item_name == f"Order {order['orderId']}"
+    assert audit.entity_id == order["id"]
+    assert audit.old_values == {
+        "order_id": order["orderId"],
+        "status": "pending",
+        "total_items": 1,
+        "total_units": 2,
+    }

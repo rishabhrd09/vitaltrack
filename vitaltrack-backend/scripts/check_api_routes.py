@@ -18,7 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--expected",
         type=int,
-        default=39,
+        default=44,
         help="Expected number of /api/v1 route objects.",
     )
     return parser.parse_args()

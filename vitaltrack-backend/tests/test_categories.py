@@ -278,3 +278,30 @@ async def test_categories_are_scoped_to_authenticated_user(
     )
     assert owner_resp.status_code == 200
     assert owner_resp.json()["name"] == "Private Category"
+
+
+async def test_category_delete_audits_each_cascaded_item(client: AsyncClient):
+    from sqlalchemy import select
+
+    from app.models import AuditLog
+    from tests.conftest import TestSession
+
+    _, headers = await register_and_auth(client, name="Cascade Owner", email="cascade-owner@test.com")
+    category = await create_category(client, headers, name="Cascade Ward")
+    items = [
+        await create_item(client, headers, category_id=category["id"], name=name, quantity=qty)
+        for name, qty in (("Gloves", 4), ("Masks", 0))
+    ]
+    resp = await client.delete(f"/api/v1/categories/{category['id']}", headers=headers)
+    assert resp.status_code == 200, resp.text
+
+    async with TestSession() as session:
+        rows = (
+            await session.scalars(
+                select(AuditLog).where(AuditLog.entity_type == "item", AuditLog.action == "delete")
+            )
+        ).all()
+    assert {row.entity_id: row.old_values for row in rows} == {
+        items[0]["id"]: {"name": "Gloves", "quantity": 4, "category": "Cascade Ward"},
+        items[1]["id"]: {"name": "Masks", "quantity": 0, "category": "Cascade Ward"},
+    }

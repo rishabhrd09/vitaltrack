@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from alembic import context
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
@@ -37,7 +37,7 @@ config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # Add your model's MetaData object for 'autogenerate' support
 target_metadata = Base.metadata
@@ -79,6 +79,9 @@ def do_run_migrations(connection: Connection) -> None:
     )
 
     with context.begin_transaction():
+        # Serialize revision checks and DDL across concurrent container starts.
+        connection.execute(text("SET LOCAL lock_timeout = '30s'"))
+        connection.execute(text("SELECT pg_advisory_xact_lock(1128354383, 1)"))
         context.run_migrations()
 
 
@@ -109,7 +112,11 @@ def run_migrations_online() -> None:
     """
     Run migrations in 'online' mode.
     """
-    asyncio.run(run_async_migrations())
+    supplied_connection = config.attributes.get("connection")
+    if supplied_connection is not None:
+        do_run_migrations(supplied_connection)
+    else:
+        asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():

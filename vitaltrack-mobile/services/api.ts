@@ -105,42 +105,50 @@ class ApiClientError extends Error {
     }
 }
 
-// Refresh token logic
-let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+// One promise gives every waiting request the same success OR failure.
+let refreshPromise: Promise<string> | null = null;
 
-const subscribeTokenRefresh = (cb: (token: string) => void) => {
-    refreshSubscribers.push(cb);
-};
-
-const onTokenRefreshed = (token: string) => {
-    refreshSubscribers.forEach((cb) => cb(token));
-    refreshSubscribers = [];
-};
-
-async function refreshAccessToken(): Promise<string | null> {
+async function refreshAccessToken(): Promise<string> {
     const refreshToken = await tokenStorage.getRefreshToken();
-    if (!refreshToken) return null;
+    if (!refreshToken) throw new ApiClientError('Session expired. Please log in again.', 401);
 
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30_000);
     try {
         const response = await fetch(`${API_BASE_URL}${API_VERSION}/auth/refresh`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refresh_token: refreshToken }),
+            signal: controller.signal,
         });
-
-        if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
             await tokenStorage.clearTokens();
-            return null;
+            throw new ApiClientError('Session expired. Please log in again.', 401);
         }
-
-        const data: RefreshResponse = (await response.json()) as unknown as RefreshResponse;
+        if (!response.ok) {
+            throw new ApiClientError('Server is temporarily unavailable. Please try again in a moment.', response.status);
+        }
+        const data = await response.json() as RefreshResponse;
+        if (!data.access_token || !data.refresh_token) {
+            throw new ApiClientError('Could not refresh session. Please try again.', 502);
+        }
         await tokenStorage.setTokens(data.access_token, data.refresh_token);
         return data.access_token;
-    } catch {
-        await tokenStorage.clearTokens();
-        return null;
+    } catch (error) {
+        // An outage/timeout is not proof of revoked credentials. Keep stored
+        // tokens for recovery, and settle all callers instead of stranding them.
+        if (error instanceof ApiClientError) throw error;
+        throw new ApiClientError('Unable to reach the server. Please try again.', 503);
+    } finally {
+        clearTimeout(timer);
     }
+}
+
+function sharedRefresh(): Promise<string> {
+    if (!refreshPromise) {
+        refreshPromise = refreshAccessToken().finally(() => { refreshPromise = null; });
+    }
+    return refreshPromise;
 }
 
 // Dedupe noisy "Network request failed" logs. When the device drops WiFi,
@@ -227,12 +235,14 @@ class ApiClient {
     private async request<T>(
         endpoint: string,
         options: RequestInit = {},
-        requiresAuth: boolean = true
+        requiresAuth: boolean = true,
+        responseType: 'json' | 'blob' = 'json',
+        assertCurrent: () => void = () => {}
     ): Promise<T> {
         const url = `${this.baseUrl}${API_VERSION}${endpoint}`;
 
         const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
+            ...(typeof FormData !== 'undefined' && options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
             ...(options.headers as Record<string, string>),
         };
 
@@ -246,6 +256,8 @@ class ApiClient {
 
         let response: Response;
         try {
+            assertCurrent();
+            if (options.signal?.aborted) throw new Error('Request cancelled.');
             response = await fetch(url, { ...options, headers });
         } catch (error) {
             const err = error as Error;
@@ -263,35 +275,25 @@ class ApiClient {
             throw error;
         }
 
+        assertCurrent();
+        if (options.signal?.aborted) throw new Error('Request cancelled.');
         // Handle 401 - try to refresh token
         if (response.status === 401 && requiresAuth) {
-            if (!isRefreshing) {
-                isRefreshing = true;
-                const newToken = await refreshAccessToken();
-                isRefreshing = false;
-
-                if (newToken) {
-                    onTokenRefreshed(newToken);
-                    // Retry request with new token
-                    (headers as Record<string, string>)['Authorization'] = `Bearer ${newToken}`;
-                    response = await fetch(url, { ...options, headers });
-                } else {
-                    // Refresh failed — session is dead (token revoked, account
-                    // deleted server-side, etc). Trigger auto-logout so the
-                    // route guard redirects to /login. Guard against the login
-                    // endpoint itself to avoid weird loops on mistyped passwords.
-                    await triggerAutoLogout(endpoint);
-                    throw new ApiClientError('Session expired. Please log in again.', 401);
-                }
-            } else {
-                // Wait for token refresh
-                await new Promise<void>((resolve) => {
-                    subscribeTokenRefresh((token: string) => {
-                        (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-                        resolve();
-                    });
-                });
+            try {
+                // A slow old request may return 401 after another request has
+                // already rotated the tokens. Reuse that newer access token.
+                const latest = await tokenStorage.getAccessToken();
+                const newToken = latest && headers.Authorization !== `Bearer ${latest}`
+                    ? latest : await sharedRefresh();
+                headers.Authorization = `Bearer ${newToken}`;
+                assertCurrent();
+                if (options.signal?.aborted) throw new Error('Request cancelled.');
                 response = await fetch(url, { ...options, headers });
+            } catch (error) {
+                if (error instanceof ApiClientError && error.status === 401) {
+                    await triggerAutoLogout(endpoint);
+                }
+                throw error;
             }
 
             // Retry may still return 401 if the refreshed token was immediately
@@ -311,6 +313,9 @@ class ApiClient {
             );
         }
 
+        assertCurrent();
+        if (options.signal?.aborted) throw new Error('Request cancelled.');
+        if (response.ok && responseType === 'blob') return await response.blob() as T;
         // Parse response
         const contentType = response.headers.get('content-type');
         let data: T | ApiError | null = null;
@@ -405,8 +410,29 @@ class ApiClient {
     }
 
     // Public methods
-    async get<T>(endpoint: string, requiresAuth = true): Promise<T> {
-        return this.request<T>(endpoint, { method: 'GET' }, requiresAuth);
+    async get<T>(endpoint: string, requiresAuth = true, signal?: AbortSignal): Promise<T> {
+        return this.request<T>(endpoint, { method: 'GET', signal }, requiresAuth);
+    }
+
+    /** Bounded transport for opt-in AI, including multipart and binary replies. */
+    async assistantRequest<T>(endpoint: string, options: RequestInit, assertCurrent: () => void,
+        responseType: 'json' | 'blob' = 'json'): Promise<T> {
+        const controller = new AbortController();
+        const cancel = () => controller.abort();
+        options.signal?.addEventListener('abort', cancel, { once: true });
+        if (options.signal?.aborted) cancel();
+        // Above the server's worst case for transcription (10 s upload + 8 s decode
+        // + 25 s provider), so the app does not give up on a request still running.
+        const timer = setTimeout(cancel, 50_000);
+        try {
+            const result = await this.request<T>(endpoint, { ...options, signal: controller.signal }, true, responseType, assertCurrent);
+            assertCurrent();
+            if (controller.signal.aborted) throw new Error('Request cancelled or timed out.');
+            return result;
+        } finally {
+            clearTimeout(timer);
+            options.signal?.removeEventListener('abort', cancel);
+        }
     }
 
     async post<T>(endpoint: string, body?: unknown, requiresAuth = true): Promise<T> {

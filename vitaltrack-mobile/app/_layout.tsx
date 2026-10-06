@@ -15,6 +15,7 @@ import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import Toast from 'react-native-toast-message';
 import MutationResultDialog from '@/components/common/MutationResultDialog';
+import { cleanupAudioArtifacts } from '@/features/assistant/audioFiles';
 
 // In non-dev builds (EAS preview/production APKs) the LogBox dev overlay
 // shouldn't surface warnings to end users — the UI already handles errors
@@ -58,6 +59,7 @@ function RootLayoutContent() {
     // Initialize both stores
     initializeAuth();
     initializeApp();
+    void cleanupAudioArtifacts().catch(() => {});
   }, [initializeAuth, initializeApp]);
 
   useEffect(() => {
@@ -92,6 +94,7 @@ function RootLayoutContent() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
         {/* Main app screens */}
+        <Stack.Screen name="assistant" options={{ presentation: 'modal' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="item/[id]"

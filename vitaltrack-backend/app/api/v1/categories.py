@@ -5,7 +5,10 @@ CRUD operations for inventory categories
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import noload
 
+from app.services.audit import log_audit
+from app.services.inventory_lock import lock_inventory_names
 from app.api.deps import DB, CurrentUser
 from app.models import ActivityActionType, ActivityLog, Category, Item
 from app.schemas import (
@@ -39,7 +42,7 @@ async def list_categories(
     Categories are ordered by display_order.
     """
     result = await db.execute(
-        select(Category)
+        select(Category).options(noload(Category.items))
         .where(Category.user_id == current_user.id)
         .order_by(Category.display_order)
     )
@@ -71,6 +74,7 @@ async def list_categories_with_counts(
             Category,
             func.count(Item.id).label("item_count"),
         )
+        .options(noload(Category.items))
         .outerjoin(Item, (Item.category_id == Category.id) & (Item.is_active.is_(True)))
         .where(Category.user_id == current_user.id)
         .group_by(Category.id)
@@ -148,14 +152,16 @@ async def create_category(
     - **display_order**: Order in the list (default: 0)
     - **is_default**: Whether this is a default category
     """
+    await lock_inventory_names(db, current_user.id, "category")
+
     # Check for duplicate name
     result = await db.execute(
-        select(Category).where(
+        select(Category.id).where(
             Category.user_id == current_user.id,
             func.lower(Category.name) == data.name.strip().lower(),
         )
     )
-    if result.scalar_one_or_none():
+    if result.scalars().first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Category with this name already exists",
@@ -176,7 +182,7 @@ async def create_category(
     activity = ActivityLog(
         user_id=current_user.id,
         action=ActivityActionType.ITEM_CREATE,
-        item_name=f"Category: {category.name}",
+        item_name=f"Category: {category.name}"[:255],
         item_id=category.id,
         details="Category created",
     )
@@ -207,6 +213,9 @@ async def update_category(
     
     All fields are optional - only provided fields will be updated.
     """
+    if data.name is not None:
+        await lock_inventory_names(db, current_user.id, "category")
+
     result = await db.execute(
         select(Category).where(
             Category.id == category_id,
@@ -224,13 +233,13 @@ async def update_category(
     # Check for duplicate name if changing
     if data.name and data.name.strip().lower() != category.name.strip().lower():
         name_check = await db.execute(
-            select(Category).where(
+            select(Category.id).where(
                 Category.user_id == current_user.id,
                 func.lower(Category.name) == data.name.strip().lower(),
                 Category.id != category_id,
             )
         )
-        if name_check.scalar_one_or_none():
+        if name_check.scalars().first():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Category with this name already exists",
@@ -291,16 +300,28 @@ async def delete_category(
         )
     
     category_name = category.name
-    
+
     # Log activity before deletion
     activity = ActivityLog(
         user_id=current_user.id,
         action=ActivityActionType.ITEM_DELETE,
-        item_name=f"Category: {category_name}",
+        item_name=f"Category: {category_name}"[:255],
         details="Category and all items deleted",
     )
     db.add(activity)
-    
+
+    # The cascade removes the category's items too; audit each one, as an
+    # individual item delete would.
+    for item in category.items:
+        await log_audit(
+            db,
+            user_id=current_user.id,
+            entity_type="item",
+            entity_id=item.id,
+            action="delete",
+            old_values={"name": item.name, "quantity": item.quantity, "category": category_name},
+        )
+
     await db.delete(category)
     await db.commit()
     

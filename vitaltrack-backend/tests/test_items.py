@@ -522,3 +522,158 @@ async def test_item_stock_update_concurrent_version_conflict(client: AsyncClient
     body = final.json()
     assert body["version"] == item["version"] + 1
     assert body["quantity"] in (20, 30)
+
+
+async def test_item_update_null_clears_optional_fields(client: AsyncClient):
+    """An explicit null clears an optional field; an omitted field is kept (F-1).
+
+    The edit screen sends null for a field the user cleared. Before the fix the
+    server skipped every None, so the old value came back on the next refetch.
+    """
+    _, headers = await register_and_auth(
+        client,
+        name="Clear Fields Owner",
+        email="clear-fields-owner@test.com",
+    )
+    category = await create_category(client, headers, name="Clear Fields Category")
+    item = await create_item(
+        client,
+        headers,
+        category_id=category["id"],
+        name="Saline",
+        expiryDate="2027-01-31",
+        imageUri="file:///photos/saline.jpg",
+    )
+    optional_fields = (
+        "description",
+        "expiryDate",
+        "brand",
+        "notes",
+        "supplierName",
+        "supplierContact",
+        "purchaseLink",
+        "imageUri",
+    )
+    assert all(item[field] is not None for field in optional_fields)
+
+    omitted_resp = await client.put(
+        f"/api/v1/items/{item['id']}",
+        headers=headers,
+        json={"version": item["version"], "name": "Saline Flush"},
+    )
+    assert omitted_resp.status_code == 200, omitted_resp.text
+    omitted = omitted_resp.json()
+    for field in optional_fields:
+        assert omitted[field] == item[field], field
+
+    cleared_resp = await client.put(
+        f"/api/v1/items/{item['id']}",
+        headers=headers,
+        json={
+            "version": omitted["version"],
+            **{field: None for field in optional_fields},
+        },
+    )
+    assert cleared_resp.status_code == 200, cleared_resp.text
+    cleared = cleared_resp.json()
+    assert cleared["version"] == omitted["version"] + 1
+    for field in optional_fields:
+        assert cleared[field] is None, field
+
+    # The cleared values are what a refetch returns, not the old ones.
+    get_resp = await client.get(f"/api/v1/items/{item['id']}", headers=headers)
+    assert get_resp.status_code == 200
+    refetched = get_resp.json()
+    assert refetched["name"] == "Saline Flush"
+    for field in optional_fields:
+        assert refetched[field] is None, field
+
+
+async def test_item_update_empty_purchase_link_clears_it(client: AsyncClient):
+    """purchaseLink "" is normalised to None by the schema and must still clear."""
+    _, headers = await register_and_auth(
+        client,
+        name="Clear Link Owner",
+        email="clear-link-owner@test.com",
+    )
+    category = await create_category(client, headers, name="Clear Link Category")
+    item = await create_item(client, headers, category_id=category["id"], name="Gauze")
+    assert item["purchaseLink"] == "https://example.com/supplies"
+
+    update_resp = await client.put(
+        f"/api/v1/items/{item['id']}",
+        headers=headers,
+        json={"version": item["version"], "purchaseLink": ""},
+    )
+    assert update_resp.status_code == 200, update_resp.text
+    assert update_resp.json()["purchaseLink"] is None
+
+    get_resp = await client.get(f"/api/v1/items/{item['id']}", headers=headers)
+    assert get_resp.status_code == 200
+    assert get_resp.json()["purchaseLink"] is None
+
+
+async def test_item_update_null_required_fields_are_ignored(client: AsyncClient):
+    """Required columns stay non-null: an explicit null leaves them unchanged."""
+    _, headers = await register_and_auth(
+        client,
+        name="Required Fields Owner",
+        email="required-fields-owner@test.com",
+    )
+    category = await create_category(client, headers, name="Required Fields Category")
+    item = await create_item(
+        client,
+        headers,
+        category_id=category["id"],
+        name="Feeding Tube",
+        quantity=4,
+        minimumStock=2,
+        isCritical=True,
+    )
+    required_fields = (
+        "categoryId",
+        "name",
+        "quantity",
+        "unit",
+        "minimumStock",
+        "isActive",
+        "isCritical",
+    )
+
+    update_resp = await client.put(
+        f"/api/v1/items/{item['id']}",
+        headers=headers,
+        json={
+            "version": item["version"],
+            **{field: None for field in required_fields},
+        },
+    )
+    assert update_resp.status_code == 200, update_resp.text
+    updated = update_resp.json()
+    for field in required_fields:
+        assert updated[field] == item[field], field
+
+
+async def test_item_text_keeps_word_equals_value_content(client: AsyncClient):
+    """`on…=` is no longer stripped (it deleted names like "Ondansetron=4mg"); tags still are."""
+    _, headers = await register_and_auth(client, name="Text Owner", email="text-owner@test.com")
+    category = await create_category(client, headers, name="Text Category")
+    item = await create_item(
+        client,
+        headers,
+        category_id=category["id"],
+        name="Ondansetron=4mg",
+        notes="Dose once=daily",
+        description="<img src=x onerror=alert(1)>Anti-nausea",
+    )
+    assert item["name"] == "Ondansetron=4mg"
+    assert item["notes"] == "Dose once=daily"
+    assert item["description"] == "Anti-nausea"
+
+    updated = await client.put(
+        f"/api/v1/items/{item['id']}",
+        headers=headers,
+        json={"version": item["version"], "brand": "Brand one=two"},
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["brand"] == "Brand one=two"
