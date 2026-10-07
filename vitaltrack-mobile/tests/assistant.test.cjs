@@ -240,12 +240,13 @@ function captureHarness({ prepare = async () => {}, stop = async () => {}, remem
   const calls = [], discarded = [];
   const recorder = {
     uri: 'file:///cache/synthetic.m4a',
+    isRecording: false,
     prepareToRecordAsync: async () => { calls.push('prepare'); await prepare(); },
-    record: () => calls.push('record'),
-    stop: async () => { calls.push('stop'); await stop(); },
+    record: () => { calls.push('record'); recorder.isRecording = true; },
+    stop: async () => { calls.push('stop'); try { await stop(); } finally { recorder.isRecording = false; } },
   };
   const capture = new captureTools.MicrophoneCapture(recorder, remember, async uri => { discarded.push(uri); }, () => {}, restore);
-  return { capture, calls, discarded };
+  return { capture, calls, discarded, recorder };
 }
 test('cancel during preparation keeps microphone locked until cleanup completes', async () => {
   const wait = deferred(), preparing = deferred();
@@ -309,4 +310,97 @@ test('audio-mode cleanup completes before a new take is permitted', async () => 
   assert.equal(await h.capture.start(async () => {}), false);
   wait.resolve(); await finished;
   assert.equal(h.capture.phase, 'idle');
+});
+
+test('native duration stop before JS Finish still hands the recording to transcription', async () => {
+  const h = captureHarness();
+  await h.capture.start(async () => {});
+  h.recorder.isRecording = false; // Android already released its MediaRecorder.
+  h.recorder.stop = async () => { throw new Error('Recorder already released'); };
+  assert.equal(await h.capture.finish(), 'file:///cache/synthetic.m4a');
+  assert.equal(h.discarded.length, 0);
+  assert.equal(h.capture.phase, 'idle');
+});
+
+test('native start no-op never reports Listening and cleans up prepared recording', async () => {
+  const h = captureHarness();
+  h.recorder.record = () => {};
+  await assert.rejects(h.capture.start(async () => {}), /microphone did not start/);
+  assert.equal(h.capture.phase, 'idle');
+  assert.equal(h.discarded.length, 1);
+  assert.deepEqual(h.calls, ['prepare', 'stop']);
+});
+
+test('cleanup of an unstarted recorder preserves the useful startup error', async () => {
+  const h = captureHarness({ stop: async () => { throw new Error('Nothing to stop'); } });
+  h.recorder.record = () => { throw new Error('Microphone is unavailable'); };
+  await assert.rejects(h.capture.start(async () => {}), /Microphone is unavailable/);
+  assert.equal(h.capture.phase, 'idle');
+  assert.equal(h.discarded.length, 1);
+});
+
+const readiness = load('features/assistant/readiness.ts');
+test('microphone setup identifies each prerequisite, including disabled preferences', () => {
+  const ready = { loaded: true, supported: true, modelChecked: true, modelReady: true, enabled: true, microphone: true };
+  assert.equal(readiness.microphoneReadiness(ready), null);
+  for (const [key, message] of [['loaded', /Checking/], ['modelChecked', /Checking/], ['supported', /Android/], ['modelReady', /Download/], ['enabled', /Turn on/], ['microphone', /tap-to-talk/]]) {
+    assert.match(readiness.microphoneReadiness({ ...ready, [key]: false }), message);
+  }
+});
+test('10-second answers never auto-dismiss choices, active work, pinned answers or screen readers', () => {
+  assert.equal(readiness.ANSWER_VISIBLE_MS, 10_000);
+  const eligible = { hasAnswer: true, hasChoices: false, keptOpen: false, busy: false, recording: false, screenReader: false };
+  assert.equal(readiness.canDismissAnswer(eligible), true);
+  assert.equal(readiness.canDismissAnswer({ ...eligible, hasAnswer: false }), false);
+  for (const key of ['hasChoices', 'keptOpen', 'busy', 'recording', 'screenReader']) assert.equal(readiness.canDismissAnswer({ ...eligible, [key]: true }), false);
+});
+
+test('voice setup persists across module reloads and stays isolated between accounts', async () => {
+  const disk = new Map();
+  const dependencies = {
+    '@react-native-async-storage/async-storage': { default: { getItem: async k => disk.get(k), setItem: async (k, v) => disk.set(k, v) } },
+    './policy': { CLOUD_VOICE_ENABLED: false },
+  };
+  const first = load('features/assistant/preferences.ts', dependencies);
+  await first.savePreferences('owner-a', { ...first.defaults, enabled: true, microphone: true, spokenReplies: true });
+  const restarted = load('features/assistant/preferences.ts', dependencies);
+  const restored = await restarted.loadPreferences('owner-a');
+  assert.equal(restored.enabled, true); assert.equal(restored.microphone, true); assert.equal(restored.spokenReplies, true);
+  assert.equal(restored.cloud, false);
+  assert.equal((await restarted.loadPreferences('owner-b')).microphone, false);
+});
+
+test('full stock read pipeline paginates, verifies ownership and derives answer statistics from fetched rows', async () => {
+  const session = load('services/assistantSession.ts', { '@/store/useAuthStore': { useAuthStore: {
+    getState: () => ({ isAuthenticated: true, user: { id: 'owner-a' } }), subscribe: () => () => {},
+  } } });
+  const rows = Array.from({ length: 101 }, (_, i) => item(String(i), `Test item ${i}`, i === 100 ? 0 : 18));
+  rows[0].quantity = 2;
+  rows[1].isActive = false;
+  rows[100].supplierName = 'Synthetic Supplier';
+  const urls = [];
+  const service = load('services/items.ts', {
+    './api': { api: { get: async (url, requiresAuth, signal) => {
+      assert.equal(requiresAuth, true); assert.equal(signal.aborted, false); urls.push(url);
+      return { items: urls.length === 1 ? rows.slice(0, 100) : rows.slice(100), total: 101 };
+    } }, ApiClientError: Error },
+    '@/utils/logger': { logger: { info() {} } }, './assistantSession': session,
+  }).itemService;
+  let state;
+  const reader = load('features/assistant/snapshot.ts', {
+    '@tanstack/react-query': { onlineManager: { isOnline: () => true } },
+    '@/providers/QueryProvider': { queryClient: {
+      isMutating: () => 0, getQueryState: () => state,
+      fetchQuery: async options => { const data = await options.queryFn({ signal: new AbortController().signal }); state = { data, dataUpdatedAt: Date.now(), isInvalidated: false }; return data; },
+    } }, '@/services/items': { itemService: service }, '@/services/assistantSession': session,
+  });
+  const snapshot = await reader.inventorySnapshot(session.captureSession(), new AbortController().signal);
+  assert.deepEqual(urls, ['/items?page=1&pageSize=100', '/items?page=2&pageSize=100']);
+  assert.equal(snapshot.items.length, 101);
+  const result = core.answerIntent(core.parseLocal('give me a stock summary'), snapshot.items, snapshot.timestamp);
+  assert.deepEqual(Array.from(result.statistics, s => [s.label, s.value]), [['Active items', 100], ['Low stock', 1], ['Out of stock', 1]]);
+  const combined = core.answerIntent(core.parseLocal('how many Test item 100 are left and who supplies them'), snapshot.items, snapshot.timestamp);
+  assert.match(combined.text, /0 pairs/); assert.match(combined.text, /Synthetic Supplier/);
+  await reader.inventorySnapshot(session.captureSession(), new AbortController().signal);
+  assert.equal(urls.length, 2, 'fresh verified data avoids redundant requests');
 });

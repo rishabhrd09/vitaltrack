@@ -1,9 +1,8 @@
 /**
- * Release policy: cloud voice (Groq, Sarvam, Kokoro, Alba) is switched off in
- * this release. Listening, understanding and speech run on the phone, and the
- * only server call the assistant makes is the read-only inventory refresh.
- *
- * Turning it on is a separate decision: server AI flags, provider data review,
- * and accepting the consent/usage metadata that cloud requests write.
+ * Optional Groq TEXT interpretation is available after server configuration
+ * and explicit per-account consent. Familiar commands remain local.
+ * Cloud audio stays disabled: recordings and spoken replies stay on-device.
+ * Cloud text requests write consent/usage metadata, never inventory.
  */
+export const CLOUD_TEXT_ENABLED = true;
 export const CLOUD_VOICE_ENABLED = false;

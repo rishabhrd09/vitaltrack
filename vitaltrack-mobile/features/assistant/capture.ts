@@ -1,12 +1,13 @@
 /** Serializes the native microphone, including cancellation DURING preparation/stop. */
 type Recorder = {
   uri: string | null;
+  readonly isRecording: boolean;
   prepareToRecordAsync(): Promise<unknown>;
   record(options: { forDuration: number }): void;
   stop(): Promise<void>;
 };
 export type CapturePhase = 'idle' | 'preparing' | 'recording' | 'stopping';
-type Capture = { cancelled: boolean; prepared: boolean; uri: string | null };
+type Capture = { cancelled: boolean; prepared: boolean; recorded: boolean; uri: string | null };
 
 export class MicrophoneCapture {
   private current: Capture | null = null;
@@ -28,30 +29,37 @@ export class MicrophoneCapture {
   private async stop(capture: Capture) {
     if (capture.prepared) {
       this.phaseChanged('stopping');
-      try { await this.recorder.stop(); }
+      // Expo also stops natively at forDuration. Do not stop an already released
+      // MediaRecorder a second time when the JS timeout / Finish arrives later.
+      try { if (!capture.recorded || this.recorder.isRecording) await this.recorder.stop(); }
       finally { capture.uri = this.recorder.uri || capture.uri; capture.prepared = false; }
     }
   }
-  async start(preparePermissionAndMode: () => Promise<void>): Promise<boolean> {
+  async start(preparePermissionAndMode: () => Promise<void>, assertCanRecord: () => void = () => {}): Promise<boolean> {
     if (this.current) return false;
-    const capture: Capture = { cancelled: false, prepared: false, uri: null };
+    const capture: Capture = { cancelled: false, prepared: false, recorded: false, uri: null };
     this.current = capture; this.phaseChanged('preparing');
     let started = false;
     try {
       await preparePermissionAndMode();
       if (capture.cancelled) return false;
+      assertCanRecord();
       await this.recorder.prepareToRecordAsync();
       capture.prepared = true; capture.uri = this.recorder.uri;
       if (!capture.uri) throw new Error('Recording storage unavailable.');
       // Register even if cancelled: failed deletion can be retried on the next launch.
       await this.remember(capture.uri);
       if (capture.cancelled) return false;
+      assertCanRecord();
       this.recorder.record({ forDuration: 28 });
+      if (!this.recorder.isRecording) throw new Error('The microphone did not start. Check Android microphone access and try again.');
+      capture.recorded = true;
       started = true; this.phaseChanged('recording');
       return true;
     } finally {
       if (!started) {
         try { await this.stop(capture); }
+        catch { /* Preserve the startup error; stopping an unstarted recorder can also fail. */ }
         finally { await this.discard(capture.uri).catch(() => {}); await this.release(capture); }
       }
     }
@@ -83,6 +91,6 @@ export function microphoneLevel(db: number | undefined): { percent: number; mess
   if (typeof db !== 'number' || !Number.isFinite(db)) return { percent: 0, message: 'Level unavailable — check the transcript after recording.' };
   return {
     percent: Math.round(Math.min(100, Math.max(0, (db + 60) / 60 * 100))),
-    message: db < -50 ? 'Very quiet — check your microphone or move closer.' : db > -3 ? 'Very loud — move a little farther from the microphone.' : 'Sound detected — speak naturally, then tap Finish.',
+    message: db < -50 ? 'Very quiet — check your microphone or move closer.' : db > -3 ? 'Very loud — move a little farther from the microphone.' : 'Sound detected — speak naturally, then tap to stop.',
   };
 }

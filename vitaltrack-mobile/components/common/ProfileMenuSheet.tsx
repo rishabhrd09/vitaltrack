@@ -244,9 +244,9 @@ export default function ProfileMenuSheet({
 
                     <MenuItem
                         icon="mic-outline"
-                        title="AI & Voice"
-                        subtitle="Read-only stock assistant and settings"
-                        onPress={() => { onDismiss(); router.navigate('/assistant'); }}
+                        title="Voice setup"
+                        subtitle="Speech download, microphone & spoken replies"
+                        onPress={() => { onDismiss(); router.navigate({ pathname: '/assistant', params: { mode: 'settings' } }); }}
                     />
 
                     <MenuItem

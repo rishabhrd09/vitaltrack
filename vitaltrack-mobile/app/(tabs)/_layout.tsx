@@ -4,15 +4,23 @@
  */
 
 import { Tabs } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
+import AssistantExperience from '@/components/assistant/AssistantExperience';
+import { BottomTabBar } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from '@/theme/ThemeContext';
 
 export default function TabLayout() {
   const { colors } = useTheme();
+  const active = useIsFocused();
 
   return (
     <Tabs
+      tabBar={props => <View style={{ backgroundColor: colors.bgCard }}>
+        <AssistantExperience embedded active={active} screenKey={props.state.routes[props.state.index].key} />
+        <BottomTabBar {...props} />
+      </View>}
       screenOptions={{
         headerShown: false,
         tabBarStyle: [styles.tabBar, { backgroundColor: colors.bgCard, borderTopColor: colors.borderPrimary }],

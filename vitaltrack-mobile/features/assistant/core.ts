@@ -3,7 +3,8 @@ import { isLowStock, isOutOfStock, type Item } from '../../types';
 export type IntentName = 'read_item' | 'summary' | 'low_stock' | 'out_of_stock' | 'close' | 'stop_speaking' | 'clarify' | 'unsupported_action';
 export type Field = 'quantity' | 'supplier' | 'status';
 export type Intent = { intent: IntentName; item_query: string | null; reference: 'named' | 'previous' | 'none'; fields: Field[] };
-export type Answer = { title: string; text: string; items: Item[]; choices: Item[]; resolvedId?: string; timestamp: number; stale: boolean };
+export type Answer = { title: string; text: string; items: Item[]; choices: Item[]; resolvedId?: string; timestamp: number; stale: boolean;
+  statistics?: { label: string; value: number; tone: 'neutral' | 'low' | 'out' }[] };
 export const command = (intent: IntentName): Intent => ({ intent, item_query: null, reference: 'none', fields: [] });
 // Lower-case, unify apostrophes and drop the sentence punctuation that speech transcripts add.
 // Used for questions and item names alike, so exact name matching stays consistent.
@@ -206,7 +207,8 @@ export function answerIntent(intent: Intent, source: Item[], timestamp: number, 
     const label = intent.intent === 'low_stock' ? 'Low stock' : 'Out of stock';
     return { ...base, title: label, text: `${label}: ${selected.length} ${selected.length === 1 ? 'item' : 'items'}. ${selected.slice(0, 3).map(i => `${i.name}: ${i.quantity} ${i.unit || 'units'}`).join('. ')}${selected.length > 3 ? '. See the full list on screen.' : ''}`, items: selected };
   }
-  return { ...base, title: 'Stock summary', text: `${items.length} active items. ${low.length} low-stock items. ${out.length} out-of-stock items. Counts reflect the last successful refresh.` };
+  return { ...base, title: 'Stock summary', text: `${items.length} active items. ${low.length} low-stock items. ${out.length} out-of-stock items. Counts reflect the last successful refresh.`,
+    statistics: [{ label: 'Active items', value: items.length, tone: 'neutral' }, { label: 'Low stock', value: low.length, tone: 'low' }, { label: 'Out of stock', value: out.length, tone: 'out' }] };
 }
 
 export function speechText(answer: Answer): string {

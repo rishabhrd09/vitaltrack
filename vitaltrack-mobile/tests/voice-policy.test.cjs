@@ -1,5 +1,5 @@
 /* eslint-env node */
-// Offline-only release: cloud voice is switched off in code, not only by server config.
+// Text interpretation can be opted into without enabling cloud audio.
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const fs = require('node:fs');
@@ -19,11 +19,13 @@ function load(file, dependencies) {
   return mod.exports;
 }
 
-test('cloud voice is switched off in this release', () => {
-  assert.equal(load('features/assistant/policy.ts', {}).CLOUD_VOICE_ENABLED, false);
+test('only cloud text is available in this release; audio stays on the phone', () => {
+  const policy = load('features/assistant/policy.ts', {});
+  assert.equal(policy.CLOUD_VOICE_ENABLED, false);
+  assert.equal(policy.CLOUD_TEXT_ENABLED, true);
 });
 
-test('settings saved by an earlier build cannot route anything to the cloud', async () => {
+test('existing text opt-in never restores old cloud audio providers', async () => {
   const saved = { enabled: true, cloud: true, microphone: true, spokenReplies: true, inputProvider: 'groq', speechProvider: 'sarvam' };
   const storage = { getItem: async () => JSON.stringify(saved), setItem: async () => {} };
   const { loadPreferences } = load('features/assistant/preferences.ts', {
@@ -32,17 +34,17 @@ test('settings saved by an earlier build cannot route anything to the cloud', as
   });
   // Spread copies the sandbox object into this realm for a strict comparison.
   assert.deepEqual({ ...(await loadPreferences('owner')) }, {
-    enabled: true, cloud: false, microphone: true, spokenReplies: true, inputProvider: 'offline', speechProvider: 'device',
+    enabled: true, cloud: true, microphone: true, spokenReplies: true, inputProvider: 'offline', speechProvider: 'device',
   });
 });
 
-test('every cloud call on the assistant screen sits behind CLOUD_VOICE_ENABLED', () => {
-  const source = ts.createSourceFile('assistant.tsx', read('app/assistant.tsx'), ts.ScriptTarget.ES2020, true, ts.ScriptKind.TSX);
+test('every cloud audio call remains gated independently of cloud text', () => {
+  const source = ts.createSourceFile('assistant.tsx', read('components/assistant/AssistantExperience.tsx'), ts.ScriptTarget.ES2020, true, ts.ScriptKind.TSX);
   const cloudCalls = [];
   const visit = (node) => {
     if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
       && node.expression.expression.getText(source) === 'assistant'
-      && ['capabilities', 'setConsent', 'interpret', 'transcribe', 'speak'].includes(node.expression.name.text)) {
+      && ['transcribe', 'speak'].includes(node.expression.name.text)) {
       cloudCalls.push(node);
     }
     ts.forEachChild(node, visit);
@@ -63,7 +65,7 @@ test('every cloud call on the assistant screen sits behind CLOUD_VOICE_ENABLED',
     }
     return false;
   };
-  assert.ok(cloudCalls.length >= 7, `expected the known cloud call sites, found ${cloudCalls.length}`);
+  assert.equal(cloudCalls.length, 2, 'both audio upload and cloud speech must be guarded');
   const unguarded = cloudCalls.filter((call) => !guarded(call)).map((call) => `line ${source.getLineAndCharacterOfPosition(call.getStart()).line + 1}: ${call.getText(source).slice(0, 60)}`);
   assert.deepEqual(unguarded, []);
 });

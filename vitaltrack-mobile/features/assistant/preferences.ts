@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CLOUD_VOICE_ENABLED } from './policy';
+import { CLOUD_TEXT_ENABLED, CLOUD_VOICE_ENABLED } from './policy';
 
 export type InputProvider = 'offline' | 'groq' | 'sarvam';
 export type SpeechProvider = 'device' | 'kokoro' | 'sarvam';
@@ -13,9 +13,10 @@ export async function loadPreferences(owner: string): Promise<Preferences> {
     const stored: Preferences = { enabled: value.enabled === true, cloud: value.cloud === true, microphone: value.microphone === true, spokenReplies: value.spokenReplies === true,
       inputProvider: ['offline', 'groq', 'sarvam'].includes(value.inputProvider) ? value.inputProvider : 'offline',
       speechProvider: ['device', 'kokoro', 'sarvam'].includes(value.speechProvider) ? value.speechProvider : 'device' };
-    // Cloud voice is off in this release: settings saved by an earlier build
-    // must not route anything to a cloud provider.
-    return CLOUD_VOICE_ENABLED ? stored : { ...stored, cloud: false, inputProvider: 'offline', speechProvider: 'device' };
+    // Text opt-in never enables audio upload or cloud speech, including old settings.
+    return { ...stored, cloud: !!(CLOUD_TEXT_ENABLED || CLOUD_VOICE_ENABLED) && stored.cloud,
+      inputProvider: CLOUD_VOICE_ENABLED ? stored.inputProvider : 'offline',
+      speechProvider: CLOUD_VOICE_ENABLED ? stored.speechProvider : 'device' };
   } catch { return { ...defaults }; }
 }
 export async function savePreferences(owner: string, preferences: Preferences) {

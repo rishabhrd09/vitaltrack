@@ -335,6 +335,86 @@ async def test_intent_only_and_database_released_before_inference(client, monkey
         assert not hasattr(row, "question")
 
 
+async def test_text_only_pilot_routes_reviewed_text_through_provider_contract(
+    client, monkeypatch
+):
+    """Exercise the enabled-text/disabled-audio configuration used by the APK."""
+    monkeypatch.setattr(settings, "AI_TRANSCRIBE_ENABLED", False)
+    monkeypatch.setattr(settings, "AI_SPEECH_ENABLED", False)
+    account, headers = await register_and_auth(client)
+    available = (await client.get("/api/v1/ai/capabilities", headers=headers)).json()
+    assert available["interpret"] is True
+    assert available["transcribe"] is False
+    assert available["speak"] is False
+    assert available["consented"] is False
+    assert available["transcription_providers"] == []
+    assert available["speech_providers"] == []
+
+    question = "Could you check the remaining quantity of Synthetic gloves for me?"
+    calls = []
+
+    async def provider(url, provider_headers, **kwargs):
+        assert url == "https://api.groq.com/openai/v1/chat/completions"
+        assert test_engine.pool.checkedout() == 0
+        body = kwargs["json"]
+        assert body["model"] == settings.GROQ_INTENT_MODEL
+        assert body["response_format"]["json_schema"]["strict"] is True
+        assert json.loads(body["messages"][1]["content"]) == {
+            "question": question,
+            "has_previous_item": False,
+        }
+        assert "tools" not in body
+        calls.append(url)
+        return json.dumps(
+            {
+                "choices": [
+                    {
+                        "finish_reason": "stop",
+                        "message": {"content": json.dumps(INTENT)},
+                    }
+                ],
+                "usage": {"prompt_tokens": 20, "completion_tokens": 15},
+            }
+        ).encode()
+
+    monkeypatch.setattr(ai_provider, "bounded_call", provider)
+    request = {"question": question, "has_previous_item": False}
+    assert (
+        await client.post("/api/v1/ai/interpret", headers=headers, json=request)
+    ).status_code == 403
+    assert not calls
+    consent = await client.put(
+        "/api/v1/ai/consent",
+        headers=headers,
+        json={"version": CONSENT_VERSION, "accepted": True, "scopes": ["groq_text"]},
+    )
+    assert consent.status_code == 200
+    response = await client.post("/api/v1/ai/interpret", headers=headers, json=request)
+    assert response.status_code == 200, response.text
+    assert response.json() == INTENT
+    assert len(calls) == 1
+    async with TestSession() as db:
+        usage = (await db.scalars(select(AIUsage))).one()
+        assert usage.user_id == account["user"]["id"]
+        assert usage.kind == "interpret" and usage.status == "complete"
+        assert usage.input_tokens == 20 and usage.output_tokens == 15
+    assert (
+        await client.post(
+            "/api/v1/ai/transcribe",
+            headers=headers,
+            files={"file": ("test.wav", wav(), "audio/wav")},
+        )
+    ).status_code == 503
+    assert (
+        await client.post(
+            "/api/v1/ai/speak",
+            headers=headers,
+            json={"text": "Synthetic stock", "provider": "kokoro"},
+        )
+    ).status_code == 503
+    assert len(calls) == 1
+
+
 async def test_atomic_daily_reservation_and_failed_calls_still_count(
     client, monkeypatch
 ):

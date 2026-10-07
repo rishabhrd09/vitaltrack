@@ -4,6 +4,7 @@ import ai.moonshine.voice.Transcriber
 import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
@@ -23,6 +24,8 @@ class CareKoshVoiceModule : Module() {
     private var tts: TextToSpeech? = null // touched only on main thread
     private var ttsReady = false
     private var speechInit = 0
+    private var activeSpeech: Promise? = null
+    private var activeSpeechId: String? = null
     private val ttsWaiters = mutableListOf<(TextToSpeech?) -> Unit>()
     private val context
         get() = requireNotNull(appContext.reactContext) { "Voice context unavailable" }
@@ -68,7 +71,12 @@ class CareKoshVoiceModule : Module() {
 
     private fun cancel() {
         generation.incrementAndGet()
-        main.post { tts?.stop() }
+        main.post {
+            tts?.stop()
+            activeSpeech?.reject("SPEECH_CANCELLED", "Speech cancelled", null)
+            activeSpeech = null
+            activeSpeechId = null
+        }
         // Never free native memory concurrently with an in-flight inference.
         if (!cleanupQueued.compareAndSet(false, true)) return
         try {
@@ -88,6 +96,7 @@ class CareKoshVoiceModule : Module() {
     private fun withSpeech(
         promise: Promise,
         cancellable: Boolean = true,
+        resolveImmediately: Boolean = true,
         action: (TextToSpeech) -> Any?,
     ) {
         val expected = generation.get()
@@ -98,8 +107,10 @@ class CareKoshVoiceModule : Module() {
                     requireNotNull(engine) {
                         "Install an offline English voice in Android Text-to-speech settings"
                     }
-                    promise.resolve(action(engine))
+                    val result = action(engine)
+                    if (resolveImmediately) promise.resolve(result)
                 } catch (e: Exception) {
+                    if (activeSpeech === promise) { activeSpeech = null; activeSpeechId = null }
                     promise.reject("DEVICE_SPEECH", e.message, e)
                 }
             }
@@ -233,7 +244,9 @@ class CareKoshVoiceModule : Module() {
             }
         }
         AsyncFunction("speakOffline") { text: String, promise: Promise ->
-            withSpeech(promise) { engine ->
+            // Resolve when speech finishes, not when it is merely queued. The UI
+            // can then give the user a full reading window without cutting speech.
+            withSpeech(promise, resolveImmediately = false) { engine ->
                 require(text.isNotBlank() && text.length <= 640)
                 val voice =
                     requireNotNull(localVoice(engine)) {
@@ -242,12 +255,42 @@ class CareKoshVoiceModule : Module() {
                 check(engine.setVoice(voice) == TextToSpeech.SUCCESS) {
                     "Offline voice unavailable"
                 }
+                activeSpeech?.reject("SPEECH_CANCELLED", "Replaced by another reply", null)
+                val utterance = "carekosh-reply-${System.nanoTime()}"
+                activeSpeech = promise
+                activeSpeechId = utterance
+                engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {}
+                    override fun onDone(utteranceId: String?) { finishSpeech(utteranceId, false) }
+                    @Suppress("DEPRECATION")
+                    override fun onError(utteranceId: String?) { finishSpeech(utteranceId, true) }
+                    override fun onStop(utteranceId: String?, interrupted: Boolean) { finishSpeech(utteranceId, true) }
+                    private fun finishSpeech(id: String?, failed: Boolean) {
+                        main.post {
+                            if (id == activeSpeechId) {
+                                if (failed) activeSpeech?.reject("DEVICE_SPEECH", "Speech interrupted", null)
+                                else activeSpeech?.resolve(null)
+                                activeSpeech = null
+                                activeSpeechId = null
+                            }
+                        }
+                    }
+                })
                 check(
-                    engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "carekosh-reply") ==
+                    engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, utterance) ==
                         TextToSpeech.SUCCESS
                 ) {
                     "Could not play the offline voice"
                 }
+                // Some device engines never report completion. Bound the wait.
+                main.postDelayed({
+                    if (activeSpeechId == utterance) {
+                        engine.stop()
+                        activeSpeech?.reject("DEVICE_SPEECH", "Device speech timed out", null)
+                        activeSpeech = null
+                        activeSpeechId = null
+                    }
+                }, 90_000)
                 null
             }
         }

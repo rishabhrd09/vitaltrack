@@ -94,7 +94,7 @@ function RootLayoutContent() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
         {/* Main app screens */}
-        <Stack.Screen name="assistant" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="assistant" options={{ presentation: 'transparentModal', animation: 'fade', contentStyle: { backgroundColor: 'transparent' } }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="item/[id]"
