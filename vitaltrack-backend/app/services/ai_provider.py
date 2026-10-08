@@ -83,6 +83,12 @@ Allowed: inventory_query with stock filters, exact spoken category/supplier/bran
 missing supplier, multiple item names, sorting; draft_order prepares LOCAL UNSAVED
 lines (set/add/remove), draft_mode=new for preparing a fresh draft, edit for changing an explicitly existing draft, optionally include_low/include_out. review_draft shows the
 local draft. inventory_export asks for a touch-reviewed inventory PDF only.
+Natural paraphrases such as 'put together', 'make a purchase order draft',
+'I would need ... in an unsaved order' and courteous sentences are allowed.
+The words order/purchase do not make an UNSAVED draft a purchase or a server write.
+Combine all supported query filters in one specification; do not discard a
+condition. If the schema cannot represent a requested condition/calculation,
+return clarify or unsupported_action instead of answering a simpler question.
 Save/confirm/export an ORDER, stock edits, mark received, apply, supplier sending,
 medical advice or history => unsupported_action. Never interpret an ambiguous
 'Set gloves to 20' as a draft; draft editing must explicitly say draft/order.
@@ -96,6 +102,18 @@ intents have draft_mode=null, lines=[], include_low=false, include_out=false. Fo
 all fields (unused name filters null, item_queries=[], status=any, sort=none,
 missing_supplier=false, previous=false). previous=true only for list follow-ups.
 Do not omit any requested item or silently convert units. Keep distinct names.
+Examples (names/quantities are illustrative, never inventory facts):
+- 'Could you make a purchase order draft? For Synthetic gloves I need twenty
+  pairs, and for masks make it five boxes.' => draft_order/new, set Synthetic
+  gloves=20 pairs and masks=5 boxes; no save operation.
+- 'Show low-stock items in wound care supplied by Good Supplier, sorted by name'
+  => inventory_query: status=low, category=wound care, supplier=Good Supplier,
+  sort=name. All other fields use their unused defaults.
+- 'Which items have no supplier recorded?' => inventory_query/missing_supplier.
+- 'Prepare an order for the low-stock and out-of-stock items' => draft_order/new,
+  include_low=true, include_out=true, lines=[]. Replenishment is computed locally.
+- 'Set gloves to 20' => clarify (inventory versus draft is ambiguous).
+- 'Draft enough gloves for next month' => unsupported_action (no forecast data).
 """
 
 
@@ -109,7 +127,7 @@ async def interpret(question: str, has_previous: bool, contract_version: int = 1
             "temperature": 0,
             "reasoning_effort": "low",
             "include_reasoning": False,
-            "max_completion_tokens": 1024,
+            "max_completion_tokens": 3072 if contract_version == 2 else 1024,
             "messages": [
                 {"role": "system", "content": SYSTEM_V2 if contract_version == 2 else SYSTEM},
                 {
@@ -180,8 +198,11 @@ async def interpret(question: str, has_previous: bool, contract_version: int = 1
                     name = re.escape(item_words)
                     unit_words = " ".join(re.findall(r"\w+", (line.unit or "").casefold()))
                     unit = re.escape(unit_words)
-                    before = rf"\b{amount}(?: more)?" + (rf" {unit}(?: of)?" if unit else "(?: of)?") + rf" {name}\b"
-                    after = rf"\b{name}(?: to| at| for| is)? {amount}" + (rf" {unit}\b" if unit else r"\b(?! (?:pairs?|boxes?|bottles?|pieces?|units?|packs?)\b)")
+                    before = rf"\b{amount}(?: more)?" + (rf" {unit}(?: of)?" if unit else "(?: of)?") + rf"(?: the)? {name}\b"
+                    # Bound grammatical connectors; they cannot cross another item,
+                    # a different number, a stock/history clause, or an arbitrary phrase.
+                    bridge = r"(?: (?:to|at|for|is|i|we|would|will|need|want|require|like|please|make|it|put|add|order|quantity|should|be)){0,8}"
+                    after = rf"\b{name}{bridge} {amount}" + (rf" {unit}\b" if unit else r"\b(?! (?:pairs?|boxes?|bottles?|pieces?|units?|packs?)\b)")
                     if not re.search(before, numeric_words) and not re.search(after, numeric_words):
                         raise ValueError()
                 if line.unit is not None and not grounded(line.unit):
@@ -377,6 +398,8 @@ async def transcribe(content: bytes, extension: str):
             "language": "en",
             "response_format": "verbose_json",
             "temperature": "0",
+            # Generic vocabulary only: no account inventory or private item hints.
+            "prompt": "CareKosh inventory questions and unsaved order drafts. Stock, supplier, gloves, surgical masks, saline, wound care. Quantities may use pairs, boxes, bottles or pieces.",
         },
     )
     try:

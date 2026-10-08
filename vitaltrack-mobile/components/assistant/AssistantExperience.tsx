@@ -9,22 +9,23 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { captureSession, assertSession } from '@/services/assistantSession';
 import * as assistant from '@/services/assistant';
-import { answerIntent, command, commandExamples, parseLocal, speechText, type Answer, type Intent } from '@/features/assistant/core';
+import { answerIntent, command, commandExamples, speechText, type Answer, type Intent } from '@/features/assistant/core';
 import { defaults, loadPreferences, savePreferences, type Preferences } from '@/features/assistant/preferences';
 import { cachedItemNames, inventorySnapshot, categorySnapshot } from '@/features/assistant/snapshot';
 import { discardAudio, rememberAudio } from '@/features/assistant/audioFiles';
 import { MicrophoneCapture, microphoneLevel, type CapturePhase } from '@/features/assistant/capture';
 import { offlineVoice, offlineSupported } from '@/features/assistant/offlineVoice';
-import { CLOUD_TEXT_ENABLED, CLOUD_VOICE_ENABLED } from '@/features/assistant/policy';
+import { CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, CLOUD_VOICE_ENABLED } from '@/features/assistant/policy';
 import { ANSWER_VISIBLE_MS, canDismissAnswer, microphoneReadiness } from '@/features/assistant/readiness';
 import AnswerList from '@/components/assistant/AnswerList';
-import { parseExpanded, queryInventory, inventoryAnswer, Clarification } from '@/features/assistant/queries';
+import { routeLocally, queryInventory, inventoryAnswer, describeQuery, Clarification } from '@/features/assistant/queries';
 import { queryDefaults, specification, type Specification, type InventoryQuery } from '@/features/assistant/contracts';
 import { getDraft, prepareDraft, writeDraft, mergeDrafts, type CartItem } from '@/features/assistant/drafts';
 import { exportInventoryPdf } from '@/utils/inventoryPdfExport';
 import VoiceSetup, { VoiceButton } from '@/components/assistant/VoiceSetup';
 
-const recordingOptions = { ...RecordingPresets.HIGH_QUALITY, sampleRate: 16000, numberOfChannels: 1, bitRate: 64000, isMeteringEnabled: true };
+const recordingOptions = { ...RecordingPresets.HIGH_QUALITY, sampleRate: 44100, numberOfChannels: 1, bitRate: 128000, isMeteringEnabled: true,
+  android: { ...RecordingPresets.HIGH_QUALITY.android, audioSource: 'voice_recognition' as const } };
 /** Permission results can arrive before Android resumes our activity. Never record behind the dialog. */
 function waitForMicrophoneForeground(signal: AbortSignal): Promise<void> {
   if (signal.aborted) return Promise.reject(new Error('Microphone request cancelled.'));
@@ -91,6 +92,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const previousItem = useRef<string | undefined>(undefined);
   const pendingIntent = useRef<Intent | Specification | undefined>(undefined);
   const answeredQuestion = useRef('');
+  const understandingSource = useRef('Matched locally');
   const turn = useRef(0);
   const controller = useRef<AbortController | null>(null);
   const audioFile = useRef<string | null>(null);
@@ -159,7 +161,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
         .then(preferences => { if (currentScreen) { assertSession(session); setPrefs(preferences); setLoaded(true); } })
         .catch(() => { if (currentScreen) setError('Session changed. Reopen the assistant.'); });
       // This reads availability only; no question is sent until opt-in and Send.
-      if (CLOUD_TEXT_ENABLED || CLOUD_VOICE_ENABLED) void assistant.capabilities(session).then(available => { if (currentScreen) { assertSession(session); setCaps(available); } }).catch(() => {});
+      if (CLOUD_TEXT_ENABLED || CLOUD_TRANSCRIPTION_ENABLED || CLOUD_VOICE_ENABLED) void assistant.capabilities(session).then(available => { if (currentScreen) { assertSession(session); setCaps(available); } }).catch(() => {});
       if (offlineSupported) {
         void offlineVoice.status().then(status => { if (currentScreen) setModel(status); }).catch(() => { if (currentScreen) setError('Offline speech pack could not be checked. Open Voice setup and recheck.'); }).finally(() => { if (currentScreen) setModelChecked(true); });
         void offlineVoice.deviceStatus().then(voice => { if (currentScreen) setDeviceVoice(voice); }).catch(() => { if (currentScreen) setDeviceVoice({ ready: false, name: 'Install an offline English voice in Android Text-to-speech settings.' }); });
@@ -228,12 +230,13 @@ export default function AssistantExperience({ embedded = false, active = true, s
     finally { if (mounted.current && controller.current === abort) setBusy(''); }
   }
   async function cloudConsent(scope: assistant.ConsentScope, next: Preferences) {
-    if (!(scope === 'groq_text' ? CLOUD_TEXT_ENABLED : CLOUD_VOICE_ENABLED)) return;
+    if (!(scope === 'groq_text' ? CLOUD_TEXT_ENABLED : scope === 'groq_audio' ? CLOUD_TRANSCRIPTION_ENABLED : CLOUD_VOICE_ENABLED)) return;
     cancel(); setBusy('Saving consent…');
     const current = turn.current;
     try {
       const session = captureSession();
-      await assistant.setConsent(session, CLOUD_VOICE_ENABLED ? [...new Set([...caps.scopes, scope])] : ['groq_text']);
+      // Adding text consent must not silently revoke an explicitly chosen listening scope.
+      await assistant.setConsent(session, [...new Set([...caps.scopes, scope])]);
       const available = await assistant.capabilities(session);
       if (current !== turn.current) return;
       assertSession(session); setCaps(available); await update(next);
@@ -241,10 +244,10 @@ export default function AssistantExperience({ embedded = false, active = true, s
     finally { if (current === turn.current) setBusy(''); }
   }
   function chooseCloud(scope: assistant.ConsentScope, next: Preferences) {
-    if (!(scope === 'groq_text' ? CLOUD_TEXT_ENABLED : CLOUD_VOICE_ENABLED)) return;
+    if (!(scope === 'groq_text' ? CLOUD_TEXT_ENABLED : scope === 'groq_audio' ? CLOUD_TRANSCRIPTION_ENABLED : CLOUD_VOICE_ENABLED)) return;
     if (caps.scopes.includes(scope)) { void update(next); return; }
     const disclosure = {
-      groq_text: 'After you tap Send, unfamiliar typed questions or reviewed transcripts go through CareKosh to Groq for understanding. Recordings and your inventory list are not uploaded. Words and item names you include in your question are sent. CareKosh saves your consent and usage counts; this cannot change your stock.',
+      groq_text: 'After you tap Send, unfamiliar typed questions or reviewed transcripts go through CareKosh to Groq for understanding. This text option uploads no recording or inventory list. Words and item names you include in your question are sent. CareKosh saves your consent and usage counts; this cannot change your stock.',
       groq_audio: 'Recordings go through CareKosh to Groq (US) for Whisper transcription. This is an online, potentially paid service.',
       sarvam_audio: 'Recordings go through CareKosh to Sarvam for Saaras transcription. This is an online, potentially paid service, not an offline model.',
       kokoro_speech: 'The answer text, including quantities and recorded suppliers, goes to our hosted Kokoro speech service. Hosting has a cost; no audio is uploaded for this speaking option.',
@@ -254,10 +257,10 @@ export default function AssistantExperience({ embedded = false, active = true, s
       [{ text: 'Cancel', style: 'cancel' }, { text: 'I am 18+ and agree', onPress: () => { void cloudConsent(scope, next); } }]);
   }
   async function revokeCloud() {
-    if (!CLOUD_TEXT_ENABLED && !CLOUD_VOICE_ENABLED) return;
+    if (!CLOUD_TEXT_ENABLED && !CLOUD_TRANSCRIPTION_ENABLED && !CLOUD_VOICE_ENABLED) return;
     cancel();
     setCaps(value => ({ ...value, scopes: [], consented: false }));
-    await update({ ...prefs, cloud: false, inputProvider: 'offline', speechProvider: 'device' });
+    await update({ ...prefs, cloud: false, audioOptIn: false, inputProvider: 'offline', speechProvider: 'device' });
     const current = turn.current;
     try { await assistant.setConsent(captureSession(), []); }
     catch { if (current === turn.current) setError('Cloud is off on this device. Server withdrawal failed; reconnect and press Withdraw again.'); }
@@ -306,20 +309,28 @@ export default function AssistantExperience({ embedded = false, active = true, s
     const current = turn.current;
     const abort = new AbortController(); controller.current = abort;
     setBusy('Understanding…');
+    understandingSource.current = 'Matched locally';
     try {
       const session = captureSession();
       const names = cachedItemNames(session);
-      const legacy = parseLocal(text, names);
-      const exactRead = legacy?.intent === 'read_item' && legacy.reference === 'named' && names.some(name => name.toLowerCase() === legacy.item_query?.toLowerCase());
-      let intent = chosen || (exactRead ? legacy : parseExpanded(text, !!getDraft(session)?.rows.length) || legacy);
+      let intent = chosen || routeLocally(text, names, !!getDraft(session)?.rows.length);
       if (!intent) {
-        if (!CLOUD_TEXT_ENABLED || !prefs.cloud || !caps.scopes.includes('groq_text') || !caps.interpret) throw new Error('I could not safely match that wording locally. Try an example or enable optional cloud understanding.');
-        try { intent = caps.interpret_contracts?.includes(2)
+        if (!CLOUD_TEXT_ENABLED || !prefs.cloud) throw new Error('That wording needs online understanding. Enable Groq understanding in Voice setup, or use an example while offline.');
+        // A cold start or a new staging deployment must not leave availability stale for this screen.
+        const available = await assistant.capabilities(session, abort.signal);
+        assertSession(session);
+        if (current !== turn.current || abort.signal.aborted) return;
+        setCaps(available);
+        if (!available.interpret) throw new Error('Groq understanding is unavailable on this backend. Recheck the staging deployment and AI settings in Voice setup.');
+        if (!available.scopes.includes('groq_text')) throw new Error('Enable Groq understanding in Voice setup to confirm text-processing consent for this account.');
+        if (!available.interpret_contracts?.includes(2) && /\b(?:draft|order)\b/i.test(text)) throw new Error('This backend does not support voice order drafts yet. Deploy the latest feature branch to staging, then recheck Voice setup.');
+        try { intent = available.interpret_contracts?.includes(2)
           ? await assistant.interpretExpanded(session, text.trim(), !!previousQuery.current || !!previousItem.current, abort.signal)
-          : await assistant.interpret(session, text.trim(), !!previousItem.current, abort.signal); }
+          : await assistant.interpret(session, text.trim(), !!previousItem.current, abort.signal);
+          understandingSource.current = 'Understood with Groq'; }
         catch (e) {
           if (abort.signal.aborted) throw e;
-          throw new Error('Online understanding could not complete this question. Try a basic command such as “Show low stock”, or retry later.');
+          throw new Error(`Online understanding could not complete this question. ${e instanceof Error ? e.message : 'Please retry later.'} Nothing was saved. You can edit the question or use a basic command.`);
         }
       }
       const assertReady = () => { assertSession(session); if (!active || !mounted.current || current !== turn.current || abort.signal.aborted) throw new Error('Question cancelled.'); };
@@ -372,11 +383,13 @@ export default function AssistantExperience({ embedded = false, active = true, s
         assertReady();
         result = inventoryAnswer(queryInventory(query, snapshot.items, categories, previousQuery.current, selections.current), snapshot.timestamp, snapshot.stale);
         previousQuery.current = query.previous ? { ...previousQuery.current!, ...Object.fromEntries(Object.entries(query).filter(([k,v]) => k !== 'previous' && v !== null && v !== false && v !== 'any' && v !== 'none' && (!Array.isArray(v) || v.length))), previous: false } as InventoryQuery : query;
+        result.text = `Filters understood: ${describeQuery(previousQuery.current)}. ${result.text}`;
       } else if ('version' in intent && intent.intent === 'draft_order') {
         const local = getDraft(session);
         if (local?.attempt) throw new Error('A submission is already in progress or may be saved. Open the draft review screen to retry or re-export it.');
         if (intent.draft_mode === 'edit' && !local?.rows.length) throw new Error('Prepare a draft first, then ask to edit its order quantities.');
         const rows = prepareDraft(intent, snapshot.items, intent.draft_mode === 'edit' ? local!.rows : [], selections.current);
+        if (!rows.length && intent.draft_mode === 'new') throw new Clarification('No active items matched this draft request. Low-stock and out-of-stock are separate groups. Ask for both groups, or name the items and quantities you want. Your existing draft is unchanged.');
         assertReady();
         previousQuery.current = undefined;
         const publish = (next: CartItem[]) => {
@@ -422,9 +435,17 @@ export default function AssistantExperience({ embedded = false, active = true, s
       uri = await capture.finish();
       if (current !== turn.current || !uri) return;
       const session = captureSession();
-      setBusy(!CLOUD_VOICE_ENABLED || prefs.inputProvider === 'offline' ? 'Recognizing on this phone — review before sending…' : 'Cloud transcription — review before sending…');
+      const online = CLOUD_TRANSCRIPTION_ENABLED && prefs.inputProvider === 'groq' && prefs.audioOptIn;
+      setBusy(online ? 'Groq Whisper is transcribing — review before sending…' : 'Recognizing on this phone — review before sending…');
       const abort = new AbortController(); controller.current = abort;
-      const result = !CLOUD_VOICE_ENABLED || prefs.inputProvider === 'offline' ? await offlineVoice.transcribe(uri) : await assistant.transcribe(session, uri, abort.signal, prefs.inputProvider);
+      if (online) {
+        const available = await assistant.capabilities(session, abort.signal);
+        assertSession(session);
+        if (current !== turn.current || abort.signal.aborted) return;
+        setCaps(available);
+        if (!available.scopes.includes('groq_audio') || !available.transcription_providers.includes('groq')) throw new Error('Online listening is unavailable or its consent was withdrawn. Recheck Voice setup, or choose Offline listening. No offline transcript was substituted.');
+      }
+      const result = !CLOUD_TRANSCRIPTION_ENABLED || !online ? await offlineVoice.transcribe(uri) : await assistant.transcribe(session, uri, abort.signal, 'groq');
       if (current === turn.current) {
         assertSession(session);
         setReviewOpen(true);
@@ -461,7 +482,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     if (message) { cancel(); setError(message); }
     else if (capture.phase === 'recording') void stopRecording();
   };
-  const readiness = microphoneReadiness({ loaded, supported: offlineSupported, modelChecked, modelReady: model.ready, enabled: prefs.enabled, microphone: prefs.microphone });
+  const readiness = microphoneReadiness({ loaded, supported: offlineSupported, modelChecked, modelReady: model.ready, enabled: prefs.enabled, microphone: prefs.microphone, cloudListening: CLOUD_TRANSCRIPTION_ENABLED && prefs.audioOptIn && prefs.inputProvider === 'groq' });
 
   const textStyle = { color: colors.textPrimary };
   const microphoneBusy = capturePhase !== 'idle';
@@ -491,16 +512,23 @@ export default function AssistantExperience({ embedded = false, active = true, s
     recheck={() => {
       setError(''); setModelChecked(false);
       const session = captureSession();
-      if (CLOUD_TEXT_ENABLED || CLOUD_VOICE_ENABLED) void assistant.capabilities(session).then(value => { assertSession(session); if (mounted.current) setCaps(value); }).catch(() => { if (mounted.current) setError('Online understanding could not be checked. Basic commands remain available.'); });
+      if (CLOUD_TEXT_ENABLED || CLOUD_TRANSCRIPTION_ENABLED || CLOUD_VOICE_ENABLED) void assistant.capabilities(session).then(value => { assertSession(session); if (mounted.current) setCaps(value); }).catch(() => { if (mounted.current) setError('Online understanding could not be checked. Basic commands remain available.'); });
       if (!offlineSupported) { setModelChecked(true); return; }
       void offlineVoice.status().then(value => { if (mounted.current) setModel(value); }).catch(() => { if (mounted.current) setError('Speech pack check failed. Please retry.'); }).finally(() => { if (mounted.current) setModelChecked(true); });
       void offlineVoice.deviceStatus().then(value => { if (mounted.current) setDeviceVoice(value); }).catch(() => { if (mounted.current) setDeviceVoice({ ready: false, name: 'No offline voice available' }); });
     }}
-    cloudControls={(CLOUD_TEXT_ENABLED || CLOUD_VOICE_ENABLED) && <View style={[styles.card, { backgroundColor: colors.bgCard }]}>
+    cloudControls={(CLOUD_TEXT_ENABLED || CLOUD_TRANSCRIPTION_ENABLED || CLOUD_VOICE_ENABLED) && <View style={[styles.card, { backgroundColor: colors.bgCard }]}>
       <Text style={[styles.label, textStyle]}>Understand more wording · optional</Text>
-      <Text style={[styles.body, textStyle]}>Groq helps interpret unfamiliar stock questions after you review and send them. Recording and spoken replies stay on this phone. Internet and a shared service allowance are required.</Text>
+      <Text style={[styles.body, textStyle]}>Groq interprets natural wording for inventory queries and unsaved order drafts after you review and send. It supports the listed filters and quantities, not arbitrary analytics or stock changes. Internet and a shared service allowance are required. Listening is chosen separately below.</Text>
       <Text accessibilityLiveRegion="polite" style={[styles.body, textStyle]}>{!caps.interpret ? 'Online understanding is unavailable. Basic commands still work. Recheck below after the service is configured.' : prefs.cloud && caps.scopes.includes('groq_text') ? 'Online understanding is on. Familiar commands still work locally.' : 'Available — off until you choose to enable it.'}</Text>
       {CLOUD_TEXT_ENABLED && button('Enable Groq understanding', () => chooseCloud('groq_text', { ...prefs, cloud: true }), locked || !caps.interpret || (prefs.cloud && caps.scopes.includes('groq_text')))}
+      {CLOUD_TRANSCRIPTION_ENABLED && <>
+        <Text style={[styles.label, textStyle]}>Choose how speech becomes text</Text>
+        <Text style={[styles.body, textStyle]}>Offline uses the English Moonshine pack. Optional online listening sends each finished recording to Groq Whisper; it may handle your speech better, but accuracy must be checked on your phone. Always review words, names and numbers before Send.</Text>
+        <Text accessibilityLiveRegion="polite" style={[styles.body, textStyle]}>{prefs.inputProvider === 'groq' && prefs.audioOptIn ? 'Selected: Groq online listening · recording upload enabled by your consent.' : 'Selected: Offline listening · recordings stay on this phone.'}</Text>
+        {button('Use offline listening', () => { void update({ ...prefs, inputProvider: 'offline', audioOptIn: false }); }, locked || prefs.inputProvider === 'offline')}
+        {button('Enable Groq online listening', () => chooseCloud('groq_audio', { ...prefs, inputProvider: 'groq', audioOptIn: true }), locked || !caps.transcription_providers.includes('groq') || (prefs.audioOptIn && prefs.inputProvider === 'groq' && caps.scopes.includes('groq_audio')))}
+      </>}
       {CLOUD_VOICE_ENABLED && <>
       {button('Groq listening', () => chooseCloud('groq_audio', { ...prefs, inputProvider: 'groq' }), locked || !caps.transcription_providers.includes('groq'))}
       {button('Sarvam listening', () => chooseCloud('sarvam_audio', { ...prefs, inputProvider: 'sarvam' }), locked || !caps.transcription_providers.includes('sarvam'))}
@@ -557,6 +585,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
             </View>
             <View style={[styles.answerCard, { backgroundColor: colors.bgCard, borderColor: colors.accentBlueBorder }]}>
               <Text style={[styles.eyebrow, { color: colors.accentBlue }]}>CAREKOSH ANSWER</Text>
+              <Text style={[styles.caption, { color: colors.textSecondary }]}>{understandingSource.current} · review the result</Text>
               <Text style={[styles.caption, { color: colors.textSecondary }]}>“{answeredQuestion.current}”</Text>
               <Text style={[styles.answerTitle, textStyle]}>{answer.title}</Text>
               {!!answer.statistics?.length && <View style={styles.statistics}>
@@ -629,6 +658,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
       </View>
       {!!busy && <ActivityIndicator color={colors.accentBlue} />}
     </TouchableOpacity>
+    {!isRecording && !busy && !answer && !reviewOpen && prefs.enabled && button('Type a question here', () => { cancel(); setReviewOpen(true); }, !loaded)}
     {isRecording && <View style={{ gap: 6, paddingHorizontal: 14 }}>
       <View accessibilityRole="progressbar" accessibilityLabel="Microphone sound level" accessibilityValue={{ min: 0, max: 100, now: level.percent }} style={[styles.meter, { backgroundColor: colors.borderPrimary }]}><View style={{ width: `${level.percent}%`, height: '100%', backgroundColor: colors.accentBlue }} /></View>
       <Text style={[styles.caption, { color: colors.textSecondary }]}>{level.message}</Text>
@@ -636,7 +666,6 @@ export default function AssistantExperience({ embedded = false, active = true, s
     {(!!busy || !!error || reviewOpen) && <ScrollView style={{ maxHeight: 240 }} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.dockContent}>
       {feedback}
       {!!error && !!readiness && button('Voice setup', openSetup)}
-      {!!error && prefs.enabled && !reviewOpen && button('Type a question here', () => setReviewOpen(true), locked)}
       {reviewOpen && <>
         <Text style={[styles.label, textStyle]}>{question ? 'Review what I heard' : 'Type your question'}</Text>
         <TextInput accessibilityLabel="Review voice transcript" value={question} onChangeText={setQuestion} multiline maxLength={600} editable={!locked}

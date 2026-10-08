@@ -19,10 +19,11 @@ function load(file, dependencies) {
   return mod.exports;
 }
 
-test('only cloud text is available in this release; audio stays on the phone', () => {
+test('online listening is available separately; cloud speaking stays off', () => {
   const policy = load('features/assistant/policy.ts', {});
   assert.equal(policy.CLOUD_VOICE_ENABLED, false);
   assert.equal(policy.CLOUD_TEXT_ENABLED, true);
+  assert.equal(policy.CLOUD_TRANSCRIPTION_ENABLED, true);
 });
 
 test('existing text opt-in never restores old cloud audio providers', async () => {
@@ -34,7 +35,7 @@ test('existing text opt-in never restores old cloud audio providers', async () =
   });
   // Spread copies the sandbox object into this realm for a strict comparison.
   assert.deepEqual({ ...(await loadPreferences('owner')) }, {
-    enabled: true, cloud: true, microphone: true, spokenReplies: true, inputProvider: 'offline', speechProvider: 'device',
+    enabled: true, cloud: true, microphone: true, spokenReplies: true, audioOptIn: false, inputProvider: 'offline', speechProvider: 'device',
   });
 });
 
@@ -50,17 +51,18 @@ test('every cloud audio call remains gated independently of cloud text', () => {
     ts.forEachChild(node, visit);
   };
   visit(source);
-  const mentionsSwitch = (node) => /CLOUD_VOICE_ENABLED/.test(node.getText(source));
   const guarded = (call) => {
+    const flag = call.expression.name.text === 'transcribe' ? 'CLOUD_TRANSCRIPTION_ENABLED' : 'CLOUD_VOICE_ENABLED';
+    const mentionsSwitch = (node) => node.getText(source).includes(flag);
     let child = call;
     for (let node = call.parent; node; child = node, node = node.parent) {
       // `if (CLOUD_VOICE_ENABLED) <call>` or `!CLOUD_VOICE_ENABLED || … ? local : <call>`
-      if (ts.isIfStatement(node) && child === node.thenStatement && /(^|[^!])CLOUD_VOICE_ENABLED/.test(node.expression.getText(source))) return true;
-      if (ts.isConditionalExpression(node) && child === node.whenFalse && /!CLOUD_VOICE_ENABLED/.test(node.condition.getText(source))) return true;
+      if (ts.isIfStatement(node) && child === node.thenStatement && node.expression.getText(source).includes(flag)) return true;
+      if (ts.isConditionalExpression(node) && child === node.whenFalse && node.condition.getText(source).includes('!' + flag)) return true;
       // An earlier statement in the same block that leaves when the switch is off.
       if (ts.isBlock(node)) {
         const index = node.statements.indexOf(child);
-        if (node.statements.slice(0, index).some((s) => mentionsSwitch(s) && /!CLOUD_VOICE_ENABLED/.test(s.getText(source)) && /\b(return|throw)\b/.test(s.getText(source)))) return true;
+        if (node.statements.slice(0, index).some((s) => mentionsSwitch(s) && s.getText(source).includes('!' + flag) && /\b(return|throw)\b/.test(s.getText(source)))) return true;
       }
     }
     return false;
@@ -68,4 +70,17 @@ test('every cloud audio call remains gated independently of cloud text', () => {
   assert.equal(cloudCalls.length, 2, 'both audio upload and cloud speech must be guarded');
   const unguarded = cloudCalls.filter((call) => !guarded(call)).map((call) => `line ${source.getLineAndCharacterOfPosition(call.getStart()).line + 1}: ${call.getText(source).slice(0, 60)}`);
   assert.deepEqual(unguarded, []);
+});
+
+test('fresh audio opt-in can restore Groq listening but never cloud speech or Sarvam', async () => {
+  let saved = { enabled:true, cloud:false, audioOptIn:true, inputProvider:'groq', speechProvider:'sarvam' };
+  const preferences = load('features/assistant/preferences.ts', {
+    '@react-native-async-storage/async-storage': { getItem:async () => JSON.stringify(saved) },
+    './policy':load('features/assistant/policy.ts',{}),
+  });
+  assert.equal((await preferences.loadPreferences('owner')).inputProvider,'groq');
+  assert.equal((await preferences.loadPreferences('owner')).cloud,false);
+  assert.equal((await preferences.loadPreferences('owner')).speechProvider,'device');
+  saved = { ...saved, inputProvider:'sarvam' };
+  assert.equal((await preferences.loadPreferences('owner')).inputProvider,'offline');
 });

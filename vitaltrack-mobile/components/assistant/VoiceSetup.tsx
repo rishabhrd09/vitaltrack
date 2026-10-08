@@ -30,7 +30,8 @@ export default function VoiceSetup(p: Props) {
   const [help, setHelp] = useState(false);
   const [licence, setLicence] = useState(false);
   const locked = !!p.busy || !p.loaded;
-  const ready = p.model.ready && p.prefs.enabled && p.prefs.microphone;
+  const online = p.prefs.audioOptIn && p.prefs.inputProvider === 'groq';
+  const ready = (online || p.model.ready) && p.prefs.enabled && p.prefs.microphone;
   const body = { color: colors.textSecondary, fontSize: 14, lineHeight: 21 };
   const card = [styles.card, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary }];
   const step = (number: string, title: string, complete: boolean) => <View style={styles.row}>
@@ -47,11 +48,11 @@ export default function VoiceSetup(p: Props) {
       <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>Your stock, a question away.</Text>
       <Text style={body}>Set up voice here once. Then tap the microphone above the main tabs whenever you want to ask about your stock.</Text>
       <Text style={body}>The speech pack stays on this phone; your preferences are saved for this account. Setup is needed again if you reinstall or clear app data.</Text>
-      <Text style={{ color: colors.accentBlue, fontSize: 12, fontWeight: '700' }}>ENGLISH · ON-DEVICE VOICE · TOUCH TO SAVE</Text>
+      <Text style={{ color: colors.accentBlue, fontSize: 12, fontWeight: '700' }}>ENGLISH · REVIEW YOUR WORDS · TOUCH TO SAVE</Text>
     </View>
     <View style={card}>
       {step('1', 'Download English speech', p.model.ready)}
-      <Text style={body}>{!p.supported ? 'Recording is available in the Android APK. Expo Go, web and iOS can still use typed questions.' : !p.modelChecked ? 'Checking the speech pack on this phone…' : p.model.ready ? 'The speech pack is verified and ready. Recordings are recognized on your phone.' : `One download is needed before recording. ${p.model.bytes ? Math.ceil(p.model.bytes / 1_000_000) + ' MB' : 'Up to 300 MB'} · Wi-Fi recommended.`}</Text>
+      <Text style={body}>{!p.supported ? 'Recording is available in the Android APK. Expo Go, web and iOS can still use typed questions.' : online ? 'You selected Groq online listening below. The offline pack is optional for this mode; download it to use listening without internet.' : !p.modelChecked ? 'Checking the speech pack on this phone…' : p.model.ready ? 'The speech pack is verified and ready. Offline listening recognizes recordings on your phone.' : `One download is needed for offline recording. ${p.model.bytes ? Math.ceil(p.model.bytes / 1_000_000) + ' MB' : 'Up to 300 MB'} · Wi-Fi recommended.`}</Text>
       {p.busy.includes('speech pack') && <View style={{ gap: 8 }}><View style={styles.row}><ActivityIndicator color={colors.accentBlue} /><Text style={body}>{p.busy} {p.progress > 0 ? `${p.progress}%` : ''}</Text></View><View style={[styles.progress, { backgroundColor: colors.borderPrimary }]}><View style={{ height: 5, width: `${p.progress}%`, backgroundColor: colors.accentBlue }} /></View></View>}
       <VoiceButton label={p.model.ready ? 'Remove speech pack' : 'Download speech pack'} secondary={p.model.ready} onPress={p.manageModel} disabled={locked || !p.supported || !p.modelChecked} />
     </View>
@@ -74,7 +75,7 @@ export default function VoiceSetup(p: Props) {
       <Text style={body}>1. Tap the microphone on a main screen; stay there.{ '\n' }2. Speak after “Listening”, then tap the same button to stop.{ '\n' }3. Review the transcript below, then tap “Send question”.</Text>
       <Text style={body}>Answers stay open for 10 seconds after any spoken reply finishes. Choose “Keep open” to read longer. If an item name is unclear, choose the correct item first.</Text>
       <Text style={body}>The assistant can prepare unsaved drafts. It cannot change stock, save orders by voice, or send purchases. Unsaved drafts clear on logout or app restart. Offline answers use stock synced during this login and are marked “Last known”.</Text>
-      <Text style={body}>Ask about current quantities, suppliers, stock status or a stock summary. You can combine quantity and supplier questions for one item. Historical trends, forecasts and arbitrary multi-item calculations are not supported yet.</Text>
+      <Text style={body}>Ask about current quantities, suppliers, brands, stock status or a stock summary. You can combine supported category, supplier and stock filters or prepare an unsaved draft with named items and quantities. Enable Groq understanding below for natural paraphrases. Historical trends, forecasts and arbitrary calculations are not supported.</Text>
       <VoiceButton label={help ? 'Hide example questions' : 'See example questions'} secondary onPress={() => setHelp(!help)} />
       {help && commandExamples.map(example => <Text key={example} style={body}>• {example}</Text>)}
     </View>

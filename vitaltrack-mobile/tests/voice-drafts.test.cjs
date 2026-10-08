@@ -52,3 +52,18 @@ test('final inventory recheck preserves quantities but flags stock and rejects d
 test('unknown save outcomes retain one request/localId and lock editing; saved order re-export creates nothing',()=>{const h=harness();const rows=[{item:items[0],quantity:20,source:'spoken'}];h.drafts.writeDraft(h.session,rows);const first=h.drafts.beginSubmission(h.session,rows);const retry=h.drafts.beginSubmission(h.session,rows);assert.equal(first,retry);assert.equal(first.items[0].expectedVersion,2);assert.throws(()=>h.drafts.writeDraft(h.session,rows),/may already be saved/);h.drafts.markSaved(h.session,{id:'server',orderId:'ORD-1',items:[]});assert.equal(h.drafts.getDraft(h.session).attempt.saved.orderId,'ORD-1');assert.equal(h.drafts.beginSubmission(h.session,rows),first);h.drafts.clearSavedDraft(h.session);assert.equal(h.drafts.getDraft(h.session),null);});
 
 test('unknown constraints are not silently stripped from a locally supported query',()=>{const h=harness();for(const q of ['Show low-stock items expiring tomorrow','Show all inventory items under 3 units','Show items with no brand recorded']){const spec=h.queries.parseExpanded(q);assert.ok(!spec||['clarify','unsupported_action'].includes(spec.intent),q);}});
+
+test('compound filters go to online interpretation without losing a condition',()=>{
+  const h=harness();
+  for(const q of ['Show low-stock items in wound care supplied by Good Supplier, sorted by name','Show low-stock items from supplier Good Supplier with brand Recorded Brand']) assert.equal(h.queries.routeLocally(q,[]),null,q);
+});
+
+test('near-spelling draft names require explicit selection even with one candidate',()=>{
+  const h=harness();
+  const s=h.contracts.specification('draft_order',{draft_mode:'new',lines:[{operation:'set',item_query:'hand glovs',quantity:20,unit:'pairs'}]});
+  assert.throws(()=>h.drafts.prepareDraft(s,items,[]),/Choose the item/);
+  const choices=h.queries.resolveItem('hand glovs',items);
+  assert.equal(choices.length,1);
+  const selected=h.drafts.prepareDraft(s,items,[],{'hand glovs':choices[0].id});
+  assert.equal(selected[0].quantity,20); assert.equal(selected[0].item.id,choices[0].id);
+});

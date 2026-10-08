@@ -178,7 +178,11 @@ function editDistance(a: string, b: string): number {
 function possibleItem(name: string, query: string): boolean {
   const words = itemWords(name), terms = itemWords(query);
   if (terms.length > 20 || terms.some(t => t.length > 40)) return false;
-  return terms.every(t => words.some(w => w === t || (t.length >= 5 && w.length >= 5 && Math.abs(t.length - w.length) <= 1 && editDistance(t, w) <= 1)));
+  return terms.every(t => words.some(w => w === t || (t.length >= 4 && w.length >= 4 && Math.abs(t.length - w.length) <= 1 && editDistance(t, w) <= 1)));
+}
+/** Suggestions require an explicit choice; never auto-correct a spoken item. */
+export function suggestItems(query: string, items: Item[]): Item[] {
+  return items.filter(item => possibleItem(item.name, query)).slice(0,20);
 }
 
 export function validateIntent(value: unknown): Intent {
@@ -200,7 +204,7 @@ export function answerIntent(intent: Intent, source: Item[], timestamp: number, 
   const items = source.filter(i => i.isActive);
   const base = { items: [] as Item[], choices: [] as Item[], timestamp, stale };
   if (intent.intent === 'unsupported_action') return { ...base, title: 'Read-only assistant', text: 'I can show current stock and recorded suppliers. I can prepare an unsaved order draft for review. Only a touch confirmation can save an order. I cannot change stock, send messages or answer historical or medical questions.' };
-  if (intent.intent === 'clarify') return { ...base, title: 'Please clarify', text: 'Ask one current-stock question, for example: How many hand gloves are left?' };
+  if (intent.intent === 'clarify') return { ...base, title: 'Please clarify', text: 'Clarify the items, filters or order quantities you mean. I can query current stock or prepare an unsaved order draft; I cannot infer forecasts or change stock. For example: Prepare a draft for 20 pairs of hand gloves.' };
   if (intent.intent === 'read_item') {
     const exact = intent.reference === 'previous' ? items.filter(i => i.id === previousId) : items.filter(i => normalize(i.name) === normalize(intent.item_query!));
     const candidates = exact.length ? exact : intent.reference === 'named' ? items.filter(i => normalize(i.name).includes(normalize(intent.item_query!)) || possibleItem(i.name, intent.item_query!)) : [];

@@ -24,15 +24,16 @@ function load(file, dependencies = {}) {
 const host = name => function Host({ children, ...props }) { return React.createElement(name, props, children); };
 const VoiceButton = ({ label, onPress, disabled }) => React.createElement('Button', { label, onPress, disabled }, label);
 
-async function harness({ ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, consentFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait } = {}) {
+async function harness({ ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait } = {}) {
   const calls = { navigation: [], stock: 0, transcribe: 0, stop: 0, record: 0, permission: 0, interpret: [], consent: [], cloudAudio: 0 };
   const listeners = new Set();
   const lifecycle = state => { for (const listener of [...listeners]) listener(state); };
   let nativeEvent;
+  let capabilityCalls = 0;
   let pendingAlert;
   const unavailable = { interpret: false, scopes: [], consented: false, transcription_providers: [], speech_providers: [] };
-  let scopes = cloudConsented ? ['groq_text'] : [];
-  const prefs = { enabled: true, microphone: true, spokenReplies: false, inputProvider: 'offline', speechProvider: 'device', cloud: cloudConsented };
+  let scopes = [...(cloudConsented ? ['groq_text'] : []), ...(audioConsented ? ['groq_audio'] : [])];
+  const prefs = { enabled: true, microphone: true, spokenReplies: false, audioOptIn: onlineListening, inputProvider: onlineListening ? 'groq' : 'offline', speechProvider: 'device', cloud: cloudConsented };
   const recorder = { uri: 'file:///cache/test.m4a', isRecording: false,
     prepareToRecordAsync: async () => {}, record() { this.isRecording = true; calls.record++; },
     async stop() { this.isRecording = false; calls.stop++; },
@@ -65,11 +66,11 @@ async function harness({ ready = true, permission = true, canAskAgain = false, m
     'expo-file-system/legacy': {}, '@/store/useAuthStore': { useAuthStore: auth }, '@/theme/ThemeContext': { useTheme: () => ({ colors }) },
     '@/services/assistantSession': sessionTools,
     '@/services/assistant': { unavailable,
-      capabilities: async () => ({ ...unavailable, interpret: cloudAvailable, interpret_contracts: cloudV2Response ? [1,2] : [1], scopes, consented: scopes.length > 0 }),
+      capabilities: async () => { if (++capabilityCalls === 1 && firstCapabilityFailure) throw new Error('Cold start'); return { ...unavailable, interpret: cloudAvailable, interpret_contracts: cloudV2Response ? [1,2] : [1], scopes, consented: scopes.length > 0, transcription_providers: cloudAvailable ? ['groq'] : [] }; },
       setConsent: async (_, next) => { calls.consent.push([...next]); if (consentFailure) throw new Error('Unavailable'); scopes = [...next]; },
       interpret: async (_, text) => { calls.interpret.push(text); if (cloudFailure) throw new Error('Quota or network unavailable'); return core.command('low_stock'); },
       interpretExpanded: async (_,text) => { calls.interpret.push(text); return contracts.validateSpecification(cloudV2Response); },
-      transcribe: async () => { calls.cloudAudio++; throw new Error('Audio must stay local'); },
+      transcribe: async () => { calls.cloudAudio++; if (audioFailure) throw new Error('Online transcription unavailable'); return { transcript }; },
       speak: async () => { calls.cloudAudio++; throw new Error('Speech must stay local'); },
     }, '@/features/assistant/core': core,
     '@/features/assistant/contracts': contracts, '@/features/assistant/queries': queries, '@/features/assistant/drafts': drafts,
@@ -94,6 +95,7 @@ async function harness({ ready = true, permission = true, canAskAgain = false, m
   return { calls, prefs, recorder, tree, find, drafts, sessionTools,
     confirm: async () => { await act(async () => { await pendingAlert.at(-1).onPress(); }); },
     editTranscript: async value => { await act(async () => { find('Review voice transcript').props.onChangeText(value); }); },
+    typeQuestion: async value => { await act(async () => { find('Question or editable transcript').props.onChangeText(value); }); },
     toggle: async (label, value) => { await act(async () => { await find(label).props.onValueChange(value); }); },
     press: async label => { const target = find(label); assert.ok(target, label); assert.ok(!target.props.disabled, label + ' disabled'); await act(async () => { await target.props.onPress(); }); },
     foreground: async () => { await act(async () => { appState.currentState = 'active'; lifecycle('active'); }); },
@@ -111,6 +113,79 @@ test('a listen route parameter cannot start recording without a microphone tap',
     assert.equal(h.calls.record, 0);
     assert.equal(h.calls.permission, 0);
     assert.equal(h.calls.transcribe, 0);
+  } finally { await h.dispose(); }
+});
+
+test('online listening requires its own confirmed consent, independent of text consent', async () => {
+  const h = await harness({ mode:'settings', cloudAvailable:true, cloudConsented:true });
+  try {
+    await h.press('Enable Groq online listening');
+    assert.equal(h.prefs.inputProvider,'offline'); assert.equal(h.calls.consent.length,0);
+    await h.confirm();
+    assert.deepEqual(h.calls.consent,[['groq_text','groq_audio']]);
+    assert.equal(h.prefs.inputProvider,'groq'); assert.equal(h.prefs.audioOptIn,true);
+    await h.press('Withdraw all cloud consent');
+    assert.equal(h.prefs.audioOptIn,false); assert.equal(h.prefs.inputProvider,'offline');
+    assert.deepEqual(h.calls.consent.at(-1),[]);
+  } finally { await h.dispose(); }
+});
+
+test('consented online listening works without a Moonshine download and never interprets before Send', async () => {
+  const h = await harness({ ready:false, cloudAvailable:true, onlineListening:true, audioConsented:true });
+  try {
+    await h.press('Start voice recording'); assert.equal(h.calls.cloudAudio,0);
+    await h.press('Stop recording and review transcript');
+    assert.equal(h.calls.cloudAudio,1); assert.equal(h.calls.transcribe,0);
+    assert.equal(h.calls.stock,0); assert.equal(h.calls.interpret.length,0);
+    await h.press('Send question'); assert.equal(h.calls.stock,1);
+  } finally { await h.dispose(); }
+});
+
+for (const options of [{ audioConsented:false },{ audioConsented:true,audioFailure:true }]) test(`online listening failure never silently substitutes a transcript: ${JSON.stringify(options)}`, async () => {
+  const h = await harness({ cloudAvailable:true,onlineListening:true,...options });
+  try {
+    await h.press('Start voice recording'); await h.press('Stop recording and review transcript');
+    assert.equal(h.calls.transcribe,0); assert.equal(h.calls.stock,0); assert.equal(h.calls.interpret.length,0);
+    assert.equal(h.find('Send question'),undefined);
+    assert.equal(h.calls.cloudAudio,options.audioConsented ? 1 : 0);
+  } finally { await h.dispose(); }
+});
+
+test('natural draft request against an old backend reports the deployment mismatch', async () => {
+  const h = await harness({cloudAvailable:true,cloudConsented:true,transcript:'Could you put together hand gloves in my draft with 20 pairs?'});
+  try {
+    await h.press('Start voice recording'); await h.press('Stop recording and review transcript'); await h.press('Send question');
+    assert.equal(h.calls.interpret.length,0); assert.equal(h.calls.stock,0);
+    assert.ok(h.tree.root.findAllByType('Text').some(n=>n.children.join('').includes('Deploy the latest feature branch')));
+  } finally { await h.dispose(); }
+});
+
+test('typed compound query sends every filter to Groq and displays only matching stock', async () => {
+  const cloudV2Response = {version:2,intent:'inventory_query',draft_mode:null,query:{status:'low',category:null,supplier:null,brand:null,missing_supplier:false,item_queries:['hand gloves'],sort:'name',previous:false},lines:[],include_low:false,include_out:false};
+  const h = await harness({embedded:false,cloudAvailable:true,cloudConsented:true,cloudV2Response});
+  try {
+    // Typing does not require microphone capture or a speech model call.
+    const text = 'Show low-stock hand gloves, sorted by name please';
+    await h.typeQuestion(text); await h.press('Show answer');
+    assert.deepEqual(h.calls.interpret,[text]); assert.equal(h.calls.stock,1);
+    assert.equal(h.calls.record,0); assert.equal(h.calls.transcribe,0); assert.equal(h.calls.cloudAudio,0);
+  } finally { await h.dispose(); }
+});
+
+test('a failed cold-start capability check is refreshed on the next consented typed query', async () => {
+  const h = await harness({ embedded:false, cloudAvailable:true, cloudConsented:true, firstCapabilityFailure:true });
+  try {
+    await h.typeQuestion(unfamiliarQuestion); await h.press('Show answer');
+    assert.equal(h.calls.interpret.length,1); assert.equal(h.calls.stock,1); assert.equal(h.calls.record,0);
+  } finally { await h.dispose(); }
+});
+
+test('a new draft matching no stock keeps existing work and explains low versus out of stock', async () => {
+  const h = await harness({embedded:false});
+  try {
+    await h.typeQuestion('Prepare a draft for all low-stock items'); await h.press('Show answer');
+    assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()),null);
+    assert.ok(h.tree.root.findAllByType('Text').some(n=>n.children.join('').includes('Low-stock and out-of-stock are separate')));
   } finally { await h.dispose(); }
 });
 
@@ -480,4 +555,19 @@ test('a cloud v2 response containing a save operation cannot publish a draft', a
     assert.equal(h.calls.interpret.length,1);assert.equal(h.calls.stock,0);
     assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()),null);assert.deepEqual(h.calls.navigation,[]);
   } finally {await h.dispose();}
+});
+
+for (const transcript of [
+  'Could you prepare a draft order containing 20 pairs of hand gloves?',
+  'Create a purchase order draft with hand gloves, I need 20 pairs please.',
+  'Please make an unsaved order with 20 pairs of hand gloves for me.',
+]) test(`draft paraphrase reaches Groq rather than the legacy refusal: ${transcript}`, async () => {
+  const cloudV2Response = { version:2,intent:'draft_order',draft_mode:'new',query:null,lines:[{operation:'set',item_query:'hand gloves',quantity:20,unit:'pairs'}],include_low:false,include_out:false };
+  const h = await harness({ cloudAvailable:true,cloudConsented:true,cloudV2Response,transcript });
+  try {
+    await h.press('Start voice recording');await h.press('Stop recording and review transcript');await h.press('Send question');
+    assert.equal(h.calls.interpret.length,1);
+    assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()).rows[0].quantity,20);
+    assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()).attempt,undefined);
+  } finally { await h.dispose(); }
 });

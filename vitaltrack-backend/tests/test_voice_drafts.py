@@ -36,12 +36,18 @@ def test_draft_contract_excludes_server_actions_and_invalid_values(patch):
 @pytest.mark.parametrize("response,question,accepted", [
     (spec(), "Prepare an order for twenty pairs of Synthetic gloves", True),
     (spec(), "Prepare an order for 20 pairs of Synthetic gloves", True),
+    (spec(), "Create a purchase order draft: for Synthetic gloves I would need twenty pairs please", True),
+    (spec(), "In my draft, Synthetic gloves: please make it 20 pairs", True),
+    (spec(), "Put 20 pairs of the Synthetic gloves into an unsaved order", True),
     (spec(), "Prepare an order for 5 pairs of Synthetic gloves", False),
     (spec(), "Prepare an order for 20 boxes of Synthetic gloves", False),
     (spec(), "Prepare an order for 20 pairs of unknown item", False),
     (spec(), "Prepare an order for 5 pairs of Synthetic gloves and 20 boxes of masks", False),
     (spec(), "Prepare an order for one two pairs of Synthetic gloves", False),
     (spec(), "Prepare an order for 20 boxes of Synthetic gloves and 5 pairs of masks", False),
+    (spec(), "For Synthetic gloves I need 5 pairs, and for masks make it 20 boxes", False),
+    (spec(), "For Synthetic gloves I need 20 boxes, and for masks make it 5 pairs", False),
+    (spec(), "For Synthetic gloves I need 5 pairs instead of 20 boxes", False),
     (spec(lines=[{"operation": "set", "item_query": "Synthetic gloves", "quantity": 20, "unit": None}]),
      "Prepare an order for 20 pairs of Synthetic gloves", False),
 ])

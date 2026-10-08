@@ -1,12 +1,17 @@
 import { isLowStock, isOutOfStock, type Item, type Category } from '@/types';
-import { normalize, type Answer } from './core';
+import { normalize, parseLocal, command, suggestItems, type Intent, type Answer } from './core';
 import { queryDefaults, specification, validateSpecification, type Specification, type InventoryQuery } from './contracts';
 
 export const stockLabel = (item: Item) => isOutOfStock(item) ? 'Out of stock' : isLowStock(item) ? 'Low stock' : 'In stock';
 const singular = (s: string) => normalize(s).split(' ').map(w => w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w).join(' ');
 export function resolveItem(query: string, items: Item[], chosen?: string): Item | Item[] {
   const exact = items.filter(i => normalize(i.name) === normalize(query));
-  const candidates = exact.length ? exact : items.filter(i => singular(i.name) === singular(query) || singular(i.name).includes(singular(query)));
+  const candidates = exact.length ? exact : items.filter(i => (` ${singular(i.name)} `).includes(` ${singular(query)} `));
+  if (!candidates.length) {
+    const suggestions = suggestItems(query, items);
+    if (chosen && suggestions.some(i => i.id === chosen)) return suggestions.find(i => i.id === chosen)!;
+    return suggestions; // Even one near-spelling candidate needs touch clarification.
+  }
   if (chosen && candidates.some(i => i.id === chosen)) return candidates.find(i => i.id === chosen)!;
   return candidates.length === 1 ? candidates[0] : candidates;
 }
@@ -45,9 +50,33 @@ export function inventoryAnswer(items: Item[], timestamp: number, stale: boolean
       { label: 'Out of stock', value: items.filter(isOutOfStock).length, tone: 'out' },
     ] };
 }
+export function describeQuery(q: InventoryQuery): string {
+  const labels = { any:'all stock states', low:'low stock', out:'out of stock', attention:'low or out of stock', below_minimum:'below the recorded minimum' };
+  return [labels[q.status], q.item_queries.length && `items: ${q.item_queries.join(', ')}`, q.category && `category: ${q.category}`,
+    q.supplier && `supplier: ${q.supplier}`, q.brand && `brand: ${q.brand}`, q.missing_supplier && 'supplier not recorded',
+    q.sort !== 'none' && `sorted by ${q.sort === 'name' ? 'name' : 'stock quantity'}`].filter(Boolean).join(' · ');
+}
 const numbers: Record<string, number> = { one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90 };
 export function spokenNumbers(text: string): string {
   return text.replace(/\b(?:(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[ -](?:one|two|three|four|five|six|seven|eight|nine))?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)\b/g, value => String(value.split(/[ -]/).reduce((n,w) => n + numbers[w],0)));
+}
+/** Only fully understood local requests bypass the LLM. Legacy refusals are not a language model. */
+export function routeLocally(text: string, names: readonly string[], hasDraft = false): Intent | Specification | null {
+  const legacy = parseLocal(text, names);
+  if (legacy?.intent === 'read_item' && legacy.reference === 'named' && names.some(n => normalize(n) === normalize(legacy.item_query!))) return legacy;
+  const q = normalize(text);
+  // Draft editing is local-only; stock edits and commitment are never routed to an action.
+  const draft = /\b(?:draft|order)\b/.test(q);
+  if (/\b(?:delete|erase|apply|mark .{0,30}received|receive order|send .{0,50}(?:supplier|order)|save .{0,30}order|confirm .{0,30}order|export .{0,30}order)\b/.test(q) ||
+      /\b(?:update|change|increase|decrease|set)\b.{0,50}\b(?:stock|inventory)\b/.test(q) ||
+      !draft && /^(?:(?:please|can you|could you) )*(?:set|add|remove|update|change|increase|decrease)\b/.test(q) ||
+      /^(?:yes|confirm|save (?:the |my )?order|export (?:the |my )?order)(?: now)?$/.test(q)) return command('unsupported_action');
+  const expanded = parseExpanded(text, hasDraft);
+  if (expanded && !['unsupported_action','clarify'].includes(expanded.intent)) return expanded;
+  if (legacy && !['unsupported_action','clarify'].includes(legacy.intent) && (legacy.intent !== 'read_item' || legacy.reference === 'previous')) return legacy;
+  // Unfamiliar purchase/draft phrasing, filters and courteous requests need interpretation.
+  // The cloud specification still has no save/update/send operation; offline mode asks to rephrase.
+  return null;
 }
 /** Conservative local expansion; unfamiliar language can use the opt-in strict cloud contract. */
 export function parseExpanded(text: string, hasDraft = false): Specification | null {
@@ -89,6 +118,11 @@ export function parseExpanded(text: string, hasDraft = false): Specification | n
     return specification('inventory_query', { query });
   }
   if (/^(?:show|list|which|what|how many|give me|what brand|who supplies|quantities)/.test(q)) {
+    // The simple suffix grammar cannot express multiple filters or sorting in
+    // one sentence. Send the whole request to Groq rather than consume a tail
+    // as one category/supplier name or silently drop a condition.
+    const filters = q.match(/\b(?:in (?:the )?(?:category )?|category |supplied by |from supplier |with brand |of brand )/g) || [];
+    if (filters.length > 1 || /\b(?:sort|sorted|ascending|descending|under|over|above|less than|more than|at least|at most|excluding)\b/.test(q)) return null;
     if (/\blow(?:[- ]stock)?\b/.test(q) && /out[- ]of[- ]stock|out of stock/.test(q)) query.status = 'attention';
     else if (/low[- ]stock/.test(q)) query.status = 'low';
     else if (/out[- ]of[- ]stock|out of stock/.test(q)) query.status = 'out';

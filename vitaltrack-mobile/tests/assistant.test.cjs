@@ -170,14 +170,16 @@ test('known-offline mode returns marked data immediately without a refresh attem
 });
 test('voice preferences default offline, remain per account, and never migrate old cloud consent', async () => {
   const store = new Map([['carekosh-voice-settings-v1:a', JSON.stringify({ cloud: true })]]);
-  // Storage rules with cloud voice switched on; the offline-only release override is covered in voice-policy.test.cjs.
+  // Text consent and the fresh, separate audio opt-in must survive per account.
   const preferences = load('features/assistant/preferences.ts', { '@react-native-async-storage/async-storage': { default: {
     getItem: async key => store.get(key), setItem: async (key, value) => store.set(key, value),
-  } }, './policy': { CLOUD_VOICE_ENABLED: true } });
+  } }, './policy': { CLOUD_TEXT_ENABLED: true, CLOUD_TRANSCRIPTION_ENABLED: true, CLOUD_VOICE_ENABLED: false } });
   const a = await preferences.loadPreferences('a');
   assert.equal(a.cloud, false); assert.equal(a.inputProvider, 'offline'); assert.equal(a.speechProvider, 'device');
   await preferences.savePreferences('a', { ...a, cloud: true, inputProvider: 'sarvam' });
-  assert.equal((await preferences.loadPreferences('a')).inputProvider, 'sarvam');
+  assert.equal((await preferences.loadPreferences('a')).inputProvider, 'offline');
+  await preferences.savePreferences('a', { ...a, audioOptIn: true, inputProvider: 'groq' });
+  assert.equal((await preferences.loadPreferences('a')).inputProvider, 'groq');
   assert.equal((await preferences.loadPreferences('b')).cloud, false);
   store.set('carekosh-voice-settings-v2:c', JSON.stringify({ inputProvider: 'untrusted-url', speechProvider: 'auto' }));
   const c = await preferences.loadPreferences('c');
