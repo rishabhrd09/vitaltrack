@@ -45,6 +45,7 @@ class OrderItemCreate(OrderItemBase):
     Bounds mirror the database columns, so oversized input is a 422 instead of a
     500. They apply to requests only: rows already stored must still serialise.
     """
+    expected_version: Optional[int] = Field(None, ge=1, alias="expectedVersion")
     id: Optional[str] = None
     order_id: Optional[str] = Field(None, alias="orderId")
     item_id: str = Field(alias="itemId", min_length=1, max_length=36)

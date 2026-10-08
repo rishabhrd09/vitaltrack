@@ -17,6 +17,7 @@ from app.schemas.ai import (
     Intent,
     InterpretRequest,
     SpeakRequest,
+    Specification,
 )
 from app.services import ai_provider
 from app.services.ai_guard import (
@@ -49,6 +50,8 @@ async def capabilities(user: Principal):
 
     return {
         "interpret": enabled("interpret"),
+        "interpret_contracts": [1, 2],
+        "order_review_guard": True,
         "transcribe": enabled("transcribe"),
         "speak": enabled("speak"),
         "consent_version": CONSENT_VERSION,
@@ -90,14 +93,15 @@ async def consent(body: ConsentRequest, user: Principal):
     }
 
 
-@router.post("/interpret", response_model=Intent)
+@router.post("/interpret", response_model=Intent | Specification)
 async def interpret(body: InterpretRequest, user: Principal):
     ticket = await reserve(user.user_id, "interpret")
     success, usage = False, {}
     try:
-        result, usage = await ai_provider.interpret(
-            body.question, body.has_previous_item
-        )
+        if body.contract_version == 2:
+            result, usage = await ai_provider.interpret(body.question, body.has_previous_item, 2)
+        else:
+            result, usage = await ai_provider.interpret(body.question, body.has_previous_item)
         success = True
         return result
     finally:

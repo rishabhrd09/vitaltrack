@@ -88,9 +88,12 @@ export const categoryService = {
    * Delete category. Same idempotent-404 treatment as items — a missing
    * record is the desired end-state, not an error.
    */
-  async delete(id: string): Promise<{ message: string }> {
+  async delete(id: string, onlyIfEmpty = false, expectedUpdatedAt?: string): Promise<{ message: string }> {
+    const params: string[] = [];
+    if (onlyIfEmpty) params.push('onlyIfEmpty=true');
+    if (expectedUpdatedAt !== undefined) params.push(`expectedUpdatedAt=${encodeURIComponent(expectedUpdatedAt)}`);
     try {
-      return await api.delete<{ message: string }>(`/categories/${id}`);
+      return await api.delete<{ message: string }>(`/categories/${id}${params.length ? `?${params.join('&')}` : ''}`);
     } catch (err) {
       if (err instanceof ApiClientError && err.status === 404) {
         logger.info('categoryService', 'DELETE returned 404; treating as already deleted');

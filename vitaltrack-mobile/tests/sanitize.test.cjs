@@ -13,11 +13,23 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../u
   module: mod, exports: mod.exports, URL,
   require: (name) => { if (name === '@/utils/logger') return { logger: { warn() {} } }; throw new Error(`Unexpected dependency: ${name}`); },
 }, { filename: 'sanitize.ts' });
-const { sanitizeString } = mod.exports;
+const { sanitizeString, sanitizeName, sanitizeContact, escapeHtml } = mod.exports;
 
 test('free text keeps "word=value" content (F-7)', () => {
   assert.equal(sanitizeString('Dose once=daily'), 'Dose once=daily');
   assert.equal(sanitizeString('Ondansetron=4mg'), 'Ondansetron=4mg');
+});
+
+test('legitimate names and supplier contacts are not silently rewritten', () => {
+  assert.equal(sanitizeName(`Ryle's tube & gauze; "large"`), `Ryle's tube & gauze; "large"`);
+  assert.equal(sanitizeContact('asha_k+orders@example.com / Ext #2, Delhi'), 'asha_k+orders@example.com / Ext #2, Delhi');
+  assert.equal(sanitizeContact('आशा: +91 12345'), 'आशा: +91 12345');
+});
+
+test('preserving punctuation still removes markup and escapes HTML output', () => {
+  assert.equal(sanitizeName('<b>Gauze & tape</b>'), 'Gauze & tape');
+  assert.equal(sanitizeContact('<b>asha_k@example.com</b>'), 'asha_k@example.com');
+  assert.equal(escapeHtml(`Ryle's tube & "gauze"`), 'Ryle&#039;s tube &amp; &quot;gauze&quot;');
 });
 
 test('HTML tags and javascript: are still removed', () => {

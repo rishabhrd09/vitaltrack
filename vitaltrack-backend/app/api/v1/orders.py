@@ -129,13 +129,15 @@ async def _validate_order_items_belong_to_user(
         return
 
     requested_item_ids = {item.item_id for item in items}
-    result = await db.execute(
-        select(Item.id).where(
-            Item.user_id == user_id,
-            Item.id.in_(requested_item_ids),
-        )
-    )
-    owned_item_ids = set(result.scalars().all())
+    query = select(Item).where(
+        Item.user_id == user_id,
+        Item.id.in_(requested_item_ids),
+    ).order_by(Item.id)
+    if any(line.expected_version is not None for line in items):
+        query = query.with_for_update()
+    result = await db.execute(query)
+    owned = {item.id: item for item in result.scalars().all()}
+    owned_item_ids = set(owned)
     invalid_item_ids = [
         item_id for item_id in requested_item_ids if item_id not in owned_item_ids
     ]
@@ -145,6 +147,13 @@ async def _validate_order_items_belong_to_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Order contains invalid inventory item IDs",
         )
+
+    # Optional reviewed-snapshot guard. Old clients retain their existing contract.
+    for line in items:
+        if line.expected_version is not None:
+            current = owned[line.item_id]
+            if not current.is_active or current.version != line.expected_version:
+                raise HTTPException(409, "Inventory changed after review. Refresh and review the order quantities again.")
 
 
 async def _find_order_by_local_id(

@@ -9,10 +9,17 @@ export const command = (intent: IntentName): Intent => ({ intent, item_query: nu
 // Lower-case, unify apostrophes and drop the sentence punctuation that speech transcripts add.
 // Used for questions and item names alike, so exact name matching stays consistent.
 // Decimal points and thousands separators ("0.9%", "1,000") are kept.
-const normalize = (text: string) => text.toLowerCase().replace(/[’‘]/g, "'").replace(/[?!]+/g, ' ')
+export const normalize = (text: string) => text.toLowerCase().replace(/[’‘]/g, "'").replace(/[?!]+/g, ' ')
   .replace(/[.,;:]+(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim();
 
 export const commandExamples = [
+  'Show all inventory items with quantities and status',
+  'Show quantities for hand gloves and surgical masks',
+  'Which items have no supplier recorded?',
+  'Prepare an order for 20 pairs of hand gloves and 5 boxes of masks',
+  'Prepare a draft for all low-stock items',
+  'Set the order quantity for masks to 10 boxes',
+  'Export this inventory list as PDF',
   'Show me low stock', 'What are we running low on?', 'Which items are low?', 'Which items are out of stock?',
   'Give me a stock summary', 'How many hand gloves do we have?', 'How many hand gloves are there?', 'Check hand gloves',
   'What is the stock status of hand gloves?', 'Where do we normally order hand gloves from?',
@@ -121,11 +128,19 @@ function tidy(question: string): string {
 }
 
 /** Intentionally conservative: match the entire utterance, not a keyword. */
-export function parseLocal(text: string): Intent | null {
+export function parseLocal(text: string, inventoryNames: readonly string[] = []): Intent | null {
   let q = normalize(text);
   if (!q || q.length > 600) return command('clarify');
-  if (/\b(yesterday|tomorrow|last (?:week|month|year|time)|previous (?:week|month|year)|history|ordered|bought|sold|used|prescribe|dosage)\b/.test(q)) return command('unsupported_action');
-  if (/\b(not|never|don't|dont|cannot|can't|isn't|aren't|without|except|but|instead)\b/.test(q)) return command('clarify');
+  // A whole read phrase may name a real item such as "Used needle box".
+  // Only an exact inventory-name hint may fence those words off from safety
+  // checks. The answer still resolves against a verified inventory snapshot.
+  const namedRead = readPhrase(tidy(q));
+  const knownName = namedRead?.intent === 'read_item' && namedRead.reference === 'named' &&
+    inventoryNames.some(name => normalize(name) === normalize(namedRead.item_query!));
+  const safetyText = knownName ? q.replace(normalize(namedRead!.item_query!), '__inventory_item__') : q;
+  if (/\b(yesterday|tomorrow|last (?:week|month|year|time)|previous (?:week|month|year)|history|ordered|bought|sold|used|prescribe|dosage)\b/.test(safetyText)) return command('unsupported_action');
+  if (/\b(not|never|don't|dont|cannot|can't|isn't|aren't|without|except|but|instead)\b/.test(safetyText)) return command('clarify');
+  if (knownName) return namedRead;
   q = tidy(q);
   if (!q) return command('clarify'); // only filler, e.g. "um" or "okay"
   // Reject action clauses, not product words ("dressing set" is a valid item).
@@ -184,7 +199,7 @@ export function answerIntent(intent: Intent, source: Item[], timestamp: number, 
   validateIntent(intent);
   const items = source.filter(i => i.isActive);
   const base = { items: [] as Item[], choices: [] as Item[], timestamp, stale };
-  if (intent.intent === 'unsupported_action') return { ...base, title: 'Read-only assistant', text: 'I can show current stock and recorded suppliers. I cannot change stock, create orders, send messages or answer historical or medical questions.' };
+  if (intent.intent === 'unsupported_action') return { ...base, title: 'Read-only assistant', text: 'I can show current stock and recorded suppliers. I can prepare an unsaved order draft for review. Only a touch confirmation can save an order. I cannot change stock, send messages or answer historical or medical questions.' };
   if (intent.intent === 'clarify') return { ...base, title: 'Please clarify', text: 'Ask one current-stock question, for example: How many hand gloves are left?' };
   if (intent.intent === 'read_item') {
     const exact = intent.reference === 'previous' ? items.filter(i => i.id === previousId) : items.filter(i => normalize(i.name) === normalize(intent.item_query!));
@@ -207,7 +222,7 @@ export function answerIntent(intent: Intent, source: Item[], timestamp: number, 
     const label = intent.intent === 'low_stock' ? 'Low stock' : 'Out of stock';
     return { ...base, title: label, text: `${label}: ${selected.length} ${selected.length === 1 ? 'item' : 'items'}. ${selected.slice(0, 3).map(i => `${i.name}: ${i.quantity} ${i.unit || 'units'}`).join('. ')}${selected.length > 3 ? '. See the full list on screen.' : ''}`, items: selected };
   }
-  return { ...base, title: 'Stock summary', text: `${items.length} active items. ${low.length} low-stock items. ${out.length} out-of-stock items. Counts reflect the last successful refresh.`,
+  return { ...base, items, title: 'Stock summary', text: `${items.length} active items. ${low.length} low-stock items. ${out.length} out-of-stock items. Counts reflect the last successful refresh.`,
     statistics: [{ label: 'Active items', value: items.length, tone: 'neutral' }, { label: 'Low stock', value: low.length, tone: 'low' }, { label: 'Out of stock', value: out.length, tone: 'out' }] };
 }
 

@@ -55,8 +55,10 @@ class ItemCreate(BaseModel):
         """Sanitize contact info."""
         if v is None:
             return v
-        # Keep phone-valid chars and email chars
-        v = re.sub(r"[^0-9\s\-\(\)\+\.@a-zA-Z]", "", v)
+        # Contact text may include email punctuation or Unicode. Remove markup,
+        # preserve the value, and escape HTML where it is rendered/exported.
+        v = re.sub(r"<[^>]*>", "", v)
+        v = re.sub(r"javascript:", "", v, flags=re.IGNORECASE)
         return v.strip()[:100]
 
     @field_validator("purchase_link")
@@ -92,6 +94,11 @@ class ItemUpdate(BaseModel):
     version: int = Field(..., description="Required — must match server's current version")
 
     model_config = {"populate_by_name": True}
+
+    @field_validator("supplier_contact")
+    @classmethod
+    def sanitize_contact(cls, v: Optional[str]) -> Optional[str]:
+        return ItemCreate.sanitize_contact(v)
 
     @field_validator("name", "description", "brand", "notes", "supplier_name")
     @classmethod

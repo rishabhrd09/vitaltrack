@@ -17,6 +17,23 @@ from tests.conftest import (
 pytestmark = pytest.mark.asyncio
 
 
+async def test_contact_punctuation_survives_create_and_update(client: AsyncClient):
+    _, headers = await register_and_auth(client, email="contact-preserved@test.com")
+    category = await create_category(client, headers, name="Contacts")
+    contact = "asha_k+orders@example.com / Ext #2, Delhi"
+    created = await client.post("/api/v1/items", headers=headers, json={
+        "categoryId": category["id"], "name": "Ryle's tube & gauze", "supplierContact": contact,
+    })
+    assert created.status_code == 201
+    item = created.json()
+    assert item["supplierContact"] == contact
+    updated = await client.put(f"/api/v1/items/{item['id']}", headers=headers, json={
+        "version": item["version"], "supplierContact": f"<b>{contact}</b>",
+    })
+    assert updated.status_code == 200
+    assert updated.json()["supplierContact"] == contact
+
+
 def _names_from_items_response(resp) -> set[str]:
     assert resp.status_code == 200, resp.text
     return {item["name"] for item in resp.json()["items"]}

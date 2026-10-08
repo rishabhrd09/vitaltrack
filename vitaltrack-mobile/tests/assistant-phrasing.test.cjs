@@ -20,6 +20,18 @@ function load(file, dependencies = {}) {
 const core = load('features/assistant/core.ts', { '../../types': load('types/index.ts') });
 const item = (id, name, quantity = 18) => ({ id, name, quantity, minimumStock: 5, unit: 'pairs', isActive: true, isCritical: false });
 
+test('exact inventory names fence safety words without permitting instructions or history', () => {
+  for (const name of ['Used needle box', 'Stock history folder', 'Mask without valve', 'Not sterile gauze']) {
+    const intent = core.parseLocal(`How many ${name} are left?`, [name]);
+    assert.equal(intent?.intent, 'read_item');
+    assert.equal(core.answerIntent(intent, [item('i', name)], 100).resolvedId, 'i');
+    assert.ok(['clarify', 'unsupported_action'].includes(core.parseLocal(`Delete ${name}`, [name])?.intent));
+    assert.ok(['clarify', 'unsupported_action'].includes(core.parseLocal(`Do not show ${name}`, [name])?.intent));
+    assert.equal(core.parseLocal(`How many ${name} did we use last week?`, [name])?.intent, 'unsupported_action');
+  }
+  assert.equal(core.parseLocal('How many used needle box are left?')?.intent, 'unsupported_action');
+});
+
 test('item questions accept everyday spoken forms', () => {
   const cases = {
     'How many hand gloves are there?': 'hand gloves',

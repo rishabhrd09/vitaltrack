@@ -37,7 +37,8 @@ import { logger } from '@/utils/logger';
 import {
     useSeedInventory,
     useStartFresh,
-    createAutoBackup,
+    prepareInventoryReset,
+    type InventoryResetSnapshot,
     deleteAllInventory,
     isProtectedCategory,
     getSuggestedItemsForCategory,
@@ -233,9 +234,12 @@ export default function BuildInventoryScreen() {
         setIsReplaceAllRunning(true);
         try {
             let backupPath = '';
+            let snapshot: InventoryResetSnapshot;
             setOverlay({ visible: true, title: 'Creating backup...' });
             try {
-                backupPath = await createAutoBackup(categories, items);
+                const prepared = await prepareInventoryReset();
+                snapshot = prepared.snapshot;
+                backupPath = prepared.backupPath;
             } catch (err) {
                 setOverlay(null);
                 const msg = err instanceof Error ? err.message : String(err);
@@ -254,7 +258,7 @@ export default function BuildInventoryScreen() {
                     phase: 'Removing items and categories',
                 });
                 try {
-                    await deleteAllInventory();
+                    await deleteAllInventory(snapshot);
                 } catch (err) {
                     setOverlay(null);
                     deleteFailed = true;
@@ -447,9 +451,12 @@ export default function BuildInventoryScreen() {
     const runStartFresh = async () => {
         if (!(await runPreflight('reset inventory'))) return;
         let backupPath = '';
+        let snapshot: InventoryResetSnapshot;
         setOverlay({ visible: true, title: 'Creating backup...' });
         try {
-            backupPath = await createAutoBackup(categories, items);
+            const prepared = await prepareInventoryReset();
+            snapshot = prepared.snapshot;
+            backupPath = prepared.backupPath;
         } catch (err) {
             setOverlay(null);
             const msg = err instanceof Error ? err.message : String(err);
@@ -462,7 +469,7 @@ export default function BuildInventoryScreen() {
             phase: 'Removing non-essential items',
         });
         try {
-            const result = await startFresh((current, total, currentName) => {
+            const result = await startFresh(snapshot, (current, total, currentName) => {
                 setOverlay({
                     visible: true,
                     title: 'Clearing inventory...',

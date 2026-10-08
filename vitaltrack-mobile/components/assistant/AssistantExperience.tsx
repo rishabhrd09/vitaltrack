@@ -11,12 +11,17 @@ import { captureSession, assertSession } from '@/services/assistantSession';
 import * as assistant from '@/services/assistant';
 import { answerIntent, command, commandExamples, parseLocal, speechText, type Answer, type Intent } from '@/features/assistant/core';
 import { defaults, loadPreferences, savePreferences, type Preferences } from '@/features/assistant/preferences';
-import { inventorySnapshot } from '@/features/assistant/snapshot';
+import { cachedItemNames, inventorySnapshot, categorySnapshot } from '@/features/assistant/snapshot';
 import { discardAudio, rememberAudio } from '@/features/assistant/audioFiles';
 import { MicrophoneCapture, microphoneLevel, type CapturePhase } from '@/features/assistant/capture';
 import { offlineVoice, offlineSupported } from '@/features/assistant/offlineVoice';
 import { CLOUD_TEXT_ENABLED, CLOUD_VOICE_ENABLED } from '@/features/assistant/policy';
 import { ANSWER_VISIBLE_MS, canDismissAnswer, microphoneReadiness } from '@/features/assistant/readiness';
+import AnswerList from '@/components/assistant/AnswerList';
+import { parseExpanded, queryInventory, inventoryAnswer, Clarification } from '@/features/assistant/queries';
+import { queryDefaults, specification, type Specification, type InventoryQuery } from '@/features/assistant/contracts';
+import { getDraft, prepareDraft, writeDraft, mergeDrafts, type CartItem } from '@/features/assistant/drafts';
+import { exportInventoryPdf } from '@/utils/inventoryPdfExport';
 import VoiceSetup, { VoiceButton } from '@/components/assistant/VoiceSetup';
 
 const recordingOptions = { ...RecordingPresets.HIGH_QUALITY, sampleRate: 16000, numberOfChannels: 1, bitRate: 64000, isMeteringEnabled: true };
@@ -46,12 +51,12 @@ function blobBase64(blob: Blob): Promise<string> {
   });
 }
 
-/** No mutation/navigation tool is imported: every stock view here is read-only. */
+/** Queries and local drafts only. No order-save or inventory-mutation service is imported. */
 export default function AssistantExperience({ embedded = false, active = true, screenKey = '' }: {
   embedded?: boolean; active?: boolean; screenKey?: string;
 }) {
   const router = useRouter();
-  const params = useLocalSearchParams<{ mode?: string; listen?: string }>();
+  const params = useLocalSearchParams<{ mode?: string }>();
   const settingsOpen = !embedded && params.mode === 'settings';
   const { colors } = useTheme();
   const userId = useAuthStore(s => s.isAuthenticated ? s.user?.id : undefined);
@@ -60,6 +65,11 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const [loaded, setLoaded] = useState(false);
   const [question, setQuestion] = useState('');
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [proposalChoice, setProposalChoice] = useState<((merge: boolean) => void) | null>(null);
+  const [draftRows, setDraftRows] = useState<CartItem[] | undefined>(undefined);
+  const previousQuery = useRef<InventoryQuery | undefined>(undefined);
+  const selections = useRef<Record<string,string>>({});
+  const choiceQuery = useRef('');
   const [answer, setAnswer] = useState<Answer | null>(null);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -74,13 +84,12 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const [screenReader, setScreenReader] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [permissionBlocked, setPermissionBlocked] = useState(false);
-  const autoListenHandled = useRef(false);
   const permissionPending = useRef(false);
   const scroll = useRef<ScrollView>(null);
   const answerY = useRef(0);
   const mounted = useRef(true);
   const previousItem = useRef<string | undefined>(undefined);
-  const pendingIntent = useRef<Intent | undefined>(undefined);
+  const pendingIntent = useRef<Intent | Specification | undefined>(undefined);
   const answeredQuestion = useRef('');
   const turn = useRef(0);
   const controller = useRef<AbortController | null>(null);
@@ -113,7 +122,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     capture.cancel();
     setBusy(''); setSpeaking(false);
   };
-  const close = () => { cancel(); previousItem.current = undefined; setAnswer(null); setQuestion(''); setError(''); setReviewOpen(false); if (!embedded) { if (router.canGoBack()) router.back(); else router.replace('/(tabs)'); } };
+  const close = () => { cancel(); previousItem.current = undefined; previousQuery.current = undefined; selections.current = {}; setDraftRows(undefined); setProposalChoice(null); setAnswer(null); setQuestion(''); setError(''); setReviewOpen(false); if (!embedded) { if (router.canGoBack()) router.back(); else router.replace('/(tabs)'); } };
   const openSetup = () => { cancel(); setAnswer(null); if (embedded) router.navigate({ pathname: '/assistant', params: { mode: 'settings' } }); else router.setParams({ mode: 'settings', listen: undefined }); };
   const openAssistant = () => { cancel(); setAnswer(null); router.setParams({ mode: undefined, listen: undefined }); };
   const closeRef = useRef(close); closeRef.current = close;
@@ -143,7 +152,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     let currentScreen = true;
     const session = userId ? captureSession() : null;
     setPrefs(defaults); setCaps(assistant.unavailable); setAnswer(null); setQuestion('');
-    previousItem.current = undefined; pendingIntent.current = undefined; answeredQuestion.current = ''; setLoaded(false); setModelChecked(!offlineSupported); setError(''); setReviewOpen(false);
+    previousItem.current = undefined; pendingIntent.current = undefined; previousQuery.current = undefined; selections.current = {}; setDraftRows(undefined); answeredQuestion.current = ''; setLoaded(false); setModelChecked(!offlineSupported); setError(''); setReviewOpen(false);
     if (session) {
       // Local setup is never held hostage by a slow/unavailable cloud server.
       void loadPreferences(session.owner)
@@ -290,43 +299,117 @@ export default function AssistantExperience({ embedded = false, active = true, s
     } catch { if (current === turn.current) setError('Speech unavailable. Your answer is still on screen.'); }
     finally { if (current === turn.current) setSpeaking(false); }
   }
-  async function ask(text = question, chosen?: Intent, force = false) {
+  async function ask(text = question, chosen?: Intent | Specification, force = false) {
     if (!loaded || !prefs.enabled || !text.trim() || busy || capture.phase !== 'idle') return;
-    cancel(); setError(''); setAnswer(null); setKeptOpen(false);
+    cancel(); setError(''); setAnswer(null); setDraftRows(undefined); setProposalChoice(null); setKeptOpen(false);
+    if (!chosen) selections.current = {};
     const current = turn.current;
     const abort = new AbortController(); controller.current = abort;
     setBusy('Understanding…');
     try {
       const session = captureSession();
-      let intent = chosen || parseLocal(text);
+      const names = cachedItemNames(session);
+      const legacy = parseLocal(text, names);
+      const exactRead = legacy?.intent === 'read_item' && legacy.reference === 'named' && names.some(name => name.toLowerCase() === legacy.item_query?.toLowerCase());
+      let intent = chosen || (exactRead ? legacy : parseExpanded(text, !!getDraft(session)?.rows.length) || legacy);
       if (!intent) {
-        if (!CLOUD_TEXT_ENABLED) throw new Error('I could not safely match that wording. Try a quick command or check the command examples.');
-        if (!prefs.cloud || !caps.scopes.includes('groq_text') || !caps.interpret) throw new Error('I could not safely match that wording locally. Try a quick command, check the command examples, or enable optional cloud understanding.');
-        try { intent = await assistant.interpret(session, text.trim(), !!previousItem.current, abort.signal); }
+        if (!CLOUD_TEXT_ENABLED || !prefs.cloud || !caps.scopes.includes('groq_text') || !caps.interpret) throw new Error('I could not safely match that wording locally. Try an example or enable optional cloud understanding.');
+        try { intent = caps.interpret_contracts?.includes(2)
+          ? await assistant.interpretExpanded(session, text.trim(), !!previousQuery.current || !!previousItem.current, abort.signal)
+          : await assistant.interpret(session, text.trim(), !!previousItem.current, abort.signal); }
         catch (e) {
           if (abort.signal.aborted) throw e;
           throw new Error('Online understanding could not complete this question. Try a basic command such as “Show low stock”, or retry later.');
         }
       }
-      if (current !== turn.current) return;
-      assertSession(session);
-      if (intent.intent === 'close') { close(); return; }
-      if (intent.intent === 'stop_speaking') { cancel(); return; }
-      // A newly named/ambiguous item must not leave an unrelated old item as “those”.
-      if (intent.intent !== 'read_item' || intent.reference === 'named') previousItem.current = undefined;
-      pendingIntent.current = intent;
-      const needsStock = ['read_item', 'summary', 'low_stock', 'out_of_stock'].includes(intent.intent);
-      setBusy('Checking stock…');
+      const assertReady = () => { assertSession(session); if (!active || !mounted.current || current !== turn.current || abort.signal.aborted) throw new Error('Question cancelled.'); };
+      assertReady();
+      pendingIntent.current = intent; answeredQuestion.current = text;
+      if (!('version' in intent)) {
+        if (intent.intent === 'close') { close(); return; }
+        if (intent.intent === 'stop_speaking') { cancel(); return; }
+        if (intent.intent !== 'read_item' || intent.reference === 'named') previousItem.current = undefined;
+      }
+      if ('version' in intent && intent.intent === 'inventory_export') {
+        if (!previousQuery.current) throw new Error('Show and review an inventory list first, then request its inventory PDF.');
+        const snapshot = await inventorySnapshot(session, abort.signal, force);
+        let categories = [] as Awaited<ReturnType<typeof categorySnapshot>>;
+        try { categories = await categorySnapshot(session, abort.signal); }
+        catch (e) { if (previousQuery.current.category) throw e; assertReady(); /* Missing category names are labelled in the PDF; rows are never dropped. */ }
+        const rows = queryInventory(previousQuery.current, snapshot.items, categories, undefined, selections.current);
+        assertReady(); const result = inventoryAnswer(rows, snapshot.timestamp, snapshot.stale);
+        setAnswer(result); setKeptOpen(true); setBusy('');
+        let exporting = false;
+        // Voice only requests the report. A touch reviews the exact rows before printing/sharing.
+        Alert.alert('Review inventory PDF', `${rows.length} items · ${snapshot.stale ? 'last-known/offline' : 'last synced'} ${new Date(snapshot.timestamp).toLocaleString()}. Review the list on screen before exporting. This does not save an order.`,
+          [{ text: 'Cancel', style: 'cancel' }, { text: 'Export reviewed inventory PDF', onPress: () => {
+            if (exporting) return;
+            try { assertReady(); } catch { return; }
+            exporting = true;
+            setBusy('Generating inventory report…');
+            void exportInventoryPdf({ items: rows, categories, includePhotos: false, timestamp: snapshot.timestamp, stale: snapshot.stale, assertReady })
+              .then(value => { assertReady(); setError(value.shared ? 'Inventory PDF generated; share sheet opened.' : 'Inventory PDF generated. Sharing is unavailable on this device.'); })
+              .catch(e => { if (current === turn.current) setError(e instanceof Error ? e.message : 'PDF could not be generated.'); })
+              .finally(() => { if (current === turn.current) setBusy(''); });
+          } }]);
+        return;
+      }
+      if ('version' in intent && intent.intent === 'review_draft') {
+        const local = getDraft(session);
+        if (!local?.rows.length) throw new Error('There is no unsaved draft in this session.');
+        previousQuery.current = undefined;
+        setDraftRows(local.rows); setAnswer({ ...inventoryAnswer(local.rows.map(r => r.item), Date.now(), true), title: local.attempt?.saved ? 'Saved order · PDF pending' : local.attempt ? 'Submission outcome unknown' : 'Unsaved order draft', text: (local.attempt?.saved ? 'This order is already saved. Re-export it from Create Order; no new order will be created.' : local.attempt ? 'The server may already have saved this order. Open Create Order to retry the same submission.' : 'Nothing has been saved. Review the quantities and tap Confirm order & export PDF on the Create Order screen.') + ' Stock shown is the draft snapshot; a new confirmation refreshes it.' });
+        setKeptOpen(true); return;
+      }
+      const needsStock = ['read_item','summary','low_stock','out_of_stock','inventory_query','draft_order'].includes(intent.intent);
+      setBusy('Checking inventory…');
       const snapshot = needsStock ? await inventorySnapshot(session, abort.signal, force) : { items: [], timestamp: Date.now(), stale: false };
-      if (current !== turn.current) return;
-      assertSession(session);
-      const result = answerIntent(intent, snapshot.items, snapshot.timestamp, previousItem.current, snapshot.stale);
-      if (result.resolvedId) previousItem.current = result.resolvedId;
-      answeredQuestion.current = text;
-      setAnswer(result); setBusy('');
+      assertReady();
+      let result: Answer;
+      if ('version' in intent && intent.intent === 'inventory_query') {
+        const query = intent.query!;
+        const categories = query.category || query.previous && previousQuery.current?.category ? await categorySnapshot(session, abort.signal) : [];
+        assertReady();
+        result = inventoryAnswer(queryInventory(query, snapshot.items, categories, previousQuery.current, selections.current), snapshot.timestamp, snapshot.stale);
+        previousQuery.current = query.previous ? { ...previousQuery.current!, ...Object.fromEntries(Object.entries(query).filter(([k,v]) => k !== 'previous' && v !== null && v !== false && v !== 'any' && v !== 'none' && (!Array.isArray(v) || v.length))), previous: false } as InventoryQuery : query;
+      } else if ('version' in intent && intent.intent === 'draft_order') {
+        const local = getDraft(session);
+        if (local?.attempt) throw new Error('A submission is already in progress or may be saved. Open the draft review screen to retry or re-export it.');
+        if (intent.draft_mode === 'edit' && !local?.rows.length) throw new Error('Prepare a draft first, then ask to edit its order quantities.');
+        const rows = prepareDraft(intent, snapshot.items, intent.draft_mode === 'edit' ? local!.rows : [], selections.current);
+        assertReady();
+        previousQuery.current = undefined;
+        const publish = (next: CartItem[]) => {
+          assertReady();
+          if (getDraft(session)?.revision !== local?.revision) throw new Error('The existing draft changed. Ask again before replacing it.');
+          writeDraft(session, next, true, 'voice'); setDraftRows(next);
+          setAnswer({ ...inventoryAnswer(next.map(r => r.item), snapshot.timestamp, snapshot.stale), title: 'Unsaved order draft', text: `${next.length} lines ready. Nothing has been saved. Review it and tap Confirm order & export PDF.` }); setKeptOpen(true);
+        };
+        if (local?.rows.length && (intent.draft_mode === 'new' || local.origin === 'manual' || local.rows.some(r => r.source === 'manual'))) {
+          setDraftRows(rows); setKeptOpen(true);
+          setAnswer({ ...inventoryAnswer(rows.map(r => r.item), snapshot.timestamp, snapshot.stale), title: 'Proposed draft — existing work retained', text: 'Review these proposed quantities. Your existing draft is unchanged until you choose Merge or Replace. Nothing is saved.' });
+          setBusy('');
+          const apply = (merge: boolean) => { try { publish(merge ? mergeDrafts(local.rows, rows) : rows); return true; } catch(e) { if (current === turn.current) setError(e instanceof Error ? e.message : 'Draft could not be prepared.'); return false; } };
+          setProposalChoice(() => (merge: boolean) => { if (apply(merge)) setProposalChoice(null); });
+          return;
+        }
+        publish(rows); result = { ...inventoryAnswer(rows.map(r => r.item), snapshot.timestamp, snapshot.stale), title: 'Unsaved order draft', text: `${rows.length} lines ready. Nothing has been saved. Review it and tap Confirm order & export PDF.` };
+      } else if ('version' in intent) {
+        result = answerIntent(command(intent.intent === 'unsupported_action' ? 'unsupported_action' : 'clarify'), [], snapshot.timestamp);
+      } else {
+        result = answerIntent(intent, snapshot.items, snapshot.timestamp, previousItem.current, snapshot.stale);
+        if (intent.intent === 'read_item') previousQuery.current = undefined;
+        if (result.resolvedId) previousItem.current = result.resolvedId;
+        if (['summary','low_stock','out_of_stock'].includes(intent.intent)) previousQuery.current = { ...queryDefaults, status: intent.intent === 'low_stock' ? 'low' : intent.intent === 'out_of_stock' ? 'out' : 'any' };
+      }
+      assertReady(); setAnswer(result); setBusy(''); if (needsStock) setKeptOpen(true);
       await playAnswer(result, current, abort.signal);
-    } catch (e) { if (current === turn.current) setError(e instanceof Error ? e.message : 'Question failed. Try the regular inventory screen.'); }
-    finally { if (current === turn.current) setBusy(''); }
+    } catch (e) {
+      if (current === turn.current && e instanceof Clarification) {
+        choiceQuery.current = e.query;
+        setAnswer({ title: 'Please clarify', text: e.message, items: [], choices: e.choices, timestamp: Date.now(), stale: false }); setKeptOpen(true);
+      } else if (current === turn.current) setError(e instanceof Error ? e.message : 'Question failed. Try the regular inventory screen.');
+    } finally { if (current === turn.current) setBusy(''); }
   }
   async function stopRecording() {
     if (capture.phase !== 'recording') return;
@@ -379,12 +462,6 @@ export default function AssistantExperience({ embedded = false, active = true, s
     else if (capture.phase === 'recording') void stopRecording();
   };
   const readiness = microphoneReadiness({ loaded, supported: offlineSupported, modelChecked, modelReady: model.ready, enabled: prefs.enabled, microphone: prefs.microphone });
-  const startRef = useRef(startRecording); startRef.current = startRecording;
-  useEffect(() => {
-    if (embedded || params.listen !== '1' || settingsOpen || !loaded || !modelChecked || autoListenHandled.current) return;
-    autoListenHandled.current = true;
-    if (!readiness) void startRef.current();
-  }, [embedded, params.listen, settingsOpen, loaded, modelChecked, readiness]);
 
   const textStyle = { color: colors.textPrimary };
   const microphoneBusy = capturePhase !== 'idle';
@@ -443,19 +520,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     </ScrollView>
   </SafeAreaView>;
 
-  const overlay = <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.screen, { backgroundColor: colors.overlayDark }]}>
-    <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Dismiss voice assistant" accessibilityRole="button" />
-    <SafeAreaView style={styles.overlay} pointerEvents="box-none">
-      <View accessibilityViewIsModal style={[styles.sheet, { backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary }]}>
-        <View style={[styles.handle, { backgroundColor: colors.borderSecondary }]} />
-        <View style={styles.header}>
-          <View style={[styles.brandIcon, { backgroundColor: colors.accentBlueBg }]}><Ionicons name="sparkles-outline" size={23} color={colors.accentBlue} /></View>
-          <View style={{ flex: 1 }}><Text style={[styles.heading, textStyle]}>Ask CareKosh</Text><Text style={[styles.caption, { color: colors.textSecondary }]}>Your read-only stock assistant</Text></View>
-          {iconButton('settings-outline', 'Voice setup', openSetup)}
-          {iconButton('close', 'Close assistant', close)}
-        </View>
-        <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}
-          onScrollBeginDrag={() => { if (answer) setKeptOpen(true); }}>
+  const content = <>
           {feedback}
           {!embedded && readiness && <View style={[styles.card, { backgroundColor: colors.accentBlueBg }]}>
             <Text style={[styles.label, textStyle]}>Let’s get voice ready</Text><Text style={[styles.body, { color: colors.textSecondary }]}>{readiness}</Text>
@@ -483,7 +548,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
             <VoiceButton label="Show answer" onPress={() => { void ask(); }} disabled={!question.trim() || locked || !prefs.enabled} />
             <View style={styles.chips}>{(['Summary', 'Low stock', 'Out of stock'] as const).map(label => <View key={label}>{button(label, () => { setQuestion(label); void ask(label); }, locked || !prefs.enabled)}</View>)}</View>
             {button(helpOpen ? 'Hide examples' : 'What can I ask?', () => setHelpOpen(!helpOpen))}
-            {helpOpen && <View style={[styles.card, { backgroundColor: colors.bgCard }]}>{commandExamples.map(example => <Text key={example} style={[styles.body, textStyle]}>• {example}</Text>)}<Text style={[styles.caption, { color: colors.textSecondary }]}>Use your inventory item names. No stock edits, orders or purchases.</Text></View>}
+            {helpOpen && <View style={[styles.card, { backgroundColor: colors.bgCard }]}>{commandExamples.map(example => <Text key={example} style={[styles.body, textStyle]}>• {example}</Text>)}<Text style={[styles.caption, { color: colors.textSecondary }]}>Use your inventory item names. Stock edits and order saving are blocked. Voice can prepare a local unsaved draft; saving requires touch confirmation.</Text></View>}
           </>}
           {answer && <View onLayout={event => { answerY.current = event.nativeEvent.layout.y; scroll.current?.scrollTo({ y: answerY.current, animated: true }); }} style={{ gap: 16 }}>
             <View style={styles.row}>
@@ -501,27 +566,51 @@ export default function AssistantExperience({ embedded = false, active = true, s
                 </View>)}
               </View>}
               <Text selectable accessibilityLiveRegion="polite" style={[styles.answer, textStyle]} onPress={() => setKeptOpen(true)}>{answer.text}</Text>
-              {pendingIntent.current && ['read_item', 'summary', 'low_stock', 'out_of_stock'].includes(pendingIntent.current.intent) && <View style={[styles.freshness, { backgroundColor: answer.stale ? colors.statusOrangeBg : colors.statusGreenBg }]}>
+              {pendingIntent.current && ['read_item', 'summary', 'low_stock', 'out_of_stock', 'inventory_query', 'draft_order', 'inventory_export'].includes(pendingIntent.current.intent) && <View style={[styles.freshness, { backgroundColor: answer.stale ? colors.statusOrangeBg : colors.statusGreenBg }]}>
                 <Ionicons name={answer.stale ? 'time-outline' : 'checkmark-circle-outline'} size={16} color={answer.stale ? colors.statusOrange : colors.statusGreen} />
                 <Text style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>{answer.stale ? 'Last known stock' : 'Last synced'} · {new Date(answer.timestamp).toLocaleString()}</Text>
               </View>}
               {answer.choices.map(item => <View key={item.id}>{button(item.name + ' · ' + item.unit + ' · ' + item.id.slice(-6), () => {
-                const intent = pendingIntent.current || command('clarify'); previousItem.current = item.id;
-                void ask(answeredQuestion.current, { ...intent, reference: 'previous', item_query: null });
+                const intent = pendingIntent.current || command('clarify');
+                if ('version' in intent) { selections.current[choiceQuery.current] = item.id; void ask(answeredQuestion.current, intent); }
+                else { previousItem.current = item.id; void ask(answeredQuestion.current, { ...intent, reference: 'previous', item_query: null }); }
               }, locked)}</View>)}
-              {answer.items.map(item => <View key={item.id} style={[styles.item, { borderColor: colors.borderPrimary }]}>
-                <View style={styles.row}><View style={{ flex: 1, gap: 4 }}><Text style={[styles.label, textStyle]}>{item.name}</Text><Text style={[styles.caption, { color: colors.textSecondary }]}>Supplier: {item.supplierName?.trim() || 'Not recorded'}</Text></View>
-                  <View style={[styles.quantity, { backgroundColor: colors.accentBlueBg }]}><Text style={[styles.quantityNumber, { color: colors.accentBlue }]}>{Number.isFinite(item.quantity) ? item.quantity : '—'}</Text><Text style={[styles.caption, { color: colors.textSecondary }]}>{item.unit || 'units'}</Text></View></View>
-              </View>)}
+
             </View>
             <View style={styles.chips}>
               {button('Hear answer', () => { setKeptOpen(true); const abort = new AbortController(); controller.current = abort; void playAnswer(answer, turn.current, abort.signal, true); }, locked || speaking || !deviceVoice.ready)}
-              {button('Refresh answer', () => { void ask(answeredQuestion.current, pendingIntent.current, true); }, locked)}
+              {!!previousQuery.current && !draftRows && <>
+                {button('Only low stock', () => { void ask('Only show the low-stock ones', specification('inventory_query', { query: { ...queryDefaults, previous: true, status: 'low' } })); }, locked)}
+                {button('Only out of stock', () => { void ask('Only show the out-of-stock ones', specification('inventory_query', { query: { ...queryDefaults, previous: true, status: 'out' } })); }, locked)}
+                {button('Sort alphabetically', () => { void ask('Sort alphabetically', specification('inventory_query', { query: { ...queryDefaults, previous: true, sort: 'name' } })); }, locked)}
+                {button('Export inventory report', () => { void ask('Export this inventory list as PDF', specification('inventory_export')); }, locked)}
+              </>}
+              {!!proposalChoice && <>
+                {pendingIntent.current && 'version' in pendingIntent.current && pendingIntent.current.draft_mode === 'new' && button('Merge with existing draft', () => proposalChoice(true), locked)}
+                {button('Replace existing draft with this proposal', () => proposalChoice(false), locked)}
+                {button('Cancel proposal · keep existing draft', () => { cancel(); setProposalChoice(null); setAnswer(null); setDraftRows(undefined); }, locked)}
+              </>}
+              {!!draftRows && !proposalChoice && button('Review unsaved order draft', () => { cancel(); setAnswer(null); router.navigate('/order/create'); }, locked)}
+              {button('Refresh answer', () => { void ask(answeredQuestion.current, pendingIntent.current, true); }, locked || !!draftRows || pendingIntent.current?.intent === 'inventory_export')}
             </View>
             <VoiceButton label="Ask another question" onPress={() => { cancel(); setAnswer(null); setQuestion(''); setError(''); setReviewOpen(false); }} />
           </View>}
           {(!!busy || microphoneBusy || !!answer) && button('Cancel / stop speech', () => { cancel(); setKeptOpen(true); })}
-        </ScrollView>
+  </>;
+
+  const overlay = <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.screen, { backgroundColor: colors.overlayDark }]}>
+    <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Dismiss voice assistant" accessibilityRole="button" />
+    <SafeAreaView style={styles.overlay} pointerEvents="box-none">
+      <View accessibilityViewIsModal style={[styles.sheet, answer && { height: '94%' }, { backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary }]}>
+        <View style={[styles.handle, { backgroundColor: colors.borderSecondary }]} />
+        <View style={styles.header}>
+          <View style={[styles.brandIcon, { backgroundColor: colors.accentBlueBg }]}><Ionicons name="sparkles-outline" size={23} color={colors.accentBlue} /></View>
+          <View style={{ flex: 1 }}><Text style={[styles.heading, textStyle]}>Ask CareKosh</Text><Text style={[styles.caption, { color: colors.textSecondary }]}>Inventory answers · unsaved order drafts</Text></View>
+          {iconButton('settings-outline', 'Voice setup', openSetup)}
+          {iconButton('close', 'Close assistant', close)}
+        </View>
+        {answer ? <AnswerList items={answer.items} draftRows={draftRows} header={content} /> : <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>{content}</ScrollView>}
+
       </View>
     </SafeAreaView>
   </KeyboardAvoidingView>;

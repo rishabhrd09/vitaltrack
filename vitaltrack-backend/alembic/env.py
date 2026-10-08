@@ -33,7 +33,8 @@ from app.models import (
 config = context.config
 
 # Set database URL from settings (use async URL with asyncpg)
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# ConfigParser treats '%' as interpolation; SQLAlchemy needs the original URL.
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:

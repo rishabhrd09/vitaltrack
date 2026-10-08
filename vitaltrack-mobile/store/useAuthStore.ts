@@ -202,6 +202,7 @@ export const useAuthStore = create<AuthStore>()(
       // LOGIN
       // =====================================================================
       login: async (identifier: string, password: string) => {
+        if (get().isLoggingOut) return false;
         logger.debug('Auth', 'Login attempt');
         set({ isLoading: true, error: null, isColdStart: false });
 
@@ -272,6 +273,7 @@ export const useAuthStore = create<AuthStore>()(
       // REGISTER
       // =====================================================================
       register: async (data: RegisterRequest) => {
+        if (get().isLoggingOut) return false;
         logger.debug('Auth', 'Register attempt');
         set({ isLoading: true, error: null });
 
@@ -315,7 +317,7 @@ export const useAuthStore = create<AuthStore>()(
         // Prevent double-tap
         if (get().isLoggingOut) return;
         // Immediately deauthenticate so the UI redirects to login
-        set({ isAuthenticated: false, isLoggingOut: true });
+        set({ user: null, isAuthenticated: false, isLoggingOut: true });
 
         logger.debug('Auth', 'Logout started');
 

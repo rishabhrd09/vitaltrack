@@ -23,6 +23,7 @@ interface CreateOrderItemRequest {
   itemId: string;
   name: string;
   quantity: number;
+  expectedVersion?: number;
   unit?: string;
   brand?: string;
   currentStock?: number;

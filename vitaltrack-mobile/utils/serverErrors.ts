@@ -4,7 +4,7 @@ export function handleMutationError(error: any, context: string) {
   const status = error?.status || error?.response?.status;
 
   if (status === 409) {
-    Alert.alert('Conflict', 'This was updated by someone else. Refreshing to show latest data.');
+    Alert.alert('Conflict', error?.message || 'The data changed. Refresh and try again.');
     return;
   }
   if (status === 422) {

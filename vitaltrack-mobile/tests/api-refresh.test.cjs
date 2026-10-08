@@ -13,14 +13,14 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 const response = (status, data = {}) => ({ status, ok: status >= 200 && status < 300, headers: { get: () => 'application/json' }, json: async () => data });
 const tokens = { access_token: 'new-access', refresh_token: 'new-refresh' };
 
-function harness(refresh, { timeout = false, protectedFetch } = {}) {
+function harness(refresh, { timeout = false, requestTimeout = false, protectedFetch } = {}) {
   const stored = new Map([['vitaltrack_access_token', 'old-access'], ['vitaltrack_refresh_token', 'old-refresh']]);
   const mod = { exports: {} };
   let refreshCalls = 0;
   const sandbox = {
     exports: mod.exports, module: mod, process: { env: {} }, __DEV__: false,
     AbortController, TypeError, Date, Map, clearTimeout,
-    setTimeout: (fn, ms) => setTimeout(fn, timeout && ms === 30_000 ? 5 : ms),
+    setTimeout: (fn, ms) => setTimeout(fn, (timeout && ms === 30_000) || (requestTimeout && ms === 90_000) ? 5 : ms),
     fetch: async (url, options) => {
       if (url.endsWith('/auth/refresh')) { refreshCalls++; return refresh(options); }
       if (protectedFetch) return protectedFetch(url, options);
@@ -38,8 +38,33 @@ function harness(refresh, { timeout = false, protectedFetch } = {}) {
     },
   };
   vm.runInNewContext(compiled, sandbox, { filename: 'api.ts' });
-  return { api: mod.exports.api, stored, refreshCalls: () => refreshCalls };
+  return { api: mod.exports.api, tokenStorage: mod.exports.tokenStorage, stored, refreshCalls: () => refreshCalls };
 }
+
+test('a stalled ordinary save has a deadline and does not claim the write failed', async () => {
+  let aborted = false;
+  const h = harness(() => {}, { requestTimeout: true, protectedFetch: (_, options) => new Promise((_, reject) => {
+    options.signal.addEventListener('abort', () => { aborted = true; reject(new Error('Aborted')); });
+  }) });
+  await assert.rejects(h.api.post('/items', { name: 'Gauze' }), error => error.status === 0 && /may still be processing/.test(error.message));
+  assert.equal(aborted, true);
+  assert.equal(h.stored.size, 2);
+});
+
+test('the deadline also bounds a stalled response body', async () => {
+  const h = harness(() => {}, { requestTimeout: true, protectedFetch: async () => ({ ...response(200), json: () => new Promise(() => {}) }) });
+  await assert.rejects(h.api.get('/items'), error => error.status === 0);
+});
+
+test('caller cancellation stays distinct from a network timeout', async () => {
+  const h = harness(() => {}, { protectedFetch: (_, options) => new Promise((_, reject) => {
+    options.signal.addEventListener('abort', () => reject(new Error('Aborted')));
+  }) });
+  const controller = new AbortController();
+  const request = h.api.get('/items', true, controller.signal);
+  await tick(); controller.abort();
+  await assert.rejects(request, /Request cancelled/);
+});
 
 async function settled(promises) {
   let timer;
@@ -116,6 +141,21 @@ test('a late old-token 401 reuses the rotated access token without another refre
   releaseLate(response(401));
   assert.equal((await slow).ok, true);
   assert.equal(h.refreshCalls(), 1);
+});
+
+for (const status of [200, 401]) test(`a late refresh ${status} cannot restore or clear credentials after logout and a new login`, async () => {
+  let release;
+  const pending = new Promise(resolve => { release = resolve; });
+  const h = harness(() => pending);
+  const result = settled([h.api.get('/items')]);
+  await tick();
+  assert.equal(h.refreshCalls(), 1);
+  await h.tokenStorage.clearTokens();
+  await h.tokenStorage.setTokens('another-access', 'another-refresh');
+  release(response(status, tokens));
+  assert.equal((await result)[0].status, 'rejected');
+  assert.equal(h.stored.get('vitaltrack_access_token'), 'another-access');
+  assert.equal(h.stored.get('vitaltrack_refresh_token'), 'another-refresh');
 });
 
 function orderHarness(get) {

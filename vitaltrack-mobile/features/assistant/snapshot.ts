@@ -1,8 +1,17 @@
 import { queryClient } from '@/providers/QueryProvider';
 import { itemService } from '@/services/items';
 import { assertSession, ownsSnapshot, type Session } from '@/services/assistantSession';
-import type { Item } from '@/types';
+import { categoryService } from '@/services/categories';
+import type { Category, Item } from '@/types';
 import { onlineManager } from '@tanstack/react-query';
+
+/** Name hints only; quantities and answers still go through inventorySnapshot. */
+export function cachedItemNames(session: Session): string[] {
+  assertSession(session);
+  const state = queryClient.getQueryState<Item[]>(['items']);
+  if (!state?.data || !ownsSnapshot(state.data, session) || state.isInvalidated) return [];
+  return state.data.filter(item => item.isActive).map(item => item.name);
+}
 
 function withDeadline<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -55,4 +64,20 @@ export async function inventorySnapshot(session: Session, signal: AbortSignal, f
     if (owned && !state.isInvalidated && !queryClient.getQueryState(['items'])?.isInvalidated) return { items: state.data!, timestamp: state.dataUpdatedAt, stale: true };
     throw error;
   }
+}
+
+let categoryCache: { session: Session; categories: Category[] } | null = null;
+/** Categories are read only when a category query or reviewed export needs them. */
+export async function categorySnapshot(session: Session, signal: AbortSignal): Promise<Category[]> {
+  assertSession(session);
+  if (!onlineManager.isOnline()) {
+    if (categoryCache?.session.owner === session.owner && categoryCache.session.epoch === session.epoch) return categoryCache.categories;
+    throw new Error('Sync categories online in this session before filtering by category.');
+  }
+  const response = await withDeadline(categoryService.getAll(), signal);
+  assertSession(session);
+  if (signal.aborted) throw new Error('Question cancelled.');
+  if (response.total !== response.categories.length) throw new Error('Category refresh was incomplete.');
+  categoryCache = { session: { ...session }, categories: response.categories };
+  return response.categories;
 }

@@ -622,16 +622,19 @@ async def delete_item(
     item_id: str,
     db: DB,
     current_user: CurrentUser,
+    version: int | None = Query(None, ge=1),
 ) -> SuccessResponse:
     """
     Delete an inventory item.
     """
-    result = await db.execute(
-        select(Item).where(
-            Item.id == item_id,
-            Item.user_id == current_user.id,
-        )
+    # Reset operations opt into a version check against their saved backup.
+    # Lock first so an update cannot slip between the check and deletion.
+    query = select(Item).where(
+        Item.id == item_id, Item.user_id == current_user.id,
     )
+    if version is not None:
+        query = query.with_for_update()
+    result = await db.execute(query)
     item = result.scalar_one_or_none()
     
     if not item:
@@ -640,6 +643,12 @@ async def delete_item(
             detail="Item not found",
         )
     
+    if version is not None and item.version != version:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Item changed after the backup; it was not deleted. Refresh and try again.",
+        )
+
     item_name = item.name
 
     # Log activity before deletion

@@ -10,6 +10,7 @@ import type { CreateOrderRequest } from '@/services/orders';
 import {
   dispatchMutationSuccess,
   dispatchMutationFailure,
+  isConnectionError,
 } from '@/utils/mutationFeedback';
 
 // ─── Items ───
@@ -41,6 +42,16 @@ import {
 
 interface MutationContext {
   startedAt: number;
+}
+
+function reconcileAfterFailure(qc: QueryClient, keys: readonly (readonly string[])[]) {
+  return (_data: unknown, error: unknown) => {
+    // An outage can lose the response after commit; 409 can mean a stale form.
+    // Refresh active views instead of leaving them on the pre-request cache.
+    if (isConnectionError(error) || (error as { status?: number } | null)?.status === 409) {
+      void Promise.all(keys.map(queryKey => qc.invalidateQueries({ queryKey }))).catch(() => {});
+    }
+  };
 }
 
 function lookupItemName(qc: QueryClient, id: string | undefined): string | undefined {
@@ -89,6 +100,7 @@ export function useCreateItem() {
   const qc = useQueryClient();
   return useMutation<Item, unknown, CreateItemRequest, MutationContext>({
     mutationKey: ['item-create'],
+    onSettled: reconcileAfterFailure(qc, [queryKeys.items, queryKeys.activities]),
     mutationFn: (data) => itemService.create(data),
     onMutate: () => ({ startedAt: Date.now() }),
     onSuccess: (data, _variables, context) => {
@@ -116,6 +128,7 @@ export function useUpdateItem() {
   const qc = useQueryClient();
   return useMutation<Item, unknown, UpdateItemRequest & { id: string; version: number; isActive?: boolean }, MutationContext>({
     mutationKey: ['item-update'],
+    onSettled: reconcileAfterFailure(qc, [queryKeys.items, queryKeys.activities]),
     mutationFn: ({ id, ...data }) => itemService.update(id, data),
     onMutate: () => ({ startedAt: Date.now() }),
     onSuccess: (data, variables, context) => {
@@ -146,6 +159,7 @@ export function useUpdateStock() {
   const qc = useQueryClient();
   return useMutation<Item, unknown, { id: string; quantity: number; version: number }, MutationContext>({
     mutationKey: ['item-stock-update'],
+    onSettled: reconcileAfterFailure(qc, [queryKeys.items, queryKeys.activities]),
     mutationFn: ({ id, quantity, version }) => itemService.updateStock(id, quantity, version),
     onMutate: () => ({ startedAt: Date.now() }),
     onSuccess: (data, _variables, context) => {
@@ -174,6 +188,7 @@ export function useDeleteItem() {
   const qc = useQueryClient();
   return useMutation<{ message: string }, unknown, string, MutationContext & { name?: string }>({
     mutationKey: ['item-delete'],
+    onSettled: reconcileAfterFailure(qc, [queryKeys.items, queryKeys.activities]),
     mutationFn: (id) => itemService.delete(id),
     onMutate: (id) => ({
       startedAt: Date.now(),
@@ -206,6 +221,7 @@ export function useToggleItemCritical() {
   const qc = useQueryClient();
   return useMutation<Item, unknown, { id: string; isCritical: boolean; version: number }, MutationContext>({
     mutationKey: ['item-toggle-critical'],
+    onSettled: reconcileAfterFailure(qc, [queryKeys.items, queryKeys.activities]),
     mutationFn: ({ id, isCritical, version }) => itemService.update(id, { isCritical, version }),
     onMutate: () => ({ startedAt: Date.now() }),
     onSuccess: (data, _variables, context) => {
@@ -236,6 +252,7 @@ export function useCreateCategory() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateCategoryRequest): Promise<Category> => categoryService.create(data),
+    onSettled: reconcileAfterFailure(qc, [queryKeys.categories, queryKeys.activities]),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.categories });
       qc.invalidateQueries({ queryKey: queryKeys.activities });
@@ -248,6 +265,7 @@ export function useUpdateCategory() {
   return useMutation({
     mutationFn: ({ id, ...data }: UpdateCategoryRequest & { id: string }): Promise<Category> =>
       categoryService.update(id, data),
+    onSettled: reconcileAfterFailure(qc, [queryKeys.categories, queryKeys.activities]),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.categories });
       qc.invalidateQueries({ queryKey: queryKeys.activities });
@@ -259,6 +277,7 @@ export function useDeleteCategory() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => categoryService.delete(id),
+    onSettled: reconcileAfterFailure(qc, [queryKeys.categories, queryKeys.items, queryKeys.activities]),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.categories });
       qc.invalidateQueries({ queryKey: queryKeys.items });
@@ -273,6 +292,7 @@ export function useCreateOrder() {
   const qc = useQueryClient();
   return useMutation<SavedOrder, unknown, CreateOrderRequest, MutationContext>({
     mutationKey: ['order-create'],
+    onSettled: reconcileAfterFailure(qc, [queryKeys.orders, queryKeys.activities]),
     mutationFn: (data) => orderService.create(data),
     onMutate: () => ({ startedAt: Date.now() }),
     onSuccess: (data, _variables, context) => {
@@ -306,6 +326,7 @@ export function useUpdateOrderStatus() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: OrderStatus }): Promise<SavedOrder> =>
       orderService.updateStatus(id, status),
+    onSettled: reconcileAfterFailure(qc, [queryKeys.orders, queryKeys.activities]),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.orders });
       qc.invalidateQueries({ queryKey: queryKeys.activities });
@@ -317,6 +338,7 @@ export function useApplyOrderToStock() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (orderId: string): Promise<SavedOrder> => orderService.applyToStock(orderId),
+    onSettled: reconcileAfterFailure(qc, [queryKeys.items, queryKeys.orders, queryKeys.activities]),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.items });
       qc.invalidateQueries({ queryKey: queryKeys.orders });
@@ -329,6 +351,7 @@ export function useDeleteOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => orderService.delete(id),
+    onSettled: reconcileAfterFailure(qc, [queryKeys.orders, queryKeys.activities]),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.orders });
       qc.invalidateQueries({ queryKey: queryKeys.activities });

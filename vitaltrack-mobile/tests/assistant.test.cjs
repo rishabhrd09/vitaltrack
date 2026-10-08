@@ -15,6 +15,8 @@ function load(file, dependencies = {}) {
 }
 const types = load('types/index.ts');
 const core = load('features/assistant/core.ts', { '../../types': types });
+const contracts = load('features/assistant/contracts.ts');
+const queries = load('features/assistant/queries.ts', { '@/types': types, './core': core, './contracts': contracts });
 const captureTools = load('features/assistant/capture.ts');
 const item = (id, name = 'Hand gloves', quantity = 18) => ({ id, name, quantity, minimumStock: 5, unit: 'pairs', isActive: true, isCritical: false });
 const read = (query, fields = ['quantity', 'supplier']) => ({ intent: 'read_item', item_query: query, reference: 'named', fields });
@@ -66,7 +68,7 @@ test('speech uses the answer and explicitly identifies stale facts', () => {
 });
 for (const question of core.commandExamples) {
   test('published command example is covered: ' + question, () => {
-    const intent = core.parseLocal(question);
+    const intent = queries.parseExpanded(question) || core.parseLocal(question);
     assert.ok(intent, question);
     assert.ok(!['clarify', 'unsupported_action'].includes(intent.intent), question);
   });
@@ -114,6 +116,7 @@ function snapshotHarness({ fresh = false, owned = true, invalidated = false, mut
   const data = [item('stock')], next = [item('stock', 'Hand gloves', 23)];
   let state = { data, dataUpdatedAt: Date.now() - (fresh ? 0 : 60_000), isInvalidated: invalidated };
   const reader = load('features/assistant/snapshot.ts', {
+    '@/services/categories': { categoryService: { getAll: async () => ({ categories: [], total: 0 }) } },
     '@tanstack/react-query': { onlineManager: { isOnline: () => online } },
     '@/providers/QueryProvider': { queryClient: {
       isMutating: () => mutating,
@@ -388,6 +391,7 @@ test('full stock read pipeline paginates, verifies ownership and derives answer 
   }).itemService;
   let state;
   const reader = load('features/assistant/snapshot.ts', {
+    '@/services/categories': { categoryService: { getAll: async () => ({ categories: [], total: 0 }) } },
     '@tanstack/react-query': { onlineManager: { isOnline: () => true } },
     '@/providers/QueryProvider': { queryClient: {
       isMutating: () => 0, getQueryState: () => state,

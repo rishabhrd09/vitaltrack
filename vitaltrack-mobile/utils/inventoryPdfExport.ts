@@ -77,8 +77,10 @@ function groupByCategory(items: GeneratedItem[], categories: Category[]): Catego
     const list = byCategory.get(cat.id);
     if (list && list.length > 0) {
       groups.push({ id: cat.id, name: cat.name, items: list });
+      byCategory.delete(cat.id);
     }
   }
+  for (const [id, list] of byCategory) groups.push({ id, name: 'Category name unavailable', items: list });
   if (uncategorized.length > 0) {
     groups.push({ id: null, name: 'Uncategorized', items: uncategorized });
   }
@@ -114,7 +116,7 @@ function stockClass(item: Item): string {
   return 'stock-ok';
 }
 
-function buildHtml(opts: {
+export function buildHtml(opts: {
   activeItems: GeneratedItem[];
   categories: Category[];
   includePhotos: boolean;
@@ -519,8 +521,13 @@ export async function exportInventoryPdf(opts: {
   items: Item[];
   categories: Category[];
   includePhotos: boolean;
-}): Promise<void> {
+  timestamp?: number;
+  stale?: boolean;
+  assertReady?: () => void;
+}): Promise<{ uri: string; shared: boolean }> {
   const { items, categories, includePhotos } = opts;
+  const assertReady = opts.assertReady || (() => {});
+  assertReady();
   const activeItems = items.filter((i) => i.isActive);
 
   const withPhotos: GeneratedItem[] = includePhotos
@@ -532,26 +539,34 @@ export async function exportInventoryPdf(opts: {
       )
     : activeItems.map((item) => ({ ...item, imageBase64: '' }));
 
-  const html = buildHtml({ activeItems: withPhotos, categories, includePhotos });
+  const label = opts.timestamp ? `${opts.stale ? 'Last-known/offline snapshot' : 'Last synced'}: ${new Date(opts.timestamp).toLocaleString()}. This report contains ${activeItems.length} items in the reviewed view.` : '';
+  const html = buildHtml({ activeItems: withPhotos, categories, includePhotos }).replace('<body>', `<body><p>${escapeHtml(label)}</p>`);
+  assertReady();
   const { uri } = await Print.printToFileAsync({ html });
 
   // Rename to a human-friendly filename before sharing
   const dateStr = new Date().toISOString().slice(0, 10);
-  const dest = `${documentDirectory || ''}CareKosh-Inventory-${dateStr}.pdf`;
+  const dest = `${documentDirectory || ''}CareKosh-Inventory-${dateStr}-${Date.now()}.pdf`;
+  let shareUri = uri;
+  assertReady();
   try {
     await copyAsync({ from: uri, to: dest });
+    shareUri = dest;
   } catch {
     // If copy fails for any reason, fall back to the original temp uri.
   }
 
-  const shareUri = dest || uri;
-  if (await Sharing.isAvailableAsync()) {
+  assertReady();
+  const shared = await Sharing.isAvailableAsync();
+  assertReady();
+  if (shared) {
     await Sharing.shareAsync(shareUri, {
       UTI: 'com.adobe.pdf',
       mimeType: 'application/pdf',
       dialogTitle: 'CareKosh Inventory Report',
     });
   }
+  return { uri: shareUri, shared };
 }
 
 export function showInventoryPdfDialog(opts: {

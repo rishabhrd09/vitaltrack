@@ -29,7 +29,7 @@ const SLOW_THRESHOLD_MS = 5000;
 
 const CONNECTION_STATUSES: ReadonlySet<number> = new Set([0, 502, 503, 504]);
 
-function isConnectionError(error: unknown): boolean {
+export function isConnectionError(error: unknown): boolean {
   return error instanceof ApiClientError && CONNECTION_STATUSES.has(error.status);
 }
 
@@ -79,7 +79,7 @@ export function dispatchMutationFailure(args: FailureArgs): void {
       kind: 'failure-connection',
       title: `Couldn't ${args.action}`,
       subtitle: args.name,
-      body: `${errMessage} Your changes were not saved. Please try again when your connection is stable.`,
+      body: `${errMessage} The server may have saved your changes before the connection failed. Check the latest data before retrying.`,
       onRetry: args.onRetry,
     });
     return;

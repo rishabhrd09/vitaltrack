@@ -6,7 +6,7 @@
 
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { readAsStringAsync } from 'expo-file-system/legacy';
+import { readAsStringAsync, documentDirectory, copyAsync } from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
 import { escapeHtml, validateImageUri } from '@/utils/sanitize';
 import { formatDate, now } from '@/utils/helpers';
@@ -45,7 +45,8 @@ async function getBase64Image(uri: string): Promise<string> {
 /**
  * Generate combined Table + Image Reference PDF and share
  */
-async function generateCombinedPDF(order: ExportableOrder, includePhotos: boolean): Promise<void> {
+export async function exportOrderPdf(order: ExportableOrder, includePhotos: boolean, assertReady: () => void = () => {}): Promise<{ uri: string; shared: boolean }> {
+  assertReady();
   const { id: orderId, items } = order;
   const currentDate = order.createdAt || formatDate(now());
   const totalItems = items.length;
@@ -188,7 +189,7 @@ async function generateCombinedPDF(order: ExportableOrder, includePhotos: boolea
                     <td>${escapeHtml(item.brand || '') || '<span class="dim">—</span>'}</td>
                     <td class="qty">${item.quantity} ${escapeHtml(item.unit)}</td>
                     <td>${escapeHtml(item.supplierName || '') || '<span class="dim">—</span>'}</td>
-                    <td style="text-align:center">${item.purchaseLink ? '<a href="' + encodeURI(item.purchaseLink) + '" class="link-btn">🔗</a>' : '<span class="dim">—</span>'}</td>
+                    <td style="text-align:center">${item.purchaseLink && /^https?:\/\//i.test(item.purchaseLink) ? '<a href="' + escapeHtml(encodeURI(item.purchaseLink)) + '" class="link-btn">🔗</a>' : '<span class="dim">—</span>'}</td>
                 </tr>
             `).join('')}
         </tbody>
@@ -219,10 +220,19 @@ async function generateCombinedPDF(order: ExportableOrder, includePhotos: boolea
 </body>
 </html>`;
 
+  assertReady();
   const { uri } = await Print.printToFileAsync({ html });
-  if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(uri, { UTI: 'com.adobe.pdf', mimeType: 'application/pdf', dialogTitle: `Order ${orderId}` });
+  assertReady();
+  let shareUri = uri;
+  if (documentDirectory) {
+    const dest = `${documentDirectory}CareKosh-${orderId.replace(/[^a-zA-Z0-9_-]/g, '_')}-${Date.now()}.pdf`;
+    try { await copyAsync({ from: uri, to: dest }); shareUri = dest; } catch { /* valid original URI remains available */ }
   }
+  assertReady();
+  const shared = await Sharing.isAvailableAsync();
+  assertReady();
+  if (shared) await Sharing.shareAsync(shareUri, { UTI: 'com.adobe.pdf', mimeType: 'application/pdf', dialogTitle: `Order ${orderId}` });
+  return { uri: shareUri, shared };
 }
 
 /**
@@ -249,7 +259,7 @@ export function showPdfExportDialog(order: ExportableOrder): void {
 }
 
 function doExport(order: ExportableOrder, includePhotos: boolean): void {
-  generateCombinedPDF(order, includePhotos).catch((e) => {
+  exportOrderPdf(order, includePhotos).catch((e) => {
     logger.warn('OrderPdfExport', 'PDF export failed', e);
     Alert.alert('Error', 'Failed to generate PDF');
   });

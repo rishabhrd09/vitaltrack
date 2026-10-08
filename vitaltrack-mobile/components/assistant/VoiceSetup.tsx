@@ -47,7 +47,7 @@ export default function VoiceSetup(p: Props) {
       <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>Your stock, a question away.</Text>
       <Text style={body}>Set up voice here once. Then tap the microphone above the main tabs whenever you want to ask about your stock.</Text>
       <Text style={body}>The speech pack stays on this phone; your preferences are saved for this account. Setup is needed again if you reinstall or clear app data.</Text>
-      <Text style={{ color: colors.accentBlue, fontSize: 12, fontWeight: '700' }}>ENGLISH · ON-DEVICE VOICE · READ-ONLY</Text>
+      <Text style={{ color: colors.accentBlue, fontSize: 12, fontWeight: '700' }}>ENGLISH · ON-DEVICE VOICE · TOUCH TO SAVE</Text>
     </View>
     <View style={card}>
       {step('1', 'Download English speech', p.model.ready)}
@@ -57,7 +57,7 @@ export default function VoiceSetup(p: Props) {
     </View>
     <View style={card}>
       {step('2', 'Enable tap-to-talk', p.prefs.enabled && p.prefs.microphone)}
-      {toggle('Assistant', 'Read stock, quantities and recorded suppliers.', p.prefs.enabled, v => p.update({ ...p.prefs, enabled: v }))}
+      {toggle('Assistant', 'Read inventory and prepare unsaved order drafts. Only a touch confirmation saves an order.', p.prefs.enabled, v => p.update({ ...p.prefs, enabled: v }))}
       {toggle('Microphone', 'Only records when you tap. Tap again to finish.', p.prefs.microphone, v => { if (v) p.enableMicrophone(); else p.update({ ...p.prefs, microphone: false }); }, !p.supported)}
       {(!p.prefs.enabled || !p.prefs.microphone) && <VoiceButton label="Enable assistant & microphone" onPress={p.enableMicrophone} disabled={locked || !p.supported} />}
       <Text style={body}>Allow microphone access when Android asks. If recording is silent, check Android’s microphone privacy switch and close other recording apps.</Text>
@@ -73,7 +73,7 @@ export default function VoiceSetup(p: Props) {
       <Text style={[styles.title, { color: colors.textPrimary }]}>How to use it</Text>
       <Text style={body}>1. Tap the microphone on a main screen; stay there.{ '\n' }2. Speak after “Listening”, then tap the same button to stop.{ '\n' }3. Review the transcript below, then tap “Send question”.</Text>
       <Text style={body}>Answers stay open for 10 seconds after any spoken reply finishes. Choose “Keep open” to read longer. If an item name is unclear, choose the correct item first.</Text>
-      <Text style={body}>The assistant cannot change stock, create orders or make purchases. Offline answers use stock synced during this login and are marked “Last known”.</Text>
+      <Text style={body}>The assistant can prepare unsaved drafts. It cannot change stock, save orders by voice, or send purchases. Unsaved drafts clear on logout or app restart. Offline answers use stock synced during this login and are marked “Last known”.</Text>
       <Text style={body}>Ask about current quantities, suppliers, stock status or a stock summary. You can combine quantity and supplier questions for one item. Historical trends, forecasts and arbitrary multi-item calculations are not supported yet.</Text>
       <VoiceButton label={help ? 'Hide example questions' : 'See example questions'} secondary onPress={() => setHelp(!help)} />
       {help && commandExamples.map(example => <Text key={example} style={body}>• {example}</Text>)}

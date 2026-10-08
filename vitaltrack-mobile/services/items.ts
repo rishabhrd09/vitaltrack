@@ -232,9 +232,10 @@ export const itemService = {
    * desired end-state (item gone) is already achieved — treat as success
    * instead of surfacing it as an error up through bulk-delete flows.
    */
-  async delete(id: string): Promise<{ message: string }> {
+  async delete(id: string, version?: number): Promise<{ message: string }> {
     try {
-      return await api.delete<{ message: string }>(`/items/${id}`);
+      const check = version === undefined ? '' : `?version=${version}`;
+      return await api.delete<{ message: string }>(`/items/${id}${check}`);
     } catch (err) {
       if (err instanceof ApiClientError && err.status === 404) {
         logger.info('itemService', 'DELETE returned 404; treating as already deleted');

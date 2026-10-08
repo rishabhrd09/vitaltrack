@@ -3,7 +3,7 @@
  * Authentication API calls
  */
 
-import { api, tokenStorage, ApiClientError } from './api';
+import { api, tokenStorage, ApiClientError, revokeSession } from './api';
 import type { User, AuthResponse, LoginRequest, RegisterRequest } from '@/types';
 
 export const authService = {
@@ -29,21 +29,12 @@ export const authService = {
      * Logout and revoke refresh token
      */
     async logout(): Promise<void> {
-        try {
-            const refreshToken = await tokenStorage.getRefreshToken();
-            if (refreshToken) {
-                await api.post('/auth/logout', { refresh_token: refreshToken });
-                // An expired access token makes the API client refresh first, which
-                // rotates the refresh token; the retried logout then revokes only the
-                // old one. Revoke the rotated token too, or it stays valid server-side.
-                const rotated = await tokenStorage.getRefreshToken();
-                if (rotated && rotated !== refreshToken) {
-                    await api.post('/auth/logout', { refresh_token: rotated });
-                }
-            }
-        } finally {
-            await tokenStorage.clearTokens();
-        }
+        const [accessToken, refreshToken] = await Promise.all([
+            tokenStorage.getAccessToken(), tokenStorage.getRefreshToken(),
+        ]);
+        await tokenStorage.clearTokens();
+        // Local logout must not wait for a sleeping or unreachable server.
+        if (accessToken && refreshToken) void revokeSession(accessToken, refreshToken);
     },
 
     /**

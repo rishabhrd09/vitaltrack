@@ -3,7 +3,9 @@ VitalTrack Backend - Category Routes
 CRUD operations for inventory categories
 """
 
-from fastapi import APIRouter, HTTPException, status
+from datetime import datetime
+
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import noload
 
@@ -273,18 +275,21 @@ async def delete_category(
     category_id: str,
     db: DB,
     current_user: CurrentUser,
+    only_if_empty: bool = Query(False, alias="onlyIfEmpty"),
+    expected_updated_at: datetime | None = Query(None, alias="expectedUpdatedAt"),
 ) -> SuccessResponse:
     """
     Delete a category.
     
     **Warning**: This will also delete all items in the category!
     """
-    result = await db.execute(
-        select(Category).where(
-            Category.id == category_id,
-            Category.user_id == current_user.id,
-        )
+    query = select(Category).where(
+        Category.id == category_id, Category.user_id == current_user.id,
     )
+    if only_if_empty or expected_updated_at is not None:
+        # The row lock also blocks new item FK references until we commit.
+        query = query.with_for_update()
+    result = await db.execute(query)
     category = result.scalar_one_or_none()
     
     if not category:
@@ -298,7 +303,23 @@ async def delete_category(
             status_code=status.HTTP_409_CONFLICT,
             detail="Default categories cannot be deleted",
         )
+
+    if expected_updated_at is not None and category.updated_at != expected_updated_at:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Category changed after the backup; it was not deleted. Refresh and try again.",
+        )
     
+    if only_if_empty:
+        remaining = await db.scalar(
+            select(func.count(Item.id)).where(Item.category_id == category.id)
+        )
+        if remaining:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Category still contains items; it was not deleted. Refresh and try again.",
+            )
+
     category_name = category.name
 
     # Log activity before deletion

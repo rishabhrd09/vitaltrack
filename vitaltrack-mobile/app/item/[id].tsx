@@ -111,6 +111,9 @@ export default function ItemFormScreen() {
   // loaded yet, the edit form started blank, and saving it would overwrite the
   // item's stock, category and details with defaults.
   const [formSeededFromItem] = useState(!!existingItem);
+  // Keep the concurrency token from the same snapshot as the form values.
+  // A cache refetch must not make an old form look like a current edit.
+  const [formVersion] = useState(existingItem?.version);
 
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showUnitPicker, setShowUnitPicker] = useState(false);
@@ -147,7 +150,7 @@ export default function ItemFormScreen() {
       toast.info('Still saving previous changes', 'Please wait a moment');
       return;
     }
-    if (!isNew && !formSeededFromItem) {
+    if (!isNew && (!formSeededFromItem || formVersion === undefined)) {
       Alert.alert(
         'Item details not loaded',
         'This item had not loaded when the screen opened, so the form is empty. Go back and open the item again before saving.'
@@ -169,6 +172,10 @@ export default function ItemFormScreen() {
 
     // Sanitize all user inputs for security
     const sanitizedName = sanitizeName(name);
+    if (!sanitizedName) {
+      Alert.alert('Error', 'Item name must contain text, not just markup.');
+      return;
+    }
     const sanitizedPurchaseLink = sanitizeUrl(purchaseLink);
 
     const itemData = {
@@ -218,7 +225,7 @@ export default function ItemFormScreen() {
         supplierContact: itemData.supplierContact ?? null,
         purchaseLink: purchaseLink.trim() ? itemData.purchaseLink : null,
         notes: itemData.notes ?? null,
-        version: existingItem?.version ?? 1,
+        version: formVersion!,
       });
     }
     safeBack();

@@ -64,8 +64,22 @@ interface RefreshResponse {
 }
 
 // Token Management
+let credentialEpoch = 0;
+let credentialWrites: Promise<void> = Promise.resolve();
+
+function writeCredentials(write: () => Promise<void>, expectedEpoch?: number): Promise<void> {
+    const pending = credentialWrites.then(async () => {
+        if (expectedEpoch !== undefined && expectedEpoch !== credentialEpoch) throw new Error('Session changed. Please retry.');
+        credentialEpoch++;
+        await write();
+    });
+    credentialWrites = pending.catch(() => {});
+    return pending;
+}
+
 export const tokenStorage = {
     async getAccessToken(): Promise<string | null> {
+        await credentialWrites;
         try {
             return await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
         } catch {
@@ -74,6 +88,7 @@ export const tokenStorage = {
     },
 
     async getRefreshToken(): Promise<string | null> {
+        await credentialWrites;
         try {
             return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
         } catch {
@@ -82,13 +97,17 @@ export const tokenStorage = {
     },
 
     async setTokens(accessToken: string, refreshToken: string): Promise<void> {
-        await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
-        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+        await writeCredentials(async () => {
+            await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
+            await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+        });
     },
 
     async clearTokens(): Promise<void> {
-        await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
-        await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+        await writeCredentials(async () => {
+            await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+            await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+        });
     },
 };
 
@@ -109,7 +128,10 @@ class ApiClientError extends Error {
 let refreshPromise: Promise<string> | null = null;
 
 async function refreshAccessToken(): Promise<string> {
+    await credentialWrites;
+    const epoch = credentialEpoch;
     const refreshToken = await tokenStorage.getRefreshToken();
+    if (epoch !== credentialEpoch) throw new Error('Session changed. Please retry.');
     if (!refreshToken) throw new ApiClientError('Session expired. Please log in again.', 401);
 
     const controller = new AbortController();
@@ -122,7 +144,10 @@ async function refreshAccessToken(): Promise<string> {
             signal: controller.signal,
         });
         if (response.status === 401 || response.status === 403) {
-            await tokenStorage.clearTokens();
+            await writeCredentials(async () => {
+                await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+                await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+            }, epoch);
             throw new ApiClientError('Session expired. Please log in again.', 401);
         }
         if (!response.ok) {
@@ -132,7 +157,17 @@ async function refreshAccessToken(): Promise<string> {
         if (!data.access_token || !data.refresh_token) {
             throw new ApiClientError('Could not refresh session. Please try again.', 502);
         }
-        await tokenStorage.setTokens(data.access_token, data.refresh_token);
+        try {
+            await writeCredentials(async () => {
+                await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, data.access_token);
+                await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, data.refresh_token);
+            }, epoch);
+        } catch (error) {
+            // The server may have rotated while local logout was finishing.
+            // Retire that abandoned pair without touching the current session.
+            void revokeSession(data.access_token, data.refresh_token);
+            throw error;
+        }
         return data.access_token;
     } catch (error) {
         // An outage/timeout is not proof of revoked credentials. Keep stored
@@ -149,6 +184,40 @@ function sharedRefresh(): Promise<string> {
         refreshPromise = refreshAccessToken().finally(() => { refreshPromise = null; });
     }
     return refreshPromise;
+}
+
+/** Revoke captured credentials without ever reading or changing a later login. */
+export async function revokeSession(accessToken: string, refreshToken: string): Promise<void> {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => { controller.abort(); reject(new Error('Session revocation timed out')); }, 30_000);
+    });
+    const send = (endpoint: string, body: unknown, access?: string) => fetch(`${API_BASE_URL}${API_VERSION}${endpoint}`, {
+        method: 'POST', signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', ...(access ? { Authorization: `Bearer ${access}` } : {}) },
+        body: JSON.stringify(body),
+    });
+    try {
+        await Promise.race([(async () => {
+            const logout = await send('/auth/logout', { refresh_token: refreshToken }, accessToken);
+            if (logout.ok) return;
+            if (logout.status !== 401 && logout.status !== 403) throw new Error('Session revocation unavailable');
+            // An expired access token needs rotation before revocation. These
+            // tokens stay in memory and are never persisted onto a new login.
+            const refresh = await send('/auth/refresh', { refresh_token: refreshToken });
+            if (!refresh.ok) return;
+            const rotated = await refresh.json() as RefreshResponse;
+            if (rotated.access_token && rotated.refresh_token) {
+                const result = await send('/auth/logout', { refresh_token: rotated.refresh_token }, rotated.access_token);
+                if (!result.ok) throw new Error('Rotated session revocation unavailable');
+            }
+        })(), deadline]);
+    } catch {
+        logger.warn('Auth', 'Server session revocation did not complete; local logout is complete');
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 // Dedupe noisy "Network request failed" logs. When the device drops WiFi,
@@ -233,6 +302,41 @@ class ApiClient {
     }
 
     private async request<T>(
+        endpoint: string,
+        options: RequestInit = {},
+        requiresAuth: boolean = true,
+        responseType: 'json' | 'blob' = 'json',
+        assertCurrent: () => void = () => {}
+    ): Promise<T> {
+        const controller = new AbortController();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let cancel = () => {};
+        // Allow a free-tier cold start while bounding fetch, refresh waits,
+        // retries and response-body parsing with one overall deadline.
+        const deadline = new Promise<never>((_, reject) => {
+            cancel = () => {
+                controller.abort();
+                reject(new Error('Request cancelled.'));
+            };
+            timer = setTimeout(() => {
+                controller.abort();
+                reject(new ApiClientError('Request timed out. The server may still be processing it. Check the latest data before retrying.', 0, { originalError: 'request_timeout' }));
+            }, 90_000);
+            options.signal?.addEventListener('abort', cancel, { once: true });
+            if (options.signal?.aborted) cancel();
+        });
+        try {
+            return await Promise.race([
+                this.performRequest<T>(endpoint, { ...options, signal: controller.signal }, requiresAuth, responseType, assertCurrent),
+                deadline,
+            ]);
+        } finally {
+            clearTimeout(timer);
+            options.signal?.removeEventListener('abort', cancel);
+        }
+    }
+
+    private async performRequest<T>(
         endpoint: string,
         options: RequestInit = {},
         requiresAuth: boolean = true,
