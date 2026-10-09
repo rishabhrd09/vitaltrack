@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 2475" width="1000" height="2475" role="img" aria-labelledby="voice-flow-title voice-flow-desc">
+<title id="voice-flow-title">Inventory answers and unsaved order drafts</title>
+<desc id="voice-flow-desc">Microphone, selected Moonshine or separately consented Groq transcription, transcript review and Send precede bounded interpretation. Inventory facts and local draft quantities are resolved on the phone. Voice has no save or stock tool. Only a separate touch confirmation on Create Order saves an order; applying stock remains separate.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="voice-flow-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="voice-flow-ah-flow" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#4B3E35"/></marker><marker id="voice-flow-ah-optional" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#6B3A6E"/></marker><marker id="voice-flow-ah-reply" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7C6B5C"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#voice-flow-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">Inventory answers and unsaved order drafts</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Speech → reviewed text → validated query/draft → verified data. A touch is required to save.</text>
+<rect x="40.0" y="122.3" width="381.9" height="2212.2" rx="14" fill="#F4F0E3" stroke="#CDD2B5" stroke-width="1.2"/>
+<rect x="447.9" y="122.3" width="260.4" height="2212.2" rx="14" fill="#F2EFE7" stroke="#C2C9CB" stroke-width="1.2"/>
+<rect x="734.3" y="122.3" width="225.7" height="2212.2" rx="14" fill="#F5EEE6" stroke="#D3C1C9" stroke-width="1.2"/>
+<text x="56.0" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#557629" text-anchor="start" letter-spacing="1.6">ON THE PHONE</text>
+<text x="463.9" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">CAREKOSH API</text>
+<text x="750.3" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#6B3A6E" text-anchor="start" letter-spacing="1.6">GROQ (OPTIONAL)</text>
+<rect x="52.0" y="176.3" width="357.9" height="168.5" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="203.1" r="16" fill="#7B2C34"/>
+<text x="85.0" y="209.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">1</text>
+<text x="112.0" y="213.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Tap, record, tap again</text>
+<text x="70.0" y="243.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">New APK: one AudioRecord, mono</text>
+<text x="70.0" y="269.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">PCM16/16 kHz WAV + local live</text>
+<text x="70.0" y="294.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">captions with speech pack; older</text>
+<text x="70.0" y="320.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">native: Expo AAC/M4A; max 28 s</text>
+<rect x="52.0" y="374.8" width="357.9" height="194.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="401.6" r="16" fill="#7B2C34"/>
+<text x="85.0" y="407.7" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2</text>
+<text x="112.0" y="412.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Choose listening</text>
+<text x="70.0" y="441.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Default: Moonshine Small</text>
+<text x="70.0" y="467.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Streaming English runs here.</text>
+<text x="70.0" y="493.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Optional Groq listening needs a fresh</text>
+<text x="70.0" y="518.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">local audioOptIn; no automatic</text>
+<text x="70.0" y="544.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">provider fallback</text>
+<path d="M231.0,346.8 L231.0,370.8" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#voice-flow-ah-flow)"/>
+<rect x="459.9" y="432.8" width="236.4" height="270.7" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8" stroke-dasharray="7 6"/>
+<circle cx="492.9" cy="459.6" r="16" fill="#7B2C34"/>
+<text x="492.9" y="465.7" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2a</text>
+<text x="519.9" y="470.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Audio upload</text>
+<text x="477.9" y="499.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Optional POST</text>
+<text x="477.9" y="525.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">/ai/transcribe only</text>
+<text x="477.9" y="551.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">with groq_audio</text>
+<text x="477.9" y="576.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">consent, auth, flags</text>
+<text x="477.9" y="602.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">and quota. Temporary</text>
+<text x="477.9" y="627.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">decoding; normalize to</text>
+<text x="477.9" y="653.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">16 kHz; inventory is</text>
+<text x="477.9" y="678.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">not uploaded</text>
+<path d="M411.9,404.8 L417.4,404.8 Q422.9,404.8 422.9,410.3 L422.9,452.8 Q422.9,462.8 432.9,462.8 L455.9,462.8" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-optional)"/>
+<rect x="746.3" y="490.8" width="201.7" height="270.7" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
+<circle cx="779.3" cy="517.6" r="16" fill="#7B2C34"/>
+<text x="779.3" y="523.7" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2b</text>
+<text x="806.3" y="528.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6B3A6E" text-anchor="start">Whisper</text>
+<text x="764.3" y="557.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">whisper-large-v3:</text>
+<text x="764.3" y="583.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">audio to words</text>
+<text x="764.3" y="609.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">only. It does not</text>
+<text x="764.3" y="634.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">understand an</text>
+<text x="764.3" y="660.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">intent or create a</text>
+<text x="764.3" y="685.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">draft. Generic</text>
+<text x="764.3" y="711.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">vocabulary prompt</text>
+<text x="764.3" y="736.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">only</text>
+<path d="M698.3,462.8 L703.8,462.8 Q709.3,462.8 709.3,468.3 L709.3,510.8 Q709.3,520.8 719.3,520.8 L742.3,520.8" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-optional)"/>
+<rect x="52.0" y="733.5" width="357.9" height="194.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="760.3" r="16" fill="#7B2C34"/>
+<text x="85.0" y="766.4" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2c</text>
+<text x="112.0" y="770.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Review words, then Send</text>
+<text x="70.0" y="800.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Offline mode skips the optional</text>
+<text x="70.0" y="826.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">audio requests. Delete temporary</text>
+<text x="70.0" y="851.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">audio; transcript editable. No</text>
+<text x="70.0" y="877.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">interpretation or drafting before</text>
+<text x="70.0" y="902.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Send</text>
+<path d="M744.3,552.8 L738.8,552.8 Q733.3,552.8 733.3,558.3 L733.3,753.5 Q733.3,763.5 723.3,763.5 L413.9,763.5" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-reply)"/>
+<rect x="52.0" y="957.5" width="357.9" height="168.5" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="984.4" r="16" fill="#7B2C34"/>
+<text x="85.0" y="990.4" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">3</text>
+<text x="112.0" y="994.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Local bounded parser</text>
+<text x="70.0" y="1024.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Legacy reads plus inventory filters</text>
+<text x="70.0" y="1050.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">and local draft commands.</text>
+<text x="70.0" y="1075.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Save/apply/send actions remain</text>
+<text x="70.0" y="1101.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">unavailable</text>
+<path d="M231.0,929.5 L231.0,953.5" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#voice-flow-ah-flow)"/>
+<rect x="459.9" y="1015.5" width="236.4" height="270.7" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8" stroke-dasharray="7 6"/>
+<circle cx="492.9" cy="1042.4" r="16" fill="#7B2C34"/>
+<text x="492.9" y="1048.4" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">4</text>
+<text x="519.9" y="1052.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Interpret</text>
+<text x="477.9" y="1082.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Optional POST</text>
+<text x="477.9" y="1108.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">/ai/interpret.</text>
+<text x="477.9" y="1133.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Unmatched wording</text>
+<text x="477.9" y="1159.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">only; consent</text>
+<text x="477.9" y="1184.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">groq_text, auth, flags</text>
+<text x="477.9" y="1210.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">and quota.</text>
+<text x="477.9" y="1236.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">contract_version=2 if</text>
+<text x="477.9" y="1261.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">supported; text only</text>
+<path d="M411.9,987.5 L417.4,987.5 Q422.9,987.5 422.9,993.0 L422.9,1035.5 Q422.9,1045.5 432.9,1045.5 L455.9,1045.5" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-optional)"/>
+<rect x="746.3" y="1073.5" width="201.7" height="321.9" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
+<circle cx="779.3" cy="1100.4" r="16" fill="#7B2C34"/>
+<text x="779.3" y="1106.4" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">5</text>
+<text x="806.3" y="1110.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6B3A6E" text-anchor="start">Groq spec</text>
+<text x="764.3" y="1140.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">No tools.</text>
+<text x="764.3" y="1166.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">openai/gpt-oss-20b</text>
+<text x="764.3" y="1191.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">default,</text>
+<text x="764.3" y="1217.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">temperature 0, low</text>
+<text x="764.3" y="1242.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">reasoning, 25 s</text>
+<text x="764.3" y="1268.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">deadline.</text>
+<text x="764.3" y="1294.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Query/draft JSON</text>
+<text x="764.3" y="1319.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">only; validation</text>
+<text x="764.3" y="1345.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">still cannot prove</text>
+<text x="764.3" y="1370.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">meaning</text>
+<path d="M698.3,1045.5 L703.8,1045.5 Q709.3,1045.5 709.3,1051.0 L709.3,1093.5 Q709.3,1103.5 719.3,1103.5 L742.3,1103.5" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-optional)"/>
+<rect x="459.9" y="1316.3" width="236.4" height="270.7" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="492.9" cy="1343.1" r="16" fill="#7B2C34"/>
+<text x="492.9" y="1349.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">6</text>
+<text x="519.9" y="1353.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Validate</text>
+<text x="477.9" y="1383.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Settle usage. Names,</text>
+<text x="477.9" y="1409.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">units and</text>
+<text x="477.9" y="1434.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">number-to-item</text>
+<text x="477.9" y="1460.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">association checked.</text>
+<text x="477.9" y="1485.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Legacy v1 remains</text>
+<text x="477.9" y="1511.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">supported. Only</text>
+<text x="477.9" y="1536.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">consent/usage</text>
+<text x="477.9" y="1562.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">metadata writes</text>
+<path d="M744.3,1135.5 L738.8,1135.5 Q733.3,1135.5 733.3,1141.0 L733.3,1336.3 Q733.3,1346.3 723.3,1346.3 L700.3,1346.3" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-optional)"/>
+<rect x="52.0" y="1374.3" width="357.9" height="168.5" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="1401.1" r="16" fill="#7B2C34"/>
+<text x="85.0" y="1407.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">7</text>
+<text x="112.0" y="1411.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Verify and resolve data</text>
+<text x="70.0" y="1441.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Complete inventory owned by this</text>
+<text x="70.0" y="1467.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">login; pending writes block.</text>
+<text x="70.0" y="1492.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Ambiguous names/units require</text>
+<text x="70.0" y="1518.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">clarification. Offline = last known</text>
+<path d="M457.9,1346.3 L452.4,1346.3 Q446.9,1346.3 446.9,1351.8 L446.9,1394.3 Q446.9,1404.3 436.9,1404.3 L413.9,1404.3" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-reply)"/>
+<rect x="52.0" y="1572.8" width="357.9" height="194.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="1599.6" r="16" fill="#7B2C34"/>
+<text x="85.0" y="1605.7" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">8</text>
+<text x="112.0" y="1610.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Table or unsaved draft</text>
+<text x="70.0" y="1639.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Persistent virtualized rows, concise</text>
+<text x="70.0" y="1665.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">speech, separate brand/supplier.</text>
+<text x="70.0" y="1691.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Drafts in session memory;</text>
+<text x="70.0" y="1716.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">merge/replace/cancel preserves</text>
+<text x="70.0" y="1742.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">manual work</text>
+<path d="M231.0,1544.8 L231.0,1568.8" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#voice-flow-ah-flow)"/>
+<rect x="52.0" y="1802.8" width="2.5" height="83.1" fill="#7B2C34"/>
+<text x="70.0" y="1838.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">VOICE STOPS HERE: no order-save, order-PDF-save, stock/status/apply or supplier-send tool. Saying confirm cannot</text>
+<text x="70.0" y="1864.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">save. Inventory PDF requires a separate reviewed touch export.</text>
+<rect x="52.0" y="1915.9" width="357.9" height="194.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="1942.7" r="16" fill="#7B2C34"/>
+<text x="85.0" y="1948.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">9</text>
+<text x="112.0" y="1953.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Touch to save</text>
+<text x="70.0" y="1983.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Create Order: Confirm order &amp;</text>
+<text x="70.0" y="2008.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">export PDF. Require matching</text>
+<text x="70.0" y="2034.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">backend guard; refresh inventory;</text>
+<text x="70.0" y="2059.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">re-review changed stock without</text>
+<text x="70.0" y="2085.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">changing order quantities</text>
+<rect x="459.9" y="1973.9" width="236.4" height="270.7" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="492.9" cy="2000.7" r="16" fill="#7B2C34"/>
+<text x="492.9" y="2006.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">10</text>
+<text x="519.9" y="2011.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">POST /orders</text>
+<text x="477.9" y="2041.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Authenticated</text>
+<text x="477.9" y="2066.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">ownership +</text>
+<text x="477.9" y="2092.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">expectedVersion under</text>
+<text x="477.9" y="2117.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">sorted item locks.</text>
+<text x="477.9" y="2143.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Stable localId returns</text>
+<text x="477.9" y="2168.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">the original order on</text>
+<text x="477.9" y="2194.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">retry. Saving does not</text>
+<text x="477.9" y="2220.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">increase stock</text>
+<path d="M411.9,1945.9 L417.4,1945.9 Q422.9,1945.9 422.9,1951.4 L422.9,1993.9 Q422.9,2003.9 432.9,2003.9 L455.9,2003.9" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-reply)"/>
+<rect x="52.0" y="2140.0" width="357.9" height="168.5" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="2166.8" r="16" fill="#7B2C34"/>
+<text x="85.0" y="2172.9" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">11</text>
+<text x="112.0" y="2177.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Export saved response</text>
+<text x="70.0" y="2207.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Shared local PDF template uses</text>
+<text x="70.0" y="2232.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">server-returned rows. PDF failure</text>
+<text x="70.0" y="2258.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">re-exports the same order. Unknown</text>
+<text x="70.0" y="2283.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">save outcome retains request and ID</text>
+<path d="M457.9,2035.9 L452.4,2035.9 Q446.9,2035.9 446.9,2041.4 L446.9,2160.0 Q446.9,2170.0 436.9,2170.0 L413.9,2170.0" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-reply)"/>
+<path d="M43.0,2362.5 H944.0 Q960.0,2362.5 960.0,2378.5 V2429.6 Q960.0,2445.6 944.0,2445.6 H43.0 Q40.0,2445.6 40.0,2442.6 V2365.5 Q40.0,2362.5 43.0,2362.5 Z" fill="#EBDDC6" stroke="none" stroke-width="1.4"/>
+<text x="58.0" y="2398.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Leaving or account change blocks late client dispatch/share; it cannot undo a write already sent.</text>
+<text x="58.0" y="2424.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Native/device/provider behavior and live deployments still require acceptance testing.</text>
+</svg>

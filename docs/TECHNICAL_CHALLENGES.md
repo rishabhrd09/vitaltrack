@@ -1,10 +1,17 @@
 # Technical Challenges & Solutions
 
+> **AI voice source update — 9 October 2026:** Current AI voice architecture, checked against the 9 October 2026 working tree at `0946eb7` plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+
+
+> 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
+
+> **Status (7 October 2026; re-checked 8 October 2026 against the working tree, `03cfebb` plus uncommitted documentation):** historical post-mortem record (April–May 2026, last re-audited 4 May 2026); kept as evidence. On 8 October, statements about current behaviour and misleading technical explanations were corrected in place (dated notes), and Challenge 14 was generalised for the public repository; the history itself was not re-verified. For example, `app.json` no longer declares `CAMERA` or broad storage permissions (they have been blocked since Goal 9, June 2026), and on the feature branch a password change also invalidates access tokens through `session_version`. Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) and [API traceability](API_TRACEABILITY.md).
+
 > **Lessons learned** during CareKosh (formerly VitalTrack) development. A debugging reference for future-us hitting the same wall.
 
 Entries are in rough chronological order. The "Architecture Decisions" section at the bottom captures rationale for choices that are still live.
 
-> **Heads-up on historical entries:** challenges 1–3, 7, 8, 15, 17 describe problems from the **offline-first era** (pre-PR #8). The server-first refactor in PR #8 removed the offline-first architecture — CareKosh is now a React Query + Zustand-UI-only app, not a Zustand-persist + AsyncStorage + custom sync app. Those entries stay here because the root-cause reasoning is still educational.
+> **Heads-up on historical entries:** challenges 1–3, 7, 8, 15, 17 describe problems from the **offline-first era**. The server-first refactor spans PRs #4–#8 (merged 7–14 April 2026); PR #8 was the last merge in that series. Today TanStack Query owns the server-data cache, Zustand stores UI/auth state, and AsyncStorage persists a read-only query cache and small settings. The custom offline write/sync architecture is gone. These entries remain because their debugging lessons are useful; they do not describe today's storage model.
 
 ---
 
@@ -39,6 +46,8 @@ export const isLowStock = (item: Item): boolean => {
   return false;
 };
 ```
+
+Current code (8 October 2026) adds a third rule: any item with `minimumStock >= 1` and `quantity === 1` is also low stock. The phone's low-stock list is therefore broader than the server's `/items/stats` count (`0 < quantity < minimum_stock`).
 
 ### Files Changed
 - `vitaltrack-mobile/types/index.ts`
@@ -103,6 +112,8 @@ See `docs/LOCAL_TESTING_COMPLETE_GUIDE.md` §E. Fast Windows fix:
 netsh advfirewall firewall add rule name="FastAPI Dev" dir=in action=allow protocol=tcp localport=8000
 ```
 
+Warning: without `profile=`, this rule applies to every network profile, including Public networks. Prefer adding `profile=private`, and remove the rule when done: `netsh advfirewall firewall delete rule name="FastAPI Dev"`.
+
 Fallback: USB + `adb reverse` — see `docs/USB_ADB_REVERSE_GUIDE.md`. Bypasses the network entirely.
 
 ---
@@ -128,12 +139,14 @@ net stop postgresql-x64-16
 ```bash
 brew services stop postgresql
 ```
+(Use the formula name you installed, for example `postgresql@16`.)
 
-**Alternative:** remap the external port in `docker-compose.dev.yml`:
+**Alternative:** remap the external port in `vitaltrack-backend/docker-compose.dev.yml`:
 ```yaml
 ports:
   - "5433:5432"
 ```
+Both forms publish PostgreSQL on all network interfaces with the default `postgres`/`postgres` login. On a shared network, use `"127.0.0.1:5433:5432"` to keep it local.
 
 ---
 
@@ -150,8 +163,9 @@ Always use `--clear` after `.env` changes:
 ```bash
 npx expo start --clear
 ```
+(Expo's current documentation says a full app reload is enough for `.env` edits; `--clear` is a harmless next step when changes still don't appear.)
 
-Stubborn case:
+Stubborn case (run inside `vitaltrack-mobile/`):
 ```bash
 rm -rf node_modules .expo
 npm install --legacy-peer-deps
@@ -198,7 +212,7 @@ class SyncOperation(BaseModel):
 ```
 
 ### Status
-The legacy `/sync/*` endpoints were removed after the server-first migration proved mobile no longer calls them. Main REST endpoints (items, orders, categories) remain the supported write path; `localId` fields stay in those schemas for compatibility metadata.
+The legacy `/sync/*` endpoints were removed after the server-first migration proved mobile no longer calls them. Main REST endpoints (items, orders, categories) remain the supported write path. `localId` fields stay in those schemas; on items and categories they are stored metadata only. On the feature branch (migration 0010) an order's `localId` is an idempotency key: the same key returns the original order.
 
 ---
 
@@ -208,7 +222,7 @@ The legacy `/sync/*` endpoints were removed after the server-first migration pro
 App loads in Expo Go but immediately crashes with *"Something went wrong. Fatal error: failed to download remote update"*.
 
 ### Root Cause
-`expo-updates` is installed as a dependency, but no `updates` configuration exists in `app.json`. Expo Go tries to fetch OTA updates on launch, finds nothing configured, and crashes before the app can render.
+The team's diagnosis at the time (no official Expo source links this error to a missing `updates` block): `expo-updates` is installed as a dependency, but no `updates` configuration exists in `app.json`. Expo Go tries to fetch OTA updates on launch, finds nothing configured, and crashes before the app can render.
 
 ### Solution
 Disable OTA in `app.json`:
@@ -222,6 +236,8 @@ Disable OTA in `app.json`:
 
 ### Files Changed
 - `vitaltrack-mobile/app.json`
+
+Current state (8 October 2026): `app.json` still has `updates.enabled: false`. It is not per profile, so no build receives OTA updates; JavaScript changes reach phones only through a new build.
 
 ---
 
@@ -281,6 +297,7 @@ Phone browser can't reach `http://192.168.x.x:8000/health`. Same Wi-Fi confirmed
 New-NetFirewallRule -DisplayName "CareKosh Backend 8000" -Direction Inbound -Port 8000 -Protocol TCP -Action Allow
 New-NetFirewallRule -DisplayName "Expo Metro 8081" -Direction Inbound -Port 8081 -Protocol TCP -Action Allow
 ```
+Warning: without `-Profile`, these rules apply to every network profile, including Public networks. Prefer `-Profile Private`, and remove them when done: `Remove-NetFirewallRule -DisplayName "CareKosh Backend 8000"` (and the same for "Expo Metro 8081").
 
 ### Alternative
 USB + `adb reverse` — see Challenge 10 and `docs/USB_ADB_REVERSE_GUIDE.md`.
@@ -312,25 +329,12 @@ Use LAN (`--lan`) or USB + `adb reverse` (`--localhost`) instead.
 All rate-limited endpoints (register, login) returned 500 Internal Server Error on Render. Non-rate-limited endpoints worked.
 
 ### Root Cause
-`slowapi`'s default `get_remote_address` reads `request.client.host`, which returns the proxy IP behind Render's edge. The default `swallow_errors=False` meant a storage blip crashed the request.
+Initially the limiter keyed on `slowapi`'s default `get_remote_address`, which reads `request.client.host`. On Render that is the hosting proxy's address, so every user looked like one client. The default `swallow_errors=False` meant any limiter error became a 500.
 
 ### Solution
-```python
-# vitaltrack-backend/app/utils/rate_limiter.py
-def get_real_client_ip(request: Request) -> str:
-    cf_ip = request.headers.get("CF-Connecting-IP")
-    if cf_ip: return cf_ip
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    if forwarded_for: return forwarded_for.split(",")[0].strip()
-    if request.client and request.client.host: return request.client.host
-    return "unknown"
+The limiter was later changed to identify clients behind the hosting proxy, and `swallow_errors=True` was set (in `vitaltrack-backend/app/utils/rate_limiter.py`) so a limiter error no longer returns a 500. How clients are identified is the subject of an open finding tracked privately.
 
-limiter = Limiter(
-    key_func=get_real_client_ip,
-    swallow_errors=True,
-    in_memory_fallback_enabled=True,
-)
-```
+**Current state (8 October 2026):** rate limiting is best effort: five auth routes, counters in memory per worker process, reset on restart; an open finding about how clients are identified is tracked privately.
 
 ### Lesson
 Always test rate-limited endpoints behind the real proxy, not just locally.
@@ -351,7 +355,7 @@ User adds items → closes app → reopens → everything reset to seed data.
 - On network error, preserve local state.
 
 ### Status
-Obsolete after PR #8. The server is now authoritative. React Query caches are rebuilt from the server on every login; there is no persisted domain state to destroy in the first place.
+Obsolete after PR #8. The server is now authoritative. React Query data (items, categories, orders, activity) is persisted to AsyncStorage as a read-only cache and cleared at login and logout; saves are not persisted or replayed. The cache is never written back to the server, so wiping it cannot lose data.
 
 ---
 
@@ -441,7 +445,7 @@ Register with email → verify-email-pending screen flashes → dashboard. No em
 2. Auth store: email registrations set `isAuthenticated: false`.
 3. Register screen uses `router.replace` (not `push`) to verify-email-pending.
 4. Verify screen has no "Continue to App" — must verify then "Go to Login".
-5. Backend login blocks with `EMAIL_NOT_VERIFIED` only when `MAIL_PASSWORD` is set AND user has an email AND not yet verified.
+5. Backend login blocks with `EMAIL_NOT_VERIFIED` only when `REQUIRE_EMAIL_VERIFICATION=true` AND `MAIL_PASSWORD` is set AND user has an email AND not yet verified. (On the feature branch the same check also guards every authenticated request and token refresh, so an unverified user cannot log out or request deletion either.)
 6. `is_email_configured()` helper prevents silent email failures.
 
 ### Related
@@ -455,15 +459,15 @@ See `docs/EMAIL_VERIFICATION_GUIDE.md` for the full flow and `docs/PHASE1_AUTH_H
 Every API error showed "An error occurred" — no distinction between wrong password, server down, rate limit.
 
 ### Solution
-Status-specific copy in `services/api.ts`:
+Status-specific copy in `services/api.ts` (a fallback: it is used only when the API response carries no message of its own):
 ```typescript
 switch (response.status) {
     case 401: message = 'Incorrect email/username or password.'; break;
-    case 429: message = 'Too many attempts. Please wait a moment.'; break;
+    case 429: message = 'Too many attempts. Please wait a moment and try again.'; break;
     case 500:
     case 502:
     case 503:
-        message = 'Server temporarily unavailable.'; break;
+        message = 'Server is temporarily unavailable. Please try again in a moment.'; break;
     // ... etc
 }
 ```
@@ -510,15 +514,17 @@ No optimistic concurrency control. Last-write-wins is unsafe for inventory quant
 ### Solution
 Added a `version` column to `items` (migration `20260406_add_version_audit_log_quantity_check.py`). Updates now assert the `version` they expected and bump it. Conflicting updates return **409 Conflict** with `{server_version, server_quantity}` so the client can reconcile. Same migration also added an `audit_log` table and a `CHECK (quantity >= 0)` constraint.
 
+Follow-up (8 October 2026, A-1 fixed locally): the Edit Item form captures the version with its initial values. Cache refreshes cannot replace that token, and a stale save receives 409. Hook queries refetch after conflict; reopen the form to load current values. Component regression tests cover the former failure.
+
 ---
 
 ## Challenge 23: Authentication Hardening (PR #12)
 
 ### What changed
-- **Config validators** — `SECRET_KEY` must be ≥32 chars; in production rejects anything starting with `"CHANGE-THIS"`.
+- **Config validators** — `SECRET_KEY` must be ≥32 chars; in production rejects anything starting with `"CHANGE-THIS"` (on the feature branch, in every environment except development and testing).
 - **FRONTEND_URL validator** — required in production, otherwise emails contain broken links.
 - **CORS_ORIGINS parser** — accepts JSON or comma-separated values. There is no production wildcard rejection today; that remains deferred until real browser/admin origins are known.
-- **Session revocation on password change** — `change_password` now revokes all refresh tokens, same as `reset_password`. The response message tells the user their other devices will need to re-login.
+- **Session revocation on password change** — `change_password` now revokes all refresh tokens, same as `reset_password`. The response message tells the user their other devices will need to re-login. On the feature branch it says "Password changed successfully. Please log in again.", because the `session_version` bump also makes existing access tokens fail, on this device too.
 - **Email required at registration** — `UserRegister.email` is no longer optional. Username-only accounts have no recovery path and are a support liability; Play Store requires account recovery. Username remains optional.
 - **Enumeration-safe resend** — `POST /auth/resend-verification` returns identical text whether the email exists, is already verified, or doesn't exist.
 
@@ -530,12 +536,12 @@ Made email required broke tests that registered with username only. `conftest.py
 ## Challenge 24: Play-Store-Compliant Account Deletion (PR #13)
 
 ### What it is
-Google Play requires an in-app path to delete an account and all its data. The naive approach — delete immediately on button tap — is both policy-risky (missclicks) and token-hijack-risky (a stolen access token can wipe an account).
+Google Play requires an in-app path to delete an account and all its data, plus a public web link for deletion requests (when the app allows account creation). The naive approach — delete immediately on button tap — is both policy-risky (missclicks) and token-hijack-risky (a stolen access token can wipe an account).
 
 ### Solution — two-step, email-confirmed deletion
 1. `DELETE /auth/me` — generate a raw token (`secrets.token_urlsafe(32)`), store `SHA-256(raw)` with a 24-hour expiry on the user row, send the raw token in a confirmation email via `BackgroundTask`. **No data deleted yet.**
 2. `GET /auth/confirm-delete/{token}` — user clicks email link. Backend hashes the incoming token, verifies the DB hash + expiry, then renders a confirmation page only. This prevents crawlers, link scanners, or accidental opens from deleting the account.
-3. `POST /auth/confirm-delete/{token}` — user submits the confirmation form. Backend verifies the token again, then `db.delete(user)`. DB-level `ondelete="CASCADE"` on every FK tears down categories, items, orders, order_items, activity_logs, refresh_tokens, audit_log.
+3. `POST /auth/confirm-delete/{token}` — user submits the confirmation form. Backend verifies the token again, then `db.delete(user)`. DB-level `ondelete="CASCADE"` on every FK tears down categories, items, orders, order_items, activity_logs, refresh_tokens, audit_log (and, on the feature branch, ai_consents and ai_usage). The feature branch's shared daily order-number counter has no user link and is not touched.
 4. `POST /auth/cancel-delete` — authenticated nullifier for `deletion_token` and `deletion_token_expires`. Pending email link becomes invalid.
 
 Schema change: migration `20260419_add_account_deletion_token_fields.py` adds two nullable columns to `users`. Safe on a live DB with zero downtime.
@@ -550,7 +556,7 @@ See `docs/PHASE2_ACCOUNT_DELETION.md` for the full walkthrough including the cas
 
 The original design was offline-first with AsyncStorage + a hand-rolled sync queue. It was **wrong for this app**:
 - Medical inventory data is already small (hundreds of items, not thousands).
-- Data consistency matters more than offline edit capability — a nurse adding a phantom BiPAP because a sync queue replayed a stale op is worse than briefly not being able to edit during a 10-second Render cold start.
+- Data consistency matters more than offline edit capability — a nurse adding a phantom BiPAP because a sync queue replayed a stale op is worse than briefly not being able to edit during a Render cold start (up to about a minute on the free tier).
 - Sync code is a perpetual source of edge cases (Challenges 15, 17 above). Eliminating it eliminated an entire bug category.
 
 React Query + Zustand-UI-only gives us: server is the truth, the cache is read-through, mutations round-trip to the server before we update the UI. Error cases are the network's problem, handled once in `services/api.ts`, not in every screen.
@@ -559,25 +565,24 @@ The backend sync router was removed after this migration: there is no `/api/v1/s
 
 ### Why per-user isolation in queries?
 
-Every domain table (`categories`, `items`, `orders`, `activity_logs`) has a `user_id` FK. Every list query filters by the authenticated user. A compromised access token can't read another tenant's data — the SQL physically cannot return rows for a different `user_id`.
+Every domain table (`categories`, `items`, `orders`, `activity_logs`) has a `user_id` FK. Every list and detail query filters by the authenticated user (`user_id == current_user.id`). This is application-level filtering, not PostgreSQL row-level security: a valid token for one account cannot read another account's rows through the API, but a stolen token still exposes its own account's data.
 
 ### Why UUIDs?
 
 - Offline-created IDs (historical reason — no longer needed post-PR #8) wouldn't collide with server-assigned ones.
-- Even now, UUIDs make debugging easier (no ordered IDs leaking aggregate counts; logs can be grepped precisely).
+- Even now, UUIDs make debugging easier (no ordered IDs leaking aggregate counts; logs can be grepped precisely). Order numbers are the exception: `ORD-YYYYMMDD-NNNN` uses the UTC date and one daily counter shared by all users, so the number reveals roughly how many orders were created that day.
 - The overhead vs. bigint is negligible for this dataset size.
 
 ### Images as local file paths, not blobs
 
-Item photos are stored as `file://...` paths on the device. The DB column `imageUri` stores the string, not the binary.
+Item photos are stored as `file://...` paths on the device. The DB column `image_uri` (API field `imageUri`) stores the string, not the binary.
 
 **Consequence:** uninstall → reinstall wipes the photos (OS-owned cache folder deleted) while structured data (items, quantities, categories, orders) is preserved via the DB.
 
 **Why this tradeoff:**
-- Neon free tier has 0.5 GB storage; storing images as base64 in the DB would exhaust it quickly.
+- Neon free tier had 0.5 GB storage at the time (1 GB per project since 2 October 2026); storing images as base64 in the DB would exhaust it quickly.
 - Syncing image binaries on every query would be slow over mobile networks.
 - Photos are supplementary (reference snapshots), not clinical data.
-- Same pattern as WhatsApp, Instagram, most inventory tools.
 
 **Future upgrade path if needed:**
 1. Cloud object storage (S3, Cloudinary, Supabase Storage) — upload to URL, store URL.
@@ -595,7 +600,7 @@ On Android 13+, `expo-image-picker` uses the **system Photo Picker API** — an 
 | Take a photo (camera) | Yes (`CAMERA`) | Direct hardware |
 | Write to shared storage | Yes (`WRITE_EXTERNAL_STORAGE`) | Outside sandbox |
 
-Our `app.json` declares `CAMERA`, `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`. On Android 13+, `READ_EXTERNAL_STORAGE` is ignored in favour of the picker. `CAMERA` is prompted at first tap of "Take Photo", not at install.
+Historical (May 2026): our `app.json` declared `CAMERA`, `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`. Since Goal 9 (June 2026) all three are in `blockedPermissions`, and the app has no "Take Photo" action: the item form only calls `launchImageLibraryAsync` (the system picker, no permission needed).
 
 ---
 
@@ -608,10 +613,10 @@ items = relationship(..., lazy="selectin")
 ```
 
 ### React Query stale/garbage time
-`QueryProvider.tsx` keeps `staleTime` at 30 seconds for medical freshness and `gcTime` at 24 hours so the persisted read-only cache can survive app restarts.
+`QueryProvider.tsx` keeps `staleTime` at 30 seconds for medical freshness and `gcTime` at 24 hours so the persisted read-only cache can survive app restarts. (The 24-hour restore cut-off itself is the persister's default `maxAge`; `gcTime` must be at least that long or restored data is dropped.)
 
 ### Rate limiter in-memory fallback
-`swallow_errors=True` + `in_memory_fallback_enabled=True` — auth endpoints degrade gracefully if the limiter storage hiccups (Challenge 14).
+`swallow_errors=True` + `in_memory_fallback_enabled=True` (Challenge 14). The counters already live in memory, so the fallback flag has no practical effect. Rate limiting is best effort: five auth routes, counters in memory per worker process, reset on restart; an open finding about how clients are identified is tracked privately.
 
 ---
 
@@ -624,7 +629,7 @@ pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 ```
 
 ### JWT
-HS256 (symmetric), 30-minute access tokens, 30-day refresh tokens. Refresh tokens rotate on every use — the old one is marked revoked, a new JTI is issued.
+HS256 (symmetric), 30-minute access tokens, 30-day refresh tokens. Refresh tokens rotate on every use — the old one is marked revoked, a new JTI is issued. Each refresh starts a new 30-day token (a sliding session), and there is no reuse detection: replaying an old token is refused but does not end the session.
 
 ### Token revocation on password/reset change (PR #12)
 ```python
@@ -634,7 +639,7 @@ await db.execute(
     .values(is_revoked=True)
 )
 ```
-Every device must re-login after the password changes. Response message says so.
+Every device must re-login after the password changes. Response message says so. On the feature branch the handler also increments `users.session_version`, so access tokens issued before the change stop working too.
 
 ### Rate limiting
 ```
@@ -695,6 +700,7 @@ After domain-data changes:
 ## Common Debug Commands
 
 ```bash
+# Run the docker compose commands from vitaltrack-backend/
 # Backend logs
 docker compose -f docker-compose.dev.yml logs -f api
 
@@ -716,7 +722,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 *Original: 2026-04-19 (tracks changes through PR #13) · Last re-audited 2026-05-04 against PR #34.*
 
 > **Re-audit notes (2026-05-04):**
-> All 24 challenges plus the Architecture Decisions / Performance / Security / Testing sections re-verified against current code. Every "(historical)" tag is correctly applied. Every still-current claim (Argon2 + bcrypt fallback, JWT 30 min / 30 d rotation, OCC `version` column, rate-limiter proxy-IP fix, ADB reverse port mapping, account deletion 24-hour SHA-256 hashed token, `Order.items` using `lazy="selectin"`, `useFocusEffect` on auth screens, `services/sync.ts` deleted) was verified file-and-line.
+> All 24 challenges plus the Architecture Decisions / Performance / Security / Testing sections re-verified against current code. Every "(historical)" tag is correctly applied. Every still-current claim (Argon2 + bcrypt fallback, JWT 30 min / 30 d rotation, OCC `version` column, rate-limiter proxy fix, ADB reverse port mapping, account deletion 24-hour SHA-256 hashed token, `Order.items` using `lazy="selectin"`, `useFocusEffect` on auth screens, `services/sync.ts` deleted) was verified file-and-line.
 >
 > One addition worth a future entry: a "Challenge 25 — fire-and-forget mutations during Render cold start" capturing the audit/cold-start-mutation-ux branch design (the observer-death bug, hook-level dispatch, mutateAsync().then() pattern, MutationResultDialog overlay). For now, that material lives in commit messages on the merged branch and in `docs/LOCAL_TESTING_INTERNALS.md`.
 >

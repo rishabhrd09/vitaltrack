@@ -19,6 +19,7 @@
     margin:0; background:var(--bg); color:var(--ink);
     font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
     font-size:18px; line-height:1.72; -webkit-font-smoothing:antialiased;
+    overflow-wrap:anywhere;
   }
   .wrap{max-width:980px; margin:0 auto; padding:0 22px}
   header.masthead{
@@ -108,27 +109,32 @@
   @media (max-width:640px){
     body{font-size:17px} header.masthead h1{font-size:30px}
     .mailcard .mc-row{flex-direction:column;gap:0} .mailcard .mc-row .k{text-align:left}
+    table{display:block;max-width:100%;overflow-x:auto}
   }
 </style>
+<style id="doc-review-style">.doc-review{display:block!important;position:static!important;box-sizing:border-box!important;width:auto!important;max-width:1000px;margin:24px auto!important;padding:18px 22px!important;border:1px solid #aab8ac!important;border-left:5px solid #286258!important;border-radius:8px;background:#f0f6ef!important;color:#1b352c!important;font:15px/1.6 system-ui,sans-serif!important}.doc-review p{margin:6px 0!important;color:inherit!important;font:inherit!important}.doc-review a{color:#075d70!important;text-decoration:underline!important}.doc-review strong{color:#173f34!important}.doc-review code{color:inherit!important;background:transparent!important}@media print{.doc-review{break-inside:avoid}}</style>
 </head>
 <body>
+<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside>
 
 <header class="masthead">
   <div class="wrap">
     <p class="kicker">CareKosh / VitalTrack · Infrastructure Field Guide</p>
     <h1>Custom Domain &amp; Email, End to End</h1>
-    <p class="sub">How <code>carekosh.com</code> was wired across Cloudflare, Render, GitHub, Brevo and our own codebase — the exact steps we performed, the screenshots from each step, and what happens request-by-request when a user verifies their email, resets a password, or writes to support.</p>
+<p><strong>8 October 2026 safety follow-up.</strong> Targeted fixes are local tested changes after the earlier audit. Deployment and device acceptance remain separate. <a href="docs/BACKEND_HARDENING.md#safety-follow-up-8-october-2026">Current changes and remaining scope</a>.</p>
+    <p class="sub">How <code>carekosh.com</code> was wired across Cloudflare, Render, GitHub, Brevo and our own codebase — the exact steps we performed, which screenshot belongs to each step (no images are in the repository), and what happens request-by-request when a user verifies their email, resets a password, or writes to support.</p>
     <p class="meta">Production API: https://api.carekosh.com · Staging: https://staging-api.carekosh.com · No secrets printed</p>
   </div>
 </header>
+<aside class="doc-review" aria-label="Documentation status"><strong>Setup tutorial and historical infrastructure record · reviewed 23 September 2026 · refreshed 7 October 2026 · re-checked 8 October 2026</strong><p>DNS values, delivery observations and dashboard screenshots describe the original setup, not live September verification. Missing screenshots are labeled. Follow the current build/deploy guide for release sequencing; verify DNS, sender and support routing before relying on them.</p><p><strong>7 October 2026 review.</strong> The code-side statements (email via the Brevo HTTP API, <code>FRONTEND_URL</code> links, token hashing and expiries, build-time API URLs, <code>render.yaml</code>, CI secrets) were re-checked against the repository at <code>03cfebb</code> (feature branch, not merged; <code>main</code> = <code>835fad3</code>) and corrected where marked “7 Oct 2026”. Live DNS records, Cloudflare Email Routing, Brevo domain status, Render service settings (auto-deploy, branch, plan, environment variables) and GitHub secrets were NOT VERIFIED — no provider dashboard or live lookup was used. The owner reports that staging was switched to the feature branch on 7 Oct; production is declared on <code>main</code> in <code>render.yaml</code>.</p><p><strong>8 October 2026 re-check.</strong> Code-side statements re-checked against the working tree (<code>03cfebb</code> plus uncommitted documentation). Corrected: no screenshots are in the repository (each figure names the file that belongs there), TLS certificates are chosen by the SNI name rather than the <code>Host</code> header, the rate-limit wording, and labels on dashboard-only claims. DNS, Cloudflare, Brevo, Render and GitHub settings remain NOT VERIFIED.</p><p><a href="docs/INDEX.html">Documentation home and source status</a> · <a href="docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide (current onboarding)</a> · <a href="docs/API_TRACEABILITY.md">API traceability</a> · <span>Documentation audit, 7 Oct 2026 <small>(local review reference; not published)</small></span> · <a href="docs/BACKEND_HARDENING.md">Local hardening and remaining work</a></p></aside>
 
 <div class="wrap">
 
-  <p class="lead">This is both a textbook and a runbook. It explains the <em>why</em> and the <em>mechanics</em> behind every setting, and it lists the <em>exact steps</em> we performed on each platform, with the screenshot from each step. Read it top to bottom once; after that it is a reference.</p>
+  <p class="lead">This is both a textbook and a runbook. It explains the <em>why</em> and the <em>mechanics</em> behind every setting, and it lists the <em>exact steps</em> we performed on each platform, naming the screenshot that belongs to each step. Read it top to bottom once; after that it is a reference.</p>
 
   <div class="callout tip">
     <span class="tag">How to add your screenshots</span>
-    <p>The image slots below are wired to filenames. Create a folder named <code>domain-email-img/</code> next to this HTML file and drop each screenshot in using the matching filename. Until a file exists, its slot shows a labelled placeholder — the guide reads correctly either way.</p>
+    <p>No screenshots are in this repository, and the figures below show a note instead of an image. Each note names the file it expects in <code>domain-email-img/</code> (next to this HTML file). To add one: remove personal email addresses, account IDs and tokens (the repository is public), save it under the matching filename, and put an <code>&lt;img src="domain-email-img/…"&gt;</code> tag in place of that figure's note.</p>
     <table>
       <tr><th>Filename</th><th>The screenshot it expects</th></tr>
       <tr><td><code>cloudflare-00-domain.png</code></td><td>carekosh.com active in the Cloudflare dashboard</td></tr>
@@ -199,7 +205,7 @@
     <text x="201" y="76" text-anchor="middle" font-size="10.5" fill="#8c7a64">HTTPS</text>
     <rect x="234" y="44" width="160" height="80" rx="10" fill="#dfe9f1" stroke="#587f9d"/>
     <text x="314" y="74" text-anchor="middle" font-size="14" font-weight="700" fill="#274055">api.carekosh.com</text>
-    <text x="314" y="93" text-anchor="middle" font-size="12" fill="#3a5b74">Cloudflare DNS + edge</text>
+    <text x="314" y="93" text-anchor="middle" font-size="12" fill="#3a5b74">Cloudflare DNS</text>
     <text x="314" y="108" text-anchor="middle" font-size="11" fill="#587f9d">CNAME → Render</text>
     <line x1="394" y1="84" x2="456" y2="84" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)"/>
     <rect x="458" y="44" width="170" height="80" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
@@ -220,9 +226,9 @@
     <line x1="190" y1="232" x2="252" y2="232" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)"/>
     <text x="221" y="224" text-anchor="middle" font-size="10.5" fill="#8c7a64">push</text>
     <rect x="254" y="206" width="180" height="76" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
-    <text x="344" y="234" text-anchor="middle" font-size="13.5" font-weight="700" fill="#155b45">Render auto-deploy</text>
+    <text x="344" y="234" text-anchor="middle" font-size="13.5" font-weight="700" fill="#155b45">Render deploy</text>
     <text x="344" y="252" text-anchor="middle" font-size="11.5" fill="#1d8f6b">builds image, rolls out</text>
-    <text x="344" y="267" text-anchor="middle" font-size="11" fill="#2f7a60">+ RENDER_DEPLOY_HOOK</text>
+    <text x="344" y="267" text-anchor="middle" font-size="11" fill="#2f7a60">auto-deploy or deploy hook</text>
     <line x1="344" y1="206" x2="344" y2="130" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a1)" stroke-dasharray="4 3"/>
     <text x="360" y="170" font-size="10.5" fill="#8c7a64">updates the running service ↑</text>
     <rect x="470" y="206" width="180" height="76" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
@@ -254,7 +260,7 @@
     <text x="20" y="498" font-size="12.5" fill="#8c7a64" font-style="italic">Sending (Brevo) and receiving (Cloudflare) are completely separate systems that merely share the carekosh.com name.</text>
     <text x="20" y="520" font-size="12.5" fill="#8c7a64" font-style="italic">Secrets (DB URL, API keys, tokens) live only in Render / GitHub / Brevo dashboards — never in the repo.</text>
   </svg>
-  <p class="dcap">Figure 1 — The whole system. Four boxes across the top are a single user request; the lanes below are deployment and email.</p>
+  <p class="dcap">Figure 1 — The whole system. Four boxes across the top are a single user request; the lanes below are deployment and email. Render's auto-deploy setting and Cloudflare's proxy setting are dashboard state (NOT VERIFIED).</p>
   </div>
 
   <!-- ============================================================= -->
@@ -269,10 +275,10 @@
     <tr><td>Staging</td><td><code>staging-api.carekosh.com</code></td><td><code>vitaltrack-api-staging.onrender.com</code></td></tr>
   </table>
 
-  <p>Now portability comes from three things we control: we <em>own the domain</em>, we <em>control DNS</em>, and the app <em>calls our domain</em> instead of a provider URL. If we ever leave Render, we change one CNAME — no app update required.</p>
+  <p>Now portability comes from three things we control: we <em>own the domain</em>, we <em>control DNS</em>, and the app <em>calls our domain</em> instead of a provider URL. If we ever leave Render, we change the CNAME records (one per environment) and the new host issues certificates for our names — no app update required.</p>
 
   <figure class="shot">
-    <img src="domain-email-img/cloudflare-00-domain.png" alt="carekosh.com registered on Cloudflare" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/cloudflare-00-domain.png</code>. Verify current dashboard state directly.</p>
     <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-00-domain.png</code><span class="ph-desc">carekosh.com registered &amp; active in the Cloudflare dashboard</span></div>
     <figcaption>Figure 2 — The domain, owned and managed in Cloudflare.</figcaption>
   </figure>
@@ -294,8 +300,8 @@
   <table>
     <tr><th>File</th><th>What changed</th><th>Why it matters</th></tr>
     <tr><td><code>vitaltrack-mobile/eas.json</code></td><td>preview → <code>staging-api.carekosh.com</code>; production → <code>api.carekosh.com</code></td><td>Decides which backend is baked into each app build</td></tr>
-    <tr><td><code>vitaltrack-mobile/app.config.js</code></td><td>Guard constants set to the new domains; throws if a build's URL doesn't match</td><td>Makes it impossible to ship a prod build pointed at staging</td></tr>
-    <tr><td><code>vitaltrack-mobile/package.json</code></td><td><code>start:prod</code> / <code>start:staging</code> use the new domains</td><td>Local dev hits the same public hostnames</td></tr>
+    <tr><td><code>vitaltrack-mobile/app.config.js</code></td><td>Guard constants set to the new domains; throws if a build's URL doesn't match</td><td>Rejects a non-empty mismatched profile URL; verify the resolved build configuration</td></tr>
+    <tr><td><code>vitaltrack-mobile/package.json</code></td><td><code>start:prod</code> / <code>start:staging</code> use the new domains</td><td>Local dev hits the same public hostnames (<code>start:prod</code> points a local dev session at production data — use with care)</td></tr>
     <tr><td><code>vitaltrack-backend/render.yaml</code></td><td><code>FRONTEND_URL=https://api.carekosh.com/api/v1/auth</code></td><td>The base URL for links inside emails</td></tr>
     <tr><td><code>vitaltrack-backend/scripts/smoke_api.py</code>, <code>vitaltrack-backend/scripts/cold_start_load_smoke.py</code></td><td>Default targets + production-host guard (keeps onrender as a transition host)</td><td>Ops checks hit the real public hostnames</td></tr>
   </table>
@@ -310,7 +316,7 @@
     <li><strong>TXT</strong> — free-text records used for <em>proof</em> and <em>email policy</em> (domain ownership, SPF, DMARC, DKIM keys).</li>
     <li><strong>MX</strong> — "mail for this domain goes to these servers." Ours point at Cloudflare so support mail can be received.</li>
   </ul>
-  <p>Because Cloudflare is both our registrar and DNS host, every record lives in one place: Cloudflare → carekosh.com → DNS. The full list, with the live values we verified, is in <a href="#records">section 12</a>.</p>
+  <p>Because Cloudflare is both our registrar and DNS host, every record lives in one place: Cloudflare → carekosh.com → DNS. The full list, with the values recorded at setup time (not looked up again since), is in <a href="#records">section 12</a>.</p>
 
   <div class="diagram">
   <svg viewBox="0 0 900 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DNS resolution of api.carekosh.com to Render">
@@ -326,21 +332,22 @@
     <line x1="434" y1="108" x2="496" y2="108" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a2)"/>
     <rect x="498" y="70" width="180" height="76" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
     <text x="588" y="98" text-anchor="middle" font-size="14" font-weight="700" fill="#155b45">Render</text>
-    <text x="588" y="117" text-anchor="middle" font-size="11.5" fill="#1d8f6b">matches Host header</text>
-    <text x="588" y="133" text-anchor="middle" font-size="11" fill="#2f7a60">serves TLS + the app</text>
+    <text x="588" y="117" text-anchor="middle" font-size="11.5" fill="#1d8f6b">TLS cert chosen by SNI</text>
+    <text x="588" y="133" text-anchor="middle" font-size="11" fill="#2f7a60">Host header → service</text>
     <line x1="678" y1="108" x2="740" y2="108" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a2)"/>
     <rect x="742" y="70" width="138" height="76" rx="10" fill="#fdf9f0" stroke="#d3bf9c"/>
     <text x="811" y="102" text-anchor="middle" font-size="13.5" font-weight="700" fill="#2b2117">FastAPI</text>
     <text x="811" y="121" text-anchor="middle" font-size="11.5" fill="#6b5a48">handles the request</text>
   </svg>
-  <p class="dcap">Figure 3 — Name → address → server. Render uses the incoming <code>Host: api.carekosh.com</code> header to pick the right service and serve its TLS certificate.</p>
+  <p class="dcap">Figure 3 — Name → address → server. Render picks the TLS certificate from the name the client sends in the TLS handshake (SNI), then routes the request to the right service by its <code>Host: api.carekosh.com</code> header. (Earlier text said the <code>Host</code> header chooses the certificate; it arrives only after TLS is set up.)</p>
   </div>
 
   <!-- ============================================================= -->
   <h2 id="render"><span class="num">04</span>Render + GitHub — how code becomes a running backend</h2>
   <hr class="rule">
-  <p>The backend is defined as code in <code>render.yaml</code> (Infrastructure as Code). It declares a Docker web service named <code>vitaltrack-api</code>, region Singapore, health check at <code>/live</code>, and a set of environment variables. Secrets are marked <code>sync:false</code> (set in the dashboard, never in git); <code>SECRET_KEY</code> is auto-generated.</p>
-  <pre><code>services:
+  <p>The production backend is described as code in <code>vitaltrack-backend/render.yaml</code> (Infrastructure as Code). It declares a Docker web service named <code>vitaltrack-api</code>, region Singapore, health check at <code>/live</code>, and a set of environment variables. Whether Render actually syncs from this file (a Blueprint) is NOT VERIFIED, and it declares no staging service. Secrets are marked <code>sync:false</code> (set in the dashboard, never in git); <code>SECRET_KEY</code> is auto-generated.</p>
+  <pre><code># excerpt of vitaltrack-backend/render.yaml
+services:
   - type: web
     name: vitaltrack-api
     runtime: docker
@@ -354,19 +361,20 @@
         value: https://api.carekosh.com/api/v1/auth</code></pre>
 
   <h3>How GitHub and Render connect</h3>
-  <p>Render is linked to the GitHub repo. <strong>When <code>main</code> changes, Render automatically rebuilds and redeploys</strong> — no extra step. Our CI pipeline (<code>.github/workflows/ci.yml</code>) <em>also</em> calls a Render deploy hook as an explicit backup trigger. Neither decides which backend the app talks to; that is fixed at app build time (section 5).</p>
+  <p>Render is linked to the GitHub repo. <strong>As originally set up, when <code>main</code> changed, Render automatically rebuilt and redeployed</strong> — no extra step (today's setting is NOT VERIFIED; see the note below). Our CI pipeline (<code>.github/workflows/ci.yml</code>) <em>also</em> calls a Render deploy hook as an explicit backup trigger. Neither decides which backend the app talks to; that is fixed at app build time (section 5).</p>
+  <div class="callout warn"><span class="tag">7 Oct 2026 — what the repository does and does not show</span><p>Auto-deploy is a Render dashboard setting: <code>render.yaml</code> has no <code>autoDeploy</code> key and declares only the production service, so whether each service auto-deploys, and from which branch, is NOT VERIFIED. The CI <code>deploy-backend</code> job runs only on a push to <code>main</code>, only after <code>test-backend</code> and <code>test-frontend</code> succeed, and calls the hook only when <code>RENDER_DEPLOY_HOOK</code> is set (until the feature branch merges, <code>main</code>'s older workflow calls it with <code>curl -s</code>, which cannot fail the job). GitHub's <code>protect-main</code> ruleset required a pull request but no status checks when read on 7 Oct 2026 (not re-checked since), so a red CI run does not technically block a merge. The owner reports that staging now tracks the feature branch (7 Oct), so “a merge to <code>main</code> updates both backends” no longer holds without checking the dashboard.</p></div>
 
   <h3>The two GitHub secrets</h3>
-  <p>The repository has exactly two Actions secrets, and that is correct and complete — they are the only two referenced anywhere in the workflow.</p>
+  <p>The workflow references two named Actions secrets; the current dashboard inventory is not established by source code — they are the only two referenced anywhere in the workflow.</p>
   <table>
     <tr><th>Secret</th><th>Used by</th><th>What it does</th><th>Required?</th></tr>
-    <tr><td><code>EXPO_TOKEN</code></td><td>EAS Build (Expo cloud)</td><td>Lets GitHub authenticate to Expo non-interactively and queue an APK/AAB build</td><td>Yes, for any CI build</td></tr>
-    <tr><td><code>RENDER_DEPLOY_HOOK</code></td><td>Render API</td><td>A private URL that triggers a redeploy on push to main</td><td>No — Render also auto-deploys; this is a backup</td></tr>
+    <tr><td><code>EXPO_TOKEN</code></td><td>EAS Build (Expo cloud)</td><td>Lets GitHub authenticate to Expo non-interactively and queue an APK/AAB build. <em>7 Oct 2026: in the current workflow only the preview APK job uses it (pull requests labelled <code>build-apk</code>, <code>--no-wait</code>); the production AAB job is disabled with <code>if: false</code>.</em></td><td>Yes, for any CI build</td></tr>
+    <tr><td><code>RENDER_DEPLOY_HOOK</code></td><td>Render API</td><td>A private URL that triggers a redeploy on push to main</td><td>No — the step is skipped when it is unset; Render's own auto-deploy (NOT VERIFIED) may also deploy</td></tr>
   </table>
-  <p>Backend runtime secrets (<code>DATABASE_URL</code>, <code>MAIL_PASSWORD</code>, <code>SECRET_KEY</code>) correctly live in <em>Render</em>, not GitHub. The two systems each hold only what they need.</p>
+  <p>Backend runtime secrets (<code>DATABASE_URL</code>, <code>MAIL_PASSWORD</code>, <code>SECRET_KEY</code>, and <code>GROQ_API_KEY</code> if the optional AI text interpretation is enabled) belong in <em>Render</em>, not GitHub. The two systems each hold only what they need.</p>
 
   <figure class="shot">
-    <img src="domain-email-img/github-01-secrets.png" alt="GitHub repository secrets" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/github-01-secrets.png</code>. Verify current dashboard state directly.</p>
     <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/github-01-secrets.png</code><span class="ph-desc">GitHub → Settings → Secrets and variables → Actions, showing EXPO_TOKEN and RENDER_DEPLOY_HOOK</span></div>
     <figcaption>Figure 4 — The two repository secrets.</figcaption>
   </figure>
@@ -384,14 +392,14 @@
     <line x1="366" y1="98" x2="416" y2="98" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a3)"/>
     <rect x="418" y="62" width="180" height="72" rx="10" fill="#e0f0e8" stroke="#1d8f6b"/>
     <text x="508" y="88" text-anchor="middle" font-size="13" font-weight="700" fill="#155b45">Render builds image</text>
-    <text x="508" y="106" text-anchor="middle" font-size="11" fill="#1d8f6b">auto-deploy + deploy hook</text>
-    <text x="508" y="121" text-anchor="middle" font-size="10.5" fill="#2f7a60">healthcheck /live</text>
+    <text x="508" y="106" text-anchor="middle" font-size="11" fill="#1d8f6b">auto-deploy or deploy hook</text>
+    <text x="508" y="121" text-anchor="middle" font-size="10.5" fill="#2f7a60">migrations, then /live check</text>
     <line x1="598" y1="98" x2="648" y2="98" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a3)"/>
     <rect x="650" y="62" width="170" height="72" rx="10" fill="#dfe9f1" stroke="#587f9d"/>
     <text x="735" y="92" text-anchor="middle" font-size="13" font-weight="700" fill="#274055">Live at</text>
     <text x="735" y="111" text-anchor="middle" font-size="11.5" fill="#3a5b74">api.carekosh.com</text>
   </svg>
-  <p class="dcap">Figure 5 — From pull request to live backend. The app binary is built separately by EAS and is unaffected by backend deploys.</p>
+  <p class="dcap">Figure 5 — From pull request to live backend (production path). A red CI run does not block the merge (no required checks as read on 7 Oct 2026), and Render's auto-deploy setting is NOT VERIFIED. The container runs <code>alembic upgrade head</code> before Gunicorn starts. The app binary is built separately by EAS and is unaffected by backend deploys.</p>
   </div>
 
   <!-- ============================================================= -->
@@ -405,9 +413,9 @@ const API_VERSION  = '/api/v1';   // every API call is `${API_BASE_URL}${API_VER
   <table>
     <tr><th>Build profile</th><th>EXPO_PUBLIC_API_URL baked in</th><th>Result</th></tr>
     <tr><td><code>preview</code> (APK)</td><td><code>https://staging-api.carekosh.com</code></td><td>Testers hit staging + the staging database</td></tr>
-    <tr><td><code>production</code> (AAB)</td><td><code>https://api.carekosh.com</code></td><td>Play Store users hit production</td></tr>
+    <tr><td><code>production</code> (AAB)</td><td><code>https://api.carekosh.com</code></td><td>Play Store users hit production — on every Play track, including internal and closed testing</td></tr>
   </table>
-  <div class="callout warn"><span class="tag">Critical consequence</span><p>Because the URL is baked in, a build pointed at the wrong backend can't be fixed without rebuilding. That's why <code>app.config.js</code> contains <em>throw-guards</em>: if a production build's URL isn't exactly the production domain, the build fails on purpose. After this change, the next production AAB must be rebuilt for users to hit <code>api.carekosh.com</code>.</p></div>
+  <div class="callout warn"><span class="tag">Critical consequence</span><p>Because the URL is baked in, a build pointed at the wrong backend can't be fixed without rebuilding. That's why <code>app.config.js</code> contains <em>throw-guards</em>: if a production build supplies a non-empty URL different from the production domain, the build fails on purpose. An empty URL is not caught: the app then falls back to <code>http://localhost:8000</code>. After this change, the next production AAB must be rebuilt for users to hit <code>api.carekosh.com</code>.</p></div>
 
   <!-- ============================================================= -->
   <h2 id="request"><span class="num">06</span>Request journey — what happens when a button is tapped</h2>
@@ -416,11 +424,12 @@ const API_VERSION  = '/api/v1';   // every API call is `${API_BASE_URL}${API_VER
   <ol class="steps">
     <li>The user taps a button. The app builds a URL: <code>https://api.carekosh.com/api/v1/items</code> (base from the baked <code>EXPO_PUBLIC_API_URL</code>, plus <code>/api/v1</code>).</li>
     <li>The phone resolves <code>api.carekosh.com</code> via DNS → Cloudflare answers with the CNAME chain to Render.</li>
-    <li>The request travels over HTTPS to Render. Render reads the <code>Host: api.carekosh.com</code> header, matches it to the <code>vitaltrack-api</code> custom domain, and terminates TLS with the certificate Render issued for that domain.</li>
+    <li>The phone opens a TLS connection to Render and names <code>api.carekosh.com</code> in the handshake (SNI). Render answers with the certificate it issued for that domain, terminates TLS, then reads the <code>Host: api.carekosh.com</code> header and routes the request to the <code>vitaltrack-api</code> service.</li>
     <li>FastAPI handles the route, checks the auth token, and queries Neon PostgreSQL (asyncpg, SSL via connect args).</li>
     <li>Neon returns rows → FastAPI serializes JSON → the response travels back the same path to the app, which renders the list.</li>
   </ol>
   <p>Cross-origin requests are allowed by the backend's <code>CORS_ORIGINS</code> setting. Health is monitored at <code>/live</code> (process-only) and <code>/health</code> (database-backed).</p>
+  <p><em>7 Oct 2026:</em> CORS is enforced only by browsers. It neither authenticates requests nor restricts the Android app; <code>render.yaml</code> sets <code>CORS_ORIGINS=["*"]</code>, which the API serves with credentials disabled. Both health endpoints report the constant version <code>1.0.0</code>, so neither tells you which commit is deployed.</p>
 
   <!-- ============================================================= -->
   <h2 id="email-send"><span class="num">07</span>Email sending — Brevo &amp; the noreply@ address</h2>
@@ -446,7 +455,7 @@ payload = {
     <div class="mc-row"><span class="k">signed by:</span><span class="v"><span class="bad">xxxxxxxx.brevosend.com</span></span></div>
   </div>
   <figure class="shot">
-    <img src="domain-email-img/email-01-before-brevosend.png" alt="Email header before authentication" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/email-01-before-brevosend.png</code>. Verify current dashboard state directly.</p>
     <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/email-01-before-brevosend.png</code><span class="ph-desc">The original account-deletion email — from brevosend.com</span></div>
     <figcaption>Figure 6 — Before: the sender was a Brevo domain.</figcaption>
   </figure>
@@ -455,34 +464,34 @@ payload = {
   <ol class="steps">
     <li><strong>Started domain authentication in Brevo.</strong> Brevo → <em>Senders, Domains &amp; Dedicated IPs → Domains → Authenticate a domain</em>, entered <code>carekosh.com</code>, and chose <strong>"Authenticate the domain automatically (Recommended)"</strong> so Brevo writes the records straight into Cloudflare.
       <figure class="shot">
-        <img src="domain-email-img/brevo-01-authenticate-options.png" alt="Brevo authenticate options" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/brevo-01-authenticate-options.png</code>. Verify current dashboard state directly.</p>
         <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/brevo-01-authenticate-options.png</code><span class="ph-desc">Brevo "Authenticate carekosh.com" — pick "Authenticate automatically"</span></div>
         <figcaption>Brevo's three authentication choices — we picked the first.</figcaption>
       </figure>
     </li>
     <li><strong>Authorized the DNS records (one-time).</strong> Brevo connected to Cloudflare and added four records: a verification <code>brevo-code</code> TXT, two DKIM <code>CNAME</code>s (<code>brevo1._domainkey</code>, <code>brevo2._domainkey</code>), and a <code>DMARC</code> TXT. DKIM is the key one — it lets Brevo cryptographically sign as <code>carekosh.com</code>. (Note: Brevo authenticates via DKIM and did <em>not</em> add an SPF record — important later for §8.)
       <figure class="shot">
-        <img src="domain-email-img/brevo-02-authorize-records.png" alt="Brevo authorize DNS records" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/brevo-02-authorize-records.png</code>. Verify current dashboard state directly.</p>
         <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/brevo-02-authorize-records.png</code><span class="ph-desc">Brevo "Authorize DNS records" — brevo-code, two DKIM CNAMEs, DMARC</span></div>
         <figcaption>Figure 7 — The records Brevo added to Cloudflare automatically.</figcaption>
       </figure>
     </li>
     <li><strong>Waited for propagation and re-verified.</strong> Brevo's checker briefly showed some records as "mismatch / not detected" — that is normal DNS lag, not an error. We confirmed the values were live in DNS and clicked verify again until all went green.
       <figure class="shot">
-        <img src="domain-email-img/brevo-03-verification-status.png" alt="Brevo verification status" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/brevo-03-verification-status.png</code>. Verify current dashboard state directly.</p>
         <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/brevo-03-verification-status.png</code><span class="ph-desc">Brevo record check mid-propagation (DKIM 2 matched; others syncing)</span></div>
         <figcaption>Mid-propagation: some records still "syncing" — resolves on its own.</figcaption>
       </figure>
     </li>
     <li><strong>Domain showed Authenticated.</strong> Once verified, sending from any <code>@carekosh.com</code> address was unlocked.
       <figure class="shot">
-        <img src="domain-email-img/brevo-04-authenticated.png" alt="Brevo domain authenticated" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/brevo-04-authenticated.png</code>. Verify current dashboard state directly.</p>
         <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/brevo-04-authenticated.png</code><span class="ph-desc">carekosh.com showing the green "Authenticated" status in Brevo</span></div>
         <figcaption>Figure 8 — Domain authenticated.</figcaption>
       </figure>
     </li>
     <li><strong>Set the sender in Render.</strong> Set <code>MAIL_FROM=noreply@carekosh.com</code> (value only, no <code>MAIL_FROM=</code> prefix) and redeployed. The code already reads <code>settings.MAIL_FROM</code> and uses the sender name "CareKosh", so no code change was needed.</li>
-    <li><strong>Tested.</strong> Triggered a forgot-password — the email now arrives from <code>noreply@carekosh.com</code>, DKIM-signed by carekosh.com, with no reply-to leaking a personal address (see below). <em>Still to confirm: set the same <code>MAIL_FROM</code> on the production service and re-test, since the first test ran on staging.</em></li>
+    <li><strong>Tested.</strong> Triggered a forgot-password — the email now arrives from <code>noreply@carekosh.com</code>, DKIM-signed by carekosh.com, with the originally observed reply-to configuration (see below). <em>Still to confirm: set the same <code>MAIL_FROM</code> on the production service and re-test, since the first test ran on staging.</em></li>
   </ol>
 
   <div class="mailcard">
@@ -493,7 +502,7 @@ payload = {
     <div class="mc-row"><span class="k">mailed-by:</span><span class="v">gy.d.sender-sib.com <span style="color:var(--ink-faint)">(Brevo's plumbing — normal, harmless)</span></span></div>
   </div>
   <figure class="shot">
-    <img src="domain-email-img/email-02-after-noreply.png" alt="Email header after authentication" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/email-02-after-noreply.png</code>. Verify current dashboard state directly.</p>
     <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/email-02-after-noreply.png</code><span class="ph-desc">"Reset your CareKosh password" — now from noreply@carekosh.com, signed by carekosh.com</span></div>
     <figcaption>Figure 9 — After: branded sender, DKIM-signed by our own domain, no reply-to leak.</figcaption>
   </figure>
@@ -507,7 +516,7 @@ payload = {
   <ol class="steps terra">
     <li><strong>Opened Email Routing.</strong> Cloudflare → carekosh.com → <em>Email → Email Routing</em>. It started <strong>Disabled</strong> with DNS "Not configured" — expected at this point.
       <figure class="shot">
-        <img src="domain-email-img/cloudflare-01-routing-disabled.png" alt="Email Routing overview disabled" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/cloudflare-01-routing-disabled.png</code>. Verify current dashboard state directly.</p>
         <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-01-routing-disabled.png</code><span class="ph-desc">Email Routing overview — Routing status Disabled, DNS not configured</span></div>
         <figcaption>Starting state — routing not yet enabled.</figcaption>
       </figure>
@@ -515,12 +524,12 @@ payload = {
     <li><strong>Added and verified the destination.</strong> <em>Destination Addresses → Add</em>, entered the Gmail, then clicked the verification link Cloudflare emailed to it. (A rule pointing at an unverified address won't deliver.)</li>
     <li><strong>Created the routing rule.</strong> <em>Routing rules → Create routing rule</em>: pattern <code>support</code> @ <code>carekosh.com</code>, action <strong>Send to an email</strong>, destination the verified Gmail → Save.
       <figure class="shot">
-        <img src="domain-email-img/cloudflare-02-create-rule.png" alt="Create routing rule" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/cloudflare-02-create-rule.png</code>. Verify current dashboard state directly.</p>
         <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-02-create-rule.png</code><span class="ph-desc">Create routing rule — support@carekosh.com → Send to an email → Gmail</span></div>
         <figcaption>The forwarding rule being created.</figcaption>
       </figure>
       <figure class="shot">
-        <img src="domain-email-img/cloudflare-03-rules-list.png" alt="Cloudflare routing rules list" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/cloudflare-03-rules-list.png</code>. Verify current dashboard state directly.</p>
         <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-03-rules-list.png</code><span class="ph-desc">Routing rules — support@carekosh.com forwarding to Gmail, status Active</span></div>
         <figcaption>Figure 10 — The rule, Active.</figcaption>
       </figure>
@@ -528,26 +537,26 @@ payload = {
     <li><strong>Ignored the "Connect" button.</strong> The blue <em>Connect</em> button opens Email <em>Workers</em> (programmatic processing) — it is <strong>not</strong> how routing is enabled. We closed it.</li>
     <li><strong>Enabled routing by adding the MX records.</strong> Via <em>Settings → DNS records</em> (the "DNS records: Not configured" link). Cloudflare added the three <code>route1/2/3.mx.cloudflare.net</code> MX records, an SPF TXT, and its own routing DKIM.
       <figure class="shot">
-        <img src="domain-email-img/cloudflare-04-dns-records.png" alt="Cloudflare email routing DNS records" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/cloudflare-04-dns-records.png</code>. Verify current dashboard state directly.</p>
         <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-04-dns-records.png</code><span class="ph-desc">Settings → DNS records: 3× MX, SPF TXT, cf2024-1 DKIM TXT</span></div>
         <figcaption>The MX/SPF/DKIM records Email Routing publishes.</figcaption>
       </figure>
     </li>
     <li><strong>Confirmed Enabled and locked the records.</strong> The overview flipped to <strong>Routing status: Enabled</strong> / DNS Configured. We then "Locked" the records so they can't be edited or deleted by accident.
       <figure class="shot">
-        <img src="domain-email-img/cloudflare-05-routing-enabled.png" alt="Email Routing enabled" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/cloudflare-05-routing-enabled.png</code>. Verify current dashboard state directly.</p>
         <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-05-routing-enabled.png</code><span class="ph-desc">Overview — Routing status Enabled, DNS records Enabled</span></div>
         <figcaption>Routing live.</figcaption>
       </figure>
     </li>
     <li><strong>Tested receiving.</strong> Emailed <code>support@carekosh.com</code> from a different account; it forwarded to Gmail and the Activity Log showed <strong>Forwarded</strong>.
       <figure class="shot">
-        <img src="domain-email-img/cloudflare-06-activity-log.png" alt="Email routing activity log" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/cloudflare-06-activity-log.png</code>. Verify current dashboard state directly.</p>
         <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/cloudflare-06-activity-log.png</code><span class="ph-desc">Activity Log — test emails to support@ marked "Forwarded"</span></div>
         <figcaption>Figure 11 — Proof: incoming test mail shows "Forwarded".</figcaption>
       </figure>
       <figure class="shot">
-        <img src="domain-email-img/email-03-support-received.png" alt="Forwarded test email in Gmail" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <p class="screenshot-note">Historical screenshot not included in this repository: <code>domain-email-img/email-03-support-received.png</code>. Verify current dashboard state directly.</p>
         <div class="ph"><span class="ph-tag">screenshot</span><code>domain-email-img/email-03-support-received.png</code><span class="ph-desc">The test email to support@carekosh.com arriving in Gmail</span></div>
         <figcaption>...and the same message landing in the Gmail inbox.</figcaption>
       </figure>
@@ -557,7 +566,7 @@ payload = {
   <div class="callout tip"><span class="tag">Why no SPF conflict</span><p>Cloudflare added the only SPF record (<code>v=spf1 include:_spf.mx.cloudflare.net ~all</code>). Because Brevo authenticates via <em>DKIM</em> (it added no SPF of its own), there's nothing to merge — and Brevo's outgoing mail still passes DMARC on DKIM alignment. The two DKIM setups (Brevo's for sending, Cloudflare's for routing) coexist cleanly.</p></div>
 
   <div class="callout"><span class="tag">Two addresses, two jobs</span>
-    <p><code>noreply@carekosh.com</code> = <strong>outgoing</strong>, via Brevo. <code>support@carekosh.com</code> = <strong>incoming</strong>, via Cloudflare → Gmail. They share only the domain name. The app never sends from <code>support@</code>; nothing ever receives at <code>noreply@</code> (replies to it simply bounce, which is exactly how a no-reply address should behave). There is also no separate "CareKosh inbox" to log into — support mail lands in your normal Gmail.</p>
+    <p><code>noreply@carekosh.com</code> = <strong>outgoing</strong>, via Brevo. <code>support@carekosh.com</code> = <strong>incoming</strong>, via Cloudflare → Gmail. They share only the domain name. The app never sends from <code>support@</code>; nothing ever receives at <code>noreply@</code> (no routing rule exists for it, so replies reach no one, which is how a no-reply address should behave; whether Cloudflare bounces them depends on its catch-all setting, NOT VERIFIED). There is also no separate "CareKosh inbox" to log into — support mail lands in your normal Gmail.</p>
   </div>
 
   <!-- ============================================================= -->
@@ -640,7 +649,7 @@ payload = {
     <line x1="96" y1="196" x2="96" y2="236" stroke="#8a7a66" stroke-width="1.6" marker-end="url(#a5)"/>
     <rect x="12" y="238" width="320" height="58" rx="10" fill="#f3e0d5" stroke="#b8623a"/>
     <text x="172" y="263" text-anchor="middle" font-size="12.5" font-weight="700" fill="#8a3f1f">Password changed → "password changed" email sent</text>
-    <text x="172" y="281" text-anchor="middle" font-size="10.5" fill="#a85a36">all other sessions are logged out</text>
+    <text x="172" y="281" text-anchor="middle" font-size="10.5" fill="#a85a36">every session is signed out (refresh tokens revoked)</text>
   </svg>
   <p class="dcap">Figure 13 — Forgot-password is a round trip: app → backend → Brevo → user, then user → backend to actually change the password.</p>
   </div>
@@ -649,8 +658,9 @@ payload = {
     <li>The backend finds the active user, generates a random token, stores only its <strong>SHA-256 hash</strong> with a <strong>1-hour expiry</strong> (the raw token is never stored), and returns a generic success either way to prevent account-enumeration. Rate limited to 3/hour.</li>
     <li>It calls Brevo to send the reset email. The link is <code>{FRONTEND_URL}/reset-password?token=…</code> → <code>https://api.carekosh.com/api/v1/auth/reset-password?token=…</code>. The email arrives from <code>noreply@carekosh.com</code>, DKIM-signed.</li>
     <li>The user taps the link. The backend serves an HTML reset form (this is why <code>FRONTEND_URL</code> points at the backend, not a separate website).</li>
-    <li>The user submits a new password. The backend re-hashes the submitted token, checks it matches and hasn't expired, enforces password strength, stores the new hash, <strong>revokes all refresh tokens</strong> (other devices are logged out), and sends a "password changed" notice. Rate limited to 5/hour.</li>
+    <li>The user submits a new password. The backend re-hashes the submitted token, selects its digest and expiry under the account lock, enforces password strength, stores the new hash, <strong>revokes all refresh tokens</strong> (every signed-in device is logged out), and sends a "password changed" notice. Rate limited to 5/hour.</li>
   </ol>
+  <div class="callout"><span class="tag">7 Oct 2026 — precise behaviour</span><p><code>POST /forgot-password</code> returns 503 when the email service is not configured; otherwise it returns the same message whether or not the account exists. The account lock while consuming the reset token, and the <code>session_version</code> increment that makes existing access tokens stop working immediately, exist on the feature branch (migration 0007); on <code>main</code> a reset revokes refresh tokens but already-issued access tokens stay valid until they expire (up to 30 minutes). Rate limiting is best effort: five auth routes, counters in memory per worker process, reset on restart; an open finding about how clients are identified is tracked privately. (Here: forgot-password 3/hour, reset-password 5/hour.) The app's own reset-password screen is reachable only through a deep link; the emailed link opens the backend form described above.</p></div>
 
   <!-- ============================================================= -->
   <h2 id="flow-verify"><span class="num">11</span>Flow: registration &amp; email verification</h2>
@@ -686,7 +696,7 @@ payload = {
     <text x="307" y="159" text-anchor="middle" font-size="12" font-weight="700" fill="#8a3f1f">User logs in</text>
     <text x="307" y="177" text-anchor="middle" font-size="10.5" fill="#a85a36">now allowed → tokens issued</text>
   </svg>
-  <p class="dcap">Figure 14 — Registration intentionally does not log the user in; access is gated until the email is verified.</p>
+  <p class="dcap">Figure 14 — The app does not log the user in after registering (it discards the tokens the API returns). Access is gated until verification only when <code>REQUIRE_EMAIL_VERIFICATION</code> is true and email is configured; without <code>MAIL_PASSWORD</code> no verification email is sent.</p>
   </div>
   <ol class="steps gold">
     <li>The user registers. The app calls <code>POST /api/v1/auth/register</code>. The backend hashes the password (Argon2, bcrypt fallback), creates the user with <code>is_email_verified = false</code>, generates a verification token (stored as a SHA-256 hash, 24-hour expiry), and sends the verification email via Brevo. The link is <code>{FRONTEND_URL}/verify-email?token=…</code>.</li>
@@ -694,11 +704,12 @@ payload = {
     <li>The user opens the email (from <code>noreply@carekosh.com</code>) and taps Verify. The backend hashes the token, checks the match and expiry, sets <code>is_email_verified = true</code>, clears the token, and returns an HTML success page.</li>
     <li>The user returns to the app and logs in. With <code>REQUIRE_EMAIL_VERIFICATION</code> on, login is blocked until verified; once verified, login succeeds and access + refresh tokens are issued.</li>
   </ol>
+  <div class="callout"><span class="tag">7 Oct 2026 — precise behaviour</span><p>“No auto-login” is app behaviour: <code>POST /auth/register</code> still returns 201 with access and refresh tokens (and stores a refresh-session row with the request's IP address and User-Agent); the app discards those tokens and opens the verify-email screen. The verification email is sent only when <code>MAIL_PASSWORD</code> is set, and the login block applies only when <code>REQUIRE_EMAIL_VERIFICATION</code> is true <em>and</em> email is configured — blocked logins return 403 <code>EMAIL_NOT_VERIFIED</code>. On the feature branch, both verification links (<code>GET /verify-email?token=</code> for HTML, <code>GET /verify-email/{token}</code> for JSON) consume the token in one conditional update, so a link works once (<code>main</code> clears the token in an ordinary read-then-write). Known app issue: resend-verification fails with 422 if the user signed in with a username instead of an email.</p></div>
 
   <!-- ============================================================= -->
   <h2 id="records"><span class="num">12</span>The complete DNS records reference</h2>
   <hr class="rule">
-  <p>Every record currently published on carekosh.com, grouped by purpose. These values were verified live against Cloudflare's public resolver.</p>
+  <p>Records documented during the original setup on carekosh.com, grouped by purpose. These values were verified live against Cloudflare's public resolver. <em>(7 Oct 2026: that check belongs to the original setup; the records were not looked up again in the September or October reviews — run the commands in section 13 before relying on them.)</em></p>
 
   <h4>Routing — app traffic</h4>
   <table>
@@ -744,10 +755,10 @@ dig +short api.carekosh.com         @1.1.1.1 # expect the Render chain
 dig +short staging-api.carekosh.com @1.1.1.1</code></pre>
   <p>End-to-end manual tests:</p>
   <ul>
-    <li><strong>Sending:</strong> trigger a forgot-password and confirm the email reads <code>from: noreply@carekosh.com</code> and <code>signed by: carekosh.com</code>.</li>
+    <li><strong>Sending:</strong> trigger a forgot-password for a test account you own and confirm the email reads <code>from: noreply@carekosh.com</code> and <code>signed by: carekosh.com</code>.</li>
     <li><strong>Receiving:</strong> email <code>support@carekosh.com</code> <em>from a different account</em> and confirm it lands in Gmail (and shows "Forwarded" in Cloudflare's Activity Log).</li>
   </ul>
-  <div class="callout warn"><span class="tag">Still to confirm</span><p>Set <code>MAIL_FROM=noreply@carekosh.com</code> on the <strong>production</strong> Render service (not only staging) and run one production forgot-password test, so production mail is branded too.</p></div>
+  <div class="callout warn"><span class="tag">Still to confirm</span><p>Set <code>MAIL_FROM=noreply@carekosh.com</code> on the <strong>production</strong> Render service (not only staging) and run one production forgot-password test, so production mail is branded too.</p><p><em>7 Oct 2026: still open as far as the repository shows — <code>render.yaml</code> marks <code>MAIL_FROM</code> as a dashboard value (<code>sync: false</code>), and its production value was NOT VERIFIED.</em></p></div>
 
   <!-- ============================================================= -->
   <h2 id="glossary"><span class="num">14</span>Glossary</h2>
@@ -768,7 +779,7 @@ dig +short staging-api.carekosh.com @1.1.1.1</code></pre>
   </table>
 
   <footer>
-    <p>CareKosh / VitalTrack — Domain &amp; Email Field Guide. Generated from the project's setup history; all DNS values verified live. Secrets are referenced by name only and never printed. To embed the screenshots, drop them into <code>domain-email-img/</code> using the filenames in the table at the top.</p>
+    <p>CareKosh / VitalTrack — Domain &amp; Email Field Guide. Generated from the project's setup history; DNS values recorded during the original setup; not re-verified in September or October 2026. Secrets are referenced by name only and never printed. No screenshots are included; to add one, follow the note in the table at the top (each figure needs an <code>&lt;img&gt;</code> tag).</p>
   </footer>
 
 </div>

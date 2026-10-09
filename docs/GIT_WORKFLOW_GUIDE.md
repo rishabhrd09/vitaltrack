@@ -1,5 +1,12 @@
 # Git Workflow Guide
 
+> **AI voice source update — 9 October 2026:** Current AI voice architecture, checked against the 9 October 2026 working tree at `0946eb7` plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+
+
+> 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
+
+> **Status (re-checked 8 October 2026 against the working tree: `03cfebb` on `feature/backend-hardening-ai-voice-agent-foundation` plus uncommitted documentation).** That branch is **not merged**; `main` is still `835fad3`. Ruleset facts come from a GitHub API read on 7 Oct 2026 and were not re-checked on 8 Oct (NOT VERIFIED today): the `protect-main` ruleset required a pull request and blocked force-push and deletion, but required **0 approvals and no status checks**, so "green CI" and "approved" are team rules, not GitHub-enforced gates. Pushing a feature branch runs CI only when that branch has an open PR to `main` (a PR `synchronize` run); PRs to `main`, pushes to `main` and manual runs also start CI. Until this branch merges, a push to `main` runs `main`'s older workflow (Python 3.11, route gate 39, deploy hook called with `curl -s`, which cannot fail the job). Render deploy behaviour is NOT VERIFIED. Earlier note (23 Sept 2026): head `0007`, 152 backend tests — now out of date (head `0010` on the feature branch; re-run on 8 Oct 2026 against a disposable local PostgreSQL 16 database: 242 backend and 121 mobile tests passed). Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) · [documentation home](INDEX.html).
+
 > The end-to-end PR-based workflow for CareKosh, for both collaborators and fork contributors.
 
 Branch naming, commit conventions, and PR requirements are also documented in [../CAREKOSH_DEVELOPER_GUIDE.md §12](../CAREKOSH_DEVELOPER_GUIDE.md#12-contribution-workflow). This file expands on the daily git mechanics.
@@ -29,11 +36,13 @@ Branch naming, commit conventions, and PR requirements are also documented in [.
 │                                                                 │
 │   7. Merge             8. Auto-deploy      9. Verify            │
 │   ───────────────────  ──────────────────  ──────────────────   │
-│   squash or merge      Render (both svcs)  curl /health, smoke  │
+│   squash or merge      Render (see below)  curl /health, smoke  │
 │                        EAS: manual AAB                          │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+Step 3 alone triggers nothing: CI starts when the PR to `main` is opened (step 4), or by a manual `workflow_dispatch`. Once the PR is open, every push to its branch re-runs CI. Step 8 depends on Render dashboard settings that were not re-checked on 7 or 8 Oct 2026 (NOT VERIFIED); see [After merge](#after-merge--what-the-platform-does).
 
 ---
 
@@ -58,6 +67,8 @@ git pull origin main
 ```bash
 git checkout -b feature/add-export-button
 ```
+
+> **Until the feature branch merges (8 Oct 2026):** `main` (`835fad3`) has no `/api/v1/ai/*` routes, no `carekosh-voice` module and only migrations up to `0006`. If your change depends on the newer code, branch from `origin/feature/backend-hardening-ai-voice-agent-foundation` instead.
 
 **Naming**
 
@@ -106,7 +117,7 @@ git push origin feature/add-export-button
 4. Assign reviewers.
 5. Submit.
 
-**Optional:** add the `build-apk` label. This triggers the CI job `build-preview` which runs `eas build --profile preview --platform android` and posts the APK link back to the PR — reviewers can sideload a real binary pointed at the staging backend.
+**Optional:** add the `build-apk` label. After both test jobs pass, the CI job `build-preview` runs `eas build --profile preview --platform android --non-interactive --no-wait` and posts a comment on the PR saying the build started; the APK itself is downloaded from the EAS dashboard (earlier text said the comment links the APK). A green job means EAS accepted the request, not that the APK built. Reviewers can then sideload a real binary pointed at the staging backend. The label stays on the PR, so every later push, reopen or label change queues another EAS build; remove it when you are done.
 
 #### 6. Wait for CI (3–5 min)
 
@@ -114,13 +125,13 @@ The important PR jobs run in parallel:
 
 | Job | Does |
 |---|---|
-| `test-backend` | blocking pytest, Ruff, `/api/v1` route count 39, and item/order coverage gates (postgres:16 service) |
-| `typecheck-backend-advisory` | mypy baseline, advisory until the existing type errors are fixed |
-| `test-frontend` | blocking `tsc` and ESLint; `expo-doctor` runs advisory |
-| `security-scan-advisory` | Trivy CRITICAL/HIGH baseline, advisory until vulnerable dependencies are upgraded |
-| `pr-check` | Merge gate — succeeds only if backend + frontend pass |
+| `test-backend` | fails the run on pytest, Ruff, exact `/api/v1` route count (`44` on the feature branch, `39` on `main`), and item/order coverage gates (postgres:16 service; Python 3.12, `3.11` on `main`) |
+| `typecheck-backend-advisory` | mypy baseline, advisory until the existing type errors are fixed (23 errors in the 7 Oct 2026 run) |
+| `test-frontend` | fails the run on `tsc` and ESLint errors (warnings pass); the feature branch also runs `npm test` and a voice-module autolinking check; `expo-doctor` output is suppressed (never fails) |
+| `security-scan-advisory` | Trivy CRITICAL/HIGH baseline on PRs only, advisory until vulnerable dependencies are upgraded |
+| `pr-check` | runs only on PRs, only if backend + frontend pass; it only prints a message |
 
-The merge gate is `pr-check`; it requires the backend and frontend jobs. The advisory jobs should still be inspected, but they are not proof that mypy or Trivy are clean yet.
+`pr-check` is the team's merge signal; it runs only after the backend and frontend jobs pass. GitHub does not enforce it: the `protect-main` ruleset had no required status checks (API read on 7 Oct 2026; not re-checked since), so the merge button works even when CI is red. Check the run before merging. The advisory jobs should still be inspected, but they are not proof that mypy or Trivy are clean yet.
 
 #### 7. Address review
 ```bash
@@ -149,21 +160,23 @@ git branch -d feature/add-export-button
 
 ## After merge — what the platform does
 
-1. **CI re-runs on `main`** (push trigger).
-2. **`deploy-backend` job** POSTs to the Render deploy hook (secret `RENDER_DEPLOY_HOOK`).
-   The hook URL targets the **production** service only — there is no `RENDER_DEPLOY_HOOK_STAGING` in CI.
-3. **Render services pull the new image** depending on what changed:
-   - `vitaltrack-api` (production) rebuilds on every merge — the CI hook always fires, AND its dashboard auto-deploy is on.
+1. **CI re-runs on `main`** (push trigger), using the workflow file in the merged commit. Until this feature branch merges, that is `main`'s older file.
+2. **`deploy-backend` job** calls the Render deploy hook URL with `curl --fail` (secret `RENDER_DEPLOY_HOOK`) after both test jobs pass; if the secret is not set, the step is skipped. Earlier text said "POSTs"; `curl` without `-X` sends a GET. A success response means Render started or queued a deploy of the latest commit on the service's linked branch (no `ref` is sent), not that the deploy succeeded. `main`'s older workflow uses `curl -s`, so there a failing hook call does not fail the job.
+   `ci.yml` has no separate staging hook (no `RENDER_DEPLOY_HOOK_STAGING`). Which service the secret's URL points to is not visible in the repo; earlier docs say production (NOT VERIFIED).
+3. **Render services rebuild the image** depending on what changed (as documented up to June 2026; live settings NOT VERIFIED):
+   - `vitaltrack-api` (production) rebuilds on every merge — the CI hook fires when the secret is set, and its dashboard auto-deploy was reported on.
    - `vitaltrack-api-staging` rebuilds **only when `vitaltrack-backend/` files actually changed**. Staging's auto-deploy is gated by Render's Root Directory filter (set to `vitaltrack-backend` in the Render dashboard), so frontend-only PRs do not retrigger staging. See `docs/STAGING_DEPLOY_DIAGNOSIS.html` for the post-mortem that established this.
-4. `docker-entrypoint.sh` runs `alembic upgrade head` on the rebuilt service's DB, then boots Gunicorn (which spawns 4 Uvicorn workers — the runtime is `gunicorn -k uvicorn.workers.UvicornWorker`).
-5. Health check at `/health` must pass before traffic flips.
+   - (7 Oct 2026, owner-reported, not independently verified) staging was switched to the feature branch `feature/backend-hardening-ai-voice-agent-foundation`. While that holds, merges to `main` do not redeploy staging.
+4. `docker-entrypoint.sh` runs `alembic upgrade head` on the rebuilt service's DB, then boots Gunicorn with **2** Uvicorn workers (`--workers 2` in the Dockerfile `CMD`; earlier text said 4). The runtime is `gunicorn` with `--worker-class uvicorn.workers.UvicornWorker`. If the migration fails, the container exits and the new deploy does not start.
+5. The health check path in `vitaltrack-backend/render.yaml` is `/live` (process liveness), not `/health`; `/health` also probes the database and is for readiness checks and smoke tests. Whether the live services use that file, and their dashboard health-check paths, are NOT VERIFIED.
 6. **No mobile build is triggered** by merge. Production AAB is manual:
    ```bash
    cd vitaltrack-mobile
    eas build --profile production --platform android
    eas submit --profile production --platform android
    ```
-   The CI `build-production` job exists but is gated off (`if: false`) until Play Console production is live.
+   `eas submit` uses `submit.production` in `eas.json`: the Play **internal** track and a service-account key at `vitaltrack-mobile/credentials/google-service-account.json` (git-ignored, not in the repo). A production-profile AAB calls `https://api.carekosh.com` on every Play track; the EAS profile, not the track, fixes the API URL.
+   The CI `build-production` job exists but is disabled (`if: false`; the workflow comment says it was turned off during the server-first refactor).
 
 Full trigger taxonomy: repo-root `CAREKOSH_BUILD_DEPLOY_FLOW.html`.
 
@@ -175,14 +188,14 @@ feature. Keep product behavior unchanged and review these surfaces explicitly:
 | Surface | File / setting |
 |---|---|
 | Backend image/runtime | `vitaltrack-backend/Dockerfile`, `vitaltrack-backend/docker-entrypoint.sh` |
-| Runtime env vars | `DATABASE_URL`, `SECRET_KEY`, `ENVIRONMENT`, `CORS_ORIGINS`, `REQUIRE_EMAIL_VERIFICATION`, `MAIL_PASSWORD`, `MAIL_FROM`, `FRONTEND_URL` |
+| Runtime env vars | `DATABASE_URL`, `SECRET_KEY`, `ENVIRONMENT`, `CORS_ORIGINS`, `REQUIRE_EMAIL_VERIFICATION`, `MAIL_PASSWORD`, `MAIL_FROM`, `FRONTEND_URL`, plus `SENTRY_DSN` and any `AI_*` / `GROQ_API_KEY` settings in use |
 | Render-specific config | `vitaltrack-backend/render.yaml` |
 | CI deploy step | `.github/workflows/ci.yml` `deploy-backend` job |
 | Mobile build URLs | `vitaltrack-mobile/eas.json` |
 | Mobile URL guards | `vitaltrack-mobile/app.config.js` |
 | Local convenience scripts | `vitaltrack-mobile/package.json` `start:staging` / `start:prod` |
 
-GitHub secrets today are `RENDER_DEPLOY_HOOK` and `EXPO_TOKEN`. Keep
+`ci.yml` references two secrets, `RENDER_DEPLOY_HOOK` and `EXPO_TOKEN` (whether both are set, and at repository or environment level, is NOT VERIFIED). Keep
 `EXPO_TOKEN` for EAS. Replace `RENDER_DEPLOY_HOOK` if the backend leaves
 Render; examples include `SSH_HOST` / `SSH_USER` / `SSH_PRIVATE_KEY` for a VPS,
 `FLY_API_TOKEN` for Fly.io, `RAILWAY_TOKEN` for Railway, or
@@ -226,8 +239,8 @@ git push origin main
 # 2. Feature branch
 git checkout -b feature/my-contribution
 
-# 3. Work, commit
-git add . && git commit -m "feat: ..."
+# 3. Work, commit (stage explicit paths; `git add .` also stages untracked local files)
+git add <files> && git commit -m "feat: ..."
 
 # 4. Push to your fork
 git push origin feature/my-contribution
@@ -243,6 +256,8 @@ git push origin feature/my-contribution --force-with-lease
 ```
 
 Prefer `--force-with-lease` over `--force` — it fails if someone else pushed to your branch in the meantime, preventing accidental overwrites.
+
+GitHub does not pass repository secrets to workflows triggered by pull requests from forks, so the `build-apk` label cannot start an EAS build for a fork PR (the job has no `EXPO_TOKEN`). A maintainer has to build the preview APK instead.
 
 ---
 
@@ -262,7 +277,7 @@ git pull origin main           # pull latest main into feature branch
 # resolve conflicts in editor
 git add <resolved files>
 git commit                     # or git rebase --continue if mid-rebase
-git push
+git push origin <your-branch>  # name the branch explicitly
 ```
 
 ### Wrong branch
@@ -272,7 +287,8 @@ git push
 git log -1                                # grab commit hash
 git checkout -b feature/x                 # create branch at current HEAD
 git checkout main
-git reset --hard HEAD~1                   # pop the commit off main
+git reset --keep HEAD~1                   # pop the commit off main; --keep refuses
+                                          # rather than discard uncommitted edits
 git checkout feature/x                    # your commit is here
 
 # Forgot to branch before editing
@@ -282,6 +298,8 @@ git stash pop
 ```
 
 ### Undo the last commit
+
+Only for commits you have not pushed; for a pushed commit use `git revert <sha>`.
 ```bash
 # Keep changes staged
 git reset --soft HEAD~1
@@ -301,20 +319,23 @@ Normal — every merge to `main` bumps every open branch's count. Rebase only if
 
 ## Branch protection on `main`
 
-| Rule | Purpose |
-|---|---|
-| Require PR | No direct pushes |
-| Require CI pass | `pr-check` must be green |
-| Require review | ≥1 approval from a code owner |
-| No force push | History on `main` is sacred |
+| Rule | Purpose | Enforced by GitHub? (API read 7 Oct 2026; not re-checked 8 Oct) |
+|---|---|---|
+| Require PR | No direct pushes | Yes — ruleset `protect-main` (active, no bypass actors) |
+| Require CI pass | `pr-check` must be green | **No** — the ruleset has no required status checks; team rule only |
+| Require review | ≥1 approval from a code owner | **No** — the ruleset requires 0 approvals; `.github/CODEOWNERS` only requests @rishabhrd09 as reviewer |
+| No force push | History on `main` is sacred | Yes — non-fast-forward pushes are blocked |
+| No branch deletion | `main` cannot be deleted | Yes |
 
-Exception: production hotfix. If prod is on fire and the fix is ≤20 surgical lines, you can push directly — open a retroactive PR + post-mortem within 24 h. See `CAREKOSH_DEPLOYMENT_STRATEGY.html` Strategy D.
+There was no classic branch protection on `main` (the API returned 404 on 7 Oct 2026); the rules above come from the repository ruleset.
+
+Exception: production hotfix. Earlier text allowed a direct push for a ≤20-line fix. Under the ruleset as read on 7 Oct (no bypass actors) a direct push to `main` is rejected, so open a PR instead — it needs 0 approvals and can be merged at once — and write the post-mortem within 24 h. See the "Direct push to main" row and the rollback section of `CAREKOSH_DEPLOYMENT_STRATEGY.html` (earlier text pointed to a "Strategy D" section that no longer exists).
 
 ---
 
 ## PR template
 
-Paste this in the PR description:
+GitHub pre-fills new PRs from [`.github/pull_request_template.md`](../.github/pull_request_template.md), which is the template to follow (it adds "Environments affected" and a Preview APK note). The block below is an older, shorter version kept for reference:
 
 ```markdown
 ## Description
@@ -340,7 +361,7 @@ Brief description of changes.
 - [ ] Documentation updated (repo-root docs or this folder)
 ```
 
-If your PR needs a preview APK for hands-on review, add the `build-apk` label after opening.
+If your PR needs a preview APK for hands-on review, add the `build-apk` label after opening. Voice changes always need a native build: Expo Go cannot load the `carekosh-voice` module.
 
 ---
 
@@ -447,3 +468,7 @@ Questions? Comment on the PR or open a discussion on GitHub.
 ---
 
 *Last reviewed 2026-05-04 against PR #34. The "After merge" section (§After merge) was corrected to reflect that staging only rebuilds on backend-file changes (Render Root Directory filter; see `docs/STAGING_DEPLOY_DIAGNOSIS.html` for the post-mortem) and that the runtime is `gunicorn -k uvicorn.workers.UvicornWorker` — gunicorn supervises Uvicorn workers.*
+
+*Re-checked 2026-10-07 (`ci.yml` at `03cfebb`, GitHub API): route count 44 on the feature branch; `pr-check` and approvals are not enforced by the ruleset; deploy hook is a `curl` call; 2 Gunicorn workers (not 4); Render health check is `/live`; direct hotfix pushes are blocked by the ruleset; fork PRs get no secrets. Render dashboard behaviour not re-checked.*
+
+*Re-checked 2026-10-08 against the working tree (`03cfebb` plus uncommitted documentation) and `git diff main HEAD` for `ci.yml`: added the `synchronize` rule, `main`'s older workflow (Python 3.11, gate 39, `curl -s`), the sticky `build-apk` label, explicit staging and pushes, `reset --keep`, and the missing "Strategy D" link. The ruleset reading is still the 7 Oct one; Render, EAS and GitHub settings were not re-checked.*

@@ -1,8 +1,15 @@
 # CareKosh — Environment Split (Staging vs Production)
 
+> **AI voice source update — 9 October 2026:** Current AI voice architecture, checked against the 9 October 2026 working tree at `0946eb7` plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+
+
+> 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
+
+> **Status (re-checked 8 October 2026 against the working tree: `03cfebb` plus uncommitted documentation; first re-checked 7 October 2026):** Code facts re-checked against branch `feature/backend-hardening-ai-voice-agent-foundation` (`03cfebb`); `main` is `835fad3`. Most of this guide describes Render, Neon and Expo dashboard state, which was **not** re-checked and is NOT VERIFIED. Owner-reported on 7 Oct 2026 (not independently verified): the staging service was switched to the feature branch and deployed `b1c8dd7`. If so, the staging database is at migration `0010`, and migration `0007` cannot be downgraded. Earlier note (23 Sept 2026): head `0007`, 152 backend tests — now out of date (head `0010`; 242 backend and 121 mobile tests passed locally on 7 Oct, and again on 8 Oct against a disposable PostgreSQL 16 database). Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) · [API traceability](API_TRACEABILITY.md) · [documentation home](INDEX.html) · [backend hardening](BACKEND_HARDENING.md).
+
 > **Companion to `CAREKOSH_ENVIRONMENT_ARCHITECTURE.html`** at the repo root. This markdown version goes deeper on the operational side: Neon console walkthroughs, Render env var matrix, verification commands, and troubleshooting.
 >
-> **Last updated:** 2026-04-19
+> **First written:** 2026-04-19 (the status note above is newer)
 > **Originating branch:** `feature/production_staging_database` (PR #2)
 
 ---
@@ -25,14 +32,14 @@
 
 ### What the split is
 
-Staging and production run as **independent pipelines**. Each has:
+Staging and production run as **independent pipelines**. As documented (live settings NOT VERIFIED), each has:
 
 - Its own Render Web Service
 - Its own Neon database (on the same Neon project)
 - Its own `SECRET_KEY` (so JWTs from one environment cannot authenticate on the other)
 - Its own `CORS_ORIGINS`, `FRONTEND_URL`, and email config
 
-The mobile preview APK hits staging; the Play Store AAB hits production. Test data cannot pollute production. Schema changes still need normal CI, staging smoke, backup/restore, and rollback discipline before broad release because a bad migration merged to `main` can still affect production.
+The current `preview` profile embeds the staging API URL; the `production` profile embeds the production URL, including when that AAB is submitted to Play's internal track. Play track names do not select the backend. Test data stays separate only when the services point at distinct databases; verify that configuration. Schema changes still need CI, staging smoke, backup/restore and a release gate. Migration `0007_session_order_safety` is one-way: returning to `main`'s pre-0007 image requires a compatible database restore, not an Alembic downgrade. Such a restore loses writes made after its recovery point.
 
 ### Why it mattered before Play Store submission
 
@@ -69,7 +76,7 @@ The split addresses all three at the same time.
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### After (split — safe)
+### After (documented split; live configuration not verified)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -95,9 +102,11 @@ The split addresses all three at the same time.
 │       ▼                                                             │
 │  Neon DB: neondb                      ← Real data lives here        │
 │                                                                     │
-│  Complete isolation between test and production data.               │
+│  Separate rows; a shared Neon branch restore affects both DBs.       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+The isolation is by database name on one Neon branch (as documented): a Neon branch restore rewinds both databases, so confirm the layout before any restore.
 
 ### Development (local)
 
@@ -108,12 +117,12 @@ The split addresses all three at the same time.
 │  Expo Go (developer's phone)                                        │
 │       │                                                             │
 │       ▼                                                             │
-│  localhost:8000 (Docker container)                                  │
+│  Laptop API:8000 (LAN, or localhost with adb reverse)                │
 │  (ENVIRONMENT=development)                                          │
 │       │                                                             │
 │       ▼                                                             │
 │  Local Docker PostgreSQL 16                                         │
-│  (no SSL — the connection never leaves your machine)                │
+│  (local Docker network; TLS is not explicitly required)             │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -123,12 +132,12 @@ The split addresses all three at the same time.
 
 | Environment | Backend URL | Database | Mobile build | SSL | Email verify | `ENVIRONMENT` |
 |---|---|---|---|---|---|---|
-| Development | `localhost:8000` (Docker) | Local Postgres 16 (Docker) | Expo Go | OFF | OFF | `development` |
-| Testing (CI) | GitHub Actions runner | Postgres 16 service container | N/A | OFF | N/A | `testing` |
+| Development | Laptop API via LAN, or `localhost:8000` with ADB reverse | Local Postgres 16 (Docker) | Expo Go (voice needs a native build: the preview APK, which calls staging, or a development build once `expo-dev-client` is installed) | Not forced; driver default | OFF in effect (`docker-compose.dev.yml` sets `true`, but it is enforced only when `MAIL_PASSWORD` is set) | `development` |
+| Testing (CI) | GitHub Actions runner | Postgres 16 service container | N/A | Not forced; driver default | N/A | `testing` |
 | Staging | `staging-api.carekosh.com` | Neon: `vitaltrack_staging` | Preview APK | ON | ON for launch-like staging | `staging` |
 | Production | `api.carekosh.com` | Neon: `neondb` | Production AAB | ON | ON | `production` |
 
-Both `staging` and `production` live on Neon in Singapore and use TLS. Both Render services watch `main`; staging is dashboard-managed outside `render.yaml` and its auto-deploy is gated by the `vitaltrack-backend` root-directory filter documented in `STAGING_DEPLOY_DIAGNOSIS.html`.
+Both hosted databases are documented as using Neon in Singapore; the live host and region are NOT VERIFIED. The code requires verified TLS whenever `ENVIRONMENT` is not `development` or `testing`. Earlier docs said both Render services watch `main`; staging is dashboard-managed outside `render.yaml`. Its historical root-directory filter is documented in `STAGING_DEPLOY_DIAGNOSIS.html`; its current settings are NOT VERIFIED. `render.yaml` names `main` for production. The owner reports switching staging to the feature branch on 7 Oct 2026. Live branches, database targets and auto-deploy settings still need dashboard confirmation.
 
 ---
 
@@ -141,18 +150,21 @@ The backend reads all configuration from environment variables — no hardcoded 
 ```python
 # vitaltrack-backend/app/core/config.py
 from pydantic_settings import BaseSettings
+from pydantic import SecretStr
 
 class Settings(BaseSettings):
     APP_NAME: str = "CareKosh API"
     ENVIRONMENT: str = "development"
     DATABASE_URL: str = "<local-database-url>"
-    SECRET_KEY: str = "dev-secret-key-change-in-production"
+    SECRET_KEY: SecretStr = SecretStr("CHANGE-THIS-IN-PRODUCTION-MIN-32-CHARS-LONG-RANDOM-STRING")
     REQUIRE_EMAIL_VERIFICATION: bool = False
     MAIL_FROM: str = "noreply@carekosh.com"
-    # … plus production validators added in PR #12
+    # … plus validators added in PR #12 and later
 ```
 
-At startup, `pydantic-settings` reads every field from the process environment. The same image runs in every environment — only the env vars differ.
+(7 Oct 2026: the earlier snippet showed `SECRET_KEY: str = "dev-secret-key-change-in-production"`; the real default is the `SecretStr` placeholder above. It is accepted only for local development and tests: on the feature branch it is refused whenever `ENVIRONMENT` is not `development` or `testing`, on `main` only in production.)
+
+At startup, `pydantic-settings` reads every field from the process environment, and also from a `.env` file in the working directory if one exists (environment variables win). The Docker images do not contain `.env` (`.dockerignore` excludes it). The same image runs in every environment — only the env vars differ.
 
 ### 4.2 `eas.json` build-time configuration
 
@@ -167,9 +179,10 @@ At startup, `pydantic-settings` reads every field from the process environment. 
 ```
 
 Consequences:
-- Preview APK → always staging
-- Production AAB → always production
-- Impossible to accidentally mix them after build
+- With the current profiles, preview embeds the staging URL and production embeds the production URL.
+- The installed artifact keeps its embedded URL; a server deploy alone does not change it. This app disables OTA updates.
+- `app.config.js` rejects a non-empty, incorrect URL for these profiles. An empty URL bypasses that guard and `services/api.ts` falls back to localhost (known configuration defect).
+- Android cleartext is enabled for the development profile, a localhost URL or the explicit `CAREKOSH_ALLOW_ANDROID_CLEARTEXT=true` override. Confirm the resolved build configuration before release.
 
 ### 4.3 `docker-entrypoint.sh` auto-migration
 
@@ -181,18 +194,18 @@ Consequences:
 # 4. exec "$@" (the Dockerfile CMD starts gunicorn)
 ```
 
-When the staging service first boots with `DATABASE_URL` pointed at `vitaltrack_staging`, Alembic sees an empty DB and runs every migration from scratch, creating all tables automatically. No manual SQL required.
+For an empty target database, Alembic applies all revisions and creates the schema. For an existing target, it applies revisions after its recorded head. Changing `DATABASE_URL` neither copies existing rows nor guarantees that a populated legacy upgrade is safe.
 
-> **Startup wait behavior.** The entrypoint parses `DATABASE_URL` before the `pg_isready` loop, so normal Render boots wait on the real Neon host and port. `localhost:5432` is only a parse-failure fallback, not an expected sequence of failed attempts on every deploy.
+> **Startup wait behavior (corrected 7 Oct 2026).** The entrypoint parses `DATABASE_URL` with `sed` before the `pg_isready` loop. The host pattern needs an explicit `:port` after the host. If the URL has no port — Neon's default connection strings usually omit it — the host falls back to `localhost` and the port to `5432`, `pg_isready` fails 30 times (about 60 s), and the script continues with a warning. `alembic upgrade head` then connects with the real `DATABASE_URL`, so the deploy still works, only slower. Earlier text said the fallback was not expected on normal deploys; that holds only when the URL includes a port. Whether the live Render URLs include one is NOT VERIFIED: look for `Extracted HOST:` in the deploy log.
 
 ### 4.4 Twelve-Factor compliance
 
-Per [12factor.net](https://12factor.net/): *"Same codebase, same image runs everywhere. Only environment variables change."*
+The [Twelve-Factor App](https://12factor.net/config) (factor III, Config) recommends one codebase for every deploy, with the configuration that varies between deploys stored in environment variables rather than in code. (An earlier version of this guide put a sentence in quotation marks here that does not appear on 12factor.net.)
 
-CareKosh follows the pattern:
-- Identical Docker image deployed to both environments
-- Only env vars differ
-- Adding a new environment (QA, demo, etc.) requires zero code changes — just a new Render service with appropriate env vars
+CareKosh supports the pattern:
+- The same production Docker image can run in staging and production with different environment variables. Whether the live services use identical images is NOT VERIFIED.
+- Another backend environment can normally reuse the application code, with its own service, database, secrets and deployment configuration.
+- A mobile build for a new API URL also needs a build profile and any matching URL-guard changes; infrastructure configuration is separate from business logic.
 
 ### 4.5 SSL toggle pattern
 
@@ -205,8 +218,8 @@ _connect_args = {"ssl": True} if settings.ENVIRONMENT not in ("development", "te
 ```
 
 **Why the change matters:**
-- **Allowlist:** only `production` gets SSL. Any new environment (e.g., `staging`) accidentally connects without SSL — credentials travel plain-text over the internet.
-- **Denylist:** SSL is on by default. Only explicitly local environments (`development`, `testing`) skip it. A future `qa` or `demo` environment gets SSL automatically.
+- **Earlier allowlist:** only `production` explicitly requires verified TLS. Other values leave TLS negotiation to asyncpg's default (`prefer`, or `PGSSLMODE` if set), so encryption and certificate verification are not guaranteed by this toggle.
+- **Current toggle:** every value except `development` and `testing` passes `ssl=True`, requiring certificate and hostname verification. Local/testing omit the argument; they do not explicitly disable TLS.
 
 Same toggle is applied in `app/core/database.py` and `alembic/env.py`.
 
@@ -216,25 +229,22 @@ Same toggle is applied in `app/core/database.py` and `alembic/env.py`.
 
 1. **Login** — backend creates a JWT and stamps it with `SECRET_KEY`.
 2. **Request** — backend decodes the JWT and verifies the stamp matches.
-3. **Cross-environment protection** — staging and production have **different** `SECRET_KEY`s. A token from staging cannot authenticate on production.
+3. **Cross-environment protection** — configure different keys for staging and production. A staging token then fails production signature validation. Whether the live keys differ is NOT VERIFIED; authentication also checks the user and, on the feature branch, `session_version`.
 
 ```
-staging SECRET_KEY   ≠   production SECRET_KEY
+Recommended: staging SECRET_KEY ≠ production SECRET_KEY
        │                        │
        └─ signs staging JWT     └─ signs production JWT
            (rejected on prod)       (rejected on staging)
 ```
 
-Store it only in the Render dashboard env vars. Never commit it. Never type it in code.
+Store deployment secrets in the provider's secret configuration. For local testing use synthetic secrets, never production values. Never commit them.
 
 ### 4.7 Why Neon requires SSL
 
-Neon runs in the public cloud and you access it over the public internet. Without SSL:
-- Password travels in plain text
-- Query data (emails, inventory) is visible to anyone on the path
-- MITM can inject or modify queries
+TLS encrypts query traffic and verified certificates authenticate the server. PostgreSQL's authentication method also matters: SCRAM exchanges a proof rather than sending a plaintext password, but it does not encrypt the subsequent queries. The application explicitly requires verified TLS for hosted environments.
 
-Local Docker PostgreSQL doesn't need SSL because the connection goes from app container to DB container on the same host — never leaves `localhost`.
+Local Compose connects containers through a Docker network, not the host's localhost socket. Its PostgreSQL and pgAdmin ports are currently published on all host interfaces with development credentials. Use a trusted local environment and restrict those ports; the absence of a TLS requirement does not make that exposure safe.
 
 ---
 
@@ -286,7 +296,7 @@ Local Docker PostgreSQL doesn't need SSL because the connection goes from app co
 | `app/api/*` | Business logic is env-agnostic |
 | `alembic/versions/*` | Migrations apply to whatever DB is configured |
 | `.github/workflows/*` | CI already set `ENVIRONMENT=testing` |
-| Mobile `app/`, `components/`, etc. | Reads `EXPO_PUBLIC_API_URL` at runtime |
+| Mobile `app/`, `components/`, etc. | `services/api.ts` reads `EXPO_PUBLIC_API_URL`, whose value is inlined into the bundle at build time |
 
 ---
 
@@ -335,7 +345,7 @@ backup/snapshot and after confirming they are disposable test records.
 ### 6.2 Render — create staging service
 
 1. New **Web Service** named `vitaltrack-api-staging`.
-2. Connect to the same GitHub repo, same `main` branch.
+2. Connect to the same GitHub repo, same `main` branch. (As set up in April 2026. On 7 Oct 2026 the owner reports switching staging to `feature/backend-hardening-ai-voice-agent-foundation`; NOT VERIFIED here.)
 3. Same Dockerfile, same default build/start commands (entrypoint does the work).
 4. Set env vars (see table below).
 
@@ -343,8 +353,8 @@ backup/snapshot and after confirming they are disposable test records.
 
 | Variable | Value | Notes |
 |---|---|---|
-| `ENVIRONMENT` | `staging` | Triggers SSL on Neon; not prod guardrails |
-| `DATABASE_URL` | `postgresql+asyncpg://...@.../vitaltrack_staging` | DB name is `vitaltrack_staging`, NOT `neondb` |
+| `ENVIRONMENT` | `staging` | Triggers SSL on Neon; no HSTS header and no production-only `FRONTEND_URL` check. Feature branch: the `SECRET_KEY` placeholder is refused here too |
+| `DATABASE_URL` | `postgresql+asyncpg://...@.../vitaltrack_staging` | DB name is `vitaltrack_staging`, NOT `neondb`. Use Neon's direct host, not a `-pooler` one: the app sends `statement_timeout` as a start-up parameter, which the pooler rejects. URL-encode reserved password characters normally; the local A-27 fix handles percent signs in Alembic configuration |
 | `SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(32))"` output | **Must differ from production** |
 | `CORS_ORIGINS` | `["*"]` | Wildcard is fine for a mobile-only API (no browser CORS concerns) |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` | Matches launch-like staging; use local development if testers need no-email registration |
@@ -356,6 +366,9 @@ backup/snapshot and after confirming they are disposable test records.
 | `MAIL_STARTTLS` | legacy SMTP-era key | Current send path uses Brevo HTTP API over 443 |
 | `MAIL_SSL_TLS` | `false` | |
 | `FRONTEND_URL` | `https://staging-api.carekosh.com/api/v1/auth` | Used in email link templates |
+| `AI_*`, `GROQ_API_KEY` (feature branch) | unset = off | Only if the voice assistant's optional Groq text understanding is being piloted on staging; see [VOICE_AGENT_SETUP.md](VOICE_AGENT_SETUP.md). Live values NOT VERIFIED |
+
+These values describe the intended configuration (April–June 2026 docs). The live staging environment was not re-checked on 7 or 8 Oct 2026.
 
 #### Render env vars — production
 
@@ -365,14 +378,14 @@ Same set. Differences:
 |---|---|
 | `ENVIRONMENT` | `production` |
 | `DATABASE_URL` | `postgresql+asyncpg://...@.../neondb` |
-| `SECRET_KEY` | A **different** 32+ char random value (not starting with `CHANGE-THIS`) |
+| `SECRET_KEY` | A **different** 32+ char random value (not starting with `CHANGE-THIS`); `render.yaml` asks Render to generate it (`generateValue: true`) |
 | `CORS_ORIGINS` | currently `["*"]` per `render.yaml`. **No validator rejects `"*"` in production today** because no real browser/admin origins are configured yet. Tighten only after those origins are known. |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` |
 | `FRONTEND_URL` | `https://api.carekosh.com/api/v1/auth` — PR #12 validator requires non-empty in prod |
 
 ### 6.3 Expo/EAS — no dashboard changes needed
 
-EAS Build reads the `env` block from `eas.json` in the repo at build time. No action in the Expo dashboard.
+For the API URLs in the current profiles, EAS Build reads the `env` block from `eas.json`. Account access, signing credentials and any other EAS environment values still need to be configured; this section does not verify those dashboard settings.
 
 ### 6.4 Backend platform migration checklist
 
@@ -405,7 +418,9 @@ builds: if the public API URL changes, every APK/AAB must be rebuilt because
 2. Recreate the runtime env vars on the new host:
    `DATABASE_URL`, `SECRET_KEY`, `ENVIRONMENT`, `CORS_ORIGINS`,
    `REQUIRE_EMAIL_VERIFICATION`, `MAIL_PASSWORD`, `MAIL_FROM`,
-   `FRONTEND_URL`.
+   `FRONTEND_URL`, plus `SENTRY_DSN` and any `AI_*` / `GROQ_API_KEY`
+   settings that are in use. Set `PORT` if the host expects a port other
+   than 8000 (the entrypoint binds Gunicorn to `0.0.0.0:${PORT:-8000}`).
 3. Build/run `vitaltrack-backend/Dockerfile`; keep
    `vitaltrack-backend/docker-entrypoint.sh` as the startup path so DB wait and
    `alembic upgrade head` still run before Gunicorn/Uvicorn.
@@ -428,7 +443,7 @@ builds: if the public API URL changes, every APK/AAB must be rebuilt because
 
 #### GitHub secrets
 
-Existing secrets today:
+Secrets referenced by the repository (live values and presence NOT VERIFIED):
 
 | Secret | Keep/change |
 |---|---|
@@ -455,6 +470,13 @@ and first users may interpret 30-60 second login or inventory timeouts as a
 broken app. Minimum before Play review is paid Render or another reliable
 production uptime/keep-warm strategy with evidence; staging can stay on a
 cheaper setup.
+
+(7 Oct 2026) `render.yaml` now declares the production service on plan
+`starter`, a paid always-on plan, with a comment that it removes free-tier
+spin-down. Whether the live service matches, and which plan staging uses, is
+NOT VERIFIED. Note also that ordinary app API calls have no client-side
+timeout; only specific calls (token refresh, the startup profile check,
+health probes, assistant calls) have one.
 
 ---
 
@@ -491,7 +513,11 @@ curl -s https://api.carekosh.com/health | python -m json.tool
 curl -s https://api.carekosh.com/live | python -m json.tool
 ```
 
+`version` comes from the `APP_VERSION` setting (default `1.0.0`), so neither probe identifies the deployed commit. A successful authenticated `GET /api/v1/ai/capabilities` confirms that endpoint's response contract. An unauthenticated 401 only detects the AI middleware behavior: it also rejects unknown paths under `/api/v1/ai/`, so it does not prove that an endpoint exists. Use the deployment history for the exact commit and an operator's `alembic current` check for the schema revision.
+
 ### Registration smoke test (staging only)
+
+`/register` is limited to 3 requests per hour (best-effort, in memory per worker), so repeated runs can return 429.
 
 ```bash
 curl -s -X POST https://staging-api.carekosh.com/api/v1/auth/register \
@@ -503,19 +529,9 @@ curl -s -X POST https://staging-api.carekosh.com/api/v1/auth/register \
   }' | python -m json.tool
 ```
 
-### Isolation proof
+### Isolation check
 
-After registering a test user on staging, confirm it does NOT exist on production:
-
-```bash
-curl -s -X POST https://api.carekosh.com/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "identifier": "testuser@example.com",
-    "password": "TestPass123!"
-  }'
-# Expected: 401 — user doesn't exist on production
-```
+First have the operator confirm that the two services' database URLs select different databases, without recording their passwords. Use a uniquely named, disposable staging test account. If database access is authorized, a read-only lookup can confirm its ID exists in staging and not in production. Do not use a production login attempt as proof: a 401 alone does not establish database isolation, and a successful login creates session/activity rows. A shared Neon branch restore can still rewind both databases even when their rows are separate.
 
 ---
 
@@ -525,11 +541,11 @@ curl -s -X POST https://api.carekosh.com/api/v1/auth/login \
 
 `/health` actively probes the database. A `503` with `database="unavailable"`
 means the app process is alive but the readiness probe failed. A timeout or
-connection error means the process or Render edge path itself is unhealthy:
+connection error can also come from the client's network, a cold start, a proxy or the process; it does not identify the cause on its own:
 
 - Check Render → service → Environment Variables → `DATABASE_URL`.
 - Verify the DB name matches (`vitaltrack_staging` for staging, `neondb` for production).
-- Verify the Neon project is not suspended due to inactivity.
+- Check the Neon branch state: computes scale to zero and wake automatically, but on the Free plan inactive branches can be archived.
 - Verify the password in the connection string matches Neon's current one (rotating the Neon password requires updating Render).
 - For DB-side detail beyond the readiness probe, use the Neon dashboard's monitoring panel.
 
@@ -540,9 +556,7 @@ connection error means the process or Render edge path itself is unhealthy:
 
 ### A staging JWT authenticates on production
 
-**Should never happen.** If it does:
-- Both environments have the same `SECRET_KEY`.
-- Fix: generate a new unique key for staging, set it in Render, redeploy. All existing staging tokens are invalidated.
+Investigate both the signing configuration and database target. Accepting the same signed token suggests matching keys, but authentication also needs a matching user and session generation. Do not assume a 401 proves separate databases. If keys are shared, configure a different staging key and redeploy; existing staging tokens will be invalidated.
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
@@ -557,8 +571,10 @@ Fix: rebuild with the current `eas.json`:
 
 ```bash
 cd vitaltrack-mobile
-npx eas build --profile preview --platform android
+eas build --profile preview --platform android   # EAS CLI (eas-cli); or: npx eas-cli@latest build …
 ```
+
+Never use `npx eas …`: the npm package `eas` is unrelated to Expo.
 
 Remember: `EXPO_PUBLIC_API_URL` is compile-time. An old APK will forever hit the URL it was built with.
 
@@ -566,15 +582,19 @@ Remember: `EXPO_PUBLIC_API_URL` is compile-time. An old APK will forever hit the
 
 - Render → staging service → Logs — look for the Alembic error.
 - Migration bug: fix locally, push, redeploy.
-- Connection bug: see "disconnected" above.
+- Connection bug: see "`/health` returns 503 or times out" above.
 - Manual apply if needed:
   ```bash
-  DATABASE_URL="<staging-url>" ENVIRONMENT=staging alembic upgrade head
+  DATABASE_URL="<staging-url>" ENVIRONMENT=staging SECRET_KEY="<any 32+ char value that is not the CHANGE-THIS placeholder>" alembic upgrade head
   ```
+  (7 Oct 2026) `alembic/env.py` loads the app settings, and on the feature branch the settings refuse the placeholder `SECRET_KEY` whenever `ENVIRONMENT=staging`, so the command needs a `SECRET_KEY` value. On the feature branch, migrations also take an advisory lock and a 30 s `lock_timeout`, so two concurrent runs wait for each other instead of colliding (`main` has no such lock).
+- The manual command applies one-way migrations: run it only on a database you have decided to upgrade. Preserve the existing staging database; test candidates on an isolated database first.
+- Before upgrading any shared database past `0006`: migration `0007` cannot be downgraded. Take a restorable backup first; see [BACKEND_HARDENING.md](BACKEND_HARDENING.md).
+- `Can't locate revision 0010_order_local_id_unique` (or `0007`–`0009`) at startup means the database was upgraded by the feature branch and the service now runs older code such as `main`. The container exits because `alembic upgrade head` fails. Deploy the feature branch again, or restore the database from a backup taken before the upgrade.
 
 ### Staging is "up" but all auth returns 401
 
-Likely `SECRET_KEY` was rotated — all existing tokens are now invalid. Expected; users log in again.
+Likely `SECRET_KEY` was rotated — all existing tokens are now invalid. Expected; users log in again. (Feature branch: a password change or reset also bumps the user's `session_version`, which makes that user's existing tokens return 401.)
 
 ---
 
@@ -586,21 +606,21 @@ No. PR #2 did not touch the production DB. The SSL toggle was already `True` for
 
 ### Does this cost anything?
 
-**$0 additional.** Neon free tier allows multiple databases on one project. Render free tier allows multiple web services. Both staging services reuse free quota.
+**$0 additional** (as of April 2026). Neon free tier allows multiple databases on one project. Render free tier allows multiple web services, but its 750 free instance hours per month are shared by the whole workspace. (7 Oct 2026: `render.yaml` now declares the production service on the paid `starter` plan; live plans and costs are NOT VERIFIED.)
 
 ### Do I need to run Alembic manually on staging?
 
-No. `docker-entrypoint.sh` runs `alembic upgrade head` on every deploy. When staging first started with the new `DATABASE_URL`, Alembic applied every migration against the empty `vitaltrack_staging` DB automatically.
+No. `docker-entrypoint.sh` runs `alembic upgrade head` on every deploy. When staging first started with the new `DATABASE_URL`, Alembic applied every migration against the empty `vitaltrack_staging` DB automatically. If the migration fails, the container exits and the new deploy does not start. Remember that this also applies one-way migrations such as `0007` the moment a service deploys the branch that contains them.
 
 ### Is the staging database empty?
 
-Yes. It starts empty. You or testers register accounts and populate test data. By design — staging should not contain production data copies.
+It started empty (April 2026); since then testers have registered accounts and test data, so preserve it rather than wiping it. By design, staging should not contain production data copies.
 
 ### What about cold starts?
 
-Render free-tier services sleep after ~15 minutes idle. The first request after sleep takes 30–60 seconds while the container boots + runs migrations + starts gunicorn. Subsequent requests are fast. Staging and production sleep independently.
+Render free-tier services sleep after ~15 minutes idle. The first request after sleep takes 30–60 seconds while the container boots + runs migrations + starts gunicorn. Subsequent requests are fast. Staging and production sleep independently. (7 Oct 2026: this applies only to services on the free plan. `render.yaml` declares production on the paid `starter` plan; live plans are NOT VERIFIED.)
 
-A keep-alive monitor (UptimeRobot or similar) can point at `/live` on a 5-minute interval to keep the service warm without coupling liveness to database readiness. Use `/health` when you specifically want database-backed readiness.
+A keep-alive monitor (UptimeRobot or similar) can point at `/live` on a 5-minute interval to keep the service warm without coupling liveness to database readiness. On the free plan, 750 instance hours per workspace cover only about one always-on service a month; after that Render suspends free services until the month ends. Use `/health` when you specifically want database-backed readiness.
 
 ### Do I need Expo dashboard changes?
 
@@ -608,13 +628,13 @@ No. EAS Build reads `eas.json` from the repo. Nothing to change in the Expo dash
 
 ### Is `CORS_ORIGINS=["*"]` safe for staging?
 
-Yes. CORS is a browser security feature. React Native / native mobile apps do not enforce CORS — they make direct HTTP requests. The wildcard has zero security impact on a mobile-only API.
+Native mobile requests do not enforce browser CORS. The wildcard still permits browser scripts from any origin to read responses allowed by the CORS policy; it is not authentication or authorization. The app sets `allow_credentials=False` with a wildcard. Assess browser clients separately, and keep ownership/authentication checks regardless of CORS.
 
 An earlier draft of this doc said PR #12 "rejects `*` at startup in production" — that's not accurate. PR #12 added validators for `SECRET_KEY` (no placeholder) and `FRONTEND_URL` (must be set), but no CORS production-rejection. The actual production `render.yaml` ships `CORS_ORIGINS: '["*"]'`. Tightening is intentionally deferred until real browser/admin origins are known; native mobile requests are not governed by browser CORS.
 
 ### How do I add a fourth environment (QA, demo, etc.)?
 
-Zero code changes needed. Create a new Neon DB, a new Render service, set its env vars (ENVIRONMENT, DATABASE_URL, SECRET_KEY, MAIL_*), done. The SSL toggle (§4.5) will pick it up automatically. If you want a mobile build pointing at it, add a new profile to `eas.json`.
+The backend normally reuses the same application code with a separate service, database, secrets and deployment configuration. The TLS toggle (§4.5) requires verified TLS for a new environment value such as `qa`. A mobile build also needs an `eas.json` profile and matching build guards where applicable. Validate migrations and smoke tests before treating the new environment as ready.
 
 ---
 
@@ -625,3 +645,15 @@ Zero code changes needed. Create a new Neon DB, a new Render service, set its en
 > 2. Superseded by Goal 6: `/health` now probes the database and returns `503` when readiness fails. `/live` is the process-only liveness endpoint for Render and keep-alive monitors.
 > 3. Email transport is now Brevo's HTTP REST API over port 443, not SMTP/STARTTLS. The `MAIL_SERVER` / `MAIL_PORT` / `MAIL_STARTTLS` config keys still exist for legacy compatibility, but `app/utils/email.py` does not use them for sending.
 > 4. The mobile app gained a cold-start UX layer (`MutationResultDialog`, `StatusPill`, `safeBack`, `mutationFeedback`, `react-native-toast-message`) on the audit/cold-start-mutation-ux branch merged 2026-05-04. None of that touches environment / DB / Render config; the env-split surface is unchanged.
+
+> **Re-audit notes (2026-10-07, code at `03cfebb`; dashboards not re-checked):**
+> 1. §4.1 snippet showed a wrong `SECRET_KEY` default; corrected to the `SecretStr` placeholder, with the feature-branch rule that refuses it outside development/testing (which also affects manual `alembic` runs with `ENVIRONMENT=staging`, §8).
+> 2. §4.3 "localhost fallback is not expected on normal deploys" was only true for URLs with an explicit port; corrected (checked by running the entrypoint's `sed` patterns on sample URLs).
+> 3. Added the one-way migration `0007` warnings, the owner-reported staging switch to the feature branch (7 Oct, not independently verified), the `render.yaml` `starter` plan, and the fact that `/health` cannot identify the deployed commit.
+> 4. §8 "see 'disconnected' above" pointed to a section that no longer exists; now points to the `/health` 503 entry.
+
+> **Re-audit notes (2026-10-08, working tree `03cfebb` plus uncommitted documentation; dashboards not re-checked):**
+> 1. §4.4 quoted a sentence that does not appear on 12factor.net; replaced with a paraphrase of factor III.
+> 2. §8 used `npx eas build`; the npm package `eas` is unrelated — use `eas` from eas-cli or `npx eas-cli@latest`.
+> 3. Added: Neon pooled hosts reject the app's `statement_timeout` start-up parameter; a `%` in `DATABASE_URL` stops Alembic; one Neon branch restore rewinds both databases; Render's free hours are per workspace; Neon "project suspended" replaced by compute scale-to-zero and Free-plan branch archiving; staging is no longer empty and should be preserved.
+> 4. Final follow-up: distinguish default TLS negotiation from explicitly verified TLS, Docker networking from localhost, intended settings from live evidence, the empty-URL guard gap, and an AI middleware 401 from proof that a route exists. Replaced the production-login isolation recipe with an operator-controlled read-only check.

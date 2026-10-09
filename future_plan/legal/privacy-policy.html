@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <!--
   CAREKOSH PRIVACY POLICY — filled 2026-06-29.
-  Operator: Rishabh Dongre · Contact: support@carekosh.com · Effective date: 29 June 2026.
+  Operator: Rishabh Dongre · Contact: support@carekosh.com · Draft reviewed: 23 September 2026; publication/effective date to be confirmed.
+  7 October 2026: factual statements corrected against the app/backend code at 03cfebb (unmerged feature branch). Still a DRAFT needing legal review;
+  this edit does not publish the policy and does not establish legal or Play-policy compliance.
   Deletion URL: https://carekosh.com/account-deletion.html (Section 7). Hosted on Cloudflare Pages at carekosh.com.
   Host this file at a public URL and paste that URL into Play Console → App content → Privacy policy.
   Keep accurate to the app's actual behaviour — the Play "Data safety" form must match it.
@@ -28,28 +30,39 @@ a{color:var(--accent)}
 .note{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:8px;padding:12px 16px;margin:16px 0;font-size:.92rem}
 footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--border);color:var(--muted);font-size:.85rem}
 </style>
+<style id="doc-review-style">.doc-review{display:block!important;position:static!important;box-sizing:border-box!important;width:auto!important;max-width:1000px;margin:24px auto!important;padding:18px 22px!important;border:1px solid #aab8ac!important;border-left:5px solid #286258!important;border-radius:8px;background:#f0f6ef!important;color:#1b352c!important;font:15px/1.6 system-ui,sans-serif!important}.doc-review p{margin:6px 0!important;color:inherit!important;font:inherit!important}.doc-review a{color:#075d70!important;text-decoration:underline!important}.doc-review strong{color:#173f34!important}.doc-review code{color:inherit!important;background:transparent!important}@media print{.doc-review{break-inside:avoid}}</style>
 </head>
 <body>
+<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="../../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside><aside class="doc-review" aria-label="Documentation status"><strong>DRAFT — needs legal review · unpublished local policy draft · reviewed 23 September 2026 · facts corrected 7 October 2026</strong><p>Code-related wording was corrected. Retention periods, audience policy, live providers and support commitments need owner confirmation before publication. This edit neither publishes a policy nor certifies legal compliance.</p><p><strong>7 October 2026 corrections</strong> (checked against the code at <code>03cfebb</code>, the unmerged feature branch that contains the voice assistant; <code>main</code> = <code>835fad3</code> has no assistant and blocks the microphone): the AI &amp; Voice section now describes this build — on-device Moonshine recognition and Android device speech, the then-current text-only Groq build; that dated snapshot is superseded by the separate audio/text disclosures below; sign-in records now disclose the stored IP address and User-Agent; account details reflect that the app requires an email and username and does not collect a phone number; photos are described as an on-device file reference; the withdrawal path is Profile menu → Voice setup; deletion and retention text now lists every category of stored data. Documentation cannot prove compliance.</p><p><strong>Owner decisions still open:</strong> effective date and publication; audience (this draft says 13+ while the assistant’s online option asks for an 18+ declaration); a retention schedule for sign-in records, activity/audit history and assistant usage records; provider terms and data controls (Groq location and retention settings were NOT VERIFIED); whether the published page at carekosh.com matches this draft (NOT VERIFIED); whether support email forwarding (Cloudflare Email Routing to a personal inbox, per the domain guide) and website hosting need listing as providers. The Sentry restrictions described in section 4 (no request bodies, no default personal data, scrubbing) exist only on the feature branch; <code>main</code> initialises Sentry with defaults when <code>SENTRY_DSN</code> is set — whether production has a DSN configured was NOT VERIFIED.</p><p><a href="../../docs/INDEX.html">Documentation home and source status</a> · <a href="../../docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide</a> · <a href="../../docs/API_TRACEABILITY.md">API traceability</a> · <span>Documentation audit, 7 Oct 2026 <small>(local review reference; not published)</small></span> · <a href="../../docs/BACKEND_HARDENING.md">Local hardening and remaining work</a></p></aside>
 <div class="wrap">
   <h1>CareKosh — Privacy Policy</h1>
-  <p class="meta">Effective date: <strong>29 June 2026</strong> · Operated by <strong>Rishabh Dongre</strong> · Contact: <a href="mailto:support@carekosh.com">support@carekosh.com</a></p>
+  <p class="meta">Draft revised 7 October 2026 — effective date to be set on publication (earlier draft dated <strong>29 June 2026</strong>) · Operated by <strong>Rishabh Dongre</strong> · Contact: <a href="mailto:support@carekosh.com">support@carekosh.com</a></p>
 
   <p>CareKosh ("CareKosh", "we", "us") is a mobile app that helps households and home-care families track their medical and care-supply inventory — items, stock levels, expiry dates, categories, and reorder lists. This policy explains what information we collect, why, how we protect it, and the choices you have. We collect only what the app needs to work; we do not sell your data and we do not use advertising trackers.</p>
 
   <h2>1. Information we collect</h2>
   <p><strong>Information you provide</strong></p>
   <ul>
-    <li><strong>Account details</strong> — your name, email address, and/or a username, and a password (used to sign in and to send verification, password-reset, and account-deletion confirmation emails).</li>
-    <li><strong>Inventory you enter</strong> — item and category names, quantities, minimum-stock thresholds, expiry dates, brands, notes, supplier names/contact details (if you choose to add them), purchase links, and a "critical/emergency" flag; plus orders and the activity history these generate.</li>
-    <li><strong>Photos</strong> — if you choose to attach a photo to an item, it is selected from your device's library; image URLs may be stored as item metadata, and photos may be included in PDFs you generate.</li>
+    <li><strong>Account details</strong> — your name, email address, a username, and a password (used to sign in and to send verification, password-reset, and account-deletion confirmation emails). The app does not ask for your phone number.</li>
+    <li><strong>Inventory you enter</strong> — item and category names, quantities, minimum-stock thresholds, expiry dates, brands, notes, supplier names/contact details (if you choose to add them), purchase links, item descriptions, and a "critical/emergency" flag; plus orders, the activity history these generate, and an internal change history (before-and-after values of item changes and order deletions) that we keep to investigate data problems.</li>
+    <li><strong>Photos</strong> — if you choose to attach a photo to an item, it is selected from your device's library. The app stores the photo's on-device file reference (its URI) with the item on our server; it does not upload the photo file itself. Photos may be included in PDFs you generate.</li>
     <li><strong>Files you create</strong> — inventory/order PDFs and JSON exports you generate in the app, and inventory data you copy to your clipboard, all at your request.</li>
   </ul>
   <p><strong>Information collected automatically</strong></p>
   <ul>
     <li><strong>Authentication tokens</strong> — sign-in tokens are stored securely on your device (in the operating system's secure storage) to keep you logged in.</li>
+    <li><strong>Sign-in records</strong> — when you register, sign in or your session is renewed, our server records the session (an identifier, expiry and whether it has been signed out), the IP address of the request and your device's User-Agent text; the login entry in your activity history also records the IP address. These records are kept until you delete your account.</li>
     <li><strong>Limited technical / error logs</strong> — our servers keep minimal logs and error reports needed to operate, secure, and debug the service.</li>
   </ul>
-  <div class="note"><strong>What we do NOT collect:</strong> no advertising identifiers, no third-party advertising or analytics trackers in the app, no location data, no contacts, and no access to your microphone or camera. Your passwords are never stored in readable form — they are hashed on our servers.</div>
+  <div class="note"><strong>What we do NOT collect:</strong> no advertising identifiers, no third-party advertising or analytics trackers in the app, no device location, no contacts, and no camera access (sign-in records include the IP address of the request, as described above). Microphone access is optional, Android-only and limited to the voice feature described below. Your passwords are never stored in readable form — they are hashed on our servers.</div>
+
+  <h2>Optional AI &amp; Voice — unpublished pilot disclosure</h2>
+  <p>This optional inventory assistant is off until you enable it. Voice cannot change stock or save orders; it can prepare an unsaved local draft, which only a separate touch confirmation in Create Order saves. On Android, the new native module captures a temporary recording and can show provisional live words using the downloaded Moonshine English speech pack. Default final transcription happens on the phone after Stop; separately opted-in online listening is described below. The recording is kept only temporarily in the app's cache and is deleted after it has been converted; leftover files are removed the next time the app starts. You download the speech model explicitly in Voice setup; the download comes from Moonshine's model server, does not send recordings or inventory, and that server can receive normal connection information. If you turn on spoken replies, an offline English voice installed on your Android device reads the answer. Familiar commands are understood on your phone without any AI service. Answers are built on your phone from your own inventory data; when you are offline they use data loaded earlier in the same sign-in session and are labelled "Last known".</p>
+  <p><strong>Optional online understanding (Groq).</strong> If you choose "Enable Groq understanding" and confirm that you are 18 or older, a question your phone cannot understand on its own is sent — only after you review it and tap Send — through our server to Groq (US) to turn the wording into a supported command. Only the question text, and whether it refers to the item shown just before, is sent; your recordings and your inventory list are not. Words and item names you include in the question are sent. Groq may retain request content for reliability or abuse monitoring unless zero data retention is enabled for our service account. This interpretation call sends no recording; separately enabled online listening can send finished audio as described below. Hosted speech and Sarvam are not offered by this mobile release. There is no automatic provider failover. With online understanding off, the assistant works on your phone; it still makes normal requests to our server to read your inventory and to check whether the online option is available. We do not upload your inventory to any AI service.</p>
+  <p>Questions, quantities and recorded suppliers can reveal health-related information. Do not include patient identifiers. You can edit the transcript before sending a question. The AI routes do not deliberately retain or log recordings, questions or spoken text. This is not a guarantee against operating-system caches, diagnostic misconfiguration or provider retention.</p>
+  <p>The online option remains disabled until the operator verifies the provider's applicable terms, data controls and this disclosure. Providers may retain operational metadata. We store, linked to your account, your assistant consent (version, the options you accepted and when) and a content-free usage record for each online request (request type, provider, time, status, an estimated cost reservation and token counts) to enforce daily limits; these records contain no question text. They are kept until you delete your account, which removes them from active storage; a shorter retention schedule must be confirmed and published before public rollout. Your assistant settings (assistant, microphone, spoken replies, online option) are stored on your device for your account. This policy update is a local release draft until published and reviewed.</p>
+  <p><strong>8 October 2026 local follow-up: optional online listening.</strong> Default listening still uses Moonshine on the phone. If you separately select “Enable Groq online listening” and accept the audio disclosure, each finished recording is sent through CareKosh to Groq Whisper to produce an editable transcript. Text consent alone does not authorize this upload, and old audio preferences are not restored. Your inventory list is not uploaded. The backend uses a private temporary file for decoding and deletes it when decoding ends; the phone deletes its temporary recording after processing or failure, retrying leftover cleanup on a later launch. Groq’s data controls also apply to this audio processing; actual account retention settings remain unverified. No question is interpreted or drafted until you review the transcript and press Send. Hosted speech and Sarvam listening remain disabled. Switch to “Use offline listening” to stop audio uploads on this device, or withdraw all cloud consent to disable both online modes and request server revocation. Local drafts do not create server orders; saving requires separate touch confirmation. The disclosure follows the current working tree; matching deployment/device checks, publication and legal review remain separate.</p>
+  <p>Withdraw online consent with "Withdraw all cloud consent" in Voice setup (Profile menu → Voice setup), or turn off the assistant, the microphone or spoken replies there separately. You can remove the downloaded speech model in the same place. A request already sent cannot necessarily be recalled; cancellation prevents late results being displayed or spoken. The online option is offered only to adults declaring they are 18 or older; this declaration is not age verification. Audience controls, provider terms and the app's broader age policy require review before public release.</p>
 
   <h2>2. How we use your information</h2>
   <ul>
@@ -57,6 +70,7 @@ footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--border);color
     <li>To provide the core features — storing and displaying your inventory, orders, categories, and activity.</li>
     <li>To send you account emails (email verification, password reset, account-deletion confirmation, and security notices such as a password change).</li>
     <li>To keep the service secure, reliable, and free of abuse.</li>
+    <li>If you enable it, to answer questions through the optional assistant and to enforce its usage limits.</li>
   </ul>
 
   <h2>3. How your information is stored and protected</h2>
@@ -64,30 +78,34 @@ footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--border);color
     <li>Your data is associated with your account and is <strong>scoped to you</strong> — other users cannot see it.</li>
     <li>All data is <strong>encrypted in transit</strong> (HTTPS).</li>
     <li>Passwords are <strong>hashed</strong> on the server (never stored in plaintext, never stored on your device).</li>
-    <li>Sign-in tokens are stored only in your device's secure storage.</li>
+    <li>Sign-in tokens are stored in device secure storage and sent to the API for authentication. The server stores refresh-session identifiers, expiry and revocation metadata, the IP address and User-Agent of each sign-in, plus account session generations.</li>
   </ul>
 
-  <h2>4. Service providers (sub-processors)</h2>
+  <p>The app also keeps a last-known inventory/order/activity display cache in device storage. It is cleared on account transitions by the app; exported or shared files are separate copies. Profile email changes are handled through support. On Android, assistant settings are stored on the device for each account, and a downloaded speech model is stored in app storage that is excluded from device backups.</p>
+<h2>4. Service providers (sub-processors)</h2>
   <p>We use a small number of trusted providers to run CareKosh. They process data only to provide their service to us:</p>
   <table>
     <thead><tr><th>Provider</th><th>Purpose</th></tr></thead>
     <tbody>
       <tr><td>Render</td><td>Application hosting (runs our backend)</td></tr>
+      <tr><td>Groq (optional adult AI pilot)</td><td>Interpretation of question text for the optional assistant, only after you enable it. Separately consented Groq online listening can receive finished recordings for Whisper transcription in the latest local build. Final provider terms and data controls must be reviewed before enabling the pilot.</td></tr>
+      <tr><td>Sarvam (optional adult AI pilot)</td><td>Not used in this app version: the cloud transcription and speech options are switched off. If enabled in a future version, it would receive recordings or answer text only with separate consent and operator-reviewed terms and data controls.</td></tr>
+      <tr><td>Moonshine model CDN (Android setup)</td><td>Explicit speech-model downloads only; not a recording or inventory upload.</td></tr>
       <tr><td>Neon</td><td>Managed PostgreSQL database (stores your account &amp; inventory data)</td></tr>
       <tr><td>Brevo</td><td>Sending transactional emails (verification, reset, notices)</td></tr>
       <tr><td>Google Play</td><td>App distribution and updates</td></tr>
-      <tr><td>Error-monitoring tooling</td><td>(If enabled) collects technical error reports to keep the service reliable</td></tr>
+      <tr><td>Sentry, if configured</td><td>(If enabled) collects technical error reports to keep the service reliable; our server configures it not to send request bodies or default personal data.</td></tr>
     </tbody>
   </table>
   <p>We encourage you to review each provider's own privacy practices. We do <strong>not</strong> sell your personal information or share it with third parties for advertising.</p>
 
   <h2>5. Data retention</h2>
-  <p>We keep your account and inventory data for as long as your account is active. When you delete your account (see Section 7), we remove your personal data from our active systems; residual copies in routine encrypted backups are overwritten on our normal backup cycle. We may retain a minimal record where required by law.</p>
+  <p>We keep your account and inventory data for as long as your account is active. When you delete your account (see Section 7), we remove your personal data from our active systems; residual backup and operational-log copies require separate retention handling. The actual provider recovery windows and deletion schedule must be documented before this draft is published; this repository does not establish a verified retention period. Sign-in records, activity and change history, and assistant consent and usage records currently remain until the account is deleted; the service has no automatic time-based deletion for them.</p>
 
   <h2>6. Your rights</h2>
   <p>You can:</p>
   <ul>
-    <li><strong>Access and correct</strong> your information — most of it is editable directly in the app.</li>
+    <li><strong>Access and correct</strong> your information — most of it is editable directly in the app (email address changes go through support; to change a password, use "Forgot password" on the sign-in screen).</li>
     <li><strong>Export</strong> your inventory — the app lets you generate PDF and JSON exports.</li>
     <li><strong>Delete</strong> your account and associated data at any time (Section 7).</li>
   </ul>
@@ -96,10 +114,10 @@ footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--border);color
   <h2>7. Account &amp; data deletion</h2>
   <p>You can delete your account and its data in two ways:</p>
   <ul>
-    <li><strong>In the app:</strong> Profile → <em>Delete Account</em>. We send a confirmation email; deletion completes only after you confirm.</li>
+    <li><strong>In the app:</strong> Profile → <em>Delete My Account</em>. We send a confirmation email; deletion completes only after you open the link (valid for 24 hours) and confirm on the page it shows.</li>
     <li><strong>On the web:</strong> follow the instructions at <a href="https://carekosh.com/account-deletion.html">https://carekosh.com/account-deletion.html</a>.</li>
   </ul>
-  <p>Deleting your account removes your profile, inventory, orders, categories, activity history, and stored item-photo references from our active systems.</p>
+  <p>Deleting your account removes your profile, inventory, orders, categories, activity history, change history, sign-in records, stored item-photo references, and assistant consent and usage records from our active systems. A per-day order-number counter, which is not linked to any account, is kept so that order numbers are never reused.</p>
 
   <h2>8. Children</h2>
   <p>CareKosh is intended for users aged <strong>13 and older</strong> and is not directed to children. We do not knowingly collect personal information from children under 13.</p>

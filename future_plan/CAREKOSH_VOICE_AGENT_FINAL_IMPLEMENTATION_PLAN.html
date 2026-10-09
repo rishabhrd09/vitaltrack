@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CareKosh's selected V1 voice inventory architecture, local implementation status, delivery sequence, data boundaries and remaining release gates. Not deployed or approved for release.">
+  <meta name="color-scheme" content="light">
+  <title>CareKosh — Final Voice Agent Implementation Plan</title>
+  <style>
+    :root { --paper:#f7f3eb; --surface:#fffdf8; --ink:#28352f; --muted:#62695f; --line:#dcded2; --green:#235c4c; --green-soft:#e7eee5; --amber:#775119; --amber-soft:#f5ead4; --red:#874139; --red-soft:#f7e9e4; --code:#ecebe2; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; scroll-padding-top:28px; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:var(--green); text-underline-offset:4px; }
+    a:hover { text-decoration-thickness:2px; }
+    button,select { font:inherit; }
+    button,a,select,summary { -webkit-tap-highlight-color:transparent; }
+    :focus-visible { outline:3px solid var(--green); outline-offset:5px; }
+    .skip { position:absolute; left:16px; top:-100px; z-index:10; background:var(--surface); padding:12px; }
+    .skip:focus { top:12px; }
+    .topbar { max-width:1360px; margin:auto; padding:24px 36px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); }
+    .brand { font-weight:650; font-size:18px; text-decoration:none; letter-spacing:-.035em; }
+    .edition { color:var(--muted); font-size:13px; }
+    .layout { max-width:1360px; margin:auto; display:grid; grid-template-columns:210px minmax(0,1fr); gap:56px; padding:0 36px; }
+    .sidebar { align-self:start; position:sticky; top:28px; padding:42px 0; }
+    .sidebar p { margin:0 0 14px; font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--muted); }
+    .sidebar a { display:block; padding:7px 0; text-decoration:none; font-size:13px; color:var(--muted); }
+    .sidebar a:hover,.sidebar a[aria-current="location"] { color:var(--green); font-weight:600; }
+    .sidebar .divider { border-top:1px solid var(--line); margin-top:24px; padding-top:18px; }
+    main { min-width:0; padding:58px 0 64px; }
+    .eyebrow { margin:0 0 18px; font-size:11px; font-weight:650; color:var(--green); text-transform:uppercase; letter-spacing:.15em; }
+    h1,h2 { font-family:Georgia,"Times New Roman",serif; font-weight:400; letter-spacing:-.045em; }
+    h1 { font-size:clamp(40px,5.4vw,68px); line-height:1.05; margin:0; max-width:850px; }
+    h1 em { color:var(--green); font-style:normal; }
+    h2 { font-size:clamp(30px,3.6vw,42px); line-height:1.13; margin:8px 0 18px; }
+    h3 { margin:0 0 9px; font-size:19px; line-height:1.35; font-weight:600; letter-spacing:-.02em; }
+    h4 { font-size:14px; margin:0 0 5px; }
+    p { margin:0 0 16px; }
+    .lede { max-width:790px; font-size:19px; color:var(--muted); line-height:1.65; margin:24px 0; }
+    .metadata { display:flex; flex-wrap:wrap; gap:8px 20px; font-size:12px; color:var(--muted); margin:24px 0; }
+    .pill { display:inline-flex; align-items:center; padding:3px 10px; border-radius:30px; font-size:11px; font-weight:600; color:var(--green); background:var(--green-soft); letter-spacing:.02em; }
+    .pill.pending { color:var(--amber); background:var(--amber-soft); }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; margin:26px 0; }
+    .button { border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--ink); padding:10px 15px; font-size:13px; cursor:pointer; text-decoration:none; display:inline-block; }
+    .button.primary { background:var(--green); color:var(--surface); border-color:var(--green); }
+    .button:hover { filter:brightness(.97); }
+    .section { border-top:1px solid var(--line); padding-top:44px; margin-top:48px; scroll-margin-top:26px; }
+    .section-number { display:block; font-size:11px; color:var(--green); font-weight:600; letter-spacing:.13em; text-transform:uppercase; }
+    .intro { color:var(--muted); max-width:810px; }
+    .principles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; margin:36px 0; }
+    .principle { border-top:2px solid var(--green); padding-top:13px; }
+    .principle strong { display:block; font-size:14px; margin-bottom:4px; }
+    .principle p { font-size:13px; color:var(--muted); margin:0; }
+    .callout { padding:20px 22px; background:var(--green-soft); border-left:3px solid var(--green); margin:24px 0; }
+    .callout.warning { background:var(--amber-soft); border-left-color:var(--amber); }
+    .callout strong { display:block; margin-bottom:5px; font-size:15px; }
+    .callout p { margin:0; font-size:14px; }
+    .stack { border-top:1px solid var(--line); margin:24px 0; }
+    .stack-row { display:grid; grid-template-columns:42px 145px minmax(0,1fr) 110px; gap:14px; padding:17px 0; border-bottom:1px solid var(--line); align-items:start; }
+    .stack-row .num { color:var(--green); font-size:12px; padding-top:3px; }
+    .stack-row strong { font-size:14px; font-weight:600; }
+    .stack-row p { font-size:14px; margin:0; }
+    .stack-row small { display:block; color:var(--muted); font-size:12px; }
+    .where { font-size:11px; text-align:right; color:var(--muted); padding-top:3px; }
+    code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.86em; background:var(--code); padding:2px 5px; border-radius:3px; overflow-wrap:anywhere; }
+    pre { background:var(--code); padding:20px; border-radius:7px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.65; }
+    pre code { padding:0; }
+    .diagram { margin:26px 0 16px; }
+    .diagram svg { width:100%; height:auto; display:block; overflow:visible; }
+    .diagram text { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; fill:var(--ink); }
+    .diagram .group { fill:var(--surface); stroke:var(--line); stroke-width:1; }
+    .diagram .node { fill:var(--green-soft); stroke:none; }
+    .diagram .pending-node { fill:var(--amber-soft); stroke:none; }
+    .diagram .label { font-size:12px; fill:var(--muted); letter-spacing:1px; }
+    .diagram .title { font-size:18px; font-weight:600; }
+    .diagram .body { font-size:14px; }
+    .diagram .detail { font-size:12px; fill:var(--muted); }
+    .diagram .wire { stroke:var(--green); stroke-width:1.5; fill:none; }
+    .diagram figcaption { margin-top:14px; font-size:12px; color:var(--muted); }
+    .mobile-diagram { display:none; }
+    .mini-node { padding:16px; background:var(--surface); border:1px solid var(--line); margin:8px 0; border-radius:8px; }
+    .mini-node strong { display:block; font-size:14px; }
+    .mini-node span { display:block; font-size:13px; color:var(--muted); }
+    .mini-arrow { text-align:center; font-size:13px; color:var(--green); }
+    .two-col { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+    .panel { background:var(--surface); border:1px solid var(--line); padding:22px; border-radius:8px; }
+    .panel p,.panel li { font-size:14px; }
+    ul,ol { padding-left:22px; margin:12px 0; }
+    li { margin:7px 0; }
+    .small { font-size:12px; color:var(--muted); }
+    .journey { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0 24px; list-style:none; padding:0; margin:24px 0; counter-reset:journey; }
+    .journey li { border-top:1px solid var(--line); padding:18px 0 14px; margin:0; counter-increment:journey; }
+    .journey li::before { content:"0" counter(journey) " →"; display:block; font-size:12px; color:var(--green); margin-bottom:10px; }
+    .journey strong { display:block; font-size:15px; margin-bottom:6px; }
+    .journey p { font-size:13px; color:var(--muted); margin:0; }
+    .example { border:1px solid var(--line); background:var(--surface); border-radius:10px; padding:24px; margin-top:24px; }
+    .example-header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .example-header h3 { margin:0; }
+    .example label { font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+    .example select { max-width:100%; padding:9px 34px 9px 12px; background:var(--paper); border:1px solid var(--line); border-radius:5px; color:var(--ink); font-size:14px; }
+    .example-question { font:400 24px/1.4 Georgia,serif; letter-spacing:-.025em; margin:20px 0; }
+    .example-route { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:22px; font-size:11px; color:var(--green); }
+    .example-route span { padding:4px 8px; background:var(--green-soft); border-radius:4px; }
+    .answer-card { border-top:1px solid var(--line); padding-top:20px; }
+    .answer-card h4 { font-size:18px; }
+    .answer-value { font-size:32px; font-weight:500; letter-spacing:-.04em; margin:4px 0; }
+    .answer-meta { font-size:13px; color:var(--muted); }
+    .speech-line { margin-top:16px; padding:14px 16px; background:var(--paper); font-size:14px; }
+    .speech-line strong { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:5px; }
+    .table-wrap { overflow-x:auto; margin:20px 0; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th { text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); background:var(--green-soft); }
+    th,td { padding:13px 14px; vertical-align:top; border-bottom:1px solid var(--line); }
+    td:first-child { font-weight:500; }
+    table p { margin:0; }
+    .steps { list-style:none; padding:0; margin:24px 0; counter-reset:steps; }
+    .step { position:relative; padding:0 0 32px 58px; margin:0; counter-increment:steps; }
+    .step::before { content:counter(steps,decimal-leading-zero); position:absolute; left:0; top:0; width:35px; height:35px; display:grid; place-items:center; border:1px solid var(--line); border-radius:50%; color:var(--green); font-size:12px; background:var(--paper); z-index:1; }
+    .step:not(:last-child)::after { content:""; position:absolute; left:17px; top:35px; bottom:0; border-left:1px solid var(--line); }
+    .step h3 { padding-top:4px; }
+    .step p,.step li { font-size:14px; }
+    .step .gate { padding:12px 15px; background:var(--green-soft); font-size:13px; margin:14px 0 0; }
+    .gate b { font-weight:600; }
+    details { border-top:1px solid var(--line); padding:15px 0; }
+    details:last-of-type { border-bottom:1px solid var(--line); }
+    summary { cursor:pointer; font-size:14px; font-weight:600; }
+    .detail-content { padding:14px 0 0; }
+    .detail-content p,.detail-content li { font-size:14px; }
+    .gate-list { padding:0; list-style:none; }
+    .gate-list li { padding:12px 0 12px 26px; position:relative; font-size:14px; border-bottom:1px solid var(--line); }
+    .gate-list li::before { content:"□"; position:absolute; left:0; color:var(--green); font-size:18px; line-height:1.4; }
+    .phases { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; margin-top:24px; }
+    .phase { border-top:2px solid var(--line); padding-top:16px; }
+    .phase:first-child { border-color:var(--green); }
+    .phase p { font-size:14px; color:var(--muted); }
+    .sources { font-size:13px; columns:2; column-gap:30px; }
+    .sources li { break-inside:avoid; margin:0 0 12px; }
+    footer { margin-top:46px; padding-top:22px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); }
+    @media(max-width:1120px) { .layout { grid-template-columns:170px minmax(0,1fr); gap:30px; padding:0 26px; } .stack-row { grid-template-columns:30px 115px minmax(0,1fr); } .where { grid-column:3; text-align:left; padding:0; margin-top:-10px; } }
+    @media(max-width:900px) { .layout { display:block; max-width:830px; } .sidebar { position:static; padding:20px 0 0; } .sidebar p,.sidebar .divider { display:none; } .sidebar nav { display:flex; gap:5px 18px; flex-wrap:wrap; } .sidebar a { padding:3px 0; font-size:12px; } main { padding-top:38px; } .topbar { padding:18px 26px; } }
+    @media(max-width:760px) { .desktop-diagram { display:none; } .mobile-diagram { display:block; } }
+    @media(max-width:620px) { body { font-size:15px; } .layout { padding:0 20px; } .topbar { padding:16px 20px; } .edition { font-size:11px; } .lede { font-size:17px; } .principles,.two-col,.phases { grid-template-columns:1fr; gap:18px; } .principles { margin:28px 0; } .principle { padding-top:10px; } .stack-row { grid-template-columns:25px minmax(0,1fr); gap:6px 10px; } .stack-row p,.stack-row .where { grid-column:2; } .stack-row .where { margin-top:0; } .journey { grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 18px; } .example { padding:18px; } .example-question { font-size:22px; } .section { margin-top:38px; padding-top:34px; } .step { padding-left:48px; } .sources { columns:1; } th,td { padding:11px 9px; font-size:13px; } .settings-table { min-width:470px; } .boundary-table { min-width:490px; } .callout { padding:17px; } }
+    @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+    @page { margin:18mm 16mm; }
+    @media print { body { background:white; color:#202820; font-size:10pt; } .topbar,.sidebar,.actions,.example-controls,.skip { display:none!important; } .layout { display:block; max-width:none; padding:0; } main { padding:0; } h1 { font-size:34pt; } h2 { font-size:23pt; } h3 { font-size:13pt; } .section { margin-top:26px; padding-top:22px; } .lede { font-size:12pt; } .metadata { font-size:9pt; } .desktop-diagram { display:block; } .mobile-diagram { display:none; } .diagram { break-inside:avoid; } h2,h3,summary { break-after:avoid; } .step,.panel,.callout,.example,.phase,.principle { break-inside:avoid; } .table-wrap { overflow:visible; } th,td { padding:7px; font-size:9pt; } table { min-width:0!important; } thead { display:table-header-group; } tr { break-inside:avoid; } details .detail-content { display:block!important; } .sources { columns:1; } a { color:inherit; } .pill { border:1px solid #bbc6b8; } }
+  </style>
+</head>
+<body>
+<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. This document’s original proposals/results remain historical; use the maintained guide for current behavior. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside>
+  <aside class="callout warning" style="max-width:1050px;margin:24px auto;padding:20px" aria-label="Implementation status, 7 October 2026"><strong>Implementation status (7 Oct 2026) — future proposal, partly implemented on an unmerged branch</strong><p>This page remains a plan. This status describes 7 October. The 9 October source update above takes precedence for current runtime behavior. Part of the plan now exists in code on <code>feature/backend-hardening-ai-voice-agent-foundation</code> at <code>03cfebb</code>. It is <strong>not merged to <code>main</code></strong> (<code>835fad3</code>, which has no AI routes), and it has <strong>not been verified on a phone or in production</strong>; 7 Oct checks were local unit tests only (242 backend, 121 mobile).</p><p style="margin-top:8px"><strong>In code on that branch:</strong> Android-only (8.0+) tap-to-talk recording (up to 28 s), transcribed after recording stops by an on-device Moonshine English model through the local <code>carekosh-voice</code> module. The speech pack is not bundled: the user downloads it in Voice setup, and its size and checksum are verified. A local parser answers familiar read-only questions (quantity, supplier, status, summary, low/out of stock, close, stop); no write intent exists. Optional Groq text interpretation runs only when the parser cannot match, the user has enabled it after an 18+ consent dialog (scope <code>groq_text</code>), and the server reports it available (<code>AI_ENABLED</code>, <code>AI_DATA_CONTROLS_REVIEWED</code> and <code>GROQ_API_KEY</code> set); the request carries the question text and a previous-item flag only — no audio and no inventory. Answers are built on the phone from the user's own item data, using the dashboard's phone-side low/out-of-stock rules (broader than the server's <code>/items/stats</code> definition), and are labelled “Last known” when offline. Spoken replies use an installed offline English Android TTS voice, only when “Read answers aloud” is on. Entry points: the “Ask CareKosh” dock above the bottom tabs, and Voice setup from the Profile menu.</p><p style="margin-top:8px"><strong>Disabled or still planned:</strong> cloud audio is off in this build (<code>CLOUD_VOICE_ENABLED = false</code>) — no recording upload, no Groq Whisper or Sarvam transcription, no hosted Alba/Kokoro/Sarvam speech; the backend's <code>/ai/transcribe</code> and <code>/ai/speak</code> routes exist but this app cannot reach them. The <code>voice-service/</code> workers are code only and are not deployed. Alba rights approval, the recorded-speech evaluation, device qualification, privacy-policy and Data safety updates and release review remain planned. The owner reports staging ran commit <code>b1c8dd7</code> on 7 Oct; its AI settings are NOT VERIFIED, and <code>render.yaml</code> sets no AI variables for production. Open finding: the Android microphone-permission text in <code>app.json</code> still mentions cloud recognition, which this build cannot perform.</p><p style="margin-top:8px"><a href="../docs/VOICE_OPTION_1_IMPLEMENTATION.md">Option 1 implementation and setup</a> · <a href="../docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide</a> · <a href="../docs/API_TRACEABILITY.md">API traceability</a> · <span>Documentation audit, 7 Oct 2026 <small>(local review reference; not published)</small></span> · <a href="../docs/INDEX.html">Documentation home</a></p></aside>
+  <aside class="callout warning" style="max-width:1050px;margin:24px auto;padding:20px" aria-label="Implementation status"><strong>Local implementation reviewed · 29 September 2026 · not deployed</strong><p>Read-only tools, account-specific settings, Groq adapters, consent/usage controls and separate Alba service code exist locally. The Iris/Jarvis review added microphone lifecycle protection, a visible level indicator and whole-transcript validation without changing providers. Local checks: 193 backend tests, 48 mobile tests, TypeScript and Android JavaScript export passed—not a native APK or recognition-quality test.</p><p>External processing remains off by default. Device evaluation, approved Alba provisioning, staging configuration and privacy/release review remain required. <a href="../docs/VOICE_AGENT_SETUP.md">Setup handoff</a> · <a href="../docs/VOICE_AGENT_REVIEW_2026-09-29.md">Review decisions and verification limits</a>.</p></aside>
+  <a class="skip" href="#main">Skip to implementation plan</a>
+  <div class="topbar"><a class="brand" href="../docs/INDEX.html">CareKosh</a><span class="edition">Architecture notebook · V1 / 24 Sep 2026</span></div>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Document navigation">
+      <p>In this guide</p>
+      <nav>
+        <a href="#decision">01 · Final decision</a><a href="#architecture">02 · Architecture</a><a href="#journey">03 · Question journey</a><a href="#data">04 · Data &amp; boundaries</a><a href="#settings">05 · Settings</a><a href="#implementation">06 · Implementation</a><a href="#contracts">07 · Technical contracts</a><a href="#release">08 · Release gates</a><a href="#later">09 · Later phases</a><a href="#sources">10 · References</a>
+      </nav>
+      <div class="divider"><a href="CAREKOSH_VOICE_INVENTORY_AGENT_DECISION_GUIDE.html">Earlier decision guide ↗</a><a href="../docs/INDEX.html">Project documentation ↗</a></div>
+    </aside>
+    <main id="main">
+      <header>
+        <div class="callout warning"><strong>Current implementation: Option 1 · 6 October 2026</strong><p>The hosted-listening/Alba-first specification below is retained as history. The selected implementation now uses Android 8.0+ offline Moonshine English listening, local read-only commands and offline device speech by default. Groq understanding, Groq/Sarvam transcription and hosted Kokoro/Sarvam speech are separate optional pilots with provider-specific consent. See <a href="../docs/VOICE_OPTION_1_IMPLEMENTATION.md">the current implementation and setup guide</a> for configuration, compatibility and device release gates. No public deployment or on-phone qualification is implied.</p></div>
+        <p class="eyebrow">Selected architecture · implementation specification</p>
+        <h1>Your inventory.<br><em>A conversation away.</em></h1>
+        <p class="lede">A practical, read-only voice assistant that understands your question, finds the recorded facts, shows a clear answer and speaks it in your chosen Alba voice.</p>
+        <div class="metadata"><span class="pill">V1 architecture selected</span><span class="pill pending">Alba release approval pending</span><span>Local implementation · staging and device verification pending</span></div>
+        <div class="actions"><a class="button primary" href="#implementation">Read the build sequence</a><a class="button" href="#architecture">See the architecture</a><button class="button" type="button" id="print-guide">Print / save as PDF</button></div>
+        <div class="principles">
+          <div class="principle"><strong>Read-only by construction</strong><p>No inventory edits, orders, purchases or external messages through the assistant.</p></div>
+          <div class="principle"><strong>Server-authoritative</strong><p>Reuse suitable fetched data. Refresh normally. Never invent a second source of truth.</p></div>
+          <div class="principle"><strong>One answer, two outputs</strong><p>The overlay and the spoken sentence come from the same validated answer object.</p></div>
+        </div>
+      </header>
+
+      <section class="section" id="decision">
+        <span class="section-number">01 / The decision</span><h2>One narrow, dependable V1.</h2>
+        <p class="intro">The model understands the request. CareKosh supplies the facts. This plan consolidates the latest agreed direction; older guides remain background, not competing instructions. It does not claim the selected models have already passed CareKosh's evaluation.</p>
+        <div class="stack">
+          <div class="stack-row"><span class="num">01</span><strong>Capture</strong><p>Expo Audio<small>Press-to-talk recording and audio playback. Typed input always remains available.</small></p><span class="where">On the phone</span></div>
+          <div class="stack-row"><span class="num">02</span><strong>Listen</strong><p>Groq <code>whisper-large-v3</code><small>Convert a short recording into a visible, editable English transcript.</small></p><span class="where">Hosted API</span></div>
+          <div class="stack-row"><span class="num">03</span><strong>Understand</strong><p>Local parser → Groq <code>openai/gpt-oss-20b</code><small>Use the model only when the local parser cannot cover the full request. Return intent JSON, not stock facts.</small></p><span class="where">Phone + API</span></div>
+          <div class="stack-row"><span class="num">04</span><strong>Read &amp; display</strong><p>TypeScript tools + existing TanStack Query data<small>Resolve the item, check freshness and completeness, apply existing stock rules, render fixed cards.</small></p><span class="where">On the phone</span></div>
+          <div class="stack-row"><span class="num">05</span><strong>Speak</strong><p>Piper <code>en_GB-alba-medium</code><small>Separate, bounded speech service for V1, subject to rights approval. It reads the deterministic speech text.</small></p><span class="where">Own TTS service</span></div>
+          <div class="stack-row"><span class="num">06</span><strong>Protect</strong><p>Existing FastAPI + provider adapters<small>Current login, server-held keys, account consent, usage limits, timeouts and feature switches.</small></p><span class="where">Your backend</span></div>
+        </div>
+        <div class="callout warning"><strong>Architecture selected. Public voice release still has a gate.</strong><p>Alba remains the preferred exact voice. Model provenance, permitted use, redistribution and runtime obligations must be resolved before a public release. Running it on a server does not itself clear the rights question. If approval is unavailable, pause that release decision and ask for an approved voice alternative; do not silently substitute another voice or call captions-only a finished voice assistant.</p></div>
+        <p class="small">Why hosted speech first? It avoids an initial Android/iOS synthesis and pronunciation integration. This is an engineering choice, not a claim that Piper requires the internet. No self-hosted LLM, RAG, vector database, model training or autonomous agent loop is needed for V1.</p>
+      </section>
+
+      <section class="section" id="architecture">
+        <span class="section-number">02 / Deployment architecture</span><h2>Three processing paths.<br>One source of stock truth.</h2>
+        <p class="intro">The app and inventory API/database already exist. The assistant modules, AI routes and separate speech-service code have been added locally, with deployment and real-device verification still pending. Groq never receives database access or authority to execute a mobile action.</p>
+        <figure class="diagram desktop-diagram">
+          <svg viewBox="0 0 1000 570" role="img" aria-labelledby="architecture-title architecture-desc">
+            <title id="architecture-title">CareKosh proposed V1 voice assistant architecture</title>
+            <desc id="architecture-desc">The phone has recording, transcript review, local intent validation, inventory readers and answer cards. It calls FastAPI using the existing login. FastAPI separately calls Groq Whisper for transcription, Groq GPT-OSS for intent extraction, and an approved separate Piper Alba service for speech. Inventory is read from the existing database only when a refresh is needed. The model has no connection to the inventory database.</desc>
+            <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#235c4c"/></marker></defs>
+            <text class="label" x="20" y="25">ON THE PHONE</text><text class="label" x="364" y="25">YOUR BACKEND</text><text class="label" x="710" y="25">MODEL PROCESSING</text>
+            <rect class="group" x="20" y="49" width="273" height="461" rx="12"/>
+            <text class="title" x="42" y="83">CareKosh · Expo</text><text class="detail" x="42" y="107">Existing app + new assistant modules</text>
+            <rect class="node" x="38" y="129" width="237" height="61" rx="6"/><text class="body" x="52" y="154">Record / type a question</text><text class="detail" x="52" y="174">Review the transcript</text>
+            <path class="wire" d="M156 194 V211" marker-end="url(#arrow)"/>
+            <rect class="node" x="38" y="216" width="237" height="62" rx="6"/><text class="body" x="52" y="241">Validate intent locally</text><text class="detail" x="52" y="261">Allowlist + item clarification</text>
+            <path class="wire" d="M156 282 V299" marker-end="url(#arrow)"/>
+            <rect class="node" x="38" y="304" width="237" height="70" rx="6"/><text class="body" x="52" y="329">Read-only stock tools</text><text class="detail" x="52" y="349">Account-owned fetched data</text><text class="detail" x="52" y="365">Freshness + completeness checks</text>
+            <path class="wire" d="M156 378 V395" marker-end="url(#arrow)"/>
+            <rect class="node" x="38" y="400" width="237" height="84" rx="6"/><text class="body" x="52" y="425">One answer object</text><text class="detail" x="52" y="447">Fixed card + matching speech text</text><text class="detail" x="52" y="468">Local audio playback / Stop</text>
+            <path class="wire" d="M300 263 H354" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+            <text class="detail" x="307" y="246">HTTPS</text>
+            <rect class="group" x="364" y="153" width="255" height="210" rx="12"/><text class="title" x="385" y="184">FastAPI gateway</text><text class="detail" x="385" y="209">Existing login and account scope</text>
+            <text class="body" x="385" y="241">/ai/transcribe</text><text class="body" x="385" y="264">/ai/interpret</text><text class="body" x="385" y="287">/ai/speak</text><text class="detail" x="385" y="319">Keys, budgets, limits, cancellation</text><text class="detail" x="385" y="341">AI calls do not hold DB sessions</text>
+            <path class="wire" d="M625 217 H665 V102 H703" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+            <path class="wire" d="M625 262 H703" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+            <path class="wire" d="M625 305 H665 V424 H703" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+            <rect class="group" x="710" y="49" width="273" height="111" rx="12"/><text class="title" x="730" y="79">Groq · Whisper</text><text class="body" x="730" y="106">Audio → transcript</text><text class="detail" x="730" y="135">Listening only; no stock access</text>
+            <rect class="group" x="710" y="210" width="273" height="111" rx="12"/><text class="title" x="730" y="240">Groq · GPT-OSS 20B</text><text class="body" x="730" y="267">Question → intent JSON</text><text class="detail" x="730" y="296">No quantities or supplier facts</text>
+            <rect class="pending-node" x="710" y="371" width="273" height="139" rx="12"/><text class="title" x="730" y="401">Separate Piper service</text><text class="body" x="730" y="428">Verified text → Alba audio</text><text class="detail" x="730" y="455">Pronunciation + synthesis together</text><text class="detail" x="730" y="480">Public use: rights gate pending</text>
+            <path class="wire" d="M491 370 V432" marker-start="url(#arrow)" marker-end="url(#arrow)"/><text class="detail" x="505" y="402">Inventory refresh</text><text class="detail" x="505" y="419">when needed</text>
+            <rect class="group" x="364" y="442" width="255" height="94" rx="12"/><text class="title" x="385" y="474">Existing database</text><text class="detail" x="385" y="498">Stock source of truth</text><text class="detail" x="385" y="520">No assistant stock-write path</text>
+          </svg>
+          <figcaption>Bidirectional arrows represent requests and results. All AI routes are proposed under the existing API prefix. Authentication and operational accounting are separate from inventory reads.</figcaption>
+        </figure>
+        <div class="mobile-diagram" role="group" aria-label="Mobile architecture view">
+          <div class="mini-node"><strong>1 · Phone: CareKosh</strong><span>Record or type → validate intent → read existing stock data → fixed card and audio playback.</span></div><div class="mini-arrow">↕ Existing login · HTTPS</div>
+          <div class="mini-node"><strong>2 · Your FastAPI gateway</strong><span>Three proposed AI routes, server-held keys, account consent, budgets and timeouts.</span></div><div class="mini-arrow">Branches to four separate services ↓</div>
+          <div class="mini-node"><strong>Groq Whisper Large v3</strong><span>Recorded question → transcript. No inventory access.</span></div><div class="mini-node"><strong>Groq GPT-OSS 20B</strong><span>Question → allowed intent JSON. No inventory access.</span></div><div class="mini-node"><strong>Piper Alba service · rights gate pending</strong><span>Fixed answer text → pronunciation → synthesis → audio.</span></div><div class="mini-node"><strong>Existing inventory database</strong><span>Normal authenticated reads when refresh is required. No assistant stock writes.</span></div>
+        </div>
+        <div class="two-col"><div class="panel"><h3>What stays on the phone</h3><p>Item matching, recent resolved-item context, freshness checks, stock calculations, read-only UI actions, fixed answer formatting and immediate playback cancellation.</p></div><div class="panel"><h3>What goes over the network</h3><p>Audio to transcription; question text to interpretation when needed; deterministic answer text to the speech service; normal inventory reads when the snapshot cannot be reused.</p></div></div>
+        <p class="small" style="margin-top:14px">The question itself may contain private information. The speech text contains actual answer facts. “No inventory upload to the LLM” does not mean “no sensitive data leaves the phone.”</p>
+      </section>
+
+      <section class="section" id="journey">
+        <span class="section-number">03 / The question journey</span><h2>From your words to recorded facts.</h2>
+        <ol class="journey">
+          <li><strong>Capture</strong><p>Press Talk after account consent and microphone permission. Or type a question. No background listening.</p></li>
+          <li><strong>Review</strong><p>Whisper returns a transcript. Show Send, Edit and Cancel. Reject silence or unusable recordings instead of guessing.</p></li>
+          <li><strong>Understand</strong><p>The parser must cover the whole request. Otherwise one model request returns a constrained intent, not an answer.</p></li>
+          <li><strong>Validate</strong><p>Check the action and fields. Resolve item references locally. Clarify duplicates or uncertain wording. Reject writes.</p></li>
+          <li><strong>Read</strong><p>Use a complete, account-owned, suitable snapshot. If required, refresh it and re-resolve against the selected snapshot.</p></li>
+          <li><strong>Respond</strong><p>Build one answer object. Show the card immediately; speak its matching text if enabled. Never ask an LLM to rewrite the facts.</p></li>
+        </ol>
+        <p class="small">Close and Stop bypass stock fetching once their intent is recognised. In V1, a spoken “close” is heard only during an explicit recording turn; a visible Close/Stop control is always immediately available. “Show low stock” calls an approved view handler, not screen-coordinate automation.</p>
+        <div class="example" id="example">
+          <div class="example-header"><h3>Walk through an answer</h3><span class="pill">Synthetic example · not live data</span></div>
+          <div class="example-controls"><label for="scenario">Choose a situation</label><select id="scenario"><option value="item">Quantity + missing supplier</option><option value="low">Show low stock</option><option value="stale">Refresh fails / last-known stock</option><option value="ambiguous">Two matching items</option><option value="forbidden">Request to change stock</option></select></div>
+          <div id="scenario-result" aria-live="polite" aria-atomic="true">
+            <p class="example-question" id="example-question">“How many hand gloves are left, and where do we order them?”</p>
+            <div class="example-route" id="example-route"><span>Read item: quantity + supplier</span><span>One local match</span><span>Fresh snapshot reused</span></div>
+            <div class="answer-card"><h4 id="answer-title">Hand gloves</h4><p class="answer-value" id="answer-value">18 pairs</p><p class="answer-meta" id="answer-detail">Supplier information is not recorded.</p><p class="small" id="answer-freshness">Example snapshot: last confirmed at 10:41. No inventory request is needed.</p></div>
+            <div class="speech-line"><strong>Matching spoken text · preview only</strong><span id="answer-speech">Hand gloves: 18 pairs remaining. Supplier information is not recorded.</span></div>
+          </div>
+          <p class="small" style="margin:16px 0 0">This example switches between predefined outcomes. It does not access a microphone, database, model or speech service.</p>
+        </div>
+      </section>
+
+      <section class="section" id="data">
+        <span class="section-number">04 / Data and capability boundaries</span><h2>The server stays authoritative.</h2>
+        <p class="intro">Reusing a server snapshot is an optimisation inside the existing server-first app—not an offline-first rewrite, a second database or a promise of instantaneous updates from other devices.</p>
+        <div class="table-wrap"><table><thead><tr><th>Data condition</th><th>Required behaviour</th></tr></thead><tbody>
+          <tr><td>Fresh, complete, correct account</td><td>Reuse the existing inventory query data. No inventory API call for this question. Relevant pending mutations must already be settled.</td></tr>
+          <tr><td>Stale, invalidated, missing or incomplete</td><td>Perform a targeted, deduplicated refresh through the current query/API. Do not call <code>queryClient.clear()</code> as an ordinary assistant refresh.</td></tr>
+          <tr><td>“Refresh / check the latest”</td><td>Request a new normal server read before claiming a newly checked result. A query timestamp is not a guarantee that no remote change happened afterward.</td></tr>
+          <tr><td>Stock update still pending</td><td>Wait for the relevant operation to settle and refetch. If it cannot settle within the turn timeout, state that the update is pending; do not speak a quantity as final.</td></tr>
+          <tr><td>Offline or refresh failure</td><td>Use suitable last-known data with an explicit timestamp, or say that the answer is unavailable. Do not generate a global summary from a partial inventory.</td></tr>
+          <tr><td>Account changes / logout / cancellation</td><td>Cancel work, clear local conversational context and reject late results from the old session or turn.</td></tr>
+        </tbody></table></div>
+        <p class="small">A 30-second stale threshold is not polling. Stable pagination ordering, duplicate-ID checks and totals help detect issues, but do not by themselves prove a coherent multi-page snapshot during concurrent changes. Define and test the completeness contract before promising aggregate accuracy.</p>
+        <div class="table-wrap"><table class="boundary-table"><thead><tr><th>Allowed in V1</th><th>Explicitly excluded</th></tr></thead><tbody>
+          <tr><td>Quantity, unit, recorded stock status and recorded supplier details</td><td>Changing quantities, adding/deleting items or modifying suppliers</td></tr>
+          <tr><td>Low-stock, out-of-stock and inventory summaries using shared UI rules</td><td>Creating orders, purchases, payments or sending WhatsApp messages</td></tr>
+          <tr><td>Open a read-only stock view; close an overlay; stop speech</td><td>Arbitrary navigation, executing code, generated SQL or model-chosen URLs</td></tr>
+          <tr><td>Clarification, missing-data responses and last-resolved-item follow-ups</td><td>Historical ordering answers without an explicitly supported tool; medical advice</td></tr>
+        </tbody></table></div>
+        <div class="callout"><strong>Read-only refers to the assistant's business capabilities.</strong><p>There is no assistant inventory-write tool, even with verbal confirmation. Backend-managed authentication, consent and usage accounting may use operational records; they do not authorise the model to change stock or orders. Existing manual application workflows remain separate.</p></div>
+      </section>
+
+      <section class="section" id="settings">
+        <span class="section-number">05 / User experience</span><h2>Simple settings. No model catalogue.</h2>
+        <p class="intro">Add <strong>Profile → AI &amp; Voice</strong>. Use the existing account; no additional login. Consent and preferences must not carry over to the next person using a shared device.</p>
+        <div class="table-wrap"><table class="settings-table"><thead><tr><th>Setting</th><th>V1 default / action</th></tr></thead><tbody>
+          <tr><td>Enable assistant</td><td>Off until the current account opts in; availability also depends on the server feature switch.</td></tr>
+          <tr><td>Understanding</td><td><strong>CareKosh AI</strong> after disclosure: local parser first, hosted interpretation when needed.</td></tr>
+          <tr><td>Basic commands only</td><td>Alternative that avoids the text LLM. It does not make hosted voice transcription or hosted Alba work offline.</td></tr>
+          <tr><td>Voice input</td><td>Off. Explain audio processing, then request OS microphone permission. Press-to-talk only.</td></tr>
+          <tr><td>Listening language</td><td>English initially; validate Indian-English accents and actual product names. Do not promise untested languages.</td></tr>
+          <tr><td>Spoken replies</td><td>Off. Enable automatic replies or press Speak for a particular answer.</td></tr>
+          <tr><td>Speaking voice</td><td>Alba — British English, synthetic voice. Available only after its service and rights are approved. Test voice and Stop controls.</td></tr>
+          <tr><td>Text and quick actions</td><td>Always available within the assistant: Summary, Low stock, Out of stock. Preserve normal manual navigation.</td></tr>
+        </tbody></table></div>
+        <p class="small">The overlay is an in-app sheet, not an Android system overlay. Use readable type, visible units, stock status, timestamp, missing-field messages and accessible Close/Stop. Avoid Edit, Buy or Order controls in assistant result components.</p>
+      </section>
+
+      <section class="section" id="implementation">
+        <span class="section-number">06 / Sequential delivery</span><h2>Build the reliable parts first.</h2>
+        <p class="intro">These eight steps are milestones within the first complete voice release. A working typed assistant is an internal milestone, not completion of the voice requirement. Begin the rights review and native feasibility checks in Step 1; add product behaviour in the sequence below.</p>
+        <ol class="steps">
+          <li class="step"><h3>Freeze the contract and unblock feasibility</h3><p>Write the architecture decision record: supported intents, answer schemas, freshness rules, model choices, data flows and prohibited actions. Start the Alba provenance/runtime review. Run a small Expo Audio development-build check without real-user uploads.</p><ul><li>Inspect the actual merged Android manifest, recording permissions and background services. Configure microphone use text for supported iOS builds.</li><li>Use synthetic fixtures publicly; keep consented recordings and real inventory privately. Check existing tracked files before adding ignore rules.</li><li>Pin supported dependency versions and keep all new capabilities off in production.</li></ul><p class="gate"><b>Exit:</b> contracts and test categories defined; native recording feasibility understood; explicit Alba release go/no-go checkpoint recorded.</p></li>
+          <li class="step"><h3>Make reuse of inventory data safe</h3><p>Review and reconcile the existing cache-fix work with the current branch; do not blindly merge an older, diverged branch into a dirty working tree.</p><ul><li>Add account ownership/session-epoch checks, cancellation and rejection of old-session responses.</li><li>Use targeted query refresh; preserve mutation tracking and wait for relevant pending stock writes.</li><li>Verify connectivity/foreground refresh, pagination tie-breaking, duplicate handling and completeness under concurrent changes.</li></ul><p class="gate"><b>Exit:</b> fresh suitable answers make zero inventory requests; stale data is identified; account changes and incomplete snapshots cannot produce misleading results.</p></li>
+          <li class="step"><h3>Build the deterministic assistant</h3><p>Create pure TypeScript readers, a conservative parser, local item resolution and fixed answer/speech renderers. Reuse the same low-stock rules as the dashboard.</p><ul><li>Ship typed input and quick chips first, with dedicated read-only result components.</li><li>Handle quantity + supplier compound questions, missing values, aliases, duplicate names, summaries and view/close/stop commands.</li><li>Store only minimal last-resolved-item context locally; clear it at logout and account change.</li></ul><p class="gate"><b>Exit:</b> the test suite proves correct data-bound answers without any LLM. The assistant cannot reach mutation handlers.</p></li>
+          <li class="step"><h3>Add the protected AI boundary</h3><p>Extend the existing FastAPI app with the proposed transcription, interpretation and speech routes. Add mobile-client support for cancellation, deadlines, multipart upload and audio responses.</p><ul><li>Use existing authentication with short-lived transactions; pass an immutable principal to long-running provider work.</li><li>Keep provider keys server-side. Add per-account usage reservations/settlement, global spend caps and bounded concurrency using existing infrastructure.</li><li>Enforce actual received-body limits before multipart parsing, as well as type, duration and text limits. Clean up temporary processing files.</li><li>Record account-scoped consent and settle disclosure/retention terms before real recordings are uploaded.</li></ul><p class="gate"><b>Exit:</b> disabled routes fail clearly; unauthorised, oversized and over-budget calls are rejected; provider waits do not occupy inventory DB transactions.</p></li>
+          <li class="step"><h3>Add language understanding</h3><p>Use <code>openai/gpt-oss-20b</code> through one backend adapter with strict JSON-schema output. The prompt contains the selected question and allowed intent schema—not an inventory dump.</p><ul><li>Use non-streaming intent extraction, bounded completion tokens and supported low-reasoning settings. Treat errors or truncation as failures.</li><li>Validate the returned structure and meaning. The model never supplies a quantity, supplier fact, executable function, URL or SQL statement.</li><li>A local parser match must cover the whole request. Do not answer a historical or negated question using only a recognised stock keyword.</li></ul><p class="gate"><b>Exit:</b> unfamiliar supported wording works; ambiguity, unsupported clauses and malicious requests fail safely. Schema validity alone is not accepted as semantic accuracy.</p></li>
+          <li class="step"><h3>Add press-to-talk listening</h3><p>Integrate Expo Audio with <code>whisper-large-v3</code>. Start with short English recording turns and explicit Send/Edit/Cancel after transcription.</p><ul><li>Test the actual encoded file on Android/iOS; sample-rate requests are not guarantees. Validate duration, container and decoded audio.</li><li>Handle permission denial, silence, noise, interruptions, upload failure, quota exhaustion and logout while recording.</li><li>Stop playback before recording to reduce self-transcription. Do not infer correctness from Whisper confidence heuristics alone.</li></ul><p class="gate"><b>Exit:</b> real target phones and held-out speakers meet the evaluation criteria; private audio is not logged or committed; text fallback is usable.</p></li>
+          <li class="step"><h3>Add approved Alba speech</h3><p>After rights approval, provision the exact model and matching configuration with a recorded checksum. Run pronunciation preparation and synthesis together in a separate bounded Piper worker.</p><ul><li>The authenticated speech adapter accepts capped deterministic text and returns audio. The worker is not a publicly exposed unlimited TTS endpoint.</li><li>Do not load Piper or a local LLM into the small inventory API process. Measure service memory, concurrency and latency.</li><li>Tie audio to the answer/session/turn ID. Close, Stop, logout or a newer answer cancels or discards obsolete work.</li></ul><p class="gate"><b>Exit:</b> card and speech agree on names, quantities, units and freshness; cancelled answers never play; rights and required notices are recorded.</p></li>
+          <li class="step"><h3>Evaluate, stage and release</h3><p>Test the complete journey and existing touch workflows. Run a small consented internal pilot before enabling accounts gradually in production.</p><ul><li>Evaluate accuracy, clarification, stock-rule agreement, silence/noise, cold starts, stale/offline states and shared-device isolation.</li><li>Measure end-of-recording → card and → first audio separately, including p50/p95, failures and actual per-turn costs.</li><li>Update privacy disclosures and Play Data Safety before release. Inspect the final release manifest and verify the kill switch.</li></ul><p class="gate"><b>Exit:</b> all required safety checks pass; quality and cost evidence is recorded; manual usage remains intact when AI is disabled. Then publish through the normal release workflow.</p></li>
+        </ol>
+      </section>
+
+      <section class="section" id="contracts">
+        <span class="section-number">07 / Implementation contracts</span><h2>Small interfaces, replaceable providers.</h2>
+        <p class="intro">Keep listening, interpretation and speech separate from inventory logic. Future provider changes should replace an adapter, not the assistant's data or presentation layer.</p>
+        <details open><summary>Intent and answer contracts</summary><div class="detail-content">
+          <p>Suggested intent families: <code>read_item</code>, <code>list_stock</code>, <code>inventory_summary</code>, <code>show_stock_view</code>, <code>close_overlay</code>, <code>stop_speaking</code>, <code>clarify</code>, <code>unsupported_action</code>. Enumerate allowed fields and views. No arbitrary tool name.</p>
+          <pre><code>{
+  "intent": "read_item",
+  "reference": "named_item",
+  "itemQuery": "hand gloves",
+  "fields": ["quantity", "supplier"]
+}</code></pre>
+          <p>This is a shape illustration, not a complete schema. The production schema must constrain each intent, reject extra fields and handle every response variant. For “those gloves,” return a last-item reference; resolve it on the phone rather than sending previous stock facts to the model.</p>
+          <p>The mobile answer object should include an answer ID, turn/session association, answer type, resolved item facts, missing-field flags, snapshot timestamp, freshness state, completeness status and deterministic <code>speechText</code>. A new refresh creates a new answer version; do not let old audio describe a silently changed card.</p>
+        </div></details>
+        <details><summary>Backend routes and operational controls</summary><div class="detail-content">
+          <div class="table-wrap"><table><thead><tr><th>Proposed route</th><th>Request → response</th></tr></thead><tbody><tr><td><code>POST /ai/transcribe</code></td><td>Bounded audio upload → transcript and quality metadata.</td></tr><tr><td><code>POST /ai/interpret</code></td><td>Question + schema version → validated intent; no inventory lookup.</td></tr><tr><td><code>POST /ai/speak</code></td><td>Capped fixed speech text + turn/answer reference → audio response.</td></tr></tbody></table></div>
+          <p>Paths are relative to the existing API prefix. Existing authentication may read account records. “No inventory lookup during interpretation” is the correct boundary—not “no database access anywhere.”</p>
+          <ul><li>Register the intended routes consistently; disabled capabilities return a clear unavailable response. Update route-count tests from the actual route set, not a hardcoded planning assumption.</li><li>Make model IDs and provider selection server configuration. Keep a versioned schema and adapters such as <code>transcribe(audio)</code>, <code>interpret(question)</code> and <code>synthesize(text)</code>.</li><li>Set account/global budgets with atomic reservations and settlement; include provider minimum billing units. Operational accounting is not an inventory mutation tool.</li><li>Use provider data controls appropriate to the account. Do not equate a paid plan with guaranteed privacy, or claim “no storage” without examining temporary files, proxies and retention obligations.</li><li>Log request IDs, model version, duration, status and usage without raw questions, recordings, secrets or answer content by default. Final retention requirements require a separate policy review.</li></ul>
+        </div></details>
+        <details><summary>Failure behaviour and cancellation</summary><div class="detail-content">
+          <div class="table-wrap"><table><thead><tr><th>Failure</th><th>Expected experience</th></tr></thead><tbody><tr><td>Microphone denied / STT unavailable</td><td>Keep typed input and quick chips; explain why voice input is unavailable.</td></tr><tr><td>LLM timeout / quota / budget cap</td><td>Offer supported basic commands and chips. Do not imply arbitrary questions still work.</td></tr><tr><td>Inventory refresh fails</td><td>Explicitly labelled last-known data where valid, otherwise unavailable.</td></tr><tr><td>TTS unavailable</td><td>Keep the readable answer; show that speech failed and allow a deliberate retry.</td></tr><tr><td>New turn / Close / logout</td><td>Cancel requests where possible and reject late results. Stop audio locally immediately.</td></tr></tbody></table></div>
+          <p>No automatic cross-provider failover in V1. A future replacement must pass the same regression set before configuration changes. Two models on Groq do not protect against a Groq-wide outage.</p>
+        </div></details>
+        <details><summary>Cost and sustainability boundaries</summary><div class="detail-content"><ul><li>Mobile tools and local parsing have no AI inference fee. Inventory refresh still uses the existing backend.</li><li>Groq free allowances are useful for development, not a permanent production funding plan. Budget for transcription and interpretation and handle quota exhaustion.</li><li>A self-operated Piper service has hosting/compute costs, even without a per-utterance third-party API bill.</li><li>On-device models can remove those network/inference charges but add development, download size, memory, battery and maintenance costs.</li><li>Re-evaluate adapters after provider deprecation notices and dependency updates. Long-term stability comes from contracts and tests, not a promise that a model ID never changes.</li></ul></div></details>
+      </section>
+
+      <section class="section" id="release">
+        <span class="section-number">08 / Release evidence</span><h2>Proof before a public voice release.</h2>
+        <p class="intro">These are required checks, not completed results. Use approximately 150–200 supported-question recordings from 8–10 speakers as an initial evaluation, with held-out speakers/wording and realistic noise and devices. Keep real recordings private.</p>
+        <ul class="gate-list">
+          <li><strong>Truth:</strong> quantities, units, stock categories and missing fields agree with the selected server snapshot and dashboard rules.</li>
+          <li><strong>Read-only enforcement:</strong> unsupported requests cannot reach stock/order mutation functions, even through compound questions or prompt injection.</li>
+          <li><strong>Isolation:</strong> account switching, delayed responses, cache restoration and logout cannot leak another account's data or speech.</li>
+          <li><strong>Freshness:</strong> reusable fresh data generates zero inventory requests; incomplete, pending or stale states are never described as fully current.</li>
+          <li><strong>Understanding:</strong> predefine supported questions before testing. Report per-speaker, device and noise results, clarification quality and end-to-end answer correctness.</li>
+          <li><strong>Audio:</strong> real item names and quantities are understood and pronounced acceptably; silence, interruption, Close and Stop behave predictably.</li>
+          <li><strong>Privacy and rights:</strong> account-scoped consent, approved processor terms, retention policy, updated disclosures and Alba notices/permission are documented.</li>
+          <li><strong>Operations:</strong> measured latency/cost is acceptable; budgets, limits, error handling, cleanup and feature kill switches work in staging.</li>
+          <li><strong>Regression:</strong> existing touch-based stock and order workflows still work independently of the assistant.</li>
+        </ul>
+        <p class="small">Suggested statistical gate: a two-sided 95% Wilson interval's lower bound of at least 90% for the predefined supported-question metric, plus separate mandatory safety gates. Repeated clips from the same speaker are correlated, so also report held-out and per-speaker results; this interval is not proof of accuracy across all users. Do not auto-send transcripts solely from recognition confidence scores.</p>
+        <div class="callout"><strong>A clear release boundary</strong><p>Ship the complete voice feature only after the listener, read-only tools, overlay, approved speaker and failure handling pass together. Internal text-only milestones are useful. A public release must not claim Alba or fully offline operation before they actually exist.</p></div>
+      </section>
+
+      <section class="section" id="later">
+        <span class="section-number">09 / What follows V1</span><h2>Keep the offline path open.</h2>
+        <div class="phases">
+          <article class="phase"><span class="pill">Phase 1 · selected</span><h3 style="margin-top:14px">Reliable voice inventory</h3><p>Hosted listening and intent extraction; local validated tools and answer cards; approved Alba service; consent, budgets and measured quality.</p></article>
+          <article class="phase"><span class="pill">Phase 2 · benchmark first</span><h3 style="margin-top:14px">Move stages onto the phone</h3><p>Prototype Whisper through <code>whisper.rn</code>. Evaluate the complete native Alba pronunciation/synthesis path after rights review. Promote only if target-phone quality, latency and battery tests pass.</p></article>
+          <article class="phase"><span class="pill pending">Phase 3 · separate approval</span><h3 style="margin-top:14px">New workflows, if wanted</h3><p>PDF generation, external sharing or order creation need distinct capability and confirmation designs. They are not part of the read-only assistant. Stock mutations remain excluded under the current requirement.</p></article>
+        </div>
+        <p>Gemini, ElevenLabs, OpenAI conversational audio, Kokoro and Pocket TTS remain alternatives—not additional layers to implement. Any replacement of the exact Piper Alba voice requires an explicit product choice. A provider or preset containing the name “Alba” does not prove it is the same model or voice.</p>
+        <p class="small">A backend-hosted local LLM still requires a phone-to-backend connection. A downloaded speech model alone does not make the whole assistant offline. Even fully local voice processing cannot learn another device's latest stock update without refreshing from the server.</p>
+      </section>
+
+      <section class="section" id="sources">
+        <span class="section-number">10 / Evidence and references</span><h2>Grounded in the current project.</h2>
+        <p class="intro">Decision snapshot: 24 September 2026. Provider documentation and licensing can change; recheck at implementation and release. Sources support capabilities and constraints—not claims that CareKosh has already passed tests or been deployed.</p>
+        <h3>Project references</h3>
+        <ul class="sources"><li><a href="../vitaltrack-mobile/package.json">Mobile dependencies</a> — Expo / React Native baseline.</li><li><a href="../vitaltrack-mobile/app.json">Mobile configuration</a> — current microphone block and native settings.</li><li><a href="../vitaltrack-mobile/providers/QueryProvider.tsx">Query provider</a> — existing fetched-data persistence and query settings; comments are not proof of polling or reconnect wiring.</li><li><a href="../vitaltrack-mobile/hooks/useForceSync.ts">Force-refresh implementation</a> — reconcile cache safety before assistant use.</li><li><a href="../vitaltrack-backend/render.yaml">Backend deployment configuration</a> — existing API service intent, not live dashboard verification.</li><li><a href="CAREKOSH_VOICE_INVENTORY_AGENT_DECISION_GUIDE.html">Earlier decision guide</a> and <a href="CAREKOSH_AI_IMPLEMENTATION_PLAN.html">earlier AI catalogue</a> — historical context; this document selects V1.</li></ul>
+        <h3>Primary technical sources</h3>
+        <ul class="sources"><li><a href="https://console.groq.com/docs/models">Groq supported models</a> and <a href="https://console.groq.com/docs/speech-to-text">speech-to-text</a> — availability, recognition and usage constraints.</li><li><a href="https://console.groq.com/docs/structured-outputs">Groq structured outputs</a> — strict schema support and restrictions.</li><li><a href="https://console.groq.com/docs/your-data">Groq data controls</a>, <a href="https://console.groq.com/docs/rate-limits">rate limits</a> and <a href="https://console.groq.com/docs/deprecations">deprecations</a> — operational review.</li><li><a href="https://docs.expo.dev/versions/v54.0.0/sdk/audio/">Expo SDK 54 Audio</a> — recording, playback and native configuration.</li><li><a href="https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults">TanStack Query defaults</a> — freshness and refetch concepts.</li><li><a href="https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_GB/alba/medium/MODEL_CARD">Piper Alba model card</a>, <a href="https://huggingface.co/rhasspy/piper-voices/discussions/105">maintainer licensing discussion</a> and <a href="https://github.com/OHF-Voice/piper1-gpl">Piper runtime</a> — review model provenance and runtime separately.</li><li><a href="https://www.cstr.ed.ac.uk/projects/blizzard/2013/lessac_blizzard2013/license.html">Lessac / Blizzard 2013 corpus licence</a> — relevant to provenance review; not a legal conclusion about every derived model.</li><li><a href="https://github.com/mybigday/whisper.rn">whisper.rn</a> and <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a> — later on-device recognition candidates.</li></ul>
+      </section>
+      <footer><p>CareKosh · V1 architecture selected 24 September 2026 · implementation status updated 29 September 2026</p><p>Selected direction and local verification, not deployment evidence. This self-contained guide makes no network requests or microphone recordings. See the linked setup and review records for remaining release gates.</p></footer>
+    </main>
+  </div>
+  <script>
+    (() => {
+      'use strict';
+      const examples = {
+        item: { question:'“How many hand gloves are left, and where do we order them?”', route:['Read item: quantity + supplier','One local match','Fresh snapshot reused'], title:'Hand gloves', value:'18 pairs', detail:'Supplier information is not recorded.', freshness:'Example snapshot: last confirmed at 10:41. No inventory request is needed.', speech:'Hand gloves: 18 pairs remaining. Supplier information is not recorded.' },
+        low: { question:'“Show me the low-stock items.”', route:['Show stock view: low','Shared dashboard rules','Read-only results'], title:'Low-stock items', value:'2 items', detail:'Illustrative items: examination gloves and gauze rolls.', freshness:'Complete example inventory snapshot, last confirmed at 10:41. No Edit, Order or Buy actions.', speech:'Two items are low in stock: examination gloves and gauze rolls.' },
+        stale: { question:'“Check the latest quantity of hand gloves.”', route:['Explicit refresh requested','Inventory API unavailable','Last-known result only'], title:'Hand gloves · last known', value:'18 pairs', detail:'The refresh failed. This is not a newly confirmed current quantity.', freshness:'Example snapshot: last server-confirmed at 09:15; question asked at 10:45.', speech:'I could not refresh the inventory. The last confirmed quantity at 9:15 was 18 pairs of hand gloves.' },
+        ambiguous: { question:'“How many gloves do we have?”', route:['Read item: quantity','Two matching items','Clarification required'], title:'Which gloves do you mean?', value:'Choose an item', detail:'Examination gloves or surgical gloves? No quantity is selected or combined automatically.', freshness:'Matching is done inside the phone. The model does not choose an item from a confidence score.', speech:'Do you mean examination gloves or surgical gloves?' },
+        forbidden: { question:'“Add ten pairs of gloves and place an order.”', route:['Mutation request detected','Unsupported action','No tool execution'], title:'Read-only assistant', value:'No changes made', detail:'Inventory edits and order creation are not available through the assistant.', freshness:'No inventory mutation or order request is sent. Manual app workflows remain separate.', speech:'I can check stock information, but I cannot change stock or create an order.' }
+      };
+      const select = document.getElementById('scenario');
+      const fields = { question:'example-question',title:'answer-title',value:'answer-value',detail:'answer-detail',freshness:'answer-freshness',speech:'answer-speech' };
+      select.addEventListener('change', () => {
+        const example = examples[select.value];
+        if (!example) return;
+        for (const [key,id] of Object.entries(fields)) document.getElementById(id).textContent = example[key];
+        const route = document.getElementById('example-route');
+        route.replaceChildren(...example.route.map(text => { const span = document.createElement('span'); span.textContent = text; return span; }));
+      });
+      document.getElementById('print-guide').addEventListener('click', () => window.print());
+      let previouslyClosed = [];
+      window.addEventListener('beforeprint', () => { previouslyClosed = [...document.querySelectorAll('details:not([open])')]; previouslyClosed.forEach(detail => { detail.open = true; }); });
+      window.addEventListener('afterprint', () => { previouslyClosed.forEach(detail => { detail.open = false; }); previouslyClosed = []; });
+      if ('IntersectionObserver' in window) {
+        const links = [...document.querySelectorAll('.sidebar nav a')];
+        const observer = new IntersectionObserver(entries => {
+          const visible = entries.filter(entry => entry.isIntersecting).sort((a,b) => a.boundingClientRect.top - b.boundingClientRect.top);
+          if (!visible.length) return;
+          links.forEach(link => { if (link.getAttribute('href') === '#' + visible[0].target.id) link.setAttribute('aria-current','location'); else link.removeAttribute('aria-current'); });
+        }, { rootMargin:'-5% 0px -65% 0px',threshold:0 });
+        document.querySelectorAll('main .section').forEach(section => observer.observe(section));
+      }
+    })();
+  </script>
+</body>
+</html>

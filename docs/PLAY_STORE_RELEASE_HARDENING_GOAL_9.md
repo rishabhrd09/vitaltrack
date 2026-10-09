@@ -1,5 +1,9 @@
 # CareKosh Play Store Release Hardening - Goal 9
 
+> **AI voice source update — 9 October 2026:** Current AI voice architecture, checked against the 9 October 2026 working tree at `0946eb7` plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+
+> **Status (7 October 2026):** historical Goal 9 record from 15 June 2026 (PR #46); kept as evidence and not re-verified. It describes `main`. The permission table and Data Safety inventory below predate the voice assistant: on branch `feature/backend-hardening-ai-voice-agent-foundation` the app requests `RECORD_AUDIO`, downloads an on-device speech model on request, and can send question text to Groq when the server enables it and the user consents. Re-check both sections before a release that includes voice. Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md), [API traceability](API_TRACEABILITY.md) and [Expo & Play Store guide](EXPO_AND_PLAY_STORE_GUIDE.md).
+
 Last reviewed: 2026-06-15  
 Scope: Android mobile Play Store release hardening only.
 

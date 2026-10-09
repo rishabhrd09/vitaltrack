@@ -1,0 +1,61 @@
+<svg width="1000" height="1360" viewBox="0 0 1000 1360" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="release-gate-t release-gate-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="release-gate-t">Release gate for migration 0007 (historical, 23 Sep 2026)</title><desc id="release-gate-d">Historical (23 Sep 2026), written for 0007 alone; for 0007 to 0010 use release-gate-0007-0010.svg. Eight steps: turn auto-deploy and the CI deploy hook off and record the current state; stage the candidate; back up and rehearse a restore; cut over in a maintenance window with old writers stopped; re-seed the order counter only if writes could not be paused; check logs; monitor; then turn auto-deploy back on.</desc><defs></defs>
+<rect x="0" y="0" width="1000" height="1360" rx="18" fill="#FFFFFF"/>
+<rect x="30" y="24" width="940" height="127" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="50" y="61" font-size="19" font-weight="700" fill="#8C2A20" text-anchor="start">Why a plain merge is unsafe for this migration (historical: 0007 only)</text>
+<text x="50" y="86.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Merging to main can deploy production, and 0007 refuses to downgrade: an older image cannot undo it.</text>
+<text x="50" y="108.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">A zero-downtime deploy runs old and new instances side by side for a while.</text>
+<text x="50" y="130.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Meanwhile the old COUNT-based order numbering can collide with the new counter and block orders.</text>
+<text x="110" y="201" font-size="13.5" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.6">PREPARE</text>
+<rect x="110" y="219" width="860" height="104" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="130" y="255" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="start">Before merging</text>
+<text x="130" y="280.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Turn auto-deploy off for production and staging, and disable the CI deploy hook.</text>
+<text x="130" y="302.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Record the deployed commit and alembic current; confirm the target database.</text>
+<circle cx="66" cy="249" r="18" fill="#1F6F66"/>
+<text x="66" y="255.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<rect x="110" y="345" width="860" height="104" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="130" y="381" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="start">Stage the candidate</text>
+<text x="130" y="406.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Deploy the candidate commit to staging by hand.</text>
+<text x="130" y="428.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Run the E2E verification guide with sanitized data.</text>
+<circle cx="66" cy="375" r="18" fill="#1F6F66"/>
+<text x="66" y="381.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<rect x="110" y="471" width="860" height="104" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="130" y="507" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="start">Back up</text>
+<text x="130" y="532.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Take a production backup or restore point.</text>
+<text x="130" y="554.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Rehearse the restore on a separate database.</text>
+<circle cx="66" cy="501" r="18" fill="#1F6F66"/>
+<text x="66" y="507.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="110" y="613" font-size="13.5" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.6">RELEASE</text>
+<rect x="110" y="631" width="860" height="126" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="130" y="667" font-size="18" font-weight="700" fill="#8C2A20" text-anchor="start">Cut over in a maintenance window</text>
+<text x="130" y="692.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Stop old writers first: suspend the service or stop traffic.</text>
+<text x="130" y="714.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Deploy the reviewed commit; the container runs alembic upgrade head.</text>
+<text x="130" y="736.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Before reopening: Render&#x27;s commit, alembic current (0007 then; 0010 now), /live, /health.</text>
+<circle cx="66" cy="661" r="18" fill="#B3372B"/>
+<text x="66" y="667.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<rect x="110" y="779" width="860" height="82" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2" stroke-dasharray="9 6"/>
+<text x="130" y="815" font-size="18" font-weight="700" fill="#77500F" text-anchor="start">Only if writes could not be paused</text>
+<text x="130" y="840.5" font-size="15.5" font-weight="400" fill="#5A4012" text-anchor="start">Run the idempotent order-counter re-seed SQL (safe to repeat).</text>
+<circle cx="66" cy="809" r="18" fill="#B07A1A"/>
+<text x="66" y="815.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="110" y="899" font-size="13.5" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.6">AFTER THE RELEASE</text>
+<rect x="110" y="917" width="860" height="82" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="130" y="953" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="start">Check logs and privacy</text>
+<text x="130" y="978.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">Real access and error logs, proxy logs and telemetry, using synthetic tokens.</text>
+<circle cx="66" cy="947" r="18" fill="#2E7D4F"/>
+<text x="66" y="953.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<rect x="110" y="1021" width="860" height="82" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="130" y="1057" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="start">Monitor</text>
+<text x="130" y="1082.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">Errors, database connections and lock waits, order-create failures, sign-in recovery.</text>
+<circle cx="66" cy="1051" r="18" fill="#2E7D4F"/>
+<text x="66" y="1057.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<rect x="110" y="1125" width="860" height="82" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="130" y="1161" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="start">Re-enable auto-deploy</text>
+<text x="130" y="1186.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">Only after everything above checks out.</text>
+<circle cx="66" cy="1155" r="18" fill="#2E7D4F"/>
+<text x="66" y="1161.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">8</text>
+<path d="M66,269 L66,1135" fill="none" stroke="#8FA39D" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="2 7"/>
+<rect x="30" y="1235" width="940" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="1272" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Rollback</text>
+<text x="50" y="1297.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Keep the additive schema. An older app image ignores session_version and brings back the old defects.</text>
+<text x="50" y="1319.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Restoring a backup can lose writes made after it; there is no automatic restore.</text>
+</svg>

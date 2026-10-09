@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1010" width="1400" height="1010" role="img" aria-labelledby="t d">
+<title id="t">CareKosh system context</title>
+<desc id="d">The Android app talks to one FastAPI service over HTTPS; the service owns the PostgreSQL database. Live captions, default recognition and spoken replies run on the phone. Groq text interpretation and optional Whisper recognition need separate consent; Brevo and Sentry are optional and only used when configured. The core API has no queue, Redis cache or offline write queue. Optional speech-worker code exists; deployment is unverified and the mobile build disables hosted speech output.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2B3138"/></marker><marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="#2B3138"/></marker></defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<text x="40.0" y="52.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#16191D" text-anchor="start">CareKosh — system context (voice source updated 9 Oct 2026)</text>
+<text x="40.0" y="84.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#4A5260" text-anchor="start">One mobile app, one API service, one PostgreSQL database. Everything else is supporting or optional.</text>
+<rect x="40.0" y="118.0" width="26" height="18" rx="4" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="74.0" y="132.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">Core (required)</text>
+<rect x="217.5" y="118.0" width="26" height="18" rx="4" fill="#E3F3EF" stroke="#1B7563" stroke-width="2"/>
+<text x="251.5" y="132.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">Supporting infrastructure</text>
+<rect x="472.0" y="118.0" width="26" height="18" rx="4" fill="#FFF3DB" stroke="#8F5B00" stroke-width="2"/>
+<text x="506.0" y="132.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">Current provider (swappable)</text>
+<rect x="749.6" y="118.0" width="26" height="18" rx="4" fill="#F1ECFA" stroke="#5E4596" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="783.6" y="132.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">Conditional / opt-in</text>
+<rect x="965.6" y="118.0" width="26" height="18" rx="4" fill="#F1F2F4" stroke="#4A5260" stroke-width="2"/>
+<text x="999.6" y="132.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">People, devices, outside systems</text>
+<rect x="40.0" y="165.0" width="560.0" height="560.0" rx="18" fill="#F1F2F4" stroke="#4A5260" stroke-width="2"/>
+<text x="60.0" y="197.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="700" fill="#4A5260" text-anchor="start">Android phone</text>
+<rect x="60.0" y="215.0" width="520.0" height="150.0" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="74.0" y="246.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">CareKosh app (React Native 0.81 · Expo SDK 54)</text>
+<text x="74.0" y="272.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Screens (expo-router) → hooks → services/api.ts</text>
+<text x="74.0" y="292.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">TanStack Query cache, persisted to AsyncStorage for display</text>
+<text x="74.0" y="312.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Tokens in SecureStore · no offline write queue</text>
+<rect x="60.0" y="385.0" width="520.0" height="128.0" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="74.0" y="416.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">Assistant: reads + local drafts</text>
+<text x="74.0" y="442.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Tap-to-talk dock above the tabs · editable transcript · explicit</text>
+<text x="74.0" y="462.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Send</text>
+<text x="74.0" y="482.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Local whole-sentence matcher handles supported wording</text>
+<rect x="60.0" y="533.0" width="250.0" height="172.0" rx="12" fill="#FFF3DB" stroke="#8F5B00" stroke-width="2"/>
+<text x="74.0" y="564.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#8F5B00" text-anchor="start">Moonshine (on device)</text>
+<text x="74.0" y="590.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Kotlin module carekosh-voice</text>
+<text x="74.0" y="610.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">English pack: one-time HTTPS</text>
+<text x="74.0" y="630.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">download, checksummed</text>
+<text x="74.0" y="649.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">live words + offline final</text>
+<text x="74.0" y="669.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">transcript</text>
+<rect x="330.0" y="533.0" width="250.0" height="172.0" rx="12" fill="#FFF3DB" stroke="#8F5B00" stroke-width="2"/>
+<text x="344.0" y="564.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#8F5B00" text-anchor="start">Android Text-to-speech</text>
+<text x="344.0" y="590.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Installed offline English</text>
+<text x="344.0" y="610.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">voice</text>
+<text x="344.0" y="630.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">optional spoken replies</text>
+<text x="344.0" y="649.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">no network voice</text>
+<rect x="720.0" y="165.0" width="640.0" height="410.0" rx="18" fill="#E3F3EF" stroke="#1B7563" stroke-width="2"/>
+<text x="740.0" y="197.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="#1B7563" text-anchor="start">Render web service (Docker) — provider: Render</text>
+<rect x="740.0" y="215.0" width="600.0" height="175.0" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="754.0" y="246.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">FastAPI application (Python 3.12)</text>
+<text x="754.0" y="272.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Gunicorn → 2 Uvicorn workers per instance</text>
+<text x="754.0" y="292.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">47 HTTP routes: auth, categories, items, orders, activities, ai, health</text>
+<text x="754.0" y="312.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Validation (Pydantic) · owner-scoped business resources</text>
+<text x="754.0" y="331.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Container start: alembic upgrade head, then Gunicorn</text>
+<rect x="740.0" y="410.0" width="290.0" height="145.0" rx="12" fill="#E3F3EF" stroke="#1B7563" stroke-width="2"/>
+<text x="754.0" y="441.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1B7563" text-anchor="start">Rate limiter (slowapi)</text>
+<text x="754.0" y="467.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">in memory, per worker</text>
+<text x="754.0" y="487.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">5 auth routes only</text>
+<text x="754.0" y="507.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">best effort — see findings</text>
+<rect x="1050.0" y="410.0" width="290.0" height="145.0" rx="12" fill="#E3F3EF" stroke="#1B7563" stroke-width="2"/>
+<text x="1064.0" y="441.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1B7563" text-anchor="start">Health</text>
+<text x="1064.0" y="467.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">/live: process only (Render check)</text>
+<text x="1064.0" y="487.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">/health: SELECT 1, 2 s timeout</text>
+<text x="1064.0" y="507.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">neither reports the commit</text>
+<rect x="720.0" y="625.0" width="640.0" height="100.0" rx="12" fill="#FFF3DB" stroke="#8F5B00" stroke-width="2"/>
+<text x="734.0" y="656.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#8F5B00" text-anchor="start">PostgreSQL — provider: Neon (documented)</text>
+<text x="734.0" y="682.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">11 application tables + alembic_version · source of truth for all inventory data</text>
+<text x="734.0" y="702.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">· CI and local development use PostgreSQL 16</text>
+<path d="M 1040.0 575.0 L 1040.0 625.0" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)" marker-start="url(#arrow-start)"/>
+<text x="1054.0" y="597.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">SQLAlchemy async + asyncpg</text>
+<text x="1054.0" y="615.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">TLS outside development/testing</text>
+<path d="M 600.0 300.0 L 720.0 300.0" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)" marker-start="url(#arrow-start)"/>
+<text x="660.0" y="274.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">HTTPS JSON</text>
+<text x="660.0" y="292.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">Bearer JWT</text>
+<rect x="40.0" y="790.0" width="300.0" height="150.0" rx="12" fill="#F1ECFA" stroke="#5E4596" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="54.0" y="821.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#5E4596" text-anchor="start">Groq (optional)</text>
+<text x="54.0" y="847.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">GPT-OSS text; optional Whisper</text>
+<text x="54.0" y="867.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">audio</text>
+<text x="54.0" y="887.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">separate text/audio consent</text>
+<text x="54.0" y="906.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">server-side key; off by default</text>
+<rect x="370.0" y="790.0" width="300.0" height="150.0" rx="12" fill="#F1ECFA" stroke="#5E4596" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="384.0" y="821.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#5E4596" text-anchor="start">Brevo email API</text>
+<text x="384.0" y="847.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">verification, reset, deletion links</text>
+<text x="384.0" y="867.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">only if MAIL_PASSWORD is set</text>
+<rect x="700.0" y="790.0" width="300.0" height="150.0" rx="12" fill="#F1ECFA" stroke="#5E4596" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="714.0" y="821.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#5E4596" text-anchor="start">Sentry</text>
+<text x="714.0" y="847.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">errors and 10% of traces, only if</text>
+<text x="714.0" y="867.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">SENTRY_DSN set</text>
+<text x="714.0" y="887.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">request bodies and locals scrubbed</text>
+<rect x="1030.0" y="790.0" width="330.0" height="150.0" rx="12" fill="#FFFFFF" stroke="#4A5260" stroke-width="2"/>
+<text x="1044.0" y="821.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#16191D" text-anchor="start">Not in this system</text>
+<text x="1044.0" y="847.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">no message queue · no Redis</text>
+<text x="1044.0" y="867.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">no core background job queue</text>
+<text x="1044.0" y="887.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">no offline write queue</text>
+<text x="1044.0" y="906.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">optional speech workers: deployment</text>
+<text x="1044.0" y="926.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">unverified</text>
+<path d="M 720.0 545.0 L 690.0 545.0 L 690.0 760.0 L 190.0 760.0 L 190.0 790.0" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<path d="M 520.0 760.0 L 520.0 790.0" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<path d="M 690.0 760.0 L 850.0 760.0 L 850.0 790.0" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<text x="355.0" y="752.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">outbound HTTPS from the API only</text>
+</svg>

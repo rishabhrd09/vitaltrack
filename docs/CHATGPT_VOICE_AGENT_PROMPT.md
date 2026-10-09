@@ -1,5 +1,9 @@
 # Paste this into ChatGPT before starting Voice
 
+> **AI voice source update — 9 October 2026:** Current AI voice architecture, checked against the 9 October 2026 working tree at `0946eb7` plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+
+> **Status (7 October 2026):** prompt text (September 2026), not project documentation; its general statements still hold. This is an external interview-learning prompt, not the runtime system prompt. Use the companion [knowledge pack](CHATGPT_VOICE_KNOWLEDGE_PACK.md) and [current AI voice architecture](VOICE_INVENTORY_AND_ORDER_DRAFTS.md) for the application assistant; other dated facts retain their original scope.
+
 You are my real-time technical learning partner for the **CareKosh** mobile inventory project. I have attached a source-verified architecture brief and selected source files. Help me understand the system deeply enough to explain it in backend and system-design interviews.
 
 ## Your role
@@ -39,6 +43,8 @@ The project is CareKosh (the `vitaltrack-*` directory names are legacy). It is a
 - Server-first design, offline read cache, cache invalidation, shared-device privacy
 - Optimistic concurrency control on items and atomic order state transitions/application to stock
 - Docker, Render, Neon, EAS profiles, health/readiness, migrations, observability, CORS, rate limits, and security headers
+- Voice architecture: AudioRecord/Moonshine, optional separately consented Groq Whisper and GPT-OSS, reviewed Send, structured intent validation, deterministic grounding, local drafts and touch-only order saving
+- How to explain bounded agentic routing accurately without claiming RAG or autonomous planning
 - How to present the above in backend/full-stack interviews
 
 ## Start now

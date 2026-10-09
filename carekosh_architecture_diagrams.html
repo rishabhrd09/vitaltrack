@@ -1,980 +1,697 @@
-<!DOCTYPE html>
-<!--
-  CAREKOSH — ARCHITECTURE DIAGRAMS  (rewritten, July 2026)
-
-  Every diagram in this file was rebuilt from the current source, not edited.
-  The previous edition's ER diagram contained column names that never existed
-  in this repository (verified: 0 grep hits across app/models, app/schemas and
-  alembic/versions). It also inverted three safety properties. See the
-  correction ledger at the end of this document.
-
-  Design: warm ivory paper, single terracotta accent family, hairline borders,
-  print-first. No second hue, no gradients, no shadows.
--->
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CareKosh — Architecture Diagrams</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
-<style>
-:root{
-  --paper:#FAF9F5;
-  --ink:#1B1D21;
-  --ink-soft:#6B6660;
-  --clay:#B65A3D;
-  --clay-deep:#94472F;
-  --clay-soft:#D9A08C;
-  --rule:#E8E4DC;
-  --panel:#F3F1EB;
-  --white:#FFFFFF;
-  --sans:"Space Grotesk",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --body:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --mono:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased}
-.page{max-width:1000px;margin:0 auto;padding:64px 32px 120px}
-.measure{max-width:72ch}
-a{color:var(--clay-deep);text-decoration:none;border-bottom:1px solid var(--clay-soft)}
-a:hover{color:var(--clay)}
-
-/* ---------- cover ---------- */
-.cover{border-bottom:1px solid var(--rule);padding-bottom:44px;margin-bottom:44px}
-.eyebrow{font-family:var(--sans);font-weight:600;font-size:.72rem;letter-spacing:.24em;text-transform:uppercase;color:var(--clay);margin-bottom:20px}
-.cover h1{font-family:var(--sans);font-weight:600;font-size:3rem;line-height:1.08;letter-spacing:-.02em;margin-bottom:18px}
-.thesis{font-family:"Instrument Serif",Georgia,serif;font-style:italic;font-size:1.35rem;line-height:1.5;color:var(--clay-deep);max-width:62ch;margin-bottom:22px}
-.cover .meta{font-family:var(--mono);font-size:.78rem;color:var(--ink-soft);letter-spacing:.02em}
-
-/* ---------- toc ---------- */
-.toc{border:1px solid var(--rule);padding:28px 32px;margin:44px 0 72px}
-.toc h2{font-family:var(--sans);font-weight:600;font-size:.72rem;letter-spacing:.24em;text-transform:uppercase;color:var(--clay);margin-bottom:18px}
-.toc ol{list-style:none;counter-reset:t}
-.toc li{counter-increment:t;border-bottom:1px solid var(--rule)}
-.toc li:last-child{border-bottom:none}
-.toc a{display:flex;gap:18px;align-items:baseline;padding:11px 0;border:none;color:var(--ink)}
-.toc a:hover{color:var(--clay-deep)}
-.toc a::before{content:counter(t,decimal-leading-zero);font-family:var(--mono);font-size:.78rem;color:var(--clay);min-width:26px}
-.toc .t{font-family:var(--sans);font-weight:500}
-.toc .d{color:var(--ink-soft);font-size:.86rem;margin-left:auto;text-align:right}
-
-/* ---------- chapters ---------- */
-.ch{margin-top:88px;padding-top:34px;border-top:1px solid var(--rule)}
-.ch-num{font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;color:var(--clay);margin-bottom:12px}
-.ch h2{font-family:var(--sans);font-weight:600;font-size:2rem;line-height:1.16;letter-spacing:-.015em;margin-bottom:14px}
-.ch h3{font-family:var(--sans);font-weight:500;font-size:1.1rem;margin:38px 0 12px}
-.ch p{max-width:72ch;margin-bottom:14px}
-.ch ul,.ch ol{max-width:72ch;margin:0 0 16px 22px}
-.ch li{margin-bottom:7px}
-
-/* ---------- panels ---------- */
-.note{border:1px solid var(--rule);border-left:2px solid var(--clay-soft);padding:16px 20px;margin:22px 0;max-width:72ch;font-size:.94rem;background:var(--white)}
-.flag{border:1px solid var(--clay-soft);border-left:2px solid var(--clay);padding:16px 20px;margin:22px 0;max-width:72ch;font-size:.94rem;background:var(--panel)}
-.p-label{font-family:var(--sans);font-weight:600;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--clay);margin-bottom:7px}
-
-/* ---------- tables ---------- */
-.tw{overflow-x:auto;margin:22px 0}
-table{width:100%;border-collapse:collapse;font-size:.9rem;border:1px solid var(--rule)}
-th{font-family:var(--sans);font-weight:600;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);text-align:left;padding:10px 13px;background:var(--panel);border-bottom:1px solid var(--rule)}
-td{padding:9px 13px;border-bottom:1px solid var(--rule);vertical-align:top}
-tr:last-child td{border-bottom:none}
-td code,th code,p code,li code{font-family:var(--mono);font-size:.85em;background:var(--panel);padding:1px 5px;border:1px solid var(--rule)}
-
-/* ---------- code ---------- */
-pre{font-family:var(--mono);font-size:.8rem;line-height:1.65;background:var(--panel);border:1px solid var(--rule);padding:18px 20px;overflow-x:auto;margin:18px 0;color:var(--ink)}
-pre .m{color:var(--clay);font-weight:600}
-pre .c{color:var(--ink-soft)}
-
-/* ---------- figures ---------- */
-figure{margin:30px 0 34px}
-.fig-wrap{border:1px solid var(--rule);background:var(--white);padding:26px 22px;overflow-x:auto}
-figure svg{display:block;margin:0 auto;max-width:100%;height:auto}
-figcaption{font-size:.84rem;color:var(--ink-soft);margin-top:12px;max-width:72ch}
-figcaption b{font-family:var(--sans);font-weight:600;color:var(--ink)}
-
-/* ---------- shared SVG vocabulary ---------- */
-svg .bx{fill:var(--white);stroke:var(--rule);stroke-width:1}
-svg .bx-a{fill:var(--panel);stroke:var(--clay-soft);stroke-width:1}
-svg .bx-g{fill:none;stroke:var(--rule);stroke-width:1;stroke-dasharray:3 3}
-svg .lb{font-family:var(--sans);font-weight:600;font-size:12.5px;fill:var(--ink)}
-svg .lb-s{font-family:var(--sans);font-weight:600;font-size:11px;fill:var(--clay);letter-spacing:.1em}
-svg .tx{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;font-size:11px;fill:var(--ink-soft)}
-svg .mn{font-family:var(--mono);font-size:10.5px;fill:var(--ink)}
-svg .mn-a{font-family:var(--mono);font-size:10.5px;fill:var(--clay-deep);font-weight:600}
-svg .ln{stroke:var(--ink);stroke-width:1.1;fill:none;marker-end:url(#ar)}
-svg .ln-a{stroke:var(--clay);stroke-width:1.5;fill:none;marker-end:url(#ar-a)}
-svg .ln-d{stroke:var(--clay-deep);stroke-width:1.1;fill:none;stroke-dasharray:4 3;marker-end:url(#ar-a)}
-svg .ln-p{stroke:var(--rule);stroke-width:1;fill:none}
-
-footer{margin-top:96px;padding-top:30px;border-top:1px solid var(--rule);font-size:.86rem;color:var(--ink-soft);max-width:72ch}
-
-/* ---------- print ---------- */
-@media print{
-  @page{margin:14mm}
-  html,body{background:#fff!important;color:#000!important}
-  .page{max-width:none;padding:0}
-  a{color:#000!important;border-bottom:none}
-  .toc{page-break-after:always}
-  .ch{page-break-before:always;border-top:none;margin-top:0;padding-top:0}
-  figure,.fig-wrap,table,pre,.note,.flag{page-break-inside:avoid}
-  .fig-wrap{overflow:visible;border:1px solid #999}
-  figure svg{max-width:100%!important}
-  pre{background:#fff!important;border:1px solid #999}
-  th{background:#f2f2f2!important}
-  svg .bx{fill:#fff!important;stroke:#999!important}
-  svg .bx-a{fill:#f4f4f4!important;stroke:#555!important}
-  svg .lb,svg .mn{fill:#000!important}
-  svg .tx{fill:#444!important}
-  svg .lb-s,svg .mn-a{fill:#000!important}
-  .thesis{color:#000!important}
-  .eyebrow,.ch-num,.p-label{color:#000!important}
-}
-@media(max-width:700px){
-  .page{padding:36px 18px 80px}
-  .cover h1{font-size:2.1rem}
-  .toc .d{display:none}
-}
-</style>
-</head>
-<body>
-
-<!-- shared arrow markers -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-    <path d="M0 0 L10 5 L0 10 z" fill="#1B1D21"/></marker>
-  <marker id="ar-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-    <path d="M0 0 L10 5 L0 10 z" fill="#B65A3D"/></marker>
-</defs></svg>
-
-<div class="page">
-
-<!-- ══════════════ COVER ══════════════ -->
-<header class="cover">
-  <div class="eyebrow">CareKosh · System Architecture · Third edition</div>
-  <h1>Architecture<br>Diagrams</h1>
-  <p class="thesis">Every diagram here was rebuilt from the source files rather than corrected — because the previous edition described a schema this repository has never had.</p>
-  <p class="meta">com.carekosh.mobile v1.0.0 · Expo SDK 54 + FastAPI + Neon Postgres · verified July 2026</p>
-</header>
-
-<div class="flag">
-  <p class="p-label">Why this edition exists</p>
-  <p style="margin-bottom:10px">The second edition's entity-relationship diagram contained <strong>seven invented column names across five tables</strong>. Each returns zero matches when grepped across <code>app/models</code>, <code>app/schemas</code> and <code>alembic/versions</code> — so this was not drift from an older schema, it was invention. Anyone who studied it would describe a database that has never existed.</p>
-  <p style="margin-bottom:0">Three further errors inverted a safety or concurrency property: a CORS guardrail that does not exist, refresh-token rotation described as a <code>DELETE</code> when it is a compare-and-swap, and a <code>GET</code> shown deleting an account when the real <code>GET</code> only renders a page. Full list in the <a href="#ledger">correction ledger</a>.</p>
-</div>
-
-<!-- ══════════════ TOC ══════════════ -->
-<nav class="toc">
-  <h2>Contents</h2>
-  <ol>
-    <li><a href="#c1"><span class="t">System topology</span><span class="d">phone → Cloudflare → Render → Neon</span></a></li>
-    <li><a href="#c2"><span class="t">The request lifecycle</span><span class="d">middleware order, dependencies, handlers</span></a></li>
-    <li><a href="#c3"><span class="t">Authentication</span><span class="d">token lifecycle and the rotation CAS</span></a></li>
-    <li><a href="#c4"><span class="t">Account deletion</span><span class="d">why it takes two HTTP verbs</span></a></li>
-    <li><a href="#c5"><span class="t">The data model</span><span class="d">eight tables, real columns</span></a></li>
-    <li><a href="#c6"><span class="t">Concurrency</span><span class="d">optimistic locking on <code>version</code></span></a></li>
-    <li><a href="#c7"><span class="t">The order state machine</span><span class="d">six states, legal transitions</span></a></li>
-    <li><a href="#c8"><span class="t">The mobile client</span><span class="d">server-first, not offline-first</span></a></li>
-    <li><a href="#ledger"><span class="t">Correction ledger</span><span class="d">what the previous edition got wrong</span></a></li>
-  </ol>
-</nav>
-
-<!-- ══════════════ CH 1 ══════════════ -->
-<section class="ch" id="c1">
-  <div class="ch-num">Chapter 01</div>
-  <h2>System topology</h2>
-  <p class="thesis">Four hops, two of which appear in no other document — and one of them decides whether rate limiting works at all.</p>
-
-  <p>CareKosh is three tiers and three side dependencies. The tiers are obvious; the side dependencies are where the interesting failure modes live. Note especially <strong>Cloudflare</strong>: the backend reads <code>CF-Connecting-IP</code> first when identifying a client, so the correctness of every per-IP rate limit depends on a hop that the previous edition never drew.</p>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="System topology: Android app through Cloudflare to Render to Neon Postgres, with Brevo, Sentry and EAS as side dependencies">
-    <!-- ── client ── -->
-    <rect class="bx-a" x="270" y="16" width="340" height="72" rx="3"/>
-    <text class="lb-s" x="288" y="40">TIER 1 · CLIENT</text>
-    <text class="lb" x="288" y="61">Android app — Expo SDK 54 · RN 0.81.5</text>
-    <text class="mn" x="288" y="78">com.carekosh.mobile · API URL baked in at build</text>
-
-    <path class="ln-a" d="M440,88 L440,132"/>
-    <text class="mn-a" x="452" y="114">HTTPS</text>
-
-    <!-- ── cloudflare ── -->
-    <rect class="bx" x="270" y="134" width="340" height="66" rx="3"/>
-    <text class="lb-s" x="288" y="157">EDGE</text>
-    <text class="lb" x="288" y="177">Cloudflare — DNS · TLS · proxy</text>
-    <text class="mn-a" x="288" y="193">sets CF-Connecting-IP  ← rate limiting depends on this</text>
-
-    <path class="ln-a" d="M440,200 L440,244"/>
-
-    <!-- ── render ── -->
-    <rect class="bx-a" x="180" y="246" width="520" height="122" rx="3"/>
-    <text class="lb-s" x="200" y="269">TIER 2 · API — render.com · singapore · plan: starter</text>
-    <text class="lb" x="200" y="290">Docker · Python 3.12 · gunicorn -w 2 (UvicornWorker)</text>
-    <rect class="bx" x="200" y="302" width="230" height="52" rx="2"/>
-    <text class="mn" x="214" y="322">FastAPI · /api/v1</text>
-    <text class="mn" x="214" y="340">39 routes · 5 routers</text>
-    <rect class="bx" x="446" y="302" width="234" height="52" rx="2"/>
-    <text class="mn" x="460" y="322">healthCheckPath: /live</text>
-    <text class="mn" x="460" y="340">alembic upgrade head on boot</text>
-
-    <path class="ln-a" d="M440,368 L440,414"/>
-    <text class="mn-a" x="452" y="396">asyncpg · pool 5 + overflow 10 per worker</text>
-
-    <!-- ── neon ── -->
-    <rect class="bx-a" x="270" y="416" width="340" height="70" rx="3"/>
-    <text class="lb-s" x="288" y="439">TIER 3 · DATA</text>
-    <text class="lb" x="288" y="459">Neon Postgres — serverless</text>
-    <text class="mn" x="288" y="476">8 tables · statement_timeout 8000 ms</text>
-
-    <!-- ── side deps: left ── -->
-    <rect class="bx" x="16" y="246" width="146" height="52" rx="3"/>
-    <text class="lb" x="30" y="268">Brevo</text>
-    <text class="tx" x="30" y="285">SMTP · verify, reset</text>
-    <path class="ln-d" d="M180,272 L166,272"/>
-
-    <rect class="bx" x="16" y="316" width="146" height="52" rx="3"/>
-    <text class="lb" x="30" y="338">Sentry</text>
-    <text class="tx" x="30" y="355">errors · sample 0.1</text>
-    <path class="ln-d" d="M180,342 L166,342"/>
-
-    <!-- ── side deps: right ── -->
-    <rect class="bx" x="718" y="246" width="146" height="52" rx="3"/>
-    <text class="lb" x="732" y="268">EAS Build</text>
-    <text class="tx" x="732" y="285">versionCode remote</text>
-    <path class="ln-p" d="M718,272 L700,272"/>
-
-    <rect class="bx" x="718" y="316" width="146" height="52" rx="3"/>
-    <text class="lb" x="732" y="338">Play Store</text>
-    <text class="tx" x="732" y="355">AAB · Play signing</text>
-    <path class="ln-p" d="M791,298 L791,316"/>
-
-    <!-- ── cloudflare pages ── -->
-    <rect class="bx" x="16" y="134" width="146" height="66" rx="3"/>
-    <text class="lb" x="30" y="156">CF Pages</text>
-    <text class="tx" x="30" y="173">carekosh.com</text>
-    <text class="tx" x="30" y="189">legal pages</text>
-
-    <!-- gutter note -->
-    <rect class="bx-g" x="16" y="416" width="240" height="70" rx="3"/>
-    <text class="tx" x="30" y="440">CORS_ORIGINS in production</text>
-    <text class="mn-a" x="30" y="458">'["*"]'  → wildcard branch</text>
-    <text class="tx" x="30" y="476">forces allow_credentials=False</text>
-  </svg>
-  </div>
-  <figcaption><b>Verified against</b> <code>render.yaml</code>, <code>Dockerfile</code>, <code>app/main.py</code>, <code>app/core/database.py</code>, <code>app/utils/rate_limiter.py</code>. Two workers, not four — the previous edition and the developer guide both say four.</figcaption>
-  </figure>
-
-  <div class="note">
-    <p class="p-label">The CORS honesty note</p>
-    <p style="margin-bottom:0">Production really does ship <code>CORS_ORIGINS='["*"]'</code>. The previous edition claimed a validator rejects the wildcard in production — <strong>no such validator exists</strong>. What does exist is a safety interlock in <code>app/main.py</code>: the wildcard branch forces <code>allow_credentials=False</code>, and the API is bearer-token only with no cookies, so there is no ambient-credential CSRF surface. That is the honest answer to “isn't a wildcard a red flag?”, and it is stronger than pretending a guardrail exists.</p>
-  </div>
-</section>
-
-<!-- ══════════════ CH 2 ══════════════ -->
-<section class="ch" id="c2">
-  <div class="ch-num">Chapter 02</div>
-  <h2>The request lifecycle</h2>
-  <p class="thesis">Middleware is registered inside-out, so the order you read in the file is the reverse of the order a request meets.</p>
-
-  <p>Four middleware layers wrap every request, then a route-level rate limiter, then dependency injection, then the handler. Registration order in <code>app/main.py</code> is CORS first, then <code>add_request_id</code>, then <code>add_security_headers</code> — and because Starlette wraps each new middleware <em>around</em> the previous stack, the last one registered is the first one a request touches.</p>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 590" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Request lifecycle from client through middleware, rate limiter, dependencies, handler, database and back">
-    <!-- inbound column -->
-    <text class="lb-s" x="120" y="24">INBOUND</text>
-    <text class="lb-s" x="640" y="24">NOTES</text>
-
-    <rect class="bx-a" x="60" y="36" width="300" height="46" rx="3"/>
-    <text class="lb" x="78" y="65">Client request</text>
-    <path class="ln" d="M210,82 L210,110"/>
-
-    <rect class="bx" x="60" y="112" width="300" height="52" rx="3"/>
-    <text class="lb" x="78" y="134">add_security_headers</text>
-    <text class="mn" x="78" y="152">outermost — wraps the response on the way out</text>
-    <path class="ln" d="M210,164 L210,192"/>
-
-    <rect class="bx" x="60" y="194" width="300" height="52" rx="3"/>
-    <text class="lb" x="78" y="216">add_request_id</text>
-    <text class="mn" x="78" y="234">correlation id for logs and Sentry</text>
-    <path class="ln" d="M210,246 L210,274"/>
-
-    <rect class="bx" x="60" y="276" width="300" height="52" rx="3"/>
-    <text class="lb" x="78" y="298">CORSMiddleware</text>
-    <text class="mn" x="78" y="316">wildcard branch → allow_credentials False</text>
-    <path class="ln" d="M210,328 L210,356"/>
-
-    <rect class="bx-a" x="60" y="358" width="300" height="52" rx="3"/>
-    <text class="lb" x="78" y="380">@limiter.limit (slowapi)</text>
-    <text class="mn-a" x="78" y="398">per-route decorator, keyed on IP</text>
-    <path class="ln" d="M210,410 L210,438"/>
-
-    <rect class="bx" x="60" y="440" width="300" height="66" rx="3"/>
-    <text class="lb" x="78" y="462">Depends(...)</text>
-    <text class="mn" x="78" y="480">get_current_user → decode JWT, load user</text>
-    <text class="mn" x="78" y="497">get_db → AsyncSession, one per request</text>
-    <path class="ln-a" d="M210,506 L210,534"/>
-
-    <rect class="bx-a" x="60" y="536" width="300" height="46" rx="3"/>
-    <text class="lb" x="78" y="565">Route handler → Neon</text>
-
-    <!-- notes column -->
-    <rect class="bx-g" x="470" y="36" width="394" height="76" rx="3"/>
-    <text class="tx" x="488" y="60">Registration order in main.py is CORS, then</text>
-    <text class="tx" x="488" y="77">request-id, then security-headers — so the</text>
-    <text class="tx" x="488" y="94">READING order is the reverse of the RUNTIME order.</text>
-
-    <rect class="bx-g" x="470" y="130" width="394" height="94" rx="3"/>
-    <text class="lb" x="488" y="154">Security headers set</text>
-    <text class="mn" x="488" y="174">X-Content-Type-Options · X-Frame-Options</text>
-    <text class="mn" x="488" y="191">Referrer-Policy · Permissions-Policy</text>
-    <text class="mn" x="488" y="208">HSTS (production only)</text>
-
-    <rect class="bx-g" x="470" y="242" width="394" height="112" rx="3"/>
-    <text class="lb" x="488" y="266">Rate limiter caveat</text>
-    <text class="tx" x="488" y="286">Storage is in-memory and per-process. With</text>
-    <text class="tx" x="488" y="303">two workers the effective ceiling is roughly</text>
-    <text class="tx" x="488" y="320">double the configured value, and every deploy</text>
-    <text class="tx" x="488" y="337">resets all counters. Fails open by design.</text>
-
-    <rect class="bx-g" x="470" y="372" width="394" height="112" rx="3"/>
-    <text class="lb" x="488" y="396">Three exception handlers</text>
-    <text class="mn" x="488" y="416">RequestValidationError → 422, custom shape</text>
-    <text class="mn" x="488" y="433">IntegrityError → 409</text>
-    <text class="mn" x="488" y="450">Exception → 500, opaque body</text>
-    <text class="tx" x="488" y="470">RateLimitExceeded → 429 (slowapi handler)</text>
-
-    <rect class="bx-g" x="470" y="502" width="394" height="80" rx="3"/>
-    <text class="lb" x="488" y="526">Session lifetime</text>
-    <text class="tx" x="488" y="546">get_db holds one pooled session for the whole</text>
-    <text class="tx" x="488" y="563">request. 2 workers × (5 + 10) = 30 connections max.</text>
-  </svg>
-  </div>
-  <figcaption><b>Verified against</b> <code>app/main.py</code> lines 106–159, <code>app/api/deps.py</code>, <code>app/utils/rate_limiter.py</code>, <code>app/core/config.py</code>.</figcaption>
-  </figure>
-</section>
-
-<!-- ══════════════ CH 3 ══════════════ -->
-<section class="ch" id="c3">
-  <div class="ch-num">Chapter 03</div>
-  <h2>Authentication</h2>
-  <p class="thesis">The single most defensible piece of engineering in this codebase is one <code>UPDATE</code> statement — and the previous edition deleted it.</p>
-
-  <p>Two token types, one atomic rotation guarantee, and one enforcement gate that lives at login rather than in a dependency. Everything below is read from <code>app/api/v1/auth.py</code> and <code>app/core/security.py</code>.</p>
-
-  <div class="tw">
-  <table>
-    <tr><th>Token</th><th>Algorithm</th><th>Lifetime</th><th>Claims</th><th>Stored?</th></tr>
-    <tr><td>Access</td><td>HS256</td><td>30 minutes</td><td><code>sub · exp · iat · type</code></td><td>No — stateless, no <code>jti</code>, no denylist</td></tr>
-    <tr><td>Refresh</td><td>HS256</td><td>30 days</td><td><code>sub · exp · iat · type · jti</code></td><td>Yes — one <code>refresh_tokens</code> row per <code>jti</code></td></tr>
-  </table>
-  </div>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Authentication flows: register, login with verification gate, refresh with atomic compare and swap, change password revoking all tokens">
-    <!-- register -->
-    <text class="lb-s" x="16" y="22">A · REGISTER</text>
-    <rect class="bx" x="16" y="34" width="180" height="50" rx="3"/>
-    <text class="mn" x="30" y="55">POST /auth/register</text>
-    <text class="tx" x="30" y="72">3/hour per IP</text>
-    <path class="ln" d="M196,59 L242,59"/>
-    <rect class="bx" x="244" y="34" width="190" height="50" rx="3"/>
-    <text class="mn" x="258" y="55">Argon2id hash</text>
-    <text class="tx" x="258" y="72">offloaded via anyio.to_thread</text>
-    <path class="ln" d="M434,59 L480,59"/>
-    <rect class="bx-a" x="482" y="34" width="190" height="50" rx="3"/>
-    <text class="mn" x="496" y="55">access + refresh issued</text>
-    <text class="mn-a" x="496" y="72">even if email unverified</text>
-    <path class="ln-d" d="M672,59 L718,59"/>
-    <rect class="bx" x="720" y="34" width="144" height="50" rx="3"/>
-    <text class="mn" x="734" y="55">verify mail</text>
-    <text class="tx" x="734" y="72">24 h token</text>
-
-    <!-- login -->
-    <text class="lb-s" x="16" y="126">B · LOGIN</text>
-    <rect class="bx" x="16" y="138" width="180" height="50" rx="3"/>
-    <text class="mn" x="30" y="159">POST /auth/login</text>
-    <text class="tx" x="30" y="176">5/minute per IP</text>
-    <path class="ln" d="M196,163 L242,163"/>
-    <rect class="bx-a" x="244" y="138" width="248" height="50" rx="3"/>
-    <text class="lb" x="258" y="159">verification gate</text>
-    <text class="mn-a" x="258" y="176">403 EMAIL_NOT_VERIFIED — 4 conditions</text>
-    <path class="ln" d="M492,163 L538,163"/>
-    <rect class="bx" x="540" y="138" width="180" height="50" rx="3"/>
-    <text class="mn" x="554" y="159">token pair issued</text>
-    <text class="tx" x="554" y="176">refresh row inserted</text>
-
-    <rect class="bx-g" x="244" y="198" width="476" height="44" rx="3"/>
-    <text class="tx" x="258" y="220">Gate fires only if REQUIRE_EMAIL_VERIFICATION and is_email_configured()</text>
-    <text class="tx" x="258" y="236">— fail-open, so a missing mail key cannot lock out every user.</text>
-
-    <!-- refresh -->
-    <text class="lb-s" x="16" y="284">C · REFRESH — THE ATOMIC ROTATION</text>
-    <rect class="bx" x="16" y="296" width="180" height="50" rx="3"/>
-    <text class="mn" x="30" y="317">POST /auth/refresh</text>
-    <text class="tx" x="30" y="334">no rate limit</text>
-    <path class="ln-a" d="M196,321 L242,321"/>
-
-    <rect class="bx-a" x="244" y="296" width="380" height="92" rx="3"/>
-    <text class="lb" x="258" y="318">Compare-and-swap on is_revoked</text>
-    <text class="mn" x="258" y="338">UPDATE refresh_tokens</text>
-    <text class="mn" x="258" y="354">  SET is_revoked = true</text>
-    <text class="mn" x="258" y="370">  WHERE jti=? AND user_id=? AND is_revoked=false</text>
-    <text class="mn-a" x="258" y="386">  RETURNING id</text>
-
-    <path class="ln-a" d="M624,320 L670,320"/>
-    <rect class="bx" x="672" y="296" width="192" height="46" rx="3"/>
-    <text class="mn" x="686" y="317">1 row → new pair</text>
-    <text class="tx" x="686" y="333">rotation succeeded</text>
-
-    <path class="ln-d" d="M624,364 L670,364"/>
-    <rect class="bx" x="672" y="348" width="192" height="46" rx="3"/>
-    <text class="mn" x="686" y="369">0 rows → 401</text>
-    <text class="tx" x="686" y="385">already used, or revoked</text>
-
-    <rect class="bx-g" x="244" y="400" width="620" height="44" rx="3"/>
-    <text class="tx" x="258" y="422">Only one concurrent request can flip false→true, so a double-submitted token</text>
-    <text class="tx" x="258" y="438">rotates at most once. The row is never deleted — is_revoked is the whole mechanism.</text>
-
-    <!-- revocation -->
-    <text class="lb-s" x="16" y="486">D · BULK REVOCATION</text>
-    <rect class="bx" x="16" y="498" width="220" height="50" rx="3"/>
-    <text class="mn" x="30" y="519">POST /auth/change-password</text>
-    <text class="mn" x="30" y="536">POST /auth/logout</text>
-    <path class="ln" d="M236,523 L282,523"/>
-    <rect class="bx-a" x="284" y="498" width="340" height="50" rx="3"/>
-    <text class="mn" x="298" y="519">UPDATE refresh_tokens SET is_revoked=true</text>
-    <text class="mn" x="298" y="536">WHERE user_id = ?     — again, never DELETE</text>
-    <path class="ln-d" d="M624,523 L670,523"/>
-    <rect class="bx" x="672" y="498" width="192" height="50" rx="3"/>
-    <text class="mn-a" x="686" y="519">≤30 min residual</text>
-    <text class="tx" x="686" y="536">access tokens stay valid</text>
-
-    <rect class="bx-g" x="16" y="562" width="848" height="44" rx="3"/>
-    <text class="tx" x="30" y="584">Access tokens carry no jti and there is no denylist, so logout and password change leave a window</text>
-    <text class="tx" x="30" y="600">of up to 30 minutes in which an already-issued access token still works. Known, bounded, worth volunteering.</text>
-  </svg>
-  </div>
-  <figcaption><b>Verified against</b> <code>app/api/v1/auth.py</code> — register 63–175, login 181–282 (gate at 235–244), refresh 749–831 (CAS at 778–793), change-password 1193–1228. <b>Corrected:</b> the previous edition described rotation and bulk revocation as <code>DELETE</code>. Nothing in the refresh-token lifecycle is a delete.</figcaption>
-  </figure>
-
-  <div class="flag">
-    <p class="p-label">Password hashing — the real parameters</p>
-    <p style="margin-bottom:0"><code>CryptContext(schemes=["argon2","bcrypt"], deprecated="auto")</code>. The code sets <strong>no</strong> Argon2 options, so library defaults apply: <strong>Argon2id, m = 64 MiB, t = 3, p = 4</strong>, roughly 38 ms per hash. Because <code>p=4</code>, each login can occupy four threads and 64 MiB — a real capacity consideration on a two-worker instance. Note also that <code>deprecated="auto"</code> makes bcrypt hashes <em>verifiable</em> and flags them via <code>needs_update()</code>, but <strong>no rehash is implemented</strong>: <code>verify_and_update</code> appears nowhere in the codebase.</p>
-  </div>
-</section>
-
-<!-- ══════════════ CH 4 ══════════════ -->
-<section class="ch" id="c4">
-  <div class="ch-num">Chapter 04</div>
-  <h2>Account deletion</h2>
-  <p class="thesis">It takes two HTTP verbs for one reason: email clients follow links before humans do.</p>
-
-  <p>Deletion is irreversible and cascades across every user-owned table, so it is gated behind an emailed token <em>and</em> split across two verbs. The <code>GET</code> renders a confirmation page and deletes nothing; only the <code>POST</code> destroys data.</p>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 430" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-step account deletion: request, emailed token, GET renders confirmation, POST performs the delete and cascade">
-    <rect class="bx" x="16" y="26" width="196" height="58" rx="3"/>
-    <text class="mn" x="30" y="48">DELETE /auth/me</text>
-    <text class="tx" x="30" y="65">authenticated</text>
-    <text class="mn-a" x="30" y="80">deletes nothing</text>
-    <path class="ln" d="M212,55 L258,55"/>
-
-    <rect class="bx" x="260" y="26" width="212" height="58" rx="3"/>
-    <text class="lb" x="274" y="48">mint token</text>
-    <text class="mn" x="274" y="65">SHA-256 hash stored</text>
-    <text class="tx" x="274" y="80">deletion_token · 24 h expiry</text>
-    <path class="ln-d" d="M472,55 L518,55"/>
-
-    <rect class="bx" x="520" y="26" width="180" height="58" rx="3"/>
-    <text class="lb" x="534" y="48">email sent</text>
-    <text class="tx" x="534" y="65">via Brevo,</text>
-    <text class="tx" x="534" y="80">after commit</text>
-
-    <!-- step 2a -->
-    <path class="ln" d="M610,84 L610,124"/>
-    <rect class="bx" x="416" y="126" width="380" height="66" rx="3"/>
-    <text class="lb-s" x="432" y="148">STEP 2A · SAFE</text>
-    <text class="mn" x="432" y="167">GET /auth/confirm-delete/{token}</text>
-    <text class="mn-a" x="432" y="184">renders an HTML page — no data touched</text>
-
-    <path class="ln-a" d="M606,192 L606,232"/>
-    <text class="mn-a" x="618" y="216">user presses the button</text>
-
-    <!-- step 2b -->
-    <rect class="bx-a" x="416" y="234" width="380" height="66" rx="3"/>
-    <text class="lb-s" x="432" y="256">STEP 2B · DESTRUCTIVE</text>
-    <text class="mn" x="432" y="275">POST /auth/confirm-delete/{token}</text>
-    <text class="mn-a" x="432" y="292">await db.delete(user)</text>
-
-    <path class="ln-a" d="M606,300 L606,340"/>
-    <rect class="bx-a" x="300" y="342" width="496" height="72" rx="3"/>
-    <text class="lb" x="316" y="364">CASCADE unwinds — every user-owned row</text>
-    <text class="mn" x="316" y="384">categories → items · orders → order_items · activity_logs · refresh_tokens</text>
-    <text class="tx" x="316" y="401">audit_log rides the DB-level ON DELETE CASCADE; the rest are ORM cascades</text>
-
-    <!-- cancel -->
-    <rect class="bx" x="16" y="126" width="196" height="58" rx="3"/>
-    <text class="mn" x="30" y="148">POST /auth/cancel-delete</text>
-    <text class="tx" x="30" y="165">clears the token</text>
-    <text class="tx" x="30" y="180">before it is used</text>
-    <path class="ln-p" d="M114,124 L114,84"/>
-
-    <rect class="bx-g" x="16" y="204" width="380" height="96" rx="3"/>
-    <text class="lb" x="32" y="228">Why the split matters</text>
-    <text class="tx" x="32" y="250">Mail clients and link scanners issue GET requests</text>
-    <text class="tx" x="32" y="267">automatically to preview links. A GET that deleted</text>
-    <text class="tx" x="32" y="284">the account would fire on prefetch, with no human</text>
-    <text class="tx" x="32" y="301">involved. The split closes that exactly.</text>
-  </svg>
-  </div>
-  <figcaption><b>Verified against</b> <code>app/api/v1/auth.py</code> — request 948–1032, GET route at 1114, POST route at 1136, <code>db.delete(user)</code> at line 1163. <b>Corrected:</b> the previous edition showed the <code>GET</code> performing the deletion, describing a prefetch vulnerability that this design specifically prevents.</figcaption>
-  </figure>
-</section>
-
-<!-- ══════════════ CH 5 ══════════════ -->
-<section class="ch" id="c5">
-  <div class="ch-num">Chapter 05</div>
-  <h2>The data model</h2>
-  <p class="thesis">Eight tables, every column read from the model files — because the previous edition invented seven of them.</p>
-
-  <p>Every table except <code>order_items</code> hangs directly off <code>users</code> with <code>ON DELETE CASCADE</code>. Three columns carry the architecture: <code>items.version</code> (optimistic locking), <code>refresh_tokens.is_revoked</code> (rotation), and <code>local_id</code> (a client-supplied correlation id — forward-looking scaffolding, <em>not</em> a live sync feature).</p>
-
-  <div class="note">
-    <p class="p-label">Reading the diagram</p>
-    <p style="margin-bottom:0"><code>?</code> marks a nullable column. Unless noted, every table also carries <code>id</code> (uuid4 string), <code>created_at</code> and <code>updated_at</code> from the shared mixins. Arrows point from parent to child and every one is <code>ON DELETE CASCADE</code>.</p>
-  </div>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 960" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Entity relationship diagram: users with five direct child tables, items under categories, order_items under orders">
-
-    <!-- ═══ users ═══ -->
-    <rect class="bx-a" x="16" y="20" width="272" height="292" rx="3"/>
-    <rect x="16" y="20" width="272" height="26" rx="0" fill="#D9A08C" opacity="0.35"/>
-    <text class="lb" x="30" y="38">users</text>
-    <text class="mn" x="30" y="66">email?           unique · idx</text>
-    <text class="mn" x="30" y="82">username?        unique · idx</text>
-    <text class="mn" x="30" y="98">hashed_password</text>
-    <text class="mn" x="30" y="114">name · phone?</text>
-    <text class="mn" x="30" y="136">is_active</text>
-    <text class="mn" x="30" y="152">is_email_verified   ← real one</text>
-    <text class="mn" x="30" y="168">is_verified         ← never set</text>
-    <text class="mn" x="30" y="184">is_superuser</text>
-    <text class="mn" x="30" y="206">email_verification_token?</text>
-    <text class="mn" x="30" y="222">email_verification_expiry?</text>
-    <text class="mn" x="30" y="238">password_reset_token?</text>
-    <text class="mn" x="30" y="254">password_reset_expiry?</text>
-    <text class="mn" x="30" y="270">deletion_token?</text>
-    <text class="mn" x="30" y="286">deletion_token_expires?</text>
-    <text class="mn" x="30" y="304">last_login?</text>
-
-    <!-- fan-out bus -->
-    <path class="ln-p" d="M288,166 L320,166"/>
-    <path class="ln-p" d="M320,86 L320,830"/>
-    <path class="ln" d="M320,86 L348,86"/>
-    <path class="ln" d="M320,272 L348,272"/>
-    <path class="ln" d="M320,472 L348,472"/>
-    <path class="ln" d="M320,650 L348,650"/>
-    <path class="ln" d="M320,830 L348,830"/>
-
-    <!-- ═══ categories ═══ -->
-    <rect class="bx" x="350" y="20" width="272" height="132" rx="3"/>
-    <rect x="350" y="20" width="272" height="26" fill="#E8E4DC"/>
-    <text class="lb" x="364" y="38">categories</text>
-    <text class="mn" x="364" y="66">user_id      fk → users · idx</text>
-    <text class="mn" x="364" y="84">name</text>
-    <text class="mn" x="364" y="100">description?</text>
-    <text class="mn" x="364" y="116">display_order · is_default</text>
-    <text class="mn" x="364" y="132">local_id?    idx</text>
-
-    <!-- ═══ orders ═══ -->
-    <rect class="bx" x="350" y="180" width="272" height="186" rx="3"/>
-    <rect x="350" y="180" width="272" height="26" fill="#E8E4DC"/>
-    <text class="lb" x="364" y="198">orders</text>
-    <text class="mn" x="364" y="226">user_id      fk → users · idx</text>
-    <text class="mn-a" x="364" y="242">order_id     unique · idx</text>
-    <text class="tx" x="364" y="257">e.g. ORD-20260115-0001</text>
-    <text class="mn" x="364" y="277">status       OrderStatus enum</text>
-    <text class="mn" x="364" y="293">total_items · total_units</text>
-    <text class="mn" x="364" y="309">exported_at</text>
-    <text class="mn" x="364" y="325">ordered_at? · received_at?</text>
-    <text class="mn" x="364" y="341">applied_at? · declined_at?</text>
-    <text class="mn" x="364" y="357">pdf_path? · notes? · local_id?</text>
-
-    <!-- ═══ refresh_tokens ═══ -->
-    <rect class="bx" x="350" y="394" width="272" height="156" rx="3"/>
-    <rect x="350" y="394" width="272" height="26" fill="#E8E4DC"/>
-    <text class="lb" x="364" y="412">refresh_tokens</text>
-    <text class="mn-a" x="364" y="440">jti          unique · idx</text>
-    <text class="tx" x="364" y="455">the JWT jti claim — no hash stored</text>
-    <text class="mn" x="364" y="475">user_id      fk → users · idx</text>
-    <text class="mn-a" x="364" y="491">is_revoked   ← rotation turns on this</text>
-    <text class="mn" x="364" y="507">expires_at</text>
-    <text class="mn" x="364" y="523">device_name? · device_type?</text>
-    <text class="mn" x="364" y="539">ip_address? · user_agent? · last_used_at?</text>
-
-    <!-- ═══ audit_log ═══ -->
-    <rect class="bx" x="350" y="578" width="272" height="142" rx="3"/>
-    <rect x="350" y="578" width="272" height="26" fill="#E8E4DC"/>
-    <text class="lb" x="364" y="596">audit_log</text>
-    <text class="tx" x="466" y="596">singular</text>
-    <text class="mn" x="364" y="624">user_id      fk → users</text>
-    <text class="mn" x="364" y="640">entity_type · entity_id · action</text>
-    <text class="mn-a" x="364" y="656">old_values?  jsonb</text>
-    <text class="mn-a" x="364" y="672">new_values?  jsonb</text>
-    <text class="mn" x="364" y="688">created_at</text>
-    <text class="tx" x="364" y="708">own id + created_at only — no updated_at</text>
-
-    <!-- ═══ activity_logs ═══ -->
-    <rect class="bx" x="350" y="750" width="272" height="160" rx="3"/>
-    <rect x="350" y="750" width="272" height="26" fill="#E8E4DC"/>
-    <text class="lb" x="364" y="768">activity_logs</text>
-    <text class="mn" x="364" y="796">user_id      fk → users · idx</text>
-    <text class="mn" x="364" y="812">action       ActivityActionType · idx</text>
-    <text class="mn" x="364" y="828">item_name</text>
-    <text class="mn" x="364" y="844">item_id?</text>
-    <text class="mn" x="364" y="860">details? · order_id?</text>
-    <text class="mn" x="364" y="876">client_timestamp?</text>
-    <text class="mn" x="364" y="892">local_id?</text>
-
-    <!-- ═══ items (child of categories) ═══ -->
-    <path class="ln" d="M622,86 L642,86 L642,168 L662,168"/>
-    <rect class="bx-a" x="664" y="20" width="200" height="296" rx="3"/>
-    <rect x="664" y="20" width="200" height="26" fill="#D9A08C" opacity="0.35"/>
-    <text class="lb" x="678" y="38">items</text>
-    <text class="mn" x="678" y="66">user_id      fk · idx</text>
-    <text class="mn" x="678" y="82">category_id  fk · idx</text>
-    <text class="mn" x="678" y="102">name         idx</text>
-    <text class="mn" x="678" y="118">quantity</text>
-    <text class="mn" x="678" y="134">unit</text>
-    <text class="mn-a" x="678" y="150">minimum_stock</text>
-    <text class="mn" x="678" y="170">description?</text>
-    <text class="mn" x="678" y="186">expiry_date?</text>
-    <text class="mn" x="678" y="202">brand? · notes?</text>
-    <text class="mn" x="678" y="218">supplier_name?</text>
-    <text class="mn" x="678" y="234">supplier_contact?</text>
-    <text class="mn" x="678" y="250">purchase_link?</text>
-    <text class="mn" x="678" y="266">image_uri?</text>
-    <text class="mn" x="678" y="282">is_active · is_critical</text>
-    <text class="mn-a" x="678" y="298">version    ← OCC</text>
-    <text class="mn" x="678" y="312">local_id?  idx</text>
-
-    <!-- ═══ order_items (child of orders) ═══ -->
-    <path class="ln" d="M622,272 L642,272 L642,400 L662,400"/>
-    <rect class="bx" x="664" y="344" width="200" height="196" rx="3"/>
-    <rect x="664" y="344" width="200" height="26" fill="#E8E4DC"/>
-    <text class="lb" x="678" y="362">order_items</text>
-    <text class="mn" x="678" y="390">order_id   fk → orders · idx</text>
-    <text class="mn-a" x="678" y="406">item_id    idx · NO fk</text>
-    <text class="tx" x="678" y="421">deliberate — snapshot ref</text>
-    <text class="mn" x="678" y="441">name · brand? · unit</text>
-    <text class="mn" x="678" y="457">quantity</text>
-    <text class="mn-a" x="678" y="473">current_stock</text>
-    <text class="mn-a" x="678" y="489">minimum_stock</text>
-    <text class="tx" x="678" y="504">item state AT ORDER TIME</text>
-    <text class="mn" x="678" y="524">image_uri? · supplier_name?</text>
-    <text class="mn" x="678" y="538">purchase_link?</text>
-
-    <!-- legend -->
-    <rect class="bx-g" x="664" y="578" width="200" height="132" rx="3"/>
-    <text class="lb" x="678" y="600">Notes</text>
-    <text class="tx" x="678" y="622">? = nullable</text>
-    <text class="tx" x="678" y="640">All FKs are ON DELETE</text>
-    <text class="tx" x="678" y="656">CASCADE.</text>
-    <text class="tx" x="678" y="678">order_items has no price</text>
-    <text class="tx" x="678" y="694">column — it is a stock</text>
-    <text class="tx" x="678" y="710">snapshot, not a line item.</text>
-
-    <rect class="bx-g" x="664" y="750" width="200" height="160" rx="3"/>
-    <text class="lb" x="678" y="772">audit_log vs activity_logs</text>
-    <text class="tx" x="678" y="794">audit_log is the machine</text>
-    <text class="tx" x="678" y="810">ledger: entity, action, and</text>
-    <text class="tx" x="678" y="826">before/after JSON.</text>
-    <text class="tx" x="678" y="848">activity_logs is the human</text>
-    <text class="tx" x="678" y="864">feed the app renders —</text>
-    <text class="tx" x="678" y="880">denormalised item_name so</text>
-    <text class="tx" x="678" y="896">it survives item deletion.</text>
-  </svg>
-  </div>
-  <figcaption><b>Verified column-by-column against</b> <code>app/models/</code> — <code>user.py</code>, <code>category.py</code>, <code>item.py</code>, <code>order.py</code>, <code>audit_log.py</code>, <code>activity.py</code>, <code>refresh_token.py</code>. Eight tables, not seven.</figcaption>
-  </figure>
-
-  <div class="flag">
-    <p class="p-label">What the previous edition claimed — and what is actually there</p>
-    <div class="tw" style="margin:12px 0 0">
-    <table>
-      <tr><th>Table</th><th>Claimed column</th><th>Reality</th></tr>
-      <tr><td><code>audit_logs</code></td><td>the table name itself</td><td><code>audit_log</code> — singular</td></tr>
-      <tr><td><code>audit_log</code></td><td><code>before_snapshot</code> / <code>after_snapshot</code></td><td><code>old_values</code> / <code>new_values</code></td></tr>
-      <tr><td><code>items</code></td><td><code>minimum_quantity</code></td><td><code>minimum_stock</code></td></tr>
-      <tr><td><code>categories</code></td><td><code>icon</code> · <code>color</code></td><td>neither exists — it is <code>description</code>, <code>display_order</code>, <code>is_default</code></td></tr>
-      <tr><td><code>orders</code></td><td><code>order_number</code> · <code>title</code> · <code>supplier</code></td><td><code>order_id</code>; no title, no supplier</td></tr>
-      <tr><td><code>order_items</code></td><td><code>unit_price</code></td><td>no price column at all</td></tr>
-      <tr><td><code>refresh_tokens</code></td><td><code>token_hash</code></td><td><code>jti</code> — nothing is hashed</td></tr>
-    </table>
-    </div>
-    <p style="margin:12px 0 0">Each of those claimed names returns <strong>zero</strong> matches across <code>app/models</code>, <code>app/schemas</code> and <code>alembic/versions</code>.</p>
-  </div>
-</section>
-
-<!-- ══════════════ CH 6 ══════════════ -->
-<section class="ch" id="c6">
-  <div class="ch-num">Chapter 06</div>
-  <h2>Concurrency</h2>
-  <p class="thesis">Two caregivers, one cupboard, one shared count — resolved in the database rather than in the client.</p>
-
-  <p>The original app was offline-first and merged conflicts on the device. That was deleted. Now the server is the only arbiter, and the mechanism is a single-statement compare-and-swap on <code>items.version</code>. A stale write does not silently win and does not silently lose — it returns <code>409</code> carrying the server's current truth so the client can show the user what actually happened.</p>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Optimistic concurrency: two devices read version 1, first write succeeds to version 2, second write with stale version returns 409 with server state">
-    <text class="lb-s" x="16" y="22">DEVICE A</text>
-    <text class="lb-s" x="330" y="22">SERVER · Neon</text>
-    <text class="lb-s" x="700" y="22">DEVICE B</text>
-
-    <!-- lifelines -->
-    <path class="ln-p" d="M110,34 L110,446"/>
-    <path class="ln-p" d="M440,34 L440,446"/>
-    <path class="ln-p" d="M790,34 L790,446"/>
-
-    <!-- reads -->
-    <rect class="bx" x="16" y="44" width="188" height="38" rx="3"/>
-    <text class="mn" x="30" y="68">GET item → version 1</text>
-    <path class="ln" d="M204,63 L432,63"/>
-
-    <rect class="bx" x="696" y="98" width="168" height="38" rx="3"/>
-    <text class="mn" x="710" y="122">GET item → version 1</text>
-    <path class="ln" d="M696,117 L448,117"/>
-
-    <rect class="bx-a" x="330" y="150" width="220" height="40" rx="3"/>
-    <text class="mn" x="344" y="167">items row</text>
-    <text class="mn-a" x="344" y="183">version = 1 · quantity = 10</text>
-
-    <!-- A writes -->
-    <rect class="bx" x="16" y="210" width="188" height="54" rx="3"/>
-    <text class="mn" x="30" y="231">PUT item</text>
-    <text class="mn" x="30" y="247">version: 1</text>
-    <text class="mn" x="30" y="261">quantity: 8</text>
-    <path class="ln-a" d="M204,237 L432,237"/>
-
-    <rect class="bx-a" x="330" y="278" width="220" height="56" rx="3"/>
-    <text class="mn" x="344" y="298">UPDATE ... WHERE</text>
-    <text class="mn" x="344" y="313">  id=? AND version=1</text>
-    <text class="mn-a" x="344" y="329">1 row → version becomes 2</text>
-
-    <path class="ln-a" d="M330,306 L118,306"/>
-    <rect class="bx" x="16" y="288" width="188" height="36" rx="3"/>
-    <text class="mn-a" x="30" y="311">200 · version 2</text>
-
-    <!-- B writes stale -->
-    <rect class="bx" x="696" y="348" width="168" height="54" rx="3"/>
-    <text class="mn" x="710" y="369">PUT item</text>
-    <text class="mn-a" x="710" y="385">version: 1  ← stale</text>
-    <text class="mn" x="710" y="399">quantity: 12</text>
-    <path class="ln-d" d="M696,375 L448,375"/>
-
-    <rect class="bx-a" x="220" y="356" width="220" height="54" rx="3"/>
-    <text class="mn" x="234" y="376">WHERE version=1</text>
-    <text class="mn-a" x="234" y="392">0 rows matched</text>
-    <text class="mn" x="234" y="406">→ 409 Conflict</text>
-
-    <path class="ln-d" d="M220,383 L118,383"/>
-    <rect class="bx-a" x="16" y="356" width="188" height="54" rx="3"/>
-    <text class="mn-a" x="30" y="376">409 Conflict</text>
-    <text class="mn" x="30" y="392">server_version: 2</text>
-    <text class="mn" x="30" y="406">server_quantity: 8</text>
-
-    <rect class="bx-g" x="16" y="428" width="848" height="34" rx="3"/>
-    <text class="tx" x="32" y="450">Device B is told what the server actually holds, so the app can say “someone changed this to 8” instead of just failing.</text>
-  </svg>
-  </div>
-  <figcaption><b>Verified against</b> <code>app/api/v1/items.py</code> (CAS at lines 551–560), <code>app/schemas/item.py</code>. The 409 body carries <code>server_version</code> and <code>server_quantity</code> so the client can render “someone changed this to 8” rather than a bare failure.</figcaption>
-  </figure>
-
-  <div class="note">
-    <p class="p-label">Two related guards, same philosophy</p>
-    <p style="margin-bottom:0"><code>PATCH /items/{id}/stock</code> takes an <strong>absolute</strong> quantity plus a version, never a delta — so a replayed request cannot double-apply. And the order apply-to-stock path is a single atomic statement per item, with a database <code>CHECK (quantity &gt; 0)</code> constraint on <code>order_items</code> added in migration <code>0006</code> as a defence-in-depth backstop.</p>
-  </div>
-</section>
-
-<!-- ══════════════ CH 7 ══════════════ -->
-<section class="ch" id="c7">
-  <div class="ch-num">Chapter 07</div>
-  <h2>The order state machine</h2>
-  <p class="thesis">Six states with an explicit transition table, because “received twice” must not mean “stock added twice”.</p>
-
-  <p>An order moves through a restricted graph enforced server-side by <code>LEGAL_STATUS_TRANSITIONS</code>. The terminal states are <code>stock_updated</code> and <code>declined</code>; neither has an outgoing edge, which is what makes applying stock a one-way door.</p>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Order state machine: pending to ordered, partially received, received, stock updated, or declined">
-    <!-- pending -->
-    <rect class="bx-a" x="16" y="120" width="140" height="52" rx="3"/>
-    <text class="lb" x="30" y="142">pending</text>
-    <text class="tx" x="30" y="160">on export</text>
-
-    <!-- ordered -->
-    <path class="ln" d="M156,146 L216,146"/>
-    <rect class="bx" x="218" y="120" width="140" height="52" rx="3"/>
-    <text class="lb" x="232" y="142">ordered</text>
-    <text class="tx" x="232" y="160">placed with supplier</text>
-
-    <!-- partially_received -->
-    <path class="ln" d="M288,120 L288,74 L420,74"/>
-    <rect class="bx" x="422" y="48" width="164" height="52" rx="3"/>
-    <text class="lb" x="436" y="70">partially_received</text>
-    <text class="tx" x="436" y="88">some items arrived</text>
-
-    <!-- received -->
-    <path class="ln" d="M358,146 L420,146"/>
-    <rect class="bx" x="422" y="120" width="164" height="52" rx="3"/>
-    <text class="lb" x="436" y="142">received</text>
-    <text class="tx" x="436" y="160">all items arrived</text>
-    <path class="ln" d="M504,100 L504,118"/>
-
-    <!-- pending → received (skip) -->
-    <path class="ln-d" d="M86,172 L86,214 L504,214 L504,174"/>
-    <text class="tx" x="150" y="232">pending → received directly, if it arrived without a formal order</text>
-
-    <!-- stock_updated -->
-    <path class="ln-a" d="M586,146 L648,146"/>
-    <rect class="bx-a" x="650" y="120" width="214" height="52" rx="3"/>
-    <text class="lb" x="664" y="142">stock_updated</text>
-    <text class="mn-a" x="664" y="160">terminal · POST /orders/{id}/apply</text>
-
-    <!-- declined -->
-    <path class="ln-d" d="M86,120 L86,44 L216,44"/>
-    <rect class="bx" x="218" y="18" width="140" height="52" rx="3"/>
-    <text class="lb" x="232" y="40">declined</text>
-    <text class="mn-a" x="232" y="58">terminal</text>
-
-    <!-- notes -->
-    <rect class="bx-g" x="16" y="252" width="848" height="62" rx="3"/>
-    <text class="lb" x="32" y="274">Why the terminal states matter</text>
-    <text class="tx" x="32" y="294">Only the transition into stock_updated writes quantities back onto items, and it can be entered once.</text>
-    <text class="tx" x="32" y="310">An illegal transition is rejected server-side, so a retried or double-tapped apply cannot add the same stock twice.</text>
-  </svg>
-  </div>
-  <figcaption><b>Verified against</b> <code>app/models/order.py</code> (the <code>OrderStatus</code> enum, stored as a non-native enum so the values are portable strings) and <code>app/api/v1/orders.py</code> (<code>LEGAL_STATUS_TRANSITIONS</code>).</figcaption>
-  </figure>
-</section>
-
-<!-- ══════════════ CH 8 ══════════════ -->
-<section class="ch" id="c8">
-  <div class="ch-num">Chapter 08</div>
-  <h2>The mobile client</h2>
-  <p class="thesis">Server-first, not offline-first — and that distinction was a deliberate deletion, not an omission.</p>
-
-  <p>The app does not maintain an offline queue, does not persist domain data as its own source of truth, and does not reconcile conflicts on reconnect. <code>services/sync.ts</code> was removed and <code>useAppStore</code> shrank from about 1,100 lines to 61. TanStack Query owns all server state; Zustand holds only UI state.</p>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mobile architecture: Expo Router screens, TanStack Query as server state owner, three Zustand UI stores, SecureStore for tokens and AsyncStorage for cache persistence">
-    <!-- screens -->
-    <rect class="bx-a" x="16" y="20" width="848" height="76" rx="3"/>
-    <text class="lb-s" x="34" y="44">EXPO ROUTER · FILE-BASED</text>
-    <text class="mn" x="34" y="66">app/(auth)/  ·  app/(tabs)/ dashboard · inventory · orders  ·  item/[id]  ·  order/create</text>
-    <text class="mn" x="34" y="84">builder  ·  search  ·  profile          — modals: builder, search    cards: item/[id], order/create, profile</text>
-
-    <path class="ln-a" d="M440,96 L440,132"/>
-
-    <!-- query layer -->
-    <rect class="bx-a" x="16" y="134" width="500" height="132" rx="3"/>
-    <text class="lb-s" x="34" y="158">TANSTACK QUERY · SOLE OWNER OF SERVER STATE</text>
-    <text class="mn" x="34" y="180">useQuery       reads — items, categories, orders, activity</text>
-    <text class="mn" x="34" y="198">useMutation    writes — carry version, handle 409</text>
-    <text class="mn" x="34" y="220">QueryProvider  staleTime 30 s · gcTime 24 h</text>
-    <text class="mn" x="34" y="238">               persister key: carekosh-query-cache</text>
-    <text class="mn-a" x="34" y="256">               buster bound to app version</text>
-
-    <!-- zustand -->
-    <rect class="bx" x="536" y="134" width="328" height="132" rx="3"/>
-    <text class="lb-s" x="554" y="158">ZUSTAND · UI STATE ONLY</text>
-    <text class="mn" x="554" y="180">useAppStore            61 lines</text>
-    <text class="mn" x="554" y="198">useAuthStore          423 lines</text>
-    <text class="mn" x="554" y="216">useResultDialogStore   50 lines</text>
-    <text class="tx" x="554" y="240">No domain data lives here. That is the</text>
-    <text class="tx" x="554" y="256">whole point of the server-first rewrite.</text>
-
-    <path class="ln-a" d="M266,266 L266,302"/>
-    <path class="ln" d="M700,266 L700,302"/>
-
-    <!-- storage -->
-    <rect class="bx" x="16" y="304" width="500" height="86" rx="3"/>
-    <text class="lb-s" x="34" y="328">STORAGE — TWO KINDS, ON PURPOSE</text>
-    <text class="mn" x="34" y="350">expo-secure-store   access + refresh tokens (Keystore-backed)</text>
-    <text class="mn" x="34" y="368">AsyncStorage        query cache only — never credentials</text>
-    <text class="tx" x="34" y="384">allowBackup=false, so Android Auto Backup never copies either</text>
-
-    <rect class="bx" x="536" y="304" width="328" height="86" rx="3"/>
-    <text class="lb-s" x="554" y="328">RESILIENCE</text>
-    <text class="mn" x="554" y="350">/health retry — 5 s, max 12 attempts</text>
-    <text class="mn" x="554" y="368">401 / 403 never retried</text>
-    <text class="tx" x="554" y="384">StatusPill surfaces cold-start + saving</text>
-
-    <path class="ln-a" d="M440,390 L440,424"/>
-    <rect class="bx-a" x="180" y="426" width="520" height="42" rx="3"/>
-    <text class="mn" x="196" y="452">services/api.ts → fetch + JWT header → https://api.carekosh.com/api/v1</text>
-  </svg>
-  </div>
-  <figcaption><b>Verified against</b> <code>vitaltrack-mobile/app/</code>, <code>providers/QueryProvider.tsx</code>, <code>store/</code>, <code>services/api.ts</code>, <code>app.json</code>. <b>Corrected:</b> the previous edition called the product “offline-first” in seven places. It is not, by deliberate design.</figcaption>
-  </figure>
-
-  <div class="flag">
-    <p class="p-label">One honest gap</p>
-    <p style="margin-bottom:0">There is <strong>no mobile test infrastructure</strong>. <code>package.json</code> declares <code>"test": "jest"</code> but jest is not a dependency and no test files exist, so <code>npm test</code> fails immediately. The backend has 132 tests behind CI gates; the client has none. Worth volunteering before anyone asks.</p>
-  </div>
-</section>
-
-<!-- ══════════════ LEDGER ══════════════ -->
-<section class="ch" id="ledger">
-  <div class="ch-num">Appendix</div>
-  <h2>Correction ledger</h2>
-  <p class="thesis">A record of what the previous edition asserted, so the same errors are not reintroduced from memory.</p>
-
-  <p>Twelve defects were flagged and independently re-verified against source. <strong>All twelve were confirmed; none were refuted.</strong> Roughly nine further errors were found on top. Three of them are listed first because they inverted a safety or concurrency property rather than merely misnaming something.</p>
-
-  <h3>Inverted properties — the serious three</h3>
-  <div class="tw">
-  <table>
-    <tr><th>Claim</th><th>Reality</th><th>Why it mattered</th></tr>
-    <tr><td>“A <code>CORS_ORIGINS</code> validator rejects <code>*</code> in production.”</td><td>No such validator exists. Production ships <code>'["*"]'</code>.</td><td>Claimed a guardrail precisely where the repo has a known open gap.</td></tr>
-    <tr><td>Refresh rotation and bulk revocation are a <code>DELETE</code>.</td><td>Both are <code>UPDATE ... SET is_revoked = true</code>; rotation is a compare-and-swap with <code>RETURNING</code>.</td><td>Erased the concurrency guarantee — the most defensible piece of engineering in the auth flow.</td></tr>
-    <tr><td><code>GET /confirm-delete/{token}</code> deletes the account.</td><td><code>GET</code> renders a page. <code>POST</code> deletes.</td><td>Described a link-prefetch vulnerability the two-step design exists to prevent.</td></tr>
-  </table>
-  </div>
-
-  <h3>Naming and count errors</h3>
-  <ul>
-    <li>Seven invented column names across five tables — see the table in <a href="#c5">Chapter 05</a>. Each returns zero grep hits.</li>
-    <li>“Seven tables” in prose while the diagram drew eight. Eight is correct.</li>
-    <li>Gunicorn described as <code>-w 4</code>; the Dockerfile uses <code>--workers 2</code>.</li>
-    <li>Health check shown as <code>GET /health</code>; <code>render.yaml</code> sets <code>healthCheckPath: /live</code>, deliberately.</li>
-    <li>Alembic head given as <code>0005</code>; the real head is <code>0006_order_item_qty_positive</code>.</li>
-    <li>Render described as free tier; <code>render.yaml</code> pins <code>plan: starter</code>.</li>
-    <li>Sentry absent entirely, though it is wired in <code>app/main.py</code> and provisioned in <code>render.yaml</code>.</li>
-    <li>The product called “offline-first” in seven places, after offline-first was deliberately removed.</li>
-    <li>No <code>@media print</code> rules at all — the dark background printed behind light text, and wide diagrams were clipped rather than scaled.</li>
-  </ul>
-
-  <div class="note">
-    <p class="p-label">What the previous edition got right</p>
-    <p style="margin-bottom:0">Its prose was largely maintained and its account of the server-first philosophy, the audit-versus-activity distinction, and the cascade-on-deletion design were all sound. Diagram 5 even stated the <code>GET</code>/<code>POST</code> deletion split correctly, contradicting its own Diagram 2. The failure was concentrated in the hand-drawn SVGs, which had drifted away from the code while the text around them was kept current.</p>
-  </div>
-</section>
-
-<footer>
-  <p><strong>CareKosh — Architecture Diagrams</strong>, third edition, July 2026.</p>
-  <p style="margin-top:8px">Every diagram rebuilt from source. Schema verified column-by-column against <code>app/models/</code>; flows verified against <code>app/api/v1/</code> and <code>app/main.py</code>; topology verified against <code>render.yaml</code>, <code>Dockerfile</code> and <code>app.json</code>.</p>
-  <p style="margin-top:8px">Re-verify after any migration or router change. The fastest check is <code>python scripts/check_api_routes.py --expected 39</code> and a glance at <code>alembic/versions/</code>.</p>
-</footer>
-
-</div>
-</body>
-</html>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Architecture diagrams — CareKosh</title><style>body{margin:0;background:#f7f5ef;color:#202c32;font:17px/1.65 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:40px 24px 80px}h1{font-size:clamp(2rem,5vw,3.1rem);line-height:1.15}h2{margin-top:2.5rem;color:#174b49}a{color:#075d70;text-underline-offset:3px}table{border-collapse:collapse;width:100%;margin:20px 0}th,td{border:1px solid #c8d1cd;padding:12px;text-align:left;vertical-align:top}th{background:#e6eeea}pre{padding:18px;background:#172e34;color:#eff7f3;overflow:auto;border-radius:8px}code{font-size:.9em}aside,.note{padding:18px;border-left:4px solid #9b6a1b;background:#fff3d7;margin:20px 0}.eyebrow{font-size:.8rem;text-transform:uppercase;letter-spacing:.1em}nav{display:flex;gap:15px;flex-wrap:wrap}li{margin:8px 0}@media(max-width:650px){table{display:block;overflow:auto}main{padding:24px 16px}}@media print{body{background:white;color:black}main{max-width:none;padding:0}pre{white-space:pre-wrap;background:#eee;color:black}a{color:inherit}}main{max-width:1080px}main>p,main>ul,main>ol,main>aside,main>h1,main>h2,main>h3,main>.lead,main>details{max-width:47rem}li{margin:6px 0}.lead{font-size:1.12rem;color:#2d4540}.inshort{font-size:1.06rem;padding:12px 16px;border-left:4px solid #1f6f66;background:#e8f3f0;border-radius:0 10px 10px 0}figure.dg{margin:26px 0 34px}.dg-frame{background:#fff;border:1px solid #d2dcd8;border-radius:18px;padding:18px 18px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;box-shadow:0 1px 3px rgba(20,50,45,.06)}.dg-frame svg{display:block;width:100%;height:auto;margin:0 auto}figure.dg figcaption{max-width:47rem;margin-top:10px;font-size:.95rem;color:#44574f}figure.dg figcaption b{color:#174b49}.swipe{display:none}details{margin:16px 0;padding:10px 16px;border:1px solid #c8d1cd;border-radius:10px;background:#fff}details summary{cursor:pointer;font-weight:600;color:#174b49}@media(max-width:720px){.dg-frame{padding:10px}.dg-frame svg{min-width:680px}.swipe{display:inline}}@media print{.dg-frame{overflow:visible;border:none;padding:0;box-shadow:none}.dg-frame svg{min-width:0}}.dg-frame img{display:block;width:100%;height:auto;margin:0 auto}@media(max-width:720px){.dg-frame img{min-width:680px}}@media print{.dg-frame img{min-width:0}}</style></head><body>
+<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside><main><nav><a href="docs/INDEX.html">Documentation home</a></nav><p class="eyebrow">CareKosh · reviewed 7 October 2026, re-checked 8 October 2026 (previous correction 23 September 2026)</p>
+<h1>Architecture diagrams</h1>
+<p><strong>8 October 2026 safety follow-up.</strong> Targeted fixes are local tested changes after the earlier audit. Deployment and device acceptance remain separate. <a href="docs/BACKEND_HARDENING.md#safety-follow-up-8-october-2026">Current changes and remaining scope</a>.</p>
+<aside><strong>Source status (7 Oct 2026; re-checked 8 Oct 2026 against the working tree, <code>03cfebb</code> plus uncommitted documentation):</strong> describes branch <code>feature/backend-hardening-ai-voice-agent-foundation</code> at <code>03cfebb</code> (pushed, <strong>not merged</strong>; <code>main</code> is <code>835fad3</code>): migrations <code>0007</code>–<code>0010</code>, retry-safe order creation, the read-only voice assistant and the API audit fixes. Staging was reported by the owner to run <code>b1c8dd7</code> on 7 Oct 2026 (historical, not re-checked); production's revision and provider settings are NOT VERIFIED. Figures 1–4, 6 and 7 were drawn on 23 September 2026, re-checked against the branch and corrected where needed on 8 October 2026; Figures 5 and 8–10 are generated from <a href="docs/diagrams/src/build_diagrams.py">docs/diagrams/src</a> (see <a href="docs/diagrams/README.md">diagram sources</a>), and the September versions of the schema and cache diagrams are kept below them as history. Earlier corrections came from the 23 September 2026 documentation audit (local notes, not published); this revision follows the <span>7 October 2026 documentation audit <small>(local review reference; not published)</small></span>.</aside>
+<p class="lead"><strong>How to read this page.</strong> Each section starts with a one-line summary, then a diagram, then the details that matter. The colours mean the same thing in every diagram:</p>
+<ul>
+<li><strong>Green — core.</strong> FastAPI, PostgreSQL and the Android app. The product cannot work without them.</li>
+<li><strong>Blue — current provider (swappable).</strong> Render, Neon, Brevo and Expo EAS host or deliver the core, and could be replaced.</li>
+<li><strong>Grey — supporting infrastructure.</strong> DNS, TLS and similar plumbing.</li>
+<li><strong>Dashed amber — conditional.</strong> Sentry, email and the assistant's optional Groq interpretation are active only when they are configured.</li>
+</ul>
+
+<h2 id="topology">Request topology</h2>
+<p class="inshort">In short: the app sends HTTPS requests to one API host; the FastAPI backend on Render reads and writes PostgreSQL on Neon.</p>
+<figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 968" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-topology-t ad-topology-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-topology-t">How a request travels</title><desc id="ad-topology-d">The Android app calls the FastAPI backend on Render over HTTPS; the backend uses PostgreSQL on Neon. Brevo email and Sentry are used only when configured. EAS Build and Google Play deliver the app but are not part of an API request.</desc><defs><marker id="ad-topology-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="ad-topology-ah-b07a1a" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B07A1A"/></marker><marker id="ad-topology-ah-3d5a99" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#3D5A99"/></marker></defs>
+<rect x="300" y="40" width="400" height="150" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="320" y="69" font-size="11.5" font-weight="700" fill="#1F6F66" text-anchor="start" letter-spacing="0.9">CORE</text>
+<text x="320" y="97" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">Android app</text>
+<text x="320" y="123" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Expo SDK 54 · React Native 0.81.5</text>
+<text x="320" y="146" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">API address fixed when the app is built</text>
+<text x="320" y="169" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Sends a Bearer access token</text>
+<path d="M500,192 L500,248" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-topology-ah-1f6f66)"/>
+<rect x="520.534" y="208.0" width="70.93200000000002" height="26" rx="13.0" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="556" y="225.9" font-size="14" font-weight="650" fill="#1F6F66" text-anchor="middle">HTTPS</text>
+<rect x="300" y="252" width="400" height="150" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="320" y="281" font-size="11.5" font-weight="700" fill="#687A83" text-anchor="start" letter-spacing="0.9">SUPPORTING INFRA</text>
+<text x="320" y="309" font-size="19" font-weight="700" fill="#35474F" text-anchor="start">Public hostname and TLS</text>
+<text x="320" y="335" font-size="16" font-weight="400" fill="#35474F" text-anchor="start">api.carekosh.com · DNS at Cloudflare</text>
+<text x="320" y="358" font-size="16" font-weight="400" fill="#35474F" text-anchor="start">TLS ends at Render&#x27;s edge</text>
+<text x="320" y="381" font-size="16" font-weight="400" fill="#35474F" text-anchor="start">Cloudflare proxy mode: check dashboard</text>
+<path d="M500,404 L500,460" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-topology-ah-1f6f66)"/>
+<rect x="520.534" y="420.0" width="70.93200000000002" height="26" rx="13.0" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="556" y="437.9" font-size="14" font-weight="650" fill="#1F6F66" text-anchor="middle">HTTPS</text>
+<rect x="300" y="464" width="400" height="195" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="320" y="493" font-size="11.5" font-weight="700" fill="#1F6F66" text-anchor="start" letter-spacing="0.9">CORE</text>
+<text x="320" y="521" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">FastAPI backend</text>
+<text x="320" y="543" font-size="14" font-weight="500" fill="#21403B" text-anchor="start" font-style="italic">Docker container on Render (provider)</text>
+<text x="320" y="569" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Gunicorn runs 2 Uvicorn workers</text>
+<text x="320" y="592" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">44 API routes under /api/v1</text>
+<text x="320" y="615" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Business data scoped to its owner</text>
+<text x="320" y="638" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Health: /live (Render) · /health (DB)</text>
+<path d="M500,661 L500,725" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-topology-ah-1f6f66)"/>
+<rect x="484.466625" y="681.25" width="311.06674999999996" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="640" y="698.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">asyncpg · TLS · 15 connections per worker</text>
+<rect x="300" y="729" width="400" height="149" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="320" y="758" font-size="11.5" font-weight="700" fill="#1F6F66" text-anchor="start" letter-spacing="0.9">CORE</text>
+<text x="320" y="786" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">PostgreSQL</text>
+<text x="320" y="808" font-size="14" font-weight="500" fill="#21403B" text-anchor="start" font-style="italic">Hosted on Neon (provider)</text>
+<text x="320" y="834" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">11 application tables (migration 0010)</text>
+<text x="320" y="857" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">8-second statement timeout</text>
+<rect x="30" y="470" width="220" height="147" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2" stroke-dasharray="9 6"/>
+<text x="50" y="499" font-size="11.5" font-weight="700" fill="#B07A1A" text-anchor="start" letter-spacing="0.9">CONDITIONAL</text>
+<text x="50" y="527" font-size="19" font-weight="700" fill="#77500F" text-anchor="start">Brevo email</text>
+<text x="50" y="552" font-size="15" font-weight="400" fill="#5A4012" text-anchor="start">Sign-up, reset and</text>
+<text x="50" y="574" font-size="15" font-weight="400" fill="#5A4012" text-anchor="start">deletion emails</text>
+<text x="50" y="596" font-size="15" font-weight="400" fill="#5A4012" text-anchor="start">Needs MAIL_PASSWORD</text>
+<rect x="30" y="647" width="220" height="125" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2" stroke-dasharray="9 6"/>
+<text x="50" y="676" font-size="11.5" font-weight="700" fill="#B07A1A" text-anchor="start" letter-spacing="0.9">CONDITIONAL</text>
+<text x="50" y="704" font-size="19" font-weight="700" fill="#77500F" text-anchor="start">Sentry</text>
+<text x="50" y="729" font-size="15" font-weight="400" fill="#5A4012" text-anchor="start">Scrubbed error events</text>
+<text x="50" y="751" font-size="15" font-weight="400" fill="#5A4012" text-anchor="start">Needs SENTRY_DSN</text>
+<path d="M298,524 L254,524" fill="none" stroke="#B07A1A" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 6" marker-end="url(#ad-topology-ah-b07a1a)"/>
+<path d="M298,614 L275,614 L275,697 L254,697" fill="none" stroke="#B07A1A" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 6" marker-end="url(#ad-topology-ah-b07a1a)"/>
+<rect x="739" y="60" width="247" height="400" rx="18" fill="none" stroke="#5E736E" stroke-width="1.6" stroke-dasharray="7 6"/>
+<rect x="757" y="47" width="138.30769999999998" height="26" rx="13" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.4"/>
+<text x="767" y="65" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.2">APP DELIVERY</text>
+<rect x="755" y="96" width="215" height="125" rx="14" fill="#EAF0FA" stroke="#3D5A99" stroke-width="2.2"/>
+<text x="775" y="125" font-size="11.5" font-weight="700" fill="#3D5A99" text-anchor="start" letter-spacing="0.9">PROVIDER · SWAPPABLE</text>
+<text x="775" y="153" font-size="19" font-weight="700" fill="#243E76" text-anchor="start">EAS Build</text>
+<text x="775" y="178" font-size="15" font-weight="400" fill="#2A3A57" text-anchor="start">Builds the APK / AAB</text>
+<text x="775" y="200" font-size="15" font-weight="400" fill="#2A3A57" text-anchor="start">Embeds the API URL</text>
+<rect x="755" y="277" width="215" height="125" rx="14" fill="#EAF0FA" stroke="#3D5A99" stroke-width="2.2"/>
+<text x="775" y="306" font-size="11.5" font-weight="700" fill="#3D5A99" text-anchor="start" letter-spacing="0.9">PROVIDER · SWAPPABLE</text>
+<text x="775" y="334" font-size="19" font-weight="700" fill="#243E76" text-anchor="start">Google Play</text>
+<text x="775" y="359" font-size="15" font-weight="400" fill="#2A3A57" text-anchor="start">Internal testing track</text>
+<text x="775" y="381" font-size="15" font-weight="400" fill="#2A3A57" text-anchor="start">Installs the app</text>
+<path d="M862.5,223 L862.5,273" fill="none" stroke="#3D5A99" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-topology-ah-3d5a99)"/>
+<rect x="885.2204" y="236.0" width="50.559200000000004" height="26" rx="13.0" fill="#FFFFFF" stroke="#3D5A99" stroke-width="1.5"/>
+<text x="910.5" y="253.9" font-size="14" font-weight="650" fill="#3D5A99" text-anchor="middle">AAB</text>
+<path d="M753,337 L719,337 L719,125 L704,125" fill="none" stroke="#3D5A99" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-topology-ah-3d5a99)"/>
+<rect x="683.3093" y="249.0" width="71.3814" height="26" rx="13.0" fill="#FFFFFF" stroke="#3D5A99" stroke-width="1.5"/>
+<text x="719" y="266.9" font-size="14" font-weight="650" fill="#3D5A99" text-anchor="middle">installs</text>
+<text x="862.5" y="440" font-size="14" font-weight="400" fill="#5E736E" text-anchor="middle" font-style="italic">Not part of an API request</text>
+<path d="M30,908 L970,908" fill="none" stroke="#D5DEDB" stroke-width="1.2" stroke-linejoin="round"/>
+<rect x="30" y="929" width="26" height="18" rx="5" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2"/>
+<text x="64" y="943" font-size="14.5" font-weight="500" fill="#5E736E" text-anchor="start">Core</text>
+<rect x="120.885" y="929" width="26" height="18" rx="5" fill="#EAF0FA" stroke="#3D5A99" stroke-width="2"/>
+<text x="154.885" y="943" font-size="14.5" font-weight="500" fill="#5E736E" text-anchor="start">Current provider (swappable)</text>
+<rect x="375.61999999999995" y="929" width="26" height="18" rx="5" fill="#F1F4F5" stroke="#687A83" stroke-width="2"/>
+<text x="409.61999999999995" y="943" font-size="14.5" font-weight="500" fill="#5E736E" text-anchor="start">Supporting infrastructure</text>
+<rect x="604.2549999999999" y="929" width="26" height="18" rx="5" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="638.2549999999999" y="943" font-size="14.5" font-weight="500" fill="#5E736E" text-anchor="start">Conditional (only if configured)</text>
+</svg></div><figcaption><b>Figure 1.</b> The path of one API request, plus the side services and the app-delivery path. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li>The app sends a Bearer access token with every signed-in request. The API address is fixed when the app is built.</li>
+<li>Cloudflare serves the DNS for the public hostname. Whether Cloudflare also proxies the traffic must be checked in its dashboard.</li>
+<li>The backend runs two Gunicorn/Uvicorn workers and serves 44 API route objects under <code>/api/v1</code> on this branch (39 on <code>main</code>, which has no assistant routes), plus <code>/</code>, <code>/health</code> and <code>/live</code>. Queries for protected business data are limited to the signed-in owner; sign-in lookups and the global order counter use other keys.</li>
+<li>Database access uses SQLAlchemy async with asyncpg. Each worker has a pool of 5 connections plus up to 10 overflow — up to 15 per worker, 30 for two workers. Every application SQL statement has an 8-second limit; the migration engine sets none.</li>
+<li>Brevo sends email through its HTTP API (not the legacy SMTP settings), and only when <code>MAIL_PASSWORD</code> is set.</li>
+<li>Sentry is optional. It receives scrubbed diagnostic events only when <code>SENTRY_DSN</code> is set.</li>
+<li>EAS Build and Google Play deliver the app. They are not hops in an API request.</li>
+<li><code>vitaltrack-backend/render.yaml</code> asks for the Starter plan. Whether Render reads that file, and the live configuration, are not verified.</li>
+<li><strong>Assistant providers (not drawn here):</strong> speech recognition runs on the phone with a Moonshine speech pack downloaded once from Moonshine's servers. Optional text interpretation goes phone → CareKosh API → Groq, only when the phone's local matcher cannot handle the question and the server's <code>AI_*</code> settings, the person's consent and the phone's cloud switch allow it; <code>render.yaml</code> sets none of those settings. Separately selected Groq online listening sends the finished recording through <code>/ai/transcribe</code> after audio consent and Stop. The generated <a href="docs/diagrams/system-context.svg">system context diagram</a> shows the local and conditional cloud components.</li>
+</ul>
+
+<h2 id="request">A write request</h2>
+<p class="inshort">In short: a request passes inward through the middlewares and the dependencies, the handler commits its writes, and the response passes back out through the same layers.</p>
+<figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 1129" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-request-t ad-request-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-request-t">Inside one write request</title><desc id="ad-request-d">A request passes inward through ServerErrorMiddleware, security headers, request ID, CORS, ExceptionMiddleware and the router. FastAPI parses the JSON, runs get_db and get_current_user, then validates the fields; the handler writes and commits, and the response passes back out through the same layers. The AIBodyLimit layer just inside ServerErrorMiddleware is not drawn.</desc><defs><marker id="ad-request-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker></defs>
+<text x="175.0" y="34" font-size="14" font-weight="700" fill="#1F6F66" text-anchor="middle" letter-spacing="1.5">ON THE WAY IN</text>
+<text x="500.0" y="34" font-size="14" font-weight="700" fill="#5E736E" text-anchor="middle" letter-spacing="1.5">LAYER</text>
+<text x="825.0" y="34" font-size="14" font-weight="700" fill="#1F6F66" text-anchor="middle" letter-spacing="1.5">ON THE WAY OUT</text>
+<rect x="360" y="60" width="280" height="92" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="96" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">ServerErrorMiddleware</text>
+<text x="500.0" y="118" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">Starlette · outermost</text>
+<rect x="30" y="60" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="97.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Watches for crashes</text>
+<rect x="680" y="60" width="290" height="92" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="700" y="97.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Crash → plain 500 with none</text>
+<text x="700" y="119.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">of the headers below</text>
+<rect x="360" y="178" width="280" height="105" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="214" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Security headers</text>
+<text x="500.0" y="236" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">app/main.py</text>
+<rect x="30" y="178" width="290" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="215.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Passes the request on</text>
+<rect x="680" y="178" width="290" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="700" y="215.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">nosniff, DENY, Referrer-Policy,</text>
+<text x="700" y="237.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Cache-Control, X-XSS-Protection,</text>
+<text x="700" y="259.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">HSTS in production</text>
+<rect x="360" y="309" width="280" height="92" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="345" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Request ID</text>
+<text x="500.0" y="367" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">app/main.py</text>
+<rect x="30" y="309" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="346.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Keeps X-Request-ID</text>
+<text x="50" y="368.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">or creates one</text>
+<rect x="680" y="309" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="700" y="346.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Echoes X-Request-ID</text>
+<text x="700" y="368.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">(not written to logs)</text>
+<rect x="360" y="427" width="280" height="92" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="463" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">CORS</text>
+<text x="500.0" y="485" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">Starlette CORSMiddleware</text>
+<rect x="30" y="427" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="464.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Answers browser</text>
+<text x="50" y="486.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">preflight (OPTIONS)</text>
+<rect x="680" y="427" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="700" y="464.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Access-Control-* headers,</text>
+<text x="700" y="486.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">only if an Origin was sent</text>
+<rect x="360" y="545" width="280" height="92" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="581" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">ExceptionMiddleware</text>
+<text x="500.0" y="603" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">Starlette</text>
+<rect x="30" y="545" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="582.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Watches for handled</text>
+<text x="50" y="604.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">errors</text>
+<rect x="680" y="545" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="700" y="582.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">JSON errors: 401, 403, 404,</text>
+<text x="700" y="604.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">409, 422, 429</text>
+<rect x="360" y="663" width="280" height="105" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="699" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Router + dependencies</text>
+<text x="500.0" y="721" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">FastAPI</text>
+<rect x="30" y="663" width="290" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="700.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Match the route, parse the JSON</text>
+<text x="50" y="722.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">get_db, then get_current_user</text>
+<text x="50" y="744.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Then validate fields (else 422)</text>
+<rect x="680" y="663" width="290" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="700" y="700.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">get_db commits leftovers,</text>
+<text x="700" y="722.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">rolls back on error, closes</text>
+<rect x="210" y="828" width="580" height="153" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="500.0" y="865" font-size="19" font-weight="700" fill="#1D5B38" text-anchor="middle">Route handler: writes, then commit</text>
+<text x="500.0" y="891" font-size="16" font-weight="400" fill="#1D4730" text-anchor="middle">Check ownership and business rules</text>
+<text x="500.0" y="914" font-size="16" font-weight="400" fill="#1D4730" text-anchor="middle">Conditional UPDATE / INSERT (e.g. version check)</text>
+<text x="500.0" y="937" font-size="16" font-weight="400" fill="#1D4730" text-anchor="middle">Add history rows where coded, then commit</text>
+<text x="500.0" y="960" font-size="16" font-weight="400" fill="#1D4730" text-anchor="middle">5 auth routes: slowapi rate limit wraps the handler</text>
+<path d="M340,66 L340,823" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-request-ah-1f6f66)"/>
+<path d="M660,827 L660,64" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-request-ah-1f6f66)"/>
+<rect x="304.2344" y="401.0" width="71.53120000000001" height="26" rx="13.0" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="340" y="418.9" font-size="14" font-weight="650" fill="#1F6F66" text-anchor="middle">request</text>
+<rect x="618.9165" y="401.0" width="82.16700000000002" height="26" rx="13.0" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="660" y="418.9" font-size="14" font-weight="650" fill="#1F6F66" text-anchor="middle">response</text>
+<rect x="30" y="1011" width="940" height="105" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="50" y="1048" font-size="19" font-weight="700" fill="#8C2A20" text-anchor="start">If something crashes</text>
+<text x="50" y="1073.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">An unhandled exception becomes a plain 500 from ServerErrorMiddleware: no security headers,</text>
+<text x="50" y="1095.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">no X-Request-ID and no CORS headers. Handled errors (HTTPException, 409, 422, 429) keep them.</text>
+</svg></div><figcaption><b>Figure 2.</b> What each layer does on the way in and on the way out. The <code>AIBodyLimit</code> layer added on this branch is not drawn (see below). <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li><strong>Middleware order on the way in:</strong> security headers → request ID → CORS. Starlette's error middleware wraps all three.</li>
+<li><strong>Added on this branch, not drawn in Figure 2:</strong> an outer <code>AIBodyLimit</code> layer sits just inside the error middleware. It reads the whole request body first and rejects oversized bodies (2 MB for ordinary routes, 12 KB for assistant JSON, 900 KB for the switched-off audio upload), answers assistant requests without a Bearer token with 401 before reading the body, and gives uploads a 10-second deadline. Its own error responses skip the security-header and request-ID layers. The generated <a href="docs/diagrams/request-lifecycle.svg">request lifecycle diagram</a> includes it.</li>
+<li><strong>Dependencies:</strong> FastAPI parses the JSON body first (malformed JSON gets 422 here), then opens a database session and loads the signed-in user, and only then validates the fields. A 422 for a bad field can therefore follow the user <code>SELECT</code>.</li>
+<li><strong>Rate limits</strong> wrap the handler call on the five limited routes. The limiter is not a guaranteed first line of defence that runs before the dependencies.</li>
+<li><strong>The handler</strong> checks ownership and workflow rules, runs conditional writes, adds activity and audit rows where implemented, and commits.</li>
+<li><strong>The response</strong> is serialised and returned. A failure after the commit cannot undo the committed write.</li>
+<li><strong>X-Request-ID</strong> is only a response header. It is not added to log lines or external traces.</li>
+<li><strong>Security headers:</strong> nosniff, DENY (frame blocking), Referrer-Policy, Cache-Control, X-XSS-Protection and, in production, HSTS. Permissions-Policy is not configured. X-XSS-Protection is set to the legacy <code>1; mode=block</code>; current OWASP guidance is to send <code>0</code> or omit it.</li>
+<li><strong>Crashes:</strong> an unhandled exception becomes a 500 from outside these middlewares, so it carries none of these headers and no X-Request-ID.</li>
+<li><strong>CORS</strong> is a browser rule. It is not access control for a native app.</li>
+</ul>
+
+<h2 id="auth">Session and recovery state</h2>
+<p class="inshort">In short: every signed-in request re-checks the user row; a refresh token can be claimed once; a password change or reset bumps <code>session_version</code>, so every older token stops working.</p>
+<figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 908" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-auth-t ad-auth-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-auth-t">How tokens are checked, refreshed and revoked</title><desc id="ad-auth-d">Three flows: every authenticated request checks the access token and the user row; refresh claims the refresh token once and issues a new pair; a password change or reset increments session_version so older tokens fail.</desc><defs><marker id="ad-auth-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker></defs>
+<rect x="30" y="30" width="300" height="78" rx="14" fill="#16343A" stroke="#16343A" stroke-width="2.2"/>
+<text x="180.0" y="67" font-size="19" font-weight="700" fill="#FFFFFF" text-anchor="middle">Every API call</text>
+<text x="180.0" y="89" font-size="14" font-weight="500" fill="#D5E7E3" text-anchor="middle" font-style="italic">30-minute access token</text>
+<rect x="30" y="138" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="48" y="172.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Bearer access token</text>
+<text x="48" y="194.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">sent in the Authorization header</text>
+<path d="M180.0,216 L180.0,240" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="30" y="244" width="300" height="54" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="48" y="278.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Check signature, expiry, type</text>
+<rect x="289.9696" y="233.5" width="60.0608" height="25" rx="12.5" fill="#FCEBEA" stroke="#B3372B" stroke-width="1.5"/>
+<text x="320" y="250.55" font-size="13" font-weight="650" fill="#B3372B" text-anchor="middle">→ 401</text>
+<path d="M180.0,300 L180.0,324" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="30" y="328" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="48" y="362.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Load the user row</text>
+<text x="48" y="384.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">one SELECT, relationships off</text>
+<path d="M180.0,406 L180.0,430" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="30" y="434" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="48" y="468.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">session_version matches?</text>
+<text x="48" y="490.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">changes after a password reset</text>
+<rect x="289.9696" y="423.5" width="60.0608" height="25" rx="12.5" fill="#FCEBEA" stroke="#B3372B" stroke-width="1.5"/>
+<text x="320" y="440.55" font-size="13" font-weight="650" fill="#B3372B" text-anchor="middle">→ 401</text>
+<path d="M180.0,512 L180.0,536" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="30" y="540" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="48" y="574.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Account active?</text>
+<text x="48" y="596.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">and email verified, if required</text>
+<rect x="288.5786" y="529.5" width="62.8428" height="25" rx="12.5" fill="#FCEBEA" stroke="#B3372B" stroke-width="1.5"/>
+<text x="320" y="546.55" font-size="13" font-weight="650" fill="#B3372B" text-anchor="middle">→ 403</text>
+<path d="M180.0,618 L180.0,642" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="30" y="646" width="300" height="54" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="48" y="680.5" font-size="16.5" font-weight="700" fill="#1D5B38" text-anchor="start">Run the handler</text>
+<rect x="350" y="30" width="300" height="78" rx="14" fill="#16343A" stroke="#16343A" stroke-width="2.2"/>
+<text x="500.0" y="67" font-size="19" font-weight="700" fill="#FFFFFF" text-anchor="middle">Refresh</text>
+<text x="500.0" y="89" font-size="14" font-weight="500" fill="#D5E7E3" text-anchor="middle" font-style="italic">30-day refresh token</text>
+<rect x="350" y="138" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="368" y="172.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Refresh token</text>
+<text x="368" y="194.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">has a unique jti</text>
+<path d="M500.0,216 L500.0,240" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="350" y="244" width="300" height="54" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="368" y="278.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Check signature, expiry, type</text>
+<rect x="609.9696" y="233.5" width="60.0608" height="25" rx="12.5" fill="#FCEBEA" stroke="#B3372B" stroke-width="1.5"/>
+<text x="640" y="250.55" font-size="13" font-weight="650" fill="#B3372B" text-anchor="middle">→ 401</text>
+<path d="M500.0,300 L500.0,324" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="350" y="328" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="368" y="362.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Lock the user row</text>
+<text x="368" y="384.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">SELECT … FOR UPDATE</text>
+<path d="M500.0,406 L500.0,430" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="350" y="434" width="300" height="54" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="368" y="468.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">session_version and policy OK?</text>
+<rect x="595.99005" y="423.5" width="88.01989999999999" height="25" rx="12.5" fill="#FCEBEA" stroke="#B3372B" stroke-width="1.5"/>
+<text x="640" y="440.55" font-size="13" font-weight="650" fill="#B3372B" text-anchor="middle">→ 401/403</text>
+<path d="M500.0,490 L500.0,514" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="350" y="518" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="368" y="552.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Claim the token once</text>
+<text x="368" y="574.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">UPDATE … WHERE not revoked</text>
+<rect x="609.9696" y="507.5" width="60.0608" height="25" rx="12.5" fill="#FCEBEA" stroke="#B3372B" stroke-width="1.5"/>
+<text x="640" y="524.55" font-size="13" font-weight="650" fill="#B3372B" text-anchor="middle">→ 401</text>
+<path d="M500.0,596 L500.0,620" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="350" y="624" width="300" height="54" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="368" y="658.5" font-size="16.5" font-weight="700" fill="#1D5B38" text-anchor="start">New pair + new row, commit</text>
+<rect x="670" y="30" width="300" height="78" rx="14" fill="#16343A" stroke="#16343A" stroke-width="2.2"/>
+<text x="820.0" y="67" font-size="19" font-weight="700" fill="#FFFFFF" text-anchor="middle">Password change or reset</text>
+<text x="820.0" y="89" font-size="14" font-weight="500" fill="#D5E7E3" text-anchor="middle" font-style="italic">ends every old session</text>
+<rect x="670" y="138" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="688" y="172.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Prove it&#x27;s you</text>
+<text x="688" y="194.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">current password or emailed token</text>
+<path d="M820.0,216 L820.0,240" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="670" y="244" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="688" y="278.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Lock the user row</text>
+<text x="688" y="300.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">SELECT … FOR UPDATE</text>
+<path d="M820.0,322 L820.0,346" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="670" y="350" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="688" y="384.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Hash the new password</text>
+<text x="688" y="406.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">Argon2id in a worker thread</text>
+<path d="M820.0,428 L820.0,452" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="670" y="456" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="688" y="490.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">session_version + 1</text>
+<text x="688" y="512.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">old tokens now mismatch</text>
+<path d="M820.0,534 L820.0,558" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="670" y="562" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="688" y="596.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Revoke refresh rows</text>
+<text x="688" y="618.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">and clear reset/delete challenges</text>
+<path d="M820.0,640 L820.0,664" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="670" y="668" width="300" height="76" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="688" y="702.5" font-size="16.5" font-weight="700" fill="#1D5B38" text-anchor="start">Commit</text>
+<text x="688" y="724.5" font-size="14" font-weight="500" fill="#1D4730" text-anchor="start" font-style="italic">older tokens fail on next use</text>
+<rect x="30" y="784" width="940" height="105" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2"/>
+<text x="50" y="821" font-size="19" font-weight="700" fill="#77500F" text-anchor="start">Limits to know</text>
+<text x="50" y="846.5" font-size="15.5" font-weight="400" fill="#5A4012" text-anchor="start">No reuse detection: replaying an already-rotated refresh token only returns 401; nothing else is revoked.</text>
+<text x="50" y="868.5" font-size="15.5" font-weight="400" fill="#5A4012" text-anchor="start">Logout revokes only the refresh token it is given; an access token stays valid until it expires (30 min).</text>
+</svg></div><figcaption><b>Figure 3.</b> The checks behind every API call, a token refresh, and a password change or reset. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li>Tokens issued before the generation claim existed count as generation zero, so deploying this change does not log everyone out.</li>
+<li>After a password change or reset, old tokens fail the next time they are checked.</li>
+<li>Ordinary logout revokes only the refresh token it is given. A copied access token stays valid until it expires.</li>
+<li>Email verification applies to login, protected bearer requests and refresh for accounts with an email — only when the flag and the mail configuration enable it. Registration still returns tokens.</li>
+<li><strong>Rate limits</strong> cover five auth routes only. The counters live in memory in each worker process and reset when it restarts, and an open finding about how clients are identified is tracked privately. Treat them as best effort; do not describe them as globally enforced limits.</li>
+<li><strong>Password hashing</strong> uses Argon2. Legacy bcrypt hashes still verify but are not upgraded. Hashing runs in an AnyIO worker thread; benchmark the real runtime instead of assuming a fixed latency.</li>
+</ul>
+
+<h2 id="deletion">Account deletion</h2>
+<p class="inshort">In short: deletion takes two steps. The app asks, an email link is sent, and only the button on the confirmation page deletes anything.</p>
+<figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 627" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-deletion-t ad-deletion-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-deletion-t">Deleting an account takes two steps</title><desc id="ad-deletion-d">The app asks for deletion and an email link is sent; opening the link only shows a page; confirming on that page deletes the user, and PostgreSQL cascades the deletion to every row the user owns.</desc><defs><marker id="ad-deletion-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="ad-deletion-ah-b3372b" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B3372B"/></marker></defs>
+<rect x="30" y="40" width="300" height="254" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<circle cx="66" cy="78" r="16" fill="#1F6F66"/>
+<text x="66" y="83.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="92" y="85" font-size="21" font-weight="700" fill="#0D4A43" text-anchor="start">Ask</text>
+<text x="50" y="122" font-size="13.2" font-weight="600" fill="#1F6F66" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">DELETE /auth/me</text>
+<text x="50" y="148" font-size="14.5" font-weight="400" fill="#5E736E" text-anchor="start" font-style="italic">in the app, signed in</text>
+<text x="50" y="186" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Stores a SHA-256 digest</text>
+<text x="50" y="212" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Link expires in 24 hours</text>
+<text x="50" y="238" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Emails the link (Brevo)</text>
+<text x="50" y="264" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Deletes nothing yet</text>
+<path d="M333,175 L346,175" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-deletion-ah-1f6f66)"/>
+<rect x="350" y="40" width="300" height="254" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<circle cx="386" cy="78" r="16" fill="#1F6F66"/>
+<text x="386" y="83.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="412" y="85" font-size="21" font-weight="700" fill="#0D4A43" text-anchor="start">Look</text>
+<text x="370" y="122" font-size="13.2" font-weight="600" fill="#1F6F66" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">GET /auth/confirm-delete/{token}</text>
+<text x="370" y="148" font-size="14.5" font-weight="400" fill="#5E736E" text-anchor="start" font-style="italic">opening the email link</text>
+<text x="370" y="186" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Shows a confirmation page</text>
+<text x="370" y="212" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Deletes nothing — safe if</text>
+<text x="370" y="238" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">a mail scanner opens it</text>
+<path d="M653,175 L666,175" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-deletion-ah-1f6f66)"/>
+<rect x="670" y="40" width="300" height="254" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<circle cx="706" cy="78" r="16" fill="#B3372B"/>
+<text x="706" y="83.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="732" y="85" font-size="21" font-weight="700" fill="#8C2A20" text-anchor="start">Confirm</text>
+<text x="690" y="122" font-size="13.2" font-weight="600" fill="#B3372B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">POST /auth/confirm-delete/{token}</text>
+<text x="690" y="148" font-size="14.5" font-weight="400" fill="#5E736E" text-anchor="start" font-style="italic">pressing Confirm</text>
+<text x="690" y="186" font-size="16" font-weight="400" fill="#5C1F18" text-anchor="start">Locks the user row</text>
+<text x="690" y="212" font-size="16" font-weight="400" fill="#5C1F18" text-anchor="start">Checks digest and expiry</text>
+<text x="690" y="238" font-size="16" font-weight="400" fill="#5C1F18" text-anchor="start">Deletes the user</text>
+<text x="500" y="334" font-size="14" font-weight="400" fill="#5E736E" text-anchor="middle" font-style="italic">All paths start with /api/v1</text>
+<path d="M820,296 L820,392" fill="none" stroke="#B3372B" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-deletion-ah-b3372b)"/>
+<rect x="30" y="400" width="940" height="107" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="50" y="437" font-size="19" font-weight="700" fill="#8C2A20" text-anchor="start">PostgreSQL removes everything the user owns (ON DELETE CASCADE)</text>
+<text x="50" y="463" font-size="13.5" text-anchor="start"><tspan font-weight="400" fill="#5C1F18" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">categories · items · orders · order_items · refresh_tokens · activity_logs · audit_log · ai_consents · ai_usage</tspan></text>
+<text x="50" y="486" font-size="16" font-weight="400" fill="#5C1F18" text-anchor="start">Kept: order_number_counters (not owned by a user). Backups, logs and phone caches are handled separately.</text>
+<rect x="30" y="531" width="940" height="84" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="568" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Changed your mind?</text>
+<text x="50" y="594" font-size="16" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">POST /api/v1/auth/cancel-delete</tspan><tspan font-weight="400" fill="#3C5550"> (signed in) clears the pending request under the same row lock.</tspan></text>
+</svg></div><figcaption><b>Figure 4.</b> Ask, look, confirm — then PostgreSQL removes every row the user owns. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li>The request stores only a digest of the challenge token and queues a confirmation email.</li>
+<li>Opening the link shows a page. Mail scanners that open the link therefore delete nothing.</li>
+<li>The confirmation checks the challenge with the account row locked, then deletes the user-owned rows. Cancellation clears the challenge under the same lock.</li>
+<li>All these paths use the <code>/api/v1</code> prefix.</li>
+<li>Deletion is permanent in the active database. Exported files, local caches, logs and provider backups are handled separately.</li>
+<li>The daily order-number counter is not owned by a user, so it survives deletion.</li>
+</ul>
+
+<h2 id="schema">Eleven application tables at migration 0010</h2>
+<p class="inshort">In short: <code>users</code> owns the other tables, directly or (for order lines) through <code>orders</code>; items belong to categories; order lines copy item details; the assistant keeps only consent and usage metadata; the daily order counter stands alone.</p>
+<figure class="dg"><div class="dg-frame"><img src="docs/diagrams/database-erd.svg" alt="Eleven application tables. users owns every other table except order_number_counters, directly or (for order_items) through orders, by foreign keys with ON DELETE CASCADE. order_items.item_id and activity_logs.item_id are plain references without foreign keys, so order history survives item deletion. Item and category names are not unique in the database; the API serializes duplicate checks with advisory locks." width="1560" height="1330" loading="lazy"></div><figcaption><b>Figure 5.</b> The eleven tables at head <code>0010_order_local_id_unique</code>, checked against a schema dump of a freshly migrated database (7 Oct 2026; the 8 Oct 2026 dump has the same schema). Selected columns only. <a href="docs/diagrams/database-erd.svg">Open the diagram full size</a>. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<details><summary>Earlier diagram: nine tables at migration 0007 (drawn 23 September 2026)</summary><figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 1082" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-schema-t ad-schema-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-schema-t">Nine application tables at migration 0007</title><desc id="ad-schema-d">users owns categories, items, orders, refresh_tokens, activity_logs and audit_log; items belong to categories; order_items belong to orders and copy item details without a foreign key; order_number_counters stands alone.</desc><defs><marker id="ad-schema-ah-b07a1a" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B07A1A"/></marker></defs>
+<rect x="30" y="30" width="290" height="152" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M30,42 a12,12 0 0 1 12,-12 h266 a12,12 0 0 1 12,12 v28 h-290 Z" fill="#1F6F66"/>
+<text x="46" y="56.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">refresh_tokens</text>
+<text x="46" y="95" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">jti · unique</text>
+<text x="46" y="119" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">user_id → users</tspan></text>
+<text x="46" y="143" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">is_revoked · expires_at</text>
+<text x="46" y="167" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">device, IP, user agent</text>
+<rect x="355" y="30" width="290" height="152" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M355,42 a12,12 0 0 1 12,-12 h266 a12,12 0 0 1 12,12 v28 h-290 Z" fill="#1F6F66"/>
+<text x="371" y="56.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">activity_logs</text>
+<text x="371" y="95" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">user_id → users</tspan></text>
+<text x="371" y="119" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">action · item_name</text>
+<text x="371" y="143" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">item_id, order_id (no FK)</text>
+<text x="371" y="167" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">details</text>
+<rect x="680" y="30" width="290" height="152" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M680,42 a12,12 0 0 1 12,-12 h266 a12,12 0 0 1 12,12 v28 h-290 Z" fill="#1F6F66"/>
+<text x="696" y="56.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">audit_log</text>
+<text x="696" y="95" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">user_id → users</tspan></text>
+<text x="696" y="119" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">entity_type · entity_id</text>
+<text x="696" y="143" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">action</text>
+<text x="696" y="167" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">old/new values (JSONB)</text>
+<rect x="290" y="260" width="420" height="224" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M290,272 a12,12 0 0 1 12,-12 h396 a12,12 0 0 1 12,12 v28 h-420 Z" fill="#1F6F66"/>
+<text x="306" y="286.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">users</text>
+<text x="306" y="325" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">id · UUID primary key</text>
+<text x="306" y="349" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">email, username · unique</text>
+<text x="306" y="373" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">hashed_password · Argon2id</text>
+<text x="306" y="397" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">session_version</text>
+<text x="306" y="421" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">is_active · is_email_verified</text>
+<text x="306" y="445" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">verify / reset / delete digests</text>
+<text x="306" y="469" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">last_login</text>
+<path d="M175.0,182 L175.0,220" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M175.0,197 L164.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M175.0,197 L175.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M175.0,197 L186.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M500.0,182 L500.0,220" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M500.0,197 L489.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M500.0,197 L500.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M500.0,197 L511.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M825.0,182 L825.0,220" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M825.0,197 L814.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M825.0,197 L825.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M825.0,197 L836.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M175.0,220 L825.0,220" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M500,220 L500,260" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M491,250 L509,250" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<rect x="30" y="564" width="260" height="128" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M30,576 a12,12 0 0 1 12,-12 h236 a12,12 0 0 1 12,12 v28 h-260 Z" fill="#1F6F66"/>
+<text x="46" y="590.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">categories</text>
+<text x="46" y="629" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">user_id → users</tspan></text>
+<text x="46" y="653" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">name · display_order</text>
+<text x="46" y="677" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">is_default</text>
+<rect x="360" y="564" width="280" height="176" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M360,576 a12,12 0 0 1 12,-12 h256 a12,12 0 0 1 12,12 v28 h-280 Z" fill="#1F6F66"/>
+<text x="376" y="590.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">items</text>
+<text x="376" y="629" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">user_id → users</tspan></text>
+<text x="376" y="653" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">category_id → categories</tspan></text>
+<text x="376" y="677" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">name · quantity · unit</text>
+<text x="376" y="701" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">minimum_stock</text>
+<text x="376" y="725" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">version · is_critical</text>
+<rect x="710" y="564" width="260" height="152" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M710,576 a12,12 0 0 1 12,-12 h236 a12,12 0 0 1 12,12 v28 h-260 Z" fill="#1F6F66"/>
+<text x="726" y="590.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">orders</text>
+<text x="726" y="629" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">user_id → users</tspan></text>
+<text x="726" y="653" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">order_id · unique</text>
+<text x="726" y="677" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">ORD-20260923-0001</text>
+<text x="726" y="701" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">status · totals · dates</text>
+<path d="M500,484 L500,524" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M491,494 L509,494" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M160.0,524 L840.0,524" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M160.0,524 L160.0,564" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M160.0,549 L149.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M160.0,549 L160.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M160.0,549 L171.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M500.0,524 L500.0,564" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M500.0,549 L489.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M500.0,549 L500.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M500.0,549 L511.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M840.0,524 L840.0,564" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M840.0,549 L829.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M840.0,549 L840.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M840.0,549 L851.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M360,674 L290,674" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M345,674 L360,663" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M345,674 L360,674" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M345,674 L360,685" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M300,665 L300,683" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<rect x="690" y="800" width="280" height="152" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M690,812 a12,12 0 0 1 12,-12 h256 a12,12 0 0 1 12,12 v28 h-280 Z" fill="#1F6F66"/>
+<text x="706" y="826.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">order_items</text>
+<text x="706" y="865" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">order_id → orders</tspan></text>
+<text x="706" y="889" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">item_id (copy, no FK)</text>
+<text x="706" y="913" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">name · quantity</text>
+<text x="706" y="937" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">stock snapshot</text>
+<path d="M840.0,716 L840.0,800" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M840.0,785 L829.0,800" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M840.0,785 L840.0,800" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M840.0,785 L851.0,800" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M831.0,726 L849.0,726" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M688,910 L500,910 L500,744" fill="none" stroke="#B07A1A" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#ad-schema-ah-b07a1a)"/>
+<rect x="461.04555000000005" y="897.5" width="197.90889999999996" height="25" rx="12.5" fill="#FFFFFF" stroke="#B07A1A" stroke-width="1.5"/>
+<text x="560" y="914.55" font-size="13" font-weight="650" fill="#B07A1A" text-anchor="middle">copies item details · no FK</text>
+<rect x="30" y="800" width="300" height="128" rx="12" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<path d="M30,812 a12,12 0 0 1 12,-12 h276 a12,12 0 0 1 12,12 v28 h-300 Z" fill="#687A83"/>
+<text x="46" y="826.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">order_number_counters</text>
+<text x="46" y="865" font-size="14.5" font-weight="400" fill="#35474F" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">day · primary key</text>
+<text x="46" y="889" font-size="14.5" font-weight="400" fill="#35474F" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">last_value</text>
+<text x="46" y="913" font-size="14.5" font-weight="400" fill="#35474F" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">not tied to a user</text>
+<rect x="30" y="986" width="940" height="80" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="1023.5" font-size="15.5" text-anchor="start"><tspan font-weight="700" fill="#2B403C">All 8 foreign keys use ON DELETE CASCADE</tspan><tspan font-weight="400" fill="#3C5550">: deleting a user removes every row they own.</tspan></text>
+<text x="50" y="1045.5" font-size="15.5" text-anchor="start"><tspan font-weight="700" fill="#2B403C">Crow&#x27;s foot</tspan><tspan font-weight="400" fill="#3C5550"> = many side · tick = one side · selected columns only.</tspan></text>
+</svg></div><figcaption><b>Earlier figure (23 September 2026).</b> The nine tables and their foreign keys. Selected columns only. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure></details>
+<ul>
+<li>All ten foreign keys use <code>ON DELETE CASCADE</code>. Migration <code>0008</code> added the two on <code>ai_consents.user_id</code> and <code>ai_usage.user_id</code>; at <code>0007</code> there were eight.</li>
+<li><code>ai_consents</code> holds one row per user (consent version, accepted flag, scopes such as <code>groq_text</code>, time). <code>ai_usage</code> holds one row per online assistant request that passes the consent and quota checks (kind, provider, status, reserved cost in micro-US-dollars, token and audio counts) for quotas and cost limits. Neither stores question text, audio or inventory.</li>
+<li><code>orders</code> has a partial unique index on (<code>user_id</code>, <code>local_id</code>) where <code>local_id</code> is set (<code>0010</code>), which makes order creation retry-safe (Figure 8).</li>
+<li><code>order_items.item_id</code> is a snapshot reference without an item foreign key. Line quantities must be positive, and each line keeps snapshot metadata.</li>
+<li><code>categories</code> also store a description. <code>refresh_tokens</code> keep optional device and request metadata. <code>activity_logs</code> is a human-readable history with a copied item name.</li>
+<li><code>audit_log</code> is a singular table name. Alembic's own version table is separate from these eleven.</li>
+<li>Sources: <a href="vitaltrack-backend/app/models/__init__.py">model registry</a> · <a href="vitaltrack-backend/alembic/versions/20260923_session_order_safety.py">0007</a> · <a href="vitaltrack-backend/alembic/versions/20260924_ai_consent_usage.py">0008</a> · <a href="vitaltrack-backend/alembic/versions/20261006_ai_provider_scopes.py">0009</a> · <a href="vitaltrack-backend/alembic/versions/20261006_order_local_id_unique.py">0010</a> · <span>schema dump at 0010 <small>(local review reference; not published)</small></span>.</li>
+</ul>
+
+<h2 id="concurrency">Stock concurrency</h2>
+<p class="inshort">In short: a save succeeds only if the item's <code>version</code> has not changed since the phone read it; otherwise the phone gets 409 and must refetch.</p>
+<figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 914" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-concurrency-t ad-concurrency-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-concurrency-t">Two phones edit the same item</title><desc id="ad-concurrency-d">Both phones read version 1. Phone A saves first and the conditional UPDATE succeeds, making version 2. Phone B&#x27;s save still says version 1, matches no row and gets 409 Conflict; it should refetch before retrying.</desc><defs><marker id="ad-concurrency-ah-5e736e" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#5E736E"/></marker><marker id="ad-concurrency-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="ad-concurrency-ah-2e7d4f" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#2E7D4F"/></marker><marker id="ad-concurrency-ah-b3372b" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B3372B"/></marker></defs>
+<rect x="45" y="26" width="240" height="56" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="165.0" y="62" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Phone A</text>
+<path d="M165,84 L165,770" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round" stroke-dasharray="6 7"/>
+<rect x="380" y="26" width="240" height="56" rx="14" fill="#16343A" stroke="#16343A" stroke-width="2.2"/>
+<text x="500.0" y="62" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">API + PostgreSQL</text>
+<path d="M500,84 L500,770" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round" stroke-dasharray="6 7"/>
+<rect x="715" y="26" width="240" height="56" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="835.0" y="62" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Phone B</text>
+<path d="M835,84 L835,770" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round" stroke-dasharray="6 7"/>
+<path d="M500,140 L171,140" fill="none" stroke="#5E736E" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#ad-concurrency-ah-5e736e)"/>
+<rect x="229.61865" y="107.25" width="205.76269999999997" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.5"/>
+<text x="332.5" y="124.725" font-size="13.5" font-weight="650" fill="#5E736E" text-anchor="middle">read: quantity 10 · version 1</text>
+<path d="M500,140 L829,140" fill="none" stroke="#5E736E" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#ad-concurrency-ah-5e736e)"/>
+<rect x="564.61865" y="107.25" width="205.76269999999997" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.5"/>
+<text x="667.5" y="124.725" font-size="13.5" font-weight="650" fill="#5E736E" text-anchor="middle">read: quantity 10 · version 1</text>
+<path d="M165,240 L494,240" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-concurrency-ah-1f6f66)"/>
+<rect x="236.76892500000002" y="207.25" width="191.46214999999998" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="332.5" y="224.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">PUT quantity 8, version 1</text>
+<rect x="300" y="262" width="400" height="112" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="320" y="298.5" font-size="14.5" text-anchor="start"><tspan font-weight="400" fill="#34504A" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">UPDATE items SET quantity=8,</tspan></text>
+<text x="320" y="319.5" font-size="14.5" text-anchor="start"><tspan font-weight="400" fill="#34504A" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">  version=version+1</tspan></text>
+<text x="320" y="340.5" font-size="14.5" text-anchor="start"><tspan font-weight="400" fill="#34504A" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">WHERE id=… AND user_id=… AND version=1</tspan></text>
+<text x="320" y="361.5" font-size="14.5" text-anchor="start"><tspan font-weight="700" fill="#2E7D4F">→ 1 row updated</tspan></text>
+<path d="M500,410 L171,410" fill="none" stroke="#2E7D4F" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-concurrency-ah-2e7d4f)"/>
+<rect x="259.014225" y="377.25" width="146.97155" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#2E7D4F" stroke-width="1.5"/>
+<text x="332.5" y="394.725" font-size="13.5" font-weight="650" fill="#2E7D4F" text-anchor="middle">200 OK · version 2</text>
+<path d="M835,480 L506,480" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-concurrency-ah-1f6f66)"/>
+<rect x="571.768925" y="447.25" width="191.46214999999998" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="667.5" y="464.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">PUT quantity 9, version 1</text>
+<rect x="300" y="502" width="400" height="100" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="320" y="538.5" font-size="14.5" text-anchor="start"><tspan font-weight="400" fill="#34504A" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">Same UPDATE … WHERE version=1</tspan></text>
+<text x="320" y="559.5" font-size="14.5" text-anchor="start"><tspan font-weight="700" fill="#B3372B">→ 0 rows: the row is at version 2</tspan></text>
+<text x="320" y="580.5" font-size="14.5" text-anchor="start"><tspan font-weight="400" fill="#34504A">nothing is written</tspan></text>
+<path d="M500,640 L829,640" fill="none" stroke="#B3372B" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-concurrency-ah-b3372b)"/>
+<rect x="563.3908250000001" y="607.25" width="208.21834999999993" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#B3372B" stroke-width="1.5"/>
+<text x="667.5" y="624.725" font-size="13.5" font-weight="650" fill="#B3372B" text-anchor="middle">409 Conflict + server values</text>
+<path d="M835,715 L506,715" fill="none" stroke="#5E736E" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#ad-concurrency-ah-5e736e)"/>
+<rect x="544.7567750000001" y="682.25" width="245.48644999999996" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.5"/>
+<text x="667.5" y="699.725" font-size="13.5" font-weight="650" fill="#5E736E" text-anchor="middle">refetch, then retry with version 2</text>
+<rect x="30" y="790" width="940" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="827" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Optimistic concurrency (compare-and-swap)</text>
+<text x="50" y="852.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Nothing is locked while someone edits. The write succeeds only if the version is unchanged.</text>
+<text x="50" y="874.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">The values sent with a 409 can themselves be out of date, so refetch before retrying.</text>
+</svg></div><figcaption><b>Figure 6.</b> Two phones save the same item; the second save is rejected. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li>This is optimistic concurrency (compare-and-swap). Nothing is locked while the user edits. Each phone sends an absolute quantity with the version it expects.</li>
+<li>The conditional <code>UPDATE</code> checks owner, item and version, and increments the version in the same statement.</li>
+<li>The conflict snapshot sent with a 409 may itself lag behind a later write, so refetch before retrying. The updated item mutation shows the server message and invalidates affected active queries so they refetch. Reopen the editor with current values; generic Retry retains the original version.</li>
+<li>Edit Item's <code>PUT</code> always sends the name, so the server first takes the account's name lock; a second save waits there and then fails the version check. The API-only stock <code>PATCH</code> instead waits on the row lock. The two-save race was reproduced through the stock <code>PATCH</code> (7 and 8 Oct 2026).</li>
+<li><strong>Applying an order</strong> claims the received order once and adds line quantities with database arithmetic, all in one transaction. A repeated apply is rejected; it does not replay the earlier successful result.</li>
+<li>Version checks do not protect order creation. <em>Earlier (September 2026):</em> a retried order create after a lost response made a second order. <em>Current:</em> creation is retry-safe through <code>localId</code> (Figure 8).</li>
+<li><strong>A-1 fixed locally (8 October 2026):</strong> Edit Item captures the version with its form values; a background refetch cannot bypass server CAS. Conflicts refresh active queries; reopen the editor for current values. See <a href="docs/API_TRACEABILITY.html#known-application-issues-found-while-tracing">API traceability and remaining issues</a>.</li>
+<li><strong>Order numbers</strong> come from a daily counter that increments atomically.</li>
+<li><strong>Names:</strong> category and item creates, and updates that send a name, serialise their duplicate-name checks with per-owner, per-type transaction advisory locks. Direct SQL still needs a reviewed uniqueness policy.</li>
+</ul>
+
+<h2 id="states">Order state machine</h2>
+<p class="inshort">In short: orders move forward only; <code>stock_updated</code> can be reached only through <code>POST …/apply</code>.</p>
+<figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 830" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-orders-t ad-orders-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-orders-t">Order status transitions</title><desc id="ad-orders-d">pending can move to ordered, received or declined; ordered to partially_received or received; partially_received to received; only POST apply moves received to stock_updated. declined and stock_updated are final.</desc><defs><marker id="ad-orders-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="ad-orders-ah-2e7d4f" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#2E7D4F"/></marker><marker id="ad-orders-ah-b3372b" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B3372B"/></marker></defs>
+<rect x="300" y="110" width="210" height="64" rx="32" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.4"/>
+<text x="405.0" y="150" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">ordered</text>
+<rect x="640" y="110" width="300" height="64" rx="32" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.4"/>
+<text x="790.0" y="150" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">partially_received</text>
+<rect x="40" y="320" width="200" height="64" rx="32" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.4"/>
+<text x="140.0" y="360" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">pending</text>
+<rect x="640" y="320" width="300" height="64" rx="32" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.4"/>
+<text x="790.0" y="360" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">received</text>
+<rect x="34" y="524" width="212" height="76" rx="40" fill="none" stroke="#B3372B" stroke-width="1.6"/>
+<rect x="40" y="530" width="200" height="64" rx="32" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.4"/>
+<text x="140.0" y="570" font-size="18" font-weight="700" fill="#8C2A20" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">declined</text>
+<rect x="634" y="524" width="312" height="76" rx="40" fill="none" stroke="#2E7D4F" stroke-width="1.6"/>
+<rect x="640" y="530" width="300" height="64" rx="32" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.4"/>
+<text x="790.0" y="570" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">stock_updated</text>
+<path d="M140,318 L140,142 L296,142" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-1f6f66)"/>
+<rect x="159.79829999999998" y="129.25" width="108.40340000000002" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="214" y="146.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">mark ordered</text>
+<path d="M512,142 L636,142" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-1f6f66)"/>
+<rect x="524.204025" y="95.25" width="99.59195" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="574" y="112.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">some arrive</text>
+<path d="M512,160 L560,160 L560,340 L636,340" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-1f6f66)"/>
+<rect x="519.882175" y="249.25" width="80.23565" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="560" y="266.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">all arrive</text>
+<path d="M790,176 L790,316" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-1f6f66)"/>
+<rect x="741.070725" y="233.25" width="97.85855000000002" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="790" y="250.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">rest arrives</text>
+<path d="M242,368 L636,368" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-1f6f66)"/>
+<rect x="353.80895" y="355.25" width="132.3821" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="420" y="372.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">received directly</text>
+<path d="M790,386 L790,520" fill="none" stroke="#2E7D4F" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-2e7d4f)"/>
+<rect x="700.191375" y="439.25" width="179.61725" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#2E7D4F" stroke-width="1.5"/>
+<text x="790" y="456.725" font-size="13.5" font-weight="650" fill="#2E7D4F" text-anchor="middle">POST /apply (only way)</text>
+<path d="M140,386 L140,520" fill="none" stroke="#B3372B" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-b3372b)"/>
+<rect x="106.16575" y="439.25" width="67.66850000000001" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#B3372B" stroke-width="1.5"/>
+<text x="140" y="456.725" font-size="13.5" font-weight="650" fill="#B3372B" text-anchor="middle">decline</text>
+<text x="470" y="575" font-size="14" font-weight="400" fill="#5E736E" text-anchor="middle" font-style="italic">double outline = final state</text>
+<rect x="30" y="650" width="300" height="160" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="687" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Change status</text>
+<text x="50" y="712.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">PATCH …/status</text>
+<text x="50" y="734.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Illegal move → 400</text>
+<text x="50" y="756.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Same status → no change</text>
+<text x="50" y="778.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Lost a race → 409</text>
+<rect x="350" y="650" width="300" height="160" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="370" y="687" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Update stock</text>
+<text x="370" y="712.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">POST …/apply</text>
+<text x="370" y="734.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Only from received</text>
+<text x="370" y="756.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Adds stock once</text>
+<text x="370" y="778.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Repeat → 400</text>
+<rect x="670" y="650" width="300" height="160" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="690" y="687" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Delete</text>
+<text x="690" y="712.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">DELETE …/orders/{id}</text>
+<text x="690" y="734.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Only pending or declined</text>
+<text x="690" y="756.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Checked in the final SQL</text>
+</svg></div><figcaption><b>Figure 7.</b> Allowed status changes. A double outline marks a final state. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li>A request for the status the order already has is accepted without changing anything.</li>
+<li>The generic status endpoint cannot set <code>stock_updated</code>.</li>
+<li>Delete is limited to <code>pending</code> and <code>declined</code>, and the final SQL re-checks this.</li>
+<li>The server code is the authority: <a href="vitaltrack-backend/app/api/v1/orders.py"><code>LEGAL_STATUS_TRANSITIONS</code> and the apply/delete handlers</a>.</li>
+</ul>
+
+<h2 id="order-retries">Order-create retries</h2>
+<p class="inshort">In short: the app sends a fresh <code>localId</code> with each Save; repeating the same request returns the order already created instead of making a second one.</p>
+<figure class="dg"><div class="dg-frame"><img src="docs/diagrams/order-idempotency.svg" alt="The current app generates one localId per Save. A retry with the same localId returns the order already created with status 200. Two simultaneous requests with the same localId collide on a partial unique index; the loser rolls back, which also releases its order number, and returns the winner&#x27;s order. Requests without a localId, such as those from older app builds, always create a new order." width="1500" height="1238" loading="lazy"></div><figcaption><b>Figure 8.</b> A first attempt, a retry after a lost response, and two identical requests at the same moment. Reproduced with synthetic data on 7 and 8 Oct 2026. <a href="docs/diagrams/order-idempotency.svg">Open the diagram full size</a>. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li>The app generates one <code>localId</code> per Save press and reuses it when the person taps Retry after a failure. Pressing Save again later is a new order by design.</li>
+<li>The server first looks up (<code>user_id</code>, <code>localId</code>). If an order exists it returns it with 200 and writes nothing.</li>
+<li>Two identical requests at the same moment collide on the partial unique index <code>uq_orders_user_id_local_id</code>. The loser's transaction rolls back, which also releases its order number, and it returns the winner's order with 200.</li>
+<li>Requests without <code>localId</code>, such as those from app builds older than this branch, always create a new order.</li>
+<li>The order number <code>ORD-YYYYMMDD-NNNN</code> comes from the daily counter row in the same transaction; numbers are never reused, even after an order or account is deleted.</li>
+</ul>
+
+<h2 id="mobile">Mobile data flow</h2>
+<p class="inshort">In short: the app is server-first. It shows cached data quickly, fetches fresh data from the API, and has no offline write queue.</p>
+<figure class="dg"><div class="dg-frame"><img src="docs/diagrams/mobile-cache.svg" alt="PostgreSQL behind the API is the only source of truth. The app keeps a TanStack Query cache in memory and persists a copy to AsyncStorage for display after a restart. Screens read through query hooks; stale data is refetched on mount, return to the foreground, reconnect, pull-to-refresh or invalidation. Writes go straight to the API and, only after success, invalidate the affected queries. There are no optimistic updates and no offline write queue." width="1560" height="1080" loading="lazy"></div><figcaption><b>Figure 9.</b> Where the app keeps data, what makes it refetch, and why there is no offline write queue (current branch). <a href="docs/diagrams/mobile-cache.svg">Open the diagram full size</a>. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<details><summary>Earlier diagram (23 September 2026): reconnecting did not refetch then, and the API had 39 routes</summary><figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 702" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-mobile-t ad-mobile-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-mobile-t">How the app reads and saves data</title><desc id="ad-mobile-d">Screens read from the TanStack Query cache, which fetches from the API through the API client and keeps a saved copy in AsyncStorage. Saves go to the API and then invalidate the cache so it refetches. Tokens live in SecureStore; UI and auth state in Zustand.</desc><defs><marker id="ad-mobile-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="ad-mobile-ah-687a83" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#687A83"/></marker></defs>
+<rect x="20" y="30" width="620" height="540" rx="18" fill="none" stroke="#5E736E" stroke-width="1.6" stroke-dasharray="7 6"/>
+<rect x="38" y="17" width="127.64889999999998" height="26" rx="13" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.4"/>
+<text x="48" y="35" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.2">ANDROID APP</text>
+<rect x="340" y="70" width="270" height="105" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="360" y="107" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">Screens</text>
+<text x="360" y="132.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Dashboard, inventory,</text>
+<text x="360" y="154.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">orders, settings</text>
+<rect x="340" y="231" width="270" height="127" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="360" y="268" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">TanStack Query</text>
+<text x="360" y="293.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Server data cache</text>
+<text x="360" y="315.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">staleTime 30 s (not polling)</text>
+<text x="360" y="337.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">gcTime 24 h</text>
+<rect x="340" y="414" width="270" height="105" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="360" y="451" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">API client</text>
+<text x="360" y="476.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Adds the Bearer token</text>
+<text x="360" y="498.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">One shared refresh at a time</text>
+<rect x="45" y="70" width="240" height="105" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="65" y="107" font-size="19" font-weight="700" fill="#35474F" text-anchor="start">Zustand</text>
+<text x="65" y="132.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">UI and auth state</text>
+<rect x="45" y="241" width="240" height="105" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="65" y="278" font-size="19" font-weight="700" fill="#35474F" text-anchor="start">AsyncStorage</text>
+<text x="65" y="303.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">Saved copy of the cache</text>
+<text x="65" y="325.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">for fast start-up</text>
+<rect x="45" y="414" width="240" height="105" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="65" y="451" font-size="19" font-weight="700" fill="#35474F" text-anchor="start">SecureStore</text>
+<text x="65" y="476.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">Access and refresh</text>
+<text x="65" y="498.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">tokens</text>
+<path d="M475.0,177 L475.0,227" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-mobile-ah-1f6f66)" marker-start="url(#ad-mobile-ah-1f6f66)"/>
+<rect x="494.90355" y="190.5" width="92.19290000000001" height="25" rx="12.5" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="541.0" y="207.55" font-size="13" font-weight="650" fill="#1F6F66" text-anchor="middle">read · save</text>
+<path d="M475.0,360 L475.0,410" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-mobile-ah-1f6f66)" marker-start="url(#ad-mobile-ah-1f6f66)"/>
+<path d="M289,122.5 L335,122.5" fill="none" stroke="#687A83" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-mobile-ah-687a83)" marker-start="url(#ad-mobile-ah-687a83)"/>
+<path d="M289,293.5 L335,293.5" fill="none" stroke="#687A83" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-mobile-ah-687a83)" marker-start="url(#ad-mobile-ah-687a83)"/>
+<path d="M289,466.5 L335,466.5" fill="none" stroke="#687A83" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-mobile-ah-687a83)" marker-start="url(#ad-mobile-ah-687a83)"/>
+<rect x="690" y="414" width="280" height="105" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="830.0" y="451" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="middle">FastAPI backend</text>
+<text x="830.0" y="476.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="middle">HTTPS · JSON</text>
+<text x="830.0" y="498.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="middle">39 routes under /api/v1</text>
+<path d="M614,466.5 L685,466.5" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-mobile-ah-1f6f66)" marker-start="url(#ad-mobile-ah-1f6f66)"/>
+<rect x="616.353" y="428.0" width="67.29400000000001" height="25" rx="12.5" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="650" y="445.05" font-size="13" font-weight="650" fill="#1F6F66" text-anchor="middle">HTTPS</text>
+<rect x="690" y="40" width="280" height="149" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="710" y="77" font-size="19" font-weight="700" fill="#1D5B38" text-anchor="start">What triggers a refetch</text>
+<text x="710" y="102.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">✓ App comes back to the front</text>
+<text x="710" y="124.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">✓ A screen opens with stale data</text>
+<text x="710" y="146.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">✓ Pull to refresh</text>
+<text x="710" y="168.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">✓ After a save (invalidation)</text>
+<rect x="690" y="207" width="280" height="127" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="710" y="244" font-size="19" font-weight="700" fill="#8C2A20" text-anchor="start">What does not</text>
+<text x="710" y="269.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">✗ Getting back online</text>
+<text x="710" y="291.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">   (NetInfo is not wired in)</text>
+<text x="710" y="313.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">✗ A timer: there is no polling</text>
+<rect x="20" y="600" width="950" height="83" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2"/>
+<text x="40" y="637" font-size="19" font-weight="700" fill="#77500F" text-anchor="start">No offline queue</text>
+<text x="40" y="662.5" font-size="15.5" font-weight="400" fill="#5A4012" text-anchor="start">A save made while offline fails and is not retried later. The saved cache is for display only.</text>
+</svg></div><figcaption><b>Earlier figure (23 September 2026).</b> Where the app keeps data, and what makes it refetch. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure></details>
+<ul>
+<li><strong>Read:</strong> API → TanStack Query → screen. The last-known display cache persists in AsyncStorage.</li>
+<li><strong>Write:</strong> user action → API → invalidate and refetch. There is no offline sync queue: a save attempted offline fails.</li>
+<li><strong>Local state:</strong> Zustand holds UI and auth state; SecureStore holds the persisted auth data.</li>
+<li><code>staleTime</code>=30 s is a staleness threshold, not polling. Data refetches when a stale query remounts, when the app returns to the foreground, on pull-to-refresh and after invalidation.</li>
+<li><em>Earlier (September 2026, and still on <code>main</code>):</em> regaining connectivity alone did not refetch, because TanStack's online manager was not connected to NetInfo. <em>Current branch:</em> <code>QueryProvider.tsx</code> connects it (online = connected and the internet not known to be unreachable), so reconnecting refetches stale queries. Screens' own offline checks still look only at NetInfo's <code>isConnected</code>.</li>
+<li><code>gcTime</code>=24 h controls how long unused data stays in memory; the saved copy has its own 24-hour <code>maxAge</code>, counted from its last save. Neither limits how old a shown value can be.</li>
+<li>The cache buster follows the visible app version. Over-the-air updates are disabled, so changing a source flag needs a rebuild.</li>
+<li>The API client shares one refresh promise between concurrent requests, and follows bounded order-history pages.</li>
+<li><code>npm test</code> runs 121 Node test-runner tests in nine files (passed 7 Oct 2026 and again 8 Oct 2026): refresh, logout, order creation, the query provider, sanitising, the voice policy and assistant parsing. Native device testing is still required. <em>Earlier (September 2026):</em> eight API tests ran via <code>npm run test:api</code>, which now runs only the refresh tests.</li>
+<li>Ordinary API requests now have one 90 s overall deadline including refresh/retry waits and response parsing. Token refresh retains 30 s and assistant calls retain 50 s; a timed-out write may still have committed.</li>
+</ul>
+<h2 id="assistant">Voice assistant: inventory answers and local drafts</h2>
+<p class="inshort">In short: the phone turns speech into text and answers from inventory it reads; the server supplies inventory and optional separately consented text interpretation/audio transcription; voice never changes inventory or saved orders; it can prepare an unsaved draft, with a separate touch-confirmed save.</p>
+<figure class="dg"><div class="dg-frame"><img src="docs/diagrams/voice-flow.svg" alt="On the phone: tap the microphone, grant permission, record up to 28 seconds, tap again, decode and transcribe with Moonshine on the phone, review and edit the transcript, then press Send. A local matcher turns familiar wording into an intent. Only if it cannot, and the user has opted in, the question text is sent to the CareKosh API, which asks Groq for a validated intent. The app then reads inventory from a fresh cache or GET /items, builds the answer on the phone and can speak it with Android text-to-speech. No inventory is changed." width="1560" height="1460" loading="lazy"></div><figcaption><b>Figure 10.</b> Default recognition and live captions on the phone; optional Groq Whisper recognition after separate audio consent; reviewed Send; local-first or Groq structured interpretation; inventory answers and unsaved drafts resolved on the phone. <a href="docs/diagrams/voice-flow.svg">Open the diagram full size</a>. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li><strong>Recognition on the phone:</strong> The latest Kotlin module uses one Android <code>AudioRecord</code> to capture mono PCM16/16 kHz WAV (maximum 28 seconds) and feed genuine provisional Moonshine English live captions. Offline final transcription follows Stop; separately consented Groq Whisper can instead produce the final transcript. Older modules retain Expo AAC/M4A at 44.1 kHz/128 kb/s with words after Stop. It needs a native Android build that includes the module, such as the EAS preview APK (not Expo Go), and the English speech pack, downloaded once from Moonshine's servers and checked before use.</li>
+<li><strong>Review before sending:</strong> the transcript is editable and nothing leaves the phone until the person presses Send.</li>
+<li><strong>Understanding:</strong> local parsers recognize familiar inventory queries and unsaved draft commands. Inventory mutation, saved-order commitment, apply and supplier-send actions remain blocked. Only when it cannot match, the person has opted in (consent plus the phone's cloud switch) and the server's AI settings are on, the question text (no audio, no inventory) goes to <code>POST /api/v1/ai/interpret</code>, which asks Groq (<code>openai/gpt-oss-20b</code>, strict JSON schema, temperature 0, no tools) for one allowed intent. The server rejects any answer that names an item not present in the question, and the phone validates the intent again.</li>
+<li><strong>Answer:</strong> the phone reads inventory (its own cache if loaded in this login session less than 30 seconds ago, otherwise <code>GET /api/v1/items</code>), builds the answer itself and can read it aloud with an installed offline Android voice. Offline answers are labelled as last-known data.</li>
+<li><strong>No server mutation tool by construction:</strong> the dispatcher has no order-save or stock-update operation; local drafts are reviewed separately and saving requires touch confirmation. Its only server writes are <code>ai_consents</code> (consent) and <code>ai_usage</code> (one row per online interpretation, for quotas and cost limits). So "no inventory writes" is not "zero database writes".</li>
+<li><strong>Switched off in this build:</strong> hosted speech output (<code>/ai/speak</code>) remains blocked by <code>CLOUD_VOICE_ENABLED=false</code>. Optional online transcription is separately enabled in code by <code>CLOUD_TRANSCRIPTION_ENABLED=true</code>, and requires explicit audio opt-in, <code>groq_audio</code> consent and server flags before a finished recording is uploaded.</li>
+<li>Full detail: <a href="docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#c7-the-voice-and-typed-assistant">complete developer guide, C7</a> and <a href="docs/VOICE_OPTION_1_IMPLEMENTATION.md">voice implementation notes</a>.</li>
+</ul>
+<p><a href="CAREKOSH_BACKEND_INTERVIEW_GUIDE.html">Interview explanations</a> · <a href="CAREKOSH_E2E_VERIFICATION_GUIDE.html">Manual verification</a> · <a href="docs/diagrams/README.md">All generated diagrams</a> · <a href="docs/API_TRACEABILITY.html">API traceability</a> · <a href="docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html">Complete developer guide</a></p>
+</main></body></html>

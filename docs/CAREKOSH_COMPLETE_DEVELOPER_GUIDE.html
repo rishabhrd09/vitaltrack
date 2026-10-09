@@ -1,0 +1,1641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="docs/tools/build_docs.py from docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">
+<title>CareKosh: Complete Developer Guide</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d2328;--muted:#56606b;--card:#ffffff;--border:#d6dbe0;--accent:#0b5a73;
+--accent-bg:#e5f1f5;--code-bg:#f1f3f5;--code-fg:#1d2328;--warn-bg:#fff4d6;--warn-border:#9a6a00;--mark:#fff1a8}
+@media (prefers-color-scheme:dark){:root{--bg:#14181c;--fg:#e8ecef;--muted:#a9b3bc;--card:#1c2228;--border:#36404a;
+--accent:#7cc7df;--accent-bg:#17303a;--code-bg:#0f1316;--code-fg:#e8ecef;--warn-bg:#3a2f12;--warn-border:#d9a93a;--mark:#5b4e10}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+a{color:var(--accent);text-underline-offset:3px}a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:0}.skip:focus{left:12px;top:12px;background:var(--card);padding:8px 12px;z-index:9}
+header.site{border-bottom:1px solid var(--border);background:var(--card)}
+header.site .inner{max-width:1180px;margin:auto;padding:14px 20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;min-width:0}
+header.site .meta{min-width:0;overflow-wrap:anywhere}
+header.site .brand{font-weight:700}
+.layout{max-width:1180px;margin:auto;padding:0 20px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:36px}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:24px 0;font-size:14.5px;line-height:1.45}
+nav.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}nav.toc ul{list-style:none;padding-left:0;margin:0}nav.toc ul ul{padding-left:14px}nav.toc li{margin:5px 0}
+nav.toc a{color:var(--fg);text-decoration:none}nav.toc a:hover{text-decoration:underline}
+main{min-width:0;padding:28px 0 80px;max-width:78ch;overflow-wrap:break-word}
+:not(pre)>code{overflow-wrap:anywhere;word-break:break-word}
+h1{font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.15;margin:.2em 0 .4em}
+h2{font-size:1.6rem;margin-top:2.6rem;padding-top:.6rem;border-top:1px solid var(--border)}
+h3{font-size:1.25rem;margin-top:2rem}h4{font-size:1.05rem;margin-top:1.6rem}
+h2,h3,h4{scroll-margin-top:12px}.anchor{margin-left:.35em;font-size:.8em;text-decoration:none;opacity:.45}
+.anchor:hover,.anchor:focus{opacity:1}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--warn-border);background:var(--warn-bg)}
+blockquote p{margin:.4em 0}
+code{font:0.9em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code-bg);padding:.1em .3em;border-radius:4px}
+.codewrap{position:relative;margin:1.1em 0}
+pre{background:var(--code-bg);color:var(--code-fg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow:auto;line-height:1.5}
+pre code{background:none;padding:0;font-size:.86em}
+button.copy{position:absolute;top:8px;right:8px;font:600 12.5px system-ui,sans-serif;padding:4px 10px;border-radius:6px;
+border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer}
+.tablewrap{overflow-x:auto;margin:1.1em 0;border:1px solid var(--border);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.94em;background:var(--card)}
+th,td{border-bottom:1px solid var(--border);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--accent-bg);position:sticky;top:0}
+figure.diagram{margin:1.6em 0}figure.diagram .scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:#fff}
+figure.diagram img{display:block;width:100%;min-width:680px;height:auto}
+figcaption{font-size:.92em;color:var(--muted);margin-top:.5em}
+.meta{color:var(--muted);font-size:.92em}
+footer{color:var(--muted);font-size:.9em;border-top:1px solid var(--border);margin-top:3rem;padding-top:1rem}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.toc{position:static;max-height:none;border-bottom:1px solid var(--border)}
+main{max-width:none}}
+@media print{header.site,nav.toc,button.copy,.skip,.anchor{display:none!important}body{background:#fff;color:#000;font-size:11.5pt}
+.layout{display:block;max-width:none;padding:0}main{max-width:none;padding:0}a{color:#000}
+pre{white-space:pre-wrap;border:1px solid #999}.tablewrap{overflow:visible;border:none}th{position:static}
+figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{break-after:avoid}pre,figure,tr{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="site"><div class="inner"><span class="brand">CareKosh docs</span>
+<a href="INDEX.html">Documentation home</a>
+<span class="meta">Generated from <code>docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md</code> — edit the Markdown, not this file.</span></div></header>
+<div class="layout">
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#part-a--the-product-and-the-system">Part A — The product and the system</a><ul><li><a href="#a1-what-carekosh-does">A1. What CareKosh does</a></li><li><a href="#a2-domain-vocabulary">A2. Domain vocabulary</a></li><li><a href="#a3-business-rules-the-code-enforces">A3. Business rules the code enforces</a></li><li><a href="#a4-the-system-at-a-glance">A4. The system at a glance</a></li><li><a href="#a5-repository-map">A5. Repository map</a></li></ul></li><li><a href="#part-b--run-it-and-follow-one-complete-workflow">Part B — Run it and follow one complete workflow</a><ul><li><a href="#b1-prerequisites">B1. Prerequisites</a></li><li><a href="#b2-local-configuration">B2. Local configuration</a></li><li><a href="#b3-a-complete-first-workflow-setup--login--inventory--order--voice--tests--deployment">B3. A complete first workflow (setup → login → inventory → order → voice → tests → deployment)</a></li></ul></li><li><a href="#part-c--how-it-works-one-layer-at-a-time">Part C — How it works, one layer at a time</a><ul><li><a href="#c1-the-life-of-one-request">C1. The life of one request</a></li><li><a href="#c2-the-data-model">C2. The data model</a></li><li><a href="#c3-authentication-and-authorization">C3. Authentication and authorization</a></li><li><a href="#c4-inventory-rules-and-concurrency">C4. Inventory rules and concurrency</a></li><li><a href="#c5-orders">C5. Orders</a></li><li><a href="#c6-the-mobile-apps-data-layer">C6. The mobile app's data layer</a></li><li><a href="#c7-the-voice-and-typed-assistant">C7. The voice and typed assistant</a></li></ul></li><li><a href="#part-d--backend-concepts-through-this-codebase">Part D — Backend concepts through this codebase</a><ul><li><a href="#d1-http-and-rest-conventions">D1. HTTP and REST conventions</a></li><li><a href="#d2-asgi-middleware-and-the-request-lifecycle">D2. ASGI, middleware and the request lifecycle</a></li><li><a href="#d3-async-io-versus-cpu-bound-work-and-worker-processes">D3. Async I/O versus CPU-bound work, and worker processes</a></li><li><a href="#d4-dependency-injection">D4. Dependency injection</a></li><li><a href="#d5-validation-and-serialization">D5. Validation and serialization</a></li><li><a href="#d6-authentication-versus-authorization">D6. Authentication versus authorization</a></li><li><a href="#d7-transactions-and-isolation">D7. Transactions and isolation</a></li><li><a href="#d8-locking-optimistic-concurrency-and-idempotency">D8. Locking, optimistic concurrency and idempotency</a></li><li><a href="#d9-database-constraints-versus-application-validation">D9. Database constraints versus application validation</a></li><li><a href="#d10-relationships-indexes-query-cost-and-eagerlazy-loading">D10. Relationships, indexes, query cost and eager/lazy loading</a></li><li><a href="#d11-pagination">D11. Pagination</a></li><li><a href="#d12-retries-timeouts-and-cancellation">D12. Retries, timeouts and cancellation</a></li><li><a href="#d13-caching-and-stale-data">D13. Caching and stale data</a></li><li><a href="#d14-logging-observability-and-safe-telemetry">D14. Logging, observability and safe telemetry</a></li><li><a href="#d15-error-handling">D15. Error handling</a></li><li><a href="#d16-rate-limiting">D16. Rate limiting</a></li><li><a href="#d17-configuration-and-secrets">D17. Configuration and secrets</a></li><li><a href="#d18-containers">D18. Containers</a></li><li><a href="#d19-migrations">D19. Migrations</a></li><li><a href="#d20-backups-and-restore">D20. Backups and restore</a></li><li><a href="#d21-deployment">D21. Deployment</a></li><li><a href="#d22-common-misconceptions-corrected">D22. Common misconceptions, corrected</a></li><li><a href="#d23-principles-from-established-books-mapped-to-carekosh">D23. Principles from established books, mapped to CareKosh</a></li></ul></li><li><a href="#part-e--testing-debugging-and-daily-work">Part E — Testing, debugging and daily work</a><ul><li><a href="#e1-tests-what-they-cover-and-how-to-run-them-safely">E1. Tests: what they cover and how to run them safely</a></li><li><a href="#e2-debugging-and-common-failures">E2. Debugging and common failures</a></li><li><a href="#e3-daily-development-workflow">E3. Daily development workflow</a></li></ul></li><li><a href="#part-f--environments-cicd-deployment-and-release">Part F — Environments, CI/CD, deployment and release</a><ul><li><a href="#f1-environments">F1. Environments</a></li><li><a href="#f2-cicd-pipeline-githubworkflowsciyml">F2. CI/CD pipeline (.github/workflows/ci.yml)</a></li><li><a href="#f3-where-builds-are-made">F3. Where builds are made</a></li><li><a href="#f4-backend-deployment-on-render">F4. Backend deployment on Render</a></li><li><a href="#f5-database-migrations-and-the-0007-0010-release-gate">F5. Database migrations and the 0007-0010 release gate</a></li><li><a href="#f6-mobile-builds-and-play-store-release">F6. Mobile builds and Play Store release</a></li><li><a href="#f7-domains-tls-email-links-and-portability">F7. Domains, TLS, email links and portability</a></li><li><a href="#f8-operations-backups-monitoring-and-incidents">F8. Operations: backups, monitoring and incidents</a></li><li><a href="#f9-the-everyday-developer-flow-from-code-to-phone">F9. The everyday developer flow (from code to phone)</a></li></ul></li><li><a href="#part-g--learning-path-reference-and-history">Part G — Learning path, reference and history</a><ul><li><a href="#g1-reading-orders">G1. Reading orders</a></li><li><a href="#g2-hands-on-exercises">G2. Hands-on exercises</a></li><li><a href="#g3-common-questions">G3. Common questions</a></li><li><a href="#g4-quick-reference">G4. Quick reference</a></li><li><a href="#g5-glossary">G5. Glossary</a></li><li><a href="#g6-further-reading-and-sources">G6. Further reading and sources</a></li><li><a href="#g7-history-of-this-guide">G7. History of this guide</a></li></ul></li></ul></details></nav>
+<main id="content">
+<h1 id="carekosh-complete-developer-guide">CareKosh: Complete Developer Guide</h1>
+<blockquote>
+<p><strong>AI voice source update — 9 October 2026:</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p>
+<p>8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. <a href="BACKEND_HARDENING.md#safety-follow-up-8-october-2026">Current changes and remaining scope</a>.</p>
+<p><strong>Status (re-checked 8 October 2026).</strong> This is the main entry point for new developers. It was rewritten on 7 Oct 2026 from the source at branch <code>feature/backend-hardening-ai-voice-agent-foundation</code>, commit <code>03cfebb</code> (pushed, not merged; local <code>main</code> is <code>835fad3</code>), and every section was re-checked on 8 Oct 2026 against the working tree (<code>03cfebb</code> plus uncommitted documentation and two import-only mobile edits). Re-run on 8 October 2026 against a disposable local PostgreSQL 16 database: 242 backend tests passed, the API route gate (<strong>44</strong> <code>/api/v1</code> routes; 47 operations in total) passed, the 89-step API walkthrough matched, and 121 mobile tests passed (the same counts as on 7 Oct). Live Render, Neon, GitHub, Play Console and phone behaviour were <strong>not</strong> observed. Older numbers in other documents (39 routes, 152 tests, 8 mobile tests, migration head 0007) are historical.</p>
+<ul>
+<li><strong>Every endpoint traced to code and tables:</strong> <a href="API_TRACEABILITY.html">API traceability</a></li>
+<li><strong>All guides and reading orders:</strong> <a href="INDEX.html">documentation home</a></li>
+<li><strong>What this audit checked, changed and could not verify:</strong> audit summary (local review reference; not published)</li>
+<li>A browser-friendly copy of this page is generated as <code>CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html</code> by <code>docs/tools/build_docs.py</code>. Edit this Markdown file, not the HTML.</li>
+</ul>
+</blockquote>
+<p><strong>Which guide wins?</strong> This guide, <a href="NEW_DEVELOPER_QUICKSTART.md">NEW_DEVELOPER_QUICKSTART.md</a> (30-minute setup) and the concise repo-root <a href="../CAREKOSH_DEVELOPER_GUIDE.md">CAREKOSH_DEVELOPER_GUIDE.md</a> should agree. Where any guide disagrees with the source files it cites (<code>ci.yml</code>, <code>eas.json</code>, <code>render.yaml</code>, the code), the source is authoritative; please fix the guide.</p>
+<p><strong>Evidence labels used in this guide</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VERIFIED IN CURRENT CODE</td>
+<td>Read in the source at <code>03cfebb</code>.</td>
+</tr>
+<tr>
+<td>VERIFIED BY REPRODUCED TEST</td>
+<td>Run in a disposable local environment on 7 Oct 2026; the suites, the API walkthrough and the schema dump were re-run on 8 Oct 2026.</td>
+</tr>
+<tr>
+<td>HISTORICAL EVIDENCE</td>
+<td>Recorded in a dated document; not re-run.</td>
+</tr>
+<tr>
+<td>PLANNED / RECOMMENDED</td>
+<td>Not implemented.</td>
+</tr>
+<tr>
+<td>NOT VERIFIED</td>
+<td>A live or device state this review could not observe.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="contents">Contents<a class="anchor" href="#contents" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><a href="#part-a--the-product-and-the-system">Part A — The product and the system</a></li>
+<li><a href="#part-b--run-it-and-follow-one-complete-workflow">Part B — Run it and follow one complete workflow</a></li>
+<li><a href="#part-c--how-it-works-one-layer-at-a-time">Part C — How it works, one layer at a time</a></li>
+<li><a href="#part-d--backend-concepts-through-this-codebase">Part D — Backend concepts through this codebase</a></li>
+<li><a href="#part-e--testing-debugging-and-daily-work">Part E — Testing, debugging and daily work</a></li>
+<li><a href="#part-f--environments-cicd-deployment-and-release">Part F — Environments, CI/CD, deployment and release</a></li>
+<li><a href="#part-g--learning-path-reference-and-history">Part G — Learning path, reference and history</a></li>
+</ul>
+<hr />
+<h2 id="part-a--the-product-and-the-system">Part A — The product and the system<a class="anchor" href="#part-a--the-product-and-the-system" aria-label="Link to this section">#</a></h2>
+<h3 id="a1-what-carekosh-does">A1. What CareKosh does<a class="anchor" href="#a1-what-carekosh-does" aria-label="Link to this section">#</a></h3>
+<p>CareKosh (formerly <strong>VitalTrack</strong>; renamed in PR #10/#11) helps a family or caregiver keep a <strong>home ICU</strong> stocked: suction catheters, gloves, dressings, oxygen accessories, medicines and equipment. The person records what they have, sees what is running low, prepares a purchase order, marks it received, and adds the received quantities to stock. A read-only voice and typed assistant answers questions such as "How many nitrile gloves are left?".</p>
+<ul>
+<li><strong>Users:</strong> initially hundreds to a few thousand accounts; the planning target is about <strong>10,000 accounts</strong>. Estimates of 100–1,000 simultaneously active users are <strong>aspirations, not measured capacity</strong> (nothing in the repository load-tests that). Several people may share one account on different phones, which is why concurrency rules matter.</li>
+<li><strong>Priorities:</strong> data preservation, correctness and security first; understandable code and manageable operations next; new infrastructure only when a measured need appears.</li>
+<li><strong>Shape:</strong> one Android app (React Native + Expo), one FastAPI service, one PostgreSQL database. The repository and folder names still say <code>vitaltrack</code>.</li>
+</ul>
+<h3 id="a2-domain-vocabulary">A2. Domain vocabulary<a class="anchor" href="#a2-domain-vocabulary" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning in CareKosh</th>
+<th>Where it lives</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Account / user</td>
+<td>A login (email required at registration; optional username). Owns all other data.</td>
+<td><code>users</code></td>
+</tr>
+<tr>
+<td>Category</td>
+<td>A group of items ("Respiratory", "Wound care"). Names are unique per user <strong>by API rule</strong>, not by a database constraint.</td>
+<td><code>categories</code></td>
+</tr>
+<tr>
+<td>Default category</td>
+<td>A category with <code>is_default = true</code>; the API refuses to delete it. The app never creates such rows itself.</td>
+<td><code>categories.is_default</code></td>
+</tr>
+<tr>
+<td>Item</td>
+<td>One stocked thing: quantity, unit, minimum stock, critical flag, supplier, purchase link, notes.</td>
+<td><code>items</code></td>
+</tr>
+<tr>
+<td>Minimum stock</td>
+<td>The re-order threshold for an item.</td>
+<td><code>items.minimum_stock</code></td>
+</tr>
+<tr>
+<td>Out of stock</td>
+<td>Quantity ≤ 0.</td>
+<td>rule in code</td>
+</tr>
+<tr>
+<td>Low stock (server)</td>
+<td>0 &lt; quantity &lt; minimum stock (<code>/items/stats</code>, <code>lowStockOnly</code> filter).</td>
+<td><code>app/api/v1/items.py</code></td>
+</tr>
+<tr>
+<td>Low stock (phone)</td>
+<td>Broader: also critical equipment with exactly 1 left, and any item with minimum ≥ 1 and exactly 1 left. The dashboard and the voice assistant use this rule.</td>
+<td><code>vitaltrack-mobile/types/index.ts:129-152</code></td>
+</tr>
+<tr>
+<td>Critical item / critical equipment</td>
+<td><code>isCritical</code> flag; on the phone, also items whose name matches critical-equipment keywords.</td>
+<td><code>items.is_critical</code>; <code>types/index.ts:90-103</code></td>
+</tr>
+<tr>
+<td>Version</td>
+<td>A counter on each item, increased by every write. Writers must send the version they read (optimistic concurrency).</td>
+<td><code>items.version</code></td>
+</tr>
+<tr>
+<td>Order</td>
+<td>A purchase list with a status workflow. Creating an order never changes stock.</td>
+<td><code>orders</code>, <code>order_items</code></td>
+</tr>
+<tr>
+<td>Order line snapshot</td>
+<td>The item name, unit, stock and supplier <strong>as sent by the app</strong> when the order was created. History survives item edits and deletion.</td>
+<td><code>order_items</code></td>
+</tr>
+<tr>
+<td>Order number</td>
+<td>Public id <code>ORD-YYYYMMDD-NNNN</code> (UTC day), from one per-day counter shared by all accounts; never reused.</td>
+<td><code>order_number_counters</code></td>
+</tr>
+<tr>
+<td>Apply to stock</td>
+<td>Adds a <strong>received</strong> order's line quantities to the items, once, in one transaction.</td>
+<td><code>POST /orders/{id}/apply</code></td>
+</tr>
+<tr>
+<td><code>localId</code> (orders)</td>
+<td>A submission key the app generates per Save; repeating it returns the same order instead of creating a duplicate (even if the repeated request's lines differ).</td>
+<td><code>orders.local_id</code> + unique index</td>
+</tr>
+<tr>
+<td>Activity log</td>
+<td>The user-visible history feed. Selected writes add a row, and some action names are reused (a category create is stored as <code>ITEM_CREATE</code>; category and order deletes as <code>ITEM_DELETE</code>).</td>
+<td><code>activity_logs</code></td>
+</tr>
+<tr>
+<td>Audit log</td>
+<td>Partial before/after snapshots for item writes, category deletes (one row per item), applied order lines and order deletes; none for order creation or status changes. No API reads it.</td>
+<td><code>audit_log</code></td>
+</tr>
+<tr>
+<td>Session generation</td>
+<td><code>users.session_version</code>; a password change or reset increments it and invalidates every older token.</td>
+<td><code>users.session_version</code></td>
+</tr>
+<tr>
+<td>Consent scope</td>
+<td>Per-account permission for one kind of cloud processing (<code>groq_text</code> for understanding, optional separate <code>groq_audio</code> for online listening).</td>
+<td><code>ai_consents.scopes</code></td>
+</tr>
+<tr>
+<td>Intent</td>
+<td>The assistant's structured understanding of a question (for example <code>read_item</code>, <code>low_stock</code>). Never contains stock facts.</td>
+<td><code>app/schemas/ai.py</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="a3-business-rules-the-code-enforces">A3. Business rules the code enforces<a class="anchor" href="#a3-business-rules-the-code-enforces" aria-label="Link to this section">#</a></h3>
+<p>These are invariants. Changing any of them is a product decision, not a refactor.</p>
+<ol>
+<li><strong>Stock never goes negative.</strong> Database <code>CHECK (quantity &gt;= 0)</code> plus API validation (0–999,999 on writes).</li>
+<li><strong>Order lines have a positive quantity</strong> (<code>CHECK (quantity &gt; 0)</code>); an order has 1–1,000 lines.</li>
+<li><strong>Stock changes only by an explicit write</strong>: editing the item (with its version) or applying a received order. Creating, receiving, declining or deleting an order never changes stock.</li>
+<li><strong>An order is applied at most once</strong>, and only from <code>received</code>. Applying adds the full ordered quantity of every line, even after <code>partially_received</code>.</li>
+<li><strong>Only <code>pending</code> and <code>declined</code> orders can be deleted.</strong> Received and applied orders are history.</li>
+<li><strong>Order numbers are unique and never reused</strong>, even after an order or account is deleted.</li>
+<li><strong>Every read and write is scoped to the signed-in user.</strong> Another user's id behaves as "not found".</li>
+<li><strong>Concurrent edits use the version their values came from</strong>: the Edit Item form now captures its version together with its fields; server CAS rejects a stale save with 409. The person reloads/reopens before editing again.</li>
+<li><strong>Names are unique per user (case-insensitive)</strong> for categories and items, enforced by the API with an advisory lock. Existing duplicates in old data are kept, not merged.</li>
+<li><strong>Voice cannot commit inventory/order changes.</strong> It may prepare/edit an unsaved local order draft; separate touch confirmation on Create Order saves it. AI routes write only consent/usage metadata (plus an ordinary API client's possible token refresh).</li>
+<li><strong>Deleting an account deletes all of its data</strong> (two-step email confirmation), except the global order-number counters.</li>
+<li><strong>A password change or reset signs out every session</strong>; logout signs out only the device that logged out (and its access token remains valid until it expires).</li>
+</ol>
+<h3 id="a4-the-system-at-a-glance">A4. The system at a glance<a class="anchor" href="#a4-the-system-at-a-glance" aria-label="Link to this section">#</a></h3>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="System context: an Android phone running the CareKosh app (screens, TanStack cache, SecureStore, inventory assistant with local drafts, Moonshine live/final recognition, Android text-to-speech and separately consented Groq interpretation/transcription) talks over HTTPS with bearer tokens to one FastAPI service on Render (Gunicorn with two Uvicorn workers per instance, 47 routes), which owns the PostgreSQL database (documented host: Neon; CI and local development use PostgreSQL 16). Groq, Brevo and Sentry are optional outbound services used only when configured. There is no queue, no Redis, no core background job queue and no offline write queue." src="diagrams/system-context.svg" /></div><figcaption>System context — what exists, what is optional, and what does not exist</figcaption></figure>
+<p>Classify every component before you reason about it:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Classification</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Android app (React Native 0.81, Expo SDK 54)</td>
+<td><strong>Core</strong></td>
+<td>Screens, API client, query cache, assistant UI.</td>
+</tr>
+<tr>
+<td>FastAPI service (Python 3.12)</td>
+<td><strong>Core</strong></td>
+<td>One codebase, one process image; 47 HTTP operations.</td>
+</tr>
+<tr>
+<td>PostgreSQL (16 in CI and local Docker)</td>
+<td><strong>Core</strong></td>
+<td>The only source of truth. The hosted server version is NOT VERIFIED.</td>
+</tr>
+<tr>
+<td>Docker image + <code>docker-entrypoint.sh</code></td>
+<td>Supporting infrastructure</td>
+<td>Migrates, then starts Gunicorn.</td>
+</tr>
+<tr>
+<td>GitHub + GitHub Actions</td>
+<td>Supporting infrastructure</td>
+<td>Code, CI, optional deploy hook.</td>
+</tr>
+<tr>
+<td>Render (web service)</td>
+<td>Current provider (swappable)</td>
+<td><code>vitaltrack-backend/render.yaml</code> describes the production service (whether Render applies it is NOT VERIFIED); staging is not in the file and is set up in the dashboard.</td>
+</tr>
+<tr>
+<td>Neon (managed PostgreSQL)</td>
+<td>Current provider (swappable)</td>
+<td>Documented host; live projects NOT VERIFIED.</td>
+</tr>
+<tr>
+<td>Expo EAS (Build, Submit)</td>
+<td>Current provider (swappable)</td>
+<td>APK/AAB builds and Play upload.</td>
+</tr>
+<tr>
+<td>Google Play</td>
+<td>Distribution channel</td>
+<td>Internal testing → production.</td>
+</tr>
+<tr>
+<td>Moonshine speech model (on device)</td>
+<td>Current provider (swappable)</td>
+<td>Downloaded once per phone; English only.</td>
+</tr>
+<tr>
+<td>Android Text-to-speech</td>
+<td>Current provider (device)</td>
+<td>Uses an installed offline English voice.</td>
+</tr>
+<tr>
+<td>Groq (interpretation / optional recognition)</td>
+<td><strong>Conditional</strong></td>
+<td>GPT-OSS reviewed text after Send; separately opted-in Whisper finished audio after Stop. Each needs its own consent scope and server capability. Hosted speech is off.</td>
+</tr>
+<tr>
+<td>Brevo (email API)</td>
+<td><strong>Conditional</strong></td>
+<td>Only if <code>MAIL_PASSWORD</code> is set.</td>
+</tr>
+<tr>
+<td>Sentry</td>
+<td><strong>Conditional</strong></td>
+<td>Only if <code>SENTRY_DSN</code> is set.</td>
+</tr>
+<tr>
+<td>Render deploy hook in CI</td>
+<td><strong>Conditional</strong></td>
+<td>Only if the <code>RENDER_DEPLOY_HOOK</code> secret exists.</td>
+</tr>
+<tr>
+<td><code>voice-service/</code> (Alba/Piper, Kokoro workers)</td>
+<td>Code only</td>
+<td>Not referenced by <code>render.yaml</code> or CI; its README says it is not deployed (NOT VERIFIED).</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>What CareKosh does not have</strong> (so do not design as if it did): no message queue, no Redis or other cache server, no background worker service (only FastAPI <code>BackgroundTasks</code> for sending email after a response), no WebSockets or push updates, no offline write queue on the phone, no admin API (the <code>SuperUser</code> dependency exists but no route uses it), no server-side PDF generation (PDFs are made on the phone).</p>
+<h3 id="a5-repository-map">A5. Repository map<a class="anchor" href="#a5-repository-map" aria-label="Link to this section">#</a></h3>
+<pre><code class="language-text">vitaltrack/                         repository root (legacy name; product is CareKosh)
+├── vitaltrack-backend/             FastAPI service
+│   ├── app/main.py                 app factory: middleware, exception handlers, /health, /live, /
+│   ├── app/core/                   config.py (settings), database.py (engine, get_db), security.py (JWT, hashing), logging.py (redaction)
+│   ├── app/api/deps.py             get_current_user and other dependencies
+│   ├── app/api/v1/                 routers: auth, categories, items, orders, activity, ai
+│   ├── app/models/                 SQLAlchemy models (11 tables)
+│   ├── app/schemas/                Pydantic request/response models
+│   ├── app/services/               ai_guard, ai_provider, ai_body_limit, audit, inventory_lock
+│   ├── app/utils/                  email (Brevo HTTP API), rate_limiter (slowapi)
+│   ├── alembic/versions/           migrations 0001 → 0010
+│   ├── tests/                      pytest suite (242 tests; destroys and rebuilds its test database)
+│   ├── scripts/                    route gate, coverage gate, smoke checks, restore drill
+│   ├── Dockerfile, Dockerfile.dev, docker-entrypoint.sh, render.yaml, docker-compose*.yml
+├── vitaltrack-mobile/              Expo app
+│   ├── app/                        screens (expo-router): (auth)/, (tabs)/, item/[id], order/create, builder, profile, search, assistant
+│   ├── services/                   api.ts (HTTP client, token refresh), auth, items, categories, orders, assistant
+│   ├── hooks/                      useServerData (queries), useServerMutations (writes), useSeedInventory, useForceSync
+│   ├── providers/QueryProvider.tsx TanStack Query config and persistence
+│   ├── store/                      zustand stores (auth session, UI, result dialogs)
+│   ├── features/assistant/         local parser, snapshot rules, recording control, policy flags
+│   ├── components/assistant/       AssistantExperience (dock + overlay), VoiceSetup
+│   ├── modules/carekosh-voice/     Kotlin Expo module: Moonshine transcription, Android TTS
+│   ├── tests/                      Node test runner suites (121 tests)
+│   ├── app.json, app.config.js, eas.json
+├── voice-service/                  optional speech workers (not deployed)
+├── docs/                           guides, audits, diagrams, tools
+├── future_plan/                    proposals and drafts (not current behaviour)
+└── .github/workflows/ci.yml        the only CI workflow
+</code></pre>
+<p><strong>Files to read first</strong> (in this order): <code>vitaltrack-backend/app/main.py</code>, <code>app/api/deps.py</code>, <code>app/core/database.py</code>, <code>app/api/v1/items.py</code>, <code>app/api/v1/orders.py</code>, <code>vitaltrack-mobile/services/api.ts</code>, <code>providers/QueryProvider.tsx</code>, <code>hooks/useServerMutations.ts</code>, <code>app/item/[id].tsx</code>, <code>components/assistant/AssistantExperience.tsx</code>.</p>
+<hr />
+<h2 id="part-b--run-it-and-follow-one-complete-workflow">Part B — Run it and follow one complete workflow<a class="anchor" href="#part-b--run-it-and-follow-one-complete-workflow" aria-label="Link to this section">#</a></h2>
+<h3 id="b1-prerequisites">B1. Prerequisites<a class="anchor" href="#b1-prerequisites" aria-label="Link to this section">#</a></h3>
+<p>Follow <a href="NEW_DEVELOPER_QUICKSTART.md">NEW_DEVELOPER_QUICKSTART.md</a> for the 30-minute path. In short you need Docker Desktop, Node.js 22 (<code>vitaltrack-mobile/.nvmrc</code>; CI's frontend job still uses Node 20), Git, Python 3.12 (only to run the backend tests outside Docker), and either <strong>Expo Go for SDK 54</strong> (fast UI work) or an <strong>EAS-built <code>preview</code> APK</strong> (needed for anything native, including the microphone and on-device speech). The <code>development</code> profile cannot be used yet: it needs <code>expo-dev-client</code>, which is not installed.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>You want to…</th>
+<th>Use</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Change screens, styles, API calls</td>
+<td>Expo Go (SDK 54) + local Docker backend</td>
+<td>Fastest loop; no native build.</td>
+</tr>
+<tr>
+<td>Test the voice assistant's microphone</td>
+<td>An EAS-built <code>preview</code> APK</td>
+<td>The Kotlin module <code>carekosh-voice</code> cannot load in Expo Go. A preview APK talks to <strong>staging</strong>, not your laptop. Typed questions still work in Expo Go.</td>
+</tr>
+<tr>
+<td>Test against staging</td>
+<td>A <code>preview</code> APK (calls <code>https://staging-api.carekosh.com</code>)</td>
+<td>The API URL is baked in at build time.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="b2-local-configuration">B2. Local configuration<a class="anchor" href="#b2-local-configuration" aria-label="Link to this section">#</a></h3>
+<p><strong>Backend</strong> (<code>vitaltrack-backend/app/core/config.py</code>, read from environment variables, then a <code>.env</code> file in the working directory):</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Local value (Docker dev)</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ENVIRONMENT</code></td>
+<td><code>development</code></td>
+<td><code>development</code>/<code>testing</code> do not force database TLS (asyncpg's default <code>prefer</code> applies); any other value requires verified TLS. <code>development</code> also creates missing tables at start-up. <code>production</code> adds HSTS and requires <code>FRONTEND_URL</code>.</td>
+</tr>
+<tr>
+<td><code>DATABASE_URL</code></td>
+<td><code>postgresql+asyncpg://postgres:postgres@db:5432/vitaltrack</code></td>
+<td>Any <code>?query</code> is stripped; <code>postgres://</code> is rewritten to the asyncpg driver.</td>
+</tr>
+<tr>
+<td><code>SECRET_KEY</code></td>
+<td>a ≥ 32-character string</td>
+<td>The public default is refused outside development/testing.</td>
+</tr>
+<tr>
+<td><code>DEBUG</code></td>
+<td><code>true</code></td>
+<td>Enables <code>/docs</code>, <code>/redoc</code>, <code>/openapi.json</code>. Off in production.</td>
+</tr>
+<tr>
+<td><code>CORS_ORIGINS</code></td>
+<td><code>["*"]</code> or a list</td>
+<td>Browsers only; the Android app is not affected by CORS.</td>
+</tr>
+<tr>
+<td><code>REQUIRE_EMAIL_VERIFICATION</code></td>
+<td><code>true</code> in <code>docker-compose.dev.yml</code></td>
+<td>Enforced <strong>only</strong> if <code>MAIL_PASSWORD</code> is also set.</td>
+</tr>
+<tr>
+<td><code>MAIL_PASSWORD</code>, <code>MAIL_FROM</code></td>
+<td>empty; <code>noreply@carekosh.com</code></td>
+<td><code>MAIL_PASSWORD</code> is the Brevo API key; empty disables email (and verification enforcement).</td>
+</tr>
+<tr>
+<td><code>FRONTEND_URL</code></td>
+<td><code>http://localhost:8000/api/v1/auth</code></td>
+<td>Base of links in emails (they point at backend HTML pages).</td>
+</tr>
+<tr>
+<td><code>AI_*</code>, <code>GROQ_*</code></td>
+<td>off/empty</td>
+<td>Optional assistant cloud features; see <a href="#c7-the-voice-and-typed-assistant">C7</a>.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The two Compose files differ: <code>docker-compose.dev.yml</code> builds <code>Dockerfile.dev</code> (Uvicorn <code>--reload</code>, your <code>app/</code> and <code>alembic/</code> mounted, explicit CORS list, verification flag on); <code>docker-compose.yml</code> runs the production image target with <code>ENVIRONMENT=development</code> and wildcard CORS. Both start PostgreSQL 16 and run <code>alembic upgrade head</code> before the server. If that migration fails, the production image exits, but <code>Dockerfile.dev</code> starts the server anyway (A-17), so read the log. <code>setup-local-dev.sh</code> creates <code>.env</code> files only if they do not exist (it never overwrites).</p>
+<p><strong>Where values come from.</strong> Inside the app, a real environment variable beats <code>.env</code>, which beats the code default. In Compose, values written under <code>environment:</code> win. <code>docker-compose.yml</code> also passes every other key in <code>vitaltrack-backend/.env</code> into the container (for example <code>MAIL_PASSWORD</code>, <code>GROQ_API_KEY</code>); <code>docker-compose.dev.yml</code> only fills its <code>${…}</code> placeholders from your shell or that <code>.env</code>.</p>
+<p><strong>Local safety.</strong> Both files publish PostgreSQL (user and password <code>postgres</code>) on port 5432, and pgAdmin (password <code>admin</code>, only when started with its profile) on port 5050, on <strong>every</strong> network interface of your laptop, so other devices on the same Wi-Fi can reach them. Use a trusted network. The files share ports 8000, 5432 and 5050, so run one at a time (and stop any local PostgreSQL on 5432). <code>docker compose down</code> keeps the database volume; <code>docker compose down -v</code> deletes it and all local data.</p>
+<p><strong>Mobile:</strong> <code>EXPO_PUBLIC_API_URL</code> in <code>vitaltrack-mobile/.env</code> (for example <code>http://192.168.1.20:8000</code> for a phone on the same Wi-Fi, <code>http://10.0.2.2:8000</code> for the Android emulator, or <code>http://localhost:8000</code> on a USB phone with <code>adb reverse tcp:8000 tcp:8000</code>). If it is unset, the app falls back to <code>http://localhost:8000</code>. Reload the app after changing it (or restart Metro with <code>--clear</code>). <code>EXPO_PUBLIC_*</code> values are compiled into the JavaScript bundle and are public; never put secrets there.</p>
+<h3 id="b3-a-complete-first-workflow-setup--login--inventory--order--voice--tests--deployment">B3. A complete first workflow (setup → login → inventory → order → voice → tests → deployment)<a class="anchor" href="#b3-a-complete-first-workflow-setup--login--inventory--order--voice--tests--deployment" aria-label="Link to this section">#</a></h3>
+<p>Do this once, slowly, with the backend logs open (<code>docker compose -f docker-compose.dev.yml logs -f api</code>, run from <code>vitaltrack-backend/</code> like every Compose command here). Each step names what happens in the code and the database, so you can follow it; the <a href="API_TRACEABILITY.html">traceability matrix</a> has the exact path.</p>
+<ol>
+<li><strong>Start everything.</strong> Backend via Docker (Quickstart steps 1–3). Check <code>http://localhost:8000/health</code> → <code>"status":"healthy"</code> and <code>"database":"connected"</code>, and <code>http://localhost:8000/live</code> → <code>"database":"not_checked"</code>. <code>/health</code> touches the database; <code>/live</code> never does.</li>
+<li><strong>Register</strong> in the app (Quickstart step 5). Server: <code>POST /api/v1/auth/register</code> hashes the password with Argon2 in a worker thread and writes <code>users</code>, <code>refresh_tokens</code> and an activity row. The app deliberately discards the returned tokens (without revoking them, A-9) and shows the verify-email screen; with email unconfigured locally, verification is not enforced.</li>
+<li><strong>Log in.</strong> <code>POST /api/v1/auth/login</code> returns a 30-minute access token and a 30-day refresh token, saved in SecureStore. The app clears any previous query cache, then loads the dashboard: <code>GET /api/v1/items?page=…&amp;pageSize=100</code> (all pages), <code>GET /api/v1/orders?…</code>, <code>GET /api/v1/activities?limit=20</code>, and <code>GET /api/v1/ai/capabilities</code> for the assistant dock. Dashboard counts are computed on the phone.</li>
+<li><strong>Build inventory.</strong> Dashboard → "Build Inventory" opens the Builder → "+ Add New Category" (<code>POST /categories</code>); then Inventory tab → "+" → new item (<code>POST /items</code>, quantity 40, minimum 50). Open the item again, change the quantity, Save: <code>PUT /items/{id}</code> with <code>version: 1</code>; the response has <code>version: 2</code>, and an activity row and an audit row exist.<ul>
+<li>Try the conflict with the API: send PUT with an old version and expect <strong>409 Version conflict</strong>. On two devices, open an edit form, save elsewhere and refetch the first device without closing its form. Its old form must still send its original version and be refused; reopen it for the current values. This is also covered by a component regression test; repeat on a real phone.</li>
+</ul>
+</li>
+<li><strong>Create an order.</strong> Orders → "+" → pick lines → "Confirm order &amp; export PDF". The app sends one <code>localId</code> for this Save; on a fresh database the server allocates <code>ORD-&lt;UTC date&gt;-0001</code> (one counter per UTC day, shared by all accounts), stores line snapshots and writes no stock. The PDF is produced on the phone.</li>
+<li><strong>Receive and apply.</strong> Expand the order card: "Have you received the order?" (<code>PATCH /orders/{id}/status</code> → <code>received</code>), then "Update Stock" (<code>POST /orders/{id}/apply</code>). Watch the item's quantity and version increase in one transaction. Then send the apply request again (for example with <code>curl</code>): the second call gets 400 and stock is added once.</li>
+<li><strong>Ask a question.</strong> Open Profile menu → Voice setup, turn the assistant on, choose "Try a typed question here" ("Practice a command here" once voice is ready), and type "Show low stock" (typed questions work in Expo Go too). The phone matches the sentence locally, reads <code>['items']</code> (or refetches), and builds the answer on the phone. No <code>/ai/interpret</code> call is made for familiar wording (the assistant still calls <code>GET /ai/capabilities</code> when it opens). For the microphone path you need a preview APK (which talks to staging) and the downloaded speech pack (see <a href="#c7-the-voice-and-typed-assistant">C7</a>).</li>
+<li><strong>Run the tests</strong> (<a href="#e1-tests-what-they-cover-and-how-to-run-them-safely">E1</a>): <code>npm test</code> in <code>vitaltrack-mobile/</code>, and the backend suite against a <strong>disposable</strong> database whose name contains <code>test</code>.</li>
+<li><strong>Understand how this would ship</strong> (<a href="#part-f--environments-cicd-deployment-and-release">Part F</a>): a PR runs CI; a staging candidate is deployed deliberately; merging to <code>main</code> can deploy the production backend (the CI deploy hook if its secret is set, and Render auto-deploy if enabled — treat every merge as a production deploy); the Android app ships separately through EAS and Play, and installed apps never change until users install the new build.</li>
+</ol>
+<p>Exercise: after each step, find the handler in <code>vitaltrack-backend/app/api/v1/</code> and the rows in the database (<code>docker compose -f docker-compose.dev.yml exec db psql -U postgres -d vitaltrack -c "select action, item_name from activity_logs order by created_at desc limit 5"</code>). Note that <code>action</code> is stored in upper case (<code>ITEM_UPDATE</code>), while the API shows <code>item_update</code>.</p>
+<hr />
+<h2 id="part-c--how-it-works-one-layer-at-a-time">Part C — How it works, one layer at a time<a class="anchor" href="#part-c--how-it-works-one-layer-at-a-time" aria-label="Link to this section">#</a></h2>
+<h3 id="c1-the-life-of-one-request">C1. The life of one request<a class="anchor" href="#c1-the-life-of-one-request" aria-label="Link to this section">#</a></h3>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="Sequence for PATCH /api/v1/items/{id}/stock, an API-only endpoint (the app saves stock with PUT): an API client sends the quantity and the version it read; middleware buffers the body, adds security headers and a request id; FastAPI parses the JSON, runs get_db and get_current_user (one user SELECT), then validates the fields; the handler runs a compare-and-swap UPDATE, writes activity and audit rows and commits; db.refresh re-reads the row in a new transaction; the response is serialised with camelCase names; then get_db commits that read and closes the session before the 200 is sent (FastAPI 0.115.6)." src="diagrams/request-lifecycle.svg" /></div><figcaption>A successful request from a client to PostgreSQL and back</figcaption></figure>
+<p><strong>What it means.</strong> FastAPI is an ASGI application: Uvicorn workers (managed by Gunicorn in production) receive HTTP connections and call the app as an async function with a <code>scope</code>, a <code>receive</code> channel and a <code>send</code> channel. Middleware are wrappers around that function; each sees the request on the way in and the response on the way out.</p>
+<p><strong>The order in this codebase</strong> (verified in <code>app/main.py</code>; Starlette inserts each new middleware at the front, so the last one added is the outermost):</p>
+<ol>
+<li>Starlette <code>ServerErrorMiddleware</code> (always outermost; runs the generic 500 handler).</li>
+<li><code>AIBodyLimit</code> (<code>app/services/ai_body_limit.py</code>) reads the <strong>whole body</strong> before anything else: ≤ 2 MB for normal routes, ≤ 12 KB for AI JSON, ≤ 900 KB for <code>/ai/transcribe</code>; AI routes without a bearer header get 401 before the body is read; AI uploads must finish in 10 s (408).</li>
+<li><code>add_security_headers</code> (nosniff, frame deny, referrer policy, <code>Cache-Control: no-store</code>, HSTS in production).</li>
+<li><code>add_request_id</code> (echo <code>X-Request-ID</code> or create one; it is <strong>not</strong> written into logs).</li>
+<li><code>CORSMiddleware</code>.</li>
+<li>Starlette <code>ExceptionMiddleware</code> (validation, <code>IntegrityError</code>, rate-limit and <code>HTTPException</code> handlers), then the router.</li>
+</ol>
+<p>Then, inside FastAPI 0.115.6 (read in the framework source; the SQL counts in steps 1–3 were reproduced on 8 Oct 2026):</p>
+<ol>
+<li><strong>Body parsing.</strong> If the route takes a JSON body, it is parsed first. Malformed JSON → 422 <code>json_invalid</code> before any dependency runs: no token check, no SQL.</li>
+<li><strong>Dependencies</strong> (<code>Depends</code>) run in order. <code>get_db</code> creates one <code>AsyncSession</code> (pool: 5 connections plus 10 overflow per worker; no SQL yet). <code>get_current_user</code> checks the bearer token (a bad token → 401 with no SQL), then loads the user with one <code>SELECT</code>.</li>
+<li><strong>Validation.</strong> Path, query and body fields are validated. A failure → 422, after the user <code>SELECT</code> has already run; the handler never runs.</li>
+<li><strong>Handler.</strong> It executes SQL through the session. On the five rate-limited auth routes the limit is checked here, after validation. Every write handler calls <code>await db.commit()</code> itself; any SQL after that (usually <code>db.refresh(...)</code>) starts a new transaction.</li>
+<li><strong>Response.</strong> The return value is validated against <code>response_model</code> and serialised with field aliases (camelCase).</li>
+<li><strong>Clean-up.</strong> <code>get_db</code> (a dependency with <code>yield</code>) commits whatever is still open, rolls back if an exception is propagating, and closes the session. A 422 leaves it normally. Then the response is sent; <code>BackgroundTasks</code> (emails) run after that.</li>
+</ol>
+<p>So there is <strong>one session per request, not one transaction per request</strong>. A rollback undoes only work that was not yet committed. If the response is lost after a commit, the change is saved but the client cannot tell: an uncertain outcome, so re-read before retrying.</p>
+<blockquote>
+<p><strong>Version note (FastAPI 0.115.6; official release notes re-checked on 8 Oct 2026).</strong> In the installed version, the code after <code>yield</code> in <code>get_db</code> runs after the response object is built but <strong>before</strong> it is sent, so a failed final commit still becomes an error response. FastAPI 0.118.0 moved that exit code to <em>after</em> the response is sent; 0.121.0 added <code>scope="request"</code> for dependencies that must exit before sending. Before upgrading FastAPI, keep every write handler committing explicitly (all current ones do) so the client never sees success for a write that was not committed. See SOURCES (local review reference; not published) row 1 and finding A-23.</p>
+</blockquote>
+<p><strong>How to follow any request in code:</strong> route path → <code>vitaltrack-backend/app/api/v1/&lt;router&gt;.py</code> (search for the path string) → request schema in <code>app/schemas/</code> → dependencies in <code>app/api/deps.py</code> → SQL statements in the handler → models in <code>app/models/</code> → the mobile caller in <code>vitaltrack-mobile/services/&lt;name&gt;.ts</code> → the hook in <code>hooks/useServerMutations.ts</code> or <code>useServerData.ts</code> → the screen. The <a href="API_TRACEABILITY.html">traceability matrix</a> does this for all 47 operations.</p>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="Three failure paths: invalid fields are rejected with 422 before the handler runs (with a valid token the user SELECT has already run); another user's id returns 404 because ownership is part of the query; an order apply that finds a deleted item raises 409 before writing anything, and get_db rolls back. A failure after the order is claimed is rolled back the same way, so no partial stock change is kept. Unexpected exceptions become a generic 500 without SQL details; reproduced on 7 Oct and re-run on 8 Oct 2026, those 500s lack the request id and security headers." src="diagrams/request-rollback.svg" /></div><figcaption>When a request fails: what is kept and what is undone</figcaption></figure>
+<p><strong>Error shapes</strong> you will see: 422 <code>{"error":"Validation Error","message":"Request validation failed","details":[…],"timestamp":…}</code>; <code>HTTPException</code> → <code>{"detail": "…"}</code>; item version conflict 409 <code>{"error":"Version conflict","message":…,"server_version":…,"server_quantity":…}</code>; unhandled database constraint 409 <code>{"detail":"A conflict occurred. Please try again.","timestamp":…}</code>; rate limit 429 <code>{"error":"Rate limit exceeded: 5 per 1 minute"}</code> (no <code>detail</code>); anything else 500 <code>{"detail":"An unexpected error occurred. Please try again.","timestamp":…}</code>.</p>
+<h3 id="c2-the-data-model">C2. The data model<a class="anchor" href="#c2-the-data-model" aria-label="Link to this section">#</a></h3>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="Eleven application tables at migration head 0010: users owns categories, items, orders, refresh_tokens, activity_logs, audit_log, ai_consents and ai_usage through ON DELETE CASCADE foreign keys; items belong to categories; order_items belong to orders and reference items without a foreign key; order_number_counters stands alone." src="diagrams/database-erd.svg" /></div><figcaption>The database at 0010 — keys, constraints and cascades</figcaption></figure>
+<ul>
+<li><strong>12 tables</strong> in a migrated database = 11 application tables + <code>alembic_version</code> (verified with <code>pg_dump</code> of a fresh database migrated to <code>0010_order_local_id_unique</code> on 7 Oct 2026; identical schema on 8 Oct 2026).</li>
+<li><strong>Primary keys</strong> are 36-character UUID strings generated in Python (<code>VARCHAR(36)</code>), not PostgreSQL's <code>uuid</code> type. Two tables use natural keys: <code>order_number_counters.day</code> and <code>ai_consents.user_id</code>.</li>
+<li><strong>Ownership</strong> is a <code>user_id</code> column on every user-owned table, always filtered in queries.</li>
+<li><strong>Cascades:</strong> every foreign key is <code>ON DELETE CASCADE</code>. Deleting a user removes all of that user's rows in one statement; deleting a category removes its items; deleting an order removes its lines.</li>
+<li><strong>Deliberately missing foreign keys:</strong> <code>order_items.item_id</code>, <code>activity_logs.item_id/order_id</code> and <code>audit_log.entity_id</code> are plain strings, so history survives deletion. <code>order_number_counters</code> has no user link, so numbers are never reused.</li>
+<li><strong>Constraints vs application rules</strong> (see <a href="#d9-database-constraints-versus-application-validation">D9</a>): <code>CHECK (quantity &gt;= 0)</code> on items, <code>CHECK (quantity &gt; 0)</code> on order lines, <code>CHECK (email IS NOT NULL OR username IS NOT NULL)</code> on users, unique email/username/order number/refresh <code>jti</code>, and a <strong>partial unique index</strong> on <code>(user_id, local_id) WHERE local_id IS NOT NULL</code> for orders. Category and item names are <strong>not</strong> unique in the database; the API serialises its duplicate checks with <code>pg_advisory_xact_lock</code>.</li>
+<li><strong>Enums are stored as text</strong>: <code>orders.status</code> and <code>activity_logs.action</code> hold the Python enum <strong>names</strong> (<code>STOCK_UPDATED</code>, <code>ITEM_CREATE</code>), while the API sends lower-case values (<code>stock_updated</code>). Raw SQL must use the upper-case names.</li>
+<li><strong>Relationship loading:</strong> the ORM declares most collections <code>lazy="selectin"</code> (load children with one extra query). Hot paths add <code>noload(...)</code> so that, for example, authenticating a request does not load every item and order of the user. In async SQLAlchemy, accidental lazy loading raises an error instead of silently querying, so any collection you touch must be loaded explicitly.</li>
+<li><strong>Migrations:</strong> Alembic chain <code>0001_initial</code> → … → <code>0007_session_order_safety</code> → <code>0008_ai_consent_usage</code> → <code>0009_ai_provider_scopes</code> → <code>0010_order_local_id_unique</code> (head). 0007–0010 exist only on the feature branch. See <a href="#f5-database-migrations-and-the-0007-0010-release-gate">F5</a>.</li>
+</ul>
+<h3 id="c3-authentication-and-authorization">C3. Authentication and authorization<a class="anchor" href="#c3-authentication-and-authorization" aria-label="Link to this section">#</a></h3>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="Login stores a 30-minute access token and a 30-day refresh token in SecureStore. On a 401 the app makes one shared refresh call; the server claims the old refresh token with a conditional UPDATE and issues a new pair. Logout revokes the refresh token, but the access token keeps working until it expires. A password change or reset increments session_version and invalidates every older token." src="diagrams/auth-session.svg" /></div><figcaption>Sessions: login, refresh rotation, logout and password change</figcaption></figure>
+<p><strong>Authentication</strong> answers "who is calling?"; <strong>authorization</strong> answers "may they touch this row?". CareKosh authenticates with JWT bearer tokens and authorizes by ownership (every query includes <code>user_id = current_user.id</code>). There are no roles in use.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Flow</th>
+<th>What happens (verified in code; reproduced 7 Oct and re-run 8 Oct 2026)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Register</td>
+<td>Email required (use <code>example.com</code> addresses in tests: <code>.test</code>/<code>.local</code> domains are rejected); username optional but must already be lower case (<code>[a-z0-9_]</code>, 3–50; upper case → 422); password 8–128 with upper, lower and digit; Argon2 hash computed in a worker thread; tokens returned (the app discards them and asks the person to verify and log in).</td>
+</tr>
+<tr>
+<td>Login</td>
+<td>Identifier with <code>@</code> → email, otherwise username (case-insensitive). Row lock on the user. Same 401 message for unknown user and wrong password.</td>
+</tr>
+<tr>
+<td>Every protected request</td>
+<td>Decode token → must be an access token → load user → <code>session_version</code> must match → active → email-verification policy.</td>
+</tr>
+<tr>
+<td>Refresh</td>
+<td>One refresh token = one use. A conditional <code>UPDATE … WHERE is_revoked = false</code> decides the single winner, even for simultaneous requests. A replayed token gets 401 but does <strong>not</strong> revoke the newer token (no theft detection). Each refresh issues a fresh 30-day token, so sessions slide with no absolute limit.</td>
+</tr>
+<tr>
+<td>Logout</td>
+<td>Revokes the refresh token in the body. The access token stays valid until it expires (≤ 30 min).</td>
+</tr>
+<tr>
+<td>Password change / reset</td>
+<td><code>session_version + 1</code>, all refresh tokens revoked, pending reset and deletion links cleared: every device must log in again (old access tokens get 401 "User not found"). Reset links last 1 hour and are single-use. A reset sends a "password changed" email; a change sends none.</td>
+</tr>
+<tr>
+<td>Email verification</td>
+<td>Enforced only when <code>REQUIRE_EMAIL_VERIFICATION=true</code> <strong>and</strong> email is configured (<code>MAIL_PASSWORD</code> not blank; the key itself is not checked). Then login, refresh and every bearer request of an unverified account return 403 <code>EMAIL_NOT_VERIFIED</code>, so such a user cannot even log out or request deletion. Registration still returns 201. Links last 24 hours and are single-use.</td>
+</tr>
+<tr>
+<td>Account deletion</td>
+<td><code>DELETE /auth/me</code> emails a 24-hour link → GET shows a confirmation page (deletes nothing) → POST deletes the user and, by cascade, all their data.</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Secrets at rest:</strong> passwords are Argon2 hashes (passlib, bcrypt accepted for old hashes); verification, reset and deletion tokens are stored as SHA-256 digests, so a database leak does not reveal usable links. Refresh tokens are stored by <code>jti</code> (the token id), not as raw tokens.</p>
+<p><strong>Rate limits:</strong> register 3/hour, login 5/minute, forgot-password and resend-verification 3/hour, reset-password 5/hour. Rate limiting is best effort: five auth routes, counters in memory per worker process, reset on restart; an open finding about how clients are identified is tracked privately. Do not describe these limits as a complete brute-force defence.</p>
+<p><strong>On the phone</strong> (<code>services/api.ts</code>, <code>store/useAuthStore.ts</code>): tokens live in SecureStore (<code>vitaltrack_access_token</code>, <code>vitaltrack_refresh_token</code>); the signed-in user is persisted as <code>vitaltrack-auth</code>. A 401 triggers one shared refresh (30 s timeout) and one retry; a 401/403 from refresh clears the tokens and logs out; a network failure keeps them. At start-up the app calls <code>GET /auth/me</code> with an 8-second race; if the server is slow it enters "Connecting… server warming up" mode instead of logging out. Login and logout both clear the query cache in memory and on disk, so the next person on a shared phone cannot see the previous account's data.</p>
+<h3 id="c4-inventory-rules-and-concurrency">C4. Inventory rules and concurrency<a class="anchor" href="#c4-inventory-rules-and-concurrency" aria-label="Link to this section">#</a></h3>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="Two API clients save the same item at version 3 with the stock PATCH (the reproduced case). The first UPDATE takes the row lock and commits version 4; the second waits, re-checks its WHERE clause, matches no row and gets 409 with the values it read. The app's Edit Item sends PUT with the name, which first takes a per-account advisory lock, so a second PUT waits there before its SELECT, with the same 200 / 409 result. The app now captures the version with its form values, so a cache refresh cannot bypass this guard." src="diagrams/inventory-concurrency.svg" /></div><figcaption>Optimistic concurrency with the version column</figcaption></figure>
+<ul>
+<li><strong>Writes carry the version they read.</strong> <code>PUT /items/{id}</code> and <code>PATCH /items/{id}/stock</code> run <code>UPDATE items … SET version = version + 1 WHERE id = :id AND user_id = :me AND version = :seen</code>. Zero rows updated means someone else saved first (or deleted the item): 409, nothing written. Under PostgreSQL's default READ COMMITTED isolation, an <code>UPDATE</code> that had to wait for another transaction's row lock re-checks its <code>WHERE</code> clause against the committed row, which is why this compare-and-swap is safe without <code>SELECT … FOR UPDATE</code> (reproduced on 7 and 8 Oct 2026 with two simultaneous stock PATCH calls: one 200, one 409). A <code>PUT</code> whose body includes <code>name</code> (Edit Item always sends it) first takes the per-account name lock, so two such saves are serialised even before their <code>SELECT</code>; the second still gets 409. The 409 reports the version and quantity that request read before its <code>UPDATE</code>, which may already be out of date.</li>
+<li><strong>Deletes do not check the version</strong>: a delete wins over a concurrent edit.</li>
+<li><strong>Applying an order</strong> increments quantities with <code>quantity = quantity + n</code> (never read-modify-write) and bumps each item's version, so a later save that sends the old version gets 409.</li>
+<li><strong>Explicit <code>null</code> versus omitted</strong> (items only): an omitted field is unchanged; an explicit <code>null</code> clears optional fields (description, expiry date, brand, notes, supplier name/contact, purchase link, image) and is ignored for required ones (name, quantity, unit, minimum stock, active, critical) and for <code>categoryId</code>. An empty string is stored as <code>""</code>, except a blank purchase link, which becomes <code>null</code>. Categories and the profile treat <code>null</code> as "not sent" for every field (on the profile, <code>"phone": ""</code> does clear the phone). On the phone, <code>stripEmpty</code> drops <code>undefined</code> and blank strings but keeps <code>null</code>, so clearing a field in Edit Item sends <code>null</code>.</li>
+<li><strong>Names:</strong> a per-user, per-kind <code>pg_advisory_xact_lock</code> serialises create/rename checks, so two simultaneous "Gloves" items cannot both pass the duplicate check. The database itself has no unique constraint on names, so any other write path (SQL, imports) must apply the same rule. Known gap (reproduced 8 Oct 2026): a name that is empty after cleaning, such as <code>"   "</code> or <code>"&lt;b&gt;&lt;/b&gt;"</code>, is accepted and stored as <code>""</code>.</li>
+<li><strong>The app's side:</strong> there is no stock +/- control; Edit Item sends PUT, without optimistic updates. Its fields and version come from the same initial snapshot. On 409, mutation hooks show the server message and invalidate active queries; the person reopens the editor for fresh values. Retry retains the original payload/version. A-1 is fixed locally; see <a href="BACKEND_HARDENING.md#safety-follow-up-8-october-2026">the follow-up</a>.</li>
+</ul>
+<h3 id="c5-orders">C5. Orders<a class="anchor" href="#c5-orders" aria-label="Link to this section">#</a></h3>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="Order states: pending can become ordered, received or declined; ordered can become partially received or received; partially received can become received; received becomes stock updated only through POST apply, which adds every line's full quantity in one transaction. Declined and stock updated are final." src="diagrams/order-status.svg" /></div><figcaption>Order status machine and applying stock</figcaption></figure>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="Order creation: the app sends one localId per Save. A retry with the same localId returns the existing order with 200, even if the retried payload differs. Two simultaneous requests with the same localId collide on a partial unique index; the loser rolls back, releasing its order number, and returns the winner's order. Requests without a localId always create a new order." src="diagrams/order-idempotency.svg" /></div><figcaption>Submission keys, retries and order numbers</figcaption></figure>
+<ul>
+<li><strong>Statuses:</strong> <code>pending → ordered | received | declined</code>, <code>ordered → partially_received | received</code>, <code>partially_received → received</code>; <code>received → stock_updated</code> only via apply. The transition is a conditional <code>UPDATE … WHERE status = :old</code>, so two simultaneous transitions cannot both win; a loser that read the old status gets 409. Receiving never changes stock. The app currently offers only <strong>pending → received</strong> and <strong>received → apply</strong>.</li>
+<li><strong>Idempotent creation:</strong> the app sends <code>localId</code> (one UUID per Save press); retries of the same request, including the failure dialog's Retry, reuse it. A repeat with the same <code>localId</code> returns the original order's current state with 200 <strong>even if the new request's lines differ</strong>; the new payload is only validated, then ignored. Older installed builds send no <code>localId</code> and keep the old behaviour (every request creates an order). A deliberate second press is a second order.</li>
+<li><strong>Order numbers</strong> come from <code>INSERT … ON CONFLICT (day) DO UPDATE SET last_value = last_value + 1 RETURNING</code> inside the creating transaction: one counter per UTC day shared by all accounts (so one account's numbers have gaps), unique, never reused, and rolled back with a failed creation. Old <code>main</code> code numbered orders with a COUNT query, which is why the 0007 cutover needs a pause (see <a href="#f5-database-migrations-and-the-0007-0010-release-gate">F5</a>).</li>
+<li><strong>Snapshots:</strong> line name, unit, current stock and supplier come from the app's request and are stored as sent. The client's <code>orderId</code> is <strong>required</strong> (422 if missing) but its value is ignored, like the client's totals, status and timestamps; <code>categoryName</code>, <code>isEssential</code> and line <code>notes</code> are accepted but not stored.</li>
+<li><strong>History:</strong> deleting an item does not delete or change past orders; applying an order whose item was deleted fails with 409 and changes nothing (the order then stays <code>received</code> and cannot be declined or deleted: A-16).</li>
+<li><strong>Deletion:</strong> only <code>pending</code> and <code>declined</code> (the app shows "Remove" for every status; the API refuses the others with 400).</li>
+</ul>
+<h3 id="c6-the-mobile-apps-data-layer">C6. The mobile app's data layer<a class="anchor" href="#c6-the-mobile-apps-data-layer" aria-label="Link to this section">#</a></h3>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="The server is the only source of truth. Screens read through TanStack Query hooks; the cache lives in memory and is persisted to AsyncStorage for display after a restart. Stale data refetches on mount, return to the foreground, reconnect, pull-to-refresh or invalidation. Writes go to the API; success, uncertain network failures and 409 conflicts invalidate the affected queries. No optimistic updates, no offline write queue." src="diagrams/mobile-cache.svg" /></div><figcaption>Mobile cache versus the server</figcaption></figure>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Current behaviour (verified in code)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP client</td>
+<td><code>services/api.ts</code>: base <code>EXPO_PUBLIC_API_URL</code> + <code>/api/v1</code>; JSON bodies; bearer token from SecureStore; <strong>90 s overall deadline on ordinary requests</strong>; errors normalised from <code>detail</code>, validation <code>details[]</code> or <code>message</code>; network failures become status 0 with "Unable to connect to server. The server may be starting up…".</td>
+</tr>
+<tr>
+<td>Reads</td>
+<td><code>hooks/useServerData.ts</code>: <code>['items']</code> (every page of 100), <code>['categories']</code>, <code>['orders']</code> (<code>staleTime 0</code>), <code>['activities']</code> (dashboard uses limit 20). <code>['items','stats']</code> exists but no screen uses it.</td>
+</tr>
+<tr>
+<td>Query defaults</td>
+<td><code>providers/QueryProvider.tsx</code>: <code>staleTime</code> 30 s, <code>gcTime</code> 24 h, retry 3, refetch on focus (AppState) and reconnect (NetInfo via <code>onlineManager</code>), <code>networkMode: 'offlineFirst'</code>.</td>
+</tr>
+<tr>
+<td>Persistence</td>
+<td><code>PersistQueryClientProvider</code> + AsyncStorage key <code>carekosh-query-cache</code> (unencrypted on the phone). Restored if it was <strong>last saved</strong> less than 24 h ago (the persister's <code>maxAge</code>, not <code>gcTime</code>) and the app version (the "buster") matches. Mutations are never persisted. Cleared at login and logout.</td>
+</tr>
+<tr>
+<td>Writes</td>
+<td><code>hooks/useServerMutations.ts</code>: <code>retry 0</code>, <code>networkMode 'always'</code>; success invalidates the affected keys (prefix matching: invalidating <code>['items']</code> also invalidates <code>['items', …]</code>). <strong>No optimistic updates</strong> anywhere. Item and order-create hooks show a toast, or a dialog with Retry for connection failures; category and order-status hooks rely on a global toast.</td>
+</tr>
+<tr>
+<td>Offline</td>
+<td>Most write buttons check NetInfo first and refuse with "Offline — Connect to WiFi…" (profile save, account deletion, logout and the auth screens do not check). There is <strong>no offline write queue</strong>: a write either reaches the server or fails. Cached data stays visible; the Dashboard and Orders tab say "showing last synced data".</td>
+</tr>
+<tr>
+<td>Stale data</td>
+<td>After a restart, the restored data can be older than 24 h: the snapshot is saved again on every cache change (even a failed refetch), so the 24 h limit is not an upper bound on the data's age. <code>staleTime</code> is not a polling interval. Other phones' changes appear only after one of the refetch triggers. No list shows a last-sync time; assistant answers do.</td>
+</tr>
+<tr>
+<td>Counts</td>
+<td>The dashboard computes totals, low stock (phone rule), out of stock and pending orders (pending + ordered + received) on the phone.</td>
+</tr>
+<tr>
+<td>Bulk operations</td>
+<td>Builder "seed defaults", "replace all" and "start fresh" call the API one item at a time after a <code>/health</code> preflight, then reset and refetch the caches.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The app is <strong>server-first</strong> for committed business data: inventory and saved orders are written through the server. Unsaved order drafts are local session memory. This choice (PR #8) removed a class of sync bugs; the trade-off is that writes need a connection.</p>
+<h3 id="c7-the-voice-and-typed-assistant">C7. The voice and typed assistant<a class="anchor" href="#c7-the-voice-and-typed-assistant" aria-label="Link to this section">#</a></h3>
+<p>For the complete current stack, permissions, HTTP operation matrix, costs and interview explanation, read <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html#complete-ai-voice-architecture--source-review-9-october-2026">Complete AI voice architecture</a>. This chapter is its onboarding summary.</p>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="Voice: microphone → local transcription → reviewed Send → bounded local or consented Groq specification → verified inventory → persistent table or unsaved draft. Only a touch confirmation in Create Order saves an order; inventory changes still require the separate apply flow." src="diagrams/voice-flow.svg" /></div><figcaption>Inventory answers and unsaved drafts</figcaption></figure>
+<p>Speech recognition and understanding are separate. Default Moonshine recognition runs on the phone; separately opted-in Groq listening uses Whisper through <code>/ai/transcribe</code>. The 9 October local follow-up uses one Android <code>AudioRecord</code> to capture mono PCM16/16 kHz for a temporary WAV and local Moonshine streaming captions, bounded to 28 seconds. The downloaded speech pack enables live words; the final transcript still uses the selected offline/consented online provider. Older native builds retain the Expo foreground mono AAC/M4A capture at 44.1 kHz and 128 kb/s. <code>expo-audio</code> still handles permission/audio-mode management and optional playback. A new APK is required; live captions are provisional. <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html#assistant-presentation-and-live-captions--9-october-2026">Current UI/capture verification and phone checklist</a>. The transcript remains editable and requires Send. Familiar requests use local parsers; natural draft paraphrases and compound supported filters may use separately consented Groq text understanding. No inventory list is uploaded. Audio uploads require fresh <code>audioOptIn</code>, <code>groq_audio</code> consent, server availability and the finished-recording action. Hosted speech remains off.</p>
+<p><strong>Current contract:</strong> new clients request <code>/ai/interpret</code> with <code>contract_version: 2</code> when <code>/ai/capabilities</code> advertises it. The legacy four-field intent contract remains available by default for older APKs. V2 specifies bounded inventory filters or local draft operations, not facts or executable tools. Both Python and TypeScript validate it; the server checks names, units and quantity-to-item association against the reviewed text. Valid JSON does not prove perfect language comprehension.</p>
+<p><strong>Answers:</strong> active inventory rows, stock statistics, category/supplier/brand/missing-supplier filters, multi-item resolution, sorting and list follow-ups. Data must be complete and owned by this login; pending writes block answers. Fresh verified cache data may be reused within 30 seconds; otherwise all item pages are fetched. Offline answers use only this session's valid last-known snapshot. Native virtualized tables stay open until dismissed and provide textual status labels, expandable metadata and concise speech. Brand, supplier and manufacturer are not interchangeable; manufacturer is not stored.</p>
+<p><strong>Drafting:</strong> explicit numbers and matching units survive; replenishment suggestions use configured minimum/current stock, never an LLM guess. Ambiguity, conflicting quantities, missing thresholds or unit conversions require clarification. Drafts are in account/session memory, survive navigation, and clear on logout/account change/restart. Existing manual work gets a reviewed merge/replace/cancel proposal. Voice has no save-order, order-PDF-save, stock/status/apply or supplier-send operation.</p>
+<p><strong>Touch commitment:</strong> review on Create Order → Confirm order &amp; export PDF → check backend <code>order_review_guard</code>, fresh inventory, item activity and version → repeat review if stock changed → <code>POST /orders</code> with a stable <code>localId</code> and <code>expectedVersion</code> per line → saved response → shared PDF utility. Order saving does not increase stock. Unknown save outcomes retain the request; PDF failure retains the saved order for re-export. A dispatched server write cannot be undone by cancelling locally.</p>
+<p><strong>Server writes from voice:</strong> cloud consent/usage metadata only. Order/activity writes occur only through the separate touch-confirmed save. Medical advice, historical analytics and uncontrolled stock edits remain unavailable. Real microphone, Groq, TTS, Play builds, live hosting and load capacity are not certified by local mocked tests.</p>
+<p>Read <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Inventory answers and voice-prepared order drafts</a> for the code map, supported examples, compatibility rules and phone acceptance checklist.</p>
+<h2 id="part-d--backend-concepts-through-this-codebase">Part D — Backend concepts through this codebase<a class="anchor" href="#part-d--backend-concepts-through-this-codebase" aria-label="Link to this section">#</a></h2>
+<p>Each concept follows the same pattern: <strong>what it means</strong>, <strong>why it matters here</strong>, <strong>where it appears in our code</strong>, <strong>a concrete example</strong>, and <strong>current limitations</strong>. General principles are explained in plain words; where a book is mentioned, the idea is paraphrased and the text says what CareKosh actually does.</p>
+<h3 id="d1-http-and-rest-conventions">D1. HTTP and REST conventions<a class="anchor" href="#d1-http-and-rest-conventions" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> HTTP is a request/response protocol: a method (GET, POST, PUT, PATCH, DELETE), a path, headers and an optional body go in; a status code, headers and a body come out. REST is a convention for naming resources by URL and using methods for their usual meaning: GET reads without side effects, POST creates or triggers, PUT replaces or updates, PATCH changes part of a resource, DELETE removes. Status codes tell the client what happened: 2xx success, 4xx the client should change something, 5xx the server failed.</li>
+<li><strong>Why it matters here.</strong> The mobile app reacts to status codes: 401 starts a token refresh, 409 shows a conflict message, 422 shows validation details, status 0 means "could not connect". A wrong code breaks the app's behaviour even if the body is right.</li>
+<li><strong>Where in our code.</strong> Routers in <code>vitaltrack-backend/app/api/v1/</code>; status handling in <code>vitaltrack-mobile/services/api.ts</code>.</li>
+<li><strong>Example.</strong> <code>POST /api/v1/orders</code> returns <strong>201</strong> for a new order and <strong>200</strong> when the same <code>localId</code> is replayed: the status code tells the client whether something new was created.</li>
+<li><strong>Current limitations.</strong> Some routes bend the conventions: <code>GET /auth/verify-email</code> changes data (it verifies an address when the link is opened); <code>PUT /items/{id}</code> behaves like a partial update (omitted fields stay); <code>POST /orders/{id}/apply</code> is an action, not a resource. Error bodies are not uniform (<code>detail</code> vs <code>error/message/details</code>).</li>
+</ul>
+<h3 id="d2-asgi-middleware-and-the-request-lifecycle">D2. ASGI, middleware and the request lifecycle<a class="anchor" href="#d2-asgi-middleware-and-the-request-lifecycle" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> ASGI is the interface between an async Python web server (Uvicorn) and an application (FastAPI/Starlette). Middleware wrap the application to add behaviour to every request, such as headers, body limits or CORS.</li>
+<li><strong>Why it matters here.</strong> The order of middleware decides what every response carries. CareKosh's outermost user middleware buffers and limits the body before anything else runs, and the generic 500 handler runs outside the header middleware.</li>
+<li><strong>Where in our code.</strong> <code>app/main.py:90-174</code>, <code>app/services/ai_body_limit.py</code>.</li>
+<li><strong>Example.</strong> Reproduced on 7 Oct and re-run on 8 Oct 2026: a 422 response carries <code>X-Request-ID</code>, <code>X-Content-Type-Options</code> and <code>Cache-Control: no-store</code>; a 500 response from an unexpected exception carries <strong>none</strong> of them, because Starlette's error middleware (outermost) produced it.</li>
+<li><strong>Current limitations.</strong> The request id is returned to the client but not written to logs, so it cannot yet be used to find a request in the server logs. The body limiter buffers every request in memory (bounded at 2 MB).</li>
+</ul>
+<h3 id="d3-async-io-versus-cpu-bound-work-and-worker-processes">D3. Async I/O versus CPU-bound work, and worker processes<a class="anchor" href="#d3-async-io-versus-cpu-bound-work-and-worker-processes" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> <code>async</code>/<code>await</code> lets one thread serve many requests while each one <em>waits</em> (for the database, the network, a disk). It does not make <em>computation</em> faster: CPU-heavy work in an async function blocks every other request on that event loop until it finishes. Separate <strong>processes</strong> (workers) are what let a server use several CPU cores at once.</li>
+<li><strong>Why it matters here.</strong> Password hashing with Argon2 is deliberately slow CPU work. Run directly in an <code>async def</code> handler, it would freeze the worker for every other user during each login.</li>
+<li><strong>Where in our code.</strong> <code>app/api/v1/auth.py</code> runs <code>hash_password</code> and <code>verify_password</code> through <code>anyio.to_thread.run_sync</code>, which moves them to a thread pool. The Docker image starts Gunicorn with <strong>2</strong> Uvicorn worker processes (<code>Dockerfile</code> CMD). Audio decoding for optional consented cloud transcription runs <code>ffmpeg</code> as a subprocess with a time limit.</li>
+<li><strong>Example.</strong> Ten simultaneous logins: each hash runs in a thread while the event loop keeps answering <code>/live</code> and inventory reads.</li>
+<li><strong>Current limitations.</strong> Two workers per instance is a fixed setting; nothing measures how many concurrent users that supports. Each hash uses argon2id with 64 MiB of memory, t=3, p=4 (argon2-cffi's defaults, RFC 9106's second recommended option), and runs while the request holds a database connection (on login, password change and reset, also a row lock). Threads still share the Python process; very heavy CPU work would need processes or another service. <code>GET /items/stats</code> loads all active items into Python to count them (fine at this scale; a SQL <code>COUNT</code> would scale better).</li>
+</ul>
+<h3 id="d4-dependency-injection">D4. Dependency injection<a class="anchor" href="#d4-dependency-injection" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> Instead of each handler creating its own database session or parsing the token itself, it declares what it needs (<code>db: DB</code>, <code>current_user: CurrentUser</code>) and FastAPI builds those values by calling dependency functions, in the right order, once per request.</li>
+<li><strong>Why it matters here.</strong> Authentication and the transaction lifecycle are written once and cannot be forgotten in a new route. Tests replace the database dependency with a test session (<code>app.dependency_overrides</code>).</li>
+<li><strong>Where in our code.</strong> <code>app/api/deps.py</code> (<code>get_current_user</code>, <code>CurrentUser</code>, <code>DB</code>), <code>app/core/database.py</code> (<code>get_db</code>), <code>tests/conftest.py:126-136</code> (override).</li>
+<li><strong>Example.</strong> <code>get_current_user</code> itself depends on <code>get_db</code> and on the bearer-token extractor; any route that declares <code>CurrentUser</code> therefore gets a validated user loaded through the same session as the handler.</li>
+<li><strong>Current limitations.</strong> AI routes deliberately avoid <code>get_db</code> (they open short sessions themselves so no connection is held during a Groq call), so there are two session patterns to learn. Some dependencies (<code>SuperUser</code>, <code>VerifiedUser</code>, <code>OptionalUser</code>, <code>Pagination</code>) exist but no route uses them.</li>
+</ul>
+<h3 id="d5-validation-and-serialization">D5. Validation and serialization<a class="anchor" href="#d5-validation-and-serialization" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> <em>Validation</em> checks incoming data against a schema (types, lengths, ranges, formats) and rejects it before business logic runs. <em>Serialization</em> turns internal objects into the JSON the client expects.</li>
+<li><strong>Why it matters here.</strong> The phone sends camelCase (<code>minimumStock</code>), the database uses snake_case (<code>minimum_stock</code>). Pydantic aliases translate in both directions, and validation keeps bad data (negative quantities, <code>javascript:</code> links, overlong names) out of the database.</li>
+<li><strong>Where in our code.</strong> <code>app/schemas/*.py</code>; the 422 handler in <code>app/main.py:183-205</code>; <code>response_model=</code> on each route.</li>
+<li><strong>Example.</strong> <code>ItemUpdate</code> uses Pydantic's <code>model_fields_set</code> to tell "field omitted" from "field sent as null": <code>{"brand": null, "version": 1}</code> clears the brand, <code>{"version": 1}</code> leaves it alone (reproduced).</li>
+<li><strong>Current limitations.</strong> Rules are not uniform: items honour explicit <code>null</code>, categories and the profile ignore it; order lines accept fields that are not stored (<code>categoryName</code>, <code>isEssential</code>, <code>notes</code>); the client's <code>orderId</code> is required but ignored. Text "sanitising" strips tags at input; output escaping is still the renderer's job. Length is checked before that cleaning, so a name made only of spaces or tags passes and is stored empty (see <a href="#c4-inventory-rules-and-concurrency">C4</a>).</li>
+</ul>
+<h3 id="d6-authentication-versus-authorization">D6. Authentication versus authorization<a class="anchor" href="#d6-authentication-versus-authorization" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> Authentication proves <em>who</em> is calling (here: a valid, unexpired, correctly signed access token whose <code>session_version</code> matches). Authorization decides <em>what</em> that caller may do (here: only rows they own).</li>
+<li><strong>Why it matters here.</strong> A valid token for user A must never read user B's inventory. Forgetting the ownership filter in one query would be a data leak even though authentication works.</li>
+<li><strong>Where in our code.</strong> <code>app/api/deps.py:30-79</code> (authentication); every query in <code>app/api/v1/*.py</code> includes <code>user_id == current_user.id</code> (authorization).</li>
+<li><strong>Example.</strong> User B requests <code>GET /items/&lt;A's item id&gt;</code> with a valid token: the query finds no row for B and returns 404 (reproduced), revealing nothing.</li>
+<li><strong>Current limitations.</strong> There are no roles or shared households: sharing means sharing one account (and its password) across phones. Logout does not invalidate the access token. CORS is not part of either (see <a href="#d22-common-misconceptions-corrected">misconceptions</a>).</li>
+</ul>
+<h3 id="d7-transactions-and-isolation">D7. Transactions and isolation<a class="anchor" href="#d7-transactions-and-isolation" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> A transaction groups statements so they all take effect or none do (atomicity), and controls what concurrent transactions can see (isolation). PostgreSQL's default isolation level, READ COMMITTED, lets each statement see data committed before it started.</li>
+<li><strong>Why it matters here.</strong> Applying an order changes the order and several items; a failure halfway must not leave stock half-applied.</li>
+<li><strong>Where in our code.</strong> <code>get_db</code> (<code>app/core/database.py:107-124</code>): one session per request — not one transaction. Write handlers commit explicitly; SQL after that (<code>db.refresh</code>) starts a new transaction, which <code>get_db</code> commits after the handler (or rolls back on any exception). Handlers like <code>apply_order_to_stock</code> (<code>app/api/v1/orders.py:459-605</code>) do all their writes before one <code>commit()</code>. AI routes open their own short sessions instead.</li>
+<li><strong>Example.</strong> Reproduced: an order whose item was deleted cannot be applied: 409, the order stays <code>received</code>, and no quantity changes.</li>
+<li><strong>Current limitations.</strong> Email is sent in a background task <em>after</em> the commit, so "account created but email failed" is possible (the person can resend). A rollback cannot undo an earlier commit, and a response lost after a commit leaves the client unsure whether it was saved. Nothing uses SERIALIZABLE isolation; correctness relies on the specific patterns in D8.</li>
+</ul>
+<h3 id="d8-locking-optimistic-concurrency-and-idempotency">D8. Locking, optimistic concurrency and idempotency<a class="anchor" href="#d8-locking-optimistic-concurrency-and-idempotency" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> <em>Pessimistic locking</em> blocks others while you work (<code>SELECT … FOR UPDATE</code>, advisory locks). <em>Optimistic concurrency</em> lets everyone work and rejects the late writer at save time (a version check). <em>Idempotency</em> means repeating the same request has the same effect as sending it once, which makes retries safe.</li>
+<li><strong>Why it matters here.</strong> Several phones can share one account; networks drop responses; people tap Save twice.</li>
+<li><strong>Where in our code.</strong> Version compare-and-swap in <code>items.py</code>; user-row locks in <code>auth.py</code> (login, refresh, password change); <code>pg_advisory_xact_lock</code> for duplicate-name checks (<code>app/services/inventory_lock.py</code>) and AI quotas; conditional <code>UPDATE … WHERE status = …</code> for order transitions and apply; <code>localId</code> + partial unique index for order creation (migration 0010).</li>
+<li><strong>Example.</strong> Two simultaneous stock saves of the same item: one 200, one 409. Two simultaneous order creations with the same <code>localId</code>: one 201, one 200, one order (both reproduced on 7 and 8 Oct 2026).</li>
+<li><strong>Current limitations.</strong> Item creation has no idempotency key (a retry after a lost response gets 409 "already exists"). A <code>localId</code> repeat with a changed payload silently returns the original order. The item form now preserves its original version, closing client gap A-1. Refresh-token reuse is refused but not treated as theft.</li>
+</ul>
+<h3 id="d9-database-constraints-versus-application-validation">D9. Database constraints versus application validation<a class="anchor" href="#d9-database-constraints-versus-application-validation" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> A <em>constraint</em> is a rule the database enforces for every writer (CHECK, UNIQUE, NOT NULL, FOREIGN KEY). <em>Application validation</em> is a rule only the API enforces. Constraints are the last line of defence; application rules give friendlier errors and can express things SQL cannot easily express.</li>
+<li><strong>Why it matters here.</strong> Some rules must hold even if someone runs SQL by hand or a future endpoint forgets a check.</li>
+<li><strong>Where in our code.</strong> Constraints: <code>CHECK (quantity &gt;= 0)</code>, <code>CHECK (quantity &gt; 0)</code> on order lines, unique email/username/order number, the partial unique <code>localId</code> index, ON DELETE CASCADE. Application-only: case-insensitive unique names (no constraint because old data has duplicates), allowed status transitions, password rules.</li>
+<li><strong>Example.</strong> A concurrent duplicate registration passes the API's SELECT check twice, but the unique index rejects the second insert; the generic handler turns that into 409.</li>
+<li><strong>Current limitations.</strong> Category and item name uniqueness has no database backstop; adding one needs a reviewed plan for existing duplicates. Order status values are not constrained in the database (VARCHAR).</li>
+</ul>
+<h3 id="d10-relationships-indexes-query-cost-and-eagerlazy-loading">D10. Relationships, indexes, query cost and eager/lazy loading<a class="anchor" href="#d10-relationships-indexes-query-cost-and-eagerlazy-loading" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> Relationships connect tables (an item belongs to a category). <em>Lazy</em> loading fetches related rows when you first touch them; <em>eager</em> loading fetches them up front (for example <code>selectin</code>: one extra <code>IN (...)</code> query). An <em>index</em> lets the database find rows without scanning the whole table.</li>
+<li><strong>Why it matters here.</strong> Loading a user eagerly would also load all their items, orders and activity: an expensive surprise on every authenticated request. In async SQLAlchemy, an accidental lazy load raises an error instead of silently querying.</li>
+<li><strong>Where in our code.</strong> <code>lazy="selectin"</code> on <code>User</code>, <code>Category</code> and <code>Order</code> collections (<code>app/models/</code>); <code>noload("*")</code> in <code>get_current_user</code> and auth routes; indexes on every <code>user_id</code>, on <code>items.name</code>, on token digests; <code>test_auth.py::test_auth_responses_do_not_load_account_history</code> asserts no collection queries during auth.</li>
+<li><strong>Example.</strong> <code>GET /orders</code> returns each order with its lines: the order query plus one <code>selectin</code> query for all their lines, not one query per order.</li>
+<li><strong>Current limitations.</strong> No query-plan review or slow-query monitoring exists. <code>GET /items/stats</code> reads every active item; there is no composite index for ordering orders by <code>exported_at</code> per user. Fine for hundreds of items per account; measure before assuming more.</li>
+</ul>
+<h3 id="d11-pagination">D11. Pagination<a class="anchor" href="#d11-pagination" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> Returning a large list in pages (<code>page</code>, <code>pageSize</code>) bounds response size and memory.</li>
+<li><strong>Why it matters here.</strong> One account can have hundreds of items and a long order history.</li>
+<li><strong>Where in our code.</strong> <code>GET /items</code> (<code>pageSize</code> ≤ 100) and <code>GET /orders</code> (≤ 100) with stable ordering (<code>name, id</code> and <code>exported_at, id</code>); the phone fetches <strong>all</strong> pages (<code>services/items.ts</code>, <code>services/orders.ts</code>). For items it rejects overlapping pages or a total that changes mid-fetch; for orders it only removes duplicate ids.</li>
+<li><strong>Example.</strong> 101 items → two requests (100 + 1); the client checks no id appears twice.</li>
+<li><strong>Current limitations.</strong> Offset pagination is not a snapshot: concurrent writes between page requests can make the fetch fail ("Inventory changed during refresh") and need a retry. The checks catch many changes, not all: a delete plus a create between two pages keeps the total and can silently skip an item. The activity feed has only a <code>limit</code> (≤ 200). Page &gt; 1 is untested on the backend.</li>
+</ul>
+<h3 id="d12-retries-timeouts-and-cancellation">D12. Retries, timeouts and cancellation<a class="anchor" href="#d12-retries-timeouts-and-cancellation" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> A <em>retry</em> repeats a failed operation; it is only safe if the operation is idempotent or the server can recognise the repeat. A <em>timeout</em> bounds how long to wait. <em>Cancellation</em> stops work whose result is no longer wanted.</li>
+<li><strong>Why it matters here.</strong> Mobile networks drop responses; a retry of a non-idempotent write can duplicate data.</li>
+<li><strong>Where in our code.</strong> Server: <code>statement_timeout</code> 8 s on every database connection, 2 s on <code>/health</code>, 25 s on Groq, 10 s for AI uploads. Phone: TanStack retries <strong>queries</strong> 3 times with backoff but <strong>mutations</strong> 0 times; the failure dialog's Retry repeats the same mutation variables (so an order retry reuses its <code>localId</code>); refresh 30 s; assistant calls 50 s; the assistant's inventory read 20 s; ordinary requests have a <strong>90-second overall deadline</strong>.</li>
+<li><strong>Example.</strong> A dropped response after creating an order: Retry sends the same <code>localId</code>, the server returns the existing order (200). A dropped response after creating an <em>item</em>: Retry gets 409 "already exists" (no key).</li>
+<li><strong>Current behavior and limits.</strong> Ordinary requests have a 90 s deadline; AI retains 50 s. A missing response may follow a successful commit, so the dialog warns that the server may have saved and affected active queries refetch. Check before retrying. There is still no server-side retry of failed emails.</li>
+</ul>
+<h3 id="d13-caching-and-stale-data">D13. Caching and stale data<a class="anchor" href="#d13-caching-and-stale-data" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> A cache keeps a copy of data to avoid fetching it again. <em>Stale</em> data is a copy that may no longer match the source. Every cache needs a rule for when to refresh.</li>
+<li><strong>Why it matters here.</strong> The phone shows cached inventory instantly, even offline, but another phone may have changed it.</li>
+<li><strong>Where in our code.</strong> <code>providers/QueryProvider.tsx</code> (30 s <code>staleTime</code>, 24 h persistence, refetch on focus and reconnect), <code>features/assistant/snapshot.ts</code> (stricter rules for spoken answers). There is <strong>no</strong> server-side cache.</li>
+<li><strong>Example.</strong> Phone B changes gloves to 38; phone A still shows 40 until it refetches (returning to the app, reconnecting, pulling to refresh or after its own write).</li>
+<li><strong>Current limitations.</strong> No list shows a "last synced" time, and data restored after a restart can be older than 24 h (see C6); the cache "buster" is the app version string (<code>1.0.0</code>), which EAS build-number increments do not change; the server never pushes updates.</li>
+</ul>
+<h3 id="d14-logging-observability-and-safe-telemetry">D14. Logging, observability and safe telemetry<a class="anchor" href="#d14-logging-observability-and-safe-telemetry" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> Logs record what happened; metrics count it; traces follow one request through components. Together they let you answer "what went wrong, for whom, since when?".</li>
+<li><strong>Why it matters here.</strong> Logs can leak secrets (tokens in URLs) and personal data, and the repository is public, so the logging code itself must be careful.</li>
+<li><strong>Where in our code.</strong> <code>app/core/logging.py</code> redacts verification/deletion tokens in paths and <code>token=</code>/<code>password=</code> query values, and replaces exception messages with their type and code location; Sentry (if configured) drops request bodies, local variables and user data (<code>scrub_telemetry_event</code>). Gunicorn writes access logs to stdout and error logs to stderr.</li>
+<li><strong>Example.</strong> An access log line for <code>/api/v1/auth/confirm-delete/&lt;token&gt;</code> is written with <code>[REDACTED]</code> instead of the token (tested).</li>
+<li><strong>Current limitations.</strong> No metrics, dashboards or alerts are defined in the repository; uptime monitors and log retention live in provider dashboards (NOT VERIFIED). The request id is not logged.</li>
+</ul>
+<h3 id="d15-error-handling">D15. Error handling<a class="anchor" href="#d15-error-handling" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> Expected failures (bad input, missing row, conflict) get specific status codes and messages; unexpected ones get a generic 500 and are logged for the operator without leaking internals.</li>
+<li><strong>Why it matters here.</strong> The app turns statuses into messages; leaking SQL or stack traces would help attackers.</li>
+<li><strong>Where in our code.</strong> <code>app/main.py:180-237</code> (validation 422, IntegrityError 409, generic 500); <code>HTTPException</code> in handlers; <code>services/api.ts</code> and <code>utils/mutationFeedback.ts</code> on the phone.</li>
+<li><strong>Example.</strong> A database constraint violation that a route does not handle returns <code>409 {"detail":"A conflict occurred. Please try again."}</code> and logs the exception type and location only.</li>
+<li><strong>Current limitations.</strong> The phone shows one generic message for every 409 in some flows (A-3) and sometimes two messages for one failure (A-4).</li>
+</ul>
+<h3 id="d16-rate-limiting">D16. Rate limiting<a class="anchor" href="#d16-rate-limiting" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> Limiting how many requests a client can make in a time window, to slow down password guessing and abuse.</li>
+<li><strong>Why it matters here.</strong> Login, registration and recovery are public endpoints.</li>
+<li><strong>Where in our code.</strong> <code>app/utils/rate_limiter.py</code> (slowapi) and the <code>@limiter.limit(...)</code> decorators in <code>auth.py</code>.</li>
+<li><strong>Example.</strong> Six login requests (right or wrong) from one client within a minute that reach the same worker: the sixth gets 429. The limit is checked inside the endpoint call, after validation, so a request rejected with 422 is not counted. This is the design; the limiter is disabled in tests, so it is not automatically verified.</li>
+<li><strong>Current limitations.</strong> Rate limiting is best effort: five auth routes, counters in memory per worker process (two per instance), reset on restart; an open finding about how clients are identified is tracked privately. The server sends no <code>Retry-After</code>, so the app says "wait 60 seconds" (the login screen says "Too many attempts") whatever the real window is (A-6). Treat it as best effort; a shared store (or the edge provider's rate limiting) would be needed for a real guarantee.</li>
+</ul>
+<h3 id="d17-configuration-and-secrets">D17. Configuration and secrets<a class="anchor" href="#d17-configuration-and-secrets" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> Behaviour that differs between environments (database, keys, URLs, feature flags) comes from the environment, not from code. Secrets (keys, passwords, connection strings) must never be committed.</li>
+<li><strong>Why it matters here.</strong> The same image runs locally, on staging and in production; only configuration differs.</li>
+<li><strong>Where in our code.</strong> <code>app/core/config.py</code> (pydantic-settings, <code>SecretStr</code> for secrets, validators that refuse the default <code>SECRET_KEY</code> outside development/testing and require <code>FRONTEND_URL</code> in production); <code>render.yaml</code> (<code>sync: false</code> = set in the dashboard); <code>eas.json</code> (<code>EXPO_PUBLIC_API_URL</code> per build profile).</li>
+<li><strong>Example.</strong> <code>DATABASE_URL=postgres://…?sslmode=require</code> from a provider is rewritten to <code>postgresql+asyncpg://…</code> without the query string; TLS is then enabled because <code>ENVIRONMENT</code> is not development/testing.</li>
+<li><strong>Current limitations.</strong> <code>EXPO_PUBLIC_*</code> values are public by design. The earlier percent-encoding failure in Alembic (A-27) is fixed locally: encode reserved password characters normally; <code>alembic/env.py</code> escapes percent signs only for ConfigParser and passes the original URL to SQLAlchemy. The app sends <code>statement_timeout</code> as a connection start-up parameter, which Neon's pooled (<code>-pooler</code>) endpoint rejects, so use the direct connection string (Neon documentation; the live URL is NOT VERIFIED). Live secret values and which flags are set on staging and production are NOT VERIFIED from the repository.</li>
+</ul>
+<h3 id="d18-containers">D18. Containers<a class="anchor" href="#d18-containers" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> A container image packages the application with its runtime and libraries so it runs the same way everywhere.</li>
+<li><strong>Why it matters here.</strong> Render builds and runs the backend from <code>vitaltrack-backend/Dockerfile</code>; local Docker uses the same entrypoint logic.</li>
+<li><strong>Where in our code.</strong> <code>Dockerfile</code> (multi-stage, Python 3.12-slim, non-root <code>appuser</code>, <code>HEALTHCHECK</code> on <code>/live</code>), <code>docker-entrypoint.sh</code>, <code>docker-compose*.yml</code>.</li>
+<li><strong>Example.</strong> On start the entrypoint waits for PostgreSQL (up to 30 × 2 s, then it carries on anyway), runs <code>alembic upgrade head</code> (the production image exits on failure, so a broken migration never serves traffic; <code>Dockerfile.dev</code> does not, A-17) and then execs Gunicorn bound to the platform's <code>$PORT</code> (Render sets it; 8000 if unset). If <code>DATABASE_URL</code> has no <code>:port</code>, as provider URLs often do not, the wait loop checks <code>localhost:5432</code> instead and adds a minute or more to every start before the migration runs against the real URL.</li>
+<li><strong>Current limitations.</strong> Only direct Python dependencies are pinned (<code>requirements.txt</code>); transitive packages resolve at build time, so two builds can differ. The image includes <code>ffmpeg</code> for optional consented cloud transcription.</li>
+</ul>
+<h3 id="d19-migrations">D19. Migrations<a class="anchor" href="#d19-migrations" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> A migration is a versioned, ordered script that changes the database schema (and sometimes data). Alembic records the current revision in <code>alembic_version</code>.</li>
+<li><strong>Why it matters here.</strong> Code and schema must match; old data must survive; some changes cannot be undone.</li>
+<li><strong>Where in our code.</strong> <code>vitaltrack-backend/alembic/versions/</code> (0001 → 0010), <code>alembic/env.py</code> (one transaction, a 30 s lock timeout and an advisory lock so two starting containers do not migrate at once), <code>tests/test_migration_safety.py</code> (data survives 0006 → head).</li>
+<li><strong>Example.</strong> 0010 locks the <code>orders</code> table against writes (<code>SHARE</code> mode) while it builds the unique <code>localId</code> index, and keeps any pre-existing duplicate rows by exempting them by id. Because all pending revisions run in one transaction, that lock (and 0007's lock on <code>users</code>) lasts until the whole upgrade commits.</li>
+<li><strong>Current limitations.</strong> 0007's downgrade deliberately raises; downgrades are untested; migrations run at container start, so a slow migration delays the deploy and blocks writes to locked tables. CI builds every test schema from an empty database, which does not prove that upgrading real, older data is safe; only one synthetic 0006 → head test covers that.</li>
+</ul>
+<h3 id="d20-backups-and-restore">D20. Backups and restore<a class="anchor" href="#d20-backups-and-restore" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> A backup is a copy you can restore; a backup is only proven when you have restored it somewhere and checked the data.</li>
+<li><strong>Why it matters here.</strong> Inventory history for a home ICU is the product's data; deletion and migrations are irreversible.</li>
+<li><strong>Where in our code.</strong> <code>vitaltrack-backend/scripts/restore_drill.py</code> (dump/restore drill into a <strong>disposable</strong> target only, with refusal rules for production-looking targets); provider-side point-in-time restore on Neon (NOT VERIFIED).</li>
+<li><strong>Example.</strong> Before the 0007–0010 cutover: take a restore point, restore it into a scratch database with the drill script, and check row counts.</li>
+<li><strong>Current limitations.</strong> No evidence in the repository that a production backup has been restored recently; retention depends on the Neon plan (NOT VERIFIED). A restore discards every write made after the backup.</li>
+</ul>
+<h3 id="d21-deployment">D21. Deployment<a class="anchor" href="#d21-deployment" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>What it means.</strong> Moving a new version into service: build, migrate, start, health-check, switch traffic.</li>
+<li><strong>Why it matters here.</strong> A merge to <code>main</code> can deploy the production backend (through the CI deploy hook if its secret is set, or Render auto-deploy if enabled), while the Android app reaches people only when they install a new build.</li>
+<li><strong>Where in our code.</strong> <code>.github/workflows/ci.yml</code>, <code>render.yaml</code>, <code>Dockerfile</code>, <code>docker-entrypoint.sh</code>, <code>eas.json</code>, <code>app.config.js</code>.</li>
+<li><strong>Example.</strong> See <a href="#part-f--environments-cicd-deployment-and-release">Part F</a> and the <a href="diagrams/release-pipeline.svg">release pipeline</a>.</li>
+<li><strong>Current limitations.</strong> No endpoint reports the running commit or migration revision; deploy success must be checked in Render and with <code>alembic current</code>.</li>
+</ul>
+<h3 id="d22-common-misconceptions-corrected">D22. Common misconceptions, corrected<a class="anchor" href="#d22-common-misconceptions-corrected" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Belief</th>
+<th>Correction (and the CareKosh evidence)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"Async makes CPU-heavy work faster."</td>
+<td>Async helps only while waiting. CPU work blocks the event loop; that is why password hashing runs in a thread (<code>anyio.to_thread</code>), and why extra CPU capacity comes from more worker processes, not from <code>async</code>.</td>
+</tr>
+<tr>
+<td>"CORS protects the API / blocks the Android app."</td>
+<td>CORS is a browser rule about which web pages may read responses. Native apps (React Native's <code>fetch</code> on Android) are not subject to it, and it authenticates nobody. CareKosh's production blueprint sets <code>CORS_ORIGINS=["*"]</code> with credentials disabled; security comes from tokens and ownership checks.</td>
+</tr>
+<tr>
+<td>"10,000 registered users means we support 10,000 at once."</td>
+<td>Accounts are not concurrent requests. Capacity depends on how many requests arrive per second and how long each takes (two workers, a 15-connection pool per worker, Neon's limits). Nothing in the repository measures it.</td>
+</tr>
+<tr>
+<td>"A green CI run means every check passed."</td>
+<td>The 7 Oct 2026 run was green while mypy reported 23 errors (advisory job), Trivy is advisory (and PR-only), and <code>expo-doctor</code> failed one check that <code>|| echo</code> hides; ESLint warnings never fail the run. Read the job logs. Also, the <code>main</code> ruleset read on 7 Oct 2026 required no status checks.</td>
+</tr>
+<tr>
+<td>"<code>/health</code> is green, so my commit is deployed."</td>
+<td><code>/health</code> proves the process and database answer. Its <code>version</code> is the settings default <code>1.0.0</code>, not tied to a commit. Check the commit in Render's deploy history and run <code>alembic current</code> against the confirmed database.</td>
+</tr>
+<tr>
+<td>"Changing <code>DATABASE_URL</code> moves the data."</td>
+<td>It only points the app at another database. Data moves with a dump/restore (or provider tooling), and the new database must be migrated to the expected head.</td>
+</tr>
+<tr>
+<td>"Rolling back the code rolls back the database."</td>
+<td>Redeploying an older image does not run downgrades, and migration 0007 refuses to downgrade. A pre-0007 image cannot even start on a 0010 database: its <code>alembic upgrade head</code> does not know revision 0010, so the container exits and Render keeps the current version. Old code meets the new schema only while old and new instances overlap during a forward deploy (for example, COUNT-based order numbers).</td>
+</tr>
+<tr>
+<td>"Pushing to <code>main</code> updates the app on phones."</td>
+<td>At most it deploys the backend. Over-the-air updates are disabled (<code>updates.enabled: false</code>); phones change only when people install a new APK/AAB. Backend changes must therefore stay compatible with older installed apps.</td>
+</tr>
+<tr>
+<td>"Offline mode saves my changes for later."</td>
+<td>There is no offline write queue: writes need a connection. Most write buttons refuse at once when the phone is offline; otherwise a failed request settles within its 90 s overall deadline. Only reads are cached.</td>
+</tr>
+<tr>
+<td>"The assistant never writes to the database."</td>
+<td>It never writes inventory or orders. Consent and usage metadata are written when cloud understanding is enabled, used or withdrawn.</td>
+</tr>
+<tr>
+<td>"Speech recognition means the assistant understands anything I say."</td>
+<td>Recognition only produces words. Understanding is a whole-sentence matcher for bounded inventory queries and unsaved local drafts, plus optional Groq returning the same strict specification. Saving still requires touch confirmation.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="d23-principles-from-established-books-mapped-to-carekosh">D23. Principles from established books, mapped to CareKosh<a class="anchor" href="#d23-principles-from-established-books-mapped-to-carekosh" aria-label="Link to this section">#</a></h3>
+<p>These are paraphrased ideas, not quotations. Editions (checked 8 Oct 2026): <em>Designing Data-Intensive Applications</em>, Martin Kleppmann, O'Reilly, 1st ed. 2017 (a 2nd edition with Chris Riccomini appeared in March 2026); <em>Architecture Patterns with Python</em>, Harry Percival and Bob Gregory, O'Reilly, 2020 (free to read at cosmicpython.com); <em>Release It!</em>, 2nd ed., Michael T. Nygard, Pragmatic Bookshelf, 2018. The last two rows are general operations practice, not attributed to a book.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Principle (in our words)</th>
+<th>What CareKosh does today</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>Designing Data-Intensive Applications</em> (Kleppmann)</td>
+<td>Concurrent writes need an explicit rule: detect conflicts (versions) or serialize; "last write wins" silently loses data.</td>
+<td>Version compare-and-swap on items; conditional status updates; advisory locks for name checks. The app now retains the form's original version (A-1 fixed locally).</td>
+</tr>
+<tr>
+<td><em>Designing Data-Intensive Applications</em></td>
+<td>Retries are only safe with idempotency; give requests a key the server can recognise.</td>
+<td><code>localId</code> for orders (0010). Not yet for item creation.</td>
+</tr>
+<tr>
+<td><em>Designing Data-Intensive Applications</em></td>
+<td>Constraints in the database protect data from every writer, not just the application.</td>
+<td>CHECK and UNIQUE constraints exist for quantities, emails, order numbers and order keys; name uniqueness is application-only.</td>
+</tr>
+<tr>
+<td><em>Architecture Patterns with Python</em> (Percival &amp; Gregory)</td>
+<td>Keep business rules testable and close together (a service layer, a unit of work around each change).</td>
+<td>Rules live inside FastAPI route handlers; <code>get_db</code> acts as a simple unit of work per request. There is no separate service or repository layer, which keeps the code short but couples rules to HTTP. A refactor is a choice, not a requirement, at the current size.</td>
+</tr>
+<tr>
+<td><em>Release It!</em> (Nygard)</td>
+<td>Every outbound call needs a timeout; fail fast; stop a slow dependency from consuming all resources (bulkheads, circuit breakers).</td>
+<td>Timeouts on SQL (8 s), health (2 s), Groq (25 s) and AI uploads; AI calls never hold a database connection; global AI concurrency cap. Ordinary requests also have a 90 s deadline. Remaining gap: no circuit breaker.</td>
+</tr>
+<tr>
+<td>General operations practice</td>
+<td>Health checks should distinguish "process alive" from "ready to serve".</td>
+<td><code>/live</code> (liveness, used by Render) vs <code>/health</code> (database readiness). Render itself recommends a check that exercises something critical, such as a simple database query; CareKosh deliberately uses <code>/live</code> so a short database outage does not restart instances.</td>
+</tr>
+<tr>
+<td>General operations practice</td>
+<td>Deployments should be reversible or have a plan when they are not.</td>
+<td>Migration 0007 is deliberately one-way; the release gate in <a href="#f5-database-migrations-and-the-0007-0010-release-gate">F5</a> compensates with staging, backups and a pause.</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="part-e--testing-debugging-and-daily-work">Part E — Testing, debugging and daily work<a class="anchor" href="#part-e--testing-debugging-and-daily-work" aria-label="Link to this section">#</a></h2>
+<h3 id="e1-tests-what-they-cover-and-how-to-run-them-safely">E1. Tests: what they cover and how to run them safely<a class="anchor" href="#e1-tests-what-they-cover-and-how-to-run-them-safely" aria-label="Link to this section">#</a></h3>
+<p><strong>Backend</strong> (<code>vitaltrack-backend/tests/</code>, pytest 8.3 + pytest-asyncio 0.24 in <code>auto</code> mode, HTTPX <code>ASGITransport</code>). The fixture <code>fresh_database</code> <strong>drops every table before and after each test</strong> and rebuilds the schema (through Alembic with <code>--migrated-schema</code>, which is what CI does; otherwise from the ORM models). <code>tests/conftest.py</code> refuses to start unless the database name contains <code>test</code> or <code>pytest</code>, the URL does not look like staging/production/a hosted provider, and <code>ENVIRONMENT</code> is not staging/production. The name check is a simple substring match (a name like <code>latest_inventory</code> would pass), so it is a seatbelt, not a guarantee: <strong>only ever point it at a database you are happy to lose.</strong></p>
+<pre><code class="language-bash"># A throwaway PostgreSQL 16 on port 55432, reachable only from this laptop (deleted when stopped)
+docker run --rm -d --name carekosh-test-db -p 127.0.0.1:55432:5432 \
+  -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=carekosh_test postgres:16
+
+cd vitaltrack-backend
+python3.12 -m venv .venv &amp;&amp; . .venv/bin/activate
+pip install -r requirements.txt          # without ffmpeg on PATH, one audio-decoder test is skipped
+export ENVIRONMENT=testing SECRET_KEY=local-test-secret-key-0123456789abcdef
+export DATABASE_URL=postgresql+asyncpg://postgres@127.0.0.1:55432/carekosh_test
+python -m pytest tests/ -q --migrated-schema       # 242 passed on 7 and 8 Oct 2026
+ruff check app/ tests/ scripts/
+python scripts/check_api_routes.py --expected 44
+docker stop carekosh-test-db
+</code></pre>
+<p>The settings loader also reads <code>vitaltrack-backend/.env</code> (the 8 Oct run used none). Keep real keys out of that shell <strong>and</strong> that file — at least <code>MAIL_PASSWORD</code>, <code>GROQ_API_KEY</code> and <code>SENTRY_DSN</code> empty: the suite assumes email is unconfigured, and with a real key ordinary tests would try to send real email. Do not pass a dotted module to <code>--cov</code> (for example <code>--cov=app.api.v1.orders</code>); it can make asyncpg errors stop mapping to <code>IntegrityError</code> and fail unrelated tests. CI's <code>--cov=app</code> is fine.</p>
+<p><strong>Mobile</strong> (<code>vitaltrack-mobile/tests/*.test.cjs</code>, Node's built-in test runner): the files compile the real TypeScript with <code>ts.transpileModule</code> and run it with native modules, storage and <code>fetch</code> replaced by fakes; the assistant UI test renders <code>AssistantExperience</code> with <code>react-test-renderer</code>.</p>
+<pre><code class="language-bash">cd vitaltrack-mobile
+npm test                 # 121 passed on 7 and 8 Oct 2026 (npm run test:api runs only the API-client file)
+npx tsc --noEmit
+npm run lint             # 8 Oct 2026: 0 errors, 1 warning (app/builder.tsx); warnings do not fail CI
+</code></pre>
+<p><strong>What the tests cover, and what they do not.</strong> They cover the API contract of every inventory and order route, token rotation and session invalidation, ownership, version conflicts, order idempotency, apply atomicity, migration data preservation (0006 → head), AI consent/limits/output validation with the provider faked, the mobile API client's refresh logic, the query provider's persistence rules and the assistant's parser, snapshot rules and UI flow. They do <strong>not</strong> cover: three auth routes (forgot-password, resend-verification, HTML verify-email), rate limiting (disabled in tests), security headers, migration downgrades, real email, real Groq, the Kotlin module and real recording, any screen other than the assistant, Render's proxy, several workers, or a real phone. About ten concurrency tests fire requests together without forcing the overlap, so a pass does not prove the race was exercised. Tests also replace <code>get_db</code> with their own session (autoflush on, no statement timeout, no lifespan), so the production session settings are not exercised. A full list is in the <a href="API_TRACEABILITY.html#coverage-gaps-worth-knowing">traceability matrix</a>. The audit's own replay (<a href="tools/api_walkthrough.py">api_walkthrough.py</a>) is extra evidence, not a substitute for tests.</p>
+<h3 id="e2-debugging-and-common-failures">E2. Debugging and common failures<a class="anchor" href="#e2-debugging-and-common-failures" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>How to check / fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>App says "Unable to connect to server. The server may be starting up…"</td>
+<td>Wrong <code>EXPO_PUBLIC_API_URL</code>, backend down, phone on another network, or a cold start</td>
+<td>Open the URL's <code>/live</code> in the phone's browser; check <code>vitaltrack-mobile/.env</code> and reload the app (restarting Metro with <code>--clear</code> also works); for USB use <code>adb reverse tcp:8000 tcp:8000</code>; check the laptop firewall allows port 8000 on your private network (on Windows, <code>fix-firewall.ps1</code> opens it on Private <strong>and Public</strong> networks and has no undo script; remove the rule afterwards with <code>Remove-NetFirewallRule -DisplayName VitalTrack-Backend-8000</code>).</td>
+</tr>
+<tr>
+<td>Every request returns 401 after a while</td>
+<td>Access token expired and the refresh failed (refresh token revoked, password changed elsewhere, or account deleted)</td>
+<td>The app logs out on a definitive refresh 401/403; log in again. On the server, the access log shows <code>POST /api/v1/auth/refresh</code> with 401 (the detail <code>Invalid or expired refresh token</code> is in the response, not the log).</td>
+</tr>
+<tr>
+<td>403 <code>EMAIL_NOT_VERIFIED</code></td>
+<td>Verification enforced (<code>REQUIRE_EMAIL_VERIFICATION=true</code> <strong>and</strong> <code>MAIL_PASSWORD</code> set) for an unverified email account</td>
+<td>Verify through the emailed link, or locally leave <code>MAIL_PASSWORD</code> empty.</td>
+</tr>
+<tr>
+<td>409 "Version conflict" on save</td>
+<td>Someone (or another phone) saved the item first, or it was deleted</td>
+<td>Refetch the item and redo the change. See <a href="#c4-inventory-rules-and-concurrency">C4</a>.</td>
+</tr>
+<tr>
+<td>409 "A conflict occurred"</td>
+<td>A database constraint was hit (for example a duplicate email registered at the same moment)</td>
+<td>Read the server log line <code>Database integrity error</code> (exception type and location only).</td>
+</tr>
+<tr>
+<td>409 when applying an order</td>
+<td>An order line's item was deleted after the order was created</td>
+<td>The order can no longer be applied, declined or deleted through the API (recreating the item gives it a new id, so it does not help); it stays as <code>received</code> history. Known limitation A-16.</td>
+</tr>
+<tr>
+<td>400 "Only pending or declined orders can be deleted"</td>
+<td>"Remove" pressed on a received/applied order</td>
+<td>Expected; applied orders are history.</td>
+</tr>
+<tr>
+<td>422 with <code>body.items.0.quantity</code></td>
+<td>An order line with quantity 0</td>
+<td>Every line needs quantity ≥ 1.</td>
+</tr>
+<tr>
+<td>429</td>
+<td>Rate limit (per worker, in memory)</td>
+<td>Wait; locally restart the API to reset counters.</td>
+</tr>
+<tr>
+<td>413 "Request is too large."</td>
+<td>Body over 2 MB (or 12 KB for AI JSON)</td>
+<td>Reduce the payload; do not raise limits casually.</td>
+</tr>
+<tr>
+<td>503 from <code>/health</code></td>
+<td>Database unreachable or slower than 2 s</td>
+<td>Check the database container/provider; <code>/live</code> will still be 200.</td>
+</tr>
+<tr>
+<td>pytest stops with <code>Refusing to run destructive test setup…</code> or <code>Refusing to run Base.metadata.drop_all/create_all…</code></td>
+<td>Tests pointed at a staging/production-looking target or a database without <code>test</code> in its name</td>
+<td>Point <code>DATABASE_URL</code> at a throwaway <code>*test*</code> database.</td>
+</tr>
+<tr>
+<td>Voice: "Download the English speech pack…" / "needs the Android preview app"</td>
+<td>Expo Go, iOS or web; or the pack is missing</td>
+<td>Use an Android build that includes the module (an EAS preview APK); open Voice setup → Download speech pack.</td>
+</tr>
+<tr>
+<td>Voice: "Online understanding is unavailable" (Voice setup)</td>
+<td>Server AI flags off, <code>/ai/capabilities</code> failed, or the app's and server's consent versions differ (A-21)</td>
+<td>Expected unless the backend has <code>AI_ENABLED</code>, <code>AI_DATA_CONTROLS_REVIEWED</code>, <code>GROQ_API_KEY</code>; local commands keep working.</td>
+</tr>
+<tr>
+<td>Assistant: "Stock changes are still saving…"</td>
+<td>A mutation is pending</td>
+<td>Wait for the save to finish; answers are refused while data is changing.</td>
+</tr>
+<tr>
+<td>Migration fails at container start</td>
+<td>Schema conflict or a lock wait over 30 s</td>
+<td>The production image exits (previous deploy keeps serving on Render); the local <code>Dockerfile.dev</code> starts the server anyway (A-17). Read the Alembic error before retrying.</td>
+</tr>
+<tr>
+<td>Container exits at start with <code>ValueError: invalid interpolation syntax</code></td>
+<td>An older backend may still contain the percent-encoding bug A-27</td>
+<td>Deploy the updated backend: Alembic configuration now handles encoded passwords. Do not remove required URL encoding.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Useful local commands: <code>docker compose -f docker-compose.dev.yml exec api alembic current</code> (expect <code>0010_order_local_id_unique (head)</code>), <code>… exec db psql -U postgres -d vitaltrack</code>, and <code>curl -i http://localhost:8000/health</code>.</p>
+<h3 id="e3-daily-development-workflow">E3. Daily development workflow<a class="anchor" href="#e3-daily-development-workflow" aria-label="Link to this section">#</a></h3>
+<ol>
+<li>Branch from the branch you are building on (today the voice/hardening work lives on <code>feature/backend-hardening-ai-voice-agent-foundation</code>, not yet in <code>main</code>): <code>git checkout -b fix/&lt;short-name&gt;</code>. <code>main</code> (<code>835fad3</code>) has no <code>/api/v1/ai/*</code> routes, stops at migration 0006 and runs an older CI (Python 3.11, route gate 39); this guide describes the feature branch.</li>
+<li>Change code; keep business rules (<a href="#a3-business-rules-the-code-enforces">A3</a>) intact unless the change is the point of the PR.</li>
+<li>Run the backend suite against a disposable database and <code>npm test</code>, <code>npx tsc --noEmit</code>, <code>npm run lint</code>.</li>
+<li>Push and open a PR to <code>main</code> (a push runs CI only when the branch already has an open PR to <code>main</code>; otherwise use "Run workflow" to start it manually).</li>
+<li>Read every CI job's log, not just the summary (advisory jobs never turn the run red).</li>
+<li>For backend changes that touch the schema or authentication, deploy the candidate to <strong>staging</strong> deliberately and test with a preview APK before merging (<a href="#f4-backend-deployment-on-render">F4</a>).</li>
+<li>Merge (house style: squash) only when ready for production: <strong>treat merging to <code>main</code> as a production backend deploy</strong> (the CI deploy hook runs if its secret is set, and Render auto-deploy may run too; both NOT VERIFIED).</li>
+<li>Mobile changes reach users only through a new build and a Play release (<a href="#f6-mobile-builds-and-play-store-release">F6</a>).</li>
+</ol>
+<p>Commit messages follow the existing short style (<code>fix: …</code>, <code>docs: …</code>, <code>feat: …</code>); see <a href="GIT_WORKFLOW_GUIDE.md">GIT_WORKFLOW_GUIDE.md</a>.</p>
+<hr />
+<h2 id="part-f--environments-cicd-deployment-and-release">Part F — Environments, CI/CD, deployment and release<a class="anchor" href="#part-f--environments-cicd-deployment-and-release" aria-label="Link to this section">#</a></h2>
+<h3 id="f1-environments">F1. Environments<a class="anchor" href="#f1-environments" aria-label="Link to this section">#</a></h3>
+<p>The same code runs everywhere; configuration decides which data it touches.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Local</th>
+<th>Staging</th>
+<th>Production</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>App build</td>
+<td>Expo Go (<code>EXPO_PUBLIC_API_URL</code> from <code>.env</code>, e.g. your LAN IP); a <code>development</code> build first needs <code>expo-dev-client</code></td>
+<td><code>preview</code> APK, installed directly</td>
+<td><code>production</code> AAB through Google Play (including internal testing)</td>
+</tr>
+<tr>
+<td>API</td>
+<td><code>http://&lt;laptop&gt;:8000</code></td>
+<td><code>https://staging-api.carekosh.com</code></td>
+<td><code>https://api.carekosh.com</code></td>
+</tr>
+<tr>
+<td>Backend service</td>
+<td>Docker Compose on your laptop</td>
+<td>Render service configured <strong>in the dashboard</strong> (not in <code>render.yaml</code>)</td>
+<td>Render service <code>vitaltrack-api</code> as described by <code>vitaltrack-backend/render.yaml</code> (<code>plan: starter</code>, <code>branch: main</code>, region Singapore, health check <code>/live</code>); whether Render applies that file is NOT VERIFIED</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>PostgreSQL 16 in Docker (<code>vitaltrack</code>), disposable</td>
+<td>Documented as <code>vitaltrack_staging</code> on Neon</td>
+<td>Documented as <code>neondb</code> on Neon</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>Synthetic</td>
+<td>Synthetic test accounts only</td>
+<td>Real people's data</td>
+</tr>
+<tr>
+<td>Verified?</td>
+<td>Yes (code)</td>
+<td>Settings NOT VERIFIED; owner reported deploying <code>b1c8dd7</code> on 7 Oct 2026 (owner report, not independently checked)</td>
+<td>Settings and deployed commit NOT VERIFIED</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>The <strong>app build decides the API</strong>: <code>EXPO_PUBLIC_API_URL</code> is compiled into the JavaScript bundle by the EAS profile, and <code>app.config.js</code> refuses to build a <code>preview</code> or <code>production</code> profile whose URL is set to anything else. (An empty URL is not caught: such a build would fall back to <code>http://localhost:8000</code>.) A preview APK cannot talk to production by accident; a production AAB calls production on every Play track, so one in Play's internal testing track <strong>does</strong> use production data.</li>
+<li>The <strong>backend service decides the database and secrets</strong>: <code>DATABASE_URL</code>, <code>SECRET_KEY</code>, <code>ENVIRONMENT</code>, <code>MAIL_*</code>, <code>FRONTEND_URL</code>, <code>SENTRY_DSN</code> and any <code>AI_*</code> flags are set per service. Use a different <code>SECRET_KEY</code> per environment; a different database alone does not isolate tokens.</li>
+<li>Database names above are documented, not verified. If staging and production share one Neon <em>project</em>, creating a Neon <em>branch</em> from production copies production data; use a new empty database for staging experiments.</li>
+</ul>
+<h3 id="f2-cicd-pipeline-githubworkflowsciyml">F2. CI/CD pipeline (<code>.github/workflows/ci.yml</code>)<a class="anchor" href="#f2-cicd-pipeline-githubworkflowsciyml" aria-label="Link to this section">#</a></h3>
+<p><strong>Triggers:</strong> pull requests to <code>main</code> (opened, synchronize, reopened, labeled), pushes to <code>main</code>, and manual <code>workflow_dispatch</code> on any branch. A newer run for the same PR or branch cancels the older one. Pushing a feature branch runs CI only when that branch has an open PR to <code>main</code> (a <code>synchronize</code> event); the feature-branch runs on 6–7 Oct 2026 were started manually. Until this branch is merged, <code>main</code> keeps an older <code>ci.yml</code> (Python 3.11, route gate 39, no mobile <code>npm test</code> step, and a deploy call with <code>curl -s</code> that cannot fail the job); a push to <code>main</code> runs that older file.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Job</th>
+<th>Runs when</th>
+<th>Can it fail the run?</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test-backend</code></td>
+<td>every trigger</td>
+<td><strong>Yes</strong></td>
+<td>Python 3.12, PostgreSQL 16 service, <code>ffmpeg</code>; Ruff; <code>pytest --migrated-schema</code> with coverage; route gate (44); ≥ 70 % line coverage for <code>items.py</code> and <code>orders.py</code>.</td>
+</tr>
+<tr>
+<td><code>typecheck-backend-advisory</code></td>
+<td>every trigger</td>
+<td>No (<code>continue-on-error</code>)</td>
+<td>mypy. On 7 Oct 2026: <strong>23 errors in 8 files</strong>, run still green.</td>
+</tr>
+<tr>
+<td><code>test-frontend</code></td>
+<td>every trigger</td>
+<td><strong>Yes</strong>, except expo-doctor and ESLint warnings</td>
+<td>Node <strong>20</strong> (<code>.nvmrc</code> says 22); <code>npm install</code>; checks <code>carekosh-voice</code> is autolinked; <code>tsc --noEmit</code>; <code>npm test</code> (121 tests); ESLint (errors fail, warnings do not); <code>npx expo-doctor || echo …</code> (<strong>its failures are suppressed</strong>; on 7 Oct it reported patch-version mismatches for expo, expo-constants, expo-file-system and expo-updates).</td>
+</tr>
+<tr>
+<td><code>security-scan-advisory</code></td>
+<td>pull requests only</td>
+<td>No</td>
+<td>Trivy filesystem scan for HIGH/CRITICAL vulnerabilities; the baseline has known findings.</td>
+</tr>
+<tr>
+<td><code>pr-check</code></td>
+<td>pull requests, after both test jobs</td>
+<td>No (it only prints a summary; it is skipped when a test job fails)</td>
+<td>A summary gate.</td>
+</tr>
+<tr>
+<td><code>deploy-backend</code></td>
+<td>push to <code>main</code>, after both test jobs (never on a manual run)</td>
+<td>Yes</td>
+<td>If the <code>RENDER_DEPLOY_HOOK</code> secret exists, calls it (<code>curl --fail</code>, 30 s). A 2xx means "Render accepted (or queued) the request", not "deployed". The call names no commit, so Render deploys the latest commit of its branch, which can be newer than the one CI tested.</td>
+</tr>
+<tr>
+<td><code>build-preview</code></td>
+<td>PR carrying the label <code>build-apk</code>, after both test jobs</td>
+<td>Yes</td>
+<td>Node 22; <code>eas build --profile preview --platform android --no-wait</code> (queues the build and ends). Runs again on every later PR event while the label stays.</td>
+</tr>
+<tr>
+<td><code>build-production</code></td>
+<td>never</td>
+<td>—</td>
+<td>Disabled with <code>if: false</code>; production AABs are built manually.</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Branch protection (read through the GitHub API on 7 Oct 2026):</strong> no classic branch protection on <code>main</code>; one active ruleset, <code>protect-main</code>, blocks deletion and force-pushes and requires a pull request with <strong>0</strong> required approvals and <strong>no required status checks</strong>. So a failing CI run does not technically block a merge; reviewers must look. (Earlier documents said "all checks must pass before merge"; that is the intended practice, not an enforced setting.) If required status checks are added later, remember two GitHub behaviours: a job skipped by its <code>if:</code> condition reports success to required checks, and a job or step with <code>continue-on-error</code> never fails the run (SOURCES (local review reference; not published) rows 39–40).</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Action</th>
+<th>What runs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Push to a feature branch</td>
+<td>Nothing, unless the branch has an open PR to <code>main</code> (then it is a PR update, next row). Run the workflow manually if you want CI.</td>
+</tr>
+<tr>
+<td>Open or update a PR to <code>main</code></td>
+<td><code>test-backend</code>, <code>test-frontend</code>, <code>typecheck-backend-advisory</code>, <code>security-scan-advisory</code>, <code>pr-check</code>; <code>build-preview</code> only while the PR carries the <code>build-apk</code> label.</td>
+</tr>
+<tr>
+<td>Add a label (any label)</td>
+<td>Starts a new run of all PR jobs and cancels the running one (re-running an older run does not see a label added later). With <code>build-apk</code> on the PR, another EAS build is queued.</td>
+</tr>
+<tr>
+<td>Merge to <code>main</code> (or push to it)</td>
+<td><code>test-backend</code>, <code>test-frontend</code>, <code>typecheck-backend-advisory</code>, <code>deploy-backend</code> (hook, if configured). Render's own auto-deploy, <strong>if enabled in the dashboard</strong>, also deploys services connected to <code>main</code>, possibly before CI finishes. <code>build-production</code> stays disabled. (Until this branch merges, <code>main</code>'s older workflow runs.)</td>
+</tr>
+<tr>
+<td>Run workflow (manual)</td>
+<td><code>test-backend</code>, <code>typecheck-backend-advisory</code>, <code>test-frontend</code> on the chosen branch; never deploys, even on <code>main</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Why the preview build is label-gated:</strong> EAS builds are metered; building an APK for every PR would use the allowance quickly. Add <code>build-apk</code> when a PR needs testing on a phone.</p>
+<h3 id="f3-where-builds-are-made">F3. Where builds are made<a class="anchor" href="#f3-where-builds-are-made" aria-label="Link to this section">#</a></h3>
+<p>GitHub Actions does not build the APK; it asks <strong>EAS</strong> to build it on Expo's servers from an uploaded copy of the project.</p>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="How a preview APK is built: the GitHub Actions job runs eas build with the preview profile and --no-wait; the EAS CLI uploads the project; the build URL is printed in the job log when the build is queued, and the job ends; EAS then installs dependencies, runs Gradle, signs the APK and stores it on expo.dev." src="diagrams/eas-preview-build.svg" /></div><figcaption>CI asks EAS to build; EAS builds and stores the APK</figcaption></figure>
+<p>A build started from your laptop uploads your <strong>local files, including uncommitted changes</strong> — build from a clean checkout of the commit you mean to ship. Find builds at <code>https://expo.dev/accounts/rishabhrd09/projects/vitaltrack-mobile/builds</code>, with <code>eas build:list</code> (install the CLI with <code>npm install -g eas-cli</code>, or use <code>npx eas-cli@latest build:list</code>; do <strong>not</strong> run <code>npx eas</code>, which installs an unrelated package), or in the <code>build-preview</code> job log.</p>
+<h3 id="f4-backend-deployment-on-render">F4. Backend deployment on Render<a class="anchor" href="#f4-backend-deployment-on-render" aria-label="Link to this section">#</a></h3>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="Delivery pipeline: feature branch and PR, CI with blocking and advisory jobs, a manually deployed staging candidate tested with a preview APK, a merge to main that can trigger the production backend deploy (the CI hook if its secret is set; Render auto-deploy if enabled, not verified), every container start migrating then starting Gunicorn, and the separate mobile release through EAS and Play." src="diagrams/release-pipeline.svg" /></div><figcaption>From a code change to users</figcaption></figure>
+<ol>
+<li><strong>Build:</strong> per <code>render.yaml</code>, Render builds <code>vitaltrack-backend/Dockerfile</code> (Docker runtime, <code>rootDir: ./vitaltrack-backend</code>).</li>
+<li><strong>Start:</strong> <code>docker-entrypoint.sh</code> waits for PostgreSQL, runs <code>alembic upgrade head</code> (the container exits if it fails), then <code>exec</code>s Gunicorn with two Uvicorn workers bound to <code>$PORT</code> (Render sets <code>PORT</code>; its documented default is 10000).</li>
+<li><strong>Health check:</strong> Render polls <code>/live</code> (process only), so a short database outage does not restart instances. <code>/health</code> (database readiness) is for monitors and people.</li>
+<li><strong>Traffic switch:</strong> with zero-downtime deploys, old and new instances overlap briefly. Any change must be safe while both versions run — the reason for the 0007 gate below.</li>
+<li><strong>What triggers a deploy:</strong> Render's auto-deploy setting for the service (a dashboard setting, NOT VERIFIED) and/or the CI deploy hook after tests on <code>main</code>. Both can happen for one merge. <code>render.yaml</code> has no <code>autoDeploy</code>/<code>autoDeployTrigger</code> key: Render then deploys every commit for a service <em>created</em> from a Blueprint, and keeps an existing service's current setting. Render looks for <code>render.yaml</code> at the repository root by default, and this file sits in <code>vitaltrack-backend/</code>, so whether it is used at all is NOT VERIFIED. Assume auto-deploy is on until the dashboard shows otherwise. During a zero-downtime deploy, old and new instances overlap for a short time, so a migration must be safe for the old code still running — which is exactly why the <code>0007</code> counter cutover needs a write pause (SOURCES (local review reference; not published) rows 33–34).</li>
+</ol>
+<p><strong>Build success ≠ deployment request ≠ verified healthy deployment.</strong> A green CI run proves tests passed on GitHub's runner. A 2xx from the deploy hook proves Render accepted (or queued) a request, for the latest commit of its branch. A healthy <code>/health</code> proves <em>some</em> version is serving with a database. To know <em>which</em> commit is live, read the deploy record in Render, then run <code>alembic current</code> against the confirmed database (from a one-off shell on the service, or locally with the URL set explicitly and <code>ENVIRONMENT=staging|production</code> so TLS is used — read-only commands only).</p>
+<p><strong>Backward compatibility rules for backend changes:</strong> installed apps cannot be updated by a deploy, so a backend change must keep working for every app version still installed. Example: migration 0010 makes order creation idempotent only for requests carrying <code>localId</code>; older builds send none and keep working as before.</p>
+<h3 id="f5-database-migrations-and-the-0007-0010-release-gate">F5. Database migrations and the 0007-0010 release gate<a class="anchor" href="#f5-database-migrations-and-the-0007-0010-release-gate" aria-label="Link to this section">#</a></h3>
+<p>Migrations run automatically at every container start. That is convenient, and it means <strong>any deploy of <code>main</code> migrates the production database</strong> — including one triggered automatically by a merge.</p>
+<p><strong>Current situation (local refs re-checked 8 Oct 2026):</strong> <code>main</code> (<code>835fad3</code>) knows migrations up to <code>0006</code>. The feature branch adds <code>0007</code>–<code>0010</code>. Production presumably runs <code>main</code> (NOT VERIFIED). Merging the feature branch would run four migrations in one start:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Migration</th>
+<th>Change</th>
+<th>Reversible?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0007_session_order_safety</code></td>
+<td><code>users.session_version</code>; <code>order_number_counters</code> seeded from existing <code>ORD-</code> ids; three token-digest indexes</td>
+<td><strong>No</strong> — its downgrade raises on purpose (dropping it could resurrect old sessions and reuse order numbers)</td>
+</tr>
+<tr>
+<td><code>0008_ai_consent_usage</code></td>
+<td><code>ai_consents</code>, <code>ai_usage</code> tables</td>
+<td>Downgrade drops them</td>
+</tr>
+<tr>
+<td><code>0009_ai_provider_scopes</code></td>
+<td>consent <code>scopes</code>, usage <code>provider</code></td>
+<td>Downgrade drops the columns</td>
+</tr>
+<tr>
+<td><code>0010_order_local_id_unique</code></td>
+<td><code>LOCK TABLE orders IN SHARE MODE</code>, keep existing duplicates, partial unique index on <code>(user_id, local_id)</code></td>
+<td>Downgrade drops the index</td>
+</tr>
+</tbody>
+</table></div>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="Release gate for migrations 0007 to 0010: why a plain merge is unsafe; prepare (control both Render auto-deploy and the CI deploy hook, record deployed commits and alembic current, keep the existing staging database and stage on isolated fresh and populated synthetic legacy databases, back up and rehearse a restore); release (block new writes and drain old writers, deploy, verify commit and alembic current, and re-seed the counter only if writes could not be paused); after (check logs, monitor, re-enable auto-deploy); and why rollback is a data decision." src="diagrams/release-gate-0007-0010.svg" /></div><figcaption>Release gate for migrations 0007–0010</figcaption></figure>
+<p><strong>Why a plain merge is unsafe:</strong> during the zero-downtime overlap, the old code numbers orders by counting rows while the new code uses the counter; they can collide, and order creation can then fail until the counters are corrected. 0007 cannot be undone by redeploying an old image, and old code ignores <code>session_version</code>. All four migrations run in one transaction, so 0007's lock on <code>users</code> and 0010's <code>SHARE</code> lock on <code>orders</code> are held until the end: while old instances still serve, sign-ins and order writes wait (and can hit the 8 s statement timeout). In addition, when email verification is enforced in production, unverified email accounts start getting 403 <code>EMAIL_NOT_VERIFIED</code> on login, refresh and every protected request (on <code>main</code> only login refuses them); check how many active accounts are unverified first.</p>
+<p><strong>The gate</strong> (full detail and the re-seed SQL are in <a href="BACKEND_HARDENING.md#release-gate-for-migration-0007">BACKEND_HARDENING.md</a>, which remains the record for 0007):</p>
+<ol>
+<li>Before merging: control <strong>both</strong> deploy triggers — turn Render auto-deploy off for production and staging, and make sure the CI deploy hook cannot fire (it runs on every push to <code>main</code> while <code>RENDER_DEPLOY_HOOK</code> is set). Record each service's deployed commit and <code>alembic current</code>.</li>
+<li>Keep the existing staging database: check its <code>alembic current</code> first (the owner reported a staging deploy of this branch on 7 Oct 2026, NOT VERIFIED) and do not run the one-way 0007–0010 migrations on it if it is still at 0006. Stage the candidate on an <strong>isolated fresh database</strong> (never a copy of production), and also verify the 0006 → 0010 upgrade on a <strong>populated synthetic legacy database</strong> (fresh-schema tests do not prove an upgrade of existing data). Then run the <a href="../CAREKOSH_E2E_VERIFICATION_GUIDE.html">E2E guide</a> with a preview APK.</li>
+<li>Back up production and rehearse the restore on a throwaway database (<code>scripts/restore_drill.py</code>).</li>
+<li>Cut over in a maintenance window: block new writes and drain old writers first, deploy, then confirm Render's commit, <code>alembic current = 0010_order_local_id_unique</code>, <code>/live</code> and <code>/health</code> before reopening. Plan how: Render refuses deploy-hook deploys while a service is suspended, and its documented way to block public traffic while an instance keeps running is Maintenance Mode on paid plans (availability for this service NOT VERIFIED).</li>
+<li>Only if writes could not be paused: run the idempotent counter re-seed SQL.</li>
+<li>Check real logs with synthetic tokens; 7. monitor order-creation errors, 401/403 spikes and lock waits; 8. re-enable auto-deploy.</li>
+</ol>
+<p><strong>Rollback is a data decision.</strong> Keep the additive schema. Do not run <code>alembic downgrade</code> without a reviewed plan (it stops at 0007 anyway). Restoring a backup discards every write made after it. Prefer a forward fix while writes are paused.</p>
+<h3 id="f6-mobile-builds-and-play-store-release">F6. Mobile builds and Play Store release<a class="anchor" href="#f6-mobile-builds-and-play-store-release" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Profile (<code>eas.json</code>)</th>
+<th>Output</th>
+<th>API</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>development</code></td>
+<td>Debug APK with a dev client (<code>:app:assembleDebug</code>)</td>
+<td><code>http://localhost:8000</code></td>
+<td>Native development. <code>expo-dev-client</code> is <strong>not</strong> installed yet, so this profile needs that package first.</td>
+</tr>
+<tr>
+<td><code>preview</code></td>
+<td>APK (internal distribution, channel <code>preview</code>)</td>
+<td>staging</td>
+<td>Device testing of a candidate; install by download.</td>
+</tr>
+<tr>
+<td><code>production</code></td>
+<td>AAB (<code>app-bundle</code>, channel <code>production</code>, <code>autoIncrement</code>, remote version source)</td>
+<td>production</td>
+<td>Upload to Google Play.</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Preview APK vs production AAB:</strong> the profile, not the file type or the Play track, decides the backend. An AAB is not installed directly; Google Play turns it into device-specific APKs.</li>
+<li><strong>Submission:</strong> <code>eas submit --profile production</code> uploads to the Play <strong>internal</strong> testing track using <code>./credentials/google-service-account.json</code> (not in Git). <code>releaseStatus</code> is not set (EAS CLI then uses <code>completed</code>), so check in Play Console whether the release becomes available to internal testers immediately; set <code>releaseStatus: "draft"</code> if you want a manual step.</li>
+<li><strong>Internal testing vs production:</strong> internal testing reaches up to 100 listed testers quickly and uses <strong>production data</strong>. Reaching production goes through Play's review; personal developer accounts created after 13 Nov 2023 must first run a closed test with at least 12 testers opted in continuously for 14 days; internal testing does not count (Google Play Console Help, re-checked 8 Oct 2026).</li>
+<li><strong>No over-the-air updates:</strong> <code>app.json</code> sets <code>updates.enabled: false</code>. The <code>channel</code> names in <code>eas.json</code> do not deliver updates. Every JavaScript or native change ships as a new build that people must install.</li>
+<li><strong>When a native rebuild is required:</strong> always, in this project (OTA is off); and in particular for changes to <code>app.json</code>/<code>app.config.js</code>, permissions, config plugins, native modules (including <code>modules/carekosh-voice</code>) and Expo SDK upgrades.</li>
+<li><strong>Native requirements:</strong> minimum Android 8.0 (API 26, required by Moonshine). From 31 Aug 2026 Play requires new apps and updates to target API 36; React Native 0.81 defaults to 36, but the value in the final AAB is NOT VERIFIED. Google Play's 16 KB memory-page requirement applies to native libraries (updates without it cannot be released from 1 Feb 2027); the published Moonshine library was checked for 64-bit alignment (HISTORICAL, 6 Oct 2026), but the final AAB has not been inspected (NOT VERIFIED; check an AAB with <code>bundletool</code>, an APK with <code>zipalign</code> or APK Analyzer).</li>
+<li><strong>Voice in builds:</strong> CI checks that <code>carekosh-voice</code> is autolinked; that is not proof that the Kotlin code compiles into a working AAB. A device test is still required.</li>
+</ul>
+<h3 id="f7-domains-tls-email-links-and-portability">F7. Domains, TLS, email links and portability<a class="anchor" href="#f7-domains-tls-email-links-and-portability" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>Hostnames:</strong> builds embed <code>api.carekosh.com</code> and <code>staging-api.carekosh.com</code>, not provider hostnames. Moving the backend to another host means repointing DNS (and issuing TLS certificates there), with <strong>no</strong> app rebuild. Changing the hostname itself means changing <code>eas.json</code>, <code>app.config.js</code>, the <code>package.json</code> scripts, rebuilding and waiting for people to update.</li>
+<li><strong>TLS:</strong> handled by the host for the custom domains (Render, NOT VERIFIED live); the app disables cleartext HTTP except for the <code>development</code> profile, an explicit <code>CAREKOSH_ALLOW_ANDROID_CLEARTEXT=true</code>, or an <code>http://localhost…</code> URL (<code>app.config.js</code>). A native build pointed at a LAN IP or <code>10.0.2.2</code> therefore cannot use plain HTTP.</li>
+<li><strong>Email links:</strong> verification, reset and deletion emails link to backend HTML pages under <code>FRONTEND_URL</code> (production blueprint: <code>https://api.carekosh.com/api/v1/auth</code>). Sending uses Brevo's HTTP API with <code>MAIL_FROM</code> (default <code>noreply@carekosh.com</code>); sender-domain DNS records (SPF/DKIM) are covered in <a href="../CAREKOSH_DOMAIN_AND_EMAIL_GUIDE.html">CAREKOSH_DOMAIN_AND_EMAIL_GUIDE.html</a> (live state NOT VERIFIED).</li>
+<li><strong>Hosting portability:</strong> the backend is a Docker image configured by environment variables. Render-specific pieces are <code>render.yaml</code> and the CI deploy hook. Any host that runs a container, provides <code>$PORT</code>, terminates TLS and reaches PostgreSQL can run it; re-create the environment variables and point DNS.</li>
+<li><strong>Moving PostgreSQL providers</strong> (for example Neon to another managed PostgreSQL 16): dump and restore the data, set the new <code>DATABASE_URL</code>, confirm <code>alembic current</code>, test, then switch. Changing <code>DATABASE_URL</code> alone moves no data. Use a direct (not pooled) connection string unless the pooler accepts the <code>statement_timeout</code> start-up parameter the app sends.</li>
+<li><strong>Changing database engine</strong> (for example to MySQL) is a different project: the code depends on PostgreSQL features — JSONB, partial unique indexes, <code>INSERT … ON CONFLICT</code>, advisory locks, <code>statement_timeout</code>, row-level locks and transactional DDL in migrations.</li>
+</ul>
+<h3 id="f8-operations-backups-monitoring-and-incidents">F8. Operations: backups, monitoring and incidents<a class="anchor" href="#f8-operations-backups-monitoring-and-incidents" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Need</th>
+<th>In the repository</th>
+<th>Live state</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backups / restore</td>
+<td><code>scripts/restore_drill.py</code> (dump → restore into a disposable target, with production-target refusals)</td>
+<td>Provider backups and retention NOT VERIFIED; no recent restore evidence in the repo</td>
+</tr>
+<tr>
+<td>Uptime monitoring</td>
+<td><code>scripts/cold_start_load_smoke.py</code>, <code>scripts/smoke_api.py</code> (default to staging; production needs <code>--allow-production</code>)</td>
+<td>External monitors NOT VERIFIED</td>
+</tr>
+<tr>
+<td>Error tracking</td>
+<td>Sentry integration (off unless <code>SENTRY_DSN</code>) with request bodies, locals and user data scrubbed</td>
+<td>NOT VERIFIED</td>
+</tr>
+<tr>
+<td>Logs</td>
+<td>Gunicorn access log (stdout) and error log (stderr) with token redaction</td>
+<td>Provider log retention NOT VERIFIED</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Incident checklist</strong> (adapted from <a href="LAUNCH_READINESS_RUNBOOK_GOAL_10.md">LAUNCH_READINESS_RUNBOOK_GOAL_10.md</a>): (1) confirm the symptom with <code>/live</code>, <code>/health</code> and one authenticated read on a test account; (2) check Render's latest deploy and logs, and <code>alembic current</code>; (3) if data is at risk, stop writes (suspend the service) before anything else — a suspended service also refuses deploy-hook deploys; (4) prefer a forward fix; redeploying an older image does not undo migrations (and a pre-0007 image cannot start on a 0010 database); (5) restore a backup only after confirming the target and accepting that later writes are lost; (6) write down what happened, with times and commits.</p>
+<h3 id="f9-the-everyday-developer-flow-from-code-to-phone">F9. The everyday developer flow (from code to phone)<a class="anchor" href="#f9-the-everyday-developer-flow-from-code-to-phone" aria-label="Link to this section">#</a></h3>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="From code to phone: GitHub Actions tests pull requests to main (a feature-branch push alone does not trigger it); on a push to main it requests the Render deploy hook only if that secret is set, and Render may also auto-deploy (not verified). Render runs the FastAPI backend with PostgreSQL, documented as hosted on Neon. Expo EAS builds the APK and AAB. Phones install the app from Google Play or as an APK, and the app calls the API over HTTPS." src="diagrams/code-to-phone.svg" /></div><figcaption>The overall path from code to phone</figcaption></figure>
+<pre><code class="language-text">STEP 1  Branch            git checkout -b feature/&lt;name&gt;   (from the branch you are building on)
+STEP 2  Change            vitaltrack-backend/ or vitaltrack-mobile/
+STEP 3  Test locally      Docker backend + Expo Go (a preview APK for native/voice; it talks to staging);
+                          backend tests on a disposable DB; npm test; tsc; lint
+STEP 4  Push + PR         CI runs on the PR (a push without an open PR does not); add `build-apk` for a preview APK
+STEP 5  Read CI           every job log, including the advisory ones
+STEP 6  Stage (backend)   deploy the candidate to staging deliberately; test with the preview APK
+STEP 7  Merge             squash-merge — TREAT THIS AS A PRODUCTION BACKEND DEPLOY
+                          (CI hook if its secret is set; Render auto-deploy if enabled)
+                          (follow the release gate for irreversible migrations)
+STEP 8  Verify            Render deploy record shows your commit; alembic current; /live; /health
+STEP 9  Mobile release    eas build --profile production; eas submit; Play Console promotion
+</code></pre>
+<p><strong>Example first feature</strong> (unchanged in spirit from the earlier guide): add a "Clear All" button to Inventory. Edit <code>vitaltrack-mobile/app/(tabs)/inventory.tsx</code>; make writes through <code>hooks/useServerMutations.ts</code> and invalidate the affected queries — never write domain data to AsyncStorage (the app is server-first, PR #8). Test with the local backend, open a PR, label it <code>build-apk</code> to test on a phone, then merge.</p>
+<hr />
+<h2 id="part-g--learning-path-reference-and-history">Part G — Learning path, reference and history<a class="anchor" href="#part-g--learning-path-reference-and-history" aria-label="Link to this section">#</a></h2>
+<h3 id="g1-reading-orders">G1. Reading orders<a class="anchor" href="#g1-reading-orders" aria-label="Link to this section">#</a></h3>
+<p><strong>First week as a developer</strong></p>
+<ol>
+<li>This guide, Parts A–C (a few hours, with the code open).</li>
+<li><a href="NEW_DEVELOPER_QUICKSTART.md">NEW_DEVELOPER_QUICKSTART.md</a>: get it running; then do the workflow in <a href="#b3-a-complete-first-workflow-setup--login--inventory--order--voice--tests--deployment">B3</a>.</li>
+<li><a href="API_TRACEABILITY.html">API_TRACEABILITY.md</a>: pick three endpoints and follow them from screen to table.</li>
+<li><a href="local_testing_field_manual.html">Local testing field manual</a> and <a href="USB_ADB_REVERSE_GUIDE.md">USB_ADB_REVERSE_GUIDE.md</a> when you test on a phone.</li>
+<li>Part E (tests) and Part F (release) before your first PR; <a href="../CAREKOSH_E2E_VERIFICATION_GUIDE.html">CAREKOSH_E2E_VERIFICATION_GUIDE.html</a> before your first staging test.</li>
+<li><a href="VOICE_OPTION_1_IMPLEMENTATION.md">VOICE_OPTION_1_IMPLEMENTATION.md</a> if you will touch the assistant.</li>
+</ol>
+<p><strong>Preparing to explain the backend in an interview</strong></p>
+<ol>
+<li>Part D of this guide (concepts with CareKosh examples and their limits).</li>
+<li><a href="../carekosh_architecture_diagrams.html">carekosh_architecture_diagrams.html</a>.</li>
+<li><a href="../CAREKOSH_BACKEND_INTERVIEW_GUIDE.html">CAREKOSH_BACKEND_INTERVIEW_GUIDE.html</a> (long-form textbook).</li>
+<li><a href="../CAREKOSH_SERVER_FIRST_INTERVIEW_GUIDE.html">CAREKOSH_SERVER_FIRST_INTERVIEW_GUIDE.html</a> (why the app became server-first).</li>
+<li>The <a href="API_TRACEABILITY.html#known-application-issues-found-while-tracing">known application issues</a>: being able to explain limitations honestly is part of the answer.</li>
+</ol>
+<h3 id="g2-hands-on-exercises">G2. Hands-on exercises<a class="anchor" href="#g2-hands-on-exercises" aria-label="Link to this section">#</a></h3>
+<p>Use the local stack and synthetic data. Each exercise has an expected result you can check.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Exercise</th>
+<th>Expected result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Call <code>GET /live</code> and <code>GET /health</code>; stop the database container; call both again.</td>
+<td><code>/live</code> stays 200; <code>/health</code> turns 503 within about 2 s.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Register with <code>curl</code> (a lower-case username and an <code>@example.com</code> address), then log in by username in UPPER CASE.</td>
+<td>201, then 200 (login identifiers are lower-cased; registering an upper-case username would give 422).</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Refresh with a refresh token twice.</td>
+<td>First 200 with a new pair; second 401.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Log out, then call <code>GET /auth/me</code> with the old access token.</td>
+<td>200 until the token expires — explain why (<a href="#c3-authentication-and-authorization">C3</a>).</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Create an item, then send <code>PUT</code> with <code>{"brand": null, "version": 1}</code> and later <code>{"description": "x"}</code> without <code>version</code>.</td>
+<td>Brand cleared (200); missing version → 422.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Send two <code>PATCH …/stock</code> requests with the same version at the same time (two terminals or a small script).</td>
+<td>One 200, one 409.</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Create an order with a fixed <code>localId</code> (the body also needs an <code>orderId</code> placeholder, which the server ignores), then send the identical request again, then once more with a different line quantity.</td>
+<td>201, then 200 with the same <code>orderId</code>, then 200 with the original order unchanged.</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Try <code>pending → stock_updated</code>, then do pending → received → apply, then apply again.</td>
+<td>400; then 200; then 400 with stock added once.</td>
+</tr>
+<tr>
+<td>9</td>
+<td>In <code>psql</code>, <code>SELECT status FROM orders;</code> and compare with the API.</td>
+<td>Upper-case names in the database (<code>STOCK_UPDATED</code>), lower-case values in JSON.</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Type "How many nitrile gloves are left?" in the assistant (use one of your item names), then "Delete nitrile gloves".</td>
+<td>An answer computed on the phone; then the read-only refusal. No <code>/ai/interpret</code> request for either (watch the API log; <code>GET /ai/capabilities</code> still appears when the assistant opens).</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Run the backend tests against a throwaway database whose name does <strong>not</strong> contain <code>test</code>.</td>
+<td>The suite refuses to start. Explain why that matters, and why a substring check is only a seatbelt.</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Read <code>.github/workflows/ci.yml</code> and list which jobs can make a run red.</td>
+<td><code>test-backend</code>, <code>test-frontend</code> (except expo-doctor and ESLint warnings), <code>deploy-backend</code>, <code>build-preview</code>; mypy and Trivy cannot; <code>pr-check</code> only prints a summary.</td>
+</tr>
+</tbody>
+</table></div>
+<p><a href="tools/api_walkthrough.py"><code>docs/tools/api_walkthrough.py</code></a> performs most of these against a disposable database and records the results; read it after trying them yourself.</p>
+<h3 id="g3-common-questions">G3. Common questions<a class="anchor" href="#g3-common-questions" aria-label="Link to this section">#</a></h3>
+<p><strong>"I pushed to my feature branch but nothing happened."</strong> Correct, unless the branch has an open PR to <code>main</code>: CI runs on pull requests to <code>main</code> (a push to a branch with an open PR updates it), pushes to <code>main</code>, and manual runs. Open a PR or use Actions → CI/CD Pipeline → Run workflow.</p>
+<p><strong>"Where do I download the preview APK?"</strong> The EAS builds page (<code>https://expo.dev/accounts/rishabhrd09/projects/vitaltrack-mobile/builds</code>), <code>eas build:list</code>, or the <code>build-preview</code> job log. The job runs only with the <code>build-apk</code> label.</p>
+<p><strong>"CI passed but there is no APK."</strong> The PR was not labelled <code>build-apk</code>. Adding the label starts a new run.</p>
+<p><strong>"APK or AAB?"</strong> APK for direct installation (development/preview); AAB for Google Play, which generates device-specific APKs.</p>
+<p><strong>"My PR passed but Render didn't deploy."</strong> Expected: <code>deploy-backend</code> runs only on pushes to <code>main</code>. Staging candidates are deployed deliberately.</p>
+<p><strong>"How do I test backend changes before merging?"</strong> Locally with Docker first; then deploy the candidate to staging (manual deploy of that commit or a temporary branch switch, on a non-production database) and test with a preview APK. For 0007–0010 follow <a href="#f5-database-migrations-and-the-0007-0010-release-gate">F5</a>.</p>
+<p><strong>"CI is green — are we safe?"</strong> Read the advisory job logs (mypy, Trivy, expo-doctor). And CI was not a required check on <code>main</code> when the ruleset was read on 7 Oct 2026.</p>
+<p><strong>"Is the deployed backend running my commit?"</strong> Check Render's deploy record and <code>alembic current</code>. <code>/health</code> cannot tell you.</p>
+<p><strong>"Will users get my fix after I merge?"</strong> Backend fixes: yes, after the deploy, for every installed app. App fixes: only after a new build is released and installed.</p>
+<p><strong>"Does the assistant send my inventory to an AI?"</strong> No. Without opt-in, the assistant's only network traffic is normal inventory reads and capability/consent checks to the CareKosh API, plus the one-time speech-pack download from Moonshine's server. With Groq understanding enabled, only the typed or transcribed question (and a has-previous-item flag) is sent through the CareKosh API to Groq, after Send and only when the phone could not match it locally. The question itself may contain sensitive words, so avoid patient identifiers. Recordings stay on the phone in default offline mode. Separately enabled Groq online listening sends finished recordings through <code>/ai/transcribe</code> only after fresh local opt-in and <code>groq_audio</code> consent; it does not interpret or draft until the transcript is reviewed and sent. Hosted speech remains off.</p>
+<h3 id="g4-quick-reference">G4. Quick reference<a class="anchor" href="#g4-quick-reference" aria-label="Link to this section">#</a></h3>
+<pre><code class="language-text">START A FEATURE        git checkout -b fix/&lt;name&gt;   (base: the branch you build on)
+LOCAL BACKEND          cd vitaltrack-backend &amp;&amp; docker compose -f docker-compose.dev.yml up --build
+LOCAL APP              cd vitaltrack-mobile &amp;&amp; npx expo start --clear
+BACKEND TESTS          throwaway Postgres + ENVIRONMENT=testing + DATABASE_URL=…/&lt;name with test&gt;
+                       python -m pytest tests/ -q --migrated-schema
+MOBILE TESTS           npm test &amp;&amp; npx tsc --noEmit &amp;&amp; npm run lint
+MIGRATION STATE        docker compose -f docker-compose.dev.yml exec api alembic current
+CHECK A SERVICE        curl -i https://staging-api.carekosh.com/live      (process)
+                       curl -i https://staging-api.carekosh.com/health    (database)
+                       — neither shows the deployed commit
+PREVIEW APK            label the PR build-apk, or: eas build --profile preview --platform android
+PRODUCTION AAB         eas build --profile production --platform android &amp;&amp; eas submit --profile production --platform android
+URLS                   repo   https://github.com/rishabhrd09/vitaltrack
+                       prod   https://api.carekosh.com     staging https://staging-api.carekosh.com
+                       builds https://expo.dev/accounts/rishabhrd09/projects/vitaltrack-mobile/builds
+</code></pre>
+<h3 id="g5-glossary">G5. Glossary<a class="anchor" href="#g5-glossary" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AAB</td>
+<td>Android App Bundle, the publishing format uploaded to Google Play.</td>
+</tr>
+<tr>
+<td>APK</td>
+<td>Android package installed directly on a phone (development and preview builds).</td>
+</tr>
+<tr>
+<td>ASGI</td>
+<td>The async interface between Python web servers (Uvicorn) and apps (FastAPI).</td>
+</tr>
+<tr>
+<td>Advisory lock</td>
+<td>A PostgreSQL lock on an application-chosen number; <code>pg_advisory_xact_lock</code> releases it at commit/rollback.</td>
+</tr>
+<tr>
+<td>Alembic</td>
+<td>The migration tool; <code>alembic current</code> shows a database's revision, <code>alembic heads</code> the code's newest.</td>
+</tr>
+<tr>
+<td>CAS (compare-and-swap)</td>
+<td>"Update only if the value is still what I read": here <code>UPDATE … WHERE version = :seen</code>.</td>
+</tr>
+<tr>
+<td>CI / CD</td>
+<td>Continuous integration (automatic checks) / continuous delivery (automatic release).</td>
+</tr>
+<tr>
+<td>CORS</td>
+<td>A browser rule about which web pages may read API responses; irrelevant to the Android app.</td>
+</tr>
+<tr>
+<td>Development build</td>
+<td>The app's own binary with a dev client (<code>eas.json</code> <code>development</code>); needs <code>expo-dev-client</code>, not installed yet.</td>
+</tr>
+<tr>
+<td>EAS</td>
+<td>Expo Application Services (Build, Submit).</td>
+</tr>
+<tr>
+<td>Expo Go</td>
+<td>A prebuilt app that loads your JavaScript for quick iteration; it cannot load the <code>carekosh-voice</code> native module.</td>
+</tr>
+<tr>
+<td>Idempotent</td>
+<td>Safe to repeat: the second identical request has no extra effect.</td>
+</tr>
+<tr>
+<td>Intent</td>
+<td>The assistant's structured reading of a question; never contains stock facts.</td>
+</tr>
+<tr>
+<td>JWT</td>
+<td>JSON Web Token; signed claims (<code>sub</code>, <code>exp</code>, <code>iat</code>, <code>type</code>, <code>session_version</code>; refresh tokens also carry a <code>jti</code>).</td>
+</tr>
+<tr>
+<td>Moonshine</td>
+<td>The on-device speech-recognition model and library used by the assistant.</td>
+</tr>
+<tr>
+<td>Neon</td>
+<td>Managed serverless PostgreSQL (current provider).</td>
+</tr>
+<tr>
+<td>OTA update</td>
+<td>Over-the-air JavaScript update; disabled in this app.</td>
+</tr>
+<tr>
+<td>Render</td>
+<td>Container hosting (current provider; replaced Railway in PR #1).</td>
+</tr>
+<tr>
+<td>Server-first</td>
+<td>The server is the source of truth; the phone caches reads but never saves domain data locally first (PR #8).</td>
+</tr>
+<tr>
+<td><code>session_version</code></td>
+<td>Per-user number in every token; incremented on password change/reset to invalidate older tokens.</td>
+</tr>
+<tr>
+<td>Stale data</td>
+<td>A cached copy that may no longer match the server.</td>
+</tr>
+<tr>
+<td>TanStack Query</td>
+<td>The mobile data-fetching and caching library (React Query v5).</td>
+</tr>
+<tr>
+<td>Version (item)</td>
+<td>A per-item counter used for optimistic concurrency.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="g6-further-reading-and-sources">G6. Further reading and sources<a class="anchor" href="#g6-further-reading-and-sources" aria-label="Link to this section">#</a></h3>
+<ul>
+<li>Current guides: <a href="INDEX.html">documentation home</a>, <a href="API_TRACEABILITY.html">API traceability</a>, <a href="BACKEND_HARDENING.md">BACKEND_HARDENING.md</a> (dated change record and the 0007 gate), <a href="DEVOPS_AND_ARCHITECTURE.md">DEVOPS_AND_ARCHITECTURE.md</a>, <a href="ENVIRONMENT_SPLIT.md">ENVIRONMENT_SPLIT.md</a>, <a href="EMAIL_VERIFICATION_GUIDE.md">EMAIL_VERIFICATION_GUIDE.md</a>, <a href="GIT_WORKFLOW_GUIDE.md">GIT_WORKFLOW_GUIDE.md</a>, <a href="LOCAL_TESTING_COMPLETE_GUIDE.md">LOCAL_TESTING_COMPLETE_GUIDE.md</a>, <a href="LOCAL_TESTING_INTERNALS.md">LOCAL_TESTING_INTERNALS.md</a>, <a href="VOICE_AGENT_SETUP.md">VOICE_AGENT_SETUP.md</a>.</li>
+<li>Change records: <a href="PHASE1_AUTH_HARDENING.md">PHASE1_AUTH_HARDENING.md</a>, <a href="PHASE2_ACCOUNT_DELETION.md">PHASE2_ACCOUNT_DELETION.md</a>, <a href="TECHNICAL_CHALLENGES.md">TECHNICAL_CHALLENGES.md</a>.</li>
+<li>Audit evidence and official sources consulted (with retrieval dates): documentation-audit-2026-10-07/ (local review reference; not published), including <code>SOURCES.md</code>.</li>
+<li>Diagrams and how to regenerate them: <a href="diagrams/README.md">diagrams/README.md</a>. Documentation tools: <a href="tools/README.md">tools/README.md</a>.</li>
+</ul>
+<h3 id="g7-history-of-this-guide">G7. History of this guide<a class="anchor" href="#g7-history-of-this-guide" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>Original (19 Apr 2026)</strong> and review <strong>(4 May 2026)</strong>: a CI/CD and builds guide written after the Railway → Render migration and the server-first refactor. The 4 May "Updates since 2026-05-04" notes described the cold-start save UX (<code>MutationResultDialog</code>, <code>StatusPill</code>, per-item "Updating…", fire-and-forget saves, <code>safeBack</code>, the inventory PDF redesign, <code>formatStock</code>, the profile sheet swipe threshold). Those mobile features are still present.</li>
+<li><strong>Correction (23 Sep 2026)</strong>: aligned with the September backend hardening (migration 0007, session generations, order counters, CI changes); at that time CI ran 152 backend tests and 8 mobile API tests, and the route gate expected 39 routes.</li>
+<li><strong>Rewrite (7 Oct 2026)</strong>: expanded into the onboarding guide (product rules, request lifecycle, data model, auth, concurrency, orders, mobile data layer, the voice assistant, concepts, testing, release), updated to migration head <code>0010</code>, 47 routes, 242 + 121 tests, the Groq text-only assistant, the real CI/ruleset behaviour and the mobile caller facts. Every earlier section's useful content was kept and corrected in Parts F and G.</li>
+<li><strong>Re-check (8 Oct 2026)</strong>: every section re-read against the working tree and the 8 Oct re-runs. Corrected the request order (JSON parsing, dependencies, then validation; one session but not one transaction per request), <code>localId</code> replays with a changed payload, the conditional nature of "merge = deploy", the release gate (both deploy triggers, preserved staging data, isolated fresh and legacy databases), Expo <code>development</code> builds (need <code>expo-dev-client</code>), local Docker exposure and <code>down -v</code>, CI trigger details, cache age after restart, book editions, and diagram captions.</li>
+</ul>
+<footer>Generated 2026-10-09 by <code>docs/tools/build_docs.py</code> from <code>docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md</code>.</footer>
+</main>
+</div>
+<script>
+var tocDetails = document.getElementById('toc-details');
+if (tocDetails && window.matchMedia('(min-width: 901px)').matches) { tocDetails.open = true; }
+document.querySelectorAll('pre > code').forEach(function (code) {
+  var pre = code.parentElement, wrap = document.createElement('div');
+  wrap.className = 'codewrap'; pre.parentNode.insertBefore(wrap, pre); wrap.appendChild(pre);
+  var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+  b.setAttribute('aria-label', 'Copy this code block');
+  b.addEventListener('click', function () {
+    var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(code.innerText).then(done, function () { b.textContent = 'Select and copy'; }); }
+    else { b.textContent = 'Select and copy'; }
+  });
+  wrap.appendChild(b);
+});
+</script>
+</body>
+</html>

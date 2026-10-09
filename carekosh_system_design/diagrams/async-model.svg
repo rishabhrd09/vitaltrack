@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1040" width="1000" height="1040" role="img" aria-labelledby="async-model-title async-model-desc">
+<title id="async-model-title">How one backend instance runs</title>
+<desc id="async-model-desc">Gunicorn starts two Uvicorn worker processes. Each worker has one event loop that interleaves many requests while they wait on PostgreSQL through an asyncpg pool of 5 plus up to 10 overflow connections, or on Brevo and Groq over httpx. Argon2 password hashing runs in a worker thread so the loop keeps serving. The timeline is an illustration, not a measurement.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="async-model-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="async-model-ah-data" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#A9680F"/></marker><marker id="async-model-ah-optional" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#6B3A6E"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#async-model-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">One instance: processes, event loops and waiting</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Async helps while a request waits for the database or the network. CPU-heavy work must leave the loop.</text>
+<rect x="40.0" y="124.3" width="920.0" height="696.1" rx="16" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.2"/>
+<rect x="56.0" y="176.3" width="434.0" height="624.1" rx="14" fill="#FBF6EC" stroke="#2E5677" stroke-width="1.4"/>
+<text x="72.0" y="210.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#2E5677" text-anchor="start">Uvicorn worker 1: one event loop</text>
+<text x="72.0" y="256.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Request A</text>
+<rect x="168.0" y="239.3" width="36.0" height="24" rx="6" fill="#2E5677"/>
+<rect x="204.0" y="239.3" width="120.0" height="24" rx="6" fill="none" stroke="#2E5677" stroke-width="1.6" stroke-dasharray="5 4"/>
+<rect x="324.0" y="239.3" width="36.0" height="24" rx="6" fill="#2E5677"/>
+<text x="72.0" y="300.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Request B</text>
+<rect x="210.0" y="283.3" width="30.0" height="24" rx="6" fill="#2E5677"/>
+<rect x="240.0" y="283.3" width="72.0" height="24" rx="6" fill="none" stroke="#2E5677" stroke-width="1.6" stroke-dasharray="5 4"/>
+<rect x="360.0" y="283.3" width="30.0" height="24" rx="6" fill="#2E5677"/>
+<text x="72.0" y="344.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Request C</text>
+<rect x="246.0" y="327.3" width="30.0" height="24" rx="6" fill="#2E5677"/>
+<rect x="276.0" y="327.3" width="150.0" height="24" rx="6" fill="none" stroke="#2E5677" stroke-width="1.6" stroke-dasharray="5 4"/>
+<rect x="426.0" y="327.3" width="33.0" height="24" rx="6" fill="#2E5677"/>
+<text x="72.0" y="384.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">solid: Python running · dashed: waiting on I/O</text>
+<rect x="72.0" y="454.3" width="402.0" height="101.4" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<text x="86.0" y="484.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#A9680F" text-anchor="start">asyncpg pool</text>
+<text x="86.0" y="512.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">5 connections + up to 10 overflow; one session per</text>
+<text x="86.0" y="535.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">request; 8 s statement timeout</text>
+<rect x="72.0" y="567.6" width="402.0" height="101.4" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="86.0" y="598.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#2E5677" text-anchor="start">Thread pool · anyio.to_thread</text>
+<text x="86.0" y="625.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">Argon2 at login, register and password changes, so the</text>
+<text x="86.0" y="648.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">loop is not blocked</text>
+<rect x="72.0" y="681.0" width="402.0" height="101.4" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8"/>
+<text x="86.0" y="711.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#6E5D4E" text-anchor="start">This worker&#x27;s memory</text>
+<text x="86.0" y="738.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">rate-limit counters: best effort, not shared, reset on</text>
+<text x="86.0" y="762.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">restart</text>
+<rect x="510.0" y="176.3" width="434.0" height="624.1" rx="14" fill="#FBF6EC" stroke="#2E5677" stroke-width="1.4"/>
+<text x="526.0" y="210.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#2E5677" text-anchor="start">Uvicorn worker 2: one event loop</text>
+<text x="526.0" y="256.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Request A</text>
+<rect x="622.0" y="239.3" width="36.0" height="24" rx="6" fill="#2E5677"/>
+<rect x="658.0" y="239.3" width="120.0" height="24" rx="6" fill="none" stroke="#2E5677" stroke-width="1.6" stroke-dasharray="5 4"/>
+<rect x="778.0" y="239.3" width="36.0" height="24" rx="6" fill="#2E5677"/>
+<text x="526.0" y="300.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Request B</text>
+<rect x="664.0" y="283.3" width="30.0" height="24" rx="6" fill="#2E5677"/>
+<rect x="694.0" y="283.3" width="72.0" height="24" rx="6" fill="none" stroke="#2E5677" stroke-width="1.6" stroke-dasharray="5 4"/>
+<rect x="814.0" y="283.3" width="30.0" height="24" rx="6" fill="#2E5677"/>
+<text x="526.0" y="344.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Request C</text>
+<rect x="700.0" y="327.3" width="30.0" height="24" rx="6" fill="#2E5677"/>
+<rect x="730.0" y="327.3" width="150.0" height="24" rx="6" fill="none" stroke="#2E5677" stroke-width="1.6" stroke-dasharray="5 4"/>
+<rect x="880.0" y="327.3" width="33.0" height="24" rx="6" fill="#2E5677"/>
+<text x="526.0" y="384.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">solid: Python running · dashed: waiting on I/O</text>
+<rect x="526.0" y="454.3" width="402.0" height="101.4" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<text x="540.0" y="484.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#A9680F" text-anchor="start">asyncpg pool</text>
+<text x="540.0" y="512.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">5 connections + up to 10 overflow; one session per</text>
+<text x="540.0" y="535.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">request; 8 s statement timeout</text>
+<rect x="526.0" y="567.6" width="402.0" height="101.4" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="540.0" y="598.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#2E5677" text-anchor="start">Thread pool · anyio.to_thread</text>
+<text x="540.0" y="625.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">Argon2 at login, register and password changes, so the</text>
+<text x="540.0" y="648.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">loop is not blocked</text>
+<rect x="526.0" y="681.0" width="402.0" height="101.4" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8"/>
+<text x="540.0" y="711.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#6E5D4E" text-anchor="start">This worker&#x27;s memory</text>
+<text x="540.0" y="738.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">rate-limit counters: best effort, not shared, reset on</text>
+<text x="540.0" y="762.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">restart</text>
+<text x="56.0" y="154.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#6E5D4E" text-anchor="start" letter-spacing="1.6">RENDER INSTANCE · ONE CONTAINER · GUNICORN SUPERVISES</text>
+<rect x="40.0" y="890.3" width="448.0" height="114.5" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<text x="58.0" y="927.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">PostgreSQL</text>
+<text x="58.0" y="956.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">up to 30 connections from one instance (2 × 15); a deploy</text>
+<text x="58.0" y="980.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">briefly runs old and new instances side by side</text>
+<rect x="512.0" y="890.3" width="448.0" height="114.5" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
+<text x="530.0" y="927.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6B3A6E" text-anchor="start">Brevo and Groq · httpx</text>
+<text x="530.0" y="956.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">awaited calls with timeouts; AI routes release their database</text>
+<text x="530.0" y="980.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">session before calling Groq</text>
+<path d="M264.0,823.3 L264.0,885.3" fill="none" stroke="#A9680F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#async-model-ah-data)" marker-start="url(#async-model-ah-data)"/>
+<path d="M736.0,823.3 L736.0,885.3" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#async-model-ah-optional)" marker-start="url(#async-model-ah-optional)"/>
+</svg>

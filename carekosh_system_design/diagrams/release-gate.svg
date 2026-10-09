@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1068" width="1000" height="1068" role="img" aria-labelledby="release-gate-title release-gate-desc">
+<title id="release-gate-title">The release gate for migrations 0007–0010</title>
+<desc id="release-gate-desc">Merging the feature branch to main would run migrations 0007 to 0010 at the next container start. 0007 cannot be downgraded, and old instances using COUNT-based order numbers must never write beside the new counter. The gate: control both deploy triggers, test fresh setup and a populated synthetic 0006 upgrade, stage without discarding shared data, back up and rehearse a restore, block new writes and drain old writers, deploy and verify, re-seed the counter only if writes could not be paused, check logs, monitor, then re-enable auto-deploy.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="release-gate-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="release-gate-ah-flow" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#4B3E35"/></marker><marker id="release-gate-ah-main" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7B2C34"/></marker><marker id="release-gate-ah-optional" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#6B3A6E"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#release-gate-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">The release gate for migrations 0007–0010</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Why a plain merge is unsafe, and the order of steps that makes the release safe.</text>
+<path d="M43.0,124.3 H944.0 Q960.0,124.3 960.0,140.3 V238.9 Q960.0,254.9 944.0,254.9 H43.0 Q40.0,254.9 40.0,251.9 V127.3 Q40.0,124.3 43.0,124.3 Z" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.4"/>
+<text x="58.0" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#B2423B" text-anchor="start" letter-spacing="1.6">WHY A PLAIN MERGE IS UNSAFE</text>
+<text x="58.0" y="182.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">A configured trigger can deploy a merge; container start runs 0007–0010. 0007 refuses to downgrade, so an older</text>
+<text x="58.0" y="207.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">image cannot undo it. During a zero-downtime deploy old and new instances overlap, and the old COUNT-based order</text>
+<text x="58.0" y="233.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">numbers can collide with the new counter.</text>
+<rect x="40.0" y="280.9" width="282.9" height="646.9" rx="14" fill="#F5EFE5" stroke="#D4CBC0" stroke-width="1.2"/>
+<rect x="366.9" y="280.9" width="274.6" height="646.9" rx="14" fill="#F8EEE4" stroke="#E7C4BA" stroke-width="1.2"/>
+<rect x="685.4" y="280.9" width="274.6" height="646.9" rx="14" fill="#F2EFE7" stroke="#C2C9CB" stroke-width="1.2"/>
+<text x="56.0" y="310.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#6E5D4E" text-anchor="start" letter-spacing="1.6">1 · PREPARE</text>
+<text x="382.9" y="310.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#B2423B" text-anchor="start" letter-spacing="1.6">2 · RELEASE</text>
+<text x="701.4" y="310.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">3 · AFTER</text>
+<path d="M330.9,305.9 L357.9,305.9" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#release-gate-ah-main)"/>
+<path d="M649.4,305.9 L676.4,305.9" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#release-gate-ah-main)"/>
+<rect x="52.0" y="334.9" width="258.9" height="142.9" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8"/>
+<circle cx="85.0" cy="361.8" r="16" fill="#7B2C34"/>
+<text x="85.0" y="367.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">1</text>
+<text x="112.0" y="372.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6E5D4E" text-anchor="start">Freeze and record</text>
+<text x="70.0" y="402.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">control auto-deploy AND CI</text>
+<text x="70.0" y="427.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">hook; record deployed</text>
+<text x="70.0" y="453.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">commits and actual revisions</text>
+<rect x="52.0" y="507.9" width="258.9" height="142.9" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8"/>
+<circle cx="85.0" cy="534.7" r="16" fill="#7B2C34"/>
+<text x="85.0" y="540.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2</text>
+<text x="112.0" y="545.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6E5D4E" text-anchor="start">Stage the candidate</text>
+<text x="70.0" y="575.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">test fresh schema and</text>
+<text x="70.0" y="600.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">synthetic 0006 upgrade; E2E,</text>
+<text x="70.0" y="626.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">retries and assistant on staging</text>
+<path d="M181.4,479.9 L181.4,503.9" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#release-gate-ah-flow)"/>
+<rect x="52.0" y="680.8" width="258.9" height="142.9" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8"/>
+<circle cx="85.0" cy="707.6" r="16" fill="#7B2C34"/>
+<text x="85.0" y="713.7" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">3</text>
+<text x="112.0" y="718.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6E5D4E" text-anchor="start">Back up</text>
+<text x="70.0" y="748.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">production backup or restore</text>
+<text x="70.0" y="773.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">point; rehearse the restore</text>
+<text x="70.0" y="799.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">elsewhere</text>
+<path d="M181.4,652.8 L181.4,676.8" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#release-gate-ah-flow)"/>
+<rect x="378.9" y="334.9" width="250.6" height="194.7" rx="12" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.8"/>
+<circle cx="411.9" cy="361.8" r="16" fill="#7B2C34"/>
+<text x="411.9" y="367.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">4</text>
+<text x="438.9" y="372.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">Cut over, writes</text>
+<text x="438.9" y="398.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">paused</text>
+<text x="396.9" y="428.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">block new writes, drain</text>
+<text x="396.9" y="453.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">requests, stop old writers;</text>
+<text x="396.9" y="479.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">0010 SHARE-locks orders</text>
+<text x="396.9" y="505.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">while it builds its index</text>
+<rect x="378.9" y="559.7" width="250.6" height="168.5" rx="12" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.8"/>
+<circle cx="411.9" cy="586.5" r="16" fill="#7B2C34"/>
+<text x="411.9" y="592.6" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">5</text>
+<text x="438.9" y="597.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">Deploy and verify</text>
+<text x="396.9" y="626.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Render&#x27;s commit; alembic</text>
+<text x="396.9" y="652.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">current =</text>
+<text x="396.9" y="678.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">0010_order_local_id_unique;</text>
+<text x="396.9" y="703.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">/live and /health</text>
+<path d="M504.2,531.7 L504.2,555.7" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#release-gate-ah-flow)"/>
+<rect x="378.9" y="758.2" width="250.6" height="143.6" rx="12" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.8" stroke-dasharray="7 6"/>
+<circle cx="411.9" cy="785.0" r="16" fill="#7B2C34"/>
+<text x="411.9" y="791.1" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">6</text>
+<text x="438.9" y="795.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">Only if writes</text>
+<text x="438.9" y="821.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">could not pause</text>
+<text x="396.9" y="851.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">run the idempotent counter</text>
+<text x="396.9" y="877.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">re-seed SQL (safe to repeat)</text>
+<path d="M504.2,730.2 L504.2,754.2" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#release-gate-ah-optional)"/>
+<rect x="697.4" y="334.9" width="250.6" height="169.2" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="730.4" cy="361.8" r="16" fill="#7B2C34"/>
+<text x="730.4" y="367.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">7</text>
+<text x="757.4" y="372.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Check logs and</text>
+<text x="757.4" y="398.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">privacy</text>
+<text x="715.4" y="428.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">real logs with synthetic</text>
+<text x="715.4" y="453.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">tokens; nothing secret</text>
+<text x="715.4" y="479.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">printed</text>
+<rect x="697.4" y="534.1" width="250.6" height="117.4" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="730.4" cy="561.0" r="16" fill="#7B2C34"/>
+<text x="730.4" y="567.0" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">8</text>
+<text x="757.4" y="571.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Monitor</text>
+<text x="715.4" y="601.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">order-create errors, 401 and</text>
+<text x="715.4" y="626.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">403 spikes, lock waits</text>
+<path d="M822.7,506.1 L822.7,530.1" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#release-gate-ah-flow)"/>
+<rect x="697.4" y="681.5" width="250.6" height="118.1" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="730.4" cy="708.3" r="16" fill="#7B2C34"/>
+<text x="730.4" y="714.4" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">9</text>
+<text x="757.4" y="718.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Re-enable</text>
+<text x="757.4" y="745.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">auto-deploy</text>
+<text x="715.4" y="774.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">only after the checks pass</text>
+<path d="M822.7,653.5 L822.7,677.5" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#release-gate-ah-flow)"/>
+<rect x="54.0" y="955.8" width="2.5" height="83.1" fill="#7B2C34"/>
+<text x="72.0" y="991.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">Rolling back the image does not roll back the database. 0007 refuses an automatic downgrade; prefer a reviewed forward fix.</text>
+<text x="72.0" y="1017.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">Restoring a backup loses writes made after it.</text>
+</svg>

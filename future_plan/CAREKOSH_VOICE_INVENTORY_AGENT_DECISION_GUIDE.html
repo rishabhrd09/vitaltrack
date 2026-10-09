@@ -130,8 +130,19 @@
       .tile, .callout, .decision, .warning, .note, .flow, table { break-inside: avoid; }
     }
   </style>
+<style id="doc-review-style">.doc-review{display:block!important;position:static!important;box-sizing:border-box!important;width:auto!important;max-width:1000px;margin:24px auto!important;padding:18px 22px!important;border:1px solid #aab8ac!important;border-left:5px solid #286258!important;border-radius:8px;background:#f0f6ef!important;color:#1b352c!important;font:15px/1.6 system-ui,sans-serif!important}.doc-review p{margin:6px 0!important;color:inherit!important;font:inherit!important}.doc-review a{color:#075d70!important;text-decoration:underline!important}.doc-review strong{color:#173f34!important}.doc-review code{color:inherit!important;background:transparent!important}@media print{.doc-review{break-inside:avoid}}</style>
+<style id="voice-doc-phone-layout">
+@media (max-width: 760px) {
+  body { overflow-wrap: anywhere; }
+  table { display: block; max-width: 100%; overflow-x: auto; }
+  pre, .arch, .file-tree, .flow { max-width: 100%; }
+  pre code { overflow-wrap: normal; }
+  .toc li > *, .grid > * { min-width: 0; }
+}
+</style>
 </head>
 <body>
+<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. This document’s original proposals/results remain historical; use the maintained guide for current behavior. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside>
   <header>
     <p class="eyebrow">CareKosh · Product / architecture decision guide</p>
     <h1>A voice inventory agent that remains truthful, useful, and buildable</h1>
@@ -148,6 +159,7 @@
       <a href="#sources">Sources</a>
     </nav>
   </header>
+<aside class="doc-review" aria-label="Documentation status"><strong>Future proposal (decision guide, 11 Sep 2026) — partly implemented, differently, on an unmerged branch · reviewed 23 September 2026 · refreshed 7 October 2026</strong><p>Read-only voice inventory is a proposal, not an installed feature. Current microphone permission remains blocked; no AI router/provider/voice runtime exists. Source foundations remain present. StaleTime is a freshness threshold, not polling; token/model pricing, voice rights and provider terms need verification before a future release.</p><p><strong>Implementation status (7 Oct 2026).</strong> The sentence above about the microphone and the missing AI router is still true for <code>main</code> (<code>835fad3</code>) and for any released build, but not for the feature branch <code>feature/backend-hardening-ai-voice-agent-foundation</code> (<code>03cfebb</code>, not merged, not verified on a phone or in production). That branch implements a read-only assistant with a different architecture from this guide: on-device Moonshine English recognition after tap-to-talk (Android 8.0+, user-downloaded speech pack), a local command parser, optional Groq <em>text</em> interpretation behind per-account 18+ consent (question text only, no inventory, no audio), answers built on the phone from the user's item data, and spoken replies through an installed offline Android TTS voice. Cloud audio is disabled in that build; the Alba/Piper and Kokoro speech workers exist as code only and are not deployed. Everything else here — Alba as the shipped voice, hosted listening, feedback/report control, expiry views, later phases — remains a proposal.</p><p><a href="../docs/INDEX.html">Documentation home and source status</a> · <a href="../docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide (current onboarding)</a> · <a href="../docs/API_TRACEABILITY.md">API traceability</a> · <span>Documentation audit, 7 Oct 2026 <small>(local review reference; not published)</small></span> · <a href="../docs/VOICE_OPTION_1_IMPLEMENTATION.md">Option 1 implementation and setup</a> · <a href="CAREKOSH_VOICE_AGENT_FINAL_IMPLEMENTATION_PLAN.html">Later voice plan (24 Sep 2026)</a> · <a href="../docs/BACKEND_HARDENING.md">Local hardening and remaining work</a></p></aside>
 
   <main>
     <section id="recommendation">
@@ -198,6 +210,10 @@
       <div class="note">
         <strong>Current repository fact</strong>
         <p>There is no AI router, LLM configuration, provider adapter, voice dependency, TTS endpoint, STT module, mobile Ask screen, or microphone permission today. Android currently blocks <code>RECORD_AUDIO</code>. The relevant foundation already exists: TanStack Query retains a read-only inventory snapshot for 24 hours, marks it stale after 30 seconds, refreshes on app foreground/reconnect, and clears it across logout/login. The first AI work is new application code, not a switch waiting to be enabled.</p>
+      </div>
+      <div class="warning">
+        <strong>Dated 11 September 2026 — status on 7 October 2026</strong>
+        <p>This box remains accurate for <code>main</code> (<code>835fad3</code>): <code>RECORD_AUDIO</code> is blocked and there is no AI router. It no longer describes the unmerged feature branch (<code>03cfebb</code>), which adds the <code>/api/v1/ai</code> router (capabilities, consent, interpret, speak, transcribe), a Groq adapter, <code>ai_consents</code>/<code>ai_usage</code> tables, the native <code>carekosh-voice</code> module, <code>expo-audio</code> with <code>RECORD_AUDIO</code> requested, and the “Ask CareKosh” dock. One detail of the snapshot description also differs by branch: refetch on reconnect works only where <code>onlineManager</code> is wired to NetInfo, which is on the feature branch and not on <code>main</code>.</p>
       </div>
     </section>
 

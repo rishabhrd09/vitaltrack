@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 751" width="1000" height="751" role="img" aria-labelledby="request-rollback-title request-rollback-desc">
+<title id="request-rollback-title">When a request fails</title>
+<desc id="request-rollback-desc">Four failure paths. Invalid fields get 422 before the handler, but authentication can query first. Another user&#x27;s id returns 404 through ownership-scoped resource queries. An order apply that finds a deleted item raises 409 before it writes anything; if an item vanishes after the order is claimed, get_db rolls back the claim and every stock change. An unexpected crash returns a generic 500 without the request id or security headers.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="request-rollback-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#request-rollback-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">When a request fails</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Rollback undoes uncommitted work. A failed or missing reply does not prove no change committed.</text>
+<rect x="40.0" y="130.3" width="445.0" height="212.2" rx="12" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.8"/>
+<text x="62.0" y="202.3" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="56" font-weight="500" fill="#B2423B" text-anchor="start">422</text>
+<text x="172.0" y="174.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">Invalid input</text>
+<text x="172.0" y="204.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">Pydantic rejects invalid fields before the</text>
+<text x="172.0" y="229.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">handler. Auth SQL may run first.</text>
+<text x="172.0" y="254.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">Malformed JSON is rejected before</text>
+<text x="172.0" y="278.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">dependencies.</text>
+<rect x="515.0" y="130.3" width="445.0" height="212.2" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="537.0" y="202.3" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="56" font-weight="500" fill="#2E5677" text-anchor="start">404</text>
+<text x="647.0" y="174.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Not your data</text>
+<text x="647.0" y="204.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">Protected resource queries check the</text>
+<text x="647.0" y="229.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">owner. Another person&#x27;s id is simply not</text>
+<text x="647.0" y="254.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">found, so the API never reveals that it</text>
+<text x="647.0" y="278.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">exists.</text>
+<rect x="40.0" y="368.5" width="445.0" height="212.2" rx="12" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.8"/>
+<text x="62.0" y="440.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="56" font-weight="500" fill="#B2423B" text-anchor="start">409</text>
+<text x="172.0" y="412.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">Conflict, nothing kept</text>
+<text x="172.0" y="442.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">Applying an order whose item was</text>
+<text x="172.0" y="467.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">deleted stops with 409 before any write.</text>
+<text x="172.0" y="492.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">If an item vanishes after the claim,</text>
+<text x="172.0" y="517.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">get_db rolls the claim and every stock</text>
+<text x="172.0" y="541.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">change back.</text>
+<rect x="515.0" y="368.5" width="445.0" height="212.2" rx="12" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.8"/>
+<text x="537.0" y="440.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="56" font-weight="500" fill="#B2423B" text-anchor="start">500</text>
+<text x="647.0" y="412.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">Unexpected crash</text>
+<text x="647.0" y="442.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">A generic message; the log keeps the error</text>
+<text x="647.0" y="467.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">type and location but no values. This</text>
+<text x="647.0" y="492.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">reply lacks X-Request-ID and security</text>
+<text x="647.0" y="517.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17.5" font-weight="400" fill="#4B3E35" text-anchor="start">headers (A-13).</text>
+<rect x="40.0" y="606.8" width="2.5" height="108.7" fill="#7B2C34"/>
+<text x="58.0" y="642.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">A failure before commit rolls back the current transaction (get_db). Order apply, category delete and account deletion group their</text>
+<text x="58.0" y="668.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">changes together. Later errors cannot undo a commit. A missing reply does not prove nothing was written, so refetch before retrying</text>
+<text x="58.0" y="693.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">a create.</text>
+</svg>

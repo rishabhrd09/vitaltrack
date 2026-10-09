@@ -1,771 +1,194 @@
-<!DOCTYPE html>
-<!--
-  CAREKOSH — BUILD & DEPLOY FLOW  (third edition, July 2026)
-
-  Restyled to the house design system: warm ivory paper, single terracotta
-  accent family, Space Grotesk headlines, one Instrument Serif italic thesis
-  per chapter, hairline borders, print-first.
-
-  Content re-verified against .github/workflows/ci.yml, Dockerfile,
-  docker-entrypoint.sh, render.yaml, eas.json and app.json. Seven factual
-  defects fixed — see the correction ledger. The ASCII timeline and the
-  prose-only flows were replaced with measured SVG diagrams.
--->
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CareKosh — Build &amp; Deploy Flow</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
-<style>
-:root{
-  --paper:#FAF9F5;
-  --ink:#1B1D21;
-  --ink-soft:#6B6660;
-  --clay:#B65A3D;
-  --clay-deep:#94472F;
-  --clay-soft:#D9A08C;
-  --rule:#E8E4DC;
-  --panel:#F3F1EB;
-  --white:#FFFFFF;
-  --sans:"Space Grotesk",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --body:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --mono:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.72;-webkit-font-smoothing:antialiased}
-.page{max-width:1000px;margin:0 auto;padding:48px 26px 110px}
-a{color:var(--clay-deep);text-decoration:none;border-bottom:1px solid var(--clay-soft)}
-a:hover{color:var(--clay)}
-
-.cover{border-bottom:1px solid var(--rule);padding-bottom:44px;margin-bottom:40px}
-.eyebrow{font-family:var(--sans);font-weight:600;font-size:.72rem;letter-spacing:.24em;text-transform:uppercase;color:var(--clay);margin-bottom:20px}
-.cover h1{font-family:var(--sans);font-weight:600;font-size:3rem;line-height:1.08;letter-spacing:-.02em;margin-bottom:18px}
-.thesis{font-family:"Instrument Serif",Georgia,serif;font-style:italic;font-size:1.35rem;line-height:1.5;color:var(--clay-deep);max-width:62ch;margin-bottom:22px}
-.cover .meta{font-family:var(--mono);font-size:.78rem;color:var(--ink-soft)}
-
-.toc{border:1px solid var(--rule);padding:26px 30px;margin:36px 0 60px}
-.toc h2{font-family:var(--sans);font-weight:600;font-size:.72rem;letter-spacing:.24em;text-transform:uppercase;color:var(--clay);margin-bottom:16px}
-.toc ol{list-style:none;counter-reset:t;margin:0}
-.toc li{counter-increment:t;border-bottom:1px solid var(--rule)}
-.toc li:last-child{border-bottom:none}
-.toc a{display:flex;gap:14px;align-items:baseline;padding:10px 0;border:none;color:var(--ink)}
-.toc a:hover{color:var(--clay-deep)}
-.toc a::before{content:counter(t,decimal-leading-zero);font-family:var(--mono);font-size:.78rem;color:var(--clay);min-width:26px}
-.toc .t{font-family:var(--sans);font-weight:500}
-.toc .d{color:var(--ink-soft);font-size:.86rem;margin-left:auto;text-align:right}
-
-.ch{margin-top:82px;padding-top:32px;border-top:1px solid var(--rule)}
-.ch-num{font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;color:var(--clay);margin-bottom:12px}
-.ch h2{font-family:var(--sans);font-weight:600;font-size:1.95rem;line-height:1.16;letter-spacing:-.015em;margin-bottom:14px}
-.ch h3{font-family:var(--sans);font-weight:500;font-size:1.1rem;margin:34px 0 10px}
-.ch p{max-width:72ch;margin-bottom:14px}
-.ch ul,.ch ol{max-width:72ch;margin:0 0 16px 22px}
-.ch li{margin-bottom:7px}
-
-.note{border:1px solid var(--rule);border-left:2px solid var(--clay-soft);padding:15px 19px;margin:20px 0;max-width:72ch;font-size:.94rem;background:var(--white)}
-.flag{border:1px solid var(--clay-soft);border-left:2px solid var(--clay);padding:15px 19px;margin:20px 0;max-width:72ch;font-size:.94rem;background:var(--panel)}
-.p-label{font-family:var(--sans);font-weight:600;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--clay);margin-bottom:7px}
-
-.tw{overflow-x:auto;margin:20px 0}
-table{width:100%;border-collapse:collapse;font-size:.9rem;border:1px solid var(--rule)}
-th{font-family:var(--sans);font-weight:600;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);text-align:left;padding:10px 13px;background:var(--panel);border-bottom:1px solid var(--rule)}
-td{padding:9px 13px;border-bottom:1px solid var(--rule);vertical-align:top}
-tr:last-child td{border-bottom:none}
-td code,p code,li code,th code{font-family:var(--mono);font-size:.85em;background:var(--panel);padding:1px 5px;border:1px solid var(--rule)}
-
-pre{font-family:var(--mono);font-size:.8rem;line-height:1.65;background:var(--panel);border:1px solid var(--rule);padding:17px 19px;overflow-x:auto;margin:16px 0;color:var(--ink)}
-pre .m{color:var(--clay);font-weight:600}
-pre .c{color:var(--ink-soft)}
-
-figure{margin:28px 0 32px}
-.fig-wrap{border:1px solid var(--rule);background:var(--white);padding:24px 20px;overflow-x:auto}
-figure svg{display:block;margin:0 auto;max-width:100%;height:auto}
-figcaption{font-size:.84rem;color:var(--ink-soft);margin-top:12px;max-width:72ch}
-figcaption b{font-family:var(--sans);font-weight:600;color:var(--ink)}
-
-.chip{display:inline-block;font-family:var(--sans);font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:2px 9px;border:1px solid var(--rule);background:var(--panel);color:var(--ink-soft);white-space:nowrap}
-.chip-a{border-color:var(--clay-soft);color:var(--clay-deep)}
-.chip-off{border-color:var(--rule);color:var(--ink-soft);text-decoration:line-through}
-
-/* shared SVG vocabulary */
-svg .bx{fill:var(--white);stroke:var(--rule);stroke-width:1}
-svg .bx-a{fill:var(--panel);stroke:var(--clay-soft);stroke-width:1}
-svg .bx-g{fill:none;stroke:var(--rule);stroke-width:1;stroke-dasharray:3 3}
-svg .lb{font-family:var(--sans);font-weight:600;font-size:12.5px;fill:var(--ink)}
-svg .lb-s{font-family:var(--sans);font-weight:600;font-size:11px;fill:var(--clay);letter-spacing:.1em}
-svg .tx{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;font-size:11px;fill:var(--ink-soft)}
-svg .mn{font-family:var(--mono);font-size:10.5px;fill:var(--ink)}
-svg .mn-a{font-family:var(--mono);font-size:10.5px;fill:var(--clay-deep);font-weight:600}
-svg .ln{stroke:var(--ink);stroke-width:1.1;fill:none;marker-end:url(#ar)}
-svg .ln-a{stroke:var(--clay);stroke-width:1.5;fill:none;marker-end:url(#ar-a)}
-svg .ln-d{stroke:var(--clay-deep);stroke-width:1.1;fill:none;stroke-dasharray:4 3;marker-end:url(#ar-a)}
-svg .ln-p{stroke:var(--rule);stroke-width:1;fill:none}
-
-footer{margin-top:90px;padding-top:28px;border-top:1px solid var(--rule);font-size:.86rem;color:var(--ink-soft);max-width:72ch}
-
-@media print{
-  @page{margin:14mm}
-  html,body{background:#fff!important;color:#000!important}
-  .page{max-width:none;padding:0}
-  a{color:#000!important;border-bottom:none}
-  .toc{page-break-after:always}
-  .ch{page-break-before:always;border-top:none;margin-top:0;padding-top:0}
-  figure,.fig-wrap,table,pre,.note,.flag{page-break-inside:avoid}
-  .fig-wrap{overflow:visible;border:1px solid #999}
-  figure svg{max-width:100%!important}
-  pre{background:#fff!important;border:1px solid #999;white-space:pre-wrap;word-break:break-word}
-  th{background:#f2f2f2!important}
-  svg .bx{fill:#fff!important;stroke:#999!important}
-  svg .bx-a{fill:#f4f4f4!important;stroke:#555!important}
-  svg .lb,svg .mn{fill:#000!important}
-  svg .tx{fill:#444!important}
-  svg .lb-s,svg .mn-a{fill:#000!important}
-  .thesis,.eyebrow,.ch-num,.p-label{color:#000!important}
-  .chip{border-color:#000!important;color:#000!important;background:#fff!important}
-}
-@media(max-width:700px){
-  .page{padding:36px 18px 80px}
-  .cover h1{font-size:2.1rem}
-  .toc .d{display:none}
-}
-</style>
-</head>
-<body>
-
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-    <path d="M0 0 L10 5 L0 10 z" fill="#1B1D21"/></marker>
-  <marker id="ar-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-    <path d="M0 0 L10 5 L0 10 z" fill="#B65A3D"/></marker>
-</defs></svg>
-
-<div class="page">
-
-<header class="cover">
-  <div class="eyebrow">CareKosh · Delivery Pipeline · Third edition</div>
-  <h1>Build &amp;<br>Deploy Flow</h1>
-  <p class="thesis">What actually happens when you push, open a pull request, merge, or build an artifact — traced from the workflow file rather than from memory.</p>
-  <p class="meta">com.carekosh.mobile v1.0.0 · GitHub Actions → Render → Neon → EAS · re-verified July 2026</p>
-</header>
-
-<div class="flag">
-  <p class="p-label">What changed in this edition</p>
-  <p style="margin-bottom:10px">The CI content in the previous edition was <strong>accurate</strong> — every job name, gate and trigger checked out against <code>.github/workflows/ci.yml</code>. What had gone stale was the hosting story: it still described production as free-tier with a 15-minute sleep, and listed “move to paid Render” as outstanding work that is <strong>already done</strong>.</p>
-  <p style="margin-bottom:0">Seven factual fixes were applied, the ASCII timeline and the prose-only flows were replaced with measured diagrams, and print styles were added. Full list in the <a href="#ledger">correction ledger</a>.</p>
-</div>
-
-<nav class="toc">
-  <h2>Contents</h2>
-  <ol>
-    <li><a href="#c1"><span class="t">The trigger matrix</span><span class="d">what each action actually produces</span></a></li>
-    <li><a href="#c2"><span class="t">The CI job graph</span><span class="d">who blocks whom, and who only advises</span></a></li>
-    <li><a href="#c3"><span class="t">A merge, minute by minute</span><span class="d">from button press to live</span></a></li>
-    <li><a href="#c4"><span class="t">Container startup</span><span class="d">and the guard that turns a bad migration into a failed deploy</span></a></li>
-    <li><a href="#c5"><span class="t">One image, two environments</span><span class="d">the 12-factor split</span></a></li>
-    <li><a href="#c6"><span class="t">Which backend does this build talk to?</span><span class="d">baked in at compile time</span></a></li>
-    <li><a href="#c7"><span class="t">Shipping a mobile release</span><span class="d">still manual, and why</span></a></li>
-    <li><a href="#c8"><span class="t">The HTML endpoints</span><span class="d">what the backend serves to a browser</span></a></li>
-    <li><a href="#c9"><span class="t">The slow first request</span><span class="d">Neon waking, not Render sleeping</span></a></li>
-    <li><a href="#c10"><span class="t">Practical answers</span><span class="d">rebasing, verifying, porting off Render</span></a></li>
-    <li><a href="#ledger"><span class="t">Correction ledger</span><span class="d">what the previous edition got wrong</span></a></li>
-  </ol>
-</nav>
-
-<!-- ══════════ CH 1 ══════════ -->
-<section class="ch" id="c1">
-  <div class="ch-num">Chapter 01</div>
-  <h2>The trigger matrix</h2>
-  <p class="thesis">A feature-branch push runs nothing anywhere — the most common misconception about this pipeline.</p>
-
-  <p>CI fires on exactly three events: a pull request targeting <code>main</code>, a push to <code>main</code>, and a manual <code>workflow_dispatch</code>. Pushing to <code>feature/*</code> triggers nothing — no CI, no Render deploy, no EAS build. Until you merge, your code runs on your laptop and nowhere else.</p>
-
-  <div class="tw">
-  <table>
-    <tr><th>Trigger</th><th>CI</th><th>Backend deploy</th><th>Mobile build</th><th>Who sees it</th></tr>
-    <tr><td>Push to <code>feature/*</code></td><td>—</td><td>—</td><td>—</td><td>Only you</td></tr>
-    <tr><td>Open or update a PR → <code>main</code></td><td><span class="chip chip-a">Yes</span></td><td>—</td><td>—</td><td>Reviewers</td></tr>
-    <tr><td>PR + label <code>build-apk</code></td><td><span class="chip chip-a">Yes</span></td><td>—</td><td><span class="chip chip-a">Preview APK</span></td><td>Reviewers can sideload</td></tr>
-    <tr><td>Merge to <code>main</code></td><td><span class="chip chip-a">Yes</span></td><td><span class="chip chip-a">Production</span></td><td>—</td><td>Live backend</td></tr>
-    <tr><td><code>eas build --profile production</code></td><td>—</td><td>—</td><td><span class="chip chip-a">AAB</span></td><td>Play Console upload</td></tr>
-    <tr><td><code>workflow_dispatch</code></td><td><span class="chip chip-a">Yes</span></td><td>—</td><td>—</td><td>Same as a PR</td></tr>
-  </table>
-  </div>
-
-  <div class="note">
-    <p class="p-label">Two things the matrix does not show</p>
-    <p style="margin-bottom:0">The PR trigger includes the <code>labeled</code> event type, which is <em>why</em> adding <code>build-apk</code> to an existing PR starts a build rather than requiring a new push. And merging does not build anything for mobile — mobile releases are a separate manual step (<a href="#c7">Chapter 07</a>).</p>
-  </div>
-</section>
-
-<!-- ══════════ CH 2 ══════════ -->
-<section class="ch" id="c2">
-  <div class="ch-num">Chapter 02</div>
-  <h2>The CI job graph</h2>
-  <p class="thesis">Only two jobs can actually stop a merge; two more report problems they are not allowed to block on.</p>
-
-  <p>Nine jobs, but the dependency structure is simple: <code>test-backend</code> and <code>test-frontend</code> are the only blocking gates, and everything downstream waits on both. Two advisory jobs run in parallel and cannot fail the build.</p>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CI job dependency graph: three triggers feed two blocking jobs and two advisory jobs; four downstream jobs depend on the blocking pair">
-    <!-- triggers -->
-    <text class="lb-s" x="16" y="18">TRIGGERS</text>
-    <rect class="bx-a" x="16" y="28" width="272" height="44" rx="3"/>
-    <text class="mn" x="32" y="48">pull_request → main</text>
-    <text class="tx" x="32" y="64">opened · synchronize · reopened · labeled</text>
-
-    <rect class="bx-a" x="304" y="28" width="272" height="44" rx="3"/>
-    <text class="mn" x="320" y="48">push → main</text>
-    <text class="tx" x="320" y="64">after a merge</text>
-
-    <rect class="bx-a" x="592" y="28" width="272" height="44" rx="3"/>
-    <text class="mn" x="608" y="48">workflow_dispatch</text>
-    <text class="tx" x="608" y="64">manual "Run workflow"</text>
-
-    <!-- bus down to jobs -->
-    <path class="ln-p" d="M152,72 L152,92 M440,72 L440,92 M728,72 L728,92"/>
-    <path class="ln-p" d="M152,92 L728,92"/>
-    <path class="ln-a" d="M116,92 L116,116"/>
-    <path class="ln-a" d="M332,92 L332,116"/>
-    <path class="ln-p" d="M548,92 L548,116"/>
-    <path class="ln-p" d="M764,92 L764,116"/>
-
-    <!-- blocking jobs -->
-    <text class="lb-s" x="16" y="110">BLOCKING</text>
-    <text class="lb-s" x="448" y="110">ADVISORY — CANNOT FAIL THE BUILD</text>
-
-    <rect class="bx-a" x="16" y="118" width="200" height="76" rx="3"/>
-    <text class="lb" x="32" y="140">test-backend</text>
-    <text class="tx" x="32" y="157">pytest · postgres:16 service</text>
-    <text class="tx" x="32" y="172">Ruff · route count = 39</text>
-    <text class="tx" x="32" y="187">70% coverage on 2 files</text>
-
-    <rect class="bx-a" x="232" y="118" width="200" height="76" rx="3"/>
-    <text class="lb" x="248" y="140">test-frontend</text>
-    <text class="tx" x="248" y="157">tsc type check</text>
-    <text class="tx" x="248" y="172">ESLint</text>
-    <text class="tx" x="248" y="187">expo config verify</text>
-
-    <rect class="bx" x="448" y="118" width="200" height="76" rx="3"/>
-    <text class="lb" x="464" y="140">typecheck-backend</text>
-    <text class="tx" x="464" y="157">mypy against a known</text>
-    <text class="tx" x="464" y="172">dirty baseline</text>
-    <text class="mn-a" x="464" y="188">continue-on-error</text>
-
-    <rect class="bx" x="664" y="118" width="200" height="76" rx="3"/>
-    <text class="lb" x="680" y="140">security-scan</text>
-    <text class="tx" x="680" y="157">Trivy · CRITICAL + HIGH</text>
-    <text class="mn-a" x="680" y="173">PR events only</text>
-    <text class="mn-a" x="680" y="188">continue-on-error</text>
-
-    <!-- collector bus -->
-    <path class="ln-a" d="M116,194 L116,218"/>
-    <path class="ln-a" d="M332,194 L332,218"/>
-    <path class="ln-a" d="M116,218 L332,218"/>
-    <text class="mn-a" x="348" y="222">needs: [test-backend, test-frontend]</text>
-    <path class="ln-a" d="M224,218 L224,246"/>
-    <path class="ln-p" d="M60,218 L60,246 M388,218 L388,246 M604,218 L604,246 M820,218 L820,246"/>
-
-    <!-- downstream -->
-    <text class="lb-s" x="16" y="264">DOWNSTREAM</text>
-    <rect class="bx" x="16" y="272" width="200" height="88" rx="3"/>
-    <text class="lb" x="32" y="294">pr-check</text>
-    <text class="tx" x="32" y="311">the merge gate</text>
-    <text class="mn" x="32" y="329">if: pull_request</text>
-    <text class="tx" x="32" y="348">succeeds only if both pass</text>
-
-    <rect class="bx-a" x="232" y="272" width="200" height="88" rx="3"/>
-    <text class="lb" x="248" y="294">deploy-backend</text>
-    <text class="tx" x="248" y="311">POSTs the Render hook</text>
-    <text class="mn" x="248" y="329">if: main &amp;&amp; push</text>
-    <text class="tx" x="248" y="348">skips hook if secret unset</text>
-
-    <rect class="bx" x="448" y="272" width="200" height="88" rx="3"/>
-    <text class="lb" x="464" y="294">build-preview</text>
-    <text class="tx" x="464" y="311">eas build · preview</text>
-    <text class="mn-a" x="464" y="329">needs label build-apk</text>
-    <text class="mn-a" x="464" y="348">continue-on-error</text>
-
-    <rect class="bx-g" x="664" y="272" width="200" height="88" rx="3"/>
-    <text class="lb" x="680" y="294" style="fill:#6B6660">build-production</text>
-    <text class="tx" x="680" y="311">eas build + submit</text>
-    <text class="mn-a" x="680" y="329">if: false — DISABLED</text>
-    <text class="tx" x="680" y="348">also needs deploy-backend</text>
-
-    <!-- notes -->
-    <rect class="bx-g" x="16" y="384" width="848" height="100" rx="3"/>
-    <text class="lb" x="32" y="406">Reading this graph correctly</text>
-    <text class="tx" x="32" y="428">A green CI does NOT mean the type check or the dependency scan passed — both are advisory against known-dirty</text>
-    <text class="tx" x="32" y="446">baselines, so they report and move on. Only test-backend and test-frontend can block.</text>
-    <text class="tx" x="32" y="468">build-preview is advisory too, so a failed APK build will not turn the PR red — check the job, not the badge.</text>
-  </svg>
-  </div>
-  <figcaption><b>Verified against</b> <code>.github/workflows/ci.yml</code> — job names, every <code>needs:</code> list, every <code>if:</code> condition and every <code>continue-on-error</code> flag read directly from the file.</figcaption>
-  </figure>
-
-  <div class="flag">
-    <p class="p-label">One addition to the previous edition</p>
-    <p style="margin-bottom:0"><code>build-preview</code> is <strong>advisory</strong> (<code>continue-on-error: true</code>) — the previous edition never said so. That matters in practice: if your labelled APK build fails, the pull request still shows green. Open the job to confirm the artifact actually exists before telling a reviewer to sideload it.</p>
-  </div>
-</section>
-
-<!-- ══════════ CH 3 ══════════ -->
-<section class="ch" id="c3">
-  <div class="ch-num">Chapter 03</div>
-  <h2>A merge, minute by minute</h2>
-  <p class="thesis">Roughly four minutes from button press to live, and only one of those minutes is yours.</p>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline of a merge: CI triggers, gates pass, Render hook fires, container boots, migrations run, workers replaced, service live">
-    <!-- axis -->
-    <path class="ln-p" d="M40,170 L840,170"/>
-    <path class="ln-a" d="M820,170 L848,170"/>
-    <text class="tx" x="40" y="192">t+0</text>
-    <text class="tx" x="196" y="192">t+0.2</text>
-    <text class="tx" x="356" y="192">t+2m</text>
-    <text class="tx" x="516" y="192">t+2.5m</text>
-    <text class="tx" x="656" y="192">t+3m</text>
-    <text class="tx" x="796" y="192">t+4m</text>
-
-    <!-- ticks -->
-    <path class="ln-p" d="M48,162 L48,178 M208,162 L208,178 M368,162 L368,178 M528,162 L528,178 M668,162 L668,178 M808,162 L808,178"/>
-
-    <!-- above: events 1,3,5 -->
-    <rect class="bx-a" x="16" y="42" width="164" height="60" rx="3"/>
-    <text class="lb" x="30" y="62">Merge clicked</text>
-    <text class="tx" x="30" y="79">merge commit lands</text>
-    <text class="tx" x="30" y="94">on main</text>
-    <path class="ln-p" d="M98,102 L98,162"/>
-
-    <rect class="bx-a" x="288" y="42" width="176" height="60" rx="3"/>
-    <text class="lb" x="302" y="62">Gates pass</text>
-    <text class="tx" x="302" y="79">test-backend +</text>
-    <text class="tx" x="302" y="94">test-frontend green</text>
-    <path class="ln-p" d="M376,102 L376,162"/>
-
-    <rect class="bx-a" x="592" y="42" width="176" height="60" rx="3"/>
-    <text class="lb" x="606" y="62">Migrations run</text>
-    <text class="mn" x="606" y="79">alembic upgrade head</text>
-    <text class="tx" x="606" y="94">guarded — see Ch 04</text>
-    <path class="ln-p" d="M680,102 L680,162"/>
-
-    <!-- below: events 2,4,6 -->
-    <path class="ln-p" d="M208,178 L208,224"/>
-    <rect class="bx" x="120" y="226" width="176" height="60" rx="3"/>
-    <text class="lb" x="134" y="246">CI triggers</text>
-    <text class="tx" x="134" y="263">on the push event,</text>
-    <text class="tx" x="134" y="278">not the merge itself</text>
-
-    <path class="ln-p" d="M528,178 L528,224"/>
-    <rect class="bx" x="440" y="226" width="176" height="60" rx="3"/>
-    <text class="lb" x="454" y="246">Render pulls image</text>
-    <text class="tx" x="454" y="263">via deploy hook, or</text>
-    <text class="tx" x="454" y="278">its own auto-deploy</text>
-
-    <path class="ln-a" d="M808,178 L808,224"/>
-    <rect class="bx-a" x="700" y="226" width="164" height="60" rx="3"/>
-    <text class="lb" x="714" y="246">Live</text>
-    <text class="tx" x="714" y="263">workers replaced;</text>
-    <text class="mn-a" x="714" y="278">/live returns 200</text>
-
-    <!-- footnote -->
-    <rect class="bx-g" x="16" y="300" width="848" height="32" rx="3"/>
-    <text class="tx" x="32" y="320">No mobile artifact is built by merging. Staging updates on its own Render auto-deploy, which is dashboard-managed and not in render.yaml.</text>
-  </svg>
-  </div>
-  <figcaption><b>The deploy hook is a backup, not the only path.</b> <code>deploy-backend</code> checks whether <code>RENDER_DEPLOY_HOOK</code> is set; if it is not, the job logs that Render auto-deploys from GitHub instead and moves on. Either way the outcome is the same — which is why a missing secret does not break deployment.</figcaption>
-  </figure>
-</section>
-
-<!-- ══════════ CH 4 ══════════ -->
-<section class="ch" id="c4">
-  <div class="ch-num">Chapter 04</div>
-  <h2>Container startup</h2>
-  <p class="thesis">A bad migration is a failed deploy, not a broken service — and that is a design decision, not luck.</p>
-
-  <p><code>docker-entrypoint.sh</code> is the whole story. Five steps, one guard, and one wart worth recognising in the logs.</p>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Container startup flowchart: parse database URL, wait with pg_isready, run migrations with an abort branch, exec gunicorn with two workers, pass the live health check">
-    <rect class="bx-a" x="270" y="16" width="340" height="56" rx="3"/>
-    <text class="lb" x="288" y="38">1 · Parse DATABASE_URL</text>
-    <text class="tx" x="288" y="56">host · port · user · db — accepts postgresql:// and +asyncpg</text>
-    <text class="mn-a" x="288" y="68">parsed BEFORE any connection attempt</text>
-    <path class="ln-a" d="M440,72 L440,102"/>
-
-    <rect class="bx-a" x="270" y="104" width="340" height="56" rx="3"/>
-    <text class="lb" x="288" y="126">2 · Wait for the database</text>
-    <text class="mn" x="288" y="144">pg_isready — 30 attempts × 2 s = 60 s max</text>
-    <text class="tx" x="288" y="157">warns and continues if it never answers</text>
-    <path class="ln-a" d="M440,160 L440,190"/>
-
-    <rect class="bx-a" x="270" y="192" width="340" height="56" rx="3"/>
-    <text class="lb" x="288" y="214">3 · Apply migrations</text>
-    <text class="mn" x="288" y="232">alembic upgrade head</text>
-    <text class="tx" x="288" y="245">idempotent — already-applied revisions are skipped</text>
-
-    <!-- fail branch -->
-    <path class="ln-d" d="M610,220 L676,220"/>
-    <rect class="bx" x="678" y="192" width="186" height="56" rx="3"/>
-    <text class="lb" x="692" y="214" style="fill:#94472F">fails →</text>
-    <text class="mn-a" x="692" y="232">exit 1</text>
-    <text class="tx" x="692" y="245">deploy fails, old instance stays</text>
-
-    <path class="ln-a" d="M440,248 L440,278"/>
-    <rect class="bx-a" x="270" y="280" width="340" height="56" rx="3"/>
-    <text class="lb" x="288" y="302">4 · exec the CMD</text>
-    <text class="mn" x="288" y="320">gunicorn --worker-class UvicornWorker --workers 2</text>
-    <text class="mn-a" x="288" y="333">two workers — not four</text>
-    <path class="ln-a" d="M440,336 L440,366"/>
-
-    <rect class="bx-a" x="270" y="368" width="340" height="56" rx="3"/>
-    <text class="lb" x="288" y="390">5 · Bind and serve</text>
-    <text class="mn" x="288" y="408">0.0.0.0:$PORT — Render injects $PORT</text>
-    <text class="mn-a" x="288" y="421">Render probes /live · Docker probes /health</text>
-
-    <!-- log wart -->
-    <rect class="bx-g" x="16" y="104" width="238" height="120" rx="3"/>
-    <text class="lb" x="32" y="126">The log wart</text>
-    <text class="tx" x="32" y="148">The parser cannot handle a</text>
-    <text class="tx" x="32" y="164">port-less Neon URL, so it falls</text>
-    <text class="tx" x="32" y="180">back to localhost and burns the</text>
-    <text class="tx" x="32" y="196">full 60 s wait every boot.</text>
-    <text class="tx" x="32" y="216">Harmless. Set DATABASE_HOST to fix.</text>
-
-    <rect class="bx-g" x="16" y="280" width="238" height="144" rx="3"/>
-    <text class="lb" x="32" y="302">Why two probes</text>
-    <text class="tx" x="32" y="324">/live never touches the database,</text>
-    <text class="tx" x="32" y="340">so Render will not restart a</text>
-    <text class="tx" x="32" y="356">healthy instance when Neon</text>
-    <text class="tx" x="32" y="372">briefly sleeps.</text>
-    <text class="tx" x="32" y="394">A test asserts this — the choice</text>
-    <text class="tx" x="32" y="410">is enforced, not incidental.</text>
-
-    <rect class="bx-g" x="16" y="444" width="848" height="60" rx="3"/>
-    <text class="lb" x="32" y="466">Do not mistake the guard for a bug</text>
-    <text class="tx" x="32" y="488">If a deploy fails on migrations, the previous container keeps serving traffic. That is the desired outcome — resist the urge to bypass the guard to "get the deploy through".</text>
-  </svg>
-  </div>
-  <figcaption><b>Verified against</b> <code>vitaltrack-backend/Dockerfile</code> (lines 73, 80–82) and <code>docker-entrypoint.sh</code> (parse at 9–25, retry loop at 30–44, migration guard at 52–54). <b>Corrected:</b> the previous edition said <code>-w 4</code> and described the migration step without its guard.</figcaption>
-  </figure>
-</section>
-
-<!-- ══════════ CH 5 ══════════ -->
-<section class="ch" id="c5">
-  <div class="ch-num">Chapter 05</div>
-  <h2>One image, two environments</h2>
-  <p class="thesis">The same Docker image runs in both places; every difference between them is an environment variable.</p>
-
-  <p>This is the orthodox twelve-factor split — one immutable artifact, per-environment configuration. Data never crosses: wiping the staging database touches zero production rows.</p>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 460" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One Docker image deployed to staging and production, differing only by injected environment variables, each pointing at its own Neon database">
-    <rect class="bx-a" x="270" y="16" width="340" height="66" rx="3"/>
-    <text class="lb-s" x="288" y="38">ONE IMMUTABLE ARTIFACT</text>
-    <text class="lb" x="288" y="58">Docker image from vitaltrack-backend/</text>
-    <text class="mn" x="288" y="75">Python 3.12 · identical bytes in both environments</text>
-
-    <path class="ln-a" d="M440,82 L440,102"/>
-    <path class="ln-p" d="M204,102 L676,102"/>
-    <path class="ln-a" d="M204,102 L204,132"/>
-    <path class="ln-a" d="M676,102 L676,132"/>
-
-    <!-- staging -->
-    <rect class="bx" x="16" y="134" width="376" height="196" rx="3"/>
-    <text class="lb-s" x="32" y="156">STAGING — dashboard-managed</text>
-    <text class="mn" x="32" y="176">staging-api.carekosh.com</text>
-    <text class="mn" x="32" y="200">ENVIRONMENT       staging</text>
-    <text class="mn" x="32" y="217">DATABASE_URL      → vitaltrack_staging</text>
-    <text class="mn" x="32" y="234">FRONTEND_URL      staging-api…/api/v1/auth</text>
-    <text class="mn" x="32" y="251">MAIL_PASSWORD     staging key</text>
-    <text class="mn" x="32" y="268">SECRET_KEY        distinct, 32+ chars</text>
-    <text class="mn-a" x="32" y="292">plan: NOT in render.yaml</text>
-    <text class="tx" x="32" y="308">check the Render dashboard — it may still be free-tier</text>
-    <text class="tx" x="32" y="324">test data only · safe to wipe</text>
-
-    <!-- production -->
-    <rect class="bx-a" x="488" y="134" width="376" height="196" rx="3"/>
-    <text class="lb-s" x="504" y="156">PRODUCTION — render.yaml</text>
-    <text class="mn" x="504" y="176">api.carekosh.com</text>
-    <text class="mn" x="504" y="200">ENVIRONMENT       production</text>
-    <text class="mn" x="504" y="217">DATABASE_URL      → neondb</text>
-    <text class="mn" x="504" y="234">FRONTEND_URL      api…/api/v1/auth</text>
-    <text class="mn" x="504" y="251">MAIL_PASSWORD     production key</text>
-    <text class="mn" x="504" y="268">SECRET_KEY        distinct, 32+ chars</text>
-    <text class="mn-a" x="504" y="292">plan: starter — paid, always-on</text>
-    <text class="mn" x="504" y="308">region: singapore · healthCheckPath: /live</text>
-    <text class="tx" x="504" y="324">real user data · never wipe</text>
-
-    <!-- databases -->
-    <path class="ln-a" d="M204,330 L204,360"/>
-    <path class="ln-a" d="M676,330 L676,360"/>
-    <rect class="bx" x="106" y="362" width="196" height="52" rx="3"/>
-    <text class="lb" x="122" y="384">Neon database</text>
-    <text class="mn" x="122" y="402">vitaltrack_staging</text>
-    <rect class="bx" x="578" y="362" width="196" height="52" rx="3"/>
-    <text class="lb" x="594" y="384">Neon database</text>
-    <text class="mn" x="594" y="402">neondb</text>
-
-    <rect class="bx-g" x="16" y="428" width="848" height="28" rx="3"/>
-    <text class="tx" x="32" y="447">Both are DATABASES inside one Neon branch, sharing a connection host — not two Neon branches. Looking for a branch named vitaltrack_staging wastes time.</text>
-  </svg>
-  </div>
-  <figcaption><b>Corrected:</b> the previous edition called these “Neon branch <code>vitaltrack_staging</code>” and “Neon branch <code>neondb</code>”. They are databases created with <code>CREATE DATABASE</code> inside a single branch. <b>Also note</b> production ships <code>CORS_ORIGINS='["*"]'</code>; the wildcard branch in <code>app/main.py</code> forces <code>allow_credentials=False</code>, and the API is bearer-only with no cookies.</figcaption>
-  </figure>
-</section>
-
-<!-- ══════════ CH 6 ══════════ -->
-<section class="ch" id="c6">
-  <div class="ch-num">Chapter 06</div>
-  <h2>Which backend does this build talk to?</h2>
-  <p class="thesis">Whichever URL was compiled in — and no server-side change can redirect an installed app.</p>
-
-  <p><code>EXPO_PUBLIC_API_URL</code> is a build-time constant baked into the binary. Once an artifact exists, its backend is fixed forever.</p>
-
-  <figure>
-  <div class="fig-wrap">
-  <svg viewBox="0 0 880 358" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three EAS build profiles producing three artifacts, each permanently bound to a different backend URL">
-    <text class="lb-s" x="16" y="18">EAS PROFILE</text>
-    <text class="lb-s" x="330" y="18">ARTIFACT</text>
-    <text class="lb-s" x="600" y="18">PERMANENTLY BOUND TO</text>
-
-    <!-- development -->
-    <rect class="bx" x="16" y="28" width="270" height="60" rx="3"/>
-    <text class="lb" x="32" y="50">development</text>
-    <text class="tx" x="32" y="68">local iteration</text>
-    <path class="ln" d="M286,58 L322,58"/>
-    <rect class="bx" x="324" y="28" width="240" height="60" rx="3"/>
-    <text class="mn" x="340" y="50">APK</text>
-    <text class="tx" x="340" y="68">buildType: apk</text>
-    <path class="ln" d="M564,58 L600,58"/>
-    <rect class="bx" x="602" y="28" width="262" height="60" rx="3"/>
-    <text class="mn" x="618" y="52">http://localhost:8000</text>
-    <text class="tx" x="618" y="70">your machine only</text>
-
-    <!-- preview -->
-    <rect class="bx-a" x="16" y="104" width="270" height="76" rx="3"/>
-    <text class="lb" x="32" y="126">preview</text>
-    <text class="tx" x="32" y="144">the PR-label build</text>
-    <text class="mn-a" x="32" y="162">channel: preview</text>
-    <path class="ln-a" d="M286,142 L322,142"/>
-    <rect class="bx-a" x="324" y="104" width="240" height="76" rx="3"/>
-    <text class="mn" x="340" y="126">APK</text>
-    <text class="tx" x="340" y="144">sideloadable</text>
-    <text class="tx" x="340" y="162">reviewers install this</text>
-    <path class="ln-a" d="M564,142 L600,142"/>
-    <rect class="bx-a" x="602" y="104" width="262" height="76" rx="3"/>
-    <text class="mn" x="618" y="128">https://staging-api</text>
-    <text class="mn" x="618" y="144">  .carekosh.com</text>
-    <text class="tx" x="618" y="166">test data</text>
-
-    <!-- production -->
-    <rect class="bx-a" x="16" y="196" width="270" height="84" rx="3"/>
-    <text class="lb" x="32" y="218">production</text>
-    <text class="tx" x="32" y="236">manual, from your laptop</text>
-    <text class="mn-a" x="32" y="254">autoIncrement: true</text>
-    <text class="mn-a" x="32" y="271">appVersionSource: remote</text>
-    <path class="ln-a" d="M286,238 L322,238"/>
-    <rect class="bx-a" x="324" y="196" width="240" height="84" rx="3"/>
-    <text class="mn" x="340" y="218">AAB</text>
-    <text class="tx" x="340" y="236">buildType: app-bundle</text>
-    <text class="mn-a" x="340" y="256">eas submit →</text>
-    <text class="mn-a" x="340" y="272">track: internal</text>
-    <path class="ln-a" d="M564,238 L600,238"/>
-    <rect class="bx-a" x="602" y="196" width="262" height="84" rx="3"/>
-    <text class="mn" x="618" y="220">https://api.carekosh.com</text>
-    <text class="tx" x="618" y="242">real users</text>
-    <text class="tx" x="618" y="262">build fails if the URL</text>
-    <text class="tx" x="618" y="276">guard does not match</text>
-
-    <rect class="bx-g" x="16" y="296" width="848" height="50" rx="3"/>
-    <text class="tx" x="32" y="317">If a tester reports confusing data on a “preview APK”, the fix is a rebuild — never a server config change.</text>
-    <text class="tx" x="32" y="335">Confirm which URL an artifact was built with before blaming the backend.</text>
-  </svg>
-  </div>
-  <figcaption><b>Verified against</b> <code>eas.json</code> — all three profiles, their <code>env</code> blocks, <code>buildType</code>, channels, <code>appVersionSource: remote</code> with <code>autoIncrement</code>, and <code>submit.production.track: internal</code>.</figcaption>
-  </figure>
-</section>
-
-<!-- ══════════ CH 7 ══════════ -->
-<section class="ch" id="c7">
-  <div class="ch-num">Chapter 07</div>
-  <h2>Shipping a mobile release</h2>
-  <p class="thesis">Still manual, deliberately — the job that would automate it exists and is switched off.</p>
-
-  <pre><code><span class="c"># from the mobile package root</span>
-cd vitaltrack-mobile
-npx expo-doctor                                      <span class="c"># sanity check</span>
-
-<span class="c"># build — the production profile bakes in api.carekosh.com</span>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Build and deploy flow — CareKosh</title><style>body{margin:0;background:#f7f5ef;color:#202c32;font:17px/1.65 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:40px 24px 80px}h1{font-size:clamp(2rem,5vw,3.1rem);line-height:1.15}h2{margin-top:2.5rem;color:#174b49}a{color:#075d70;text-underline-offset:3px}table{border-collapse:collapse;width:100%;margin:20px 0}th,td{border:1px solid #c8d1cd;padding:12px;text-align:left;vertical-align:top}th{background:#e6eeea}pre{padding:18px;background:#172e34;color:#eff7f3;overflow:auto;border-radius:8px}code{font-size:.9em}aside,.note{padding:18px;border-left:4px solid #9b6a1b;background:#fff3d7;margin:20px 0}.eyebrow{font-size:.8rem;text-transform:uppercase;letter-spacing:.1em}nav{display:flex;gap:15px;flex-wrap:wrap}li{margin:8px 0}@media(max-width:650px){table{display:block;overflow:auto}main{padding:24px 16px}}@media print{body{background:white;color:black}main{max-width:none;padding:0}pre{white-space:pre-wrap;background:#eee;color:black}a{color:inherit}}main{max-width:1080px}main>p,main>ul,main>ol,main>aside,main>h1,main>h2,main>h3,main>.lead,main>details{max-width:47rem}li{margin:6px 0}.lead{font-size:1.12rem;color:#2d4540}.inshort{font-size:1.06rem;padding:12px 16px;border-left:4px solid #1f6f66;background:#e8f3f0;border-radius:0 10px 10px 0}figure.dg{margin:26px 0 34px}.dg-frame{background:#fff;border:1px solid #d2dcd8;border-radius:18px;padding:18px 18px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;box-shadow:0 1px 3px rgba(20,50,45,.06)}.dg-frame svg{display:block;width:100%;height:auto;margin:0 auto}figure.dg figcaption{max-width:47rem;margin-top:10px;font-size:.95rem;color:#44574f}figure.dg figcaption b{color:#174b49}.swipe{display:none}details{margin:16px 0;padding:10px 16px;border:1px solid #c8d1cd;border-radius:10px;background:#fff}details summary{cursor:pointer;font-weight:600;color:#174b49}@media(max-width:720px){.dg-frame{padding:10px}.dg-frame svg{min-width:680px}.swipe{display:inline}}@media print{.dg-frame{overflow:visible;border:none;padding:0;box-shadow:none}.dg-frame svg{min-width:0}}</style></head><body>
+<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside><main><nav><a href="docs/INDEX.html">Documentation home</a></nav><p class="eyebrow">CareKosh · rechecked 8 October 2026 (test evidence: 7 October 2026, re-run 8 October 2026)</p><h1>Build and deploy flow</h1>
+<p><strong>8 October 2026 safety follow-up.</strong> Targeted fixes are local tested changes after the earlier audit. Deployment and device acceptance remain separate. <a href="docs/BACKEND_HARDENING.md#safety-follow-up-8-october-2026">Current changes and remaining scope</a>.</p><aside><strong>Source status (re-checked 8 Oct 2026 against the working tree: <code>03cfebb</code> plus uncommitted documentation):</strong> describes branch <code>feature/backend-hardening-ai-voice-agent-foundation</code> at <code>03cfebb</code> (pushed, <strong>not merged</strong>; <code>main</code> is <code>835fad3</code>), which carries migrations <code>0007</code>–<code>0010</code>, the read-only voice assistant and the API audit fixes. Where <code>main</code> differs, the text says so. Staging was reported by the owner to run <code>b1c8dd7</code> on 7 Oct 2026 (historical, not re-checked); production's deployed commit, database revision and all dashboard settings are NOT VERIFIED. Earlier corrections came from the 23 September 2026 documentation audit (local notes, not published); this revision follows the <span>7 October 2026 documentation audit <small>(local review reference; not published)</small></span>. Main onboarding guide: <a href="docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#f2-cicd-pipeline-githubworkflowsciyml">Complete developer guide, Part F</a>.</aside><p><strong>In short:</strong> <code>vitaltrack-backend/render.yaml</code> declares the production backend on <code>main</code> (whether Render reads that file is not verified); staging can track a feature branch configured in its dashboard; the Android app is built by Expo EAS and distributed through Google Play. The two paths are independent. A backend deploy never changes an installed app, and an app build never deploys the backend.</p><h2 id="triggers">What each action changes</h2><figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 486" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bd-ci-t bd-ci-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="bd-ci-t">What each Git action runs</title><desc id="bd-ci-d">A feature push with no open pull request to main does not trigger this CI workflow, but a linked Render service may auto-deploy. A PR to main, and every push to its branch, runs CI and a label-gated preview job. A merge may trigger enabled auto-deploy or a configured CI hook after the test jobs. App builds are separate EAS builds, made by hand or, for previews, by the label-gated job.</desc><defs><marker id="bd-ci-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="bd-ci-ah-b3372b" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B3372B"/></marker></defs>
+<rect x="30" y="40" width="290" height="252" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="50" y="76.5" font-size="18.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Push to a feature branch</text>
+<text x="50" y="102.0" font-size="15.5" font-weight="400" fill="#34504A" text-anchor="start">No CI deploy job</text>
+<text x="50" y="124.0" font-size="15.5" font-weight="400" fill="#34504A" text-anchor="start">No app build</text>
+<text x="50" y="158.0" font-size="15.5" font-weight="400" fill="#34504A" text-anchor="start">CI runs only through an</text>
+<text x="50" y="180.0" font-size="15.5" font-weight="400" fill="#34504A" text-anchor="start">open pull request to main</text>
+<circle cx="32" cy="42" r="16" fill="#9AAAA6"/>
+<text x="32" y="47.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<path d="M324,166 L350,166" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-ci-ah-1f6f66)"/>
+<rect x="355" y="40" width="290" height="252" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="375" y="76.5" font-size="18.5" font-weight="700" fill="#0D4A43" text-anchor="start">Pull request to main</text>
+<text x="375" y="98.5" font-size="14" font-weight="500" fill="#21403B" text-anchor="start" font-style="italic">CI checks run</text>
+<text x="375" y="124.0" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Backend tests</text>
+<text x="375" y="146.0" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">(Python 3.12, PostgreSQL 16)</text>
+<text x="375" y="168.0" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Mobile checks (Node 20)</text>
+<text x="375" y="190.0" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Advisory: mypy, Trivy</text>
+<text x="375" y="212.0" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Preview APK only with the</text>
+<text x="375" y="234.0" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">build-apk label</text>
+<circle cx="357" cy="42" r="16" fill="#1F6F66"/>
+<text x="357" y="47.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<path d="M649,166 L675,166" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-ci-ah-1f6f66)"/>
+<rect x="680" y="40" width="290" height="252" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="700" y="76.5" font-size="18.5" font-weight="700" fill="#8C2A20" text-anchor="start">Merge to main</text>
+<text x="700" y="98.5" font-size="14" font-weight="500" fill="#5C1F18" text-anchor="start" font-style="italic">may deploy production</text>
+<text x="700" y="124.0" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Render auto-deploy (if on)</text>
+<text x="700" y="146.0" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">can start before CI ends</text>
+<text x="700" y="168.0" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">CI hook, if configured</text>
+<text x="700" y="190.0" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">after both test jobs pass</text>
+<text x="700" y="212.0" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Production app build job</text>
+<text x="700" y="234.0" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">is disabled (if: false)</text>
+<circle cx="682" cy="42" r="16" fill="#B3372B"/>
+<text x="682" y="47.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<path d="M825.0,294 L825.0,344" fill="none" stroke="#B3372B" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-ci-ah-b3372b)"/>
+<rect x="630" y="350" width="340" height="112" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="800.0" y="387" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="middle">Container starts</text>
+<text x="800.0" y="412" font-size="15" font-weight="400" fill="#21403B" text-anchor="middle">wait for DB → alembic upgrade head</text>
+<text x="800.0" y="434" font-size="15" font-weight="400" fill="#21403B" text-anchor="middle">→ Gunicorn → /live check</text>
+<rect x="30" y="350" width="575" height="112" rx="14" fill="#EAF0FA" stroke="#3D5A99" stroke-width="2.2"/>
+<text x="50" y="387" font-size="19" font-weight="700" fill="#243E76" text-anchor="start">App builds are separate (EAS)</text>
+<text x="50" y="412.5" font-size="15.5" font-weight="400" fill="#2A3A57" text-anchor="start">EAS builds make the APK or AAB (by hand, or the build-apk job).</text>
+<text x="50" y="434.5" font-size="15.5" font-weight="400" fill="#2A3A57" text-anchor="start">A backend deploy never changes an installed app.</text>
+</svg></div><figcaption><b>Figure 1.</b> What a push, a pull request and a merge each run. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure><table><tr><th>Action</th><th>Backend</th><th>Mobile artifact</th></tr><tr><td>Feature-branch push</td><td>CI runs only if the branch has an open PR to <code>main</code> (as a PR run). No deploy in the repository workflow; check any external integrations separately.</td><td>No build from that push alone.</td></tr><tr><td>PR to main</td><td>Backend and mobile CI checks; no staging deploy job.</td><td>A preview APK only when the PR has the <code>build-apk</code> label, after the two test jobs succeed — again on every later PR run while the label stays. The <code>skip-apk</code> label does nothing.</td></tr><tr><td>Push/merge to main</td><td>CI may request the production Render deploy hook after both test jobs. Render's own auto-deploy is independent of CI and depends on dashboard settings.</td><td>The production build job is disabled with <code>if: false</code>. No new installed app.</td></tr><tr><td>Manual EAS build</td><td>Does not deploy an API or run its migrations.</td><td>Builds the chosen profile from the uploaded source.</td></tr></table><p><strong>Merging to <code>main</code> can trigger production deployment through an enabled Render auto-deploy or a configured CI deploy hook.</strong> <code>vitaltrack-backend/render.yaml</code> declares only the production service, with <code>branch: main</code>. Until this branch merges, a push to <code>main</code> runs <code>main</code>'s older workflow, whose hook call (<code>curl -s</code>) cannot fail the job. Older guides documented both APIs watching <code>main</code> with a backend root-directory filter; on 7 Oct 2026 the owner reported switching staging to the feature branch to deploy <code>b1c8dd7</code> (owner-reported, not re-checked). Either way the arrangement has no staging-first release gate of its own, and an "On Commit" auto-deploy can start before CI finishes. Auto-deploy and branch per service are dashboard settings (NOT VERIFIED). Confirm the live settings, and for migrations <code>0007</code>–<code>0010</code> follow the <a href="#release">release sequence</a> below. <a href="https://render.com/docs/deploys">Render deployment controls</a>.</p>
+<h2 id="ci">CI gates</h2><p>There are eight jobs:</p><ul><li><strong>Backend tests</strong> use Python 3.12 (3.11 on <code>main</code>) and PostgreSQL 16: Ruff, pytest with <code>--migrated-schema</code>, a check that exactly 44 <code>/api/v1</code> routes exist (39 on <code>main</code>, before the five assistant routes) and no <code>/sync</code> route, and 70% coverage floors for <code>items.py</code> and <code>orders.py</code>. On 7 Oct 2026 (run 37583748644, manual dispatch on <code>03cfebb</code>): 242 tests passed, 88% coverage. Re-run locally on 8 Oct 2026 against a disposable PostgreSQL 16 database: 242 passed, 88% coverage.</li><li><strong>Mobile checks</strong> (Node 20): install with <code>--legacy-peer-deps</code>, confirm the <code>carekosh-voice</code> native module is autolinked for Android, then TypeScript (<code>tsc --noEmit</code>), <code>npm test</code> (121 Node test-runner tests in <code>tests/*.test.cjs</code> on 7 Oct 2026, and again on 8 Oct), ESLint (errors fail; warnings do not) and Expo Doctor. Expo Doctor's result is discarded (<code>|| echo</code>), so it can never fail the job; on 7 Oct it reported patch-version mismatches. <em>Earlier (September 2026 notes):</em> the job ran eight API tests via <code>npm run test:api</code>; <code>main</code>'s job runs TypeScript, ESLint and Expo Doctor only.</li><li><strong>Advisory jobs:</strong> mypy and the PR-only Trivy scan. Green required checks do not mean there are no typing or dependency findings.</li><li><strong>Other jobs:</strong> the PR summary job (<code>pr-check</code>, not required by GitHub), the deploy hook, the label-gated preview build and the disabled production build.</li></ul><p>The preview build job is <strong>not</strong> marked continue-on-error; only its notification step is. On <code>main</code> it runs on Node 18, below React Native 0.81's minimum of Node 20.19.4; the feature branch moves it to Node 22 (matching <code>.nvmrc</code>). Whether a label-triggered preview build succeeds has not been verified. Which checks block a merge is decided on GitHub, not in the workflow file. Checked through the GitHub API on 7 Oct 2026 (not re-checked since): <code>main</code> has no classic branch protection; the active ruleset <code>protect-main</code> requires a pull request (0 approvals), blocks force-pushes and deletion, and requires <strong>no</strong> status checks. A red CI run therefore does not technically stop a merge; reading every job before merging is a discipline, not an enforced gate.</p>
+<h2 id="startup">Container startup and migration</h2><p>The production image uses Python 3.12 and runs two Uvicorn workers managed by Gunicorn. The shell entrypoint:</p><figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 304" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bd-boot-t bd-boot-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="bd-boot-t">Container start-up</title><desc id="bd-boot-d">The entrypoint waits for PostgreSQL, runs alembic upgrade head and stops if it fails, then starts Gunicorn with two Uvicorn workers; Render then checks /live.</desc><defs><marker id="bd-boot-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker></defs>
+<rect x="30" y="40" width="215" height="128" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="137.5" y="76" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Wait for the DB</text>
+<text x="137.5" y="101" font-size="15" font-weight="400" fill="#21403B" text-anchor="middle">30 tries, 2 s apart,</text>
+<text x="137.5" y="123" font-size="15" font-weight="400" fill="#21403B" text-anchor="middle">then goes on anyway</text>
+<circle cx="137.5" cy="40" r="16" fill="#1F6F66"/>
+<text x="137.5" y="45.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<path d="M248,104 L268,104" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-boot-ah-1f6f66)"/>
+<rect x="272" y="40" width="215" height="128" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="379.5" y="76" font-size="18" font-weight="700" fill="#8C2A20" text-anchor="middle">Migrate</text>
+<text x="379.5" y="101" font-size="15" font-weight="400" fill="#5C1F18" text-anchor="middle">alembic upgrade head</text>
+<text x="379.5" y="123" font-size="15" font-weight="400" fill="#5C1F18" text-anchor="middle">stops start-up on failure</text>
+<circle cx="379.5" cy="40" r="16" fill="#B3372B"/>
+<text x="379.5" y="45.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<path d="M490,104 L510,104" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-boot-ah-1f6f66)"/>
+<rect x="514" y="40" width="215" height="128" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="621.5" y="76" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Start Gunicorn</text>
+<text x="621.5" y="101" font-size="15" font-weight="400" fill="#21403B" text-anchor="middle">2 Uvicorn workers</text>
+<text x="621.5" y="123" font-size="15" font-weight="400" fill="#21403B" text-anchor="middle">on $PORT</text>
+<circle cx="621.5" cy="40" r="16" fill="#1F6F66"/>
+<text x="621.5" y="45.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<path d="M732,104 L752,104" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-boot-ah-1f6f66)"/>
+<rect x="756" y="40" width="215" height="128" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="863.5" y="76" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="middle">Health check</text>
+<text x="863.5" y="101" font-size="15" font-weight="400" fill="#1D4730" text-anchor="middle">Render polls /live</text>
+<text x="863.5" y="123" font-size="15" font-weight="400" fill="#1D4730" text-anchor="middle">(no database check)</text>
+<circle cx="863.5" cy="40" r="16" fill="#2E7D4F"/>
+<text x="863.5" y="45.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<rect x="30" y="204" width="940" height="80" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="241.5" font-size="15.5" text-anchor="start"><tspan font-weight="700" fill="#2B403C">A failed start does not undo schema changes. </tspan><tspan font-weight="400" fill="#3C5550">Head: 0010_order_local_id_unique; 0007 refuses downgrade.</tspan></text>
+<text x="50" y="263.5" font-size="15.5" text-anchor="start"><tspan font-weight="400" fill="#3C5550">A DATABASE_URL without a port makes the wait loop probe localhost; set DATABASE_HOST/PORT if needed.</tspan></text>
+</svg></div><figcaption><b>Figure 2.</b> The four start-up steps of every production container. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure><ol><li>waits for PostgreSQL — up to 30 attempts, 2 seconds apart; after that it logs a warning and proceeds anyway;</li><li>runs <code>alembic upgrade head</code>, and exits if it fails;</li><li>appends the <code>PORT</code> bind argument and execs Gunicorn from an exec-form Docker CMD.</li></ol><p>A failed start-up does not automatically undo schema changes. The host parser falls back to <code>localhost</code> for a <code>DATABASE_URL</code> without a port. With such a URL, every start waits about 60 seconds before migrating. Look for <code>Extracted HOST:</code> in the deploy log, or set <code>DATABASE_HOST</code>/<code>DATABASE_PORT</code> explicitly. Earlier A-27 made percent-encoded URLs fail during Alembic configuration. The 8 Oct 2026 local fix escapes percent signs for ConfigParser, which returns the original URL. Continue URL-encoding reserved password characters; this needs the updated backend deployment.</p><p>The migration head on the feature branch is <code>0010_order_local_id_unique</code> (<code>main</code> ends at <code>0006_order_item_qty_positive</code>). <code>0007_session_order_safety</code> adds <code>session_version</code>, durable daily order counters and token-digest indexes; <code>0008</code> creates consent and usage tables; <code>0009</code> adds consent scopes and the usage provider field; <code>0010</code> adds a partial per-user unique index on non-null order <code>local_id</code>, exempting later legacy duplicates by id, and takes a <code>SHARE</code> lock on <code>orders</code> until migration commit. Its duration depends on the table size and lock contention. They preserve existing application rows. Automatic downgrade below <code>0007</code> is deliberately refused (it raises an error); <code>0008</code>–<code>0010</code> have downgrades, which are untested. Redeploying an image older than the schema does not roll it back: that image's <code>alembic upgrade head</code> cannot find revision <code>0010</code>, the container exits, and Render keeps the current version. Follow the <a href="docs/BACKEND_HARDENING.md#release-gate-for-migration-0007">release gate, cutover and rollback notes</a>.</p>
+<h2 id="artifacts">APK, AAB and the existing app</h2><figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 578" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bd-apk-t bd-apk-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="bd-apk-t">Which build talks to which backend</title><desc id="bd-apk-d">development would build a development-client APK for localhost once expo-dev-client is installed; preview builds an APK installed directly that calls staging; production builds an AAB submitted to Google Play that calls production.</desc><defs><marker id="bd-apk-ah-8fa39d" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#8FA39D"/></marker></defs>
+<text x="34" y="36" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.4">EAS PROFILE</text>
+<text x="244" y="36" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.4">OUTPUT</text>
+<text x="474" y="36" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.4">HOW IT REACHES A PHONE</text>
+<text x="764" y="36" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.4">CALLS</text>
+<rect x="30" y="56" width="180" height="120" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="120" y="123.0" font-size="18" font-weight="700" fill="#35474F" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">development</text>
+<rect x="240" y="56" width="200" height="120" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="260" y="91.5" font-size="17.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Dev-client APK</text>
+<text x="260" y="116.0" font-size="14.5" font-weight="400" fill="#34504A" text-anchor="start">needs expo-dev-client</text>
+<text x="260" y="137.0" font-size="14.5" font-weight="400" fill="#34504A" text-anchor="start">(not installed yet)</text>
+<rect x="470" y="56" width="260" height="120" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="490" y="93" font-size="15" font-weight="400" fill="#34504A" text-anchor="start">Install on a test phone</text>
+<rect x="760" y="56" width="210" height="120" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="865" y="122.0" font-size="15.5" font-weight="700" fill="#35474F" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">localhost:8000</text>
+<path d="M212,116.0 L236,116.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<path d="M442,116.0 L466,116.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<path d="M732,116.0 L756,116.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<rect x="30" y="196" width="180" height="120" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="120" y="263.0" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">preview</text>
+<rect x="240" y="196" width="200" height="120" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="260" y="231.5" font-size="17.5" font-weight="700" fill="#1F2F2D" text-anchor="start">APK</text>
+<text x="260" y="256.0" font-size="14.5" font-weight="400" fill="#34504A" text-anchor="start">installed directly</text>
+<rect x="470" y="196" width="260" height="120" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="490" y="233" font-size="15" font-weight="400" fill="#34504A" text-anchor="start">Download from EAS,</text>
+<text x="490" y="255" font-size="15" font-weight="400" fill="#34504A" text-anchor="start">install by hand</text>
+<rect x="760" y="196" width="210" height="120" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2"/>
+<text x="865" y="250.0" font-size="15.5" font-weight="700" fill="#77500F" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">staging-api.</text>
+<text x="865" y="274.0" font-size="15.5" font-weight="700" fill="#77500F" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">carekosh.com</text>
+<path d="M212,256.0 L236,256.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<path d="M442,256.0 L466,256.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<path d="M732,256.0 L756,256.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<rect x="30" y="336" width="180" height="120" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="120" y="403.0" font-size="18" font-weight="700" fill="#8C2A20" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">production</text>
+<rect x="240" y="336" width="200" height="120" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="260" y="371.5" font-size="17.5" font-weight="700" fill="#1F2F2D" text-anchor="start">AAB</text>
+<text x="260" y="396.0" font-size="14.5" font-weight="400" fill="#34504A" text-anchor="start">Android App Bundle</text>
+<rect x="470" y="336" width="260" height="120" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="490" y="373" font-size="15" font-weight="400" fill="#34504A" text-anchor="start">eas submit → Play</text>
+<text x="490" y="395" font-size="15" font-weight="400" fill="#34504A" text-anchor="start">internal track → Play</text>
+<text x="490" y="417" font-size="15" font-weight="400" fill="#34504A" text-anchor="start">makes device APKs</text>
+<rect x="760" y="336" width="210" height="120" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="865" y="402.0" font-size="15.5" font-weight="700" fill="#8C2A20" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">api.carekosh.com</text>
+<path d="M212,396.0 L236,396.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<path d="M442,396.0 L466,396.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<path d="M732,396.0 L756,396.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<rect x="30" y="482" width="940" height="80" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="519.5" font-size="15.5" text-anchor="start"><tspan font-weight="700" fill="#2B403C">The profile decides the backend</tspan><tspan font-weight="400" fill="#3C5550">, because it embeds the API URL — not the file type or the Play track.</tspan></text>
+<text x="50" y="541.5" font-size="15.5" text-anchor="start"><tspan font-weight="400" fill="#3C5550">A production AAB in internal testing still calls production.</tspan></text>
+</svg></div><figcaption><b>Figure 3.</b> The EAS profile decides which backend a build calls. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure><table><tr><th>Profile</th><th>Output</th><th>API</th></tr><tr><td>development</td><td>Development-client APK (needs <code>expo-dev-client</code>, which is not installed yet)</td><td>http://localhost:8000; Android needs a matching network/ADB setup</td></tr><tr><td>preview</td><td>APK for direct installation</td><td>https://staging-api.carekosh.com</td></tr><tr><td>production</td><td>AAB for Google Play</td><td>https://api.carekosh.com</td></tr></table><p>The profile and its embedded API URL decide the environment, not the APK/AAB file type or the Play track name. A production-profile AAB in internal testing still calls production. An AAB is not installed directly: Google Play (or bundle tooling) turns it into installable, device-specific APKs. <a href="https://docs.expo.dev/build-reference/apk/">Expo artifact guide</a>.</p><p>Backend-only fixes reach existing compatible installations as soon as the API is deployed. Mobile changes, such as the refresh and history fixes, retry-safe order creation and the voice assistant, need a new installation, because over-the-air updates are off (<code>updates.enabled=false</code>). The EAS channels in <code>eas.json</code> do not enable OTA updates. Custom-domain DNS can move an existing hostname to another host without changing the embedded URL.</p><pre>cd vitaltrack-mobile
+eas build --profile preview --platform android
+# After staging validation and the controlled backend release:
 eas build --profile production --platform android
-
-<span class="c"># read the version code EAS assigned (never hand-edit app.json)</span>
 eas build:version:get --platform android
-
-<span class="c"># upload — lands on the INTERNAL track, always</span>
-eas submit --profile production --platform android</code></pre>
-
-  <div class="note">
-    <p class="p-label">Two constraints to internalise</p>
-    <p><strong><code>eas submit</code> can never reach production.</strong> The profile is <em>named</em> production but its submit track is <code>internal</code>. Promotion internal → closed → production is manual in the Play Console.</p>
-    <p style="margin-bottom:0"><strong>The version code lives on EAS servers</strong>, not in the repo. <code>appVersionSource: remote</code> with <code>autoIncrement</code> means <code>app.json</code>'s <code>versionCode</code> is inert — editing it does nothing.</p>
-  </div>
-
-  <div class="flag">
-    <p class="p-label">The disabled automation</p>
-    <p style="margin-bottom:0"><code>build-production</code> sits in the workflow with <code>if: false</code>, and the file records the condition it was disabled from: <code>github.ref == 'refs/heads/main' &amp;&amp; github.event_name == 'push'</code>. To enable it you would flip that back and wire an EAS robot token as a secret. Note it also <code>needs: deploy-backend</code>, so a backend deploy failure would correctly block a mobile release.</p>
-  </div>
-</section>
-
-<!-- ══════════ CH 8 ══════════ -->
-<section class="ch" id="c8">
-  <div class="ch-num">Chapter 08</div>
-  <h2>The HTML endpoints</h2>
-  <p class="thesis">Four routes return HTML instead of JSON, because a human arrives at them from an email client.</p>
-
-  <div class="tw">
-  <table>
-    <tr><th>Endpoint</th><th>Who reaches it</th><th>What it returns</th></tr>
-    <tr><td><code>GET /api/v1/auth/verify-email</code></td><td>Browser, from the verification email</td><td>HTML — “email verified”</td></tr>
-    <tr><td><code>GET /api/v1/auth/reset-password</code></td><td>Browser, from the reset email</td><td>HTML form, submitting to <code>POST /reset-password</code></td></tr>
-    <tr><td><code>GET /api/v1/auth/confirm-delete/{token}</code></td><td>Browser, from the deletion email</td><td>HTML confirmation page — <strong>deletes nothing</strong></td></tr>
-    <tr><td><code>POST /api/v1/auth/confirm-delete/{token}</code></td><td>The user submitting that form</td><td>Performs the deletion; cascade runs server-side</td></tr>
-  </table>
-  </div>
-
-  <div class="note">
-    <p class="p-label">Why the GET/POST split exists</p>
-    <p style="margin-bottom:0">Mail clients and link scanners issue <code>GET</code> requests automatically to preview links. A <code>GET</code> that deleted an account would fire on prefetch with no human involved. Splitting the flow closes that exactly — and it is worth stating precisely, because an earlier architecture document drew the <code>GET</code> as the destructive step and thereby described a vulnerability this design prevents.</p>
-  </div>
-
-  <p>JSON variants exist for in-app flows: <code>GET /verify-email/{token}</code>, <code>POST /reset-password</code>, <code>POST /cancel-delete</code>.</p>
-</section>
-
-<!-- ══════════ CH 9 ══════════ -->
-<section class="ch" id="c9">
-  <div class="ch-num">Chapter 09</div>
-  <h2>The slow first request</h2>
-  <p class="thesis">Neon waking, not Render sleeping — and the difference decides where you point your monitors.</p>
-
-  <div class="flag">
-    <p class="p-label">This chapter was wrong in the previous edition</p>
-    <p style="margin-bottom:0">It described “Render free-tier cold start — free web services sleep after 15 min” and listed moving to paid Render as work still to do. <strong>Production runs <code>plan: starter</code></strong> — paid and always-on, with a comment in <code>render.yaml</code> saying it exists precisely to remove free-tier spin-down. That task is done; there is no 15-minute container sleep for a reviewer to hit.</p>
-  </div>
-
-  <p>What remains is <strong>Neon scale-to-zero</strong>. The serverless database idles, and the first query afterwards must wake it. That surfaces in exactly one place: <code>/health</code>, which runs <code>SELECT 1</code> under a two-second timeout and returns <strong>503 by design</strong> when the wake takes longer.</p>
-
-  <div class="tw">
-  <table>
-    <tr><th>Endpoint</th><th>Touches the database?</th><th>Behaviour when Neon is asleep</th><th>Use it for</th></tr>
-    <tr><td><code>/live</code></td><td>No</td><td>Stays <strong>200</strong></td><td>Render's health check · your uptime monitors</td></tr>
-    <tr><td><code>/health</code></td><td>Yes — <code>SELECT 1</code>, 2 s timeout</td><td>May return <strong>503</strong>, then recover</td><td>Readiness debugging, by hand</td></tr>
-  </table>
-  </div>
-
-  <div class="note">
-    <p class="p-label">The practical rule</p>
-    <p style="margin-bottom:0">A single <code>/health</code> 503 that recovers on retry <strong>is not an outage</strong>. <code>/live</code> failing is. Point monitors at <code>/live</code> — a monitor on <code>/health</code> will page you for a non-incident, which is the fastest way to start ignoring your own alerts.</p>
-  </div>
-
-  <h3>Mitigation status</h3>
-  <div class="tw">
-  <table>
-    <tr><th>Item</th><th>State</th></tr>
-    <tr><td>Paid always-on backend</td><td><span class="chip chip-a">Done</span> <code>plan: starter</code></td></tr>
-    <tr><td>Client-side cold-start UX — status pill, per-row indicators, retry dialog, cache persistence</td><td><span class="chip chip-a">Done</span></td></tr>
-    <tr><td><strong>Uptime monitors on <code>/live</code></strong></td><td><span class="chip">Outstanding</span> — the one real gap</td></tr>
-    <tr><td>Staging plan</td><td><span class="chip">Unknown from the repo</span> — dashboard-managed</td></tr>
-  </table>
-  </div>
-
-  <div class="flag">
-    <p class="p-label">Launch-day verdict, updated</p>
-    <p style="margin-bottom:0">The hosting half is closed. What is still open is <strong>observability</strong>: stand up the <code>/live</code> monitors before launch, not after, because a first-week backend outage on a login-gated app converts directly into one-star reviews. And if staging is still free-tier, the original 15-minute sleep applies <em>there</em> — check the dashboard before blaming a staging timeout on your code.</p>
-  </div>
-</section>
-
-<!-- ══════════ CH 10 ══════════ -->
-<section class="ch" id="c10">
-  <div class="ch-num">Chapter 10</div>
-  <h2>Practical answers</h2>
-  <p class="thesis">Four questions that come up every week, answered once.</p>
-
-  <h3>“My PR says 2 commits behind main. Should I rebase?”</h3>
-  <p>Usually no. GitHub counts every other merged PR against your branch, so after each merge on <code>main</code> every open PR gains one. Rebase for <em>conflicts</em>, not for the counter. Genuine reasons: you need a fix from <code>main</code> that your work depends on; your branch is weeks old and ancestry matters for review; or CI fails because of a change on <code>main</code> your branch lacks.</p>
-
-  <h3>“How do I verify a deploy actually worked?”</h3>
-  <pre><code><span class="c"># 1. health — check BOTH; they fail differently</span>
-curl -s https://api.carekosh.com/live      <span class="c"># always 200, no DB probe</span>
-curl -s https://api.carekosh.com/health    <span class="c"># SELECT 1 under a 2s timeout</span>
-<span class="c">#   {"status":"healthy","version":"…","environment":"production",</span>
-<span class="c">#    "database":"connected","timestamp":"…"}</span>
-<span class="c">#   a lone /health 503 that recovers = Neon waking, NOT an outage</span>
-
-<span class="c"># 2. Render dashboard → Events → top entry reads "Deploy live"</span>
-
-<span class="c"># 3. migration head, in the Render shell</span>
-alembic current                            <span class="c"># expect 0006_order_item_qty_positive</span>
-<span class="c">#   confirm against the tree rather than trusting this page forever:</span>
-<span class="c">#   ls -1 vitaltrack-backend/alembic/versions/ | tail -1</span>
-
-<span class="c"># 4. smoke: register → login → create item → delete item</span></code></pre>
-  <p>Full step-by-step with every expected response: <a href="CAREKOSH_E2E_VERIFICATION_GUIDE.html">CAREKOSH_E2E_VERIFICATION_GUIDE.html</a>.</p>
-
-  <h3>“Can we move off Render later?”</h3>
-  <p>Yes. The backend is portable by construction — <code>Dockerfile</code>, <code>docker-entrypoint.sh</code>, Alembic and <code>app/core/config.py</code> already define a Docker-plus-environment-variables runtime, so Fly.io, Railway, DigitalOcean, Hetzner or any Docker-capable host works. A laptop or home server is fine for a demo, not for a published app.</p>
-  <p>The catch is the public hostname, not the platform. Because the mobile app bakes <code>EXPO_PUBLIC_API_URL</code> at build time and <code>app.config.js</code> guards the current URLs, a hostname change means updating <code>eas.json</code>, <code>app.config.js</code> and the <code>start:*</code> scripts, then rebuilding every artifact. Since <code>api.carekosh.com</code> already fronts the backend, a platform move can usually be DNS-only for apps already installed — which is the main reason that custom domain was worth setting up.</p>
-
-  <h3>“Which device is the reference for manual QA?”</h3>
-  <p>A real physical Android device, installed with <code>adb install -r app.apk</code>. Expo Go is fine for dev iteration but does <em>not</em> exercise the EAS-built binary path — native module behaviour, the baked API URL and the release signing config only appear in a real build.</p>
-  <div class="note">
-    <p class="p-label">Expect exactly three permissions</p>
-    <p style="margin-bottom:0"><code>INTERNET</code>, <code>ACCESS_NETWORK_STATE</code> and <code>ACCESS_WIFI_STATE</code> — all “normal” protection level, so no runtime prompt should ever appear. If the app asks for camera, microphone or storage, something regressed: those sit in <code>blockedPermissions</code>. Confirm in Play Console → App bundle explorer → Permissions.</p>
-  </div>
-</section>
-
-<!-- ══════════ LEDGER ══════════ -->
-<section class="ch" id="ledger">
-  <div class="ch-num">Appendix</div>
-  <h2>Correction ledger</h2>
-  <p class="thesis">The CI half of this document was already right; the hosting half had gone a month stale.</p>
-
-  <p>Worth recording what held up, because it tells you which sections to trust: <strong>every CI claim verified clean</strong> — job names, all four <code>needs:</code> lists, every <code>if:</code> condition, the label gate, the <code>pg_isready</code> arithmetic, the EAS profile table, the submit track and the HTML-endpoint list. The failures clustered in one place.</p>
-
-  <div class="tw">
-  <table>
-    <tr><th>Previous edition</th><th>Reality</th></tr>
-    <tr><td><code>gunicorn … -w 4</code></td><td><code>--workers 2</code> (Dockerfile line 82). The same error appears in <code>CAREKOSH_DEVELOPER_GUIDE.md</code></td></tr>
-    <tr><td>Migrations described as merely “idempotent”</td><td>Wrapped in a guard that <code>exit 1</code>s, so a bad migration fails the deploy and the old instance keeps serving</td></tr>
-    <tr><td>“Render free-tier cold start · sleeps after 15 min”</td><td>Production is <code>plan: starter</code>, always-on. The real warm-up is Neon scale-to-zero</td></tr>
-    <tr><td>“Minimum: paid Render” listed as pre-review work</td><td><strong>Already done.</strong> Presented finished work as a blocker</td></tr>
-    <tr><td>“Paid Render tier … once the project monetises”</td><td>Already on it. The outstanding item is uptime monitors</td></tr>
-    <tr><td>UptimeRobot pinging <code>/health</code></td><td>Point monitors at <code>/live</code>; <code>/health</code> alerts on Neon wakes</td></tr>
-    <tr><td>“Neon branch <code>vitaltrack_staging</code>”</td><td>A <em>database</em>, not a branch — both live in one branch</td></tr>
-    <tr><td>Health check expecting <code>{"status":"healthy"}</code></td><td>Response also carries <code>version</code>, <code>environment</code>, <code>database</code>, <code>timestamp</code> — and <code>/live</code> should be checked too</td></tr>
-    <tr><td><code>build-preview</code> presented as a normal job</td><td>It is <code>continue-on-error: true</code> — a failed APK build leaves the PR green</td></tr>
-    <tr><td>No print styles</td><td>In OS dark mode the page printed light text on a dark background</td></tr>
-  </table>
-  </div>
-
-  <div class="note">
-    <p class="p-label">Where this document is authoritative</p>
-    <p style="margin-bottom:0">On the container startup sequence, this file is <strong>correct where <code>CAREKOSH_ENVIRONMENT_ARCHITECTURE.html</code> is wrong</strong>. That document's “Quirk 1” claims Render logs roughly thirty failed connection attempts on every deploy and tells you to ignore them. The entrypoint parses <code>DATABASE_URL</code> <em>before</em> the retry loop; <code>localhost</code> is only a parse-failure fallback. Following that advice would train you to dismiss a real misconfiguration signal. Trust <a href="#c4">Chapter 04</a> here instead.</p>
-  </div>
-</section>
-
-<footer>
-  <p><strong>CareKosh — Build &amp; Deploy Flow</strong>, third edition, July 2026.</p>
-  <p style="margin-top:8px">CI claims verified against <code>.github/workflows/ci.yml</code>; runtime against <code>Dockerfile</code> and <code>docker-entrypoint.sh</code>; hosting against <code>render.yaml</code>; artifacts against <code>eas.json</code> and <code>app.json</code>.</p>
-  <p style="margin-top:8px">Re-verify after any workflow edit. The quickest check is <code>python scripts/check_api_routes.py --expected 39</code> plus a glance at the <code>needs:</code> lists in the workflow file.</p>
-</footer>
-
-</div>
-</body>
-</html>
+eas submit --profile production --platform android</pre><p>These commands need the EAS CLI (<code>npm install -g eas-cli</code>) and consume EAS quota. The submit profile targets the <code>internal</code> track and leaves <code>releaseStatus</code> at EAS's default, so a submission can become available to internal testers — who use production data — immediately. Set <code>releaseStatus: "draft"</code> in <code>eas.json</code> if you want a separate manual release step in Play Console. Remote version management and production <code>autoIncrement</code> control the versionCode; compare it with the previous Play upload. The visible app version stays 1.0.0 until it is changed deliberately. <a href="https://docs.expo.dev/build-reference/app-versions/">Expo version management</a>.</p>
+<h2 id="release">Release sequence for this change</h2><p class="inshort">In short: open a PR, stage the candidate deliberately with both auto-deploy and the CI deploy hook controlled, back up, then cut over with old writers drained. This is the same gate as in <a href="docs/BACKEND_HARDENING.md#release-gate-for-migration-0007">BACKEND_HARDENING.md</a>.</p><figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 1360" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bd-gate-t bd-gate-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="bd-gate-t">Release gate for migrations 0007–0010</title><desc id="bd-gate-d">Eight steps: control both deploy triggers (Render auto-deploy and the CI hook) and record the current state; stage the candidate on isolated fresh and populated synthetic legacy databases while preserving staging; back up and rehearse a restore; cut over in a maintenance window with old writers stopped; re-seed the order counter only if writes could not be paused; check logs; monitor; then turn auto-deploy back on.</desc><defs></defs>
+<rect x="30" y="24" width="940" height="127" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="50" y="61" font-size="19" font-weight="700" fill="#8C2A20" text-anchor="start">Why a plain merge is unsafe for this migration</text>
+<text x="50" y="86.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">An enabled deploy trigger may ship a merge. 0007 blocks downgrade below it; code rollback does not undo schema.</text>
+<text x="50" y="108.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">A zero-downtime deploy runs old and new instances side by side for a while.</text>
+<text x="50" y="130.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Meanwhile the old COUNT-based order numbering can collide with the new counter and block orders.</text>
+<text x="110" y="201" font-size="13.5" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.6">PREPARE</text>
+<rect x="110" y="219" width="860" height="104" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="130" y="255" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="start">Before merging</text>
+<text x="130" y="280.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Control auto-deploy AND the CI deploy hook.</text>
+<text x="130" y="302.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Record the deployed commit and alembic current; confirm the target database.</text>
+<circle cx="66" cy="249" r="18" fill="#1F6F66"/>
+<text x="66" y="255.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<rect x="110" y="345" width="860" height="104" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="130" y="381" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="start">Stage the candidate</text>
+<text x="130" y="406.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Preserve staging; use an isolated candidate target.</text>
+<text x="130" y="428.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Test fresh and populated synthetic legacy upgrades.</text>
+<circle cx="66" cy="375" r="18" fill="#1F6F66"/>
+<text x="66" y="381.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<rect x="110" y="471" width="860" height="104" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="130" y="507" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="start">Back up</text>
+<text x="130" y="532.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Take a production backup or restore point.</text>
+<text x="130" y="554.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Rehearse the restore on a separate database.</text>
+<circle cx="66" cy="501" r="18" fill="#1F6F66"/>
+<text x="66" y="507.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="110" y="613" font-size="13.5" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.6">RELEASE</text>
+<rect x="110" y="631" width="860" height="126" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="130" y="667" font-size="18" font-weight="700" fill="#8C2A20" text-anchor="start">Cut over in a maintenance window</text>
+<text x="130" y="692.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Block new writes and drain old writers before migrating.</text>
+<text x="130" y="714.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Deploy the reviewed commit; the container runs alembic upgrade head.</text>
+<text x="130" y="736.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Before reopening: Render&#x27;s commit, alembic current = 0010, /live, /health.</text>
+<circle cx="66" cy="661" r="18" fill="#B3372B"/>
+<text x="66" y="667.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<rect x="110" y="779" width="860" height="82" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2" stroke-dasharray="9 6"/>
+<text x="130" y="815" font-size="18" font-weight="700" fill="#77500F" text-anchor="start">Only if writes could not be paused</text>
+<text x="130" y="840.5" font-size="15.5" font-weight="400" fill="#5A4012" text-anchor="start">Run the idempotent order-counter re-seed SQL (safe to repeat).</text>
+<circle cx="66" cy="809" r="18" fill="#B07A1A"/>
+<text x="66" y="815.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="110" y="899" font-size="13.5" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.6">AFTER THE RELEASE</text>
+<rect x="110" y="917" width="860" height="82" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="130" y="953" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="start">Check logs and privacy</text>
+<text x="130" y="978.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">Real access and error logs, proxy logs and telemetry, using synthetic tokens.</text>
+<circle cx="66" cy="947" r="18" fill="#2E7D4F"/>
+<text x="66" y="953.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<rect x="110" y="1021" width="860" height="82" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="130" y="1057" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="start">Monitor</text>
+<text x="130" y="1082.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">Errors, database connections and lock waits, order-create failures, sign-in recovery.</text>
+<circle cx="66" cy="1051" r="18" fill="#2E7D4F"/>
+<text x="66" y="1057.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<rect x="110" y="1125" width="860" height="82" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="130" y="1161" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="start">Re-enable auto-deploy</text>
+<text x="130" y="1186.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">Only after everything above checks out.</text>
+<circle cx="66" cy="1155" r="18" fill="#2E7D4F"/>
+<text x="66" y="1161.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">8</text>
+<path d="M66,269 L66,1135" fill="none" stroke="#8FA39D" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="2 7"/>
+<rect x="30" y="1235" width="940" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="1272" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Rollback</text>
+<text x="50" y="1297.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Keep the additive schema. A pre-0007 image cannot start: its Alembic does not know revision 0010.</text>
+<text x="50" y="1319.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Restoring a backup can lose writes made after it; there is no automatic restore.</text>
+</svg></div><figcaption><b>Figure 4.</b> The release gate, first drawn for <code>0007</code>; its principles also apply when <code>0007</code>–<code>0010</code> ship together (expected <code>alembic current</code> after the release: <code>0010_order_local_id_unique</code>). A redrawn version is <a href="docs/diagrams/release-gate-0007-0010.svg">release-gate-0007-0010.svg</a>. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure><p>Details that matter for this release:</p><ul><li><strong>Branch and PR first.</strong> Commit all intended source, test and migration files to a feature branch, push, and open a PR to <code>main</code>. A push cannot include uncommitted changes. Read every CI job; on 7 Oct 2026 GitHub required no status checks.</li><li><strong>Staging (step 2).</strong> Preserve existing staging data. Do not run the one-way <code>0007</code>–<code>0010</code> on the existing staging database. Deploy the candidate deliberately to an isolated target, testing a fresh database and a populated synthetic <code>0006</code> → <code>0010</code> upgrade, because fresh-schema tests alone do not prove a legacy upgrade is safe; control both the CI hook and Render auto-deploy (not verified) before merging. A preview APK does not deploy its backend.</li><li><strong>Device test (step 2).</strong> Build and install a preview APK from the same candidate. Test login, verification and recovery; profile; stock edits (Edit Item, including a version conflict from a second device); order create (including Retry after a failed save, which must return the same order), status, apply and delete; older order history (the Orders tab list and each order card's timeline); PDFs; shared-device logout; and the assistant (typed questions anywhere; the microphone only on a real phone with the speech pack downloaded).</li><li><strong>Back up (step 3).</strong> Confirm the target database, the current migration and a restorable backup or recovery point, and rehearse the restore on a separate target.</li><li><strong>Cut over (step 4).</strong> The old COUNT-based allocation and the new counter must never write at the same time. The migration-runner lock does not stop old application writers, and <code>0010</code> blocks writes to <code>orders</code> while it builds its index (duration depends on data and contention). Unverified accounts that have an email receive 403 <code>EMAIL_NOT_VERIFIED</code> on login, refresh and protected bearer routes when both verification and email sending are configured; public health and token-link routes are outside that policy. A successful deploy-hook response does not confirm the deployment: check the commit Render actually deployed.</li><li><strong>Mobile release (after the backend).</strong> For mobile changes, build a fresh production AAB and submit it to internal testing. With the current <code>eas.json</code>, the submission may become available to testers immediately; set <code>releaseStatus: "draft"</code> first if you need a manual release step. Then install and test that exact version.</li></ul><p>The re-seed SQL and the rollback notes are in the <a href="docs/BACKEND_HARDENING.md#release-gate-for-migration-0007">release gate</a>.</p><h2 id="health">Verify service health</h2><p><code>/live</code> does not query the database. <code>/health</code> runs a database probe with a two-second timeout and returns 503 when it fails. <code>render.yaml</code> sets <code>/live</code> as Render's health check (whether Render reads that file is not verified), so a database outage alone does not fail that liveness probe. Other platform conditions may still restart or remove an instance. Add a separate readiness alert on <code>/health</code>, with retry and grace thresholds, so a sustained database failure is visible. A transient 503 may reflect the database waking up, but that cause must be established from evidence. A healthy <code>/live</code> does not prove that users can load their inventory.</p><p><code>render.yaml</code> requests Starter hosting; it cannot prove the current plan. The actual staging plan, Neon suspension policy, alert destinations and provider retention remain dashboard evidence.</p><h2>Source files</h2><p><a href=".github/workflows/ci.yml">CI</a> · <a href="vitaltrack-backend/Dockerfile">Dockerfile</a> · <a href="vitaltrack-backend/docker-entrypoint.sh">Entrypoint</a> · <a href="vitaltrack-mobile/eas.json">EAS profiles</a> · <a href="vitaltrack-mobile/app.json">App configuration</a></p></main></body></html>

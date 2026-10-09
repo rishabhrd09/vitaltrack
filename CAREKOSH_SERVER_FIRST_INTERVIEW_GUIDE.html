@@ -113,9 +113,16 @@ tr:last-child td{border-bottom:none}
 .timeline-item p{font-size:.84rem;color:var(--muted);margin:0}
 
 .footer{text-align:center;padding:36px 0;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;margin-top:56px}
+/* Keep long paths and comparison tables inside narrow screens. */
+body{overflow-wrap:anywhere}
+.compare-card{min-width:0}
+pre,.arch{max-width:100%}
+@media(max-width:700px){table{display:block;max-width:100%;overflow-x:auto}}
 </style>
+<style id="doc-review-style">.doc-review{display:block!important;position:static!important;box-sizing:border-box!important;width:auto!important;max-width:1000px;margin:24px auto!important;padding:18px 22px!important;border:1px solid #aab8ac!important;border-left:5px solid #286258!important;border-radius:8px;background:#f0f6ef!important;color:#1b352c!important;font:15px/1.6 system-ui,sans-serif!important}.doc-review p{margin:6px 0!important;color:inherit!important;font:inherit!important}.doc-review a{color:#075d70!important;text-decoration:underline!important}.doc-review strong{color:#173f34!important}.doc-review code{color:inherit!important;background:transparent!important}@media print{.doc-review{break-inside:avoid}}</style>
 </head>
 <body>
+<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside><aside class="doc-review" aria-label="Documentation status"><strong>Conceptual tutorial with historical incident narrative · reviewed 23 September 2026 · refreshed 7 October 2026</strong><p>Historical incident counts/timings are the original narrative, not reproduced evidence. Current behavior is server-first writes with a persisted display cache; item version checks do not apply to every table. The recent session/counter changes are in the hardening notes.</p><p><strong>7 October 2026 review.</strong> Checked against the feature branch <code>feature/backend-hardening-ai-voice-agent-foundation</code> at <code>03cfebb</code> (not merged; <code>main</code> is <code>835fad3</code>). Corrections are marked “Corrected 7 Oct 2026” in the text: the mobile query cache now wires <code>onlineManager</code> to NetInfo, so reconnect refetches happen on this branch (not on <code>main</code>); the audit log covers item writes and order apply (plus, on this branch, items removed by a category delete and order deletions), not every write; this branch adds short pessimistic locks; migration <code>0010</code> makes order creation idempotent per <code>localId</code>; the AI router is mounted on this branch; the app's Edit Item screen can bypass the version check in one case (finding A-1); test counts are now 242 backend / 121 mobile (7 Oct local run). Deployed staging/production state was not verified in this review.</p><p><a href="docs/INDEX.html">Documentation home and source status</a> · <a href="docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide (current onboarding)</a> · <a href="docs/API_TRACEABILITY.md">API traceability</a> · <span>Documentation audit, 7 Oct 2026 <small>(local review reference; not published)</small></span> · <a href="docs/BACKEND_HARDENING.md">Local hardening and remaining work</a></p></aside>
 <div class="page">
 
 <!-- ═══════════════════════════════════ HERO -->
@@ -136,6 +143,7 @@ tr:last-child td{border-bottom:none}
   <p><strong>Behaviour changes that affect Q&amp;A 5 and 10:</strong> save flow is fire-and-forget via <code>mutateAsync().then()</code> so feedback fires even if the originating screen has unmounted. Mutation feedback dispatch moved to hook-level (<code>useServerMutations.ts</code>) so it survives observer death and suppresses the global <code>MutationCache</code> toast for the same failure. Failure dialog has a Retry button that re-fires the mutation through <code>Mutation.execute(variables)</code>. <code>isBackendColdStarting</code> auto-clears on any 2xx response so the pill doesn't get stuck. <code>networkMode: 'offlineFirst'</code> is set on the QueryClient so cached data renders immediately when the device is offline.</p>
   <p><strong>State stores clarification:</strong> the "Zustand 1,100 → 61 lines" headline below refers to the inventory data store (<code>useAppStore.ts</code>, still 61 lines). Two additional UI-only Zustand stores exist alongside it: <code>useAuthStore.ts</code> (~422 lines, holds <code>user</code>, <code>isAuthenticated</code>, <code>isColdStart</code>, <code>isBackendColdStarting</code>; never persists inventory data) and <code>useResultDialogStore.ts</code> (~50 lines, in-session dialog queue). Total Zustand surface area is still UI-only — no domain data anywhere in any of the stores.</p>
   <p><strong>Backend <code>/sync/*</code> router removed:</strong> the June backend production-guard work removed the old <code>/api/v1/sync/*</code> route surface after the mobile client had already become server-first. Current <code>app/api/v1/__init__.py</code> mounts auth, categories, items, orders, and activities only; sync remains historical context, not a reachable API.</p>
+  <p><strong>Corrected 7 Oct 2026:</strong> that router list is still true for <code>main</code> (<code>835fad3</code>, 39 routes under <code>/api/v1</code>). On the unmerged feature branch (<code>03cfebb</code>) <code>app/api/v1/__init__.py</code> also mounts the <code>ai</code> router (5 routes under <code>/api/v1/ai</code>), giving 44 routes under <code>/api/v1</code> plus <code>/</code>, <code>/health</code> and <code>/live</code>. No <code>/sync</code> route exists on either branch; the CI route gate rejects one.</p>
 </div>
 
 <!-- ═══════════════════════════════════ TOC -->
@@ -350,6 +358,15 @@ DATA FLOWS ONE DIRECTION:
   Server is authoritative. Always.
   Local cache is ephemeral, read-only for display.</div>
 
+  <div class="callout blue">
+    <p class="callout-label">Corrected 7 Oct 2026 — read the diagram as the PR #4 state</p>
+    <p>The diagram shows the architecture right after the migration. Three lines no longer describe current code exactly:</p>
+    <p><strong>“No local persistence of inventory data”</strong> — since PR #16 the TanStack Query cache (items, categories, orders, activity) is persisted to AsyncStorage as a read-only display cache. Mutations are never persisted or replayed; auth queries are excluded (<code>providers/QueryProvider.tsx</code>).</p>
+    <p><strong>“Audit log … on every write” / “Every change is traceable”</strong> — <code>audit_log</code> receives before/after snapshots for item create, update, stock change and delete, and for stock added by order apply. The feature branch also writes audit rows for items removed by a category delete and for order deletion; <code>main</code> does not. Category create/rename, order create/status changes and account events are not in <code>audit_log</code>; several of them appear only in the user-visible <code>activity_logs</code> feed.</p>
+    <p><strong>“Server data can NEVER be overwritten by stale local”</strong> — item edits and stock changes are version-checked (stale → 409). Category renames and item deletes carry no version, so the last request wins there. The stale cache is never pushed back automatically, which is the protection the incident needed; it is not a guarantee for every table.</p>
+    <p><strong>“Auto-refetch on … network reconnect”</strong> — true on the feature branch, where <code>onlineManager</code> is wired to NetInfo. On <code>main</code> (<code>835fad3</code>) that wiring is absent, so a reconnect does not by itself trigger a refetch there.</p>
+  </div>
+
   <h3>What Got Deleted</h3>
 
   <table>
@@ -361,6 +378,7 @@ DATA FLOWS ONE DIRECTION:
       <tr><td>Conflict resolution</td><td>Local-wins last-write in sync.ts</td><td>Server-side OCC with version column</td></tr>
     </tbody>
   </table>
+  <p><em>Corrected 7 Oct 2026:</em> the “After” column is the PR #4 state. AsyncStorage now also holds the persisted read-only query cache (PR #16) and, on the feature branch, per-account voice preferences (<code>carekosh-voice-settings-v2:&lt;userId&gt;</code>). Tokens remain in SecureStore. OCC applies to items only.</p>
 </div>
 
 <hr>
@@ -449,7 +467,7 @@ t=2200ms Server fetch response arrives with... zeros
 
   <div class="callout rose">
     <p class="callout-label">Why this is a CLASS of problem, not a one-off bug</p>
-    <p>This wasn't a coding mistake that could be fixed with a null check. It's an <strong>architectural inevitability</strong> when you combine: (1) a persist middleware that rehydrates state, (2) a sync engine that treats local state as authoritative, and (3) no version checking on the server. Any offline-first app with these three properties will eventually hit this bug. The fix was to eliminate the architecture, not patch the symptoms.</p>
+    <p>The recorded bug illustrates unsafe conflict handling and rehydration ordering. It is not inevitable in every offline-first design: versioned writes, explicit conflict resolution and durable operation IDs can make offline systems safe. CareKosh chose server-first writes to reduce implementation complexity.</p>
   </div>
 </div>
 
@@ -499,7 +517,7 @@ t=2200ms Server fetch response arrives with... zeros
 
   <div class="callout amber">
     <p class="callout-label">The Engineering Decision</p>
-    <p>Every proposed fix either partially solved the problem while adding complexity, or fully solved it by effectively becoming server-first with extra steps. The cleanest solution was to acknowledge that <strong>CareKosh users always have internet</strong> (home WiFi) and eliminate the entire sync layer, replacing it with direct CRUD calls via TanStack Query — an industry-standard library that handles caching, refetching, and optimistic updates out of the box.</p>
+    <p>CareKosh requires connectivity for authoritative writes and can show a persisted read cache offline. Home Wi-Fi is not a guarantee of connectivity. This is a product trade-off, not evidence that all users are always online.</p>
   </div>
 </div>
 
@@ -514,7 +532,7 @@ t=2200ms Server fetch response arrives with... zeros
 
   <h3>1. Optimistic Concurrency Control (OCC)</h3>
 
-  <p>Every table has a <code>version</code> integer column. On every UPDATE, the backend checks <code>WHERE version = expected_version</code>. If another client modified the row since you read it, the version won't match and you get a 409 Conflict instead of silently overwriting.</p>
+  <p>Items have an optimistic-concurrency version column. Item update/stock requests condition their write on the expected version. Categories do not have that column; orders use guarded status transitions and an atomic apply claim.</p>
 
   <pre><code># Backend: items.py
 async def update_item(item_id, update_data, expected_version, db):
@@ -527,9 +545,11 @@ async def update_item(item_id, update_data, expected_version, db):
         raise HTTPException(409, "Item was modified by another session")
     return await get_item(item_id, db)</code></pre>
 
+  <p><em>Corrected 7 Oct 2026:</em> the snippet above is simplified pseudo-code. In the current <code>items.py</code>, <code>PUT /items/{id}</code> and <code>PATCH /items/{id}/stock</code> both require <code>version</code>; one compare-and-swap <code>UPDATE … WHERE id, user_id, version</code> sets <code>version = version + 1</code>, and a stale version returns HTTP 409 with JSON <code>{"error": "Version conflict", "message", "server_version", "server_quantity"}</code> rather than the plain message shown.</p>
+
   <h3>2. Audit Log (JSONB Snapshots)</h3>
 
-  <p>Every write operation logs a before/after JSONB snapshot to the <code>audit_log</code> table. If data ever looks wrong, you can trace exactly what changed, when, and what the previous values were.</p>
+  <p>Item writes — create, update, stock change, delete, and stock added by <code>POST /orders/{id}/apply</code> — log a before/after JSONB snapshot to the <code>audit_log</code> table; the feature branch also logs items removed by a category delete and order deletions. If item data ever looks wrong, you can trace what changed, when, and what the previous values were. <em>(Corrected 7 Oct 2026: earlier text said “every write operation”; category create/rename, order create/status changes and account events are not written to <code>audit_log</code>, and no API route exposes it.)</em></p>
 
   <pre><code># Audit entry example:
 {
@@ -548,10 +568,19 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
     CHECK (quantity >= 0);</code></pre>
 
   <p>Even if application code has a bug that tries to set quantity to -1, PostgreSQL will reject it. Defense in depth.</p>
+  <p><em>Corrected 7 Oct 2026:</em> the SQL is illustrative. Migration <code>0004_version_audit_log</code> calls <code>op.create_check_constraint('chk_items_quantity_non_negative', 'items', 'quantity >= 0')</code>; with the project's naming convention the constraint is stored as <code>ck_items_chk_items_quantity_non_negative</code>. Migration <code>0006</code> later added <code>order_items.quantity &gt; 0</code>.</p>
 
   <h3>4. Atomic Order Apply Endpoint</h3>
 
   <p>When a purchase order is received and stock needs updating across multiple items, the <code>POST /orders/{id}/apply</code> endpoint wraps all item updates in a single database transaction. Either all items update successfully, or none do. No partial stock updates.</p>
+
+  <div class="callout teal">
+    <p class="callout-label">Added after this guide was written (checked 7 Oct 2026)</p>
+    <p><strong>Apply claim (on <code>main</code> since the June production-guard work):</strong> apply first claims the order with <code>UPDATE … WHERE status = 'received'</code>, so a second apply returns 400, and quantities/versions are incremented in SQL; a missing item returns 409 with nothing changed. The feature branch additionally updates lines in item-id order so concurrent applies that share items queue instead of deadlocking.</p>
+    <p>The two migrations below exist only on the unmerged feature branch (<code>03cfebb</code>).</p>
+    <p><strong>Migration 0007:</strong> <code>users.session_version</code> (password change/reset invalidates existing access and refresh tokens) and a per-day <code>order_number_counters</code> table for <code>ORD-YYYYMMDD-NNNN</code> numbers. Its downgrade deliberately raises an error, so it is one-way.</p>
+    <p><strong>Migration 0010:</strong> a partial unique index on <code>orders(user_id, local_id)</code>. <code>POST /orders</code> with the same optional <code>localId</code> returns the existing order (200) instead of creating a duplicate, including when two identical requests race. Requests without <code>localId</code> (older app builds) are not deduplicated.</p>
+  </div>
 </div>
 
 <hr>
@@ -585,7 +614,7 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
 
   <div class="callout sage">
     <p class="callout-label">The Middle Ground: Stale-While-Revalidate — implemented (PR #16)</p>
-    <p>TanStack Query cache persistence is now live in CareKosh via <code>@tanstack/query-async-storage-persister</code> and <code>@tanstack/react-query-persist-client</code>. Successful inventory/order/category/activity queries are snapshotted to AsyncStorage under key <code>carekosh-query-cache</code>, giving instant-load UX on subsequent app launches while fresh data loads in the background. The cache is <strong>read-only for display</strong> — mutations always go to the server first, and cached data is never pushed back. This categorically rules out the data-corruption failure mode of the old offline-first architecture. Cache is cleared on both logout and login (shared-device privacy), and a schema <code>buster</code> tied to the app version auto-invalidates stale snapshots on upgrade.</p>
+    <p>TanStack Query cache persistence is now live in CareKosh via <code>@tanstack/query-async-storage-persister</code> and <code>@tanstack/react-query-persist-client</code>. Inventory/order/category/activity queries retaining a data payload are snapshotted to AsyncStorage under key <code>carekosh-query-cache</code>, giving instant-load UX on subsequent app launches while fresh data loads in the background. The cache is <strong>read-only for display</strong> — mutations always go to the server first, and cached data is never pushed back. This removes the old automatic cache-to-server bulk overwrite path of the old offline-first architecture. Cache is cleared on both logout and login (shared-device privacy), and a schema <code>buster</code> tied to the app version auto-invalidates stale snapshots on upgrade.</p>
   </div>
 </div>
 
@@ -601,6 +630,7 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
 
   <h3>Pessimistic Concurrency Control (PCC)</h3>
   <p>Lock the row when you read it. Nobody else can modify it until you release the lock. Prevents conflicts entirely but reduces throughput. Used by: traditional banking systems, database <code>SELECT ... FOR UPDATE</code>. CareKosh doesn't use this — OCC is sufficient for a single-user-per-account app.</p>
+  <p><em>Corrected 7 Oct 2026:</em> that sentence still describes <code>main</code> (<code>835fad3</code>). The unmerged feature branch (<code>03cfebb</code>) adds short pessimistic locks alongside OCC: the auth routes lock the user row with <code>SELECT … FOR UPDATE</code> during login, refresh, password reset and similar flows; category and item name checks are serialized per user with a transaction-scoped <code>pg_advisory_xact_lock</code>; Alembic migrations take an advisory lock so concurrent container starts run one at a time; AI usage counters use an advisory lock; and migration 0010 briefly takes <code>LOCK TABLE orders IN SHARE MODE</code>. OCC remains the mechanism for item edits and stock changes.</p>
 
   <h3>CQRS (Command Query Responsibility Segregation)</h3>
   <p>Separate read models from write models. Reads can hit caches or denormalized views; writes go through validation and business logic. TanStack Query naturally implements this: <code>useQuery</code> = read side, <code>useMutation</code> = write side. CareKosh follows this pattern implicitly.</p>
@@ -609,13 +639,15 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
   <p>Event sourcing stores every change as an immutable event and rebuilds state by replaying events. CareKosh uses a simpler approach: JSONB before/after snapshots in an audit log. This gives traceability without the complexity of event replay. It's not event sourcing — it's change capture.</p>
 
   <h3>Stale-While-Revalidate</h3>
-  <p>A caching strategy where stale cached data is served immediately while fresh data is fetched in the background. When the fresh data arrives, it replaces the stale cache. TanStack Query does this by default when cached data exists. The key: stale data is only used for <strong>display</strong>, never for server mutations. In CareKosh this is implemented end-to-end (PR #16) — cache is persisted to AsyncStorage between sessions (<code>gcTime: 24h</code>), freshness enforced at 30 s (<code>staleTime</code>), and <code>focusManager</code> is wired to React Native's <code>AppState</code> so returning to the foreground kicks off a refetch.</p>
+  <p>Cached data can be displayed while eligible queries refetch. staleTime=30 seconds only marks data stale; foreground, reconnect, mount and invalidation are refetch triggers. There is no general 30-second polling or freshness guarantee. <em>(7 Oct 2026: reconnect is a trigger only where <code>onlineManager</code> is wired to NetInfo — present on the feature branch, absent on <code>main</code>.)</em></p>
 
   <h3>12-Factor App</h3>
   <p>A methodology for building SaaS apps. CareKosh follows Factor III (Config) rigorously: the same Docker image runs in development, staging, and production with only environment variables changing (DATABASE_URL, ENVIRONMENT, SECRET_KEY). Zero code changes needed to switch environments.</p>
+  <p><em>Corrected 7 Oct 2026:</em> config is environment-driven, but the image is not identical everywhere. Render deploys the production <code>Dockerfile</code>; local <code>docker-compose.yml</code> builds that same Dockerfile with <code>ENVIRONMENT=development</code>, while <code>docker-compose.dev.yml</code> uses a separate <code>Dockerfile.dev</code> (uvicorn with reload, no ffmpeg). The staging service's live settings are dashboard-only and were not verified.</p>
 
   <h3>Idempotency</h3>
   <p>An operation is idempotent if calling it multiple times has the same effect as calling it once. CareKosh's OCC gives you <em>safe retry</em> rather than strict idempotency: a replay of an already-committed write is detected via the version mismatch and rejected with 409 ("already updated"), so the second call does not silently double-apply or corrupt data. Strict idempotency would mean the second call observes the same final state silently; OCC instead surfaces "this happened before, you're working on stale state" — useful for a UI that can refetch and show the user what actually landed.</p>
+  <p><em>Corrected 7 Oct 2026:</em> order creation now has real idempotency on the feature branch. The app sends one <code>localId</code> per Save press; migration <code>0010</code> adds a partial unique index on <code>(user_id, local_id)</code>, and a repeated <code>POST /orders</code> with the same <code>localId</code> returns the order already created (200) instead of a second one. Requests without <code>localId</code> are not deduplicated. Order status changes use conditional updates (same status → 200 no-op; a concurrent change → 409), and a second apply returns 400.</p>
 </div>
 
 <hr>
@@ -633,8 +665,9 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
     <div class="qa-a">
       <span class="qa-tag behavioral">Behavioral</span>
       <p>CareKosh originally used offline-first architecture with Zustand persist middleware syncing to PostgreSQL. A user logged out and back in, and the Zustand rehydration loaded stale data with zero quantities from AsyncStorage. The sync engine then pushed these zeros to the server, overwriting correct data for 31 of 33 medical inventory items. I confirmed this by querying the server directly — all items had identical timestamps proving a bulk overwrite.</p>
-      <p>I migrated to server-first architecture using TanStack Query. The Zustand store went from 1,100 lines to 61 (UI state only). The 611-line sync engine was deleted entirely. I added Optimistic Concurrency Control with a version column and JSONB audit logging. The entire class of rehydration-race bugs was eliminated because local state is never persisted or pushed to the server — the server is always authoritative.</p>
+      <p>I migrated to server-first architecture using TanStack Query. The Zustand store went from 1,100 lines to 61 (UI state only). The 611-line sync engine was deleted entirely. I added Optimistic Concurrency Control with a version column and JSONB audit logging. The entire class of rehydration-race bugs was eliminated because cached domain state is not automatically pushed back as authoritative server state — the server is always authoritative.</p>
       <p><strong>Key result:</strong> Zero data corruption incidents since the migration. Codebase reduced by ~1,650 lines of state management code.</p>
+      <p><em>7 Oct 2026:</em> the “zero incidents” figure is the owner's narrative, NOT VERIFIED by this review; no incident log or production evidence was examined. Say “no further incident of this kind was reported to me” rather than presenting it as a measured result.</p>
     </div>
   </div>
 
@@ -643,8 +676,9 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
     <div class="qa-q"><h4>How do you handle concurrent modifications to the same resource?</h4></div>
     <div class="qa-a">
       <span class="qa-tag concept">Concept — OCC</span>
-      <p>Every mutable entity (items, categories, orders) has a <code>version</code> integer column. When the mobile app reads an item (e.g., version=3), it includes that version in the update request. The backend's UPDATE query has <code>WHERE id = :id AND version = 3</code> and increments to version=4. If another client already updated it to version=4, the WHERE clause matches zero rows and we return 409 Conflict. The client then re-fetches, shows the updated data, and lets the user retry.</p>
+      <p>Only items use the version column for optimistic concurrency. A stale item update returns 409. Orders coordinate through conditional status writes, and category/item name checks use transaction advisory locks. Do not describe these different protections as a universal version scheme.</p>
       <p>This is Optimistic Concurrency Control — we don't lock anything during reads, we just detect conflicts at write time. It's the same pattern DynamoDB uses for conditional writes and Kubernetes uses for resourceVersion.</p>
+      <p><em>Corrected 7 Oct 2026:</em> the advisory locks for category/item name checks exist only on the unmerged feature branch. The app has no separate stock +/− control: quantities change through the Edit Item form (<code>PUT /items/{id}</code> with <code>version</code>) or by applying a received order. <strong>A-1 fixed locally, 8 Oct 2026:</strong> the editor now captures fields and version together. A background refetch cannot replace that version. Stale saves receive 409; the mutation invalidates affected active queries for refetch. Reopen the editor for current values; Retry still retains its original version. See <a href="docs/BACKEND_HARDENING.md#safety-follow-up-8-october-2026">the fix and its regression tests</a>. </p>
     </div>
   </div>
 
@@ -653,9 +687,9 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
     <div class="qa-q"><h4>Why did you choose server-first over offline-first? What are you giving up?</h4></div>
     <div class="qa-a">
       <span class="qa-tag tradeoff">Tradeoff Analysis</span>
-      <p>I'm giving up the ability to create and edit inventory items without internet connectivity. In return, I get guaranteed data integrity, a simpler codebase (1,650 fewer lines), and audit traceability for every change.</p>
+      <p>The trade-off is simpler server-authoritative writes, item version checks and transactional stock application. These reduce specific failure modes; they do not guarantee all data integrity or replace backups and recovery testing.</p>
       <p>This tradeoff is correct for CareKosh's domain: the target users are family caregivers managing home ICU setups — they're in homes with WiFi, not in remote areas. The cost of incorrect medical inventory data (thinking you have zero oxygen cylinders when you actually have five) is far higher than the cost of needing WiFi to update stock levels.</p>
-      <p>For the "instant load" UX benefit of offline-first, I've implemented TanStack Query cache persistence (PR #16) — it shows cached data immediately on app launch while fetching fresh data in the background. The cache is read-only for display and never pushed to the server, so the data corruption risk is zero. It's wired through <code>PersistQueryClientProvider</code> with a 30-second <code>staleTime</code> (medical freshness), a 24-hour <code>gcTime</code> (survives between sessions), an app-version <code>buster</code> (upgrades auto-invalidate), and a kill switch for instant rollback.</p>
+      <p>The persisted cache is used for display and is not blindly synchronized back to the server. This removes the old bulk-sync path but does not prove zero data-corruption risk. staleTime=30 seconds marks data stale, not a polling guarantee; the version buster changes with the visible app version, and changing the cache flag requires a release rebuild.</p>
     </div>
   </div>
 
@@ -666,7 +700,7 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
       <span class="qa-tag concept">Concept — Race Condition</span>
       <p>When a React Native app with Zustand persist middleware starts up, it asynchronously loads saved state from AsyncStorage. This "rehydration" restores the previous session's data — including potentially stale inventory quantities. The problem: Zustand's persist fires a state mutation when rehydration completes, and if you have a sync engine that triggers on mutations, it will push the stale rehydrated data to the server before the actual server fetch completes.</p>
       <p>The timing: rehydration completes at ~53ms, sync fires at ~2054ms (debounced 2s), server fetch response arrives at ~2200ms. The sync pushes zeros to the server 150ms before the server could tell the app the real values.</p>
-      <p>I solved it by eliminating the architecture that made it possible: no persist middleware for inventory data, no sync engine, no local-to-server push. TanStack Query fetches from the server on mount, caches in memory, and never persists inventory data to AsyncStorage. The race condition cannot occur because there's nothing to rehydrate.</p>
+      <p>The old Zustand inventory synchronization path was removed. TanStack Query now persists inventory/order/category/activity display snapshots to AsyncStorage, without an offline write queue. That distinction is the reason the old rehydration-to-bulk-sync path is absent.</p>
     </div>
   </div>
 
@@ -675,8 +709,9 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
     <div class="qa-q"><h4>How do you ensure data consistency in a mobile app where the network is unreliable?</h4></div>
     <div class="qa-a">
       <span class="qa-tag system">System Design</span>
-      <p>Four layers: (1) Server-side OCC prevents concurrent overwrites — version column + 409 Conflict. (2) JSONB audit log captures before/after snapshots for every write, enabling forensic analysis. (3) Database-level CHECK constraint (<code>quantity >= 0</code>) prevents invalid states even if application code has bugs. (4) Atomic transactions for multi-item operations (<code>POST /orders/{id}/apply</code> wraps all item updates in a single transaction — all succeed or all rollback).</p>
+      <p>Four layers: (1) Server-side OCC prevents concurrent overwrites — version column + 409 Conflict. (2) JSONB audit log captures before/after snapshots for the instrumented writes, enabling forensic analysis. (3) Database-level CHECK constraint (<code>quantity >= 0</code>) prevents invalid states even if application code has bugs. (4) Atomic transactions for multi-item operations (<code>POST /orders/{id}/apply</code> wraps all item updates in a single transaction — all succeed or all rollback).</p>
       <p>For network unreliability: TanStack Query retries failed requests automatically (configurable), shows stale cached data while retrying, and surfaces errors to the user explicitly rather than silently corrupting data. The app shows a clear "Unable to connect — server may be starting up" message with auto-retry on cold starts.</p>
+      <p><em>Corrected 7 Oct 2026:</em> only queries retry automatically (up to 3 times, <code>networkMode: 'offlineFirst'</code>). Mutations use <code>retry: 0</code> and <code>networkMode: 'always'</code>: a failed save shows a toast or dialog with a Retry action and is never queued or persisted. Ordinary API requests now have a 90 s overall deadline covering transport, refresh/retry waits and parsing. Shorter limits remain on refresh, the assistant, health checks and the 8-second startup profile race. An uncertain network/gateway failure also invalidates affected active queries; a lost reply may follow commit. Order creation retries are safe on the feature branch because Retry reuses the same <code>localId</code>; a second Save tap creates a new one.</p>
     </div>
   </div>
 
@@ -710,6 +745,7 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
       <p><strong>Factor III (Config):</strong> All configuration is in environment variables (DATABASE_URL, SECRET_KEY, ENVIRONMENT, REQUIRE_EMAIL_VERIFICATION). The same Docker image runs on development (localhost), staging (Render Singapore), and production (Render Singapore) — zero code changes. When we migrated from Railway to Render, zero Python code changed because config was already externalized via pydantic-settings.</p>
       <p><strong>Factor IV (Backing Services):</strong> PostgreSQL (Neon), email (Brevo) are attached resources configured via URLs. Swapping Neon for local Docker PostgreSQL is just changing DATABASE_URL.</p>
       <p><strong>Factor X (Dev/Prod Parity):</strong> Same Docker image, same Alembic migrations, same FastAPI code in all environments. Only env vars differ.</p>
+      <p><em>Corrected 7 Oct 2026:</em> parity is good but not exact — <code>docker-compose.dev.yml</code> uses <code>Dockerfile.dev</code> (hot reload, no ffmpeg), and only the production service is declared in <code>render.yaml</code> (region singapore, branch <code>main</code>); the staging service is configured in the Render dashboard, and its region, plan and branch were NOT VERIFIED (the owner reports it was switched to the feature branch on 7 Oct). The two environments can also run different code: <code>main</code> stops at migration 0006, the feature branch at 0010. The Railway-to-Render remark is historical and was not re-checked.</p>
     </div>
   </div>
 
@@ -718,7 +754,7 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
     <div class="qa-q"><h4>What would you do differently if you were starting this project from scratch?</h4></div>
     <div class="qa-a">
       <span class="qa-tag behavioral">Behavioral</span>
-      <p>Three things: (1) Start with server-first from day one. The offline-first architecture was premature complexity for a use case where users have WiFi. It added 1,711 lines of sync code that ultimately caused data corruption. (2) Write tests before features. The old 40/53 failing-test snapshot has since been fixed; the latest Goal 11 evidence records 123 backend tests passing with 85% total coverage, but the lesson remains that tests should have preceded the migration. Interviewers check tests first. (3) Set up Sentry on day one. We had no observability when the data corruption happened — I had to diagnose it by manually querying the database with curl commands.</p>
+      <p>Three things: (1) Start with server-first from day one. The offline-first architecture was premature complexity for a use case where users have WiFi. It added 1,711 lines of sync code that ultimately caused data corruption. (2) Write tests before features. The old 40/53 failing-test snapshot has since been fixed; the latest Goal 11 evidence records 123 backend tests passing with 85% total coverage, but the lesson remains that tests should have preceded the migration. <em>(Updated 7 Oct 2026: on the feature branch <code>03cfebb</code>, a local run passed 242 backend tests with 88% total coverage on PostgreSQL 16, and 121 mobile <code>node --test</code> tests; CI run 37583748644 reported the same backend count. <code>main</code> was not re-tested. No native APK or device test was run.)</em> Interviewers check tests first. (3) Set up Sentry on day one. We had no observability when the data corruption happened — I had to diagnose it by manually querying the database with curl commands.</p>
     </div>
   </div>
 
@@ -729,6 +765,7 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
       <span class="qa-tag concept">Concept — Loading UX</span>
       <p>Three layers: (1) <strong>Skeleton loading screens</strong> — animated placeholder shapes that mirror the actual layout, shown during first load when no cache exists. (2) <strong>Cache persistence</strong> — TanStack Query's cache is persisted to AsyncStorage via <code>@tanstack/query-async-storage-persister</code>, so subsequent app launches show cached data instantly. The cache is read-only for display — mutations always go to server first. (3) <strong>Stale-while-revalidate</strong> — after showing cached data, TanStack Query silently fetches fresh data from the server and replaces the cache when it arrives.</p>
       <p>The cache is cleared on both logout AND login to prevent data leakage between users on shared family devices — which is common in our target demographic of home ICU caregivers. For cold starts (Render free tier sleeps after 15 min), the login screen detects network failures (<code>ApiClientError.status</code> of <code>0</code>, <code>502</code>, <code>503</code>, or <code>504</code>) and auto-retries the <code>/health</code> endpoint every 5 seconds for up to 12 attempts, then logs the user in once the server wakes — with a Cancel button and friendly progressive copy. Auth errors (401/403) never trigger retry.</p>
+      <p><em>7 Oct 2026:</em> the retry loop (12 × 5 s against <code>/health</code>) matches <code>app/(auth)/login.tsx</code>. Which Render plan each service actually runs on was NOT VERIFIED: <code>render.yaml</code> declares <code>plan: starter</code> for production, while the CI summary text still says “free tier”; spin-down after inactivity applies to free instances. At app start, <code>GET /auth/me</code> is raced against 8 seconds before the app shows a “server warming up” state.</p>
     </div>
   </div>
 
@@ -739,6 +776,7 @@ ALTER TABLE items ADD CONSTRAINT check_quantity_non_negative
       <span class="qa-tag system">System Design — GDPR/DPDP</span>
       <p>Email-confirmed deletion flow: (1) User taps "Delete Account" → app calls <code>DELETE /auth/me</code> → backend generates a SHA-256 hashed token, stores it with 24-hour expiry, sends confirmation email via Brevo with a link containing the raw token. (2) User clicks the email link → <code>GET /auth/confirm-delete/{token}</code> → backend hashes the incoming token, verifies that the DB hash has not expired, and renders a confirmation page only. (3) User submits the form → <code>POST /auth/confirm-delete/{token}</code> → backend verifies the token again, cascade-deletes the user and all associated data, and returns a completion page.</p>
       <p>This prevents accidental deletion by link scanners or email previews, gives a 24-hour window to cancel (<code>POST /auth/cancel-delete</code>), and ensures complete data removal (PostgreSQL CASCADE). The confirmation page is a server-rendered HTML response — no mobile app needed to complete deletion, which satisfies Play Store requirements for account deletion being accessible outside the app.</p>
+      <p><em>Corrected 7 Oct 2026:</em> cancellation exists only as the API route <code>POST /auth/cancel-delete</code>; the app has no cancel button. Requesting deletion needs an account email and a configured email service (otherwise 400/503); after the request the Profile screen polls <code>GET /auth/me</code> every 5 seconds while it is open. The cascade removes the user's rows from the live database (categories, items, orders and their lines, refresh tokens, activity and audit rows, and on the feature branch AI consent/usage rows); per-day order-number counters, which are not linked to a user, remain, and provider backups and logs are outside this mechanism. Starting a deletion needs the signed-in app or the support-email route in the deletion-page draft. Whether this meets Google Play's account-deletion requirement or GDPR/DPDP obligations is a policy/legal judgement this review did not make — describe the mechanism, not “compliance”.</p>
     </div>
   </div>
 

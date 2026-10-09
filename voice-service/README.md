@@ -1,5 +1,9 @@
 # Private Alba speech worker
 
+> **AI voice source update — 9 October 2026:** Current AI voice architecture, checked against the 9 October 2026 working tree at `0946eb7` plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+
+> **Status (7 October 2026):** code only. This worker is not referenced by `render.yaml` or CI, and its deployment is NOT VERIFIED (the text below says it is not deployed). The current mobile build never requests cloud speech (`CLOUD_VOICE_ENABLED = false`); spoken replies use an installed offline Android voice. The backend's `/api/v1/ai/speak` stays off unless its speech and rights flags are set. Limits below match `app.py` (640 characters, 4,000,000-byte audio cap, one Uvicorn worker) and `requirements.txt` (`piper-tts==1.8.0`). See [docs/VOICE_AGENT_SETUP.md](../docs/VOICE_AGENT_SETUP.md).
+
 **Not deployed. No model weights or licensing clearance are included.** Do not expose Iris's desktop/Pi server. This worker returns WAV audio to the app, not server speakers.
 
 | Private environment variable | Meaning |

@@ -1,5 +1,12 @@
 # Local Testing — Internals & Step-by-Step
 
+> **AI voice source update — 9 October 2026:** Current AI voice architecture, checked against the 9 October 2026 working tree at `0946eb7` plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+
+
+> 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
+
+> **Status (re-checked 8 October 2026 against the working tree at `03cfebb`):** This is the **older, shorter Markdown edition** of [local_testing_field_manual.html](local_testing_field_manual.html), which is the maintained version with diagrams. The model it explains (Metro, Expo Go, `adb reverse`, `localhost`) is still correct. Details that had gone stale were corrected on 8 October 2026: Expo Go for SDK 54 comes from expo.dev/go, not the Play Store; the app uses React Native's New Architecture (JSI), not the old bridge; Metro builds the bundle on first request and its size was never measured; the start scripts need `-- --localhost` for USB; `--clear` is not what changes the API URL. On branch `feature/backend-hardening-ai-voice-agent-foundation` the app includes a local Android native module for the voice assistant, so voice needs the EAS-built `preview` APK rather than Expo Go (see §3.2). Earlier note (23 Sept 2026) about migration `0007` and 152 backend tests is out of date (head `0010` on the feature branch; 242 backend and 121 mobile tests passed again on 8 Oct 2026). Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) · [documentation home](INDEX.html).
+
 > **The conceptual companion** to [LOCAL_TESTING_COMPLETE_GUIDE.md](LOCAL_TESTING_COMPLETE_GUIDE.md) and [USB_ADB_REVERSE_GUIDE.md](USB_ADB_REVERSE_GUIDE.md).
 >
 > Those two docs tell you **what to type**. This one tells you **what's actually happening** — the architecture, the abstractions, the network layer, and why each command does what it does. Read this once and the operational guides will make a lot more sense.
@@ -41,27 +48,30 @@ Knowing the model means you can debug *anything* in this stack — when "Connect
 
 CareKosh is a React Native app. React Native is *neither* a webpage *nor* a regular Android APK. It's a hybrid:
 
-- **The UI is real native Android.** Buttons are `android.widget.Button`. Text inputs are `android.widget.EditText`. Scroll views are `android.widget.ScrollView`. There is no WebView, no embedded browser. When you tap a button, you tap a real native widget that responds at native speed.
+- **The UI is real native Android.** React Native's core components use platform views: text inputs are `android.widget.EditText`, scroll views are `android.widget.ScrollView`, and CareKosh's buttons are `TouchableOpacity`/`Pressable` (touchable views, not `android.widget.Button`). There is no WebView, no embedded browser. Native rendering does not guarantee smooth frames: JavaScript work can still block input.
 - **The logic is JavaScript.** Your component tree, state management, business rules, API calls — all written in TypeScript / JSX, all run inside a JavaScript engine that's bundled into the app process.
 
-These two halves communicate through a *bridge* (or in newer React Native versions, JSI — a more direct binding). When JS says "render `<Text>Hello</Text>`," the bridge translates that into a real `TextView` instance.
+Older React Native versions connected these two halves through an asynchronous *bridge*. CareKosh (React Native 0.81, Expo SDK 54) uses the *New Architecture*, which Expo Go requires: JavaScript calls native code directly through JSI, and the Fabric renderer turns `<Text>Hello</Text>` into a real native text view.
 
 A complete React Native app therefore has **two parts that need to coexist on the phone**:
 
 1. **The native shell** (`.apk`) — provides UI primitives, navigation, camera, file access, network stack, etc.
-2. **The JavaScript bundle** (`.bundle`, ~10MB for our app) — your code.
+2. **The JavaScript bundle** — your code plus the modules it imports. Development serves plain JavaScript; release builds compile it to Hermes bytecode. (Earlier text said "~10 MB"; no measurement is recorded.)
 
 ### How production ships this
 
-For the Play Store, both halves are baked into one APK. EAS Build does this for us:
+For the Play Store, both halves are baked into one binary. EAS does this for us, in two commands (CI's production build job is disabled, so this is manual):
 
 ```
-eas build --profile production
+eas build --profile production --platform android
   ↓
-Compiles your JS → bundle, packages with native shell → AAB → Play Console
+Bundles your JS, packages it with the native shell, signs it → AAB stored on EAS
+eas submit --profile production --platform android
+  ↓
+Uploads that AAB to the Play Console internal track
 ```
 
-A full build takes 10-30 minutes. The user downloads the AAB; it just works.
+Build times vary. Users never download the AAB itself: Google Play generates device-specific APKs from it.
 
 ### Why we don't do that for development
 
@@ -93,13 +103,14 @@ Terminal / zsh
 package.json says: "cross-env EXPO_PUBLIC_API_URL=https://... expo start --clear"
   ↓
 Metro process boots:
-  1. Reads vitaltrack-mobile/app, components, hooks, utils, etc.
-  2. Resolves every import (your code + node_modules)
-  3. Transpiles TypeScript → JavaScript
-  4. Bundles everything into one big .bundle file (~10 MB)
-  5. Starts an HTTP server on port 8081
-  6. Watches the filesystem; on change, re-bundles incrementally
-  7. Prints a QR code to the terminal
+  1. Starts an HTTP server on port 8081 (or the next free port — use the one it prints)
+  2. Prints a QR code to the terminal
+  3. Watches the filesystem
+  4. When the phone first asks for the bundle, follows the imports from the
+     entry point (your code + the node_modules it reaches), transpiles
+     TypeScript → JavaScript and serves the bundle (no type checking —
+     run `npx tsc --noEmit` for that)
+  5. On every change, re-bundles incrementally
 ```
 
 Metro **does not run your app**. It just packages it. When asked (via HTTP), it serves the bundle. When a file changes, it recomputes which parts of the bundle need to change and pushes a patch to whoever's listening (Expo Go, in our case).
@@ -108,18 +119,19 @@ Critically: Metro is a **purely local development tool**. It never ships to prod
 
 ### 3.2 Expo Go — the generic native shell
 
-Expo Go is a regular Android app you installed from the Play Store. It's a real APK. Inside it:
+Expo Go is a regular Android app. Each Expo Go build supports exactly one Expo SDK version. CareKosh uses SDK 54, so install the SDK 54 build from `expo.dev/go`; the Play Store build tracks the newest SDK and cannot open this project (earlier text said to use the Play Store). Inside it:
 
-- **The native shell that React Native needs** — the bridge, the React Native runtime, all the native modules in the Expo SDK
+- **The native shell that React Native needs** — the React Native runtime (JSI and the Fabric renderer) and the fixed set of native modules included in that Expo Go build (most of the Expo SDK, not all of it)
 - **A JavaScript engine** — Hermes (a lightweight VM Facebook built specifically for React Native; smaller and faster startup than V8)
 - **A loader** — knows how to fetch a JS bundle from a Metro URL and execute it inside Hermes
 
-When you point Expo Go at a Metro URL like `exp://localhost:8081`:
+When you point Expo Go at a Metro URL like `exp://127.0.0.1:8081`:
 
 ```
 1. Expo Go parses the URL
-2. Expo Go HTTP-fetches http://localhost:8081/index.bundle?platform=android
-3. Server returns ~10 MB of JavaScript
+2. Expo Go fetches the project manifest from http://127.0.0.1:8081, then the
+   bundle it names: /node_modules/expo-router/entry.bundle?platform=android&…
+3. Metro returns the development JavaScript bundle
 4. Expo Go loads the bundle into Hermes
 5. The bundle calls AppRegistry.registerComponent('main', App)
 6. Expo Go's native shell renders App as native Android views
@@ -128,11 +140,13 @@ When you point Expo Go at a Metro URL like `exp://localhost:8081`:
 
 Expo Go is a **generic shell**. It can load *any* Expo-compatible JS bundle — CareKosh, a different app, a demo from a tutorial. They all work because the native APIs they rely on (file system, image picker, camera, etc.) are all provided by Expo Go's shell.
 
-This generality has a cost: **you cannot add new native dependencies that aren't in Expo Go's shell**. If a library requires its own native code (like `burnt`, which uses SwiftUI on iOS and Material You on Android), Expo Go won't have it loaded — the app will crash on import.
+This generality has a cost: **you cannot add new native dependencies that aren't in Expo Go's shell**. If a library requires its own native code (like `burnt`, which shows native toasts through SPIndicator/AlertKit on iOS and ToastAndroid on Android), Expo Go won't have it — an unguarded import or native call can fail.
 
-That's why CareKosh sticks to pure-JS dependencies (e.g. `react-native-toast-message` instead of `burnt`). It keeps us in Expo Go's land.
+That's why CareKosh sticks to pure-JS dependencies where it can (e.g. `react-native-toast-message` instead of `burnt`). It keeps us in Expo Go's land.
 
-(For native deps you absolutely need, you build a "development build" — a custom Expo Go-like shell with your specific native modules baked in. We haven't needed to.)
+(For native deps you absolutely need, you build a "development build" — a custom Expo Go-like shell with your specific native modules baked in. That needs `expo-dev-client`, which this project has not installed.)
+
+**Earlier (until Sept 2026):** CareKosh had not needed a development build. **Current (Oct 2026, feature branch):** the voice assistant uses a local Android native module, `modules/carekosh-voice`, which runs Moonshine speech recognition on the phone. Expo Go does not contain it. The rest of the app still runs in Expo Go, because `features/assistant/offlineVoice.ts` loads the module with `requireOptionalNativeModule` and treats a missing module as "voice unavailable"; to try voice, install the EAS-built Android APK from the `preview` profile instead. (The `development` profile cannot build until `expo-dev-client` is installed; earlier text offered it as an option.)
 
 ### 3.3 ADB — Android Debug Bridge
 
@@ -163,13 +177,13 @@ If your phone status shows `unauthorized`, the daemon on the phone hasn't been t
 
 ### 3.4 The backend (FastAPI on Render)
 
-Your local Docker backend OR the public staging API OR the public production API — it doesn't matter which from the dev loop's perspective. The mobile app makes HTTPS calls to *some* URL, that URL responds with JSON. The URL is determined by the env var `EXPO_PUBLIC_API_URL`.
+Your local Docker backend OR the public staging API OR the public production API — it doesn't matter which from the dev loop's perspective. The mobile app makes HTTP calls (plain HTTP to the local backend, HTTPS to staging/production) to *some* URL, that URL responds with JSON. The URL is determined by the env var `EXPO_PUBLIC_API_URL`.
 
 | Backend choice | URL | When you'd use it |
 |---|---|---|
 | Local Docker | `http://localhost:8000` (with `adb reverse`) or `http://YOUR_LAN_IP:8000` | Day-to-day dev with code changes on both ends |
 | Staging API | `https://staging-api.carekosh.com` | Reproduce a staging-only bug; demo to others |
-| Production API | `https://api.carekosh.com` | Manual smoke test of the live system |
+| Production API | `https://api.carekosh.com` | Brief, read-only smoke test with a dedicated test account. Never run Start Fresh, Replace All, "Update Stock" or account deletion against it |
 
 The npm scripts wire the right URL:
 
@@ -179,13 +193,13 @@ The npm scripts wire the right URL:
 "start:prod":    "cross-env EXPO_PUBLIC_API_URL=https://api.carekosh.com expo start --clear"
 ```
 
-When Metro bundles your code, it reads `process.env.EXPO_PUBLIC_API_URL` and inlines the value into the bundle. The mobile app reads `API_BASE_URL` from [`vitaltrack-mobile/services/api.ts`](../vitaltrack-mobile/services/api.ts):
+In development, Expo CLI injects the Metro process's value of `EXPO_PUBLIC_API_URL` into each bundle it serves; EAS builds inline it as a literal at build time. The mobile app reads `API_BASE_URL` from [`vitaltrack-mobile/services/api.ts`](../vitaltrack-mobile/services/api.ts):
 
 ```ts
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
 ```
 
-That value is *baked into the bundle at bundle-time* — changing the env var requires a Metro restart (with `--clear`).
+A value set by a `start:*` script lasts for that Metro process, so switching backends means restarting Metro with the other script and reloading the app; `--clear` is not what selects the URL. If `vitaltrack-mobile/.env` also sets `EXPO_PUBLIC_API_URL`, remove that line first: in development the `.env` value overrides the script's (read from the installed Expo SDK 54 code; not tested on a phone). (Earlier text said the value was baked in at bundle time and needed `--clear`.)
 
 ---
 
@@ -222,7 +236,7 @@ Default for `npx expo start`. The QR code in the terminal encodes `exp://192.168
 **When LAN fails**:
 - Wi-Fi access point has "client isolation" enabled (devices can't talk to each other) — common on guest networks
 - Wi-Fi access point on a different subnet from the laptop (e.g. wired desktop on `192.168.0.x`, phone on guest Wi-Fi `192.168.10.x`)
-- Local firewall blocking inbound on port 8081 (see [LOCAL_TESTING_COMPLETE_GUIDE §E](LOCAL_TESTING_COMPLETE_GUIDE.md#e-windows-firewall))
+- Local firewall blocking inbound on port 8081, or 8000 for a local backend (see [LOCAL_TESTING_COMPLETE_GUIDE §E](LOCAL_TESTING_COMPLETE_GUIDE.md#e--windows-firewall); the repository's `fix-firewall.ps1` opens only 8000, on Private **and Public** networks, with no undo script)
 
 For LAN mode the env var should be `EXPO_PUBLIC_API_URL=http://YOUR_LAN_IP:8000` (so the API also reaches the laptop's Docker), or staging/prod (which the phone reaches over its own Wi-Fi/LTE).
 
@@ -232,10 +246,10 @@ For LAN mode the env var should be `EXPO_PUBLIC_API_URL=http://YOUR_LAN_IP:8000`
 
 ```
 On the phone:                                   On the laptop:
-http://localhost:8081/index.bundle              Metro listening on
+http://127.0.0.1:8081/…/entry.bundle            Metro listening on
               │                                 localhost:8081
               ▼
-adbd intercepts (because of `adb reverse`)
+adbd is the listener there (because of `adb reverse`)
               │
               ▼  USB cable
 adb server on laptop receives
@@ -249,7 +263,7 @@ Forwards to laptop's localhost:8081
 
 Same trick can forward the API port: `adb reverse tcp:8000 tcp:8000` lets the phone hit `http://localhost:8000` and reach the local Docker backend.
 
-**When USB works**: always, as long as the phone is plugged in and authorized. Doesn't depend on Wi-Fi state, doesn't depend on the network at all (for Metro traffic). The most reliable mode.
+**When USB works**: usually, as long as the phone is plugged in and authorized and Metro was started with `--localhost`. Doesn't depend on Wi-Fi state or the network (for Metro traffic). The most reliable mode, though USB drivers, occupied ports and security software can still block it.
 
 **The trade-off**: phone is tethered. Fine at a desk; bad for moving around or demoing.
 
@@ -259,7 +273,7 @@ For USB mode the env var should be `EXPO_PUBLIC_API_URL=http://localhost:8000` (
 
 **Expo creates a public URL via a tunneling service** (currently `ngrok`-like, served at `*.exp.direct`). Your laptop's Metro server is exposed to the internet through this URL.
 
-`npx expo start --tunnel` (note: needs an extra dependency Expo will install on first use). The QR code now encodes a public URL like `exp://abc-xyz.exp.direct:80`. Expo Go connects via the phone's regular internet — could be Wi-Fi, could be LTE.
+`npm run start:staging -- --tunnel` (Expo offers to install `@expo/ngrok` on first use). The QR code now encodes a public URL like `exp://<random>-<user>-8081.exp.direct`. Expo Go connects via the phone's regular internet — could be Wi-Fi, could be LTE.
 
 **When tunnel works**: when LAN fails for network reasons (corporate firewall, client isolation, different subnets) and you don't want to fiddle with USB.
 
@@ -287,13 +301,13 @@ Let's trace exactly what happens, USB mode, against staging backend.
 │         └─→ adb server tells adbd: "any TCP traffic to 8081 on you,     │
 │             forward to laptop's 8081"                                   │
 │                                                                         │
-│  5. `npm run start:staging`                                             │
+│  5. `npm run start:staging -- --localhost`                              │
 │         └─→ npm runs the script in package.json                         │
 │         └─→ cross-env sets EXPO_PUBLIC_API_URL=https://staging-api.carekosh.com │
 │         └─→ expo CLI starts Metro                                       │
-│         └─→ Metro reads source files, builds initial bundle             │
 │         └─→ Metro starts HTTP server on port 8081                       │
-│         └─→ Terminal prints QR code containing `exp://localhost:8081`   │
+│         └─→ Metro waits; it builds the bundle on the first request      │
+│         └─→ Terminal prints QR code containing `exp://127.0.0.1:8081`   │
 │                                                                         │
 │  6. Open Expo Go on the phone                                           │
 │  7. Scan QR code (or type the URL manually)                             │
@@ -304,16 +318,16 @@ Let's trace exactly what happens, USB mode, against staging backend.
 ### Phase 2 — Bundle load (once per "fresh start" of the app)
 
 ```
-8.  Expo Go parses scanned URL: exp://localhost:8081
-9.  Expo Go opens HTTP connection to localhost:8081 on the phone
+8.  Expo Go parses scanned URL: exp://127.0.0.1:8081
+9.  Expo Go opens HTTP connection to 127.0.0.1:8081 on the phone (manifest, then bundle)
 10. Phone TCP stack: "localhost:8081 — let me check if there's a listener"
 11. adbd: "I have a reverse rule for that. Tunnel it."
 12. Connection travels phone → adbd → USB cable → laptop's adb server →
     laptop's localhost:8081
 13. Metro receives the HTTP request. URL is something like:
-    /index.bundle?platform=android&dev=true&hot=true&...
-14. Metro builds the bundle (cached after first build, so fast on reload)
-15. Metro responds with ~10 MB of JavaScript over the same tunnel
+    /node_modules/expo-router/entry.bundle?platform=android&dev=true&...
+14. Metro builds the bundle (transforms cached after the first build, so faster on reload)
+15. Metro responds with the development JavaScript bundle over the same tunnel
 16. Bundle arrives at Expo Go via USB → adbd → app process
 17. Expo Go feeds the bundle to Hermes
 18. Hermes parses + executes
@@ -336,7 +350,8 @@ Let's trace exactly what happens, USB mode, against staging backend.
 28. Render's load balancer routes to your staging FastAPI container
 29. FastAPI authenticates the JWT, queries Postgres (Neon), returns JSON
 30. Response comes back over the internet → phone's Wi-Fi/LTE → app fetch resolves
-31. TanStack Query stores the result in cache, components re-render with data
+31. The /auth/me answer updates the auth store (Zustand); the inventory and order
+    queries that follow go into TanStack Query's cache, and components re-render
 ```
 
 ### Phase 4 — Live edit cycle (every code change you save)
@@ -354,8 +369,8 @@ Let's trace exactly what happens, USB mode, against staging backend.
 ```
 
 **The USB cable is involved in steps 9-16 (initial bundle load) and 35 (hot reload).**
-**The internet is involved in steps 23-30 (API calls).**
-**The cable and the internet are unrelated.** You can unplug USB after the bundle loads and the app keeps working until you change code.
+**The internet is involved in steps 23-30 (API calls) — with a staging or production API.**
+**With a public API, the cable and the internet are unrelated.** Unplugging USB after the bundle loads leaves loaded screens working, but assets, Fast Refresh and every reload still need Metro. With a local backend behind `adb reverse tcp:8000 tcp:8000`, the API calls ride the cable too, and unplugging breaks them. (Earlier text said the app keeps working until you change code.)
 
 ---
 
@@ -375,10 +390,16 @@ Settings → Developer Options → USB Debugging → ON
 **Why**: USB Debugging starts the `adbd` daemon on the phone. Without it, `adb` commands have nothing to talk to.
 
 ```
-Install Expo Go from the Play Store
+Install the Expo Go build for Expo SDK 54:
+expo.dev/go → SDK 54 → Android device
+(the Play Store build supports only the newest SDK)
 ```
 
-**Why**: Expo Go is the native shell that will load your JS bundle. You only need to do this once per phone.
+**Why**: Expo Go is the native shell that will load your JS bundle, and each Expo Go build supports exactly one Expo SDK. Reinstall the matching build when the project changes SDK, or if the Play Store updates Expo Go. (Earlier text said to install it from the Play Store.)
+
+```
+Install Node.js 22 (vitaltrack-mobile/.nvmrc; Expo SDK 54 needs at least Node 20.19.4)
+```
 
 #### On the laptop
 
@@ -410,7 +431,7 @@ On the phone, accept the "Allow USB debugging?" dialog
 Tick "Always allow from this computer"
 ```
 
-**Why**: The phone's `adbd` daemon refuses commands from any computer it doesn't trust. The dialog shows your laptop's RSA key fingerprint; tapping Allow stores the key on the phone permanently (until you revoke it).
+**Why**: The phone's `adbd` daemon refuses commands from any computer it doesn't trust. The dialog shows your laptop's RSA key fingerprint; tapping Allow stores the key on the phone until you revoke it. On Android 11+ the authorisation can also expire after a period without reconnecting, unless "Disable adb authorization timeout" is enabled in Developer options.
 
 ```bash
 adb devices
@@ -434,12 +455,12 @@ You can verify the rule exists:
 adb reverse --list
 ```
 
-Output:
+Output (the first column varies by device):
 ```
 (reverse) tcp:8081 tcp:8081
 ```
 
-**ADB reverse is not sticky.** It's lost when the phone is unplugged, the phone reboots, the laptop reboots, or `adb kill-server` is run. After any of those, re-run the command.
+**ADB reverse is not sticky.** In practice it's lost when the phone is unplugged, the phone reboots, the laptop reboots, or `adb kill-server` is run (Android's documentation does not describe the rule's lifetime). If you pressed `a` in Expo CLI, it set the Metro-port rule itself and removes it when it exits. After any of those, re-run the command.
 
 If you also want the phone to reach a *local Docker backend* on your laptop, add:
 
@@ -453,27 +474,30 @@ adb reverse tcp:8000 tcp:8000
 
 ```bash
 cd vitaltrack-mobile
-npm run start:staging
+npm run start:staging -- --localhost
 ```
+
+For USB, pass `--localhost`: without it, Expo advertises your LAN address instead of `127.0.0.1`. (Earlier text omitted the flag.)
 
 **Why** — unpacking the script:
 
 ```
-npm run start:staging
+npm run start:staging -- --localhost
   └─→ runs the "start:staging" script from package.json
   └─→ which is: cross-env EXPO_PUBLIC_API_URL=https://... expo start --clear
        │                  │                                  │            │
-       │                  │                                  │            └─ flush Metro cache
-       │                  │                                  │              (necessary after any
-       │                  │                                  │               .env or env-var change)
+       │                  │                                  │            └─ empty Metro's transform
+       │                  │                                  │              cache (harmless; not what
+       │                  │                                  │              selects the API URL)
        │                  │                                  │
        │                  │                                  └─ start the Expo dev server
        │                  │                                    (which is Metro + a few extras)
        │                  │
-       │                  └─ set the env var for this Metro process. The
-       │                    bundle Metro builds will see this value at
+       │                  └─ set the env var for this Metro process. Expo
+       │                    injects it into the bundles Metro serves as
        │                    process.env.EXPO_PUBLIC_API_URL — that's how
-       │                    services/api.ts knows which backend to hit.
+       │                    services/api.ts knows which backend to hit
+       │                    (unless a .env line overrides it, §3.4).
        │
        └─ cross-platform helper that sets env vars (Windows uses different
          syntax than macOS/Linux; cross-env normalises this)
@@ -482,7 +506,7 @@ npm run start:staging
 Metro boots. Terminal prints something like:
 
 ```
-› Metro waiting on exp://localhost:8081
+› Metro waiting on exp://127.0.0.1:8081
 › Scan the QR code above with Expo Go (Android) or the Camera app (iOS)
 ```
 
@@ -496,7 +520,7 @@ Two options:
 Open Expo Go on the phone. There's a "Scan QR code" button. Point at the QR code in your terminal. Expo Go opens.
 
 **Option B — Type the URL manually.**
-Open Expo Go. There's a URL input field. Type `exp://localhost:8081` (only works in USB mode because of the adb reverse) or `exp://YOUR_LAN_IP:8081` (LAN mode).
+Open Expo Go. There's a URL input field. Type `exp://127.0.0.1:8081` or `exp://localhost:8081` (only works in USB mode because of the adb reverse) or `exp://YOUR_LAN_IP:8081` (LAN mode).
 
 Either way:
 
@@ -506,13 +530,13 @@ Bundle is loaded into Hermes
 App starts
 ```
 
-You'll see a loading indicator while the bundle downloads (~10 MB), then your app's splash screen, then the auth or dashboard screen.
+You'll see a loading indicator while the bundle downloads, then your app's splash screen, then the auth or dashboard screen.
 
 ### Step 6 — Verify it actually works
 
-In the app, do something that calls the API — log in, scroll the dashboard, edit an item. If you see real data, the entire chain is working: Metro served the bundle, Expo Go executed it, the app reached the backend over the phone's internet, the backend returned data, the cache populated, the UI rendered.
+Cached screens do **not** prove the backend is reachable: the app restores its last query cache (if saved within the last 24 hours) and its session from the phone. To prove the backend path, open `<API URL>/health` in the phone's browser (expect `"status":"healthy"` and `"database":"connected"`), then do something that calls the API — pull to refresh Inventory, or save a small change in the Edit Item form — and confirm it succeeds.
 
-If you see "Connecting…" or "Network request failed", something's broken in the chain. The next section helps you find which link.
+If login stays on "CareKosh server is waking up…", the dashboard shows "Failed to load data", the status pill stays on "Connecting…", or you see "Unable to connect to server…" or "Couldn't …" messages, something's broken in the chain. (The raw "Network request failed" appears only in the Metro log.) The next section helps you find which link.
 
 ---
 
@@ -529,7 +553,7 @@ If you see "Connecting…" or "Network request failed", something's broken in th
 
 This is why USB mode uses `EXPO_PUBLIC_API_URL=http://localhost:8000` (the bridge handles it) and Wi-Fi mode uses `EXPO_PUBLIC_API_URL=http://192.168.1.5:8000` (the actual LAN IP of the laptop). Mix them up and the app silently can't reach the backend.
 
-### 7.2 The USB cable carries code, not data
+### 7.2 The USB cable carries Metro traffic — and the API only if you reverse its port
 
 A common confusion: "I'm on USB, why doesn't the phone reach my Docker backend?"
 
@@ -547,7 +571,7 @@ Metro serves your JavaScript code. The backend serves your data. They run on dif
 
 When the app loads, *both* are involved — Metro to deliver the code, then the backend to deliver the data once the code is running. But they don't know about each other and they don't share state.
 
-If your dashboard is empty, the question is: did Metro deliver the bundle (yes, the app rendered) but the backend isn't responding? Or did Metro fail (the app shows "Network request failed" loading the bundle)? These are very different problems. Knowing which side broke is half of debugging.
+If your dashboard is empty, the question is: did Metro deliver the bundle (yes, the app rendered) but the backend isn't responding? Or did Metro fail (Expo Go shows its own error screen saying it could not connect to the development server)? These are very different problems. Knowing which side broke is half of debugging.
 
 ---
 
@@ -556,15 +580,15 @@ If your dashboard is empty, the question is: did Metro deliver the bundle (yes, 
 | Term | What it is |
 |---|---|
 | **APK** | Android Package — the binary format Android apps ship as. |
-| **AAB** | Android App Bundle — Play Store's preferred format. EAS builds these for production. |
+| **AAB** | Android App Bundle — the format Google Play requires for new apps. EAS builds these for production; Play generates per-device APKs from it. |
 | **adb** | Android Debug Bridge — the laptop's CLI tool for talking to a connected Android phone. |
 | **adbd** | The daemon running on the phone (when USB Debugging is enabled) that receives `adb` commands. |
-| **Bridge** (React Native) | The serialisation layer that lets JavaScript and native code communicate. Newer RN versions use *JSI* — same concept, more direct binding. |
-| **Bundle** | The single big `.js` file Metro produces by combining all your source files + dependencies. |
+| **Bridge** (legacy React Native) | The old asynchronous, serialising channel between JavaScript and native code. The New Architecture (default since RN 0.76, required by Expo Go, used by CareKosh) replaces it with *JSI*, which allows direct calls. |
+| **Bundle** | The output Metro builds from the modules your entry point reaches (not every dependency file). Development serves JavaScript; release builds use Hermes bytecode. |
 | **EAS** | Expo Application Services — the cloud service that builds production APKs/AABs. |
 | **EAS Build** | The specific service that takes your code and produces an APK/AAB. Run with `eas build`. |
-| **Expo Go** | The generic native shell installed from the Play Store. Loads any compatible JS bundle from a Metro server. |
-| **Expo SDK** | The set of native modules Expo provides (camera, file system, secure store, etc.) — all bundled into Expo Go's shell. |
+| **Expo Go** | The generic native shell for one Expo SDK version. The store build tracks the newest SDK; this project needs the SDK 54 build from `expo.dev/go`. Loads compatible JS bundles from a Metro server. |
+| **Expo SDK** | The set of native modules Expo provides (camera, file system, secure store, etc.). Expo Go includes a fixed subset; modules outside it, and the app's own voice module, need a custom build. |
 | **Hermes** | A small, fast JavaScript engine built by Facebook for React Native. Lives inside Expo Go. |
 | **Hot reload** | Mechanism where Metro pushes only the changed parts of the bundle to Expo Go on save, applied without restarting the app. |
 | **LAN mode** | Connection mode where the phone reaches the laptop over Wi-Fi using the laptop's LAN IP. Default for `expo start`. |
@@ -572,10 +596,10 @@ If your dashboard is empty, the question is: did Metro deliver the bundle (yes, 
 | **Metro** | The JavaScript bundler purpose-built for React Native. Serves bundles + hot updates over HTTP/WebSocket on port 8081. |
 | **port 5037** | Default port for the laptop's `adb server` to listen on. |
 | **port 8000** | What the FastAPI backend listens on (in Docker locally; Render uses standard 80/443 with internal routing). |
-| **port 8081** | What Metro listens on. Hard-coded by Expo CLI but configurable. |
-| **React Native** | The framework that lets you write apps in JS/TSX that compile to real native UI on iOS and Android. |
+| **port 8081** | Metro's default port. Expo CLI offers the next free port if 8081 is busy, and `--port` changes it — use the port Metro prints. |
+| **React Native** | The framework that lets you write apps in JS/TSX whose code runs in a JavaScript engine (Hermes) and drives real native UI on iOS and Android. |
 | **Tunnel mode** | Connection mode where Expo creates a public URL (`*.exp.direct`) so the phone reaches Metro over the internet. Slowest but most universal. |
-| **USB Debugging** | Android setting that enables the `adbd` daemon. Required for any `adb` command to work. |
+| **USB Debugging** | Android setting that enables the `adbd` daemon. Required for `adb` commands that target this phone over USB. |
 | **USB mode** | Connection mode where the phone is plugged into the laptop and `adb reverse` tunnels Metro traffic over USB. Most reliable. |
 | **`adb reverse`** | The specific `adb` command that creates a port-forward from the phone's localhost back to the laptop's localhost. The trick that makes USB mode work. |
 | **`exp://`** | URL scheme that tells Expo Go "this is a Metro dev server URL, fetch a bundle from it." |
@@ -591,7 +615,7 @@ Use this doc to figure out **which layer is broken**, then jump to the operation
 | `adb devices` shows empty list | USB cable / driver | [USB_ADB_REVERSE_GUIDE §Troubleshooting](USB_ADB_REVERSE_GUIDE.md#troubleshooting) |
 | `adb devices` shows `unauthorized` | Phone hasn't authorized this laptop | [USB_ADB_REVERSE_GUIDE §unauthorized](USB_ADB_REVERSE_GUIDE.md#unauthorized) |
 | Metro starts but QR code can't be scanned | Network or firewall | [LOCAL_TESTING_COMPLETE_GUIDE §G](LOCAL_TESTING_COMPLETE_GUIDE.md#g--expo--metro-troubleshooting) |
-| Bundle loads but app shows "Network request failed" | Backend unreachable from phone | [LOCAL_TESTING_COMPLETE_GUIDE §G](LOCAL_TESTING_COMPLETE_GUIDE.md#g--expo--metro-troubleshooting) |
+| Bundle loads, but login stays on "CareKosh server is waking up…" or the dashboard shows "Failed to load data" (Metro log: "Network request failed") | Backend unreachable from phone | [LOCAL_TESTING_COMPLETE_GUIDE §G](LOCAL_TESTING_COMPLETE_GUIDE.md#g--expo--metro-troubleshooting) |
 | Edits not reflecting in app | Metro cache | `npx expo start --clear` |
 | App stuck on splash screen | Bundle failed to load or app crashed during boot | Check Metro terminal for errors; shake phone for dev menu → reload |
 | "Could not load… server is offline" | Metro stopped, or USB tunnel dropped | Restart `npm run start:*`, re-run `adb reverse` |
@@ -600,6 +624,7 @@ Use this doc to figure out **which layer is broken**, then jump to the operation
 
 ## See also
 
+- **[local_testing_field_manual.html](local_testing_field_manual.html)** — the maintained, illustrated edition of this tutorial, with a local Docker backend, the test suites (and their safety rules) and voice testing.
 - **[LOCAL_TESTING_COMPLETE_GUIDE.md](LOCAL_TESTING_COMPLETE_GUIDE.md)** — operational reference: every command, every config file, every troubleshooting step.
 - **[USB_ADB_REVERSE_GUIDE.md](USB_ADB_REVERSE_GUIDE.md)** — USB-specific setup and troubleshooting, including driver issues on Windows.
 - **[NEW_DEVELOPER_QUICKSTART.md](NEW_DEVELOPER_QUICKSTART.md)** — 30-minute onramp if you're brand new.

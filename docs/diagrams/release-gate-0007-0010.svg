@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 971" width="1560" height="971" role="img" aria-labelledby="t d">
+<title id="t">Release gate for migrations 0007 to 0010</title>
+<desc id="d">Deploying the candidate would run migrations 0007, 0008, 0009 and 0010 in one container start. 0007 cannot be downgraded and the old code&#x27;s COUNT-based order numbers can collide with the new counter while old and new instances overlap. The gate: control both deploy triggers and record state, stage on isolated fresh and populated synthetic legacy databases without discarding existing staging data, back up and rehearse a restore, cut over with new writes blocked and old writers stopped, re-seed the counter only if writes could not be paused, check logs, monitor, then re-enable auto-deploy.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2B3138"/></marker><marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="#2B3138"/></marker></defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<text x="40.0" y="52.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#16191D" text-anchor="start">Release gate: migrations 0007 → 0010 reach production together</text>
+<text x="40.0" y="84.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#4A5260" text-anchor="start">Production is presumed to run main (835fad3, migrations ≤ 0006) — NOT VERIFIED. A plain merge is not a safe release for this change.</text>
+<rect x="40.0" y="120.0" width="1480.0" height="135.6" rx="12" fill="#FCEBEA" stroke="#A8261D" stroke-width="2"/>
+<text x="54.0" y="151.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#A8261D" text-anchor="start">Why a plain merge is unsafe</text>
+<text x="54.0" y="177.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">0007 refuses downgrade. An image built before the applied migrations cannot start (Alembic cannot locate the revision), so it is no rollback.</text>
+<text x="54.0" y="197.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Zero-downtime overlap: main&#x27;s COUNT-based order numbers can collide with the new counter → order creation can fail on either version.</text>
+<text x="54.0" y="217.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">0010 takes LOCK TABLE orders IN SHARE MODE while it builds a unique index (orders writes wait).</text>
+<text x="54.0" y="236.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Unverified email accounts get 403 on login, refresh and protected bearer routes when verification and mail are configured. Public routes are outside that policy.</text>
+<rect x="40.0" y="281.6" width="70.8" height="22" rx="11.0" fill="#FFFFFF" stroke="#4A5260" stroke-width="1.5"/>
+<text x="75.4" y="297.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#4A5260" text-anchor="middle">PREPARE</text>
+<rect x="40.0" y="309.6" width="350.0" height="175.2" rx="12" fill="#F1F2F4" stroke="#4A5260" stroke-width="2"/>
+<text x="54.0" y="340.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#4A5260" text-anchor="start">1. Before merging</text>
+<text x="54.0" y="367.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Control BOTH Render auto-deploy and the CI</text>
+<text x="54.0" y="386.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">deploy hook.</text>
+<text x="54.0" y="406.7" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Record deployed commits and alembic</text>
+<text x="54.0" y="426.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">current against confirmed targets.</text>
+<path d="M 390.0 397.3 L 416.6 397.3" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="416.6" y="281.6" width="70.8" height="22" rx="11.0" fill="#FFFFFF" stroke="#8F5B00" stroke-width="1.5"/>
+<text x="452.0" y="297.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#8F5B00" text-anchor="middle">PREPARE</text>
+<rect x="416.6" y="309.6" width="350.0" height="175.2" rx="12" fill="#FFF3DB" stroke="#8F5B00" stroke-width="2"/>
+<text x="430.6" y="340.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#8F5B00" text-anchor="start">2. Stage the candidate</text>
+<text x="430.6" y="367.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Preserve existing staging. Use isolated</text>
+<text x="430.6" y="386.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">fresh and populated synthetic legacy</text>
+<text x="430.6" y="406.7" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">databases.</text>
+<text x="430.6" y="426.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Verify old-to-new upgrades and E2E flows</text>
+<text x="430.6" y="446.3" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">with a preview APK.</text>
+<path d="M 766.6 397.3 L 793.2 397.3" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="793.2" y="281.6" width="70.8" height="22" rx="11.0" fill="#FFFFFF" stroke="#1B7563" stroke-width="1.5"/>
+<text x="828.6" y="297.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#1B7563" text-anchor="middle">PREPARE</text>
+<rect x="793.2" y="309.6" width="350.0" height="175.2" rx="12" fill="#E3F3EF" stroke="#1B7563" stroke-width="2"/>
+<text x="807.2" y="340.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1B7563" text-anchor="start">3. Back up</text>
+<text x="807.2" y="367.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Take a production backup / restore point.</text>
+<text x="807.2" y="386.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Rehearse the restore on a separate</text>
+<text x="807.2" y="406.7" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">throwaway database (restore_drill.py).</text>
+<path d="M 1143.2 397.3 L 1169.8 397.3" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="1169.8" y="281.6" width="70.8" height="22" rx="11.0" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="1.5"/>
+<text x="1205.2" y="297.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#1F5FA8" text-anchor="middle">RELEASE</text>
+<rect x="1169.8" y="309.6" width="350.0" height="175.2" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="1183.8" y="340.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">4. Cut over in a maintenance window</text>
+<text x="1183.8" y="367.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Block new writes AND drain old writers</text>
+<text x="1183.8" y="386.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">before migrating.</text>
+<text x="1183.8" y="406.7" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Deploy; the container runs 0007 → 0010.</text>
+<text x="1183.8" y="426.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Before reopening: Render commit, alembic</text>
+<text x="1183.8" y="446.3" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">current = 0010_order_local_id_unique,</text>
+<text x="1183.8" y="466.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">/live, /health.</text>
+<rect x="40.0" y="536.9" width="70.8" height="22" rx="11.0" fill="#FFFFFF" stroke="#5E4596" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="75.4" y="552.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#5E4596" text-anchor="middle">RELEASE</text>
+<rect x="40.0" y="564.9" width="350.0" height="175.2" rx="12" fill="#F1ECFA" stroke="#5E4596" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="54.0" y="595.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#5E4596" text-anchor="start">5. Only if writes could not be paused</text>
+<text x="54.0" y="622.3" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Run the idempotent order-counter re-seed</text>
+<text x="54.0" y="642.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">SQL from BACKEND_HARDENING.md (safe to</text>
+<text x="54.0" y="661.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">repeat).</text>
+<path d="M 390.0 652.5 L 416.6 652.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="416.6" y="536.9" width="55.7" height="22" rx="11.0" fill="#FFFFFF" stroke="#1B7563" stroke-width="1.5"/>
+<text x="444.5" y="552.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#1B7563" text-anchor="middle">AFTER</text>
+<rect x="416.6" y="564.9" width="350.0" height="175.2" rx="12" fill="#E3F3EF" stroke="#1B7563" stroke-width="2"/>
+<text x="430.6" y="595.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1B7563" text-anchor="start">6. Check logs and privacy</text>
+<text x="430.6" y="622.3" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Real access/error logs and telemetry with</text>
+<text x="430.6" y="642.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">synthetic tokens.</text>
+<path d="M 766.6 652.5 L 793.2 652.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="793.2" y="536.9" width="55.7" height="22" rx="11.0" fill="#FFFFFF" stroke="#1B7563" stroke-width="1.5"/>
+<text x="821.1" y="552.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#1B7563" text-anchor="middle">AFTER</text>
+<rect x="793.2" y="564.9" width="350.0" height="175.2" rx="12" fill="#E3F3EF" stroke="#1B7563" stroke-width="2"/>
+<text x="807.2" y="595.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1B7563" text-anchor="start">7. Monitor</text>
+<text x="807.2" y="622.3" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Order-create failures (409), 401/403</text>
+<text x="807.2" y="642.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">spikes, refresh failures, DB connections</text>
+<text x="807.2" y="661.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">and lock waits.</text>
+<path d="M 1143.2 652.5 L 1169.8 652.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="1169.8" y="536.9" width="55.7" height="22" rx="11.0" fill="#FFFFFF" stroke="#4A5260" stroke-width="1.5"/>
+<text x="1197.7" y="552.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#4A5260" text-anchor="middle">AFTER</text>
+<rect x="1169.8" y="564.9" width="350.0" height="175.2" rx="12" fill="#F1F2F4" stroke="#4A5260" stroke-width="2"/>
+<text x="1183.8" y="595.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#4A5260" text-anchor="start">8. Re-enable auto-deploy</text>
+<text x="1183.8" y="622.3" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Only after the checks above pass.</text>
+<rect x="40.0" y="816.1" width="1480.0" height="115.8" rx="12" fill="#FCEBEA" stroke="#A8261D" stroke-width="2"/>
+<text x="54.0" y="847.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#A8261D" text-anchor="start">Rollback is a data decision</text>
+<text x="54.0" y="873.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Keep the additive schema. 0008–0010 have downgrades, but 0007&#x27;s downgrade raises, so the chain cannot go below 0007 automatically.</text>
+<text x="54.0" y="893.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">A pre-0007 image cannot start on a migrated database (its alembic upgrade fails); roll forward with a fix built on the new schema.</text>
+<text x="54.0" y="913.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Restoring a backup discards every write made after the backup. Prefer a reviewed forward fix; keep writes paused while diagnosing.</text>
+</svg>

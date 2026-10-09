@@ -1,0 +1,46 @@
+<svg width="1000" height="740" viewBox="0 0 1000 740" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="local-setup-t local-setup-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="local-setup-t">Local development setup</title><desc id="local-setup-d">On the laptop, Docker Compose runs FastAPI on port 8000 and PostgreSQL 16; Metro serves the app&#x27;s JavaScript on port 8081. The phone runs Expo Go for SDK 54, loads the bundle from Metro and calls the API, over the same Wi-Fi or over USB with adb reverse.</desc><defs><marker id="local-setup-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="local-setup-ah-b07a1a" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B07A1A"/></marker><marker id="local-setup-ah-3d5a99" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#3D5A99"/></marker></defs>
+<rect x="0" y="0" width="1000" height="740" rx="18" fill="#FFFFFF"/>
+<rect x="20" y="34" width="600" height="520" rx="18" fill="none" stroke="#5E736E" stroke-width="1.6" stroke-dasharray="7 6"/>
+<rect x="38" y="21" width="132.93470000000002" height="26" rx="13" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.4"/>
+<text x="48" y="39" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.2">YOUR LAPTOP</text>
+<rect x="44" y="80" width="552" height="300" rx="18" fill="none" stroke="#5E736E" stroke-width="1.6" stroke-dasharray="4 5"/>
+<rect x="62" y="67" width="371.2898999999998" height="26" rx="13" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.4"/>
+<text x="72" y="85" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.2">DOCKER COMPOSE · docker-compose.dev.yml</text>
+<rect x="70" y="116" width="250" height="103.5" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="90" y="151.5" font-size="17.5" font-weight="700" fill="#0D4A43" text-anchor="start">FastAPI · port 8000</text>
+<text x="90" y="176.5" font-size="15" font-weight="400" fill="#21403B" text-anchor="start">Uvicorn with --reload</text>
+<text x="90" y="198.5" font-size="15" font-weight="400" fill="#21403B" text-anchor="start">runs alembic upgrade head</text>
+<rect x="70" y="259.5" width="250" height="81.5" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="90" y="295.0" font-size="17.5" font-weight="700" fill="#0D4A43" text-anchor="start">PostgreSQL 16</text>
+<text x="90" y="320.0" font-size="15" font-weight="400" fill="#21403B" text-anchor="start">port 5432 · Docker volume</text>
+<path d="M195,221.5 L195,255.5" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#local-setup-ah-1f6f66)"/>
+<rect x="350" y="259.5" width="220" height="80" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2" stroke-dasharray="9 6"/>
+<text x="370" y="294.5" font-size="17" font-weight="700" fill="#77500F" text-anchor="start">pgAdmin · 5050</text>
+<text x="370" y="319.0" font-size="14.5" font-weight="400" fill="#5A4012" text-anchor="start">optional: --profile tools</text>
+<path d="M347,299.5 L325,299.5" fill="none" stroke="#B07A1A" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6 5" marker-end="url(#local-setup-ah-b07a1a)"/>
+<rect x="70" y="410" width="500" height="81.5" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="90" y="445.5" font-size="17.5" font-weight="700" fill="#0D4A43" text-anchor="start">Metro bundler · port 8081</text>
+<text x="90" y="470.5" font-size="15" font-weight="400" fill="#21403B" text-anchor="start">npx expo start --clear · serves the JavaScript bundle</text>
+<rect x="700" y="120" width="270" height="103.5" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="720" y="155.5" font-size="17.5" font-weight="700" fill="#0D4A43" text-anchor="start">Expo Go (SDK 54 build)</text>
+<text x="720" y="180.5" font-size="15" font-weight="400" fill="#21403B" text-anchor="start">Loads the bundle from Metro</text>
+<text x="720" y="202.5" font-size="15" font-weight="400" fill="#21403B" text-anchor="start">Calls EXPO_PUBLIC_API_URL</text>
+<rect x="680" y="80" width="310" height="200" rx="18" fill="none" stroke="#5E736E" stroke-width="1.6" stroke-dasharray="7 6"/>
+<rect x="698" y="67" width="122.2759" height="26" rx="13" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.4"/>
+<text x="708" y="85" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.2">YOUR PHONE</text>
+<path d="M696,160 L324,160" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#local-setup-ah-1f6f66)"/>
+<rect x="429.5084" y="147.25" width="160.98320000000004" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="510" y="164.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">API calls · port 8000</text>
+<path d="M835,225.5 L835,450 L574,450" fill="none" stroke="#3D5A99" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#local-setup-ah-3d5a99)"/>
+<rect x="619.813775" y="437.25" width="170.37245000000001" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#3D5A99" stroke-width="1.5"/>
+<text x="705" y="454.725" font-size="13.5" font-weight="650" fill="#3D5A99" text-anchor="middle">JavaScript · port 8081</text>
+<rect x="20" y="580" width="460" height="110" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="40" y="617" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Same Wi-Fi</text>
+<text x="40" y="642" font-size="15" font-weight="400" fill="#3C5550" text-anchor="start">The setup script writes your laptop&#x27;s LAN IP</text>
+<text x="40" y="664" font-size="15" font-weight="400" fill="#3C5550" text-anchor="start">into EXPO_PUBLIC_API_URL.</text>
+<rect x="500" y="580" width="470" height="110" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="520" y="617" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">USB instead</text>
+<text x="520" y="642" font-size="15" font-weight="400" fill="#3C5550" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">adb reverse tcp:8081 tcp:8081</text>
+<text x="520" y="664" font-size="15" font-weight="400" fill="#3C5550" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">adb reverse tcp:8000 tcp:8000</text>
+<text x="500" y="722" font-size="15" font-weight="600" fill="#B3372B" text-anchor="middle">Without adb reverse, localhost on the phone means the phone itself, not the laptop.</text>
+</svg>

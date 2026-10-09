@@ -12,7 +12,7 @@
 <style>
 :root{--bg:#fbf7f0;--text:#2a241c;--muted:#6f6555;--accent:#1d6b52;--border:#e7ddc9;--card:#fffdf9}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;font-size:16px;min-height:100vh;display:flex;align-items:center;justify-content:center}
+body{font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;font-size:16px;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .wrap{max-width:560px;margin:0 auto;padding:48px 24px;text-align:center}
 h1{font-size:2.4rem;letter-spacing:-.01em;margin-bottom:8px}
 .tag{color:var(--muted);margin-bottom:32px}
@@ -21,14 +21,16 @@ a.btn{display:block;background:var(--card);border:1px solid var(--border);border
 a.btn:hover{background:#fff}
 footer{margin-top:36px;color:var(--muted);font-size:.85rem}
 </style>
+<style id="doc-review-style">.doc-review{display:block!important;position:static!important;box-sizing:border-box!important;width:auto!important;max-width:1000px;margin:24px auto!important;padding:18px 22px!important;border:1px solid #aab8ac!important;border-left:5px solid #286258!important;border-radius:8px;background:#f0f6ef!important;color:#1b352c!important;font:15px/1.6 system-ui,sans-serif!important}.doc-review p{margin:6px 0!important;color:inherit!important;font:inherit!important}.doc-review a{color:#075d70!important;text-decoration:underline!important}.doc-review strong{color:#173f34!important}.doc-review code{color:inherit!important;background:transparent!important}@media print{.doc-review{break-inside:avoid}}</style>
 </head>
 <body>
+<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="../../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside><aside class="doc-review" aria-label="Documentation status"><strong>Local legal landing page (draft) · reviewed 23 September 2026 · refreshed 7 October 2026</strong><p>These links lead to local policy drafts. Their current public deployment and approval were not verified. The linked drafts need operational review before publication.</p><p><strong>7 October 2026:</strong> both linked drafts were corrected to match the code at <code>03cfebb</code> (the unmerged feature branch with the voice assistant) and are marked as needing legal review. Whether carekosh.com currently serves these files, or older versions, was NOT VERIFIED; documentation cannot prove legal compliance.</p><p><a href="../../docs/INDEX.html">Documentation home and source status</a> · <a href="../../docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide</a> · <a href="../../docs/API_TRACEABILITY.md">API traceability</a> · <span>Documentation audit, 7 Oct 2026 <small>(local review reference; not published)</small></span> · <a href="../../docs/BACKEND_HARDENING.md">Local hardening and remaining work</a></p></aside>
 <div class="wrap">
   <h1>CareKosh</h1>
   <p class="tag">A simple, private inventory tracker for households and home-care families — items, stock levels, and expiry dates.</p>
   <div class="links">
-    <a class="btn" href="/privacy-policy.html">Privacy Policy</a>
-    <a class="btn" href="/account-deletion.html">Delete your account &amp; data</a>
+    <a class="btn" href="privacy-policy.html">Privacy Policy</a>
+    <a class="btn" href="account-deletion.html">Delete your account &amp; data</a>
   </div>
   <footer>© 2026 CareKosh · operated by Rishabh Dongre · support@carekosh.com</footer>
 </div>

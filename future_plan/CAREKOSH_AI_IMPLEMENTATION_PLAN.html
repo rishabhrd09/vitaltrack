@@ -102,8 +102,19 @@ pre .s{color:#a8c8a2}         /* string-ish */
 footer{margin-top:80px;padding-top:24px;border-top:3px double var(--border);color:var(--muted);font-size:.87rem;text-align:center}
 hr.chsep{border:none;border-top:3px double var(--border);margin:70px auto 0;width:60%}
 </style>
+<style id="doc-review-style">.doc-review{display:block!important;position:static!important;box-sizing:border-box!important;width:auto!important;max-width:1000px;margin:24px auto!important;padding:18px 22px!important;border:1px solid #aab8ac!important;border-left:5px solid #286258!important;border-radius:8px;background:#f0f6ef!important;color:#1b352c!important;font:15px/1.6 system-ui,sans-serif!important}.doc-review p{margin:6px 0!important;color:inherit!important;font:inherit!important}.doc-review a{color:#075d70!important;text-decoration:underline!important}.doc-review strong{color:#173f34!important}.doc-review code{color:inherit!important;background:transparent!important}@media print{.doc-review{break-inside:avoid}}</style>
+<style id="voice-doc-phone-layout">
+@media (max-width: 760px) {
+  body { overflow-wrap: anywhere; }
+  table { display: block; max-width: 100%; overflow-x: auto; }
+  pre, .arch, .file-tree, .flow { max-width: 100%; }
+  pre code { overflow-wrap: normal; }
+  .toc li > *, .grid > * { min-width: 0; }
+}
+</style>
 </head>
 <body>
+<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. This document’s original proposals/results remain historical; use the maintained guide for current behavior. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside><aside class="doc-review" aria-label="Documentation status"><strong>Superseded feature catalogue (future proposal) — illustrative code only · reviewed 23 September 2026 · refreshed 7 October 2026</strong><p>Retained for learning, not as copy-paste production code. No AI endpoint, provider adapter, speech feature or agent framework is implemented. Provider prices/terms/model IDs and example APIs need re-verification. The updated_at prerequisite is retracted. Current product direction is the newer read-only voice decision.</p><p><strong>Implementation status (7 Oct 2026).</strong> The sentence above is still true for <code>main</code> (<code>835fad3</code>). On the unmerged feature branch (<code>03cfebb</code>; not verified on a phone or in production) a small, different slice exists: AI endpoints under <code>/api/v1/ai</code>, a Groq adapter used only for intent extraction from question text, on-device Moonshine speech recognition and Android device TTS. None of this book's chapters is implemented as written — there is no <code>/ai/chat</code>, LangGraph agent, Gemini failover, write/“propose delta” tool, WhatsApp bot, push alerts, pgvector search, label scanner, forecasting, Langfuse tracing or MCP server, and the assistant on that branch is strictly read-only. Job-market and market-size percentages in this book (for example “+300% YoY”, “~70% of listings”, “~65% of applied-LLM JDs”, market forecasts) are unsourced and were retracted in the July decision record — do not quote them.</p><p><a href="../docs/INDEX.html">Documentation home and source status</a> · <a href="../docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide (current onboarding)</a> · <a href="../docs/API_TRACEABILITY.md">API traceability</a> · <span>Documentation audit, 7 Oct 2026 <small>(local review reference; not published)</small></span> · <a href="CAREKOSH_VOICE_AGENT_FINAL_IMPLEMENTATION_PLAN.html">Later voice plan</a> · <a href="../docs/BACKEND_HARDENING.md">Local hardening and remaining work</a></p></aside>
 <div class="wrap">
 
 <!-- ======================= COVER ======================= -->
@@ -113,7 +124,7 @@ hr.chsep{border:none;border-top:3px double var(--border);margin:70px auto 0;widt
   <p class="sub">A chapter-by-chapter implementation plan for turning the shipped inventory tracker into a conversational, agentic AI product — architecture, code prototypes, file placement, UI, feasibility and job-market value for every feature.</p>
   <div class="rules">
     <span class="pill">Channel: <b>WhatsApp-only</b> (no Telegram)</span>
-    <span class="pill">Models: <b>free LLMs only</b> (~₹0/month)</span>
+    <span class="pill">Models: <b>free LLMs only</b> (unverified operating-cost estimate)</span>
     <span class="pill">Timing: <b>V2+, post-launch</b> (~50 active users)</span>
     <span class="pill">Grounded in <b>vitaltrack-backend + vitaltrack-mobile</b></span>
   </div>
@@ -149,9 +160,9 @@ hr.chsep{border:none;border-top:3px double var(--border);margin:70px auto 0;widt
   <div class="note"><strong>The three inherited rules (from the parent feasibility doc — unchanged):</strong><br>
   <b>1 · Foundation first.</b> None of this ships in the first Play Store release. The AI layer is gated on launch + roughly the first 50 active users.<br>
   <b>2 · WhatsApp-only, and inbound-first.</b> No Telegram, ever. Replies to user-initiated WhatsApp messages are free; business-initiated (proactive) templates cost a few paise — so proactive alerts default to <em>free in-app push</em>, with WhatsApp templates as an explicit opt-in.<br>
-  <b>3 · Free LLMs only.</b> Groq (Llama 3.1 8B, native tool-calling, 14,400 req/day) as primary; Google Gemini Flash free tier as failover; Cloudflare Workers AI / OpenRouter <code>:free</code> as emergency lanes; deterministic non-LLM answers straight from the DB when everything throttles. Recurring cost target: <strong>~₹0/month</strong>.</div>
+  <b>3 · Free LLMs only.</b> Groq (Llama 3.1 8B, native tool-calling, 14,400 req/day) as primary; Google Gemini Flash free tier as failover; Cloudflare Workers AI / OpenRouter <code>:free</code> as emergency lanes; deterministic non-LLM answers straight from the DB when everything throttles. Recurring cost target: <strong>unverified operating-cost estimate</strong>.</div>
 
-  <h3><span class="sec"><span class="ico">🗺️</span> The system you already have (the AI layer is ~70% pre-built)</span></h3>
+  <h3><span class="sec"><span class="ico">🗺️</span> The system you already have (existing CRUD is a foundation; AI work is not implemented)</span></h3>
   <p>The single most important fact in this book: <strong>the agent’s tools already exist as production endpoints.</strong> The AI work is mostly orchestration at the edges.</p>
   <table>
     <thead><tr><th>A user will say…</th><th>The tool that already answers it</th><th>Where</th></tr></thead>
@@ -468,7 +479,7 @@ export function VoiceButton({ onFinal }: { onFinal: (text: string) =&gt; void })
   });
   return &lt;MicButton onPressIn={start} partial={partial}/&gt;;
 }</code></pre>
-  <p><strong>Audit Mode sketch:</strong> <code>app/audit.tsx</code> pulls the stale + critical queue (Ch.4 endpoint), loops: speak “Item shows N — correct?” → listen for “yes / no, it’s M” → yes logs a verification touch (bumps <code>updated_at</code> via a no-op-delta endpoint), no routes through <code>propose_stock_delta</code> with the confirm card. Ten items ≈ one minute, hands-free.</p>
+  <p><strong>Retracted prerequisite:</strong> ordinary item updates already use TimestampMixin.onupdate. No blanket updated_at fix is required. A future physical stock-count feature would need a separate timestamp because any edit can change updated_at.</p>
 
   <h3><span class="sec"><span class="ico">📱</span> 2.4 What the user sees</span></h3>
   <p>Mic button pulses while listening and prints the live partial transcript. On finish, the <strong>gate</strong>: “You said: <em>add five oxygen</em>” with <b>[Send] [Edit] [Retry]</b> — a deliberate friction, because STT mishears medicine names and Hinglish, and a mis-write on a medical item is the one unforgivable bug. Then the normal Chapter 1 reply, spoken aloud. In Audit Mode the screen shows a big per-item card with ✓/✗ voice or tap — designed to be glanceable from arm’s length.</p>
@@ -684,13 +695,13 @@ if item.is_critical and new_qty &lt;= item.minimum_stock:
   <ul>
     <li><b>Critical alert:</b> a push that ignores quiet hours by design choice — “🔴 Oxygen Cylinder at 2 (min 10). Tap to reorder.” Tapping deep-links to the item screen.</li>
     <li><b>8 AM digest:</b> one push + optional email/WhatsApp — the same content as the Ch.3 mock.</li>
-    <li><b>Sync nudges:</b> a small “🔄 3 items need a sync check” chip on the Dashboard; tapping opens the audit queue (or voice Audit Mode). Confirming “still correct” bumps <code>updated_at</code> via a no-op-delta write, so verified items leave the queue.</li>
+    <li><strong>Retracted prerequisite:</strong> ordinary item updates already use TimestampMixin.onupdate. No blanket updated_at fix is required. A future physical stock-count feature would need a separate timestamp because any edit can change updated_at.</li>
   </ul>
 
   <h3><span class="sec"><span class="ico">⚖️</span> 4.5 Feasibility</span></h3>
   <ul>
     <li><span class="b b-free">FREE</span> Expo Push is ₹0 at this scale; Brevo email already runs in production; the scans are four simple indexed queries over ≤ a few hundred rows.</li>
-    <li><span class="b b-gold">Pre-req</span> the Chapter 0 <code>updated_at</code> fix — without it every item looks stale forever.</li>
+    <li><strong>Retracted prerequisite:</strong> ordinary item updates already use TimestampMixin.onupdate. No blanket updated_at fix is required. A future physical stock-count feature would need a separate timestamp because any edit can change updated_at.</li>
     <li>Alert-fatigue guardrail is a <em>product</em> rule enforced in code: only <code>is_critical</code> items may interrupt; everything else waits for the digest. Effort <b>M</b> (push plumbing is most of it).</li>
   </ul>
 

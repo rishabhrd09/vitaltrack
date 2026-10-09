@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 1330" width="1560" height="1330" role="img" aria-labelledby="t d">
+<title id="t">CareKosh database at migration 0010</title>
+<desc id="d">Eleven application tables. users owns every other table except order_number_counters, directly or (for order_items) through orders, by foreign keys with ON DELETE CASCADE. order_items.item_id and activity_logs.item_id are plain references without foreign keys, so order history survives item deletion. Item and category names are not unique in the database; the API serializes duplicate checks with advisory locks.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2B3138"/></marker><marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="#2B3138"/></marker></defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<text x="40.0" y="52.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#16191D" text-anchor="start">Database at head 0010_order_local_id_unique — 11 application tables</text>
+<text x="40.0" y="84.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#4A5260" text-anchor="start">Solid arrows are foreign keys (all ON DELETE CASCADE). Dashed arrows are plain id references without a foreign key. Verified with pg_dump of a freshly migrated database (7 Oct 2026;</text>
+<text x="40.0" y="105.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#4A5260" text-anchor="start">identical on 8 Oct).</text>
+<rect x="590.0" y="150.0" width="380.0" height="265.4" rx="10" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<rect x="590.0" y="150.0" width="380.0" height="36" rx="10" fill="#D3E3F7"/>
+<text x="604.0" y="175.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#16191D" text-anchor="start">users</text>
+<text x="604.0" y="208.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">id PK varchar(36) (Python uuid4)</text>
+<text x="604.0" y="226.5" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">email UNIQUE, nullable</text>
+<text x="604.0" y="245.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">username UNIQUE, nullable</text>
+<text x="604.0" y="263.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">CHECK email OR username present</text>
+<text x="604.0" y="281.9" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">hashed_password (Argon2 via passlib)</text>
+<text x="604.0" y="300.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">session_version int, default 0 (0007)</text>
+<text x="604.0" y="318.9" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">name, phone, last_login</text>
+<text x="604.0" y="337.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">is_active, is_email_verified</text>
+<text x="604.0" y="355.8" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">email_verification_token sha256 + expiry</text>
+<text x="604.0" y="374.3" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">password_reset_token sha256, 1 h</text>
+<text x="604.0" y="392.8" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">deletion_token sha256, 24 h</text>
+<rect x="40.0" y="150.0" width="430.0" height="170.2" rx="10" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<rect x="40.0" y="150.0" width="430.0" height="36" rx="10" fill="#D3E3F7"/>
+<text x="54.0" y="175.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#16191D" text-anchor="start">categories</text>
+<text x="54.0" y="208.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">id PK · user_id FK→users</text>
+<text x="54.0" y="226.5" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">name (no DB uniqueness;</text>
+<text x="54.0" y="245.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">API: advisory lock + case-insensitive check)</text>
+<text x="54.0" y="263.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">description, display_order</text>
+<text x="54.0" y="281.9" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">is_default (cannot be deleted)</text>
+<text x="54.0" y="300.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">local_id</text>
+<rect x="40.0" y="470.0" width="430.0" height="246.4" rx="10" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<rect x="40.0" y="470.0" width="430.0" height="36" rx="10" fill="#D3E3F7"/>
+<text x="54.0" y="495.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#16191D" text-anchor="start">items</text>
+<text x="54.0" y="528.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">id PK · user_id FK→users</text>
+<text x="54.0" y="546.5" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">category_id FK→categories</text>
+<text x="54.0" y="565.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">name indexed, not unique in DB</text>
+<text x="54.0" y="583.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">quantity CHECK quantity &gt;= 0</text>
+<text x="54.0" y="601.9" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">minimum_stock, unit</text>
+<text x="54.0" y="620.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">version optimistic lock (0004)</text>
+<text x="54.0" y="638.9" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">is_active, is_critical</text>
+<text x="54.0" y="657.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">supplier_name, supplier_contact,</text>
+<text x="54.0" y="675.8" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">purchase_link, brand, notes, ...</text>
+<text x="54.0" y="694.3" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">local_id</text>
+<rect x="1090.0" y="150.0" width="430.0" height="246.4" rx="10" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<rect x="1090.0" y="150.0" width="430.0" height="36" rx="10" fill="#D3E3F7"/>
+<text x="1104.0" y="175.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#16191D" text-anchor="start">orders</text>
+<text x="1104.0" y="208.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">id PK · user_id FK→users</text>
+<text x="1104.0" y="226.5" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">order_id UNIQUE ORD-YYYYMMDD-NNNN</text>
+<text x="1104.0" y="245.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">status VARCHAR (stores enum NAME,</text>
+<text x="1104.0" y="263.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">e.g. STOCK_UPDATED)</text>
+<text x="1104.0" y="281.9" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">total_items, total_units</text>
+<text x="1104.0" y="300.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">exported_at, ordered_at, received_at,</text>
+<text x="1104.0" y="318.9" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">applied_at, declined_at</text>
+<text x="1104.0" y="337.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">notes · local_id</text>
+<text x="1104.0" y="355.8" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">Partial UNIQUE (user_id, local_id)</text>
+<text x="1104.0" y="374.3" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">non-null; legacy duplicate ids exempt</text>
+<rect x="1090.0" y="560.0" width="430.0" height="170.2" rx="10" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<rect x="1090.0" y="560.0" width="430.0" height="36" rx="10" fill="#D3E3F7"/>
+<text x="1104.0" y="585.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#16191D" text-anchor="start">order_items</text>
+<text x="1104.0" y="618.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">id PK · order_id FK→orders</text>
+<text x="1104.0" y="636.5" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">item_id NO foreign key (snapshot)</text>
+<text x="1104.0" y="655.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">name, brand, unit (as sent by app)</text>
+<text x="1104.0" y="673.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">quantity CHECK quantity &gt; 0</text>
+<text x="1104.0" y="691.9" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">current_stock, minimum_stock</text>
+<text x="1104.0" y="710.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">supplier_name, purchase_link, image_uri</text>
+<rect x="590.0" y="640.0" width="380.0" height="132.2" rx="10" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<rect x="590.0" y="640.0" width="380.0" height="36" rx="10" fill="#D3E3F7"/>
+<text x="604.0" y="665.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#16191D" text-anchor="start">refresh_tokens</text>
+<text x="604.0" y="698.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">id PK · user_id FK→users</text>
+<text x="604.0" y="716.5" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">jti UNIQUE (JWT id)</text>
+<text x="604.0" y="735.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">is_revoked, expires_at</text>
+<text x="604.0" y="753.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">device_name, ip_address</text>
+<rect x="40.0" y="920.0" width="360.0" height="151.2" rx="10" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<rect x="40.0" y="920.0" width="360.0" height="36" rx="10" fill="#D3E3F7"/>
+<text x="54.0" y="945.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#16191D" text-anchor="start">activity_logs</text>
+<text x="54.0" y="978.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">id PK · user_id FK→users</text>
+<text x="54.0" y="996.5" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">action VARCHAR (enum NAME)</text>
+<text x="54.0" y="1015.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">item_name, details</text>
+<text x="54.0" y="1033.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">item_id, order_id (no FK)</text>
+<text x="54.0" y="1051.9" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">shown by GET /activities</text>
+<rect x="430.0" y="920.0" width="330.0" height="132.2" rx="10" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<rect x="430.0" y="920.0" width="330.0" height="36" rx="10" fill="#D3E3F7"/>
+<text x="444.0" y="945.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#16191D" text-anchor="start">audit_log</text>
+<text x="444.0" y="978.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">id PK · user_id FK→users</text>
+<text x="444.0" y="996.5" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">entity_type, entity_id, action</text>
+<text x="444.0" y="1015.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">old_values, new_values JSONB</text>
+<text x="444.0" y="1033.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">no API reads it</text>
+<rect x="790.0" y="920.0" width="330.0" height="132.2" rx="10" fill="#F1ECFA" stroke="#5E4596" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="790.0" y="920.0" width="330.0" height="36" rx="10" fill="#E3DAF5"/>
+<text x="804.0" y="945.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#16191D" text-anchor="start">ai_consents</text>
+<text x="804.0" y="978.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">user_id PK + FK→users</text>
+<text x="804.0" y="996.5" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">version, accepted</text>
+<text x="804.0" y="1015.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">scopes JSON (0009)</text>
+<text x="804.0" y="1033.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">updated_at</text>
+<rect x="1150.0" y="920.0" width="370.0" height="151.2" rx="10" fill="#F1ECFA" stroke="#5E4596" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="1150.0" y="920.0" width="370.0" height="36" rx="10" fill="#E3DAF5"/>
+<text x="1164.0" y="945.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#16191D" text-anchor="start">ai_usage</text>
+<text x="1164.0" y="978.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">id PK · user_id FK→users</text>
+<text x="1164.0" y="996.5" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">kind, provider, status</text>
+<text x="1164.0" y="1015.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">reserved_microusd</text>
+<text x="1164.0" y="1033.4" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">input/output tokens,</text>
+<text x="1164.0" y="1051.9" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">audio_seconds, expires_at</text>
+<rect x="1090.0" y="760.0" width="430.0" height="118.1" rx="10" fill="#E3F3EF" stroke="#1B7563" stroke-width="2"/>
+<rect x="1090.0" y="760.0" width="430.0" height="36" rx="10" fill="#CDEBE3"/>
+<text x="1104.0" y="785.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#16191D" text-anchor="start">order_number_counters</text>
+<text x="1104.0" y="818.0" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">day PK YYYYMMDD (UTC)</text>
+<text x="1104.0" y="836.5" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="14" font-weight="400" fill="#16191D" text-anchor="start">last_value bigint</text>
+<text x="1104.0" y="864.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="500" fill="#4A5260" text-anchor="start" font-style="italic">no FK: numbers survive deletions (0007)</text>
+<path d="M 470.0 210.0 L 590.0 210.0" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="530.0" y="202.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">user_id</text>
+<path d="M 470.0 530.0 L 530.0 530.0 L 530.0 350.0 L 590.0 350.0" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="530.0" y="432.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">user_id</text>
+<path d="M 1090.0 210.0 L 970.0 210.0" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1030.0" y="202.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">user_id</text>
+<path d="M 780.0 640.0 L 780.0 415.4" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="780.0" y="531.7" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="start" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">user_id</text>
+<path d="M 160.0 470.0 L 160.0 320.2" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="160.0" y="399.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="start" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">category_id</text>
+<path d="M 1290.0 560.0 L 1290.0 396.4" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1290.0" y="482.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="start" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">order_id</text>
+<path d="M 1090.0 705.0 L 1005.0 705.0 L 1005.0 815.0 L 500.0 815.0 L 500.0 700.0 L 470.0 700.0" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<text x="760.0" y="807.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="600" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">order_items.item_id → items.id (no FK: snapshot survives deletion)</text>
+<path d="M 220.0 920.0 L 220.0 890.0 L 1040.0 890.0 L 1040.0 385.4 L 970.0 385.4" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 595.0 920.0 L 595.0 890.0 L 1040.0 890.0 L 1040.0 385.4 L 970.0 385.4" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 955.0 920.0 L 955.0 890.0 L 1040.0 890.0 L 1040.0 385.4 L 970.0 385.4" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 1335.0 920.0 L 1335.0 890.0 L 1040.0 890.0 L 1040.0 385.4 L 970.0 385.4" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1030.0" y="880.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="600" fill="#16191D" text-anchor="end" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">user_id (each table)</text>
+<rect x="40.0" y="1180.0" width="1480.0" height="120.0" rx="12" fill="#FCEBEA" stroke="#A8261D" stroke-width="2"/>
+<text x="54.0" y="1211.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#A8261D" text-anchor="start">Deleting a user (POST /auth/confirm-delete/{token})</text>
+<text x="54.0" y="1237.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">PostgreSQL ON DELETE CASCADE removes the user&#x27;s categories, items, orders, order_items, refresh_tokens, activity_logs, audit_log, ai_consents and ai_usage in the same transaction.</text>
+<text x="54.0" y="1257.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">order_number_counters is untouched, so a deleted account&#x27;s order numbers are never reused.</text>
+</svg>

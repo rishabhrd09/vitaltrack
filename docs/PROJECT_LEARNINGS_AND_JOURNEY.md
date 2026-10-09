@@ -1,5 +1,12 @@
 # CareKosh — Project Learnings & Journey
 
+> **AI voice source update — 9 October 2026:** Current AI voice architecture, checked against the 9 October 2026 working tree at `0946eb7` plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. This document’s original proposals/results remain historical; use the maintained guide for current behavior. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+
+
+> 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
+
+> **Status (7 October 2026; re-checked 8 October 2026 against the working tree, `03cfebb` plus uncommitted documentation):** historical narrative (March–June 2026, last re-audited 16 June 2026); kept as evidence. On 8 October only statements about the present and misleading technical explanations were corrected; the history itself was not re-verified. Statements written in the present tense here (for example $0 free-tier hosting, Render services tracking `main`, test counts) describe that period. Later work — backend hardening and the read-only voice assistant on branch `feature/backend-hardening-ai-voice-agent-foundation` (Sept–Oct 2026) — is not covered. Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) and [API traceability](API_TRACEABILITY.md).
+
 > Everything learned during the Railway→Render migration, the offline-first→server-first migration, APK testing, auth hardening, account deletion, the CareKosh rebrand, and the June launch-readiness goals. A durable reference for what went wrong, what we fixed, and why.
 
 The project shipped under the name **VitalTrack** through PR #9, then rebranded to **CareKosh** in PRs #10–#11. References to "VitalTrack" in this document are historical.
@@ -7,6 +14,8 @@ The project shipped under the name **VitalTrack** through PR #9, then rebranded 
 ---
 
 ## Timeline
+
+Incident and setup dates are the team's historical notes, not independently verified event dates. The April entries with PRs below use merge dates read from local Git history on 8 October 2026; those dates do not prove when a service was deployed. Earlier editions used development dates and called the refactor shipped on 6 April, before the recorded merges.
 
 | Date | What happened | PR |
 |---|---|---|
@@ -17,12 +26,12 @@ The project shipped under the name **VitalTrack** through PR #9, then rebranded 
 | Mar 25 | APK round 1 — found auth flow bugs, fixed (10 fixes) | — |
 | Mar 25 | APK round 2 — data loss on reopen, logout hang, PDF bugs | — |
 | Mar 25 | Brevo email wired on Render; strict verification implemented | — |
-| Apr 2 | Staging + production database split via Neon branches | #2 |
+| Apr 5 (merge) | Staging + production database split; current docs describe separate databases on one Neon branch | #2 |
 | Apr 4 | Incident: item quantity reset during concurrent edits (motivated server-first) | — |
-| Apr 6 | Server-first refactor shipped — TanStack Query, OCC, audit log | #4–#8 |
-| Apr 8 | Order mutation hardening + global ID collision fix | #9 |
-| Apr 10 | VitalTrack → CareKosh rebrand (user-visible surfaces) | #10, #11 |
-| Apr 14 | Auth hardening — email required, session revoke, prod config validators | #12 |
+| Apr 7–14 (merges) | Server-first refactor series — TanStack Query, OCC, audit log | #4–#8 |
+| Apr 15 (merge) | Order mutation hardening + global ID collision fix | #9 |
+| Apr 17–18 (merges) | VitalTrack → CareKosh rebrand (user-visible surfaces) | #10, #11 |
+| Apr 18 (merge) | Auth hardening — email required, session revoke, prod config validators | #12 |
 | Apr 19 | Account deletion (Play Store compliance) + Profile screen + swipe-down menu | #13 |
 | Jun 12 | Backend production guard Goals 1-6 — sync removal, deletion POST confirm, reset-token escaping, domain coverage, atomic stock apply, truthful health + secret masking | #37-#42 |
 | Jun 13 | Goal 7 — blocking backend Ruff/pytest/route/coverage gates; mypy/Trivy kept advisory with honest baselines | #43 |
@@ -45,7 +54,7 @@ The project shipped under the name **VitalTrack** through PR #9, then rebranded 
 
 ### Why it was almost zero changes
 
-CareKosh follows the **12-factor app** pattern. All configuration comes from env vars via `pydantic-settings`. The `config.py` validator handles any Postgres URL format. The only non-trivial change was Neon SSL compatibility — `asyncpg` doesn't accept `?sslmode=require` as a URL parameter.
+CareKosh follows the **12-factor app** pattern. All configuration comes from env vars via `pydantic-settings`. The `config.py` validator converts `postgres://` and `postgresql://` URLs to the `postgresql+asyncpg://` form and strips the query string. The only non-trivial change was Neon SSL compatibility. SQLAlchemy's asyncpg dialect passes URL query items such as `?sslmode=require` to `asyncpg.connect()` as keyword arguments, and `connect()` has no `sslmode` keyword. (asyncpg's own DSN parser does accept `sslmode`.)
 
 ### Neon SSL fix pattern (reusable)
 
@@ -64,9 +73,10 @@ _connect_args = (
     else {}
 )
 engine = create_async_engine(..., connect_args=_connect_args)
+# (Current code also passes server_settings={"statement_timeout": "8000"}.)
 ```
 
-Works for any managed Postgres that requires SSL.
+Works for any managed Postgres that requires SSL. asyncpg's `ssl=True` uses a default SSL context that verifies the server certificate and host name, which is stricter than libpq's `sslmode=require`.
 
 ---
 
@@ -94,7 +104,7 @@ npx expo start --localhost --clear
 
 ### Critical Expo Go fix
 
-`expo-updates` installed without an `updates` block in `app.json` caused "unable to download remote update" crashes. Fix: `"updates": { "enabled": false }` in `app.json` for the dev profile.
+`expo-updates` installed without an `updates` block in `app.json` caused "unable to download remote update" crashes. Fix: `"updates": { "enabled": false }` in `app.json`. `app.json` is not per profile, so OTA updates are off in every build. (This was the team's diagnosis; no official Expo source links the error to a missing `updates` block.)
 
 Full walkthrough: [USB_ADB_REVERSE_GUIDE.md](USB_ADB_REVERSE_GUIDE.md).
 
@@ -134,7 +144,7 @@ ROUTE GUARD
 - **Email is now required at registration** — username-only signup removed.
 - `/resend-verification` returns a uniform response regardless of account state (no user enumeration).
 - Password change and password reset revoke **all** refresh tokens.
-- Config validators refuse production startup if `SECRET_KEY` is the placeholder or `FRONTEND_URL` is empty. `CORS_ORIGINS=["*"]` is still accepted today; CORS tightening remains deferred until real browser/admin origins are known.
+- Config validators refuse production startup if `SECRET_KEY` is the placeholder or `FRONTEND_URL` is empty. (On the feature branch the `SECRET_KEY` check covers every environment except development and testing.) `CORS_ORIGINS=["*"]` is still accepted today; CORS tightening remains deferred until real browser/admin origins are known.
 
 ### Key lesson
 
@@ -150,7 +160,7 @@ The backend is the **single source of truth** for auth rules. The frontend follo
 
 **Lesson:** never destroy local data before confirming the server has it.
 
-**Root fix:** the server-first migration (PR #4) eliminated the local-cache-of-domain-data problem entirely. TanStack Query treats the server as truth; there is no local inventory store to accidentally wipe.
+**Root fix:** the server-first refactor series (PRs #4–#8) removed the local copy as the source of truth. TanStack Query treats the server as truth. The phone keeps a read-only query cache (persisted to AsyncStorage, cleared at login and logout); clearing that cache does not delete committed server data.
 
 ### P0 · Auth init clears session on network error
 
@@ -164,15 +174,19 @@ Two caregivers editing the same item silently overwrote each other's updates. Ro
 
 **Fix:** optimistic concurrency — `version` column on items, UPDATE checks `WHERE version = :expected`, returns HTTP 409 with `{server_version, server_quantity}` if stale (PR #4).
 
+**Follow-up (8 October 2026):** the audit found a stale form could carry a newer cache version. The authorized fix captures the version with the form values and verifies it through a rendered component test. This is a useful interview example of why client and server must both follow an optimistic-concurrency protocol. Phone acceptance remains unverified.
+
 ### P1 · Rate limiter behind proxy
 
-**Root cause:** `slowapi` with `get_remote_address` was getting the Render proxy IP, so every user looked the same.
+**Root cause:** initially the limiter keyed on `slowapi`'s `get_remote_address`, which saw the Render proxy's address, so every user looked the same.
 
-**Fix:** proxy-aware IP detection (CF-Connecting-IP, X-Forwarded-For).
+**Fix:** the limiter was later changed to identify clients behind the hosting proxy. How clients are identified is the subject of an open finding tracked privately.
+
+**Current state (8 October 2026):** rate limiting is best effort: five auth routes, counters in memory per worker process, reset on restart; an open finding about how clients are identified is tracked privately.
 
 ### P1 · Logout hangs
 
-**Root cause:** a pre-logout sync took too long with no timeout. (This ship-jettisoned with the sync layer in PR #4.)
+**Root cause:** a pre-logout sync took too long with no timeout. The server-first refactor series (PRs #4–#8) removed that sync layer.
 
 **Lesson:** any pre-action (save before close, sync before logout) needs a deadline via `Promise.race`, and state cleanup belongs in `finally`.
 
@@ -196,7 +210,7 @@ The June production-guard sequence tightened the backend without changing the mo
 | 4. Add domain coverage | Items, orders, and categories gained behavioral tests, with CI file coverage floors for `items.py` and `orders.py`. | Tests should pin the inventory/order contract before correctness logic changes. |
 | 5. Atomic order apply | Applying a received order now claims the order with a guarded DB update and increments item stock/version through SQL updates. | Stock updates must be transaction-shaped; Python read-modify-write is not enough under concurrency. |
 | 6. Truthful health + secret types | `/health` became DB-backed readiness, `/live` became process-only liveness, Render uses `/live`, and simple secrets use `SecretStr`. | Readiness and liveness answer different operational questions; secret values should only be unwrapped at integration boundaries. |
-| 7. Blocking backend gates | Ruff, pytest, exact `/api/v1` route count 39, and item/order coverage gates block CI; mypy and Trivy stay advisory until known baselines are fixed. | CI must describe reality. A red baseline should be isolated and documented, not hidden behind fake green claims. |
+| 7. Blocking backend gates | Ruff, pytest, exact `/api/v1` route count 39 (44 on the current feature branch; `main` still gates 39), and item/order coverage gates block CI; mypy and Trivy stay advisory until known baselines are fixed. | CI must describe reality. A red baseline should be isolated and documented, not hidden behind fake green claims. |
 
 Deferred on purpose: CORS still needs real production browser/admin origins before it can be tightened. Goal 8 locked down the email diagnostic behind authentication, masked raw provider errors, and added backend default-category deletion protection.
 
@@ -207,12 +221,13 @@ Deferred on purpose: CORS still needs real production browser/admin origins befo
 ### Why Brevo's HTTP API instead of SMTP
 
 We initially tried Brevo SMTP on STARTTLS port 587 via `fastapi-mail` +
-`aiosmtplib`. That worked locally but Render's egress was unreliable for
-SMTP — first connection after a cold start regularly stalled past Brevo's
-handshake timeout. Switched to **Brevo's transactional v3 REST API over
+`aiosmtplib`. That worked locally, but on Render the SMTP connection
+regularly stalled past Brevo's handshake timeout. Render documents a likely
+reason: free web services cannot send outbound traffic on SMTP ports 25, 465
+or 587 (since September 2025); paid instances are not blocked. Switched to **Brevo's transactional v3 REST API over
 HTTPS port 443** (`app/utils/email.py` uses `httpx.AsyncClient` to POST
-to `https://api.brevo.com/v3/smtp/email`). HTTPS-443 is always allowed
-by Render's egress and the round-trip is faster than the SMTP handshake.
+to `https://api.brevo.com/v3/smtp/email`). HTTPS on port 443 is not affected
+by that block.
 
 Earlier development notes used Mailtrap's sandbox SMTP path. The current
 `app/utils/email.py` send path is Brevo HTTP only when `MAIL_PASSWORD` is
@@ -236,7 +251,7 @@ when `MAIL_PASSWORD` is configured. The sender display name is hardcoded as
 ### Safety guards in code
 
 - `is_email_configured()` checks `MAIL_PASSWORD` is set before sending.
-- Login verification enforced only if `REQUIRE_EMAIL_VERIFICATION=true` AND email service is configured AND the user actually has an email.
+- Login verification enforced only if `REQUIRE_EMAIL_VERIFICATION=true` AND email service is configured AND the user actually has an email. (On the feature branch the same check also guards every authenticated request and token refresh.)
 - If email isn't configured, registration still works — used for local dev.
 
 See [EMAIL_VERIFICATION_GUIDE.md](EMAIL_VERIFICATION_GUIDE.md) for the full flow.
@@ -248,8 +263,8 @@ See [EMAIL_VERIFICATION_GUIDE.md](EMAIL_VERIFICATION_GUIDE.md) for the full flow
 ### Architecture
 
 - Shared utility at `vitaltrack-mobile/utils/orderPdfExport.ts`.
-- Used from the order-create screen and from `components/orders/OrderCard`.
-- Two formats: compact table, card-with-images.
+- Used from `components/orders/OrderCard`; the order-create screen builds the same PDF with its own inline copy of this code.
+- Two choices: **Table Only** or **With Photos** (table plus a photo reference section).
 - Images read via `readAsStringAsync({ encoding: 'base64' })`, embedded as `data:` URIs in the HTML that is rendered to PDF.
 
 ---
@@ -257,6 +272,8 @@ See [EMAIL_VERIFICATION_GUIDE.md](EMAIL_VERIFICATION_GUIDE.md) for the full flow
 ## Part 7 — Free-tier infrastructure
 
 ### Monthly cost: $0 (so far)
+
+Free-tier figures as recorded in March–June 2026; provider plans change. Since 2 October 2026 Neon's Free plan gives 1 GB per project and 100 CU-hours per project per month.
 
 | Service | Purpose | Free tier |
 |---|---|---|
@@ -278,11 +295,11 @@ Historical migration notes referenced UptimeRobot keep-alive pings, but the curr
 | Decision | Why |
 |---|---|
 | `asyncpg` over `psycopg2` | Native async for FastAPI |
-| SSL via `connect_args`, not URL params | `asyncpg` doesn't accept `?sslmode=require` |
-| **Server-first over offline-first** | Life-critical inventory + concurrent caregivers = merge conflicts with real consequences (PR #4) |
-| **TanStack Query over rolling our own cache** | Query keys, staleness, refetch-on-focus, mutation rollback — all solved problems |
+| SSL via `connect_args`, not URL params | SQLAlchemy's asyncpg dialect passes `?sslmode=require` to `asyncpg.connect()` as an unknown keyword |
+| **Server-first over offline-first** | Avoid a deferred offline edit queue for shared inventory; the refactor spans PRs #4–#8. Server-side concurrency and the known Edit Item gap still matter. |
+| **TanStack Query over rolling our own cache** | Query keys, staleness, refetch-on-focus — all solved problems (mutation rollback is a manual pattern; the app uses no optimistic updates) |
 | **Zustand stays** | 61 lines for UI-only state is correct; no need to yank a dependency |
-| `expo-secure-store` for tokens | Hardware-backed keystore on Android; AsyncStorage is not appropriate for auth material |
+| `expo-secure-store` for tokens | Encrypted with an Android Keystore key (hardware-backed where the device supports it); AsyncStorage is not appropriate for auth material |
 | `useFocusEffect` over `useEffect` on auth screens | Clears errors on every screen focus, not just mount |
 | `isLoggingOut` separate from `isLoading` | Prevents logout from being blocked by other loading states |
 | `REQUIRE_EMAIL_VERIFICATION` default `False` | Safe default — prevents lockout if email isn't configured |

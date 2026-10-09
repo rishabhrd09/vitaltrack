@@ -1,0 +1,2838 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="docs/tools/build_docs.py from docs/API_TRACEABILITY.md">
+<title>CareKosh API traceability: every endpoint from screen to database</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d2328;--muted:#56606b;--card:#ffffff;--border:#d6dbe0;--accent:#0b5a73;
+--accent-bg:#e5f1f5;--code-bg:#f1f3f5;--code-fg:#1d2328;--warn-bg:#fff4d6;--warn-border:#9a6a00;--mark:#fff1a8}
+@media (prefers-color-scheme:dark){:root{--bg:#14181c;--fg:#e8ecef;--muted:#a9b3bc;--card:#1c2228;--border:#36404a;
+--accent:#7cc7df;--accent-bg:#17303a;--code-bg:#0f1316;--code-fg:#e8ecef;--warn-bg:#3a2f12;--warn-border:#d9a93a;--mark:#5b4e10}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+a{color:var(--accent);text-underline-offset:3px}a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:0}.skip:focus{left:12px;top:12px;background:var(--card);padding:8px 12px;z-index:9}
+header.site{border-bottom:1px solid var(--border);background:var(--card)}
+header.site .inner{max-width:1180px;margin:auto;padding:14px 20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;min-width:0}
+header.site .meta{min-width:0;overflow-wrap:anywhere}
+header.site .brand{font-weight:700}
+.layout{max-width:1180px;margin:auto;padding:0 20px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:36px}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:24px 0;font-size:14.5px;line-height:1.45}
+nav.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}nav.toc ul{list-style:none;padding-left:0;margin:0}nav.toc ul ul{padding-left:14px}nav.toc li{margin:5px 0}
+nav.toc a{color:var(--fg);text-decoration:none}nav.toc a:hover{text-decoration:underline}
+main{min-width:0;padding:28px 0 80px;max-width:78ch;overflow-wrap:break-word}
+:not(pre)>code{overflow-wrap:anywhere;word-break:break-word}
+h1{font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.15;margin:.2em 0 .4em}
+h2{font-size:1.6rem;margin-top:2.6rem;padding-top:.6rem;border-top:1px solid var(--border)}
+h3{font-size:1.25rem;margin-top:2rem}h4{font-size:1.05rem;margin-top:1.6rem}
+h2,h3,h4{scroll-margin-top:12px}.anchor{margin-left:.35em;font-size:.8em;text-decoration:none;opacity:.45}
+.anchor:hover,.anchor:focus{opacity:1}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--warn-border);background:var(--warn-bg)}
+blockquote p{margin:.4em 0}
+code{font:0.9em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code-bg);padding:.1em .3em;border-radius:4px}
+.codewrap{position:relative;margin:1.1em 0}
+pre{background:var(--code-bg);color:var(--code-fg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow:auto;line-height:1.5}
+pre code{background:none;padding:0;font-size:.86em}
+button.copy{position:absolute;top:8px;right:8px;font:600 12.5px system-ui,sans-serif;padding:4px 10px;border-radius:6px;
+border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer}
+.tablewrap{overflow-x:auto;margin:1.1em 0;border:1px solid var(--border);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.94em;background:var(--card)}
+th,td{border-bottom:1px solid var(--border);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--accent-bg);position:sticky;top:0}
+figure.diagram{margin:1.6em 0}figure.diagram .scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:#fff}
+figure.diagram img{display:block;width:100%;min-width:680px;height:auto}
+figcaption{font-size:.92em;color:var(--muted);margin-top:.5em}
+.meta{color:var(--muted);font-size:.92em}
+footer{color:var(--muted);font-size:.9em;border-top:1px solid var(--border);margin-top:3rem;padding-top:1rem}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.toc{position:static;max-height:none;border-bottom:1px solid var(--border)}
+main{max-width:none}}
+@media print{header.site,nav.toc,button.copy,.skip,.anchor{display:none!important}body{background:#fff;color:#000;font-size:11.5pt}
+.layout{display:block;max-width:none;padding:0}main{max-width:none;padding:0}a{color:#000}
+pre{white-space:pre-wrap;border:1px solid #999}.tablewrap{overflow:visible;border:none}th{position:static}
+figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{break-after:avoid}pre,figure,tr{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="site"><div class="inner"><span class="brand">CareKosh docs</span>
+<a href="INDEX.html">Documentation home</a>
+<span class="meta">Generated from <code>docs/API_TRACEABILITY.md</code> — edit the Markdown, not this file.</span></div></header>
+<div class="layout">
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#how-the-inventory-was-counted">How the inventory was counted</a></li><li><a href="#summary-matrix">Summary matrix</a></li><li><a href="#what-every-request-has-in-common">What every request has in common</a></li><li><a href="#health-and-root">Health and root</a><ul><li><a href="#get-">GET /</a></li><li><a href="#get-health">GET /health</a></li><li><a href="#get-live">GET /live</a></li></ul></li><li><a href="#authentication-and-account">Authentication and account</a><ul><li><a href="#post-apiv1authregister">POST /api/v1/auth/register</a></li><li><a href="#post-apiv1authlogin">POST /api/v1/auth/login</a></li><li><a href="#post-apiv1authrefresh">POST /api/v1/auth/refresh</a></li><li><a href="#post-apiv1authlogout">POST /api/v1/auth/logout</a></li><li><a href="#get-apiv1authme">GET /api/v1/auth/me</a></li><li><a href="#patch-apiv1authme">PATCH /api/v1/auth/me</a></li><li><a href="#delete-apiv1authme">DELETE /api/v1/auth/me</a></li><li><a href="#post-apiv1authcancel-delete">POST /api/v1/auth/cancel-delete</a></li><li><a href="#get-apiv1authconfirm-deletetoken">GET /api/v1/auth/confirm-delete/{token}</a></li><li><a href="#post-apiv1authconfirm-deletetoken">POST /api/v1/auth/confirm-delete/{token}</a></li><li><a href="#post-apiv1authchange-password">POST /api/v1/auth/change-password</a></li><li><a href="#post-apiv1authforgot-password">POST /api/v1/auth/forgot-password</a></li><li><a href="#get-apiv1authreset-password">GET /api/v1/auth/reset-password</a></li><li><a href="#post-apiv1authreset-password">POST /api/v1/auth/reset-password</a></li><li><a href="#get-apiv1authverify-email">GET /api/v1/auth/verify-email</a></li><li><a href="#get-apiv1authverify-emailtoken">GET /api/v1/auth/verify-email/{token}</a></li><li><a href="#post-apiv1authresend-verification">POST /api/v1/auth/resend-verification</a></li><li><a href="#get-apiv1authemail-service-status">GET /api/v1/auth/email-service-status</a></li></ul></li><li><a href="#categories">Categories</a><ul><li><a href="#get-apiv1categories">GET /api/v1/categories</a></li><li><a href="#post-apiv1categories">POST /api/v1/categories</a></li><li><a href="#get-apiv1categorieswith-counts">GET /api/v1/categories/with-counts</a></li><li><a href="#get-apiv1categoriescategory_id">GET /api/v1/categories/{category_id}</a></li><li><a href="#put-apiv1categoriescategory_id">PUT /api/v1/categories/{category_id}</a></li><li><a href="#delete-apiv1categoriescategory_id">DELETE /api/v1/categories/{category_id}</a></li></ul></li><li><a href="#items">Items</a><ul><li><a href="#get-apiv1items">GET /api/v1/items</a></li><li><a href="#post-apiv1items">POST /api/v1/items</a></li><li><a href="#get-apiv1itemsstats">GET /api/v1/items/stats</a></li><li><a href="#get-apiv1itemsneeds-attention">GET /api/v1/items/needs-attention</a></li><li><a href="#get-apiv1itemsitem_id">GET /api/v1/items/{item_id}</a></li><li><a href="#put-apiv1itemsitem_id">PUT /api/v1/items/{item_id}</a></li><li><a href="#patch-apiv1itemsitem_idstock">PATCH /api/v1/items/{item_id}/stock</a></li><li><a href="#delete-apiv1itemsitem_id">DELETE /api/v1/items/{item_id}</a></li></ul></li><li><a href="#orders">Orders</a><ul><li><a href="#get-apiv1orders">GET /api/v1/orders</a></li><li><a href="#post-apiv1orders">POST /api/v1/orders</a></li><li><a href="#get-apiv1ordersorder_id">GET /api/v1/orders/{order_id}</a></li><li><a href="#patch-apiv1ordersorder_idstatus">PATCH /api/v1/orders/{order_id}/status</a></li><li><a href="#post-apiv1ordersorder_idapply">POST /api/v1/orders/{order_id}/apply</a></li><li><a href="#delete-apiv1ordersorder_id">DELETE /api/v1/orders/{order_id}</a></li></ul></li><li><a href="#activity-feed">Activity feed</a><ul><li><a href="#get-apiv1activities">GET /api/v1/activities</a></li></ul></li><li><a href="#assistant-ai-routes">Assistant (AI) routes</a><ul><li><a href="#get-apiv1aicapabilities">GET /api/v1/ai/capabilities</a></li><li><a href="#put-apiv1aiconsent">PUT /api/v1/ai/consent</a></li><li><a href="#post-apiv1aiinterpret">POST /api/v1/ai/interpret</a></li><li><a href="#post-apiv1aitranscribe">POST /api/v1/ai/transcribe</a></li><li><a href="#post-apiv1aispeak">POST /api/v1/ai/speak</a></li></ul></li><li><a href="#local-inventorydraft-feature-follow-up--8-october-2026">Local inventory/draft feature follow-up — 8 October 2026</a></li><li><a href="#worked-examples-with-database-state">Worked examples with database state</a><ul><li><a href="#1-register-log-in-refresh-log-out">1. Register, log in, refresh, log out</a></li><li><a href="#2-email-verification-and-password-recovery">2. Email verification and password recovery</a></li><li><a href="#3-profile-operations">3. Profile operations</a></li><li><a href="#4-categories-items-explicit-null-and-versions">4. Categories, items, explicit null and versions</a></li><li><a href="#5-orders-from-creation-to-stock">5. Orders from creation to stock</a></li><li><a href="#6-account-deletion">6. Account deletion</a></li><li><a href="#7-voice-and-typed-questions">7. Voice and typed questions</a></li></ul></li><li><a href="#what-happens-when-things-go-wrong">What happens when things go wrong</a></li><li><a href="#known-application-issues-found-while-tracing">Known application issues found while tracing</a></li><li><a href="#coverage-gaps-worth-knowing">Coverage gaps worth knowing</a></li></ul></details></nav>
+<main id="content">
+<h1 id="carekosh-api-traceability-every-endpoint-from-screen-to-database">CareKosh API traceability: every endpoint from screen to database</h1>
+<blockquote>
+<p><strong>AI voice source update — 9 October 2026:</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p>
+<p>8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. <a href="BACKEND_HARDENING.md#safety-follow-up-8-october-2026">Current changes and remaining scope</a>.</p>
+<p><strong>Status (7 October 2026).</strong> Written from the source at branch <code>feature/backend-hardening-ai-voice-agent-foundation</code>, commit <code>03cfebb</code> (not merged; <code>main</code> is <code>835fad3</code>). Every endpoint below was read in the code. Behaviour marked <em>reproduced</em> was replayed on 7 October 2026, and again on 8 October 2026, with <a href="tools/api_walkthrough.py"><code>docs/tools/api_walkthrough.py</code></a> against a disposable local PostgreSQL 16 database, using synthetic data (7 October transcript (local review reference; not published)). Nothing here was observed on staging, production or a phone. Start with the <a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html">Complete developer guide</a> if you are new; come back here when you need the exact path of one request.</p>
+</blockquote>
+<p><strong>Independent re-check (8 October 2026):</strong> every section was re-read against the working tree (<code>03cfebb</code> plus uncommitted documentation and two unused mobile imports removed). On 8 October the backend suite (242 passed), the 89-step walkthrough (0 differences), the route inventory (47/47) and the 121 mobile tests were re-run against a disposable local PostgreSQL 16 database, and targeted probes reproduced A-24 to A-27. No live service was contacted. Earlier notes: <a href="../carekosh_system_design/TECHNICAL_REVIEW.md#final-recheck-of-the-eight-recommended-guides">extended technical review</a>.</p>
+<p><strong>Evidence labels used below</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VERIFIED IN CURRENT CODE</td>
+<td>Read in the source at <code>03cfebb</code>.</td>
+</tr>
+<tr>
+<td>VERIFIED BY REPRODUCED TEST</td>
+<td>Replayed on 7 Oct 2026 and again on 8 Oct 2026 (backend test suite: 242 passed; API walkthrough: 89/89 steps as expected).</td>
+</tr>
+<tr>
+<td>HISTORICAL EVIDENCE</td>
+<td>From a dated document; not re-run.</td>
+</tr>
+<tr>
+<td>PLANNED / RECOMMENDED</td>
+<td>Not implemented.</td>
+</tr>
+<tr>
+<td>NOT VERIFIED</td>
+<td>Live or device behaviour this audit could not observe.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="contents">Contents<a class="anchor" href="#contents" aria-label="Link to this section">#</a></h2>
+<ol>
+<li><a href="#how-the-inventory-was-counted">How the inventory was counted</a></li>
+<li><a href="#summary-matrix">Summary matrix</a></li>
+<li><a href="#what-every-request-has-in-common">What every request has in common</a></li>
+<li><a href="#health-and-root">Health and root</a></li>
+<li><a href="#authentication-and-account">Authentication and account</a></li>
+<li><a href="#categories">Categories</a></li>
+<li><a href="#items">Items</a></li>
+<li><a href="#orders">Orders</a></li>
+<li><a href="#activity-feed">Activity feed</a></li>
+<li><a href="#assistant-ai-routes">Assistant (AI) routes</a></li>
+<li><a href="#worked-examples-with-database-state">Worked examples with database state</a></li>
+<li><a href="#what-happens-when-things-go-wrong">What happens when things go wrong</a></li>
+<li><a href="#known-application-issues-found-while-tracing">Known application issues found while tracing</a></li>
+<li><a href="#coverage-gaps-worth-knowing">Coverage gaps worth knowing</a></li>
+</ol>
+<h2 id="how-the-inventory-was-counted">How the inventory was counted<a class="anchor" href="#how-the-inventory-was-counted" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>Source of the list:</strong> the routes registered on the FastAPI application object (<code>app.routes</code>), not the documentation and not the OpenAPI page. <a href="tools/route_inventory.py"><code>docs/tools/route_inventory.py</code></a> prints them and checks that each has a section in this file.</li>
+<li><strong>Result:</strong> <strong>47 operations</strong> = <strong>44 under <code>/api/v1</code></strong> + <code>GET /</code>, <code>GET /health</code>, <code>GET /live</code>. Every route object has exactly one method, so route objects and operations are the same number.</li>
+<li>Under <code>/api/v1</code>: auth 18, categories 6, items 8, orders 6, activities 1, ai 5.</li>
+<li>Three auth routes are hidden from the OpenAPI schema (<code>include_in_schema=False</code>): <code>GET</code> and <code>POST /api/v1/auth/confirm-delete/{token}</code> and <code>GET /api/v1/auth/reset-password</code>. They are still real, public routes.</li>
+<li><code>/docs</code>, <code>/docs/oauth2-redirect</code>, <code>/redoc</code> and <code>/openapi.json</code> exist only when <code>DEBUG=true</code> (local development) and are not counted.</li>
+<li><strong>Cross-checks:</strong> CI runs <code>scripts/check_api_routes.py --expected 44</code> (route objects whose path starts with <code>/api/v1</code>), and <code>tests/test_auth.py::TestHealthDiagnostics::test_api_v1_route_count_remains_44</code> asserts the same. Both passed on 7 Oct 2026 and again on 8 Oct 2026. A route count proves that routes are registered; it says nothing about whether they behave correctly.</li>
+</ul>
+<h2 id="summary-matrix">Summary matrix<a class="anchor" href="#summary-matrix" aria-label="Link to this section">#</a></h2>
+<p>"Writes" lists tables changed on success. "Tests" summarises the test map (local review reference; not published): <strong>Yes</strong> = the main behaviour is asserted, <strong>Partial</strong> = important branches untested, <strong>None</strong> = no test sends the request.</p>
+<p>"Mobile caller": 27 operations are reachable from the app (reset-password only through a deep link; <code>interpret</code> only after opt-in). 13 have a service function but no reachable caller ("none (service function only)" and similar). 7 have no mobile code at all: <code>/</code>, <code>/live</code>, <code>email-service-status</code> and the four browser pages opened from emails.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Operation</th>
+<th>Auth</th>
+<th>Mobile caller</th>
+<th>Writes</th>
+<th>Tests</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>GET /</code></td>
+<td>none</td>
+<td>none</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>GET /health</code></td>
+<td>none</td>
+<td>Builder preflight before bulk operations; Login cold-start auto-retry</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>GET /live</code></td>
+<td>none</td>
+<td>none (health check path in <code>render.yaml</code>)</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>POST /api/v1/auth/register</code></td>
+<td>none</td>
+<td>Register screen</td>
+<td>users, refresh_tokens, activity_logs</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>POST /api/v1/auth/login</code></td>
+<td>none</td>
+<td>Login screen</td>
+<td>refresh_tokens, users.last_login, activity_logs</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>POST /api/v1/auth/refresh</code></td>
+<td>refresh token in body</td>
+<td>services/api.ts (automatic)</td>
+<td>refresh_tokens</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>POST /api/v1/auth/logout</code></td>
+<td>access + refresh</td>
+<td>Profile menu → Logout</td>
+<td>refresh_tokens, activity_logs</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>GET /api/v1/auth/me</code></td>
+<td>access</td>
+<td>app start (session restore); deletion polling</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>PATCH /api/v1/auth/me</code></td>
+<td>access</td>
+<td>Profile → Save (name, username)</td>
+<td>users</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>DELETE /api/v1/auth/me</code></td>
+<td>access</td>
+<td>Profile → Delete account</td>
+<td>users (deletion token)</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>POST /api/v1/auth/cancel-delete</code></td>
+<td>access</td>
+<td>none (service function only)</td>
+<td>users</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>GET /api/v1/auth/confirm-delete/{token}</code></td>
+<td>link token</td>
+<td>none (browser page from the email link)</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>POST /api/v1/auth/confirm-delete/{token}</code></td>
+<td>link token</td>
+<td>none (browser form from the email link)</td>
+<td>deletes the user and every owned row</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>POST /api/v1/auth/change-password</code></td>
+<td>access</td>
+<td>none (service function only)</td>
+<td>users, refresh_tokens</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>POST /api/v1/auth/forgot-password</code></td>
+<td>none</td>
+<td>Forgot password screen</td>
+<td>users (reset token)</td>
+<td><strong>None</strong></td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>GET /api/v1/auth/reset-password</code></td>
+<td>link token (query)</td>
+<td>none (browser page from the email link)</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>17</td>
+<td><code>POST /api/v1/auth/reset-password</code></td>
+<td>token in body</td>
+<td>browser form; app screen only via deep link</td>
+<td>users, refresh_tokens</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>18</td>
+<td><code>GET /api/v1/auth/verify-email</code></td>
+<td>link token (query)</td>
+<td>none (browser page from the email link)</td>
+<td>users</td>
+<td><strong>None</strong></td>
+</tr>
+<tr>
+<td>19</td>
+<td><code>GET /api/v1/auth/verify-email/{token}</code></td>
+<td>link token</td>
+<td>none (service function only)</td>
+<td>users</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>20</td>
+<td><code>POST /api/v1/auth/resend-verification</code></td>
+<td>none</td>
+<td>Verify-email-pending screen</td>
+<td>users (new token)</td>
+<td><strong>None</strong></td>
+</tr>
+<tr>
+<td>21</td>
+<td><code>GET /api/v1/auth/email-service-status</code></td>
+<td>access</td>
+<td>none</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>22</td>
+<td><code>GET /api/v1/categories</code></td>
+<td>access</td>
+<td>Inventory, item form, Builder, Search, export</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>23</td>
+<td><code>POST /api/v1/categories</code></td>
+<td>access</td>
+<td>Builder → Add New Category; seed defaults</td>
+<td>categories, activity_logs</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>24</td>
+<td><code>GET /api/v1/categories/with-counts</code></td>
+<td>access</td>
+<td>none (service function only)</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>25</td>
+<td><code>GET /api/v1/categories/{category_id}</code></td>
+<td>access + owner</td>
+<td>none (service function only)</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>26</td>
+<td><code>PUT /api/v1/categories/{category_id}</code></td>
+<td>access + owner</td>
+<td>none (no rename UI)</td>
+<td>categories</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>27</td>
+<td><code>DELETE /api/v1/categories/{category_id}</code></td>
+<td>access + owner</td>
+<td>Builder (empty categories only); replace-all</td>
+<td>categories, items (cascade), activity_logs, audit_log</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>28</td>
+<td><code>GET /api/v1/items</code></td>
+<td>access</td>
+<td>Dashboard, Inventory, forms, Search, export, assistant</td>
+<td>–</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>29</td>
+<td><code>POST /api/v1/items</code></td>
+<td>access + owned category</td>
+<td>Item form (new), Builder suggestions, seed</td>
+<td>items, activity_logs, audit_log</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>30</td>
+<td><code>GET /api/v1/items/stats</code></td>
+<td>access</td>
+<td>none (dashboard counts on the phone)</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>31</td>
+<td><code>GET /api/v1/items/needs-attention</code></td>
+<td>access</td>
+<td>none (service function only)</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>32</td>
+<td><code>GET /api/v1/items/{item_id}</code></td>
+<td>access + owner</td>
+<td>none (item form reads the list cache)</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>33</td>
+<td><code>PUT /api/v1/items/{item_id}</code></td>
+<td>access + owner</td>
+<td>Item form Save; Builder critical star</td>
+<td>items, activity_logs, audit_log</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>34</td>
+<td><code>PATCH /api/v1/items/{item_id}/stock</code></td>
+<td>access + owner</td>
+<td>none (no stock +/- UI)</td>
+<td>items, activity_logs, audit_log</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>35</td>
+<td><code>DELETE /api/v1/items/{item_id}</code></td>
+<td>access + owner</td>
+<td>Item form Delete; Builder; start fresh; replace-all</td>
+<td>items, activity_logs, audit_log</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>36</td>
+<td><code>GET /api/v1/orders</code></td>
+<td>access</td>
+<td>Orders tab, dashboard</td>
+<td>–</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>37</td>
+<td><code>POST /api/v1/orders</code></td>
+<td>access + owned items</td>
+<td>Create order screen</td>
+<td>orders, order_items, order_number_counters, activity_logs</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>38</td>
+<td><code>GET /api/v1/orders/{order_id}</code></td>
+<td>access + owner</td>
+<td>none (service function only)</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>39</td>
+<td><code>PATCH /api/v1/orders/{order_id}/status</code></td>
+<td>access + owner</td>
+<td>Order card: pending → received only</td>
+<td>orders, activity_logs</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>40</td>
+<td><code>POST /api/v1/orders/{order_id}/apply</code></td>
+<td>access + owner</td>
+<td>Order card "Update Stock" (received orders)</td>
+<td>orders, items, audit_log, activity_logs</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>41</td>
+<td><code>DELETE /api/v1/orders/{order_id}</code></td>
+<td>access + owner</td>
+<td>Order card "Remove" (shown for every status)</td>
+<td>orders, order_items (cascade), activity_logs, audit_log</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>42</td>
+<td><code>GET /api/v1/activities</code></td>
+<td>access</td>
+<td>Dashboard Recent Activity (limit 20)</td>
+<td>–</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>43</td>
+<td><code>GET /api/v1/ai/capabilities</code></td>
+<td>access</td>
+<td>assistant dock on every tab switch; Voice setup</td>
+<td>–</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>44</td>
+<td><code>PUT /api/v1/ai/consent</code></td>
+<td>access</td>
+<td>Voice setup → Enable Groq / Withdraw</td>
+<td>ai_consents</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>45</td>
+<td><code>POST /api/v1/ai/interpret</code></td>
+<td>access + consent</td>
+<td>assistant Send (unfamiliar wording)</td>
+<td>ai_usage</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>46</td>
+<td><code>POST /api/v1/ai/transcribe</code></td>
+<td>access + consent</td>
+<td>separately consented Groq online listening</td>
+<td>ai_usage</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>47</td>
+<td><code>POST /api/v1/ai/speak</code></td>
+<td>access + consent</td>
+<td>none in this build (cloud speech off)</td>
+<td>ai_usage</td>
+<td>Partial</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="what-every-request-has-in-common">What every request has in common<a class="anchor" href="#what-every-request-has-in-common" aria-label="Link to this section">#</a></h2>
+<p>These rules apply to every endpoint, so the sections below do not repeat them.</p>
+<p><strong>The trip through the server</strong> (VERIFIED IN CURRENT CODE; see <a href="diagrams/request-lifecycle.svg">request-lifecycle.svg</a>):</p>
+<ol>
+<li>Starlette's error middleware, then <code>AIBodyLimit</code> (<a href="../vitaltrack-backend/app/services/ai_body_limit.py">app/services/ai_body_limit.py</a>) reads the whole body first: at most 2,000,000 bytes on normal routes (413 "Request is too large."), 12,000 bytes on <code>/api/v1/ai/*</code> JSON routes and 900,000 bytes on <code>/ai/transcribe</code>. <code>/api/v1/ai/*</code> requests without a non-empty <code>Bearer</code> header get 401 before any body is read (except OPTIONS preflight); AI bodies must finish within 10 s (408). These early middleware replies bypass inner security/request-ID/CORS middleware.</li>
+<li>Security headers (<code>X-Content-Type-Options</code>, <code>X-Frame-Options</code>, <code>X-XSS-Protection</code>, <code>Referrer-Policy</code>, <code>Cache-Control: no-store</code>, and HSTS only when <code>ENVIRONMENT=production</code>), then <code>X-Request-ID</code> (echoed or generated), then CORS (<code>app/main.py:111-158</code>).</li>
+<li>FastAPI matches the route and parses the JSON body. Malformed JSON → 422 <code>json_invalid</code> before any dependency runs: no token check, no SQL. Next the dependencies run: <code>get_db</code> creates an <code>AsyncSession</code> (connection acquired on first SQL), and <code>get_current_user</code> checks the bearer token. A bad token → 401 with no SQL; a valid one costs one <code>SELECT</code> on <code>users</code>. Only then are path, query and body fields validated, so a schema error → 422 after that <code>SELECT</code>, raised once <code>get_db</code> has closed normally (reproduced on 8 Oct 2026). On the five rate-limited routes the limit is checked inside the endpoint call, after validation. Protected business dependencies share the session; AI authentication and quotas use separate short sessions.</li>
+<li>The handler runs. Most write handlers call <code>await db.commit()</code> themselves. FastAPI serialises the response model after the handler returns; with pinned FastAPI <strong>0.115.6</strong>, the yield dependency then commits any pending transaction and closes before sending. <code>get_db</code> rolls back the <strong>current uncommitted transaction</strong> on exceptions, including <code>HTTPException</code>. An earlier commit survives a later refresh, serialisation or transport failure; one session is not necessarily one transaction per request (SQL after a commit starts a new transaction). See <a href="https://fastapi.tiangolo.com/advanced/advanced-dependencies/#dependencies-with-yield-httpexception-except-and-background-tasks">FastAPI: dependencies with <code>yield</code> and when they exit</a>.</li>
+<li>The response model is serialised with camelCase aliases (for example <code>minimumStock</code>, <code>isActive</code>). Auth token fields stay snake_case (<code>access_token</code>).</li>
+</ol>
+<p><strong>Authentication on protected routes</strong> (<code>get_current_user</code>): no bearer → 401 <code>Not authenticated</code>; bad, expired or refresh-type token → 401 <code>Invalid or expired token</code>; user missing or token <code>session_version</code> ≠ the user's current value → 401 <code>User not found</code>; disabled account → 403; email not verified while <code>REQUIRE_EMAIL_VERIFICATION=true</code> <strong>and</strong> email sending is configured → 403 <code>EMAIL_NOT_VERIFIED</code>.</p>
+<p><strong>Ownership:</strong> every inventory query includes <code>user_id = current_user.id</code>. Another user's id therefore returns 404, never 403, so the API does not reveal that the row exists (reproduced).</p>
+<p><strong>Error bodies:</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Status</th>
+<th>Body</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Validation</td>
+<td>422</td>
+<td><code>{"error":"Validation Error","message":"Request validation failed","details":[{"field":"body.name","message":"…","code":"string_too_short"}],"timestamp":"…"}</code></td>
+</tr>
+<tr>
+<td><code>HTTPException</code> from a handler</td>
+<td>400/401/403/404/409/503</td>
+<td><code>{"detail":"…"}</code></td>
+</tr>
+<tr>
+<td>Item version conflict</td>
+<td>409</td>
+<td><code>{"error":"Version conflict","message":"…","server_version":3,"server_quantity":40}</code></td>
+</tr>
+<tr>
+<td>Database constraint (<code>IntegrityError</code>) not handled by the route</td>
+<td>409</td>
+<td><code>{"detail":"A conflict occurred. Please try again.","timestamp":"…"}</code></td>
+</tr>
+<tr>
+<td>Rate limit</td>
+<td>429</td>
+<td>for example <code>{"error":"Rate limit exceeded: 5 per 1 minute"}</code> (slowapi's handler; no <code>detail</code> key, no <code>Retry-After</code> header)</td>
+</tr>
+<tr>
+<td>Anything unexpected</td>
+<td>500</td>
+<td><code>{"detail":"An unexpected error occurred. Please try again.","timestamp":"…"}</code> — reproduced: these 500 responses carry <strong>no</strong> <code>X-Request-ID</code>, security headers or <code>Cache-Control</code>, because the handler runs in Starlette's outermost error middleware.</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Rate limits</strong> (slowapi, <code>app/utils/rate_limiter.py</code>): register 3/hour, login 5/minute, resend-verification 3/hour, forgot-password 3/hour, reset-password (POST) 5/hour. These are the only slowapi-decorated routes; AI routes have separate database-backed budgets and concurrency limits described below. Rate limiting is best effort: five auth routes, counters in memory per worker process (two workers per production instance), reset on restart; an open finding about how clients are identified is tracked privately. The limiter is disabled in the test suite, so no automated test covers it.</p>
+<p><strong>Mobile client</strong> (<code>vitaltrack-mobile/services/api.ts</code>): base <code>EXPO_PUBLIC_API_URL</code> (fallback <code>http://localhost:8000</code>) + <code>/api/v1</code>. Ordinary requests have one <strong>90 s overall deadline</strong>, including response parsing and a refresh/retry; AI calls keep their shorter 50 s deadline. A 401 shares one 30 s refresh and retries once. Token writes are serialized: a late refresh cannot restore a logged-out session or erase a newer login. Logout clears local credentials first and revokes captured credentials best effort with a 30 s deadline. Error bodies become user-facing messages. Writes are never queued offline. Successful writes, uncertain network/gateway failures and 409 conflicts invalidate the relevant queries so active views refetch.</p>
+<h2 id="health-and-root">Health and root<a class="anchor" href="#health-and-root" aria-label="Link to this section">#</a></h2>
+<h3 id="get-"><code>GET /</code><a class="anchor" href="#get-" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Service information: name, version, links to <code>/health</code>, <code>/live</code>, <code>/api/v1</code>, and the CORS mode.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>No mobile caller found (searched <code>services/</code> for <code>'/'</code> requests).</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>None.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>root()</code> — <code>app/main.py:311-326</code>. No database access.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>{"name","version","docs","health","live","api","cors_mode"}</code>. <code>docs</code> is null unless <code>DEBUG=true</code>.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td><code>test_auth.py::TestHealthDiagnostics::test_root_endpoint</code>.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-health"><code>GET /health</code><a class="anchor" href="#get-health" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Readiness: is the process up <strong>and</strong> can it reach PostgreSQL?</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Raw <code>fetch</code> without auth: <code>preflightServerCheck()</code> (<code>services/api.ts:23-42</code>, 5 s) before the Builder's seed, replace-all and start-fresh operations (<code>app/builder.tsx:132-145</code>); and the Login screen's cold-start auto-retry, which polls <code>/health</code> every 5 s up to 12 times after a connection failure and then retries the login (<code>app/(auth)/login.tsx:126-197</code>). Also Docker Compose health checks (local) and external monitors if configured (NOT VERIFIED). The app treats a 503 (database down) as "server unreachable".</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>health_check()</code> — <code>app/main.py:263-291</code>; <code>check_database_readiness()</code> runs <code>SELECT 1</code> through <code>get_db_context()</code> with a 2 s <code>asyncio.wait_for</code>.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>One <code>SELECT 1</code>; no writes.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>{"status":"healthy","database":"connected","environment",…}</code> or <strong>503</strong> <code>{"status":"unhealthy","database":"unavailable"}</code>. <code>version</code> is the <code>APP_VERSION</code> setting (default 1.0.0; nothing sets it from git): it does <strong>not</strong> identify the deployed commit.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>200 with a real probe; 503 only with the readiness function monkeypatched (the real timeout path is untested).</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-live"><code>GET /live</code><a class="anchor" href="#get-live" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Liveness: the process answers. Never touches the database.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Render health check (<code>render.yaml</code> <code>healthCheckPath: /live</code>) and the image's Docker <code>HEALTHCHECK</code> (Compose replaces it with a <code>/health</code> check; Render's documentation does not say whether it runs Docker health checks). No mobile caller.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>liveness_check()</code> — <code>app/main.py:293-309</code>.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 with <code>"database":"not_checked"</code>.</td>
+</tr>
+<tr>
+<td>Why it matters</td>
+<td>The declared Render health check uses <code>/live</code>, so a database outage alone does not fail that probe. Other platform failures can still restart or remove an instance; live health-check settings are NOT VERIFIED. A green <code>/live</code> says nothing about the database or the commit.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td><code>test_live_endpoint_returns_200_without_database_probe</code>; <code>render.yaml</code> text check.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="authentication-and-account">Authentication and account<a class="anchor" href="#authentication-and-account" aria-label="Link to this section">#</a></h2>
+<p>Sequence diagram: <a href="diagrams/auth-session.svg">auth-session.svg</a>. Tokens: HS256 JWTs signed with <code>SECRET_KEY</code>. Access token: 30 minutes, claims <code>sub</code>, <code>exp</code>, <code>iat</code>, <code>type=access</code>, <code>session_version</code>. Refresh token: 30 days, plus <code>jti</code>, stored as a row in <code>refresh_tokens</code> (<code>app/core/security.py:63-159</code>).</p>
+<h3 id="post-apiv1authregister"><code>POST /api/v1/auth/register</code><a class="anchor" href="#post-apiv1authregister" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Create an account and return a token pair.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Register screen <code>app/(auth)/register.tsx</code> → <code>useAuthStore.register</code> → <code>authService.register</code> (<code>services/auth.ts:14</code>). The app does not keep the user signed in after registering; it shows the verify-email screen.</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>None. Rate limit 3/hour (best effort).</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>UserRegister</code> (<code>app/schemas/user.py:16-64</code>): <code>email</code> <strong>required</strong>; <code>username</code> optional (3–50 characters of <code>[a-z0-9_]</code>; it must already be lower case, so upper case → 422); <code>password</code> 8–128 with an upper-case letter, a lower-case letter and a digit; <code>name</code> 1–255 (tags and <code>&lt;&gt;'";</code> removed after the length check, so a name of only spaces or tags is stored empty, as in A-24); <code>phone</code> ≤ 50. Example: <code>{"name":"Asha Example","email":"asha.example@example.com","username":"asha_demo","password":"Synthetic1"}</code></td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>register()</code> — <code>app/api/v1/auth.py:89-202</code>. Hashes the password with Argon2 in a worker thread (<code>anyio.to_thread</code>) so the event loop is not blocked.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>Reads <code>users</code> (email, then username). Writes <code>users</code>, <code>refresh_tokens</code> (jti, device name from User-Agent, client host), <code>activity_logs</code> (<code>USER_REGISTER</code>).</td>
+</tr>
+<tr>
+<td>Transaction</td>
+<td>One commit (<code>auth.py:183</code>). The verification email is sent afterwards as a background task, only when <code>MAIL_PASSWORD</code> is set; a failed send does not undo the account.</td>
+</tr>
+<tr>
+<td>Concurrency</td>
+<td>Duplicate checks are SELECTs, so two simultaneous registrations with the same email both pass the check; the unique index then rejects the second, which surfaces as <strong>409</strong> "A conflict occurred" (not the 400 a sequential duplicate gets). Untested.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>201 <code>AuthResponse</code> <code>{access_token, refresh_token, token_type, expires_in: 1800, user:{…camelCase}}</code>. 400 "Email already registered" / "Username already taken"; 422 validation; 429 rate limit.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>Many (<code>TestRegistration*</code>, <code>TestPasswordValidation</code>); concurrent duplicates and the email enqueue are untested.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced (201, duplicate 400, weak password 422).</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1authlogin"><code>POST /api/v1/auth/login</code><a class="anchor" href="#post-apiv1authlogin" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Exchange email-or-username + password for a token pair.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Login screen <code>app/(auth)/login.tsx</code> → <code>useAuthStore.login</code> → <code>authService.login</code> (<code>services/auth.ts:23</code>). Tokens are saved in <code>expo-secure-store</code>.</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>None. Rate limit 5/minute (best effort).</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>UserLogin</code>: <code>identifier</code> (lowercased; contains <code>@</code> → email lookup, otherwise username), <code>password</code>.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>login()</code> — <code>auth.py:208-310</code>. Locks the user row (<code>SELECT … FOR UPDATE</code>) so login cannot interleave with a password change; verifies the password in a worker thread.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>Writes <code>refresh_tokens</code> (new row), <code>users.last_login</code>, <code>activity_logs</code> (<code>USER_LOGIN</code>, details include the client address seen by the server).</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>AuthResponse</code>. 401 "Incorrect email/username or password" (same message for unknown user and wrong password); 403 "Account is disabled"; 403 <code>EMAIL_NOT_VERIFIED</code> (only when both <code>REQUIRE_EMAIL_VERIFICATION</code> and <code>MAIL_PASSWORD</code> are set — the app matches this exact string). Unknown identifiers skip the password hash, so response time can differ between "no such user" and "wrong password" (not measured).</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>Login by username/email, case-insensitivity, 401s. Untested: the 403 branches, the rate limit, the activity row.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced (200, 401, 403 <code>EMAIL_NOT_VERIFIED</code>).</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1authrefresh"><code>POST /api/v1/auth/refresh</code><a class="anchor" href="#post-apiv1authrefresh" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Rotate tokens: spend one refresh token, receive a new pair.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><code>services/api.ts:109-151</code> automatically after a 401, single-flight (one refresh shared by every waiting request, 30 s timeout). Not called by screens.</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>The refresh token in the body (<code>TokenRefresh {refresh_token}</code>). No rate limit.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>refresh_token()</code> — <code>auth.py:738-812</code>. Decodes the JWT (must be <code>type=refresh</code> with a <code>jti</code>), locks the user row, checks <code>is_active</code>, <code>session_version</code> and the verification policy, then <strong>claims</strong> the stored token with one conditional <code>UPDATE refresh_tokens SET is_revoked=true WHERE jti, user_id, NOT is_revoked, expires_at &gt; now() RETURNING id</code>.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td><code>refresh_tokens</code>: old row revoked, new row inserted.</td>
+</tr>
+<tr>
+<td>Concurrency</td>
+<td>Two simultaneous refreshes with the same token: exactly one wins (reproduced: one 200, one 401). A reused (already rotated) token gets 401, but the newer token family is <strong>not</strong> revoked: there is no theft detection.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>AuthResponse</code>; 401 "Invalid or expired refresh token"; 403 <code>EMAIL_NOT_VERIFIED</code>.</td>
+</tr>
+<tr>
+<td>Mobile effect</td>
+<td>New tokens saved; the original request is retried once. 401/403 from refresh → stored session cleared → login screen. Timeout or 5xx → tokens kept, the request fails with a connectivity message.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>Rotation, single use, concurrent refresh (ungated), after logout and password change.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1authlogout"><code>POST /api/v1/auth/logout</code><a class="anchor" href="#post-apiv1authlogout" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Revoke the refresh token supplied in the body and record a logout.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Profile menu → Log out → <code>useAuthStore.logout</code> → <code>authService.logout</code>. The local user, credentials and query cache are cleared without waiting for the server. Login/registration refuse while local cleanup runs. Captured credentials are revoked in the background, with a separate 30 s deadline; if necessary they are rotated and the rotated refresh token is revoked without persisting it. A late ordinary refresh also retires an abandoned pair. Server revocation is best effort, not a guarantee when offline.</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>Valid <strong>access</strong> token (<code>CurrentUser</code>) plus <code>{refresh_token}</code> in the body.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>logout()</code> — <code>auth.py:818-859</code>.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>Marks the matching <code>refresh_tokens</code> row revoked (only if it belongs to the caller); writes <code>activity_logs</code> (<code>USER_LOGOUT</code>). An unknown or foreign refresh token is ignored silently (still 200).</td>
+</tr>
+<tr>
+<td>Limitation</td>
+<td>The <strong>access token keeps working until it expires</strong> (up to 30 min): logout does not change <code>session_version</code> and there is no deny-list. Reproduced on 7 Oct 2026. Password change or reset does invalidate access tokens.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>{"message":"Successfully logged out","success":true}</code>; 401 without a valid access token; 403 <code>EMAIL_NOT_VERIFIED</code> while verification is enforced, so an unverified user cannot revoke the token on the server.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>Refresh token refused after logout; other sessions unaffected. The access-token behaviour is not tested either way.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-apiv1authme"><code>GET /api/v1/auth/me</code><a class="anchor" href="#get-apiv1authme" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Current user's profile.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><code>authService.getProfile</code> (<code>services/auth.ts:52-54</code>), not a TanStack query: (a) app start, raced against an 8 s timeout (on timeout the app enters "Connecting… server warming up" mode and retries once after 5 s); (b) after an account-deletion request, the Profile screen polls it every 5 s for up to 10 minutes and shows "Account Deleted" as soon as a poll gets 401 or 404 (for whatever reason, for example a password reset elsewhere). The profile lives in the zustand auth store, persisted in SecureStore (<code>vitaltrack-auth</code>).</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>Access token.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>get_profile()</code> — <code>auth.py:865-876</code>; the user is already loaded by <code>get_current_user</code> (with <code>noload("*")</code>, so no collections are read).</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>UserResponse</code> (<code>id, email, username, name, phone, isActive, isVerified, isEmailVerified, createdAt, updatedAt, lastLogin</code>); 401/403 as in <a href="#what-every-request-has-in-common">What every request has in common</a>.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="patch-apiv1authme"><code>PATCH /api/v1/auth/me</code><a class="anchor" href="#patch-apiv1authme" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Edit name, phone and username.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Profile → Save (<code>app/profile.tsx:99-126</code>) → <code>authService.updateProfile</code>. The app sends only <code>{name, username}</code>; it has no phone field, and it requires a username even though the API treats it as optional. A 400 "Username already taken" appears inline.</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>UserUpdate</code>: <code>name</code>, <code>phone</code>, <code>username</code>, <code>email</code> — all optional.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>update_profile()</code> — <code>auth.py:879-919</code>. Re-reads the user under a row lock and rejects the request (401) if the session generation changed while waiting.</td>
+</tr>
+<tr>
+<td>Rules</td>
+<td>A different <code>email</code> → 400 "To change your email, contact support." (the whole request is rejected). An account without an email cannot add one here (same 400). <code>username</code> must be unique (400; a simultaneous claim of the same name surfaces as 409) and already lower case (422 otherwise). <strong><code>null</code> is ignored for every field</strong>, so a phone number cannot be cleared by sending null (reproduced); <code>"phone": ""</code> is stored and does clear it, while <code>"name": ""</code> → 422.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td><code>users</code> row. No activity row.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>UserResponse</code>; 400; 401; 422.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>Email-change refusal and name change; username and phone paths untested.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="delete-apiv1authme"><code>DELETE /api/v1/auth/me</code><a class="anchor" href="#delete-apiv1authme" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Step 1 of account deletion: email a confirmation link. Nothing is deleted yet.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Profile → Delete My Account (<code>app/profile.tsx:165-218</code>) → confirm → <code>authService.requestAccountDeletion</code>; the app then polls <code>GET /auth/me</code> every 5 s (while the Profile screen stays open) to notice the deletion.</td>
+</tr>
+<tr>
+<td>Rules</td>
+<td>The account must have an email (400 otherwise, "contact support"); email sending must be configured (503 otherwise). Stores the SHA-256 of a random token with a 24-hour expiry and emails <code>FRONTEND_URL/confirm-delete/&lt;token&gt;</code> through Brevo (background task).</td>
+</tr>
+<tr>
+<td>Database</td>
+<td><code>users.deletion_token</code>, <code>users.deletion_token_expires</code>.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 message; 400; 401; 403 <code>EMAIL_NOT_VERIFIED</code> while verification is enforced (an unverified user cannot request deletion); 503.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>Token stored (email stubbed); the 400/503 branches and the email itself are untested.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced with a recorder instead of email.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1authcancel-delete"><code>POST /api/v1/auth/cancel-delete</code><a class="anchor" href="#post-apiv1authcancel-delete" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Clear a pending deletion token.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><strong>No screen calls it.</strong> <code>authService.cancelAccountDeletion</code> exists (<code>services/auth.ts:112</code>) but nothing in <code>app/</code> or <code>components/</code> uses it. Use the API directly when testing.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td><code>users</code> (token and expiry set to null) under a row lock.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 message; 401.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced (a cancelled link then shows "Invalid or Expired Link").</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-apiv1authconfirm-deletetoken"><code>GET /api/v1/auth/confirm-delete/{token}</code><a class="anchor" href="#get-apiv1authconfirm-deletetoken" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Step 2a: show a confirmation page with a "Permanently Delete My Account" form. Opening the link deletes nothing (email scanners and link previews are harmless).</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>A browser opening the emailed link. Hidden from OpenAPI.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 HTML confirmation page; 400 HTML "Invalid or Expired Link". Account labels are HTML-escaped.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1authconfirm-deletetoken"><code>POST /api/v1/auth/confirm-delete/{token}</code><a class="anchor" href="#post-apiv1authconfirm-deletetoken" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Step 2b: delete the account.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>The HTML form from the previous route. Hidden from OpenAPI.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>confirm_account_deletion()</code> — <code>auth.py:1111-1144</code>: finds the user by token digest and unexpired time <strong>with a row lock</strong>, deletes the <code>users</code> row, commits.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>PostgreSQL <code>ON DELETE CASCADE</code> removes the user's categories, items, orders, order_items, refresh_tokens, activity_logs, audit_log, ai_consents and ai_usage in the same transaction. <code>order_number_counters</code> is not linked to users and stays, so order numbers are never reused (reproduced: counts before/after in the transcript (local review reference; not published)). Logs keep the user id only.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 HTML "Account Deleted"; 400 HTML invalid link.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>Only the <code>users</code> row is asserted through this route; the cascade is asserted only by this audit's walkthrough.</td>
+</tr>
+<tr>
+<td>Not covered by this route</td>
+<td>Backups and provider logs can still contain old data until they expire (NOT VERIFIED: retention is a dashboard setting).</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1authchange-password"><code>POST /api/v1/auth/change-password</code><a class="anchor" href="#post-apiv1authchange-password" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Change password while signed in; signs every session out.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><strong>No screen calls it</strong> (<code>authService.changePassword</code> exists at <code>services/auth.ts:66</code> without a UI).</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>{current_password, new_password}</code> (new: 8–128 with upper, lower, digit).</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>change_password()</code> — <code>auth.py:1168-1210</code>: row lock, verify current password (thread), hash new, <code>session_version += 1</code>, clear reset and deletion tokens, revoke all refresh rows.</td>
+</tr>
+<tr>
+<td>Effect</td>
+<td>Every existing access token fails at once (401 "User not found", because <code>session_version</code> changed); every refresh token is revoked (reproduced). No email is sent (reset sends one), no activity row is written and there is no rate limit.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 "Password changed successfully. Please log in again."; 400 wrong current password; 422 weak password.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1authforgot-password"><code>POST /api/v1/auth/forgot-password</code><a class="anchor" href="#post-apiv1authforgot-password" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Email a password-reset link.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Forgot password screen <code>app/(auth)/forgot-password.tsx</code> → <code>useAuthStore.forgotPassword</code> → <code>authService.forgotPassword</code>.</td>
+</tr>
+<tr>
+<td>Rules</td>
+<td>503 if email is not configured (this reveals the server's configuration, not whether an account exists). Otherwise always 200 with the same message, whether or not the email exists or the account is active (enumeration-resistant body). Stores the SHA-256 of a random token with a <strong>1-hour</strong> expiry; the link is <code>FRONTEND_URL/reset-password?token=…</code>. Rate limit 3/hour.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td><code>users.password_reset_token</code>, <code>password_reset_expiry</code> (row locked).</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td><strong>None.</strong> Reproduced by this audit with a recorder instead of Brevo.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-apiv1authreset-password"><code>GET /api/v1/auth/reset-password</code><a class="anchor" href="#get-apiv1authreset-password" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Server-rendered reset form opened from the email link.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Browser. Hidden from OpenAPI.</td>
+</tr>
+<tr>
+<td>Details</td>
+<td>The token from the query string is HTML-escaped into a <code>data-token</code> attribute; the inline script reads it from the DOM and POSTs JSON to the same path. No database access until submit. The script checks only length ≥ 8 and that both entries match. On failure it shows the response's <code>detail</code>, else "Reset failed. The link may have expired." The 422 and 429 bodies have no <code>detail</code>, so a weak password or a rate limit is reported as an expired link (A-28).</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>Escaping and the absence of inline token interpolation are tested.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1authreset-password"><code>POST /api/v1/auth/reset-password</code><a class="anchor" href="#post-apiv1authreset-password" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Set a new password with a reset token.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>The HTML form above (the reset email links to the backend page). The app's own reset screen (<code>app/(auth)/reset-password.tsx</code>) is reachable only through the deep link <code>vitaltrack://reset-password?token=…</code>, which no email produces; it also checks only length ≥ 8, so other password rules come back as a raw 422 message.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>reset_password()</code> — <code>auth.py:669-732</code>: finds the active user whose stored digest matches and whose expiry is in the future, <strong>with a row lock</strong>; sets the password, <code>session_version += 1</code>, clears reset and deletion tokens, revokes all refresh rows; emails a "password changed" notice in the background.</td>
+</tr>
+<tr>
+<td>Concurrency</td>
+<td>The same token used twice at once: one 200, one 400 (tested). Single-use (reproduced).</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200; 400 "Invalid or expired reset token"; 422 weak password; 429.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-apiv1authverify-email"><code>GET /api/v1/auth/verify-email</code><a class="anchor" href="#get-apiv1authverify-email" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>HTML verification page for the emailed link (<code>FRONTEND_URL/verify-email?token=…</code>).</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>verify_email_html()</code> — <code>auth.py:316-363</code>: one conditional <code>UPDATE users SET is_email_verified=true, token=null … WHERE digest matches AND not expired RETURNING id</code>. A GET with a side effect: link scanners could consume the token, which only verifies the address.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 "Email Verified!"; 400 "Verification Failed"; 500 page on unexpected errors.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td><strong>None</strong> (the JSON variant below is tested).</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-apiv1authverify-emailtoken"><code>GET /api/v1/auth/verify-email/{token}</code><a class="anchor" href="#get-apiv1authverify-emailtoken" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>JSON variant of verification.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>No screen calls it (<code>authService.verifyEmail</code> exists at <code>services/auth.ts:90-92</code>). Emails link to the HTML variant above.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>{"message","is_verified":true}</code>; 400 invalid or expired (single use; reproduced).</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1authresend-verification"><code>POST /api/v1/auth/resend-verification</code><a class="anchor" href="#post-apiv1authresend-verification" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Send a new verification link.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Verify-email-pending screen → "Resend Verification Email" (<code>app/(auth)/verify-email-pending.tsx:37-53</code>, 60 s cooldown). Known app issue: if the person logged in with a <strong>username</strong>, the screen passes that username as <code>email</code> and the request fails with 422.</td>
+</tr>
+<tr>
+<td>Rules</td>
+<td>503 when email is not configured; otherwise the same 200 message for unknown, verified and unverified addresses. Rate limit 3/hour.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td><strong>None.</strong></td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-apiv1authemail-service-status"><code>GET /api/v1/auth/email-service-status</code><a class="anchor" href="#get-apiv1authemail-service-status" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Diagnostic: is email configured and does Brevo's account API answer?</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>No mobile caller found.</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>Access token. Makes an <strong>outbound call</strong> to <code>https://api.brevo.com/v3/account</code> when configured.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 with a generic message; provider details never returned.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="categories">Categories<a class="anchor" href="#categories" aria-label="Link to this section">#</a></h2>
+<p>All routes require an access token and filter by owner. Router: <code>app/api/v1/categories.py</code>. Mobile service: <code>services/categories.ts</code>.</p>
+<h3 id="get-apiv1categories"><code>GET /api/v1/categories</code><a class="anchor" href="#get-apiv1categories" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>The user's categories ordered by <code>display_order</code>, with no tie-breaker: the app sends 0 for every category it creates, so their order is unspecified. No pagination.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><code>useCategories()</code> → <code>categoryService.getAll</code> (<code>services/categories.ts:43-45</code>), query key <code>['categories']</code>, mounted by Inventory, the item form, Builder, Search, the export dialog and every inventory row; also read directly by "Refresh from server", seed and replace-all.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td><code>SELECT … FROM categories WHERE user_id</code> with <code>noload(items)</code> (no item collections are loaded).</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>{categories:[{id, localId, name, description, displayOrder, isDefault, createdAt, updatedAt}], total}</code>.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1categories"><code>POST /api/v1/categories</code><a class="anchor" href="#post-apiv1categories" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Create a category.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Builder → "+ Add New Category" (<code>app/builder.tsx:947-963</code>) → <code>useCreateCategory</code>; and the seed-defaults flow (<code>hooks/useSeedInventory.ts</code>). The app never sends <code>is_default</code>, so app-created categories are never "default" in the database. A duplicate-name 409 is shown with the generic "Conflict — updated by someone else" alert (see <a href="#known-application-issues-found-while-tracing">known app issues</a>).</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>CategoryCreate</code>, <strong>snake_case keys only</strong> (camelCase such as <code>displayOrder</code> is silently ignored): <code>name</code> 1–255 (tags and <code>&lt;&gt;'";</code> removed), <code>description</code> ≤ 1000, <code>display_order</code> ≥ 0, <code>is_default</code>, <code>local_id</code> ≤ 36. The length is checked before cleaning, so <code>"   "</code> is stored as an empty name (A-24).</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>create_category()</code> — <code>categories.py:136-194</code>: takes a per-user transaction advisory lock (<code>pg_advisory_xact_lock</code>) so duplicate checks cannot race, checks a case-insensitive duplicate (409), inserts, writes an activity row with the reused item action <code>ITEM_CREATE</code>, labelled "Category: …". No audit row.</td>
+</tr>
+<tr>
+<td>Constraint note</td>
+<td>Names are <strong>not</strong> unique in the database (existing duplicates are kept); only this API path prevents new duplicates.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>201 <code>CategoryResponse</code>; 409 "Category with this name already exists"; 422.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced (409 on a case-insensitive duplicate). Concurrent creates: one 201, rest 409 (tested, ungated).</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-apiv1categorieswith-counts"><code>GET /api/v1/categories/with-counts</code><a class="anchor" href="#get-apiv1categorieswith-counts" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Categories plus the number of <strong>active</strong> items in each (one grouped query with an outer join). Returns a bare JSON array; <code>localId</code> is always <code>null</code> here because the handler does not copy it (code reading).</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>No screen calls it (<code>categoryService.getWithCounts</code> exists).</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; tested.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-apiv1categoriescategory_id"><code>GET /api/v1/categories/{category_id}</code><a class="anchor" href="#get-apiv1categoriescategory_id" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>One category (404 if missing or not yours).</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>No screen calls it.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="put-apiv1categoriescategory_id"><code>PUT /api/v1/categories/{category_id}</code><a class="anchor" href="#put-apiv1categoriescategory_id" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Rename or reorder a category.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>No screen calls it: the app has no rename-category UI (<code>useUpdateCategory</code> is unused).</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>CategoryUpdate</code>: all fields optional, snake_case keys only. <strong>Null is ignored for every field</strong> (you cannot clear a description with null; send <code>""</code>).</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>update_category()</code> — <code>categories.py:200-261</code>; advisory lock when renaming; case-insensitive duplicate → 409. No activity or audit row is written for category edits.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE. Rename-to-duplicate (409) is untested.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="delete-apiv1categoriescategory_id"><code>DELETE /api/v1/categories/{category_id}</code><a class="anchor" href="#delete-apiv1categoriescategory_id" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Delete a category <strong>and every item in it</strong>.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Builder: long-press a category chip or the list-header trash icon (<code>app/builder.tsx:888-924</code>); replace-all. The <strong>app</strong> refuses to delete non-empty categories and categories with default names before calling the API; the <strong>API</strong> would delete the items too and protects only rows with <code>is_default=true</code>. <code>categoryService.delete</code> treats 404 as success.</td>
+</tr>
+<tr>
+<td>Rules</td>
+<td>Default categories cannot be deleted (409). Resets send <code>?onlyIfEmpty=true&amp;expectedUpdatedAt=&lt;encoded original timestamp&gt;</code>. Under a category row lock, changed metadata or a non-empty category gets 409 before deletion. The lock also blocks new item foreign-key references until commit. Normal deletion retains its cascade; both query guards are optional for ordinary callers.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>One activity row with the reused action <code>ITEM_DELETE</code> ("Category: …"), one <code>audit_log</code> row per contained item (name, quantity, category; none for the category itself), then the category row; its items are removed by the ORM cascade and <code>ON DELETE CASCADE</code>. Order lines that referenced those items keep their snapshots (no foreign key).</td>
+</tr>
+<tr>
+<td>Transaction</td>
+<td>The deletion and its activity/audit rows commit together. A failure before commit rolls them back; a failure after commit cannot undo them.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>Audit/default-category tests plus <code>test_reset_safety.py</code>: non-empty reset deletion preserves items, an old update timestamp preserves renamed category details, a matching timestamp permits empty deletion, ordinary deletion still cascades, ownership is enforced and a real concurrent FK insert is observed waiting on the category lock.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="items">Items<a class="anchor" href="#items" aria-label="Link to this section">#</a></h2>
+<p>Router: <code>app/api/v1/items.py</code>. Mobile service: <code>services/items.ts</code>. Stock rules: <strong>out of stock</strong> = quantity ≤ 0; <strong>low stock</strong> = 0 &lt; quantity &lt; minimum stock; <strong>needs attention</strong> = either, active items only.</p>
+<h3 id="get-apiv1items"><code>GET /api/v1/items</code><a class="anchor" href="#get-apiv1items" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>List items with filters and pagination.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><code>useItems()</code> (query key <code>['items']</code>) → <code>itemService.getAll({limit: 999})</code> (<code>services/items.ts:135-182</code>), which walks every page of 100 and refuses overlapping pages or a changing total. Mounted by the Dashboard, Inventory (pull-to-refresh), item form, Create order, Builder, Search and the export dialog; also used by "Refresh from server", the voice assistant's inventory snapshot, seed, replace-all and start-fresh. The app requests all items (no <code>isActive</code> filter) and hides inactive ones on most screens.</td>
+</tr>
+<tr>
+<td>Request</td>
+<td>Query: <code>categoryId</code>, <code>isActive</code>, <code>isCritical</code>, <code>lowStockOnly</code>, <code>outOfStockOnly</code>, <code>search</code> (≤100 chars, case-insensitive match on name, description, brand; <code>%</code> and <code>_</code> act as wildcards), <code>page</code> ≥ 1, <code>pageSize</code> 1–100 (default 50). Without <code>isActive</code>, inactive items are included, also by the low/out-of-stock filters.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>One count query with the same filters, then the page ordered by <code>name, id</code> (stable for paging).</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>{items:[ItemResponse…], total}</code> with <code>version</code> on every item.</td>
+</tr>
+<tr>
+<td>Notes</td>
+<td>Offset paging is not a snapshot: if items change between page requests, a later refresh is needed. The mobile client detects overlaps and changing totals, but a change that keeps the total the same (one item deleted on an earlier page while another is created) can still skip an item without any error.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE. Page &gt; 1 is untested on the backend (tested only against fake responses on mobile).</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1items"><code>POST /api/v1/items</code><a class="anchor" href="#post-apiv1items" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Create an item.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Item form Save on <code>/item/new</code> → <code>useCreateItem</code>; Builder suggested items; seed defaults. A hidden item with the same name is restored with PUT. No create idempotency key is sent: a lost-response retry can return duplicate-name 409. The form preserves ordinary name/contact punctuation while removing markup; required name text must remain after cleaning. The API-only empty-name gap A-24 remains.</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>ItemCreate</code>: owned <code>categoryId</code>; name 1–255 (the API still checks length before cleaning: A-24); quantity/minimumStock 0–999,999; purchaseLink must start with lower-case http/https. Text fields remove markup and javascript:. Contact cleaning preserves punctuation and Unicode, removes markup and javascript:, trims and retains the existing 100-character limit. Create and update use the same contact cleaner.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>create_item()</code> — <code>items.py:246-339</code>: advisory lock, ownership check, case-insensitive duplicate name → 409, insert, <code>ITEM_CREATE</code> activity, <code>audit_log</code> create row.</td>
+</tr>
+<tr>
+<td>Example</td>
+<td><code>{"categoryId":"&lt;uuid&gt;","name":"Nitrile gloves","quantity":40,"unit":"pairs","minimumStock":50,"supplierName":"City Medical Supplies","isCritical":true}</code> → 201, <code>version: 1</code>.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-apiv1itemsstats"><code>GET /api/v1/items/stats</code><a class="anchor" href="#get-apiv1itemsstats" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Dashboard counts: total active items, categories, out of stock, low stock, critical, pending orders.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><strong>No screen calls it.</strong> The dashboard computes its cards on the phone from the cached items and orders (<code>app/(tabs)/index.tsx:58-66</code>) with different rules: the phone's "low stock" also counts critical equipment with exactly 1 left and any item with minimum ≥ 1 and exactly 1 left (<code>types/index.ts:129-152</code>), and its "Pending Orders" card counts <code>pending</code>, <code>ordered</code> and <code>received</code>.</td>
+</tr>
+<tr>
+<td>Notes</td>
+<td>Loads every active item row and counts in Python (fine at the current scale; a SQL aggregate would scale better). <code>pendingOrdersCount</code> counts orders in <strong><code>pending</code> or <code>received</code></strong> only, so <code>ordered</code> and <code>partially_received</code> orders are not included — confirm this matches what the dashboard label promises.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; tested.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-apiv1itemsneeds-attention"><code>GET /api/v1/items/needs-attention</code><a class="anchor" href="#get-apiv1itemsneeds-attention" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Active items that are out of stock or low, ordered by quantity, then critical first, then name.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>No screen calls it; the dashboard's Needs Attention list is computed on the phone.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; tested.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-apiv1itemsitem_id"><code>GET /api/v1/items/{item_id}</code><a class="anchor" href="#get-apiv1itemsitem_id" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>One item (404 if missing or not yours).</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>No screen calls it: the item form reads the item from the <code>['items']</code> list cache (<code>app/item/[id].tsx:92</code>).</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced (another user's id → 404).</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="put-apiv1itemsitem_id"><code>PUT /api/v1/items/{item_id}</code><a class="anchor" href="#put-apiv1itemsitem_id" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Edit an item, including its quantity. This is the app's normal write path for stock changes.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Item form Save on an existing item (<code>app/item/[id].tsx:212-222</code>) → <code>useUpdateItem</code>; reactivating a hidden item; Builder critical-star toggle (<code>useToggleItemCritical</code>, body <code>{isCritical, version}</code>). The form always sends name, category, quantity, unit, minimum stock and critical flag; blank description, brand, supplier name, supplier contact, notes and purchase link go as explicit <code>null</code>. It never sends <code>expiryDate</code> or <code>isActive</code>, cannot clear the photo, and silently leaves a non-blank invalid purchase link unchanged.</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>ItemUpdate</code> (<code>app/schemas/item.py:74-115</code>): every field optional <strong>except <code>version</code></strong> (required). Omitted field → unchanged. Explicit <code>null</code> → <strong>clears</strong> optional fields (<code>description, expiryDate, brand, notes, supplierName, supplierContact, purchaseLink, imageUri</code>); <code>null</code> on required fields (<code>name, quantity, unit, minimumStock, isActive, isCritical</code>) is ignored, and so is a <code>null</code> or empty <code>categoryId</code>. <code>purchaseLink: ""</code> also clears. Changing <code>categoryId</code> requires a category you own (400). Create and update now apply the same contact cleaner (A-25 fixed locally). Any successful PUT increases <code>version</code>, even when nothing changed.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>update_item()</code> — <code>items.py:345-522</code>. When the body includes <code>name</code> (Edit Item always sends it), it first takes the per-account item-name advisory lock (<code>items.py:362-363</code>), so two such saves for one account run one after the other. Then one compare-and-swap: <code>UPDATE items SET …, version = version + 1 WHERE id AND user_id AND version = :sent RETURNING id</code>.</td>
+</tr>
+<tr>
+<td>Concurrency</td>
+<td>0 rows updated (someone else saved first, or the row was deleted) → <strong>409</strong> <code>{"error":"Version conflict","server_version","server_quantity"}</code> with the values this request read before its update; nothing written. See <a href="diagrams/inventory-concurrency.svg">inventory-concurrency.svg</a>.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td><code>items</code>; <code>activity_logs</code> (<code>ITEM_UPDATE</code>, e.g. "qty: 40 → 38"); <code>audit_log</code> with an old/new snapshot of six fields (name, quantity, unit, minimum stock, active, critical).</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>ItemResponse</code> with the new <code>version</code>.</td>
+</tr>
+<tr>
+<td>App behaviour</td>
+<td>The screen still closes as soon as Save is tapped. Fields and <code>formVersion</code> are captured from the same initial item snapshot; cache refetches cannot replace that version. A form opened before the item loaded cannot save defaults. On 409 the server message is shown and relevant active queries refetch. The person must reopen the editor to load fresh form values; Retry retains the original variables and cannot bypass a stale-version conflict. A-1 is fixed locally with real component regression tests; phone acceptance remains unverified.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced (explicit null clears brand; null quantity ignored; stale version 409). A-1 fixed locally and verified with a rendered edit form; not yet verified on a device.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="patch-apiv1itemsitem_idstock"><code>PATCH /api/v1/items/{item_id}/stock</code><a class="anchor" href="#patch-apiv1itemsitem_idstock" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Set an absolute quantity (not a delta) with the same version check.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><strong>No screen calls it</strong>: the app has no stock +/- control. Quantity changes go through the item form (<code>PUT</code>) or by applying a received order.</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>StockUpdate {quantity 0–999999, version}</code>.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>Same CAS on <code>items</code>; <code>STOCK_UPDATE</code> activity ("Stock: 40 → 38 pairs"); audit row.</td>
+</tr>
+<tr>
+<td>Concurrency</td>
+<td>Two API clients saving the same version at once: one 200, one 409, and the version advances once (reproduced with direct API calls; the app never calls this route). There is no advisory lock here: the second update waits for the first one's row lock, then re-checks the version in its <code>WHERE</code> clause.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="delete-apiv1itemsitem_id"><code>DELETE /api/v1/items/{item_id}</code><a class="anchor" href="#delete-apiv1itemsitem_id" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Delete an item.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Item form → Delete Item (<code>app/item/[id].tsx:227-248</code>); Builder row trash; start-fresh and replace-all loops. <code>itemService.delete</code> treats 404 as success (already gone).</td>
+</tr>
+<tr>
+<td>Rules</td>
+<td>Ordinary deletion keeps its existing behavior without a version check. Resets send optional <code>?version=N</code>: a row lock and comparison reject changed items with 409 before deletion. Order snapshots are preserved.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td><code>ITEM_DELETE</code> activity, audit row with the old name and quantity, then the row.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="orders">Orders<a class="anchor" href="#orders" aria-label="Link to this section">#</a></h2>
+<p>Router: <code>app/api/v1/orders.py</code>. Mobile service: <code>services/orders.ts</code>. State machine: <a href="diagrams/order-status.svg">order-status.svg</a>. Idempotency: <a href="diagrams/order-idempotency.svg">order-idempotency.svg</a>.</p>
+<h3 id="get-apiv1orders"><code>GET /api/v1/orders</code><a class="anchor" href="#get-apiv1orders" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>The user's orders, newest <code>exported_at</code> first, with their lines.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><code>useOrders()</code> (key <code>['orders']</code>, <code>staleTime 0</code>) → <code>orderService.getAll</code> (<code>services/orders.ts:61-74</code>), which walks every page of 100 and removes duplicate ids, with no total or overlap check (an order created or deleted between pages can be missed); mounted by the Dashboard and the Orders tab (pull-to-refresh).</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>status</code> filter (lowercase value), <code>page</code>, <code>pageSize</code> 1–100 (default 20).</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>{orders:[OrderResponse…], total, page, pageSize, hasMore}</code>.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE. <code>hasMore=true</code> is untested on the backend.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1orders"><code>POST /api/v1/orders</code><a class="anchor" href="#post-apiv1orders" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Create a purchase order (status <code>pending</code>). Creating an order never changes stock.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Create order screen <code>app/order/create.tsx</code> → <code>useServerMutations</code> → <code>orderService.create</code> (<code>services/orders.ts:92</code>). The screen generates <strong>one <code>localId</code> per Save press</strong> (<code>create.tsx:282-287</code>). Retry from the failure dialog or toast re-sends the same <code>localId</code>; pressing Save again creates a new one.</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>OrderCreate</code> (<code>app/schemas/order.py:85-103</code>): <code>items</code> 1–1,000 lines; each line <code>itemId</code> (must be yours, else 400 and nothing created), <code>quantity</code> 1–999,999, snapshot fields (<code>name, brand, unit, currentStock, minimumStock, imageUri, supplierName, purchaseLink</code>). <code>orderId</code> is <strong>required by the schema but ignored</strong> (missing → 422, reproduced 8 Oct; the server allocates the public number: A-26); <code>totalItems/totalUnits/status/timestamps</code> are type-checked, then ignored; line fields <code>categoryName</code>, <code>isEssential</code> and <code>notes</code> are accepted but <strong>not stored</strong>. Duplicate <code>itemId</code> lines are allowed. <code>localId</code> optional, 1–36 characters.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>create_order()</code> — <code>orders.py:258-357</code>.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>(1) if <code>localId</code> given: <code>SELECT</code> an existing order for (user, localId) → return its <strong>current</strong> state with <strong>200</strong>, and nothing else runs; (2) ownership check of item ids; (3) <code>INSERT INTO order_number_counters … ON CONFLICT (day) DO UPDATE SET last_value = last_value + 1 RETURNING</code> → <code>ORD-YYYYMMDD-NNNN</code> (UTC date; one counter per day shared by all users, so one user's numbers have gaps); (4) insert <code>orders</code>, <code>order_items</code> (snapshots exactly as the app sent them), <code>activity_logs</code> (<code>ORDER_CREATED</code>); commit. No audit row.</td>
+</tr>
+<tr>
+<td>Concurrency &amp; retries</td>
+<td>Same <code>localId</code> twice at the same moment: the partial unique index <code>uq_orders_user_id_local_id</code> rejects the second insert; its transaction rolls back (undoing its counter increment) and it returns the first order with 200 (reproduced: one 201, one 200, one row). <strong>Without <code>localId</code></strong> (older app builds) every request creates a new order. Migration 0010 keeps existing duplicate rows and exempts later copies by id from the index; indexed keys prevent new duplicates. Reusing a key with a different schema-valid payload still returns the original order, not an updated one (reproduced 8 Oct: quantity 10 → 99 returned the order with 10 units); new lines are not even checked for ownership. The day's counter row stays locked until the creating transaction ends, so concurrent creates by all users on the same UTC day queue there.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>201 <code>OrderResponse</code> (new) or 200 (replay); 400 invalid item ids; 409 other integrity conflicts; 422 validation.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-apiv1ordersorder_id"><code>GET /api/v1/orders/{order_id}</code><a class="anchor" href="#get-apiv1ordersorder_id" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>One order by internal UUID <strong>or</strong> public <code>ORD-…</code> id.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>No screen calls it.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced (history still shows a deleted item's snapshot).</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="patch-apiv1ordersorder_idstatus"><code>PATCH /api/v1/orders/{order_id}/status</code><a class="anchor" href="#patch-apiv1ordersorder_idstatus" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Move an order through its workflow.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Order card → "Have you received the order?", shown only for <code>pending</code> orders (<code>components/orders/OrderCard.tsx:154-163</code> → <code>app/(tabs)/orders.tsx:31-46</code>), which sends <code>{"status":"received"}</code>. The app offers <strong>no</strong> other transition (ordered, partially received, declined), and it shows <code>partially_received</code> as "Unknown".</td>
+</tr>
+<tr>
+<td>Allowed</td>
+<td><code>pending</code> → <code>ordered</code>, <code>received</code> or <code>declined</code>; <code>ordered</code> → <code>partially_received</code> or <code>received</code>; <code>partially_received</code> → <code>received</code>. <code>received</code> reaches <code>stock_updated</code> only through <code>/apply</code>. <code>declined</code> and <code>stock_updated</code> are final. Same status → 200 no-op (no write, <code>notes</code> ignored). Anything else → 400 "Illegal order status transition". A target of <code>stock_updated</code> → 400 "Order stock updates must be applied through the apply endpoint". A missing status → 400 "Status is required" and an unknown value → 400 "Invalid order status" (not 422).</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>update_order_status()</code> — <code>orders.py:363-453</code>: conditional <code>UPDATE orders … WHERE id AND user_id AND status = :old</code>; if another request changed the status first → 409. Sets <code>ordered_at</code>, <code>received_at</code> or <code>declined_at</code>; optional <code>notes</code> replaces the order's notes.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td><code>orders</code>; activity (<code>ORDER_RECEIVED</code>, <code>ORDER_DECLINED</code>, otherwise the reused item action <code>ITEM_UPDATE</code>). No audit row. <code>partially_received</code> stores no quantities and no timestamp. Receiving never changes stock.</td>
+</tr>
+<tr>
+<td>Storage detail</td>
+<td>The <code>status</code> column stores the enum <strong>name</strong> in upper case (<code>PENDING</code>, <code>STOCK_UPDATED</code>); the API sends and returns lower-case values. Raw SQL must use the upper-case names.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced. Several illegal pairs are untested.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1ordersorder_idapply"><code>POST /api/v1/orders/{order_id}/apply</code><a class="anchor" href="#post-apiv1ordersorder_idapply" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Add a received order's quantities to stock.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Order card → "Update Stock", shown only for <code>received</code> orders (<code>OrderCard.tsx:165-174</code> → <code>orders.tsx:48-63</code>, with a confirmation dialog) → <code>orderService.applyToStock</code>. On success the app invalidates items, orders and activities; a 409 (missing items) is shown with the generic "Conflict — updated by someone else" alert.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>apply_order_to_stock()</code> — <code>orders.py:459-605</code>. Steps 1–5 run in one transaction that the handler commits; the <code>refresh()</code> after that commit reads the order in a new one. (1) order must be <code>received</code> with ≥ 1 line (400); (2) every line's item must still exist (409 naming missing items, nothing changed); (3) claim: <code>UPDATE orders SET status='stock_updated', applied_at=now WHERE status='received'</code> (a second apply gets 400); (4) for each line, in item-id order to prevent opposing-order deadlocks between these apply operations (not a guarantee for every transaction), <code>UPDATE items SET quantity = quantity + line.quantity, version = version + 1</code>; one audit row per order line (two lines for the same item give two increments and two rows); (5) <code>ORDER_APPLIED</code> activity; commit.</td>
+</tr>
+<tr>
+<td>Rules</td>
+<td>Always adds the <strong>full ordered quantity</strong> of every line, even if the order passed through <code>partially_received</code>. Inactive items are updated too, and there is no upper bound, so stock can pass the 999,999 that the item form accepts. Bumping <code>version</code> means a phone still holding the old version gets 409 on its next edit (intended); Edit Item now retains the version captured with its form values (A-1 fixed locally).</td>
+</tr>
+<tr>
+<td>Rollback</td>
+<td>Any failure before commit undoes the claim and every increment (reproduced with a deleted item; tested with an injected mid-apply exception).</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="delete-apiv1ordersorder_id"><code>DELETE /api/v1/orders/{order_id}</code><a class="anchor" href="#delete-apiv1ordersorder_id" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Delete a <code>pending</code> or <code>declined</code> order.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Order card → "Remove" (<code>OrderCard.tsx:189-195</code>), shown for <strong>every</strong> status, so the API's 400 is what stops received or applied orders from being deleted; the person then sees a toast and an alert. <code>orderService.delete</code> does not treat 404 as success.</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>delete_order()</code> — <code>orders.py:611-686</code>: status pre-check (400), then a conditional <code>DELETE … WHERE status IN (pending, declined)</code> so an order applied in the meantime cannot be erased; activity row with the reused action <code>ITEM_DELETE</code> ("Order …") and an <code>order/delete</code> audit row. Lines cascade. The order number is not reused.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="activity-feed">Activity feed<a class="anchor" href="#activity-feed" aria-label="Link to this section">#</a></h2>
+<h3 id="get-apiv1activities"><code>GET /api/v1/activities</code><a class="anchor" href="#get-apiv1activities" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>The user's most recent activity entries, newest first.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><code>useActivities(20)</code> (key <code>['activities']</code>) on the Dashboard's Recent Activity list. The app hides <code>user_login</code>, <code>user_logout</code> and <code>user_register</code> entries and groups bulk operations.</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>limit</code> 1–200 (default 50). No paging beyond the limit.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>{activities:[{id, action, itemName, itemId, details, orderId, timestamp}], total}</code>; <code>action</code> is lower case in the API, upper case in the database. <code>total</code> is the number of rows returned (at most <code>limit</code>), not the number stored. Rows with the same timestamp have no tie-breaker.</td>
+</tr>
+<tr>
+<td>Notes</td>
+<td><code>audit_log</code> (before/after snapshots) has no read endpoint; it is for operators, and only some writes create audit rows (none for category create/update, order create or status changes, or any auth action). Activity action names are reused across entities (<code>ITEM_CREATE</code> for categories; <code>ITEM_UPDATE</code> for some order status changes; <code>ITEM_DELETE</code> for category and order deletes).</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced. Isolation and ordering are untested.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="assistant-ai-routes">Assistant (AI) routes<a class="anchor" href="#assistant-ai-routes" aria-label="Link to this section">#</a></h2>
+<p>Router: <code>app/api/v1/ai.py</code>; guards: <code>app/services/ai_guard.py</code>; provider adapters: <code>app/services/ai_provider.py</code>. These routes write <strong>only</strong> <code>ai_consents</code> and <code>ai_usage</code>; they never touch inventory, orders, activity or audit tables. Authentication uses a short-lived separate session, and quota bookkeeping uses its own short transactions, so no database connection is held while waiting for Groq. Flow diagram: <a href="diagrams/voice-flow.svg">voice-flow.svg</a>.</p>
+<h3 id="get-apiv1aicapabilities"><code>GET /api/v1/ai/capabilities</code><a class="anchor" href="#get-apiv1aicapabilities" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Tell the app which cloud features the <strong>server</strong> allows and what this account consented to.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><code>services/assistant.ts:10-14</code>. Because the assistant dock is embedded in the tab bar and re-initialises on every tab change, this request runs on <strong>every tab switch</strong> and every return to the tabs while signed in (two small database reads each time), plus after consent changes and on "Recheck". The app treats a different <code>consent_version</code> as "unavailable".</td>
+</tr>
+<tr>
+<td>Logic</td>
+<td><code>interpret</code> is true only if <code>AI_ENABLED</code>, <code>AI_DATA_CONTROLS_REVIEWED</code> and <code>GROQ_API_KEY</code> are set; transcription and speech need further flags (all off by default).</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>Reads <code>users</code> (authentication, in its own short session) and <code>ai_consents</code>.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 <code>{interpret, interpret_contracts:[1,2], order_review_guard:true, transcribe, speak, consent_version:"voice-2026-10-06", consented, voice, scopes, transcription_providers, speech_providers}</code>. The legacy <code>voice</code> field names Alba; it is not evidence that the mobile app uses hosted speech.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced (all false with default flags).</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="put-apiv1aiconsent"><code>PUT /api/v1/ai/consent</code><a class="anchor" href="#put-apiv1aiconsent" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Grant or withdraw consent for specific cloud processing.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Voice setup grants <code>groq_text</code> for understanding or separately <code>groq_audio</code> for online listening after the matching disclosure; granting one preserves any already accepted scopes. Audio additionally needs a fresh local <code>audioOptIn</code>. "Withdraw all cloud consent" sends <code>accepted:false, scopes:[]</code>.</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>ConsentRequest</code> (strict): <code>version</code> must equal <code>voice-2026-10-06</code>; <code>accepted</code>; <code>scopes</code> from <code>groq_text, groq_audio, sarvam_audio, sarvam_speech, kokoro_speech, alba_speech</code>, no duplicates; accepting needs ≥ 1 scope; withdrawing needs none (422 otherwise).</td>
+</tr>
+<tr>
+<td>Rules</td>
+<td>Accepting while <code>AI_ENABLED</code> is false → 503 and <strong>nothing written</strong>. Withdrawing always works and always writes: it upserts <code>accepted=false, scopes=[]</code>, even with AI off or for an account that never consented.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>Upsert into <code>ai_consents</code> (one row per user).</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1aiinterpret"><code>POST /api/v1/ai/interpret</code><a class="anchor" href="#post-apiv1aiinterpret" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Turn one unfamiliar question into <strong>one allowed intent</strong>. It never returns stock facts.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td>Assistant <code>ask()</code> (<code>components/assistant/AssistantExperience.tsx:293-330</code>) only when the local matcher found nothing <strong>and</strong> capabilities say <code>interpret: true</code> with a stored <code>groq_text</code> consent <strong>and</strong> this device's cloud switch is on, and only after the person pressed Send. Current clients negotiate <code>{question, has_previous_item, contract_version:2}</code> when supported; v1 clients omit the version. Capabilities are refreshed before unmatched online requests.</td>
+</tr>
+<tr>
+<td>Request</td>
+<td><code>InterpretRequest</code> (strict, ≤ 12 KB body): <code>question</code> 1–600 chars, <code>has_previous_item</code> bool, <code>contract_version</code> 1 or 2 (default 1). No inventory list or recording is sent by this operation.</td>
+</tr>
+<tr>
+<td>Guards</td>
+<td><code>reserve()</code> (<code>ai_guard.py:95-181</code>): flags enabled; consent version and the <code>groq_text</code> scope; under a global advisory lock, daily limits (50 per user, 500 overall), a conservative cost budget (default 5,000 micro-USD per attempt → at most 20 attempts per user per day), at most 4 calls in flight overall and 1 per user (429 with <code>Retry-After</code>). A "day" starts at 00:00 UTC (05:30 IST). Inserts an <code>ai_usage</code> row with status <code>reserved</code>.</td>
+</tr>
+<tr>
+<td>Provider call</td>
+<td><code>POST https://api.groq.com/openai/v1/chat/completions</code>, model <code>GROQ_INTENT_MODEL</code> (default <code>openai/gpt-oss-20b</code>), temperature 0, <code>response_format</code> strict JSON schema of v1 <code>Intent</code> or v2 <code>Specification</code>, low reasoning effort, no tools, 3,072 maximum completion tokens for v2 / 1,024 for v1, 25 s total deadline (5 s to connect), no retries.</td>
+</tr>
+<tr>
+<td>Output checks</td>
+<td>Valid JSON, <code>finish_reason == "stop"</code>, schema-valid v1 <code>Intent</code> or v2 <code>Specification</code>; v2 additionally grounds names/units/explicit quantity-to-item associations in the question; a <code>previous</code> reference needs context; a named item must be a contiguous sequence of words in the question after case/punctuation normalisation (otherwise 502). This is a name-containment check, not proof of correct semantics. The app validates the intent again before using it. Strict JSON output does not guarantee correct interpretation of arbitrary wording; question text can itself contain sensitive item names or other user-entered details.</td>
+</tr>
+<tr>
+<td>Settle</td>
+<td><code>ai_usage</code> updated to <code>complete</code> or <code>failed</code> with token counts; failed reserved attempts still count against limits. Settlement errors are logged and leave the row reserved until its in-flight expiry; they do not replace an otherwise successful answer with a 500.</td>
+</tr>
+<tr>
+<td>Response</td>
+<td>200 legacy <code>{intent, item_query, reference, fields}</code> or v2 <code>{version,intent,draft_mode,query,lines,include_low,include_out}</code>; 401; 403 no consent; 408 body not received within 10 s; 413 body too large; 422; 429 (own quotas, or the provider busy with <code>Retry-After: 30</code>); 502 unusable output or provider error; 503 disabled; 504 timeout <strong>or</strong> any network/DNS failure reaching the provider. The current app wraps the failure with retry/edit/basic-command guidance and states that nothing was saved; earlier A-35 evidence describes the old generic message.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reproduced with Groq replaced by an in-process recorder. <strong>Real Groq behaviour is NOT VERIFIED.</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1aitranscribe"><code>POST /api/v1/ai/transcribe</code><a class="anchor" href="#post-apiv1aitranscribe" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Server-side speech-to-text (Groq Whisper or Sarvam) for an uploaded recording.</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><code>AssistantExperience.stopRecording</code>: optional Groq listening after explicit <code>groq_audio</code> consent, fresh local <code>audioOptIn</code>, and provider checks. Otherwise Moonshine runs on the phone. The 9 October local module supplies streaming local captions and a temporary PCM16/16 kHz WAV; new uploads declare <code>audio/wav</code>. Older-module AAC/M4A uploads declare <code>audio/mp4</code>. Captions alone never trigger interpretation or drafting. <code>CLOUD_TRANSCRIPTION_ENABLED=true</code>; cloud speech remains disabled.</td>
+</tr>
+<tr>
+<td>Gating</td>
+<td>Also needs <code>AI_TRANSCRIBE_ENABLED</code> and the provider's flags, plus <code>groq_audio</code>/<code>sarvam_audio</code> consent. With default settings it returns 503.</td>
+</tr>
+<tr>
+<td>Details</td>
+<td>Multipart upload ≤ 900 KB; mono WAV or M4A 0.3–30 s; decoded by <code>ffmpeg</code> with an 8 s limit; flat-line audio rejected; Groq transcripts are checked with segment quality metrics; Sarvam uses its separate response checks. These checks do not prove recognition accuracy.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE; reachable from the separately consented online-listening UI. Real recognition/provider behavior remains NOT VERIFIED.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="post-apiv1aispeak"><code>POST /api/v1/ai/speak</code><a class="anchor" href="#post-apiv1aispeak" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>Server-side text-to-speech (Alba/Piper worker, Kokoro worker or Sarvam).</td>
+</tr>
+<tr>
+<td>Caller</td>
+<td><strong>None in this build</strong> (cloud speech disabled; the app uses Android text-to-speech).</td>
+</tr>
+<tr>
+<td>Gating</td>
+<td><code>AI_SPEECH_ENABLED</code> and provider-specific rights/keys; <code>voice-service/</code> contains worker implementations; their actual deployment is NOT VERIFIED. Returns 503 with defaults.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>VERIFIED IN CURRENT CODE. No test exercises a successful response.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="local-inventorydraft-feature-follow-up--8-october-2026">Local inventory/draft feature follow-up — 8 October 2026<a class="anchor" href="#local-inventorydraft-feature-follow-up--8-october-2026" aria-label="Link to this section">#</a></h2>
+<p><code>GET /ai/capabilities</code> now also advertises <code>interpret_contracts: [1, 2]</code> and <code>order_review_guard: true</code>. <code>POST /ai/interpret</code> defaults to the legacy intent schema; <code>contract_version: 2</code> requests a strict inventory-query/local-draft specification. Interpretation still never executes order/inventory writes; consent/usage are the only AI transport writes. New request/response schemas live in <code>app/schemas/ai.py</code> and the mobile <code>features/assistant/contracts.ts</code>.</p>
+<p><code>POST /orders</code> accepts optional <code>expectedVersion</code> on each item line. For a new guarded submission, ownership is checked and item rows are locked in ID order; inactive or version-changed items return 409 before order creation. Legacy submissions omit this guard and retain their behavior. A replayed existing <code>localId</code> returns its original order first, even after stock changes. No migration or stock formula changed. The review screen waits for verified inventory, keeps a failed draft, preserves submission identity across retries, and re-exports saved orders without creating another one.</p>
+<p>The complete current UI/request/state paths and added regression tests are in <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">the inventory and draft guide</a>. Earlier audit evidence, line numbers and test counts below describe their dated snapshots; unrelated audit findings are not closed by this feature work.</p>
+<h2 id="worked-examples-with-database-state">Worked examples with database state<a class="anchor" href="#worked-examples-with-database-state" aria-label="Link to this section">#</a></h2>
+<p>All examples use synthetic people and items and were replayed on 7 Oct 2026 by <a href="tools/api_walkthrough.py"><code>api_walkthrough.py</code></a>, and again on 8 Oct 2026 with the same results (89 steps, none differed). Full request/response pairs are in the 7 October transcript (local review reference; not published). Ids are shortened. The walkthrough calls the API directly; it does not drive the app.</p>
+<h3 id="1-register-log-in-refresh-log-out">1. Register, log in, refresh, log out<a class="anchor" href="#1-register-log-in-refresh-log-out" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Request</th>
+<th>Status</th>
+<th>Database after</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Register</td>
+<td><code>POST /auth/register</code> <code>{"name":"Asha Example","email":"asha.example@example.com","username":"asha_demo","password":"Synthetic1"}</code></td>
+<td>201</td>
+<td><code>users</code>: 1 row, <code>is_email_verified=false</code>, <code>session_version=0</code>; <code>refresh_tokens</code>: 1 active; <code>activity_logs</code>: <code>USER_REGISTER</code></td>
+</tr>
+<tr>
+<td>Same email, different case</td>
+<td><code>POST /auth/register</code> <code>{"email":"ASHA.example@example.com",…}</code></td>
+<td>400 "Email already registered"</td>
+<td>unchanged</td>
+</tr>
+<tr>
+<td>Login by username</td>
+<td><code>POST /auth/login</code> <code>{"identifier":"ASHA_DEMO",…}</code></td>
+<td>200</td>
+<td><code>refresh_tokens</code>: 2 active; <code>USER_LOGIN</code> activity</td>
+</tr>
+<tr>
+<td>Refresh</td>
+<td><code>POST /auth/refresh</code> <code>{"refresh_token":R1}</code></td>
+<td>200</td>
+<td>R1 revoked; R2 inserted</td>
+</tr>
+<tr>
+<td>Replay R1</td>
+<td><code>POST /auth/refresh</code></td>
+<td>401</td>
+<td>unchanged</td>
+</tr>
+<tr>
+<td>Two refreshes with R2 at once</td>
+<td></td>
+<td>one 200, one 401</td>
+<td>R2 revoked; one new token</td>
+</tr>
+<tr>
+<td>Logout</td>
+<td><code>POST /auth/logout</code> (access A3, body R3)</td>
+<td>200</td>
+<td>R3 revoked; <code>USER_LOGOUT</code> activity</td>
+</tr>
+<tr>
+<td>Use A3 again</td>
+<td><code>GET /auth/me</code></td>
+<td><strong>200</strong></td>
+<td>— the access token stays valid until it expires</td>
+</tr>
+<tr>
+<td>Refresh with R3</td>
+<td><code>POST /auth/refresh</code></td>
+<td>401</td>
+<td>unchanged</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="2-email-verification-and-password-recovery">2. Email verification and password recovery<a class="anchor" href="#2-email-verification-and-password-recovery" aria-label="Link to this section">#</a></h3>
+<p>With <code>REQUIRE_EMAIL_VERIFICATION=true</code> and email "configured" (the sender replaced by a recorder): registering Ravi returns 201 with tokens, but <code>GET /auth/me</code> with that token returns <strong>403 <code>EMAIL_NOT_VERIFIED</code></strong>, and so does login. <code>GET /auth/verify-email/{token}</code> returns 200 and sets <code>is_email_verified=true</code>, clearing the stored digest; the same link a second time returns 400. After login, <code>POST /auth/change-password</code> returns 200: <code>session_version</code> 0 → 1, every refresh row revoked, and the previous access token immediately gets 401. A reset link is single-use: first <code>POST /auth/reset-password</code> 200 (<code>session_version</code> → 2), second 400.</p>
+<h3 id="3-profile-operations">3. Profile operations<a class="anchor" href="#3-profile-operations" aria-label="Link to this section">#</a></h3>
+<p><code>PATCH /auth/me {"name":"Asha E.","phone":"+91 90000 00000"}</code> → 200 and both columns change. <code>{"phone": null}</code> → 200 but the phone is <strong>unchanged</strong>. <code>{"email":"new.address@example.com"}</code> → 400 "To change your email, contact support."</p>
+<h3 id="4-categories-items-explicit-null-and-versions">4. Categories, items, explicit null and versions<a class="anchor" href="#4-categories-items-explicit-null-and-versions" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Request</th>
+<th>Status</th>
+<th><code>items</code> row after (quantity / brand / version)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create category "Respiratory"</td>
+<td><code>POST /categories</code></td>
+<td>201</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Create "respiratory"</td>
+<td><code>POST /categories</code></td>
+<td>409</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Create Nitrile gloves (40 pairs, minimum 50, brand SafeHands)</td>
+<td><code>POST /items</code></td>
+<td>201</td>
+<td>40 / SafeHands / 1</td>
+</tr>
+<tr>
+<td>Clear the brand</td>
+<td><code>PUT /items/{id}</code> <code>{"brand": null, "version": 1}</code></td>
+<td>200</td>
+<td>40 / <strong>null</strong> / 2 (supplier unchanged because it was omitted)</td>
+</tr>
+<tr>
+<td>Null quantity</td>
+<td><code>PUT /items/{id}</code> <code>{"quantity": null, "version": 2}</code></td>
+<td>200</td>
+<td><strong>40</strong> / null / 3 (required field: null ignored)</td>
+</tr>
+<tr>
+<td>Stale save</td>
+<td><code>PUT /items/{id}</code> <code>{"quantity": 45, "version": 1}</code></td>
+<td><strong>409</strong> <code>server_version: 3, server_quantity: 40</code></td>
+<td>unchanged</td>
+</tr>
+<tr>
+<td>Two API clients, same version (the app never calls this route)</td>
+<td>two simultaneous <code>PATCH /items/{id}/stock</code> with <code>version: 3</code> (38 and 36)</td>
+<td>one 200, one 409</td>
+<td>38 / null / 4; one audit row 40 → 38</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="5-orders-from-creation-to-stock">5. Orders from creation to stock<a class="anchor" href="#5-orders-from-creation-to-stock" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Status</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /orders</code> with <code>localId</code> L1 (gloves 60, catheter 20)</td>
+<td>201</td>
+<td><code>ORD-20261007-0001</code>, status <code>pending</code>, <code>total_units</code> 80; counter for 20261007 = 1; stock unchanged</td>
+</tr>
+<tr>
+<td>Same request again (lost response, retry)</td>
+<td><strong>200</strong></td>
+<td>same order returned; still 1 order</td>
+</tr>
+<tr>
+<td>Two simultaneous requests with <code>localId</code> L2</td>
+<td>201 + 200</td>
+<td>exactly 1 order for L2</td>
+</tr>
+<tr>
+<td>Two requests <strong>without</strong> <code>localId</code></td>
+<td>201 + 201</td>
+<td>2 separate orders (older-app behaviour)</td>
+</tr>
+<tr>
+<td><code>PATCH status</code> pending → <code>stock_updated</code></td>
+<td>400</td>
+<td>illegal transition</td>
+</tr>
+<tr>
+<td>pending → ordered → received; received again</td>
+<td>200, 200, 200 (no-op)</td>
+<td><code>ordered_at</code>, <code>received_at</code> set</td>
+</tr>
+<tr>
+<td><code>POST /apply</code></td>
+<td>200</td>
+<td>gloves 38 → 98 (v4 → v5), catheter 0 → 20; status <code>stock_updated</code>; 2 audit rows tagged <code>order:ORD-20261007-0001</code></td>
+</tr>
+<tr>
+<td><code>POST /apply</code> again</td>
+<td>400</td>
+<td>stock unchanged</td>
+</tr>
+<tr>
+<td><code>DELETE</code> the applied order</td>
+<td>400</td>
+<td>only pending/declined can be deleted</td>
+</tr>
+<tr>
+<td>New order for gloves + catheter, mark received, delete the catheter item, apply</td>
+<td><strong>409</strong> "inventory items are missing"</td>
+<td>gloves stay 98 / v5; order stays <code>received</code> (rolled back)</td>
+</tr>
+<tr>
+<td>Delete a pending order, then create another</td>
+<td>200, 201</td>
+<td>the deleted number <code>…-0006</code> is never reused (<code>…-0007</code> next)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="6-account-deletion">6. Account deletion<a class="anchor" href="#6-account-deletion" aria-label="Link to this section">#</a></h3>
+<p><code>DELETE /auth/me</code> → 200 (token emailed; here recorded). <code>POST /auth/cancel-delete</code> → 200, and the old link then shows "Invalid or Expired Link" (400). A new <code>DELETE /auth/me</code>, then <code>GET /confirm-delete/{token}</code> → 200 confirmation page and the user still exists; <code>POST /confirm-delete/{token}</code> → 200. Row counts before → after: users 3 → 2, categories 1 → 0, items 1 → 0, orders 6 → 0, order_items 11 → 0, refresh_tokens 8 → 3, activity_logs 26 → 3, audit_log 9 → 0, ai_consents 1 → 0, ai_usage 4 → 0, order_number_counters 1 → <strong>1</strong>. The other two synthetic accounts were untouched. Logging in afterwards returns 401.</p>
+<h3 id="7-voice-and-typed-questions">7. Voice and typed questions<a class="anchor" href="#7-voice-and-typed-questions" aria-label="Link to this section">#</a></h3>
+<p>What the phone does is described in the <a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html">developer guide's voice chapter</a>; the server side is below. Groq was replaced by a recorder that returned scripted answers, so these rows test the server's checks, not a real model. The two questions were sent straight to the API: in the app, both would be answered by the local matcher and never reach <code>/ai/interpret</code> (the first is a combined local quantity + supplier read; the second starts with "delete" once "Please" is removed, a local <code>unsupported_action</code>).</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Status</th>
+<th>Database</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /ai/capabilities</code> with default flags</td>
+<td>200, everything false</td>
+<td>read only</td>
+</tr>
+<tr>
+<td>Accept consent while AI is off</td>
+<td>503</td>
+<td><strong>no row written</strong></td>
+</tr>
+<tr>
+<td><code>POST /ai/interpret</code> without a bearer token</td>
+<td>401 (before the body is read)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Server flags enabled (synthetic placeholder key); interpret without consent</td>
+<td>403</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Grant <code>groq_text</code></td>
+<td>200</td>
+<td><code>ai_consents</code>: version <code>voice-2026-10-06</code>, accepted, <code>["groq_text"]</code></td>
+</tr>
+<tr>
+<td>"Could you tell me how many nitrile gloves are left and who supplies them?"</td>
+<td>200 <code>{"intent":"read_item","item_query":"nitrile gloves","reference":"named","fields":["quantity","supplier"]}</code></td>
+<td><code>ai_usage</code>: 1 row <code>complete</code>, 5,000 micro-USD reserved, token counts</td>
+</tr>
+<tr>
+<td>A model answer naming an item not in the question</td>
+<td>502</td>
+<td>usage row <code>failed</code></td>
+</tr>
+<tr>
+<td>"Please delete everything from inventory"</td>
+<td>200 <code>unsupported_action</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Provider timeout</td>
+<td>504</td>
+<td>usage row <code>failed</code> (still counted)</td>
+</tr>
+<tr>
+<td>13 KB question body</td>
+<td>413</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Checksums of users, categories, items, orders, order_items, activity_logs, audit_log, order_number_counters before and after</td>
+<td>unchanged</td>
+<td>—</td>
+</tr>
+<tr>
+<td>What the (replaced) Groq endpoint received</td>
+<td><code>{"question": "...", "has_previous_item": false}</code>, strict schema, no tools</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>A typed question that the local matcher understands ("Show low stock", "How many nitrile gloves are left?") does not call <code>/ai/interpret</code> for that question: separate capabilities or consent requests may occur. For the stock answer the app only reads <code>GET /api/v1/items</code> (or reuses fresh cache) and builds the answer on the phone.</p>
+<h2 id="what-happens-when-things-go-wrong">What happens when things go wrong<a class="anchor" href="#what-happens-when-things-go-wrong" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>What the server does</th>
+<th>What the app does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Invalid input</strong></td>
+<td>422 with field-level <code>details</code> before the handler; the authentication dependency may already have queried the database, and the 422 is raised after <code>get_db</code> has closed normally. Malformed JSON fails earlier; invalid authentication can take precedence over schema errors. Exception: names that become empty after cleaning are accepted (A-24).</td>
+<td>Shows a validation message; nothing saved.</td>
+</tr>
+<tr>
+<td><strong>Not your data</strong></td>
+<td>404 (ownership is part of the query).</td>
+<td>Shows the server's message (for example "Item not found"); item and category deletes treat 404 as already done.</td>
+</tr>
+<tr>
+<td><strong>Missing or bad token</strong></td>
+<td>401; refresh tokens rejected on protected routes.</td>
+<td>One shared refresh, then retry; a definitive 401/403 from refresh signs the user out.</td>
+</tr>
+<tr>
+<td><strong>Expired access token</strong></td>
+<td>401 <code>Invalid or expired token</code>.</td>
+<td>Refresh with the stored refresh token (rotation), retry once.</td>
+</tr>
+<tr>
+<td><strong>Unverified email (when enforced)</strong></td>
+<td>403 <code>EMAIL_NOT_VERIFIED</code> for an unverified email account on login, refresh and routes using the protected bearer dependency; public routes are outside that policy.</td>
+<td>Shows the verify-email screen; the exact string matters.</td>
+</tr>
+<tr>
+<td><strong>Lost connectivity</strong></td>
+<td>A request blocked before sending does not reach the server. A lost connection or response after sending may occur after commit.</td>
+<td>Most write buttons check NetInfo first and show "Offline — Connect to WiFi…" without sending anything; writes that do go out are not paused for later automatic replay (<code>networkMode: 'always'</code>, retry 0), but failure timing depends on the network; ordinary requests have a 90 s overall deadline. There is <strong>no offline write queue</strong>. Queries keep showing cached (possibly stale) data and refetch on reconnect (<code>onlineManager</code> wired to NetInfo). The Dashboard and Orders tab show "showing last synced data" when offline; no screen shows a last-sync time. The assistant answers from the last data synced in this login, labelled "Last known". Screens treat "connected" as online while TanStack also requires internet reachability, so on Wi-Fi without internet a write can be attempted and fail with a connection error.</td>
+</tr>
+<tr>
+<td><strong>Concurrent edits</strong></td>
+<td>Item writes: 409 version conflict. Order status: 409 if the status moved. Duplicate names: advisory lock → 409. Same order <code>localId</code>: one order.</td>
+<td>The item form sends its captured version. Mutation hooks invalidate relevant active queries after 409; the person reopens/reloads the form before editing again. Retry retains the original variables.</td>
+</tr>
+<tr>
+<td><strong>Timeouts</strong></td>
+<td>SQL statements: 8 s on the application engine; health: 2 s; Groq: 25 s. Alembic has a separate engine. A timeout rolls back uncommitted work, not an earlier commit.</td>
+<td>Ordinary API requests: 90 s overall deadline. Refresh and detached logout revocation: 30 s; health preflight: 5 s; AI: 50 s; assistant inventory: 20 s abort/22 s deadline. A missing response can follow a successful commit: the dialog says the server may have saved, and active views refetch. Check before retrying; an order retry must reuse its original <code>localId</code>.</td>
+</tr>
+<tr>
+<td><strong>Rollback</strong></td>
+<td>A failure before commit rolls back that uncommitted transaction. Order apply, category delete and account deletion commit their related changes atomically.</td>
+<td>A failed response after commit may leave data changed; refetch before retrying.</td>
+</tr>
+<tr>
+<td><strong>Unexpected error</strong></td>
+<td>500 generic message, logged with the exception type and code location but no values.</td>
+<td>Generic error message.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="known-application-issues-found-while-tracing">Known application issues found while tracing<a class="anchor" href="#known-application-issues-found-while-tracing" aria-label="Link to this section">#</a></h2>
+<p>A-1 to A-23 were found by reading the mobile and backend code on 7 Oct 2026 (static analysis; none of them was reproduced on a phone; A-13, A-14 and A-16 were reproduced against the API in a disposable local database). A-18 to A-23 came from the source checks and the documentation agents' reviews. All 23 were re-checked against the code on 8 Oct 2026. <strong>A-24 to A-35 were found on 8 Oct 2026</strong>: A-24 to A-27 were reproduced against a disposable local database (A-27 with Alembic's configuration call alone), the rest come from reading the code. They were originally documented without changing the application. <strong>Subsequent owner-authorized fixes on 8 October 2026</strong> are marked below; unmarked findings remain open. Earlier audit evidence and line anchors describe the pre-fix snapshot. See <a href="BACKEND_HARDENING.md#safety-follow-up-8-october-2026">the safety follow-up</a> for implementation and verification scope.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Id</th>
+<th>Issue</th>
+<th>Evidence</th>
+<th>Proposed fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A-1</td>
+<td><strong>Fixed locally — 8 Oct 2026.</strong> Previously: A stale edit used the live-cache version.</td>
+<td><code>app/item/[id].tsx</code>, <code>tests/item-form-safety.test.cjs</code></td>
+<td>Fields and version are captured together; blank/unloaded forms still cannot save. Active views refetch after 409. Device/live acceptance is not claimed.</td>
+</tr>
+<tr>
+<td>A-2</td>
+<td><strong>"Remove" is offered for orders the API will not delete.</strong></td>
+<td><code>components/orders/OrderCard.tsx:189-195</code> vs <code>app/api/v1/orders.py:640-644</code></td>
+<td>Show Remove only for <code>pending</code> and <code>declined</code>.</td>
+</tr>
+<tr>
+<td>A-3</td>
+<td><strong>Fixed locally for hook-based mutations.</strong> A 409 previously showed a generic “Refreshing” claim without refreshing.</td>
+<td><code>utils/serverErrors.ts</code>, <code>hooks/useServerMutations.ts</code>, reconciliation tests</td>
+<td>Show the actual server message and invalidate the affected hook queries after 409. Direct bulk calls retain their existing operation-level reconciliation; no universal automatic retry or form reload is claimed.</td>
+</tr>
+<tr>
+<td>A-4</td>
+<td><strong>Two messages for one failure</strong> (global toast plus a call-site alert) for category and order mutations and some item actions.</td>
+<td><code>providers/QueryProvider.tsx:52-68</code>; <code>hooks/useServerMutations.ts:235-337</code>; <code>app/(tabs)/orders.tsx:38-77</code></td>
+<td>Give each mutation one owner for error feedback.</td>
+</tr>
+<tr>
+<td>A-5</td>
+<td><strong>Resend verification fails after a username login.</strong> The typed identifier is passed as <code>email</code>.</td>
+<td><code>app/(auth)/login.tsx:229-233</code>; <code>app/(auth)/verify-email-pending.tsx:37-46</code>; <code>app/schemas/user.py:212-214</code> (EmailStr)</td>
+<td>Pass the account's email (from the server) or ask for it on that screen.</td>
+</tr>
+<tr>
+<td>A-6</td>
+<td><strong>Rate-limit message says "wait 60 seconds"</strong> on every screen except Login (which shows "Too many attempts…"); the server sends no <code>Retry-After</code> and the real windows are per hour for most auth routes.</td>
+<td><code>services/api.ts:307-314</code>; <code>app/(auth)/login.tsx:49-52</code>; <code>app/utils/rate_limiter.py:38-42</code></td>
+<td>Send <code>Retry-After</code> (slowapi <code>headers_enabled=True</code>) or use neutral wording.</td>
+</tr>
+<tr>
+<td>A-7</td>
+<td><strong>Dashboard counts differ from the API's stats</strong> (broader low-stock rule; pending orders include <code>ordered</code>).</td>
+<td><code>app/(tabs)/index.tsx:58-66</code>; <code>types/index.ts:129-152</code>; <code>app/api/v1/items.py:139,151-158</code></td>
+<td>Decide on one definition of "low stock" and "pending", then share it (or call <code>/items/stats</code>).</td>
+</tr>
+<tr>
+<td>A-8</td>
+<td><strong>Reset-password screen</strong> validates only length and is reachable only through a deep link no email uses.</td>
+<td><code>app/(auth)/reset-password.tsx:48-51</code>; <code>app/utils/email.py:148</code></td>
+<td>Either remove the screen or link emails to it and mirror the password rules.</td>
+</tr>
+<tr>
+<td>A-9</td>
+<td><strong>Registration tokens are discarded on the phone but stay valid on the server</strong> (refresh row valid 30 days).</td>
+<td><code>services/auth.ts:15</code>; <code>store/useAuthStore.ts:289</code>; <code>app/api/v1/auth.py:159-171</code></td>
+<td>Stop issuing tokens on register, or revoke them (call logout) when discarding.</td>
+</tr>
+<tr>
+<td>A-10</td>
+<td><strong>Mobile and backend status lists differ</strong>: the app's type has <code>cancelled</code>/<code>completed</code>; <code>partially_received</code> renders as "Unknown".</td>
+<td><code>types/index.ts:173-181</code>; <code>components/orders/OrderCard.tsx:32-77</code>; <code>app/models/order.py:19-27</code></td>
+<td>Align the types and add a badge for <code>partially_received</code>.</td>
+</tr>
+<tr>
+<td>A-11</td>
+<td><strong><code>GET /ai/capabilities</code> on every tab switch</strong> and every return to the tabs while signed in. The same re-initialisation also makes the phone re-check every file of the speech pack.</td>
+<td><code>app/(tabs)/_layout.tsx:16-23</code>; <code>components/assistant/AssistantExperience.tsx:140-180</code>; <code>modules/carekosh-voice/android/src/main/java/expo/modules/carekoshvoice/ModelPack.kt:90-115</code></td>
+<td>Cache capabilities per session (for example a TanStack query with a staleTime); verify the speech pack once after download or at start-up.</td>
+</tr>
+<tr>
+<td>A-12</td>
+<td><strong>Fixed locally — 8 Oct 2026.</strong> Previously: Ordinary requests could wait indefinitely.</td>
+<td><code>services/api.ts</code>, <code>tests/api-refresh.test.cjs</code></td>
+<td>90 s overall deadline covers transport, refresh/retry waits and body parsing; caller cancellation remains distinct. Device/live acceptance is not claimed.</td>
+</tr>
+<tr>
+<td>A-13</td>
+<td><strong>500 responses lack <code>X-Request-ID</code> and security headers</strong> (generic handler runs outside the middleware). Reproduced.</td>
+<td><code>app/main.py:223-237</code>; transcript (local review reference; not published)</td>
+<td>Add the headers in a pure ASGI middleware that wraps the error middleware, or set them in the 500 handler.</td>
+</tr>
+<tr>
+<td>A-14</td>
+<td><strong>Logout leaves the access token valid</strong> for up to 30 minutes. Reproduced.</td>
+<td><code>app/api/v1/auth.py:818-859</code>; <code>app/api/deps.py:50-70</code></td>
+<td>Accept and document, or bump a per-session marker / keep a short deny-list.</td>
+</tr>
+<tr>
+<td>A-15</td>
+<td><strong>Profile <code>phone</code> and category fields cannot be cleared with <code>null</code></strong>, unlike items. Only an empty string works (<code>"phone": ""</code>, <code>"description": ""</code>).</td>
+<td><code>app/api/v1/auth.py:910-913</code>; <code>app/api/v1/categories.py:248-256</code></td>
+<td>Use <code>model_fields_set</code> as <code>update_item</code> does.</td>
+</tr>
+<tr>
+<td>A-16</td>
+<td><strong>A received order whose item was deleted is stuck</strong>: apply returns 409, <code>received → declined</code> is not an allowed transition, and delete accepts only pending/declined.</td>
+<td><code>app/api/v1/orders.py:28-46,502-524,640-644</code>; reproduced in the walkthrough</td>
+<td>Allow <code>received → declined</code>, or let apply skip/report missing lines by choice. Product decision.</td>
+</tr>
+<tr>
+<td>A-17</td>
+<td><strong>Local dev container starts the server even if the migration failed</strong> (<code>Dockerfile.dev</code> builds an inline entrypoint that runs <code>alembic upgrade head</code> and then <code>uvicorn</code> without stopping on error). Production's <code>docker-entrypoint.sh</code> does stop.</td>
+<td><code>vitaltrack-backend/Dockerfile.dev:33-44</code>; <code>docker-entrypoint.sh:49-56</code></td>
+<td>Add <code>set -e</code> to the dev entrypoint, or make it exit when <code>alembic upgrade head</code> fails. Development only.</td>
+</tr>
+<tr>
+<td>A-18</td>
+<td><strong>IP address and User-Agent are kept with every refresh-token row, with no clean-up.</strong> Register, login and refresh each store them; expired and revoked rows are never purged, so they stay until the account is deleted. Login activity details also include the client address.</td>
+<td><code>app/api/v1/auth.py:168-169</code>, <code>:282-283</code>, <code>:797-798</code>; no delete of <code>refresh_tokens</code> outside account deletion (searched <code>app/</code>)</td>
+<td>Purge expired/revoked refresh rows on a schedule (or at login), and state the retention in the privacy policy. Privacy decision for the owner.</td>
+</tr>
+<tr>
+<td>A-19</td>
+<td><strong><code>main</code> initialises Sentry with SDK defaults</strong>: in sentry-sdk 2.20.0 that means local variables in stack frames and request bodies up to the SDK's "medium" size, filtered only by the SDK's built-in scrubber for known secret key names. The feature branch sets <code>include_local_variables=False</code>, <code>send_default_pii=False</code>, <code>max_request_body_size="never"</code> and its own <code>before_send</code> scrubbers. Matters only for a service that runs <code>main</code> with <code>SENTRY_DSN</code> set (NOT VERIFIED).</td>
+<td><code>git show main:vitaltrack-backend/app/main.py</code> lines 42-46 vs branch <code>app/main.py:46-54</code>; SOURCES (local review reference; not published) row 31</td>
+<td>Ship the branch configuration (merging does), or set the same options on <code>main</code>.</td>
+</tr>
+<tr>
+<td>A-20</td>
+<td><strong>Fixed locally — 8 Oct 2026.</strong> Previously: python-jose 3.3.0 contained two published advisories.</td>
+<td><code>vitaltrack-backend/requirements.txt</code>, auth/security suites</td>
+<td>Pinned 3.5.0, including the 3.4.0 security fixes and declared Python 3.12 support. Authentication regression tests pass; no signing-key or algorithm change. Device/live acceptance is not claimed.</td>
+</tr>
+<tr>
+<td>A-21</td>
+<td><strong>The assistant consent version is written in three places</strong> (twice in the backend schema, once in the app) with nothing checking they match; a mismatch makes the app report the assistant's online option as unavailable without explanation.</td>
+<td><code>vitaltrack-mobile/services/assistant.ts:5,12</code>; <code>vitaltrack-backend/app/schemas/ai.py:7,76</code></td>
+<td>Add a contract test, or have the app accept the version reported by <code>/ai/capabilities</code>.</td>
+</tr>
+<tr>
+<td>A-22</td>
+<td><strong>Deprecated Gunicorn worker class.</strong> <code>uvicorn.workers.UvicornWorker</code> is deprecated since uvicorn 0.30.0 (0.34.0 installed); it still works.</td>
+<td><code>vitaltrack-backend/Dockerfile:81</code>; <a href="https://github.com/encode/uvicorn/blob/0.34.0/CHANGELOG.md">uvicorn 0.34.0 changelog</a> (0.30.0 entry; retrieved 2026-10-07)</td>
+<td>Switch to the <code>uvicorn-worker</code> package when dependencies are next upgraded. Maintenance.</td>
+</tr>
+<tr>
+<td>A-23</td>
+<td><strong>Upgrade hazard, not a current defect: FastAPI dependency timing.</strong> With FastAPI 0.115.6, <code>get_db</code>'s commit after <code>yield</code> runs after the response is serialised but before it is sent. FastAPI 0.118.0 moved it to after the response is sent, so a handler that relies on <code>get_db</code> to commit could report success before a failed commit. 0.121.0 added a dependency <code>scope</code> (<code>scope="function"</code> exits before the response). Separately, 0.132.0 rejects JSON bodies without a JSON <code>Content-Type</code> by default.</td>
+<td><code>app/core/database.py:107-124</code>; <a href="https://fastapi.tiangolo.com/release-notes/">FastAPI release notes</a> (0.118.0, 0.121.0, 0.132.0; read 8 Oct 2026); SOURCES (local review reference; not published) row 1</td>
+<td>Before upgrading FastAPI, make every write handler commit explicitly (most already do) or give <code>get_db</code> the early-exit scope; check that every client sends <code>Content-Type: application/json</code>.</td>
+</tr>
+<tr>
+<td>A-24</td>
+<td><strong>Category and item names that clean to empty are accepted</strong> (found 8 Oct 2026; reproduced). The length rule runs before tags and spaces are removed, so <code>"   "</code> is stored as <code>""</code> (201), and <code>"&lt;b&gt;&lt;/b&gt;"</code> then fails as a duplicate of that empty name (409). An item named <code>"&lt;i&gt;&lt;/i&gt;"</code> is stored as <code>""</code>. User <code>name</code> follows the same pattern (code reading).</td>
+<td><code>vitaltrack-backend/app/schemas/category.py:19, 25-35, 41, 46-54</code>; <code>app/schemas/item.py:20, 38-50, 78, 96-104</code>; <code>app/schemas/user.py:28, 58-64, 135, 149-157</code></td>
+<td>Reject a value that is empty after cleaning, or clean it in a <code>mode="before"</code> validator so the length rule sees the cleaned text. Decide separately what to do with names already stored empty.</td>
+</tr>
+<tr>
+<td>A-25</td>
+<td><strong>Fixed locally — 8 Oct 2026.</strong> Previously: Contact create/update cleaning differed.</td>
+<td><code>app/schemas/item.py</code>, <code>tests/test_items.py</code></td>
+<td>Both use the same markup cleaner and preserve valid punctuation/Unicode within the existing length limit. Device/live acceptance is not claimed.</td>
+</tr>
+<tr>
+<td>A-26</td>
+<td><strong><code>POST /orders</code> requires <code>orderId</code> but ignores it</strong> (found 8 Oct 2026; reproduced: missing → 422 <code>body.orderId</code> "Field required"). The server always allocates the public number; the app sends a random placeholder, and its comments wrongly say <code>totalItems</code>, <code>totalUnits</code> and <code>exportedAt</code> are also required.</td>
+<td><code>vitaltrack-backend/app/schemas/order.py:87</code>; <code>app/api/v1/orders.py:270-357</code> (never read); <code>vitaltrack-mobile/services/orders.ts:35, 85-93</code></td>
+<td>Make <code>orderId</code> optional (still accepted from older builds) and correct the mobile comments.</td>
+</tr>
+<tr>
+<td>A-27</td>
+<td><strong>Fixed locally — 8 Oct 2026.</strong> Previously: ConfigParser rejected percent-encoded database URLs.</td>
+<td><code>alembic/env.py</code>, <code>tests/test_alembic_url.py</code></td>
+<td>Escape % only when setting Alembic configuration; reading it returns the unchanged original URL. Device/live acceptance is not claimed.</td>
+</tr>
+<tr>
+<td>A-28</td>
+<td><strong>The reset-password page reports weak passwords and rate limits as "The link may have expired"</strong> (found 8 Oct 2026; code reading). The page reads only <code>detail</code>; 422 bodies carry <code>details</code>/<code>message</code> and 429 bodies carry <code>error</code>. The hint "Min 8 characters, 1 uppercase, 1 number" omits the lower-case rule.</td>
+<td><code>vitaltrack-backend/app/api/v1/auth.py:605, 650</code>; <code>app/main.py:197-205</code></td>
+<td>Show <code>detail</code>, else the first <code>details[].message</code>, else <code>error</code>; list all three character rules in the hint.</td>
+</tr>
+<tr>
+<td>A-29</td>
+<td><strong>Fixed locally — 8 Oct 2026.</strong> Previously: The reset backup and deletion used different snapshots.</td>
+<td><code>hooks/useSeedInventory.ts</code>, <code>app/builder.tsx</code>, <code>tests/inventory-reset.test.cjs</code>, <code>tests/test_reset_safety.py</code></td>
+<td>Copy the complete server DTOs into a uniquely named backup before any delete, use only its IDs/item versions/category update timestamps, stop after an account change, and delete categories only if empty. Changed or newly added records are preserved or the concurrent write is refused. Both app and backend must contain these fixes. Device/live acceptance is not claimed.</td>
+</tr>
+<tr>
+<td>A-30</td>
+<td><strong>Fixed locally — 8 Oct 2026.</strong> Previously: Valid name/contact punctuation was silently removed.</td>
+<td><code>utils/sanitize.ts</code>, <code>app/schemas/item.py</code>, mobile/backend item tests</td>
+<td>Preserve legitimate text, remove markup and keep escaping HTML output. Already altered stored values are not automatically repaired. Device/live acceptance is not claimed.</td>
+</tr>
+<tr>
+<td>A-31</td>
+<td><strong>Fixed locally — 8 Oct 2026.</strong> Previously: A lost response was wrongly described as an unsaved write.</td>
+<td><code>utils/mutationFeedback.ts</code>, <code>hooks/useServerMutations.ts</code>, <code>tests/mutation-reconciliation.test.cjs</code></td>
+<td>Describe the outcome as uncertain; invalidate relevant active queries after network/gateway failures. Retry still uses the original variables. Device/live acceptance is not claimed.</td>
+</tr>
+<tr>
+<td>A-32</td>
+<td><strong>Fixed locally — 8 Oct 2026.</strong> Previously: Logout cleanup waited for unbounded network work.</td>
+<td><code>services/auth.ts</code>, <code>services/api.ts</code>, <code>store/useAuthStore.ts</code>, logout/store/refresh tests</td>
+<td>Local logout first; isolated bounded best-effort revocation, serialized credential writes and stale-refresh guards. Local cleanup blocks a racing login/registration. Device/live acceptance is not claimed.</td>
+</tr>
+<tr>
+<td>A-33</td>
+<td><strong>Fixed locally — 8 Oct 2026.</strong> Previously: Safety words inside an item name caused false refusal.</td>
+<td><code>features/assistant/core.ts</code>, <code>features/assistant/snapshot.ts</code>, phrasing/UI tests</td>
+<td>An exact active name from this session's verified cache fences name words off from safety checks; the final answer still uses verified inventory. Sync inventory first if there is no owned cache. Negations, mutations, history and medical requests remain refused. Device/live acceptance is not claimed.</td>
+</tr>
+<tr>
+<td>A-34</td>
+<td><strong>Fixed locally — 8 Oct 2026.</strong> Previously: An unused listen=1 parameter could start recording.</td>
+<td><code>components/assistant/AssistantExperience.tsx</code>, <code>tests/assistant-inline.test.cjs</code></td>
+<td>Removed automatic route-triggered recording. A microphone tap is required, and Send remains required before text upload. Device/live acceptance is not claimed.</td>
+</tr>
+<tr>
+<td>A-35</td>
+<td><strong>Every interpret failure shows the same message</strong> (found 8 Oct 2026; code reading). 403, 429, 502, 503 and 504 all become "Online understanding could not complete this question…", and <code>Retry-After</code> is not shown, so a person cannot tell a used-up daily allowance (it resets at 05:30 IST) from a passing error. If the phone gives up or the person cancels, the server call still runs and counts toward the allowance.</td>
+<td><code>vitaltrack-mobile/components/assistant/AssistantExperience.tsx:305-309</code>; <code>services/api.ts:418-436</code>; <code>vitaltrack-backend/app/api/v1/ai.py:93-104</code></td>
+<td>Map each status to its own message (including when the allowance resets); say that a cancelled question may still have counted.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="coverage-gaps-worth-knowing">Coverage gaps worth knowing<a class="anchor" href="#coverage-gaps-worth-knowing" aria-label="Link to this section">#</a></h2>
+<p>These come from reading every test (the ledger (local review reference; not published) has the full list). They are not bugs; they are places where the documentation cannot lean on an automated test.</p>
+<ul>
+<li>No test for <code>POST /auth/forgot-password</code>, <code>POST /auth/resend-verification</code> or the HTML <code>GET /auth/verify-email</code>.</li>
+<li>Logout's effect on the access token is not tested either way (this audit reproduced that it stays valid).</li>
+<li>Rate limiting, security headers, <code>X-Request-ID</code> and CORS headers are untested (the limiter is disabled in tests).</li>
+<li>Account deletion: the route test checks only the <code>users</code> row; the inventory cascade is shown only by this audit's walkthrough (a separate test deletes a user row directly and checks that the AI rows go).</li>
+<li>No test sends a name that cleans to empty, a non-empty <code>supplierContact</code> on an update, a missing <code>orderId</code> or a reused <code>localId</code> with a changed payload (A-24 to A-26; the 8 Oct probes did).</li>
+<li>Concurrent duplicate registration (would return 409, not 400) is untested.</li>
+<li>AI quotas are tested at service level, not as HTTP 429; the provider error mapping (<code>bounded_call</code>) is untested; no successful <code>/ai/speak</code>.</li>
+<li>Migration downgrades (including 0007's refusal) are untested.</li>
+<li>About ten concurrency tests start requests together without forcing the overlap, so a pass does not prove the race was exercised.</li>
+<li>Mobile tests cover the API client, logout and order-creation services, item paging, the sanitising helpers, the query provider, assistant logic and assistant UI; screens, stores and the category service are not loaded by any test.</li>
+</ul>
+<footer>Generated 2026-10-09 by <code>docs/tools/build_docs.py</code> from <code>docs/API_TRACEABILITY.md</code>.</footer>
+</main>
+</div>
+<script>
+var tocDetails = document.getElementById('toc-details');
+if (tocDetails && window.matchMedia('(min-width: 901px)').matches) { tocDetails.open = true; }
+document.querySelectorAll('pre > code').forEach(function (code) {
+  var pre = code.parentElement, wrap = document.createElement('div');
+  wrap.className = 'codewrap'; pre.parentNode.insertBefore(wrap, pre); wrap.appendChild(pre);
+  var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+  b.setAttribute('aria-label', 'Copy this code block');
+  b.addEventListener('click', function () {
+    var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(code.innerText).then(done, function () { b.textContent = 'Select and copy'; }); }
+    else { b.textContent = 'Select and copy'; }
+  });
+  wrap.appendChild(b);
+});
+</script>
+</body>
+</html>

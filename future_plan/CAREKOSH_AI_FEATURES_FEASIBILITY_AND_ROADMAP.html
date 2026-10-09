@@ -66,8 +66,19 @@ hr{border:none;border-top:1px solid var(--border);margin:36px 0}
 .feat .meta{font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px}
 .tag-good{color:var(--accent);font-weight:700}.tag-bad{color:var(--danger);font-weight:700}
 </style>
+<style id="doc-review-style">.doc-review{display:block!important;position:static!important;box-sizing:border-box!important;width:auto!important;max-width:1000px;margin:24px auto!important;padding:18px 22px!important;border:1px solid #aab8ac!important;border-left:5px solid #286258!important;border-radius:8px;background:#f0f6ef!important;color:#1b352c!important;font:15px/1.6 system-ui,sans-serif!important}.doc-review p{margin:6px 0!important;color:inherit!important;font:inherit!important}.doc-review a{color:#075d70!important;text-decoration:underline!important}.doc-review strong{color:#173f34!important}.doc-review code{color:inherit!important;background:transparent!important}@media print{.doc-review{break-inside:avoid}}</style>
+<style id="voice-doc-phone-layout">
+@media (max-width: 760px) {
+  body { overflow-wrap: anywhere; }
+  table { display: block; max-width: 100%; overflow-x: auto; }
+  pre, .arch, .file-tree, .flow { max-width: 100%; }
+  pre code { overflow-wrap: normal; }
+  .toc li > *, .grid > * { min-width: 0; }
+}
+</style>
 </head>
 <body>
+<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. This document’s original proposals/results remain historical; use the maintained guide for current behavior. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside><aside class="doc-review" aria-label="Documentation status"><strong>Superseded brainstorming (June 2026 future proposal) — not a delivery plan · reviewed 23 September 2026 · refreshed 7 October 2026</strong><p>Retained for its feature ideas. Free-tier, model, timeline and career claims below are historical hypotheses, not verified current facts. No AI is implemented. Exact stock answers need deterministic data access; tool calling alone is not RAG. Follow the newer voice decision guide.</p><p><strong>Implementation status (7 Oct 2026).</strong> “No AI is implemented” still holds for <code>main</code> (<code>835fad3</code>) and released builds. The unmerged feature branch (<code>03cfebb</code>; not verified on a phone or in production) implements a narrower, read-only voice assistant: on-device Moonshine English recognition, a local parser, optional Groq text-intent extraction behind per-account consent, and Android device TTS. It does not implement this page's WhatsApp bot, write proposals, Gemini failover, push alerts, pgvector search, forecasting or LangGraph/MCP, and nothing is deployed to production (<code>render.yaml</code> sets no AI variables). The “~70% already in your backend”, “14,400 calls/day” and “₹0” tiles are unmeasured or dated estimates, not verified facts. Statements that <code>app.json</code> blocks <code>RECORD_AUDIO</code> describe <code>main</code>; the feature branch requests that permission through the expo-audio plugin.</p><p><a href="../docs/INDEX.html">Documentation home and source status</a> · <a href="../docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide (current onboarding)</a> · <a href="../docs/API_TRACEABILITY.md">API traceability</a> · <span>Documentation audit, 7 Oct 2026 <small>(local review reference; not published)</small></span> · <a href="CAREKOSH_VOICE_AGENT_FINAL_IMPLEMENTATION_PLAN.html">Later voice plan</a> · <a href="../docs/BACKEND_HARDENING.md">Local hardening and remaining work</a></p></aside>
 <div class="page">
 
 <div class="hero">
@@ -104,7 +115,7 @@ hr{border:none;border-top:1px solid var(--border);margin:36px 0}
   <div class="kpis">
     <div class="kpi"><div class="num">₹0</div><div class="lbl">LLM + voice + inbound WhatsApp</div></div>
     <div class="kpi"><div class="num">14,400</div><div class="lbl">Free LLM calls/day (Groq)</div></div>
-    <div class="kpi"><div class="num">~70%</div><div class="lbl">Already in your backend</div></div>
+    <div class="kpi"><div class="num">~70%</div><div class="lbl">Already in your backend (unmeasured estimate)</div></div>
     <div class="kpi"><div class="num">is_critical</div><div class="lbl">Emergency tag already exists</div></div>
   </div>
   <div class="callout warn">
@@ -184,7 +195,7 @@ hr{border:none;border-top:1px solid var(--border);margin:36px 0}
   <h3>Gaps to build (all at the edges)</h3>
   <ul>
     <li><b>Agent layer:</b> no LLM client (but <code>httpx</code> already present → a free Groq/Gemini call needs <b>no new dependency</b>); a <code>/ai/answer</code> (read) + <code>/ai/act</code> (guarded write) endpoint.</li>
-    <li><b>Expiry + staleness:</b> items have <code>expiry_date</code> and <code>updated_at</code>, but no endpoint surfaces "expiring soon" or "stale". <span class="sz s">S</span> — <b>verify <code>updated_at</code> bumps on the atomic stock write first</b> (the CONC-1 Core update may bypass the ORM <code>onupdate</code>; add <code>updated_at=func.now()</code> to each CAS if so).</li>
+    <li><strong>Retracted prerequisite:</strong> ordinary item updates already use TimestampMixin.onupdate. No blanket updated_at fix is required. A future physical stock-count feature would need a separate timestamp because any edit can change updated_at.</li>
     <li><b>Push:</b> no <code>expo-notifications</code> / device-token store (and <code>VIBRATE</code> is blocked in app.json). <span class="sz m">M</span></li>
     <li><b>WhatsApp:</b> a <code>POST /integrations/whatsapp/webhook</code> + <code>wa_id↔user</code> mapping + Meta business verification. <span class="sz m">M</span></li>
     <li><b>Voice (mobile):</b> <code>RECORD_AUDIO</code> is <b>actively blocked</b> in app.json:30 → unblock + STT/TTS + new store build. <span class="sz l">L</span></li>
@@ -350,16 +361,16 @@ user: "add 5 oxygen"
     <thead><tr><th>Layer</th><th>Free path</th><th>When you'd pay</th></tr></thead>
     <tbody>
       <tr><td>LLM</td><td>Groq free (14,400/day) + Gemini Flash free failover</td><td>Only if you exceed free RPM/RPD or need a no-train tier for PII → ~₹80–800/mo</td></tr>
-      <tr><td>STT / TTS</td><td>on-device expo-speech + expo-speech-recognition (₹0) / Groq Whisper free</td><td>Never, at this scale</td></tr>
+      <tr><td>STT / TTS</td><td>on-device expo-speech + expo-speech-recognition (₹0) / Groq Whisper free</td><td>No cost guarantee; verify quotas and billing</td></tr>
       <tr><td>Embeddings + vector</td><td>local e5-small + pgvector on Neon</td><td>Never</td></tr>
       <tr><td>In-app push</td><td>Expo Push (₹0)</td><td>Never</td></tr>
       <tr><td>WhatsApp — inbound replies</td><td><b>Free</b> within 24h window</td><td>Never</td></tr>
       <tr><td>WhatsApp — <b>proactive</b> alerts/reports</td><td><b>Avoid via in-app push (free)</b></td><td>Per-template (a few paise/msg) if you opt to push via WhatsApp</td></tr>
-      <tr><td>Email</td><td>existing Brevo free tier</td><td>Never, at this scale</td></tr>
+      <tr><td>Email</td><td>existing Brevo free tier</td><td>No cost guarantee; verify quotas and billing</td></tr>
       <tr><td>Self-hosted LLM (optional)</td><td>Oracle Cloud Always-Free ARM (CPU)</td><td>A real GPU box only if PII compliance ever mandates on-prem</td></tr>
     </tbody>
   </table>
-  <p style="font-size:.9rem"><b>Bottom line:</b> the entire voice + WhatsApp-reply + in-app-alert experience is <b>~₹0/month</b>. The only optional cost is pushing <em>proactive</em> alerts <em>over WhatsApp specifically</em> — and free in-app push removes even that.</p>
+  <p style="font-size:.9rem"><b>Bottom line:</b> the entire voice + WhatsApp-reply + in-app-alert experience is <b>unverified operating-cost estimate</b>. The only optional cost is pushing <em>proactive</em> alerts <em>over WhatsApp specifically</em> — and free in-app push removes even that.</p>
 </div>
 
 <hr>
@@ -397,8 +408,8 @@ user: "add 5 oxygen"
       <tr><td><b>Multi-agent</b></td><td>Scanner (cron) + conversational + reporter roles, least-privilege tool scopes.</td></tr>
       <tr><td><b>Vector DB / embeddings / semantic search</b></td><td>pgvector on existing Neon; multilingual embeddings bridge "oxygen" ↔ "O2 concentrator" ↔ Hindi terms.</td></tr>
       <tr><td><b>AI orchestration</b></td><td>Typed intent→tool→confirm state machine (mappable to LangGraph).</td></tr>
-      <tr><td><b>Production AI deployment</b></td><td>Live on api.carekosh.com — user-scoped, rate-limited, audited, on a no-GPU host (forces the free-model design).</td></tr>
-      <tr><td><b>LLMOps</b></td><td>Multilingual eval set, guardrails, ~₹0 cost SLO, Groq→Gemini failover.</td></tr>
+      <tr><td><b>Production AI deployment</b></td><td>Proposed only; not implemented or deployed — user-scoped, rate-limited, audited, on a no-GPU host (forces the free-model design).</td></tr>
+      <tr><td><b>LLMOps</b></td><td>Multilingual eval set, guardrails, a future measured cost budget, Groq→Gemini failover.</td></tr>
     </tbody>
   </table>
   <div class="callout violet">
@@ -473,18 +484,18 @@ user: "add 5 oxygen"
   </table>
   <ol>
     <li><b>Now:</b> nothing AI — finish the launch (AAB → closed test → production).</li>
-    <li><b>At ~50 users:</b> build the §06 WhatsApp MVP (₹0, ~1 weekend). One backend pre-req: verify/fix <code>updated_at</code> bumping before the staleness/audit features.</li>
+    <li><strong>Retracted prerequisite:</strong> ordinary item updates already use TimestampMixin.onupdate. No blanket updated_at fix is required. A future physical stock-count feature would need a separate timestamp because any edit can change updated_at.</li>
     <li><b>For Adobe:</b> keep DSA ~45–55%; build only the WhatsApp agent + pgvector; rehearse the §09 pitch.</li>
     <li><b>Plan WhatsApp verification early</b> (Meta business verification has lead time) but keep it off the critical path — voice + in-app deliver the same brain without it.</li>
   </ol>
   <div class="callout success">
     <span class="callout-label">One-line verdict</span>
-    <p>A free voice + WhatsApp AI layer is genuinely feasible (~₹0), ~70% already in your backend, and your <code>is_critical</code> tag makes the emergency-vs-routine intelligence almost free to build. Ship the foundation first, build the WhatsApp agentic MVP after traction, default proactive alerts to free in-app push, and let voice + criticality be the unique, genuinely-useful differentiator — for caregivers and for the Adobe room.</p>
+    <p>A free voice + WhatsApp AI layer is genuinely feasible (~₹0), a proposal using existing inventory endpoints, and your <code>is_critical</code> tag makes the emergency-vs-routine intelligence almost free to build. Ship the foundation first, build the WhatsApp agentic MVP after traction, default proactive alerts to free in-app push, and let voice + criticality be the unique, genuinely-useful differentiator — for caregivers and for the Adobe room.</p>
   </div>
 </div>
 
 <div class="footer">
-  CareKosh — Free Voice + WhatsApp AI · web-researched (2025–2026 free-tier facts, adversarially verified) + code-grounded · WhatsApp-only, free-LLM-only · forward-looking V2+ (foundation ships first) · 2026-06
+  CareKosh — Free Voice + WhatsApp AI · web-researched (2025–2026 free-tier historical assumptions; not a current provider/pricing verification) + code-grounded · WhatsApp-only, free-LLM-only · forward-looking V2+ (foundation ships first) · 2026-06
 </div>
 
 </div>

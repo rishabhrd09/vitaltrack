@@ -1,5 +1,9 @@
 # Optional Kokoro audition worker
 
+> **AI voice source update — 9 October 2026:** Current AI voice architecture, checked against the 9 October 2026 working tree at `0946eb7` plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+
+> **Status (7 October 2026):** code only, not referenced by `render.yaml` or CI; deployment NOT VERIFIED. The current mobile build does not request cloud speech (`CLOUD_VOICE_ENABLED = false`), and the backend keeps Kokoro speech off unless `AI_ENABLED`, `AI_SPEECH_ENABLED`, `AI_KOKORO_ENABLED`, `AI_KOKORO_RIGHTS_APPROVED`, `KOKORO_SERVICE_URL` and `KOKORO_SERVICE_TOKEN` are all set (`app/services/ai_guard.py`). The voice (`bf_emma`), the 640-character limit and the single worker below match `kokoro_app.py` and `Dockerfile.kokoro`; pins are in `requirements.kokoro.txt` (`kokoro-onnx==0.6.1`, `onnxruntime==1.23.2`).
+
 This is a separate hosted CPU service, not an embedded Android voice. Default phone TTS works without it. Do not deploy it into the small inventory API instance without load/memory measurements.
 
 ## Before starting

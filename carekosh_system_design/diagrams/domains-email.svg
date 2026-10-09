@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 993" width="1000" height="993" role="img" aria-labelledby="domains-email-title domains-email-desc">
+<title id="domains-email-title">Domains, TLS and email links</title>
+<desc id="domains-email-desc">As documented (live DNS, proxy and certificate settings are not verified here): Cloudflare serves DNS for carekosh.com; api.carekosh.com and staging-api.carekosh.com point to Render, which terminates TLS and forwards to the FastAPI service. Emails go out through the Brevo HTTP API; their links use FRONTEND_URL, so the verification, password-reset and account-deletion pages open on the API host itself.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="domains-email-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="domains-email-ah-flow" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#4B3E35"/></marker><marker id="domains-email-ah-optional" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#6B3A6E"/></marker><marker id="domains-email-ah-reply" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7C6B5C"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#domains-email-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">Domains, TLS and email links</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">The app only knows a hostname. DNS decides which server answers, and the API also serves the pages behind email links.</text>
+<rect x="40.0" y="122.3" width="447.0" height="683.0" rx="14" fill="#F4F0E3" stroke="#CDD2B5" stroke-width="1.2"/>
+<rect x="513.0" y="122.3" width="447.0" height="683.0" rx="14" fill="#F5EEE6" stroke="#D3C1C9" stroke-width="1.2"/>
+<text x="56.0" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#557629" text-anchor="start" letter-spacing="1.6">AN API REQUEST</text>
+<text x="529.0" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#6B3A6E" text-anchor="start" letter-spacing="1.6">AN EMAIL LINK</text>
+<rect x="52.0" y="176.3" width="423.0" height="117.4" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="203.1" r="16" fill="#7B2C34"/>
+<text x="85.0" y="209.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">1</text>
+<text x="112.0" y="213.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">CareKosh app</text>
+<text x="70.0" y="243.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">calls https://api.carekosh.com/api/v1/… (staging</text>
+<text x="70.0" y="269.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">builds: staging-api.carekosh.com)</text>
+<rect x="52.0" y="329.6" width="423.0" height="142.9" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8"/>
+<circle cx="85.0" cy="356.5" r="16" fill="#7B2C34"/>
+<text x="85.0" y="362.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2</text>
+<text x="112.0" y="367.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6E5D4E" text-anchor="start">DNS at Cloudflare</text>
+<text x="70.0" y="396.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">documented: the carekosh.com zone points the API</text>
+<text x="70.0" y="422.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">hostnames at Render; live records and proxy mode</text>
+<text x="70.0" y="447.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">not verified</text>
+<path d="M263.5,295.6 L263.5,325.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#domains-email-ah-flow)"/>
+<rect x="52.0" y="508.6" width="423.0" height="117.4" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8"/>
+<circle cx="85.0" cy="535.4" r="16" fill="#7B2C34"/>
+<text x="85.0" y="541.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">3</text>
+<text x="112.0" y="545.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6E5D4E" text-anchor="start">Render edge</text>
+<text x="70.0" y="575.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">a Render-managed TLS certificate for the custom</text>
+<text x="70.0" y="601.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">domain; forwards to the service</text>
+<path d="M263.5,474.6 L263.5,504.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#domains-email-ah-flow)"/>
+<rect x="52.0" y="661.9" width="423.0" height="91.8" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="85.0" cy="688.8" r="16" fill="#7B2C34"/>
+<text x="85.0" y="694.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">4</text>
+<text x="112.0" y="699.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">FastAPI service</text>
+<text x="70.0" y="729.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Gunicorn + 2 Uvicorn workers serving /api/v1</text>
+<path d="M263.5,627.9 L263.5,657.9" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#domains-email-ah-flow)"/>
+<rect x="525.0" y="176.3" width="423.0" height="117.4" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="558.0" cy="203.1" r="16" fill="#7B2C34"/>
+<text x="558.0" y="209.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">1</text>
+<text x="585.0" y="213.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">The API sends an email</text>
+<text x="543.0" y="243.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">only if MAIL_PASSWORD is set; sender</text>
+<text x="543.0" y="269.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">MAIL_FROM</text>
+<rect x="525.0" y="329.6" width="423.0" height="117.4" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
+<circle cx="558.0" cy="356.5" r="16" fill="#7B2C34"/>
+<text x="558.0" y="362.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2</text>
+<text x="585.0" y="367.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6B3A6E" text-anchor="start">Brevo HTTP API</text>
+<text x="543.0" y="396.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">api.brevo.com/v3/smtp/email; MAIL_PASSWORD</text>
+<text x="543.0" y="422.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">is the API key</text>
+<path d="M736.5,295.6 L736.5,325.6" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#domains-email-ah-optional)"/>
+<rect x="525.0" y="483.0" width="423.0" height="91.8" rx="12" fill="#FBF6EC" stroke="#D3BF9E" stroke-width="1.4"/>
+<circle cx="558.0" cy="509.8" r="16" fill="#7B2C34"/>
+<text x="558.0" y="515.9" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">3</text>
+<text x="585.0" y="520.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#1A1512" text-anchor="start">The person&#x27;s inbox</text>
+<text x="543.0" y="550.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">a verification, password-reset or deletion email</text>
+<path d="M736.5,449.0 L736.5,479.0" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#domains-email-ah-flow)"/>
+<rect x="525.0" y="610.8" width="423.0" height="168.5" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="558.0" cy="637.6" r="16" fill="#7B2C34"/>
+<text x="558.0" y="643.7" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">4</text>
+<text x="585.0" y="648.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">The link opens on the API</text>
+<text x="543.0" y="678.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">FRONTEND_URL + /verify-email?token=…</text>
+<text x="543.0" y="703.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">or /reset-password?token=…</text>
+<text x="543.0" y="729.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">or /confirm-delete/{token}</text>
+<text x="543.0" y="754.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">served by the same FastAPI service</text>
+<path d="M736.5,576.8 L736.5,606.8" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#domains-email-ah-flow)"/>
+<path d="M522.0,650.8 L510.0,650.8 Q500.0,650.8 500.0,660.8 L500.0,691.9 Q500.0,701.9 490.0,701.9 L480.0,701.9" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#domains-email-ah-reply)"/>
+<path d="M43.0,833.3 H944.0 Q960.0,833.3 960.0,849.3 V948.0 Q960.0,964.0 944.0,964.0 H43.0 Q40.0,964.0 40.0,961.0 V836.3 Q40.0,833.3 43.0,833.3 Z" fill="#EBDDC6" stroke="none" stroke-width="1.4"/>
+<text x="58.0" y="861.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#7B2C34" text-anchor="start" letter-spacing="1.6">GOOD TO KNOW</text>
+<text x="58.0" y="891.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">render.yaml sets FRONTEND_URL to https://api.carekosh.com/api/v1/auth for production (the live value is not</text>
+<text x="58.0" y="916.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">verified). Moving to another host means repointing DNS; installed apps keep working because the hostname stays the</text>
+<text x="58.0" y="942.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">same.</text>
+</svg>

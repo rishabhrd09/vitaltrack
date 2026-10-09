@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CareKosh documentation</title>
+<style>
+:root{--bg:#f7f5ef;--fg:#1d2328;--muted:#56606b;--card:#ffffff;--border:#d3d9de;--accent:#0b5a73;--accent-bg:#e4f0f4;--note:#fff3d7;--note-border:#9b6a1b;--chip:#eef2f4}
+@media (prefers-color-scheme:dark){:root{--bg:#14181c;--fg:#e8ecef;--muted:#a9b3bc;--card:#1c2228;--border:#36404a;--accent:#7cc7df;--accent-bg:#17303a;--note:#3a2f12;--note-border:#d9a93a;--chip:#232b33}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+a{color:var(--accent);text-underline-offset:3px}a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;left:-999px}.skip:focus{left:12px;top:12px;background:var(--card);padding:8px 12px}
+main{max-width:1080px;margin:auto;padding:36px 20px 80px}
+.eyebrow{font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+h1{font-size:clamp(2rem,5vw,3rem);line-height:1.15;margin:.2em 0 .3em}
+h2{margin-top:2.6rem;padding-top:.6rem;border-top:1px solid var(--border)}
+h3{margin-top:1.6rem}
+aside,.note{padding:16px 18px;border-left:4px solid var(--note-border);background:var(--note);margin:20px 0;border-radius:4px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:20px 0}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px}
+.card h3{margin:0 0 .4em;font-size:1.1rem}.card p{margin:.3em 0;color:var(--muted);font-size:.95rem}
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;margin:16px 0;background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{border-bottom:1px solid var(--border);padding:10px 12px;text-align:left;vertical-align:top}
+th{background:var(--accent-bg)}
+.chip{display:inline-block;font-size:.75rem;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:999px;background:var(--chip);border:1px solid var(--border);white-space:nowrap}
+ol li,ul li{margin:6px 0}
+code{font:.88em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--chip);padding:.1em .3em;border-radius:4px;overflow-wrap:anywhere}
+nav.toc{display:flex;flex-wrap:wrap;gap:8px 18px;margin:18px 0}
+footer{margin-top:3rem;color:var(--muted);font-size:.9rem;border-top:1px solid var(--border);padding-top:1rem}
+@media print{body{background:#fff;color:#000;font-size:11pt}main{max-width:none;padding:0}.skip,nav.toc{display:none}a{color:#000}.tablewrap{overflow:visible;border:none}aside{border:1px solid #999;background:#fff}}
+</style>
+</head>
+<body>
+<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside><p style="padding:16px"><a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html"><strong>Current inventory answers and voice order drafts — 8 October 2026</strong></a>: local drafts, touch-only saving, query/PDF flow and device checklist.</p>
+<a class="skip" href="#start">Skip to the guides</a>
+<main>
+<p class="eyebrow">CareKosh · documentation home · documentation follow-up 8 October 2026</p>
+<h1>CareKosh documentation</h1>
+<p>Pick the guide for your task. Current guides, historical evidence and future proposals have different authority, so each one is labelled.</p>
+
+<aside>
+<strong>What "current" means here.</strong> Current guides describe the source at branch <code>feature/backend-hardening-ai-voice-agent-foundation</code>, commit <code>03cfebb</code> plus uncommitted safety fixes and documentation (<code>main</code> is <code>835fad3</code>): migration head <code>0010_order_local_id_unique</code>, 11 application tables, 47 HTTP operations (44 under <code>/api/v1</code>), and an inventory assistant with local unsaved drafts, Moonshine live/offline recognition, optional separately consented Groq GPT-OSS understanding/Whisper listening and local device TTS. The later safety follow-up reran 250 backend tests in both schema setups, 152 mobile tests and the 89-step synthetic API walkthrough: all passed. Targeted issues are fixed locally; earlier audit counts describe earlier snapshots. See the <a href="BACKEND_HARDENING.md#safety-follow-up-8-october-2026">current fixes, release constraints and remaining scope</a>. Live deployments, installed phones and real providers remain <strong>not verified</strong>. Earlier numbers in older documents are historical. See the <a href="../carekosh_system_design/TECHNICAL_REVIEW.md#documentation-reliability-follow-up">documentation follow-up and its scope</a>.
+</aside>
+
+<nav class="toc" aria-label="On this page">
+<a href="#start">Start here</a><a href="#orders">Reading orders</a><a href="#tasks">Guides by task</a><a href="#diagrams">Diagrams</a><a href="#history">Historical records</a><a href="#future">Proposals</a><a href="#legal">Legal drafts</a><a href="#outside">Prompts and outside scope</a><a href="#rules">Evidence rules</a>
+</nav>
+
+<h2 id="start">Start here</h2>
+<div class="cards">
+<div class="card"><h3><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html">Complete developer guide</a></h3><p>The main onboarding guide: product rules, architecture, request lifecycle, data model, auth, orders, mobile cache, the voice assistant, concepts, tests and release. <a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Markdown source</a>.</p></div>
+<div class="card"><h3><a href="NEW_DEVELOPER_QUICKSTART.md">Quick start (30 minutes)</a></h3><p>Docker backend + Expo Go on your phone, first login.</p></div>
+<div class="card"><h3><a href="API_TRACEABILITY.html">API traceability</a></h3><p>All 47 endpoints from screen to handler to tables, with worked examples and known application issues. <a href="API_TRACEABILITY.md">Markdown source</a>.</p></div>
+<div class="card"><h3><span>Documentation audit, 7 Oct 2026 <small>(local review reference; not published)</small></span></h3><p>What was checked, corrected and left unverified: source of truth, coverage ledger, corrections, verification and sources.</p></div>
+</div>
+
+<h2 id="orders">Reading orders</h2>
+<h3>New developer — first week</h3>
+<ol>
+<li><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#part-a--the-product-and-the-system">Complete guide, Part A</a>: what the product is and the rules it enforces.</li>
+<li><a href="NEW_DEVELOPER_QUICKSTART.md">Quick start</a>, then the <a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#b3-a-complete-first-workflow-setup--login--inventory--order--voice--tests--deployment">first complete workflow</a> (setup → login → inventory → order → voice question → tests → deployment).</li>
+<li><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#part-c--how-it-works-one-layer-at-a-time">Complete guide, Part C</a> with the code open; then three endpoints in <a href="API_TRACEABILITY.html">API traceability</a>.</li>
+<li><a href="local_testing_field_manual.html">Local testing field manual</a> and <a href="USB_ADB_REVERSE_GUIDE.md">USB / ADB guide</a> when testing on a phone.</li>
+<li><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#part-e--testing-debugging-and-daily-work">Part E (tests)</a> and <a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#part-f--environments-cicd-deployment-and-release">Part F (release)</a> before your first PR; <a href="../CAREKOSH_E2E_VERIFICATION_GUIDE.html">E2E verification</a> before your first staging test.</li>
+<li><a href="VOICE_OPTION_1_IMPLEMENTATION.md">Voice implementation</a> before touching the assistant.</li>
+</ol>
+<h3>Interview preparation</h3>
+<ol>
+<li><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#part-d--backend-concepts-through-this-codebase">Complete guide, Part D</a>: concepts explained through this codebase, with limits and common misconceptions.</li>
+<li><a href="../carekosh_architecture_diagrams.html">Architecture diagrams</a>.</li>
+<li><a href="../CAREKOSH_BACKEND_INTERVIEW_GUIDE.html">Backend interview textbook</a> (long-form).</li>
+<li><a href="../CAREKOSH_SERVER_FIRST_INTERVIEW_GUIDE.html">Server-first design story</a> (why the app stopped saving locally first).</li>
+<li><a href="API_TRACEABILITY.html#known-application-issues-found-while-tracing">Known application issues</a>: explaining limits honestly is part of a good answer.</li>
+</ol>
+
+<h2 id="tasks">Current guides by task</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Task</th><th>Guide</th><th>What it is for</th></tr></thead>
+<tbody>
+<tr><td>Run locally</td><td><a href="NEW_DEVELOPER_QUICKSTART.md">Quick start</a></td><td>Fast path to a running stack.</td></tr>
+<tr><td>Run locally</td><td><a href="local_testing_field_manual.html">Local testing field manual</a></td><td>Detailed Metro, Expo Go, USB and network tutorial.</td></tr>
+<tr><td>Run locally</td><td><a href="LOCAL_TESTING_COMPLETE_GUIDE.md">Local testing guide</a> · <a href="LOCAL_TESTING_INTERNALS.md">internals</a> · <a href="USB_ADB_REVERSE_GUIDE.md">USB / ADB</a></td><td>Troubleshooting and how the pieces connect.</td></tr>
+<tr><td>Understand the system</td><td><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html">Complete developer guide</a></td><td>The main reference.</td></tr>
+<tr><td>Understand the system</td><td><a href="API_TRACEABILITY.html">API traceability</a></td><td>Every endpoint, table and caller.</td></tr>
+<tr><td>Understand the system</td><td><a href="../carekosh_architecture_diagrams.html">Architecture diagrams</a> · <a href="diagrams/README.md">diagram sources</a></td><td>Visual explanations of the verified behaviour.</td></tr>
+<tr><td>Understand the system</td><td><a href="DEVOPS_AND_ARCHITECTURE.md">DevOps and architecture narrative</a> · <a href="../CAREKOSH_DEVELOPER_GUIDE.md">concise developer reference</a></td><td>The "why" behind infrastructure choices; one-page summary.</td></tr>
+<tr><td>Voice assistant</td><td><a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">AI voice architecture (current)</a> · <a href="VOICE_OPTION_1_IMPLEMENTATION.md">native implementation record</a></td><td>Complete current stack, live captions, separate Groq audio/text consent, request paths, local drafts, costs and device checks.</td></tr>
+<tr><td>Accounts and email</td><td><a href="EMAIL_VERIFICATION_GUIDE.md">Email verification</a> · <a href="../CAREKOSH_DOMAIN_AND_EMAIL_GUIDE.html">domain and email tutorial</a></td><td>Brevo, verification links and their limits.</td></tr>
+<tr><td>Test end to end</td><td><a href="../CAREKOSH_E2E_VERIFICATION_GUIDE.html">E2E verification guide</a></td><td>Synthetic staging walkthrough plus device checklist.</td></tr>
+<tr><td>Deploy and release</td><td><a href="../CAREKOSH_BUILD_DEPLOY_FLOW.html">Build and deploy flow</a> · <a href="../CAREKOSH_DEPLOYMENT_STRATEGY.html">deployment strategy</a> · <a href="../CAREKOSH_ENVIRONMENT_ARCHITECTURE.html">environment architecture</a></td><td>What each Git action runs, the 0007–0010 release gate, environments.</td></tr>
+<tr><td>Deploy and release</td><td><a href="BACKEND_HARDENING.md">Backend hardening record and the 0007 gate</a></td><td>Dated change record; the migration release gate and re-seed SQL.</td></tr>
+<tr><td>Deploy and release</td><td><a href="ENVIRONMENT_SPLIT.md">Environment split</a> · <a href="EXPO_AND_PLAY_STORE_GUIDE.md">Expo and Play Store</a> · <a href="../future_plan/CAREKOSH_PLAY_STORE_LAUNCH_PLAYBOOK.html">Play Store launch playbook</a></td><td>Staging/production separation; builds; Play release steps (playbook is planning material).</td></tr>
+<tr><td>Operate</td><td><a href="LAUNCH_READINESS_RUNBOOK_GOAL_10.md">Operations runbook</a></td><td>Backup, restore, monitoring and incident procedures (live settings not verified).</td></tr>
+<tr><td>Contribute</td><td><a href="GIT_WORKFLOW_GUIDE.md">Git workflow</a> · <a href="../CAREKOSH_ROADMAP.md">roadmap</a></td><td>Branches, commits, PRs; open work.</td></tr>
+<tr><td>Component READMEs</td><td><a href="../vitaltrack-backend/README.md">backend</a> · <a href="../vitaltrack-backend/API_TESTING_GUIDE.md">API testing</a> · <a href="../vitaltrack-backend/DOCKER_GUIDE.md">Docker</a> · <a href="../vitaltrack-mobile/README.md">mobile</a> · <a href="../voice-service/README.md">voice-service (not deployed)</a></td><td>Per-folder notes.</td></tr>
+<tr><td>Documentation tools</td><td><a href="tools/README.md">tools</a></td><td>Build the HTML companions, check links, list routes, replay the API examples.</td></tr>
+</tbody></table></div>
+
+<h2 id="diagrams">Diagrams</h2>
+<p>Generated from <code>docs/diagrams/src/build_diagrams.py</code> (standard-library Python). Each SVG has a title and description for screen readers.</p>
+<ul>
+<li><a href="diagrams/system-context.svg">System context</a> · <a href="diagrams/request-lifecycle.svg">a successful request</a> · <a href="diagrams/request-rollback.svg">error and rollback paths</a></li>
+<li><a href="diagrams/auth-session.svg">Login, refresh and logout</a> · <a href="diagrams/database-erd.svg">database at 0010</a></li>
+<li><a href="diagrams/inventory-concurrency.svg">Inventory concurrency</a> · <a href="diagrams/order-idempotency.svg">order idempotency</a> · <a href="diagrams/order-status.svg">order status and apply</a></li>
+<li><a href="diagrams/voice-flow.svg">Voice flow</a> · <a href="diagrams/mobile-cache.svg">mobile cache vs server</a></li>
+<li><a href="diagrams/release-pipeline.svg">Release pipeline</a> · <a href="diagrams/release-gate-0007-0010.svg">release gate for 0007–0010</a></li>
+</ul>
+
+<h2 id="history">Historical records — kept as evidence, not re-verified</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Record</th><th>Date</th><th>Use it for</th></tr></thead>
+<tbody>
+<tr><td><span>API and voice audit <small>(local review reference; not published)</small></span> · <span>handover <small>(local review reference; not published)</small></span> · <span>device checklist <small>(local review reference; not published)</small></span></td><td>6–7 Oct 2026</td><td>Findings fixed in <code>07847a4</code>/<code>b1c8dd7</code>; the device checklist is still useful.</td></tr>
+<tr><td><a href="VOICE_AGENT_REVIEW_2026-09-29.md">Voice agent review</a> · <a href="VOICE_AGENT_SETUP.md">earlier voice setup</a></td><td>29 Sep – 6 Oct 2026</td><td>Earlier hosted-voice design; superseded by the current voice implementation.</td></tr>
+<tr><td><span>Core documentation audit <small>(local review reference; not published)</small></span> · <span>backend audit <small>(local review reference; not published)</small></span></td><td>23 Sep 2026</td><td>Pre-fix findings at <code>bb868cc</code>; these folders include security write-ups — keep them out of the public repository.</td></tr>
+<tr><td><span>September documentation review <small>(local review reference; not published)</small></span></td><td>23 Sep 2026</td><td>What the previous documentation pass changed.</td></tr>
+<tr><td><a href="LAUNCH_READINESS_EVIDENCE_GOAL_10.md">Launch readiness evidence</a> · <a href="PLAY_STORE_RELEASE_HARDENING_GOAL_9.md">Play release hardening</a> · <a href="PROFILE_ACCOUNT_UI_LAUNCH_GOAL.md">profile UI goal</a></td><td>Jun 2026</td><td>Goal records and their evidence at the time.</td></tr>
+<tr><td><a href="CAREKOSH_PRODUCTION_GUARD_FINAL_AUDIT.html">Production-guard audit</a> · <a href="STAGING_DEPLOY_DIAGNOSIS.html">staging deployment diagnosis</a> · <a href="../CAREKOSH_CUSTOM_DOMAIN_CONFIGURATION_GUIDE.html">domain migration record</a></td><td>2026 (dated inside)</td><td>Earlier dashboard and incident evidence; not current settings.</td></tr>
+<tr><td><a href="PHASE1_AUTH_HARDENING.md">Auth hardening</a> · <a href="PHASE2_ACCOUNT_DELETION.md">account deletion</a> · <a href="TECHNICAL_CHALLENGES.md">technical challenges</a> · <a href="PROJECT_LEARNINGS_AND_JOURNEY.md">project journey</a></td><td>2026</td><td>Change records and lessons; behaviour may have changed since.</td></tr>
+</tbody></table></div>
+
+<h2 id="future">Proposals — not current behaviour</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Document</th><th>Status on 7 Oct 2026</th></tr></thead>
+<tbody>
+<tr><td><a href="../future_plan/CAREKOSH_VOICE_AGENT_FINAL_IMPLEMENTATION_PLAN.html">Voice agent implementation plan</a> · <a href="../future_plan/CAREKOSH_VOICE_INVENTORY_AGENT_DECISION_GUIDE.html">voice decision guide</a></td><td>Historical proposal: the current feature implementation has on-device recognition/live words, local parsing/drafts and optional separately consented Groq text/audio. Hosted voices and Sarvam remain unselected.</td></tr>
+<tr><td><a href="../future_plan/first_agentic_integration.html">Earlier agent decision</a> · <a href="../future_plan/CAREKOSH_AI_IMPLEMENTATION_PLAN.html">AI feature catalogue</a> · <a href="../future_plan/CAREKOSH_AI_FEATURES_FEASIBILITY_AND_ROADMAP.html">feasibility brainstorm</a></td><td>Ideas and learning material; not runnable instructions.</td></tr>
+<tr><td><a href="../future_plan/CAREKOSH_PLAY_STORE_LAUNCH_PLAYBOOK.html">Play Store launch playbook</a> · <a href="../future_plan/CAREKOSH_PHASE_B_CHECKLIST.html">Play Console checklist</a></td><td>Release planning; Play Console state not verified.</td></tr>
+<tr><td><a href="../future_plan/CAREKOSH_AI_JOB_MARKET_SKILL_GAP.html">Backend and AI learning map</a></td><td>Learning plan; no market statistics.</td></tr>
+</tbody></table></div>
+
+<h2 id="legal">Legal drafts — need legal review before publishing</h2>
+<p><a href="../future_plan/legal/index.html">Legal landing page</a> · <a href="../future_plan/legal/privacy-policy.html">privacy policy draft</a> · <a href="../future_plan/legal/account-deletion.html">account deletion page draft</a>. Documentation cannot prove compliance; retention, providers and audience must be confirmed by the owner.</p>
+
+<h2 id="outside">Prompts and material outside this technical scope</h2>
+<p>Prompts used to commission audits and assets, kept for the record: <span>core documentation audit prompt <small>(local review reference; not published)</small></span>, <span>backend audit prompt <small>(local review reference; not published)</small></span>, <a href="../CAREKOSH_BACKEND_GUIDE_AUDIT_PROMPT.md">backend guide audit prompt</a>, <a href="CHATGPT_VOICE_AGENT_PROMPT.md">voice agent prompt</a>, <a href="CHATGPT_VOICE_KNOWLEDGE_PACK.md">voice knowledge pack</a>, <a href="CAREKOSH_VISUAL_POSTER_PROMPTS.md">poster prompts</a>.</p>
+
+<h2 id="rules">Evidence rules</h2>
+<ul>
+<li><strong>Source files</strong> establish what the code does and what configuration intends.</li>
+<li><strong>Tests</strong> establish the scenarios they actually run — no more. A mocked provider test does not verify real Groq; an autolinking check does not verify a compiled AAB.</li>
+<li><strong>Provider dashboards, deployed artifacts and restore drills</strong> establish live operations. A green CI summary, a healthy <code>/health</code> or a deploy-hook 200 do not prove which commit is running.</li>
+<li>A historical "VERIFIED" label means verified on that date, not today. A planning example is not an implemented feature.</li>
+</ul>
+
+<footer>Rebuild the HTML companions with <code>uv run --no-project --with markdown==3.7 python docs/tools/build_docs.py</code>; check links with <code>python3 docs/tools/check_docs.py --strict</code>. This page is maintained by hand.</footer>
+</main>
+</body>
+</html>
