@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Alert, AppState, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
+import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, useAudioRecorder } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
@@ -13,11 +13,13 @@ import { answerIntent, command, commandExamples, speechText, type Answer, type I
 import { defaults, loadPreferences, savePreferences, type Preferences } from '@/features/assistant/preferences';
 import { cachedItemNames, inventorySnapshot, categorySnapshot } from '@/features/assistant/snapshot';
 import { discardAudio, rememberAudio } from '@/features/assistant/audioFiles';
-import { MicrophoneCapture, microphoneLevel, type CapturePhase } from '@/features/assistant/capture';
-import { offlineVoice, offlineSupported } from '@/features/assistant/offlineVoice';
+import { MicrophoneCapture, type CapturePhase } from '@/features/assistant/capture';
+import { createLiveRecorder, liveCaptureSupported, offlineVoice, offlineSupported } from '@/features/assistant/offlineVoice';
 import { CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, CLOUD_VOICE_ENABLED } from '@/features/assistant/policy';
 import { ANSWER_VISIBLE_MS, canDismissAnswer, microphoneReadiness } from '@/features/assistant/readiness';
 import AnswerList from '@/components/assistant/AnswerList';
+import AssistantDock from '@/components/assistant/AssistantDock';
+import { AssistantLayer } from '@/components/assistant/AssistantLayer';
 import { routeLocally, queryInventory, inventoryAnswer, describeQuery, Clarification } from '@/features/assistant/queries';
 import { queryDefaults, specification, type Specification, type InventoryQuery } from '@/features/assistant/contracts';
 import { getDraft, prepareDraft, writeDraft, mergeDrafts, type CartItem } from '@/features/assistant/drafts';
@@ -60,12 +62,17 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const params = useLocalSearchParams<{ mode?: string }>();
   const settingsOpen = !embedded && params.mode === 'settings';
   const { colors } = useTheme();
+  const { height: windowHeight, fontScale } = useWindowDimensions();
   const userId = useAuthStore(s => s.isAuthenticated ? s.user?.id : undefined);
   const [prefs, setPrefs] = useState<Preferences>(defaults);
   const [caps, setCaps] = useState(assistant.unavailable);
   const [loaded, setLoaded] = useState(false);
   const [question, setQuestion] = useState('');
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [liveWords, setLiveWords] = useState('');
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const liveRecorder = useRef<ReturnType<typeof createLiveRecorder> | null>(null);
+  if (liveCaptureSupported && !liveRecorder.current) liveRecorder.current = createLiveRecorder();
   const [proposalChoice, setProposalChoice] = useState<((merge: boolean) => void) | null>(null);
   const [draftRows, setDraftRows] = useState<CartItem[] | undefined>(undefined);
   const previousQuery = useRef<InventoryQuery | undefined>(undefined);
@@ -87,7 +94,6 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const [permissionBlocked, setPermissionBlocked] = useState(false);
   const permissionPending = useRef(false);
   const scroll = useRef<ScrollView>(null);
-  const answerY = useRef(0);
   const mounted = useRef(true);
   const previousItem = useRef<string | undefined>(undefined);
   const pendingIntent = useRef<Intent | Specification | undefined>(undefined);
@@ -101,14 +107,22 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const recorder = useAudioRecorder(recordingOptions, status => {
     if (status.hasError || status.isFinished) recordingEvent.current(status.hasError ? status.error || 'Android interrupted the microphone. Please try again.' : null);
   });
-  const recordState = useAudioRecorderState(recorder, 150);
   const player = useAudioPlayer(null);
   const playback = useAudioPlayerStatus(player);
   const captureRef = useRef<MicrophoneCapture | null>(null);
-  if (!captureRef.current) captureRef.current = new MicrophoneCapture(recorder, rememberAudio, discardAudio,
+  if (!captureRef.current) captureRef.current = new MicrophoneCapture(liveRecorder.current || recorder, rememberAudio, discardAudio,
     phase => { if (mounted.current) setCapturePhase(phase); },
     () => setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true, shouldPlayInBackground: false, interruptionMode: 'mixWithOthers' }));
   const capture = captureRef.current;
+  useEffect(() => {
+    const sub = liveRecorder.current?.subscribe(event => {
+      if (!active || capture.phase !== 'recording') return;
+      if (event.transcript !== undefined) setLiveWords(event.transcript);
+      if (event.previewError) setError('Live words are unavailable for this take. Review the final transcript after stopping.');
+      if (event.finished) recordingEvent.current(event.error || null);
+    });
+    return () => sub?.remove();
+  }, [active, capture]);
 
   const discard = async (uri: string | null) => {
     await discardAudio(uri).catch(() => {});
@@ -122,7 +136,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     try { player.pause(); } catch { /* native object may already be released */ }
     void discard(audioFile.current); audioFile.current = null;
     capture.cancel();
-    setBusy(''); setSpeaking(false);
+    setBusy(''); setSpeaking(false); setLiveWords('');
   };
   const close = () => { cancel(); previousItem.current = undefined; previousQuery.current = undefined; selections.current = {}; setDraftRows(undefined); setProposalChoice(null); setAnswer(null); setQuestion(''); setError(''); setReviewOpen(false); if (!embedded) { if (router.canGoBack()) router.back(); else router.replace('/(tabs)'); } };
   const openSetup = () => { cancel(); setAnswer(null); if (embedded) router.navigate({ pathname: '/assistant', params: { mode: 'settings' } }); else router.setParams({ mode: 'settings', listen: undefined }); };
@@ -304,7 +318,8 @@ export default function AssistantExperience({ embedded = false, active = true, s
   }
   async function ask(text = question, chosen?: Intent | Specification, force = false) {
     if (!loaded || !prefs.enabled || !text.trim() || busy || capture.phase !== 'idle') return;
-    cancel(); setError(''); setAnswer(null); setDraftRows(undefined); setProposalChoice(null); setKeptOpen(false);
+    Keyboard.dismiss();
+    cancel(); setError(''); setDetailsOpen(false); setAnswer(null); setDraftRows(undefined); setProposalChoice(null); setKeptOpen(false);
     if (!chosen) selections.current = {};
     const current = turn.current;
     const abort = new AbortController(); controller.current = abort;
@@ -458,7 +473,9 @@ export default function AssistantExperience({ embedded = false, active = true, s
   async function startRecording() {
     if (!active || busy || permissionPending.current || capture.phase !== 'idle') return;
     if (readiness) { setError(readiness); return; }
+    Keyboard.dismiss();
     cancel(); setError(''); setQuestion(''); setAnswer(null); setReviewOpen(false); pendingIntent.current = undefined;
+    liveRecorder.current?.configure(model.ready);
     const current = turn.current;
     const abort = new AbortController(); controller.current = abort;
     const assertCanRecord = () => {
@@ -486,14 +503,13 @@ export default function AssistantExperience({ embedded = false, active = true, s
 
   const textStyle = { color: colors.textPrimary };
   const microphoneBusy = capturePhase !== 'idle';
-  const level = microphoneLevel(recordState.metering);
   const locked = !!busy || microphoneBusy || !loaded;
   const isRecording = capturePhase === 'recording';
   const button = (label: string, action: () => void, disabled = false) => <VoiceButton label={label} onPress={action} disabled={disabled} secondary />;
   const iconButton = (name: React.ComponentProps<typeof Ionicons>['name'], label: string, action: () => void) =>
     <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} onPress={action} style={[styles.iconButton, { backgroundColor: colors.bgTertiary }]}><Ionicons name={name} size={22} color={colors.textSecondary} /></TouchableOpacity>;
   const feedback = <>
-    {!!busy && !busy.includes('speech pack') && <View style={styles.row}><ActivityIndicator color={colors.accentBlue} /><Text accessibilityLiveRegion="polite" style={[styles.body, textStyle, { flex: 1 }]}>{busy}</Text></View>}
+    {settingsOpen && !!busy && !busy.includes('speech pack') && <View style={styles.row}><ActivityIndicator color={colors.accentBlue} /><Text accessibilityLiveRegion="polite" style={[styles.body, textStyle, { flex: 1 }]}>{busy}</Text></View>}
     {!!error && <View style={[styles.feedback, { backgroundColor: colors.statusRedBg }]}><Text accessibilityRole="alert" style={[styles.body, { color: colors.statusRed }]}>{error}</Text>
       {permissionBlocked && button('Open Android app permissions', () => { void Linking.openSettings().catch(() => setError('Open Android Settings → Apps → CareKosh → Permissions → Microphone.')); })}</View>}
   </>;
@@ -519,12 +535,12 @@ export default function AssistantExperience({ embedded = false, active = true, s
     }}
     cloudControls={(CLOUD_TEXT_ENABLED || CLOUD_TRANSCRIPTION_ENABLED || CLOUD_VOICE_ENABLED) && <View style={[styles.card, { backgroundColor: colors.bgCard }]}>
       <Text style={[styles.label, textStyle]}>Understand more wording · optional</Text>
-      <Text style={[styles.body, textStyle]}>Groq interprets natural wording for inventory queries and unsaved order drafts after you review and send. It supports the listed filters and quantities, not arbitrary analytics or stock changes. Internet and a shared service allowance are required. Listening is chosen separately below.</Text>
+      <Text style={[styles.body, textStyle]}>Groq helps interpret natural wording after Send. Internet and your consent are required. Stock changes and order saving remain unavailable by voice.</Text>
       <Text accessibilityLiveRegion="polite" style={[styles.body, textStyle]}>{!caps.interpret ? 'Online understanding is unavailable. Basic commands still work. Recheck below after the service is configured.' : prefs.cloud && caps.scopes.includes('groq_text') ? 'Online understanding is on. Familiar commands still work locally.' : 'Available — off until you choose to enable it.'}</Text>
       {CLOUD_TEXT_ENABLED && button('Enable Groq understanding', () => chooseCloud('groq_text', { ...prefs, cloud: true }), locked || !caps.interpret || (prefs.cloud && caps.scopes.includes('groq_text')))}
       {CLOUD_TRANSCRIPTION_ENABLED && <>
         <Text style={[styles.label, textStyle]}>Choose how speech becomes text</Text>
-        <Text style={[styles.body, textStyle]}>Offline uses the English Moonshine pack. Optional online listening sends each finished recording to Groq Whisper; it may handle your speech better, but accuracy must be checked on your phone. Always review words, names and numbers before Send.</Text>
+        <Text style={[styles.body, textStyle]}>The downloaded Moonshine pack supplies live words locally. Offline mode also uses it for the final transcript. Optional Groq Whisper uploads the finished recording for final transcription. Review names and numbers before Send.</Text>
         <Text accessibilityLiveRegion="polite" style={[styles.body, textStyle]}>{prefs.inputProvider === 'groq' && prefs.audioOptIn ? 'Selected: Groq online listening · recording upload enabled by your consent.' : 'Selected: Offline listening · recordings stay on this phone.'}</Text>
         {button('Use offline listening', () => { void update({ ...prefs, inputProvider: 'offline', audioOptIn: false }); }, locked || prefs.inputProvider === 'offline')}
         {button('Enable Groq online listening', () => chooseCloud('groq_audio', { ...prefs, inputProvider: 'groq', audioOptIn: true }), locked || !caps.transcription_providers.includes('groq') || (prefs.audioOptIn && prefs.inputProvider === 'groq' && caps.scopes.includes('groq_audio')))}
@@ -555,49 +571,36 @@ export default function AssistantExperience({ embedded = false, active = true, s
             <VoiceButton label="Open voice setup" onPress={openSetup} disabled={!!busy || microphoneBusy} />
           </View>}
           {!answer && <>
-            <View style={styles.microphoneArea}>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel={isRecording ? 'Finish recording' : 'Start recording'} accessibilityState={{ disabled: !!busy || (microphoneBusy && !isRecording) || !loaded }}
-                disabled={!!busy || (microphoneBusy && !isRecording) || !loaded} onPress={() => { if (isRecording) void stopRecording(); else if (readiness) openSetup(); else void startRecording(); }}
-                style={[styles.microphone, { backgroundColor: isRecording ? colors.statusRedBg : colors.accentBlueBg, borderColor: isRecording ? colors.statusRed : colors.accentBlue, opacity: busy ? 0.5 : 1 }]}>
-                <Ionicons name={isRecording ? 'stop' : 'mic'} size={34} color={isRecording ? colors.statusRed : colors.accentBlue} />
-              </TouchableOpacity>
-              <Text accessibilityLiveRegion="polite" style={[styles.label, textStyle]}>{isRecording ? 'Listening… tap to finish' : busy ? busy : question ? 'Your words, ready to review' : 'Tap to ask about your stock'}</Text>
-              <Text style={[styles.caption, { color: colors.textSecondary, textAlign: 'center' }]}>{isRecording ? `${Math.floor(recordState.durationMillis / 1000)}s / 28s · Speak in English` : 'Try “How many hand gloves are left?”'}</Text>
-              {isRecording && <View style={{ gap: 8, alignSelf: 'stretch' }}>
-                <View accessibilityRole="progressbar" accessibilityLabel="Microphone sound level" accessibilityValue={{ min: 0, max: 100, now: level.percent }} style={[styles.meter, { backgroundColor: colors.borderPrimary }]}><View style={{ width: `${level.percent}%`, height: '100%', backgroundColor: colors.accentBlue }} /></View>
-                <Text style={[styles.caption, { color: colors.textSecondary }]}>{level.message}</Text>
-              </View>}
-            </View>
-            <Text style={[styles.label, textStyle]}>{question ? 'Review your question' : 'Or type a question'}</Text>
-            <TextInput accessibilityLabel="Question or editable transcript" value={question} onChangeText={setQuestion} maxLength={600} multiline
-              editable={!locked && prefs.enabled} placeholder="Ask about stock or a supplier…" placeholderTextColor={colors.textTertiary}
-              style={[styles.input, textStyle, { borderColor: colors.borderPrimary, backgroundColor: colors.bgCard }]} />
-            <Text style={[styles.caption, { color: colors.textSecondary }]}>Words appear after you finish recording. Check them before asking.</Text>
-            <VoiceButton label="Show answer" onPress={() => { void ask(); }} disabled={!question.trim() || locked || !prefs.enabled} />
+            <AssistantDock standalone recording={isRecording} disabled={!!busy || (microphoneBusy && !isRecording) || !loaded}
+              busy={busy} live={liveWords} question={question} review={!isRecording} canSend={!!question.trim() && !locked && prefs.enabled}
+              onMic={() => { if (isRecording) void stopRecording(); else void startRecording(); }}
+              onType={() => setReviewOpen(true)} onEdit={setQuestion} onSend={() => { void ask(); }} onClose={close} />
             <View style={styles.chips}>{(['Summary', 'Low stock', 'Out of stock'] as const).map(label => <View key={label}>{button(label, () => { setQuestion(label); void ask(label); }, locked || !prefs.enabled)}</View>)}</View>
             {button(helpOpen ? 'Hide examples' : 'What can I ask?', () => setHelpOpen(!helpOpen))}
             {helpOpen && <View style={[styles.card, { backgroundColor: colors.bgCard }]}>{commandExamples.map(example => <Text key={example} style={[styles.body, textStyle]}>• {example}</Text>)}<Text style={[styles.caption, { color: colors.textSecondary }]}>Use your inventory item names. Stock edits and order saving are blocked. Voice can prepare a local unsaved draft; saving requires touch confirmation.</Text></View>}
           </>}
-          {answer && <View onLayout={event => { answerY.current = event.nativeEvent.layout.y; scroll.current?.scrollTo({ y: answerY.current, animated: true }); }} style={{ gap: 16 }}>
+          {answer && <View style={{ gap: 10 }}>
             <View style={styles.row}>
-              <Text style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>{answer.choices.length ? 'Choose an item to continue' : speaking ? 'Reading aloud · timer paused' : keptOpen || screenReader ? 'Answer stays open' : `Closes in ${secondsLeft}s`}</Text>
+              {(!keptOpen || !!answer.choices.length || speaking) && <Text style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>{answer.choices.length ? 'Choose an item to continue' : speaking ? 'Reading aloud · timer paused' : keptOpen || screenReader ? 'Answer stays open' : `Closes in ${secondsLeft}s`}</Text>}
               {!answer.choices.length && !keptOpen && !screenReader && button('Keep open', () => setKeptOpen(true))}
             </View>
-            <View style={[styles.answerCard, { backgroundColor: colors.bgCard, borderColor: colors.accentBlueBorder }]}>
-              <Text style={[styles.eyebrow, { color: colors.accentBlue }]}>CAREKOSH ANSWER</Text>
-              <Text style={[styles.caption, { color: colors.textSecondary }]}>{understandingSource.current} · review the result</Text>
-              <Text style={[styles.caption, { color: colors.textSecondary }]}>“{answeredQuestion.current}”</Text>
+            <View style={styles.answerCard}>
               <Text style={[styles.answerTitle, textStyle]}>{answer.title}</Text>
+              {!!previousQuery.current && !draftRows && <Text style={[styles.caption, { color: colors.textSecondary }]}>{describeQuery(previousQuery.current)}</Text>}
               {!!answer.statistics?.length && <View style={styles.statistics}>
                 {answer.statistics.map(stat => <View key={stat.label} style={[styles.stat, { backgroundColor: stat.tone === 'out' ? colors.statusRedBg : stat.tone === 'low' ? colors.statusOrangeBg : colors.accentBlueBg }]}>
                   <Text style={[styles.statValue, { color: stat.tone === 'out' ? colors.statusRed : stat.tone === 'low' ? colors.statusOrange : colors.accentBlue }]}>{stat.value}</Text>
                   <Text style={[styles.caption, { color: colors.textSecondary }]}>{stat.label}</Text>
                 </View>)}
               </View>}
-              <Text selectable accessibilityLiveRegion="polite" style={[styles.answer, textStyle]} onPress={() => setKeptOpen(true)}>{answer.text}</Text>
+              {(!answer.statistics?.length || detailsOpen || !!draftRows || !!proposalChoice) && <Text selectable accessibilityLiveRegion="polite" style={[styles.answer, textStyle]} onPress={() => setKeptOpen(true)}>{answer.text}</Text>}
+              {<TouchableOpacity accessibilityRole="button" accessibilityLabel="Show answer details" accessibilityState={{ expanded: detailsOpen }} onPress={() => { setDetailsOpen(!detailsOpen); setKeptOpen(true); }} style={{ minHeight: 44, justifyContent: 'center' }}>
+                <Text style={[styles.caption, { color: colors.textSecondary }]}>Filters & question {detailsOpen ? '−' : '+'}</Text>
+              </TouchableOpacity>}
+              {detailsOpen && <Text selectable style={[styles.caption, { color: colors.textSecondary }]}>{understandingSource.current} · “{answeredQuestion.current}”</Text>}
               {pendingIntent.current && ['read_item', 'summary', 'low_stock', 'out_of_stock', 'inventory_query', 'draft_order', 'inventory_export'].includes(pendingIntent.current.intent) && <View style={[styles.freshness, { backgroundColor: answer.stale ? colors.statusOrangeBg : colors.statusGreenBg }]}>
                 <Ionicons name={answer.stale ? 'time-outline' : 'checkmark-circle-outline'} size={16} color={answer.stale ? colors.statusOrange : colors.statusGreen} />
-                <Text style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>{answer.stale ? 'Last known stock' : 'Last synced'} · {new Date(answer.timestamp).toLocaleString()}</Text>
+                <Text style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>{answer.stale ? 'Last known stock' : 'Last synced'} · {answer.stale ? new Date(answer.timestamp).toLocaleString() : new Date(answer.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
               </View>}
               {answer.choices.map(item => <View key={item.id}>{button(item.name + ' · ' + item.unit + ' · ' + item.id.slice(-6), () => {
                 const intent = pendingIntent.current || command('clarify');
@@ -607,99 +610,73 @@ export default function AssistantExperience({ embedded = false, active = true, s
 
             </View>
             <View style={styles.chips}>
-              {button('Hear answer', () => { setKeptOpen(true); const abort = new AbortController(); controller.current = abort; void playAnswer(answer, turn.current, abort.signal, true); }, locked || speaking || !deviceVoice.ready)}
               {!!previousQuery.current && !draftRows && <>
                 {button('Only low stock', () => { void ask('Only show the low-stock ones', specification('inventory_query', { query: { ...queryDefaults, previous: true, status: 'low' } })); }, locked)}
                 {button('Only out of stock', () => { void ask('Only show the out-of-stock ones', specification('inventory_query', { query: { ...queryDefaults, previous: true, status: 'out' } })); }, locked)}
                 {button('Sort alphabetically', () => { void ask('Sort alphabetically', specification('inventory_query', { query: { ...queryDefaults, previous: true, sort: 'name' } })); }, locked)}
-                {button('Export inventory report', () => { void ask('Export this inventory list as PDF', specification('inventory_export')); }, locked)}
               </>}
               {!!proposalChoice && <>
                 {pendingIntent.current && 'version' in pendingIntent.current && pendingIntent.current.draft_mode === 'new' && button('Merge with existing draft', () => proposalChoice(true), locked)}
                 {button('Replace existing draft with this proposal', () => proposalChoice(false), locked)}
                 {button('Cancel proposal · keep existing draft', () => { cancel(); setProposalChoice(null); setAnswer(null); setDraftRows(undefined); }, locked)}
               </>}
-              {!!draftRows && !proposalChoice && button('Review unsaved order draft', () => { cancel(); setAnswer(null); router.navigate('/order/create'); }, locked)}
-              {button('Refresh answer', () => { void ask(answeredQuestion.current, pendingIntent.current, true); }, locked || !!draftRows || pendingIntent.current?.intent === 'inventory_export')}
             </View>
-            <VoiceButton label="Ask another question" onPress={() => { cancel(); setAnswer(null); setQuestion(''); setError(''); setReviewOpen(false); }} />
           </View>}
-          {(!!busy || microphoneBusy || !!answer) && button('Cancel / stop speech', () => { cancel(); setKeptOpen(true); })}
   </>;
+
+  const answerAction = (name: React.ComponentProps<typeof Ionicons>['name'], label: string, action: () => void, disabled = false) =>
+    <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={action}
+      style={[styles.iconButton, { opacity: disabled ? 0.35 : 1, backgroundColor: colors.bgTertiary }]}><Ionicons name={name} size={20} color={colors.textSecondary} /></TouchableOpacity>;
+  const footer = answer && <View style={[styles.answerFooter, { borderColor: colors.borderPrimary, backgroundColor: colors.bgPrimary }]}>
+    {!!draftRows && !proposalChoice && <VoiceButton label="Review unsaved order draft" onPress={() => { cancel(); setAnswer(null); router.navigate('/order/create'); }} disabled={locked} />}
+    <View style={[styles.row, { flexWrap: 'wrap', gap: 8 }]}>
+      {speaking ? answerAction('stop', 'Cancel / stop speech', () => { cancel(); setKeptOpen(true); }) : answerAction('volume-medium-outline', 'Hear answer', () => { setKeptOpen(true); const abort = new AbortController(); controller.current = abort; void playAnswer(answer, turn.current, abort.signal, true); }, locked || !deviceVoice.ready)}
+      {!draftRows && answerAction('refresh-outline', 'Refresh answer', () => { void ask(answeredQuestion.current, pendingIntent.current, true); }, locked || pendingIntent.current?.intent === 'inventory_export')}
+      {!!previousQuery.current && !draftRows && answerAction('download-outline', 'Export inventory report', () => { void ask('Export this inventory list as PDF', specification('inventory_export')); }, locked)}
+      <View style={{ flex: 1, minWidth: 120 }}><VoiceButton label="Ask another question" secondary onPress={() => { cancel(); setAnswer(null); setQuestion(''); setError(''); setReviewOpen(false); }} /></View>
+    </View>
+  </View>;
 
   const overlay = <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.screen, { backgroundColor: colors.overlayDark }]}>
     <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Dismiss voice assistant" accessibilityRole="button" />
     <SafeAreaView style={styles.overlay} pointerEvents="box-none">
-      <View accessibilityViewIsModal style={[styles.sheet, answer && { height: '94%' }, { backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary }]}>
+      <View accessibilityViewIsModal style={[styles.sheet, answer && { height: Math.min(windowHeight * 0.86, (300 + Math.min(answer.items.length, 7) * 70) * Math.max(1, Math.min(fontScale, 1.5))) }, { backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary }]}>
         <View style={[styles.handle, { backgroundColor: colors.borderSecondary }]} />
         <View style={styles.header}>
-          <View style={[styles.brandIcon, { backgroundColor: colors.accentBlueBg }]}><Ionicons name="sparkles-outline" size={23} color={colors.accentBlue} /></View>
-          <View style={{ flex: 1 }}><Text style={[styles.heading, textStyle]}>Ask CareKosh</Text><Text style={[styles.caption, { color: colors.textSecondary }]}>Inventory answers · unsaved order drafts</Text></View>
+          <View style={{ flex: 1 }}><Text style={[styles.heading, textStyle]}>Care Coach</Text><Text style={[styles.caption, { color: colors.textSecondary }]}>{draftRows ? 'Unsaved draft · review to continue' : 'Your inventory, at a glance'}</Text></View>
           {iconButton('settings-outline', 'Voice setup', openSetup)}
           {iconButton('close', 'Close assistant', close)}
         </View>
         {answer ? <AnswerList items={answer.items} draftRows={draftRows} header={content} /> : <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>{content}</ScrollView>}
-
+        {footer}
       </View>
     </SafeAreaView>
   </KeyboardAvoidingView>;
   if (!embedded) return overlay;
-  return <View style={[styles.dock, { backgroundColor: colors.bgCard, borderTopColor: colors.borderPrimary }]}>
-    <TouchableOpacity accessibilityRole="button" accessibilityLabel={isRecording ? 'Stop recording and review transcript' : 'Start voice recording'}
-      accessibilityHint="Tap once to listen on this screen, then tap again to stop. No need to hold."
-      accessibilityState={{ disabled: !!busy || (microphoneBusy && !isRecording) || !loaded, selected: isRecording }}
-      disabled={!!busy || (microphoneBusy && !isRecording) || !loaded}
-      onPress={() => { if (isRecording) void stopRecording(); else void startRecording(); }}
-      style={[styles.voiceEntry, { backgroundColor: isRecording ? colors.statusRedBg : colors.accentBlueBg, borderColor: isRecording ? colors.statusRed : colors.accentBlueBorder }]}>
-      <Ionicons name={isRecording ? 'stop-circle' : 'mic'} size={24} color={isRecording ? colors.statusRed : colors.accentBlue} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text accessibilityLiveRegion="polite" style={[styles.label, textStyle]}>{isRecording ? 'Listening · tap to stop' : busy ? 'Working…' : 'Ask CareKosh'}</Text>
-        <Text style={[styles.caption, { color: colors.textSecondary }]}>{isRecording ? `${Math.floor(recordState.durationMillis / 1000)}s / 28s · ${level.percent > 0 ? 'Sound detected' : 'Waiting for sound'}` : !loaded ? 'Loading voice preferences…' : 'Tap to speak · tap again to finish'}</Text>
-      </View>
-      {!!busy && <ActivityIndicator color={colors.accentBlue} />}
-    </TouchableOpacity>
-    {!isRecording && !busy && !answer && !reviewOpen && prefs.enabled && button('Type a question here', () => { cancel(); setReviewOpen(true); }, !loaded)}
-    {isRecording && <View style={{ gap: 6, paddingHorizontal: 14 }}>
-      <View accessibilityRole="progressbar" accessibilityLabel="Microphone sound level" accessibilityValue={{ min: 0, max: 100, now: level.percent }} style={[styles.meter, { backgroundColor: colors.borderPrimary }]}><View style={{ width: `${level.percent}%`, height: '100%', backgroundColor: colors.accentBlue }} /></View>
-      <Text style={[styles.caption, { color: colors.textSecondary }]}>{level.message}</Text>
-    </View>}
-    {(!!busy || !!error || reviewOpen) && <ScrollView style={{ maxHeight: 240 }} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.dockContent}>
-      {feedback}
-      {!!error && !!readiness && button('Voice setup', openSetup)}
-      {reviewOpen && <>
-        <Text style={[styles.label, textStyle]}>{question ? 'Review what I heard' : 'Type your question'}</Text>
-        <TextInput accessibilityLabel="Review voice transcript" value={question} onChangeText={setQuestion} multiline maxLength={600} editable={!locked}
-          style={[styles.input, textStyle, { backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary }]} />
-        <VoiceButton label="Send question" onPress={() => { void ask(); }} disabled={locked || !question.trim() || !prefs.enabled} />
-      </>}
-      {button('Dismiss voice input', close)}
-    </ScrollView>}
-    {isRecording && <View style={{ paddingHorizontal: 14, paddingBottom: 6 }}>{button('Cancel recording', close)}</View>}
-    <Modal visible={!!answer && active} transparent animationType="fade" onRequestClose={close}>
-      {overlay}
-    </Modal>
+  return <View style={{ backgroundColor: colors.bgCard }}>
+    <AssistantDock recording={isRecording} disabled={!!busy || (microphoneBusy && !isRecording) || !loaded}
+      busy={busy} live={liveWords} question={question} review={reviewOpen} canSend={!!question.trim() && !locked && prefs.enabled}
+      onMic={() => { if (isRecording) void stopRecording(); else void startRecording(); }}
+      onType={() => { cancel(); setReviewOpen(true); }} onEdit={setQuestion} onSend={() => { void ask(); }} onClose={close} />
+    {!!error && <View style={styles.dockContent}>{feedback}{!!readiness && button('Voice setup', openSetup)}</View>}
+    <AssistantLayer visible={!!answer && active} onClose={close}>{overlay}</AssistantLayer>
   </View>;
 }
 
 const styles = StyleSheet.create({
-  statistics: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, stat: { flexGrow: 1, flexBasis: 85, padding: 12, borderRadius: 14, gap: 4 }, statValue: { fontSize: 25, fontWeight: '700' },
-  dock: { borderTopWidth: 1, gap: 6 }, dockContent: { paddingHorizontal: 14, paddingBottom: 12, gap: 10 },
-  voiceEntry: { minHeight: 60, marginHorizontal: 12, marginTop: 6, marginBottom: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  answerFooter: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 14, gap: 10, borderTopWidth: StyleSheet.hairlineWidth },
+  statistics: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, stat: { flexGrow: 1, flexBasis: 75, padding: 10, borderRadius: 12, gap: 2 }, statValue: { fontSize: 25, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  dockContent: { paddingHorizontal: 14, paddingBottom: 12, gap: 10 },
   screen: { flex: 1 }, overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: { maxHeight: '94%', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, overflow: 'hidden' },
   handle: { width: 36, height: 4, borderRadius: 4, alignSelf: 'center', marginTop: 10 },
-  header: { paddingHorizontal: 18, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  content: { padding: 20, gap: 16, paddingBottom: 30 }, heading: { fontSize: 20, fontWeight: '700' }, body: { fontSize: 15, lineHeight: 23 },
-  caption: { fontSize: 13, lineHeight: 20 }, label: { fontSize: 16, fontWeight: '600' }, answer: { fontSize: 18, lineHeight: 28 },
-  answerTitle: { fontSize: 26, lineHeight: 33, fontWeight: '700' }, eyebrow: { fontSize: 11, letterSpacing: 1.4, fontWeight: '700' },
-  card: { padding: 18, borderRadius: 18, gap: 12 }, answerCard: { padding: 20, borderRadius: 22, borderWidth: 1, gap: 16 },
+  header: { paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  content: { padding: 18, gap: 12, paddingBottom: 20 }, heading: { fontSize: 20, fontWeight: '700' }, body: { fontSize: 15, lineHeight: 23 },
+  caption: { fontSize: 13, lineHeight: 20 }, label: { fontSize: 16, fontWeight: '600' }, answer: { fontSize: 15, lineHeight: 23 },
+  answerTitle: { fontSize: 23, lineHeight: 29, fontWeight: '700' },
+  card: { padding: 18, borderRadius: 18, gap: 12 }, answerCard: { padding: 0, gap: 12 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  input: { minHeight: 80, borderWidth: 1, borderRadius: 16, padding: 16, fontSize: 16, lineHeight: 24, textAlignVertical: 'top' },
   iconButton: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  brandIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  microphoneArea: { alignItems: 'center', gap: 12, paddingVertical: 12 },
-  microphone: { width: 84, height: 84, borderRadius: 42, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  item: { paddingTop: 14, borderTopWidth: 1 }, quantity: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 14, alignItems: 'center', maxWidth: '45%' },
-  quantityNumber: { fontSize: 24, fontWeight: '700' }, freshness: { padding: 10, borderRadius: 12, flexDirection: 'row', gap: 8, alignItems: 'center' },
-  meter: { height: 8, borderRadius: 4, overflow: 'hidden' }, feedback: { padding: 14, borderRadius: 14, gap: 12 },
+  freshness: { paddingVertical: 6, borderRadius: 8, flexDirection: 'row', gap: 8, alignItems: 'center' },
+  feedback: { padding: 14, borderRadius: 14, gap: 12 },
 });

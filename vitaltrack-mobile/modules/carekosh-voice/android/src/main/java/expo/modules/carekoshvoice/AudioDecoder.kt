@@ -7,9 +7,10 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import java.io.File
+import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-/** Decode only a bounded Expo cache recording; no URIs, sockets or persistent PCM files. */
+/** Decode bounded temporary app recordings; no remote URIs or persistent audio. */
 internal fun decodeRecording(
     context: Context,
     uri: String,
@@ -24,6 +25,7 @@ internal fun decodeRecording(
     ) {
         "Invalid recording"
     }
+    if (file.extension == "wav") return decodeCaptureWav(file, check)
     val extractor = MediaExtractor()
     var codec: MediaCodec? = null
     try {
@@ -108,4 +110,46 @@ internal fun decodeRecording(
         codec?.release()
         extractor.release()
     }
+}
+
+/** Exactly the mono PCM16/16 kHz WAV our capture writes. Reject malformed headers. */
+internal fun decodeCaptureWav(file: File, check: () -> Unit): Pair<FloatArray, Int> {
+    check()
+    require(file.length() in 44..896_044) { "Invalid speech recording size" }
+    val bytes = file.readBytes()
+    val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+    fun tag(offset: Int, expected: String) =
+        bytes.copyOfRange(offset, offset + 4).contentEquals(expected.toByteArray())
+    require(tag(0, "RIFF") && tag(8, "WAVE") && tag(12, "fmt ") && tag(36, "data")) {
+        "Invalid speech recording header"
+    }
+    val size = buffer.getInt(40)
+    require(
+        buffer.getInt(4) == bytes.size - 8 &&
+            buffer.getInt(16) == 16 &&
+            buffer.getShort(20).toInt() == 1 &&
+            buffer.getShort(22).toInt() == 1 &&
+            buffer.getInt(24) == 16000 &&
+            buffer.getInt(28) == 32000 &&
+            buffer.getShort(32).toInt() == 2 &&
+            buffer.getShort(34).toInt() == 16 &&
+            size == bytes.size - 44 &&
+            size % 2 == 0 &&
+            size >= 9600
+    ) {
+        "Use a mono 16 kHz speech recording of at least 0.3 seconds"
+    }
+    buffer.position(44)
+    var minimum = 1f
+    var maximum = -1f
+    val samples =
+        FloatArray(size / 2) { i ->
+            if (i % 4096 == 0) check()
+            val sample = buffer.short / 32768f
+            minimum = minOf(minimum, sample)
+            maximum = maxOf(maximum, sample)
+            sample
+        }
+    require(maximum - minimum > 0.0001f) { "No microphone signal. Please try again" }
+    return samples to 16000
 }

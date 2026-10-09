@@ -24,11 +24,12 @@ function load(file, dependencies = {}) {
 const host = name => function Host({ children, ...props }) { return React.createElement(name, props, children); };
 const VoiceButton = ({ label, onPress, disabled }) => React.createElement('Button', { label, onPress, disabled }, label);
 
-async function harness({ ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait } = {}) {
+async function harness({ ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false } = {}) {
   const calls = { navigation: [], stock: 0, transcribe: 0, stop: 0, record: 0, permission: 0, interpret: [], consent: [], cloudAudio: 0 };
   const listeners = new Set();
   const lifecycle = state => { for (const listener of [...listeners]) listener(state); };
   let nativeEvent;
+  let liveListener;
   let capabilityCalls = 0;
   let pendingAlert;
   const unavailable = { interpret: false, scopes: [], consented: false, transcription_providers: [], speech_providers: [] };
@@ -42,8 +43,8 @@ async function harness({ ready = true, permission = true, canAskAgain = false, m
   const appState = { currentState: 'active', addEventListener: (_, fn) => { listeners.add(fn); return { remove() { listeners.delete(fn); } }; } };
   const rn = Object.fromEntries(['ActivityIndicator', 'KeyboardAvoidingView', 'Pressable', 'Text', 'TextInput', 'TouchableOpacity', 'View', 'ScrollView', 'Switch'].map(name => [name, host(name)]));
   rn.Modal = ({ visible, children }) => visible ? React.createElement('Modal', {}, children) : null;
-  Object.assign(rn, { StyleSheet: { create: v => v, absoluteFill: {} }, Platform: { OS: 'android' }, AppState: appState,
-    AccessibilityInfo: { isScreenReaderEnabled: async () => false, addEventListener: () => ({ remove() {} }) },
+  Object.assign(rn, { StyleSheet: { create: v => v, absoluteFill: {}, hairlineWidth: 1 }, Keyboard: { dismiss() { calls.keyboardDismiss = (calls.keyboardDismiss || 0) + 1; } }, BackHandler: { addEventListener: () => ({ remove() {} }) }, useWindowDimensions: () => ({ width: 390, height: 844, fontScale: 1 }), Animated: { Value: class { setValue() {} }, View: host('AnimatedView'), timing: () => ({ start() {}, stop() {} }), sequence: () => ({}), loop: () => ({ start() {}, stop() {} }) }, Platform: { OS: 'android' }, AppState: appState,
+    AccessibilityInfo: { isScreenReaderEnabled: async () => false, isReduceMotionEnabled: async () => true, addEventListener: () => ({ remove() {} }) },
     Alert: { alert(title, message, buttons) { pendingAlert = buttons; } }, Linking: { openSettings: async () => {} } });
   const auth = fn => fn({ isAuthenticated: true, user: { id: 'test-user' } }); auth.subscribe = () => () => {};
   const colors = load('theme/colors.ts').colors;
@@ -55,7 +56,10 @@ async function harness({ ready = true, permission = true, canAskAgain = false, m
   auth.getState = () => ({ isAuthenticated: true, user: { id: 'test-user' } });
   const drafts = load('features/assistant/drafts.ts', { react: React, '@/store/useAuthStore': { useAuthStore: auth }, '@/services/assistantSession': sessionTools, '@/types': types, '@/utils/helpers': { generateId: () => 'synthetic-submission' }, './queries': queries, './contracts': contracts });
   rn.FlatList = ({ data, renderItem, ListHeaderComponent }) => React.createElement('FlatList', {}, ListHeaderComponent, data.map((item,index) => React.createElement(React.Fragment, { key: item.id }, renderItem({ item,index }))));
-  const table = load('components/assistant/AnswerList.tsx', { react: React, 'react/jsx-runtime': require('react/jsx-runtime'), 'react-native': rn, '@/theme/ThemeContext': { useTheme: () => ({ colors }) }, '@/features/assistant/queries': queries });
+  const uiDeps = { react: React, 'react/jsx-runtime': require('react/jsx-runtime'), 'react-native': rn, '@expo/vector-icons': { Ionicons: host('Icon') }, '@/theme/ThemeContext': { useTheme: () => ({ colors }) } };
+  const layer = load('components/assistant/AssistantLayer.tsx', uiDeps);
+  const dock = load('components/assistant/AssistantDock.tsx', uiDeps);
+  const table = load('components/assistant/AnswerList.tsx', { ...uiDeps, react: React, 'react/jsx-runtime': require('react/jsx-runtime'), 'react-native': rn, '@/theme/ThemeContext': { useTheme: () => ({ colors }) }, '@/features/assistant/queries': queries });
   const Screen = load('components/assistant/AssistantExperience.tsx', {
     react: React, 'react/jsx-runtime': require('react/jsx-runtime'), 'react-native': rn,
     'expo-router': { useLocalSearchParams: () => ({ mode, listen }), useRouter: () => Object.fromEntries(['navigate', 'setParams', 'back', 'replace'].map(name => [name, value => calls.navigation.push([name, value])])) },
@@ -74,12 +78,12 @@ async function harness({ ready = true, permission = true, canAskAgain = false, m
       speak: async () => { calls.cloudAudio++; throw new Error('Speech must stay local'); },
     }, '@/features/assistant/core': core,
     '@/features/assistant/contracts': contracts, '@/features/assistant/queries': queries, '@/features/assistant/drafts': drafts,
-    '@/components/assistant/AnswerList': table, '@/utils/inventoryPdfExport': { exportInventoryPdf: async () => { calls.inventoryPdf = (calls.inventoryPdf || 0) + 1; return { shared: true }; } },
+    '@/components/assistant/AnswerList': table, '@/components/assistant/AssistantDock': dock, '@/components/assistant/AssistantLayer': layer, '@/utils/inventoryPdfExport': { exportInventoryPdf: async () => { calls.inventoryPdf = (calls.inventoryPdf || 0) + 1; return { shared: true }; } },
     '@/features/assistant/preferences': { defaults: { ...prefs, enabled: false }, loadPreferences: async () => ({ ...prefs }), savePreferences: async (_, next) => Object.assign(prefs, next) },
     '@/features/assistant/snapshot': { cachedItemNames: () => [inventoryName], categorySnapshot: async () => [], inventorySnapshot: async () => { calls.stock++; return { items: [{ id: 'g', name: inventoryName, quantity: 18, minimumStock: 5, unit: 'pairs', isActive: true }], timestamp: Date.now(), stale: false }; } },
     '@/features/assistant/audioFiles': { rememberAudio: async () => { if (rememberBackground) { appState.currentState = 'background'; lifecycle('background'); } }, discardAudio: async () => {} },
     '@/features/assistant/capture': load('features/assistant/capture.ts'),
-    '@/features/assistant/offlineVoice': { offlineSupported: true, offlineVoice: { status: async () => ({ ready, bytes: 100 }),
+    '@/features/assistant/offlineVoice': { offlineSupported: true, liveCaptureSupported: liveCapture, createLiveRecorder: () => Object.assign(recorder, { configure() {}, subscribe(listener) { liveListener = listener; return { remove() { liveListener = null; } }; } }), offlineVoice: { status: async () => ({ ready, bytes: 100 }),
       download: async () => { ready = true; }, remove: async () => { ready = false; }, deviceStatus: async () => ({ ready: deviceReady, name: 'English' }), progress: () => ({ remove() {} }), cancel() {},
       transcribe: async () => { calls.transcribe++; return { transcript }; }, speak: async () => {} } },
     '@/features/assistant/policy': load('features/assistant/policy.ts'), '@/features/assistant/readiness': load('features/assistant/readiness.ts'),
@@ -90,7 +94,8 @@ async function harness({ ready = true, permission = true, canAskAgain = false, m
     }) : { default: host('VoiceSetup'), VoiceButton },
   }).default;
   let tree;
-  await act(async () => { tree = create(React.createElement(Screen, { embedded, active: true, screenKey: 'dashboard' })); });
+  const render = props => React.createElement(layer.AssistantLayerProvider, {}, React.createElement(Screen, props));
+  await act(async () => { tree = create(render({ embedded, active: true, screenKey: 'dashboard' })); });
   const find = label => tree.root.findAll(node => typeof node.type === 'string' && (node.props.accessibilityLabel === label || node.props.label === label || (node.type === 'TouchableOpacity' && node.findAllByType('Text').some(t => t.children.join('') === label))))[0];
   return { calls, prefs, recorder, tree, find, drafts, sessionTools,
     confirm: async () => { await act(async () => { await pendingAlert.at(-1).onPress(); }); },
@@ -100,9 +105,11 @@ async function harness({ ready = true, permission = true, canAskAgain = false, m
     press: async label => { const target = find(label); assert.ok(target, label); assert.ok(!target.props.disabled, label + ' disabled'); await act(async () => { await target.props.onPress(); }); },
     foreground: async () => { await act(async () => { appState.currentState = 'active'; lifecycle('active'); }); },
     background: async () => { await act(async () => { appState.currentState = 'background'; lifecycle('background'); }); },
-    focus: async (active, screenKey = 'dashboard') => { await act(async () => tree.update(React.createElement(Screen, { embedded, active, screenKey }))); },
+    focus: async (active, screenKey = 'dashboard') => { await act(async () => tree.update(render({ embedded, active, screenKey }))); },
     error: async () => { await act(async () => nativeEvent({ hasError: true, error: 'Microphone disconnected' })); },
-    modal: () => tree.root.findAllByType('Modal').length,
+    layer: () => tree.root.findAll(n => typeof n.type === 'string' && n.props.testID === 'assistant-answer-layer').length,
+    dialogs: () => tree.root.findAllByType('Modal').length,
+    live: async text => { await act(async () => liveListener?.({ transcript: text })); },
     dispose: async () => { await act(async () => tree.unmount()); },
   };
 }
@@ -202,17 +209,17 @@ test('tap twice stays on the same screen, reviews transcript, and reads stock on
   const h = await harness();
   try {
     await h.press('Start voice recording');
-    assert.equal(h.recorder.isRecording, true); assert.equal(h.modal(), 0);
+    assert.equal(h.recorder.isRecording, true); assert.equal(h.layer(), 0);
     assert.equal(h.calls.stock, 0); assert.equal(h.calls.transcribe, 0);
     await h.press('Stop recording and review transcript');
-    assert.equal(h.recorder.isRecording, false); assert.equal(h.modal(), 0);
+    assert.equal(h.recorder.isRecording, false); assert.equal(h.layer(), 0);
     assert.equal(h.find('Review voice transcript').props.value, 'How many hand gloves are left?');
     assert.equal(h.calls.stock, 0);
     await h.press('Send question');
-    assert.equal(h.calls.stock, 1); assert.equal(h.modal(), 1);
+    assert.equal(h.calls.stock, 1); assert.equal(h.layer(), 1);
     assert.deepEqual(h.calls.navigation, []);
     await h.press('Close assistant');
-    assert.equal(h.modal(), 0); assert.deepEqual(h.calls.navigation, []);
+    assert.equal(h.layer(), 0); assert.deepEqual(h.calls.navigation, []);
   } finally { await h.dispose(); }
 });
 
@@ -220,7 +227,7 @@ test('missing model reports setup inline without redirecting or starting capture
   const h = await harness({ ready: false });
   try {
     await h.press('Start voice recording');
-    assert.equal(h.calls.record, 0); assert.equal(h.modal(), 0);
+    assert.equal(h.calls.record, 0); assert.equal(h.layer(), 0);
     assert.deepEqual(h.calls.navigation, []); assert.ok(h.find('Voice setup'));
   } finally { await h.dispose(); }
 });
@@ -231,7 +238,7 @@ test('denied microphone permission has an actionable error and never claims List
     await h.press('Start voice recording');
     assert.equal(h.calls.permission, 1); assert.equal(h.calls.record, 0);
     assert.ok(h.find('Open Android app permissions')); assert.ok(h.find('Start voice recording'));
-    assert.equal(h.modal(), 0);
+    assert.equal(h.layer(), 0);
   } finally { await h.dispose(); }
 });
 
@@ -243,7 +250,7 @@ for (const event of ['background', 'screen change', 'blur', 'native error']) tes
     else if (event === 'native error') await h.error();
     else await h.focus(event !== 'blur', 'inventory');
     assert.equal(h.recorder.isRecording, false); assert.equal(h.calls.stock, 0); assert.equal(h.calls.transcribe, 0);
-    assert.equal(h.modal(), 0);
+    assert.equal(h.layer(), 0);
   } finally { await h.dispose(); }
 });
 
@@ -474,11 +481,11 @@ test('failed Groq request leaves local commands usable and never fabricates stoc
     await h.press('Start voice recording'); await h.press('Stop recording and review transcript'); await h.press('Send question');
     assert.equal(h.calls.interpret.length, 1);
     assert.equal(h.calls.stock, 0);
-    assert.equal(h.modal(), 0);
+    assert.equal(h.layer(), 0);
     await h.editTranscript('Show low stock'); await h.press('Send question');
     assert.equal(h.calls.interpret.length, 1);
     assert.equal(h.calls.stock, 1);
-    assert.equal(h.modal(), 1);
+    assert.equal(h.layer(), 1);
   } finally { await h.dispose(); }
 });
 
@@ -569,5 +576,60 @@ for (const transcript of [
     assert.equal(h.calls.interpret.length,1);
     assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()).rows[0].quantity,20);
     assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()).attempt,undefined);
+  } finally { await h.dispose(); }
+});
+
+test('real partial captions stay beside the mic and cannot dispatch until reviewed and sent', async () => {
+  const h = await harness({ liveCapture: true });
+  try {
+    await h.press('Start voice recording');
+    await h.live('How many hand');
+    assert.ok(h.tree.root.findAllByType('Text').some(n => n.children.join('') === 'How many hand'));
+    assert.equal(h.find('Review voice transcript'), undefined);
+    assert.equal(h.find('Send question'), undefined);
+    assert.equal(h.calls.stock, 0); assert.equal(h.calls.cloudAudio, 0);
+    await h.live('How many hand gloves are left?');
+    await h.press('Stop recording and review transcript');
+    assert.equal(h.find('Review voice transcript').props.value, 'How many hand gloves are left?');
+    await h.editTranscript('Summary');
+    await h.press('Send question');
+    assert.equal(h.calls.stock, 1); assert.equal(h.layer(), 1); assert.equal(h.dialogs(), 0);
+    assert.ok(h.calls.keyboardDismiss >= 2);
+  } finally { await h.dispose(); }
+});
+
+test('late live words after navigation cannot resurrect a cancelled take', async () => {
+  const h = await harness({ liveCapture: true });
+  try {
+    await h.press('Start voice recording'); await h.live('Hand gloves');
+    await h.focus(false); await h.live('Order 20 pairs');
+    assert.equal(h.recorder.isRecording, false); assert.equal(h.layer(), 0);
+    assert.equal(h.calls.stock, 0); assert.equal(h.calls.interpret.length, 0);
+    assert.ok(!h.tree.root.findAllByType('Text').some(n => n.children.join('') === 'Order 20 pairs'));
+  } finally { await h.dispose(); }
+});
+
+test('first answer to another query repeatedly releases the answer layer and microphone', async () => {
+  const h = await harness({ liveCapture: true, permissionAlreadyGranted: true });
+  try {
+    for (let round = 1; round <= 3; round++) {
+      await h.press('Start voice recording');
+      assert.equal(h.recorder.isRecording, true);
+      assert.equal(h.layer(), 0); assert.equal(h.dialogs(), 0);
+      await h.live('How many hand gloves');
+      await h.press('Stop recording and review transcript');
+      assert.equal(h.recorder.isRecording, false);
+      assert.equal(h.calls.stock, round - 1, 'listening and review cannot submit');
+      await h.editTranscript(round === 1 ? 'Summary' : 'How many hand gloves are left?');
+      await h.press('Send question');
+      assert.equal(h.calls.stock, round); assert.equal(h.layer(), 1); assert.equal(h.dialogs(), 0);
+      await h.press('Ask another question');
+      assert.equal(h.layer(), 0); assert.equal(h.recorder.isRecording, false);
+      assert.equal(h.find('Review voice transcript'), undefined);
+      assert.ok(h.find('Start voice recording'));
+    }
+    assert.equal(h.calls.record, 3); assert.equal(h.calls.stop, 3);
+    assert.equal(h.calls.permission, 0, 'granted permission must not open a permission activity');
+    assert.deepEqual(h.calls.navigation, [], 'the complete loop stays on the same screen');
   } finally { await h.dispose(); }
 });

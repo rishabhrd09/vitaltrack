@@ -3,7 +3,7 @@ type Recorder = {
   uri: string | null;
   readonly isRecording: boolean;
   prepareToRecordAsync(): Promise<unknown>;
-  record(options: { forDuration: number }): void;
+  record(options: { forDuration: number }): void | Promise<void>;
   stop(): Promise<void>;
 };
 export type CapturePhase = 'idle' | 'preparing' | 'recording' | 'stopping';
@@ -51,7 +51,8 @@ export class MicrophoneCapture {
       await this.remember(capture.uri);
       if (capture.cancelled) return false;
       assertCanRecord();
-      this.recorder.record({ forDuration: 28 });
+      await this.recorder.record({ forDuration: 28 });
+      if (capture.cancelled) return false;
       if (!this.recorder.isRecording) throw new Error('The microphone did not start. Check Android microphone access and try again.');
       capture.recorded = true;
       started = true; this.phaseChanged('recording');

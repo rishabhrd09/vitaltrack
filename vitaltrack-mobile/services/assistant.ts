@@ -22,7 +22,8 @@ export async function interpret(session: Session, question: string, hasPrevious:
 }
 export async function transcribe(session: Session, uri: string, signal: AbortSignal, provider: 'groq' | 'sarvam' = 'groq') {
   const form = new FormData();
-  form.append('file', { uri, name: 'question.m4a', type: 'audio/mp4' } as unknown as Blob);
+  const wav = uri.toLowerCase().endsWith('.wav');
+  form.append('file', { uri, name: wav ? 'question.wav' : 'question.m4a', type: wav ? 'audio/wav' : 'audio/mp4' } as unknown as Blob);
   form.append('provider', provider);
   return api.assistantRequest<{ transcript: string }>('/ai/transcribe', { method: 'POST', body: form, signal }, () => assertSession(session));
 }

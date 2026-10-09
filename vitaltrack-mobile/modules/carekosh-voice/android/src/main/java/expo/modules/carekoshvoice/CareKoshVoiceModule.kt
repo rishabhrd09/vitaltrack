@@ -21,6 +21,7 @@ class CareKoshVoiceModule : Module() {
     private val pending = AtomicInteger(0)
     private val cleanupQueued = AtomicBoolean(false)
     private var transcriber: Transcriber? = null // touched only by executor
+    @Volatile private var recording: StreamingRecording? = null
     private var tts: TextToSpeech? = null // touched only on main thread
     private var ttsReady = false
     private var speechInit = 0
@@ -71,6 +72,8 @@ class CareKoshVoiceModule : Module() {
 
     private fun cancel() {
         generation.incrementAndGet()
+        val previousRecording = recording
+        previousRecording?.cancel() // Release the mic promptly; join only on worker.
         main.post {
             tts?.stop()
             activeSpeech?.reject("SPEECH_CANCELLED", "Speech cancelled", null)
@@ -82,6 +85,8 @@ class CareKoshVoiceModule : Module() {
         try {
             executor.execute {
                 try {
+                    previousRecording?.discard()
+                    if (recording === previousRecording) recording = null
                     transcriber?.close()
                     transcriber = null
                 } finally {
@@ -110,7 +115,10 @@ class CareKoshVoiceModule : Module() {
                     val result = action(engine)
                     if (resolveImmediately) promise.resolve(result)
                 } catch (e: Exception) {
-                    if (activeSpeech === promise) { activeSpeech = null; activeSpeechId = null }
+                    if (activeSpeech === promise) {
+                        activeSpeech = null
+                        activeSpeechId = null
+                    }
                     promise.reject("DEVICE_SPEECH", e.message, e)
                 }
             }
@@ -168,7 +176,68 @@ class CareKoshVoiceModule : Module() {
 
     override fun definition() = ModuleDefinition {
         Name("CareKoshVoice")
-        Events("modelDownloadProgress")
+        Events("modelDownloadProgress", "liveTranscript")
+
+        AsyncFunction("prepareCapture") { id: String, preview: Boolean, promise: Promise ->
+            work(promise) { check ->
+                require(id.matches(Regex("[a-zA-Z0-9-]{1,80}")))
+                check(recording == null) { "Microphone is still stopping" }
+                transcriber?.close()
+                transcriber = null
+                var engine: Transcriber? = null
+                var take: StreamingRecording? = null
+                try {
+                    if (preview) {
+                        require(pack.ready(check)) {
+                            "Download the English speech pack for live words"
+                        }
+                        engine = Transcriber()
+                        engine.loadFromFiles(pack.root.path, pack.architecture)
+                        engine.setUpdateInterval(0.5)
+                    }
+                    check()
+                    val expected = generation.get()
+                    take =
+                        StreamingRecording(context, id, engine) { event ->
+                            if (expected == generation.get()) sendEvent("liveTranscript", event)
+                        }
+                    check()
+                    recording = take
+                    // Publishing ownership before this check lets cancellation find the take.
+                    // If it raced with preparation, the catch still disposes our own resources.
+                    check()
+                    mapOf("uri" to take.uri)
+                } catch (error: Throwable) {
+                    if (take != null) take.discard() else engine?.close()
+                    if (recording === take) recording = null
+                    throw error
+                }
+            }
+        }
+        AsyncFunction("startCapture") { id: String, promise: Promise ->
+            work(promise) { check ->
+                val take = requireNotNull(recording) { "Microphone was not prepared" }
+                require(take.id == id)
+                check()
+                take.start()
+                true
+            }
+        }
+        AsyncFunction("finishCapture") { id: String, promise: Promise ->
+            recording?.takeIf { it.id == id }?.requestStop()
+            work(promise) { _ ->
+                val take = requireNotNull(recording) { "Recording is no longer available" }
+                require(take.id == id)
+                try {
+                    mapOf("uri" to take.finish())
+                } catch (error: Throwable) {
+                    take.discard()
+                    throw error
+                } finally {
+                    if (recording === take) recording = null
+                }
+            }
+        }
 
         AsyncFunction("modelStatus") { promise: Promise ->
             work(promise, cancellable = false) { check ->
@@ -259,23 +328,40 @@ class CareKoshVoiceModule : Module() {
                 val utterance = "carekosh-reply-${System.nanoTime()}"
                 activeSpeech = promise
                 activeSpeechId = utterance
-                engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                    override fun onStart(utteranceId: String?) {}
-                    override fun onDone(utteranceId: String?) { finishSpeech(utteranceId, false) }
-                    @Suppress("DEPRECATION")
-                    override fun onError(utteranceId: String?) { finishSpeech(utteranceId, true) }
-                    override fun onStop(utteranceId: String?, interrupted: Boolean) { finishSpeech(utteranceId, true) }
-                    private fun finishSpeech(id: String?, failed: Boolean) {
-                        main.post {
-                            if (id == activeSpeechId) {
-                                if (failed) activeSpeech?.reject("DEVICE_SPEECH", "Speech interrupted", null)
-                                else activeSpeech?.resolve(null)
-                                activeSpeech = null
-                                activeSpeechId = null
+                engine.setOnUtteranceProgressListener(
+                    object : UtteranceProgressListener() {
+                        override fun onStart(utteranceId: String?) {}
+
+                        override fun onDone(utteranceId: String?) {
+                            finishSpeech(utteranceId, false)
+                        }
+
+                        @Suppress("DEPRECATION")
+                        override fun onError(utteranceId: String?) {
+                            finishSpeech(utteranceId, true)
+                        }
+
+                        override fun onStop(utteranceId: String?, interrupted: Boolean) {
+                            finishSpeech(utteranceId, true)
+                        }
+
+                        private fun finishSpeech(id: String?, failed: Boolean) {
+                            main.post {
+                                if (id == activeSpeechId) {
+                                    if (failed)
+                                        activeSpeech?.reject(
+                                            "DEVICE_SPEECH",
+                                            "Speech interrupted",
+                                            null,
+                                        )
+                                    else activeSpeech?.resolve(null)
+                                    activeSpeech = null
+                                    activeSpeechId = null
+                                }
                             }
                         }
                     }
-                })
+                )
                 check(
                     engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, utterance) ==
                         TextToSpeech.SUCCESS
@@ -283,14 +369,17 @@ class CareKoshVoiceModule : Module() {
                     "Could not play the offline voice"
                 }
                 // Some device engines never report completion. Bound the wait.
-                main.postDelayed({
-                    if (activeSpeechId == utterance) {
-                        engine.stop()
-                        activeSpeech?.reject("DEVICE_SPEECH", "Device speech timed out", null)
-                        activeSpeech = null
-                        activeSpeechId = null
-                    }
-                }, 90_000)
+                main.postDelayed(
+                    {
+                        if (activeSpeechId == utterance) {
+                            engine.stop()
+                            activeSpeech?.reject("DEVICE_SPEECH", "Device speech timed out", null)
+                            activeSpeech = null
+                            activeSpeechId = null
+                        }
+                    },
+                    90_000,
+                )
                 null
             }
         }
