@@ -16,6 +16,7 @@ type Props = {
   update: (next: Preferences) => void; enableMicrophone: () => void;
   manageModel: () => void; previewVoice: () => void; recheck: () => void;
   openAssistant: () => void; listeningControls?: ReactNode; cloudControls?: ReactNode; understandingReady?: boolean;
+  speechStatus: string; stopSpeech: () => void;
 };
 
 export function VoiceButton({ label, onPress, disabled = false, secondary = false }: {
@@ -32,7 +33,7 @@ export default function VoiceSetup(p: Props) {
   const { colors } = useTheme();
   const [help, setHelp] = useState(false);
   const [licence, setLicence] = useState(false);
-  const locked = !!p.busy || !p.loaded;
+  const locked = !!p.busy || !!p.speechStatus || !p.loaded;
   const online = p.prefs.audioOptIn && p.prefs.inputProvider === 'groq';
   const ready = p.loaded && p.supported && (online || p.modelChecked && p.model.ready) && p.prefs.enabled && p.prefs.microphone;
   const selectedReady = p.prefs.speechProvider === 'pocket' ? p.alba.ready : p.deviceVoice.ready;
@@ -85,9 +86,11 @@ export default function VoiceSetup(p: Props) {
         <VoiceButton label="Use device voice" secondary onPress={() => p.update({ ...p.prefs, speechProvider: 'device' })} disabled={locked || !p.deviceVoice.ready || p.prefs.speechProvider === 'device'} />
       </View>
       {toggle('Read answers aloud', 'Optional. The full answer also appears on screen.', p.prefs.spokenReplies, v => p.update({ ...p.prefs, spokenReplies: v }), !selectedReady && !p.prefs.spokenReplies)}
+      {p.alba.ready && !p.prefs.spokenReplies && <><Text style={body}>Alba is downloaded. Automatic spoken replies are off until you enable them below. Preview voice and Hear answer work without this setting.</Text><VoiceButton label="Use Alba & read answers aloud" onPress={() => p.update({ ...p.prefs, speechProvider: 'pocket', spokenReplies: true })} disabled={locked} /></>}
       {p.prefs.speechProvider === 'pocket' && <View style={{ gap: 8 }}><Text style={body}>Speaking pace · {(p.prefs.speechPace ?? 1) === 0.9 ? 'Relaxed' : (p.prefs.speechPace ?? 1) === 1.1 ? 'Brisk' : 'Natural'}</Text><View style={styles.paceRow}>{([['Relaxed', 0.9], ['Natural', 1], ['Brisk', 1.1]] as const).map(([label, pace]) => <View key={label} style={styles.paceOption}><VoiceButton label={`${label} pace`} secondary disabled={locked || (p.prefs.speechPace ?? 1) === pace} onPress={() => p.update({ ...p.prefs, speechPace: pace })} /></View>)}</View></View>}
       {!selectedReady && <Text style={body}>{p.prefs.speechProvider === 'pocket' ? 'Download Alba to hear this voice, or select an available device voice.' : 'No device voice is available. Download Alba above to hear replies entirely inside CareKosh.'}</Text>}
       <VoiceButton label="Preview voice" secondary onPress={p.previewVoice} disabled={locked || !selectedReady} />
+      {!!p.speechStatus && <><Text accessibilityLiveRegion="polite" style={body}>{p.speechStatus}</Text><VoiceButton label="Stop voice preview" secondary onPress={p.stopSpeech} /></>}
     </View>
     <VoiceButton label={ready ? 'Practice a command here' : 'Try a typed question here'} onPress={p.openAssistant} disabled={locked || !p.prefs.enabled} />
     <View style={card}>

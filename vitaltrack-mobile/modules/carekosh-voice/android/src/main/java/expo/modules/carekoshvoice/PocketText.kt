@@ -1,11 +1,11 @@
 // Adapted from john-rocky/LiteRT-Models, MIT (Copyright 2026 Daisuke Majima).
-// CareKosh enforces every prepared chunk <=50 tokens; never silently truncates speech.
+// Short chunks leave headroom for a slower voice within the fixed decoder window.
 package expo.modules.carekoshvoice
 
 internal class PocketText(private val tokenizer: PocketTokenizer) {
     private val endTokens = tokenizer.encode(".!...?").drop(1).toSet()
     private val fallbackTokens = tokenizer.encode(",;:").drop(1).toSet()
-    companion object { const val MAX_TOKENS_PER_CHUNK = 50 }
+    companion object { const val MAX_TOKENS_PER_CHUNK = 32 }
     // ---- text preparation (ports of pocket_tts.models.tts_model) ----------
 
     /** prepare_text_prompt: normalize whitespace/case/punctuation; guess EOS tail. */
@@ -20,7 +20,7 @@ internal class PocketText(private val tokenizer: PocketTokenizer) {
         return text to guess
     }
 
-    /** split_into_best_sentences: sentence segments greedily packed <=50 tokens. */
+    /** Sentence segments packed within the shared token limit without losing words. */
     fun chunks(raw: String): List<String> {
         val (prepared, _) = prepare(raw)
         val tokens = tokenizer.encode(prepared.trim()).toList()

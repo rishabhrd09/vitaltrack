@@ -24,6 +24,9 @@ internal class PocketPlayback(private val context: Context) {
         val attributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()
         val manager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        require(manager.getStreamVolume(AudioManager.STREAM_MUSIC) > 0) {
+            "Media volume is muted. Turn up media volume and check the speaker or Bluetooth output"
+        }
         val lostFocus = AtomicBoolean(false)
         val focus = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
             .setAudioAttributes(attributes).setOnAudioFocusChangeListener({

@@ -1,6 +1,6 @@
 # Downloadable Alba voice inside CareKosh
 
-Local source implementation, 10 October 2026, on top of `078d53c`. This addition changes mobile speech output only. It has not been committed, deployed or verified in a release APK by this implementation review.
+Latest speech-output follow-up: 10 October 2026, on top of `d429e7b`. The original integration compiled successfully in the preview APK linked below. This follow-up addresses the reported on-phone EOS failure; its new native code needs a newly built APK and phone retesting. It changes mobile speech output only.
 
 ## What it does
 
@@ -13,7 +13,7 @@ This is Pocket TTS Alba, not the Piper Alba/Lyra model used by some other projec
 1. Install a newly compiled CareKosh Android APK containing the LiteRT native integration. An older APK, Expo Go, web or iOS cannot run this voice. The app still requires Android 8/API 26; this pack is offered on 64-bit ARM/x86 devices.
 2. Open **Settings → Voice setup → Spoken replies** (step 4 when online understanding is available) and choose **Download Alba voice pack**. Confirm the download; Wi-Fi is recommended. Keep CareKosh in the foreground. The preceding Listening section configures recognition, while Understanding configures optional online text interpretation; neither chooses the speaking voice.
 3. The nine data files total **208,767,942 bytes**, approximately 209 MB (199 MiB). Allow at least the pack size plus 64 MB free storage for setup and additional memory during synthesis. The speech-recognition pack is a separate download.
-4. Downloading selects Alba. **Read answers aloud** remains a separate user choice. Choose **Relaxed**, **Natural** or **Brisk** pace and press **Preview voice**. **Hear answer** can speak an answer on demand.
+4. Downloading selects Alba. **Read answers aloud** remains a separate user choice; **Use Alba & read answers aloud** explicitly enables both. Choose **Relaxed**, **Natural** or **Brisk** pace and press **Preview voice**. **Hear answer** can speak an answer on demand even with automatic replies off. Preparation/playback progress and **Stop voice preview** appear during preview; repeated preview taps are blocked. Check media volume and speaker/Bluetooth output when playback starts.
 5. Use **Remove Alba voice pack** to reclaim storage. It does not remove inventory, orders or the microphone recognition pack. A failed download removes its partial file and can reuse already verified completed files on retry. Leaving the app or pressing Cancel stops the download.
 
 ## Data flow and safety
@@ -24,9 +24,9 @@ Validated answer → concise `speechText` → native `speakPocket` → verified 
 - The model catalog is fixed inside the APK, revision-pinned and SHA-256 checked. Users cannot supply a model URL or clone a voice. Model files are data, not a downloaded native executable.
 - Files live in the app-private no-backup directory and contain no account data. Removing app data/uninstalling removes them; ordinary APK updates should retain them unless the catalog changes.
 - This implementation uses **LiteRT Android 2.1.6**, independently of Moonshine's ONNX runtime, avoiding a second `libonnxruntime.so`. No Sherpa/eSpeak/Piper phonemizer runtime was added.
-- The fused language model and vocoder try GPU compilation with CPU fallback if compilation throws an ordinary exception; the small decoder transformer runs on CPU. GPU inference errors remain visible failures; there is no silent cloud or device-voice fallback.
+- The fused language model and vocoder try GPU compilation with CPU fallback if compilation throws an ordinary exception; the small decoder transformer runs on CPU. If a generation attempt that used GPU subsequently fails, its resources close before one all-CPU retry using the same Alba preset and text. Cancellation, deadlines and CPU-only failures do not trigger further attempts. There is no cloud or device-voice fallback.
 - Inference runs serially away from the UI thread. Recognition model memory is released before synthesis. Native model/buffer resources are closed on the same worker after each utterance, including partial initialization failures. This adds compilation time to replies; performance must be measured on target phones.
-- Text is limited to 640 characters and prepared chunks to 50 tokens, without silently dropping words. Generation/PCM/playback have finite bounds and malformed/non-finite output is rejected. Speech begins after full synthesis, not incrementally while generating.
+- Text is limited to 640 characters and prepared chunks to **32 tokens**, without silently dropping words. The previous 50-token chunks and estimated three-tokens-per-second frame cutoff could leave insufficient room for a slower utterance. Each new chunk may use at most 256 audio frames (20.48 seconds), also bounded by remaining KV space, and must reach EOS plus its tail. A reply has a 90-second PCM cap and a 180-second native operation deadline shared by generation, a possible CPU retry and playback. Malformed, non-finite or entirely silent output is rejected. Speech begins after full synthesis, not incrementally while generating.
 - Cancel, another question, leaving the screen, backgrounding, logout or changing accounts invalidates speech. An in-flight native invocation may finish before resources close; stale results cannot start playback. Audio-focus loss stops playback.
 - Synthesis failure keeps the factual answer visible. Neither this voice nor Groq interpretation gains inventory/order-save authority. Touch confirmation remains required to save an order.
 - Device speech remains a selectable fallback controlled by the user. Withdrawing cloud consent preserves the selected offline Alba voice.
@@ -54,11 +54,22 @@ Under `vitaltrack-mobile/`:
 - `modules/carekosh-voice/android/src/main/java/expo/modules/carekoshvoice/PocketPack.kt`: fixed catalog, storage, redirects, checksums and deletion.
 - `PocketTokenizer.kt`, `PocketText.kt`: tokenization, normalization and bounded sentence chunks.
 - `PocketSynthesizer.kt`: preset-only LiteRT model orchestration.
+- `PocketRecovery.kt`: bounded generation-window checks and one cancellable GPU-to-CPU retry.
 - `PocketPlayback.kt`: foreground audio focus, cancellation and PCM playback.
 - `CareKoshVoiceModule.kt`: serial worker and Expo native API.
 - `modules/carekosh-voice/android/src/main/assets/pocket-alba-manifest.json`: exact file sizes/checksums; model weights are not committed.
 
 ## Verification and release gate
+
+### Reported silent replies / EOS failure — 10 October 2026
+
+Phone feedback reports **“Alba could not finish this sentence. Try a shorter reply.”** This comes from generation before `AudioTrack` playback, so microphone permissions or a Render redeploy cannot fix that specific failure. The exact device-side cause (early estimated cutoff versus GPU behavior) is not proven without a device trace. The follow-up removes the heuristic as a hard cutoff, leaves the real KV/decoder/time bounds in place, reduces lossless chunks to 32 tokens and adds the local CPU recovery above. The microphone, Groq query routing, backend and model catalog are unchanged.
+
+Settings now distinguish a downloaded voice from enabled automatic narration and show checking, loading, generating, CPU recovery and playback stages. Muted media volume produces an explicit message. A new progress-capable native method retains the older two-argument method for compatibility; event IDs prevent an old utterance's progress from updating a new one.
+
+Local validation: **248 mobile tests**, TypeScript, lint (zero errors, one existing builder warning), all voice-module Kotlin sources compiled with 2.2.20 against the actual Android/Moonshine/LiteRT API jars and Expo bridge stubs, 113 SentencePiece reference cases and lossless 32-token chunk tests. JVM recovery checks exercise late EOS, KV/decoder bounds, GPU failure followed by one CPU attempt, cancellation, CPU failure and silent/non-finite audio. A fixture using the exact assets produced finite non-silent stock-summary PCM on the Mac CPU. These checks do not establish Android speaker output or GPU behavior; a new APK and OnePlus preview/answer/second-question tests remain required.
+
+To run the new pure JVM recovery checks, compile `PocketRecovery.kt` with `scripts/check-pocket-recovery.kt` using Kotlin 2.2.20 and run its main class. The tokenizer check below now uses the shared **32-token** limit.
 
 ### Android build compatibility — 10 October 2026
 

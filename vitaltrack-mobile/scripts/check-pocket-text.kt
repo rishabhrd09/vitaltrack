@@ -29,7 +29,7 @@ fun main(args: Array<String>) {
     for (prompt in prompts) {
         val chunks = chunker.chunks(prompt)
         check(chunks.isNotEmpty())
-        for (chunk in chunks) check(tokenizer.encode(chunker.prepare(chunk).first).size in 1..50)
+        for (chunk in chunks) check(tokenizer.encode(chunker.prepare(chunk).first).size in 1..PocketText.MAX_TOKENS_PER_CHUNK)
         fun words(s: String) = s.lowercase().split(Regex("[^\\p{L}\\p{N}]+" )).filter { it.isNotEmpty() }
         check(words(chunks.joinToString(" ")) == words(prompt)) { "Chunking lost or duplicated words" }
     }

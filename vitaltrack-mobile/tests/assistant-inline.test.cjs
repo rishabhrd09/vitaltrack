@@ -711,6 +711,30 @@ test('Hear answer uses Alba even when no Android device voice is installed', asy
   } finally { await h.dispose(); }
 });
 
+test('downloaded Alba offers explicit automatic replies without changing listening or cloud consent', async () => {
+  const h = await harness({ mode: 'settings', pocketBuild: true, pocketReady: true, selectedPocket: true });
+  try {
+    await h.press('Use Alba & read answers aloud');
+    assert.equal(h.prefs.spokenReplies, true); assert.equal(h.prefs.speechProvider, 'pocket');
+    assert.equal(h.prefs.microphone, true); assert.equal(h.prefs.cloud, false); assert.equal(h.prefs.audioOptIn, false);
+  } finally { await h.dispose(); }
+});
+
+test('Alba preview shows preparation, prevents duplicate previews and can be stopped', async () => {
+  let finish;
+  const waiting = new Promise(resolve => { finish = resolve; });
+  const h = await harness({ mode: 'settings', pocketBuild: true, pocketReady: true, selectedPocket: true, pocketSpeech: () => waiting });
+  try {
+    await h.press('Preview voice');
+    assert.ok(h.tree.root.findAllByType('Text').some(n => n.children.join('').includes('Preparing Alba speech')));
+    assert.equal(h.find('Preview voice').props.disabled, true);
+    await h.press('Stop voice preview');
+    assert.equal(h.find('Preview voice').props.disabled, false);
+    await act(async () => { finish(); await waiting; });
+    assert.equal(h.calls.pocketSpeech.length, 1);
+  } finally { finish(); await h.dispose(); }
+});
+
 const mixedInventory = [
   { id:'a', name:'Ambu Bag', quantity:1, minimumStock:5, unit:'unit', isActive:true, version:2 },
   { id:'g', name:'Hand gloves', quantity:2, minimumStock:5, unit:'pairs', isActive:true, version:3 },

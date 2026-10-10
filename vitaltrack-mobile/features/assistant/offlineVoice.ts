@@ -15,6 +15,7 @@ type NativeVoice = {
   downloadPocketVoice?(): Promise<PocketVoiceStatus>;
   removePocketVoice?(): Promise<void>;
   speakPocket?(text: string, pace: number): Promise<void>;
+  speakPocketWithProgress?(text: string, pace: number, id: string): Promise<void>;
   pocketLicenceArchive?(): Promise<string>;
   cancel(): void;
   prepareCapture?(id: string, preview: boolean): Promise<{ uri: string }>;
@@ -28,6 +29,13 @@ export const liveCaptureSupported = !!native?.prepareCapture && !!native?.startC
 export const pocketVoiceSupported = !!native?.pocketVoiceStatus && !!native?.downloadPocketVoice && !!native?.removePocketVoice && !!native?.speakPocket;
 export type LiveWords = { id: string; transcript?: string; finished?: boolean; error?: string; previewError?: boolean };
 let nextTake = 0;
+let nextSpeech = 0;
+export const pocketSpeechStages = {
+  verifying: 'Checking Alba voice pack…', loading: 'Loading Alba on this phone…',
+  generating: 'Preparing Alba speech…', cpu_retry: 'Retrying Alba with the CPU…',
+  loading_cpu: 'Loading Alba with the CPU…', generating_cpu: 'Preparing Alba speech with the CPU…',
+  playing: 'Playing Alba · check media volume and audio output',
+} as const;
 
 /** Adapter preserves MicrophoneCapture's single-owner and cleanup contract. */
 export function createLiveRecorder() {
@@ -81,7 +89,16 @@ export const pocketVoice = {
   status: () => pocketEngine().pocketVoiceStatus!(),
   download: () => pocketEngine().downloadPocketVoice!(),
   remove: () => pocketEngine().removePocketVoice!(),
-  speak: (text: string, pace = 1) => pocketEngine().speakPocket!(text, pace),
+  async speak(text: string, pace = 1, progress?: (message: string) => void) {
+    const voice = pocketEngine();
+    if (!voice.speakPocketWithProgress) return voice.speakPocket!(text, pace);
+    const id = `speech-${Date.now()}-${++nextSpeech}`;
+    const sub = voice.addListener<{ id: string; stage: string }>('pocketSpeechProgress', event => {
+      if (event.id === id && Object.prototype.hasOwnProperty.call(pocketSpeechStages, event.stage)) progress?.(pocketSpeechStages[event.stage as keyof typeof pocketSpeechStages]);
+    });
+    try { await voice.speakPocketWithProgress(text, pace, id); }
+    finally { sub.remove(); }
+  },
   licences: () => pocketEngine().pocketLicenceArchive!(),
   progress: (listener: (event: { downloaded: number; total: number }) => void) => pocketVoiceSupported ? native?.addListener('pocketDownloadProgress', listener) : undefined,
 };

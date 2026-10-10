@@ -11,7 +11,6 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Random
-import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -39,7 +38,7 @@ import kotlin.math.sqrt
  * bounds text, token chunks, generation time and PCM length. Reference graph
  * parity is reported by the exporter; Android inference must be tested on-device.
  */
-internal class PocketSynthesizer(private val modelDir: File, private val checkOperation: () -> Unit) : Closeable {
+internal class PocketSynthesizer(private val modelDir: File, private val checkOperation: () -> Unit, private val cpuOnly: Boolean = false) : Closeable {
 
     companion object {
         const val H = 1024               // flow-LM width
@@ -64,10 +63,7 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
         // Generation defaults from the english config / pocket_tts defaults.
         const val TEMP = 0.3f
         const val EOS_THRESHOLD = -4.0f
-        const val MAX_TOKENS_PER_CHUNK = 50
-        const val TOKENS_PER_SECOND = 3.0
-        const val GEN_SECONDS_PADDING = 2.0
-        const val FRAME_RATE = 12.5
+        const val MAX_TOKENS_PER_CHUNK = PocketText.MAX_TOKENS_PER_CHUNK
         const val MASK_NEG = -1e4f
 
         // step + flow head fused into one graph with one output tensor: on
@@ -87,14 +83,16 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
     }
 
     private val resources = ArrayList<AutoCloseable>()
+    var usesGpu = false
+        private set
     private fun path(name: String): File = File(modelDir, name).also {
         require(it.isFile) { "Download the Alba voice pack in Voice setup first" }
     }
     private fun <T : AutoCloseable> own(value: T): T { resources.add(value); return value }
     private fun load(name: String, gpu: Boolean): CompiledModel {
         checkOperation()
-        val result = if (gpu) try {
-            CompiledModel.create(path(name).path, CompiledModel.Options(Accelerator.GPU), null)
+        val result = if (gpu && !cpuOnly) try {
+            CompiledModel.create(path(name).path, CompiledModel.Options(Accelerator.GPU), null).also { usesGpu = true }
         } catch (_: Exception) {
             checkOperation()
             CompiledModel.create(path(name).path, CompiledModel.Options(Accelerator.CPU), null)
@@ -252,13 +250,14 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
         return Result(out, frames, (System.nanoTime() - t0) / 1_000_000)
     }
 
-    /** The reference autoregressive loop for one <=50-token chunk. */
+    /** Bounded autoregressive loop; a length estimate is not an EOS deadline. */
     private fun generateChunk(ids: IntArray, framesAfterEos: Int): List<FloatArray> {
         require(ids.size in 1..MAX_TOKENS_PER_CHUNK && ids.all { it in 0 until 4000 })
         resetToVoice()
         for (id in ids) step(embRow(id), zeroNoise)
-        val estimate = ceil((ids.size / TOKENS_PER_SECOND + GEN_SECONDS_PADDING) * FRAME_RATE)
-        val maxGen = minOf(estimate.toInt(), PMAX - pos - 1, DEC_FRAMES)
+        // The old 3-tokens/second estimate could expire before a valid slower
+        // utterance reached EOS. Keep the actual KV/decoder bounds and deadline.
+        val maxGen = pocketFrameBudget(PMAX - pos - 1, DEC_FRAMES)
         val latents = ArrayList<FloatArray>(maxGen)
         var emb = bosInput
         var eosStep = -1
@@ -272,7 +271,7 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
             latents.add(lat)
             emb = projectLatent(lat)
         }
-        require(eosStep >= 0 && latents.size < maxGen) { "Alba could not finish this sentence. Try a shorter reply" }
+        require(pocketSentenceFinished(eosStep, latents.size, framesAfterEos, maxGen)) { "Alba could not finish this sentence. Try Preview voice again or select Device voice in Voice setup" }
         return latents
     }
 

@@ -95,6 +95,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const [secondsLeft, setSecondsLeft] = useState(10);
   const [screenReader, setScreenReader] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [speechStatus, setSpeechStatus] = useState('');
   const [permissionBlocked, setPermissionBlocked] = useState(false);
   const permissionPending = useRef(false);
   const scroll = useRef<ScrollView>(null);
@@ -140,7 +141,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     try { player.pause(); } catch { /* native object may already be released */ }
     void discard(audioFile.current); audioFile.current = null;
     capture.cancel();
-    setBusy(''); setSpeaking(false); setLiveWords('');
+    setBusy(''); setSpeaking(false); setSpeechStatus(''); setLiveWords('');
   };
   const close = () => { cancel(); previousItem.current = undefined; previousQuery.current = undefined; selections.current = {}; setDraftRows(undefined); setProposalChoice(null); setAnswer(null); setQuestion(''); setError(''); setReviewOpen(false); if (!embedded) { if (router.canGoBack()) router.back(); else router.replace('/(tabs)'); } };
   const openSetup = () => { cancel(); setAnswer(null); if (embedded) router.navigate({ pathname: '/assistant', params: { mode: 'settings' } }); else router.setParams({ mode: 'settings', listen: undefined }); };
@@ -317,12 +318,15 @@ export default function AssistantExperience({ embedded = false, active = true, s
   async function playAnswer(value: Answer, current: number, signal: AbortSignal, preview = false) {
     if ((!prefs.spokenReplies && !preview) || capture.phase !== 'idle' || current !== turn.current || signal.aborted) return;
     setSpeaking(true);
+    setSpeechStatus(prefs.speechProvider === 'pocket' ? 'Preparing Alba speech…' : 'Reading aloud…');
     try {
       const session = captureSession();
       if (prefs.speechProvider === 'pocket') {
         assertSession(session);
         if (!alba.ready) throw new Error('Download Alba in Voice setup first.');
-        await pocketVoice.speak(speechText(value), prefs.speechPace ?? 1);
+        await pocketVoice.speak(speechText(value), prefs.speechPace ?? 1, message => {
+          if (mounted.current && current === turn.current && !signal.aborted) setSpeechStatus(message);
+        });
         return;
       }
       if (!CLOUD_VOICE_ENABLED || prefs.speechProvider === 'device') {
@@ -345,7 +349,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
       if (current !== turn.current || signal.aborted) { await discard(uri); return; }
       assertSession(session); player.replace({ uri }); player.play();
     } catch (e) { if (current === turn.current) setError(prefs.speechProvider === 'pocket' && e instanceof Error ? `${e.message} Your answer is still on screen.` : 'Speech unavailable. Your answer is still on screen.'); }
-    finally { if (current === turn.current) setSpeaking(false); }
+    finally { if (current === turn.current) { setSpeaking(false); setSpeechStatus(''); } }
   }
   async function ask(text = question, chosen?: Intent | Specification, force = false) {
     if (!loaded || !prefs.enabled || !text.trim() || busy || capture.phase !== 'idle') return;
@@ -545,6 +549,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
       {permissionBlocked && button('Open Android app permissions', () => { void Linking.openSettings().catch(() => setError('Open Android Settings → Apps → CareKosh → Permissions → Microphone.')); })}</View>}
   </>;
   const setup = <VoiceSetup prefs={prefs} loaded={loaded} supported={offlineSupported} busy={busy} model={model} modelChecked={modelChecked} progress={downloadProgress} deviceVoice={deviceVoice}
+    speechStatus={speechStatus} stopSpeech={cancel}
     alba={alba} albaChecked={albaChecked} albaProgress={albaProgress}
     manageAlba={() => {
       const session = captureSession(); const current = turn.current;
@@ -638,7 +643,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
           </>}
           {answer && <View style={{ gap: 10 }}>
             <View style={styles.row}>
-              {(!keptOpen || !!answer.choices.length || speaking) && <Text style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>{answer.choices.length ? 'Choose an item to continue' : speaking ? 'Reading aloud · timer paused' : keptOpen || screenReader ? 'Answer stays open' : `Closes in ${secondsLeft}s`}</Text>}
+              {(!keptOpen || !!answer.choices.length || speaking) && <Text accessibilityLiveRegion="polite" style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>{answer.choices.length ? 'Choose an item to continue' : speaking ? speechStatus : keptOpen || screenReader ? 'Answer stays open' : `Closes in ${secondsLeft}s`}</Text>}
               {!answer.choices.length && !keptOpen && !screenReader && button('Keep open', () => setKeptOpen(true))}
             </View>
             <View style={styles.answerCard}>

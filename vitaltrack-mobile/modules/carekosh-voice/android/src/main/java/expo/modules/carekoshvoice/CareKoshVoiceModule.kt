@@ -180,9 +180,45 @@ class CareKoshVoiceModule : Module() {
             )
             .firstOrNull()
 
+    private fun speakPocket(text: String, pace: Double, id: String?, promise: Promise) {
+        work(promise) { check ->
+            require(text.isNotBlank() && text.length <= 640 && pace in 0.85..1.1)
+            require(id == null || id.matches(Regex("[a-zA-Z0-9-]{1,80}")))
+            val deadline = System.nanoTime() + 180_000_000_000L
+            val boundedCheck = { check(); kotlin.check(System.nanoTime() < deadline) { "Alba took too long. Try a shorter reply or select Device voice in Voice setup" } }
+            val report: (String) -> Unit = { stage ->
+                boundedCheck()
+                if (id != null) sendEvent("pocketSpeechProgress", mapOf("id" to id, "stage" to stage))
+            }
+            report("verifying")
+            require(pocketPack.ready(boundedCheck)) { "Download Alba in Voice setup first" }
+            transcriber?.close(); transcriber = null
+            val audio = recoverPocketAudio(boundedCheck, report) { cpuOnly ->
+                var usedGpu = false
+                try {
+                    report(if (cpuOnly) "loading_cpu" else "loading")
+                    PocketSynthesizer(pocketPack.root, boundedCheck, cpuOnly).use { voice ->
+                        try {
+                            voice.initialize()
+                            report(if (cpuOnly) "generating_cpu" else "generating")
+                            voice.synthesize(text, "alba").audio
+                        } finally { usedGpu = voice.usesGpu }
+                    }
+                } catch (e: Exception) {
+                    boundedCheck()
+                    if (usedGpu && !cpuOnly) throw PocketGpuFailure(e)
+                    throw e
+                }
+            }
+            report("playing")
+            pocketPlayback.play(audio, pace.toFloat(), boundedCheck)
+            null
+        }
+    }
+
     override fun definition() = ModuleDefinition {
         Name("CareKoshVoice")
-        Events("modelDownloadProgress", "liveTranscript", "pocketDownloadProgress")
+        Events("modelDownloadProgress", "liveTranscript", "pocketDownloadProgress", "pocketSpeechProgress")
 
         AsyncFunction("pocketVoiceStatus") { promise: Promise ->
             work(promise, cancellable = false) { check ->
@@ -210,21 +246,10 @@ class CareKoshVoiceModule : Module() {
             work(promise) { _ -> pocketPack.remove(); null }
         }
         AsyncFunction("speakPocket") { text: String, pace: Double, promise: Promise ->
-            work(promise) { check ->
-                require(text.isNotBlank() && text.length <= 640 && pace in 0.85..1.1)
-                require(pocketPack.ready(check)) { "Download Alba in Voice setup first" }
-                // Free recognition memory before starting synthesis; microphone and speech never overlap.
-                transcriber?.close(); transcriber = null
-                val deadline = System.nanoTime() + 180_000_000_000L
-                val boundedCheck = { check(); kotlin.check(System.nanoTime() < deadline) { "Alba took too long. Your answer is still on screen" } }
-                PocketSynthesizer(pocketPack.root, boundedCheck).use { voice ->
-                    voice.initialize()
-                    val audio = voice.synthesize(text, "alba").audio
-                    boundedCheck()
-                    pocketPlayback.play(audio, pace.toFloat(), boundedCheck)
-                }
-                null
-            }
+            speakPocket(text, pace, null, promise)
+        }
+        AsyncFunction("speakPocketWithProgress") { text: String, pace: Double, id: String, promise: Promise ->
+            speakPocket(text, pace, id, promise)
         }
         AsyncFunction("pocketLicenceArchive") { promise: Promise ->
             work(promise) { check ->
