@@ -9,7 +9,7 @@ Each function below is the *source* of one diagram. Every box and label states a
 fact that was checked against the code on 7 October 2026 (see
 docs/documentation-audit-2026-10-07/SOURCE_OF_TRUTH.md) and re-checked against the
 working tree on 8 October 2026. Voice and system context were refreshed against
-0946eb7 plus local capture/UI changes on 9 October 2026. Diagrams illustrate those
+078d53c plus local Pocket TTS output changes on 10 October 2026. Diagrams illustrate those
 findings; they are not evidence by themselves. Edit the function, re-run the
 script, and re-inspect the PNG preview before committing.
 """
@@ -36,7 +36,7 @@ def system_context() -> Svg:
             "are optional and only used when configured. "
             "The core API has no queue, Redis cache or offline write queue. Optional speech-worker code "
             "exists; deployment is unverified and the mobile build disables hosted speech output.")
-    s.heading("CareKosh — system context (voice source updated 9 Oct 2026)",
+    s.heading("CareKosh — system context (voice source updated 10 Oct 2026)",
               "One mobile app, one API service, one PostgreSQL database. Everything else is supporting or optional.")
     s.legend(40, 118, LEGEND)
 
@@ -53,8 +53,8 @@ def system_context() -> Svg:
     s.box(60, 533, 250, 172, "Moonshine (on device)",
           ["Kotlin module carekosh-voice", "English pack: one-time HTTPS download, checksummed",
            "live words + offline final transcript"], "provider")
-    s.box(330, 533, 250, 172, "Android Text-to-speech",
-          ["Installed offline English voice", "optional spoken replies", "no network voice"], "provider")
+    s.box(330, 533, 250, 172, "Offline speech output",
+          ["Pocket TTS / Alba: optional 209 MB pack", "LiteRT 2.1.6; device TTS selectable", "new APK + device verification needed"], "provider")
 
     # API
     s.rect(720, 165, 640, 410, "infra", radius=18)
@@ -366,7 +366,7 @@ def voice_flow() -> Svg:
         ("2. Final transcript → review/edit → Send", "Default: Moonshine locally. Optional Groq Whisper (whisper-large-v3) through POST /ai/transcribe after Stop requires groq_audio consent, fresh audioOptIn and server capability. Temporary audio deleted; no automatic interpretation or provider substitution.", "conditional"),
         ("3. Local parsing or consented Groq specification", "Familiar wording stays local. Otherwise reviewed text → POST /ai/interpret → openai/gpt-oss-20b, groq_text consent, strict v2 schema. Names, quantities and units validated; no inventory list or executable tools sent. Correct schema does not prove correct meaning.", "conditional"),
         ("4. Verified inventory snapshot and resolution", "Same-session owned complete inventory, no pending writes. Refresh as needed. Ambiguity, missing quantities or unit mismatches require clarification. Offline = last-known.", "core"),
-        ("5. In-app table or UNSAVED session draft", "Native virtualized rows, freshness/filters, concise Android offline TTS. Hosted speech is disabled. Explicit amounts win over deterministic minimum-stock suggestions. Manual draft: review merge/replace/cancel.", "ok"),
+        ("5. In-app table or UNSAVED session draft", "Native virtualized rows, freshness/filters, concise Pocket TTS/Alba (downloaded) or device TTS. Hosted speech is disabled. Explicit amounts win over deterministic minimum-stock suggestions. Manual draft: review merge/replace/cancel.", "ok"),
         ("VOICE BOUNDARY — no order or stock save", "Voice can prepare/edit a draft; saying confirm cannot commit. Inventory-report PDF requires reviewed touch export. Consent/usage writes may occur in cloud mode.", "danger"),
         ("6. Separate TOUCH: Confirm order & export PDF", "Create Order checks matching backend capability, refreshes inventory, retains reviewed quantities, and asks for another review if stock changed. Saving requires internet.", "core"),
         ("7. Authenticated POST /orders", "Stable localId, ownership check, expectedVersion under item locks. Changed/inactive items return 409. A successful create writes order/lines/activity; inventory does not increase.", "core"),

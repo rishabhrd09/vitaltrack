@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parents[2]
 # canonical Markdown -> generated HTML (same folder, same stem)
 GUIDES = [
     "docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md",
+    "docs/POCKET_TTS_ALBA.md",
     "docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md",
     "docs/API_TRACEABILITY.md",
 ]

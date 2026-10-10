@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="docs/tools/build_docs.py from docs/POCKET_TTS_ALBA.md">
+<title>Downloadable Alba voice inside CareKosh</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d2328;--muted:#56606b;--card:#ffffff;--border:#d6dbe0;--accent:#0b5a73;
+--accent-bg:#e5f1f5;--code-bg:#f1f3f5;--code-fg:#1d2328;--warn-bg:#fff4d6;--warn-border:#9a6a00;--mark:#fff1a8}
+@media (prefers-color-scheme:dark){:root{--bg:#14181c;--fg:#e8ecef;--muted:#a9b3bc;--card:#1c2228;--border:#36404a;
+--accent:#7cc7df;--accent-bg:#17303a;--code-bg:#0f1316;--code-fg:#e8ecef;--warn-bg:#3a2f12;--warn-border:#d9a93a;--mark:#5b4e10}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+a{color:var(--accent);text-underline-offset:3px}a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:0}.skip:focus{left:12px;top:12px;background:var(--card);padding:8px 12px;z-index:9}
+header.site{border-bottom:1px solid var(--border);background:var(--card)}
+header.site .inner{max-width:1180px;margin:auto;padding:14px 20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;min-width:0}
+header.site .meta{min-width:0;overflow-wrap:anywhere}
+header.site .brand{font-weight:700}
+.layout{max-width:1180px;margin:auto;padding:0 20px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:36px}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:24px 0;font-size:14.5px;line-height:1.45}
+nav.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}nav.toc ul{list-style:none;padding-left:0;margin:0}nav.toc ul ul{padding-left:14px}nav.toc li{margin:5px 0}
+nav.toc a{color:var(--fg);text-decoration:none}nav.toc a:hover{text-decoration:underline}
+main{min-width:0;padding:28px 0 80px;max-width:78ch;overflow-wrap:break-word}
+:not(pre)>code{overflow-wrap:anywhere;word-break:break-word}
+h1{font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.15;margin:.2em 0 .4em}
+h2{font-size:1.6rem;margin-top:2.6rem;padding-top:.6rem;border-top:1px solid var(--border)}
+h3{font-size:1.25rem;margin-top:2rem}h4{font-size:1.05rem;margin-top:1.6rem}
+h2,h3,h4{scroll-margin-top:12px}.anchor{margin-left:.35em;font-size:.8em;text-decoration:none;opacity:.45}
+.anchor:hover,.anchor:focus{opacity:1}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--warn-border);background:var(--warn-bg)}
+blockquote p{margin:.4em 0}
+code{font:0.9em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code-bg);padding:.1em .3em;border-radius:4px}
+.codewrap{position:relative;margin:1.1em 0}
+pre{background:var(--code-bg);color:var(--code-fg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow:auto;line-height:1.5}
+pre code{background:none;padding:0;font-size:.86em}
+button.copy{position:absolute;top:8px;right:8px;font:600 12.5px system-ui,sans-serif;padding:4px 10px;border-radius:6px;
+border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer}
+.tablewrap{overflow-x:auto;margin:1.1em 0;border:1px solid var(--border);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.94em;background:var(--card)}
+th,td{border-bottom:1px solid var(--border);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--accent-bg);position:sticky;top:0}
+figure.diagram{margin:1.6em 0}figure.diagram .scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:#fff}
+figure.diagram img{display:block;width:100%;min-width:680px;height:auto}
+figcaption{font-size:.92em;color:var(--muted);margin-top:.5em}
+.meta{color:var(--muted);font-size:.92em}
+footer{color:var(--muted);font-size:.9em;border-top:1px solid var(--border);margin-top:3rem;padding-top:1rem}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.toc{position:static;max-height:none;border-bottom:1px solid var(--border)}
+main{max-width:none}}
+@media print{header.site,nav.toc,button.copy,.skip,.anchor{display:none!important}body{background:#fff;color:#000;font-size:11.5pt}
+.layout{display:block;max-width:none;padding:0}main{max-width:none;padding:0}a{color:#000}
+pre{white-space:pre-wrap;border:1px solid #999}.tablewrap{overflow:visible;border:none}th{position:static}
+figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{break-after:avoid}pre,figure,tr{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="site"><div class="inner"><span class="brand">CareKosh docs</span>
+<a href="INDEX.html">Documentation home</a>
+<span class="meta">Generated from <code>docs/POCKET_TTS_ALBA.md</code> — edit the Markdown, not this file.</span></div></header>
+<div class="layout">
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#what-it-does">What it does</a></li><li><a href="#user-setup">User setup</a></li><li><a href="#data-flow-and-safety">Data flow and safety</a></li><li><a href="#models-attribution-and-notices">Models, attribution and notices</a></li><li><a href="#source-map">Source map</a></li><li><a href="#verification-and-release-gate">Verification and release gate</a></li></ul></details></nav>
+<main id="content">
+<h1 id="downloadable-alba-voice-inside-carekosh">Downloadable Alba voice inside CareKosh</h1>
+<p>Local source implementation, 10 October 2026, on top of <code>078d53c</code>. This addition changes mobile speech output only. It has not been committed, deployed or verified in a release APK by this implementation review.</p>
+<h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
+<p>CareKosh can download <strong>Kyutai Pocket TTS with the fixed Alba English preset</strong> and generate spoken assistant summaries on the phone. No extra Android application, hosted speech service, API key or per-answer provider fee is needed. This does not make Groq understanding offline: optional online interpretation and transcription retain their own consent and internet requirements.</p>
+<p>This is Pocket TTS Alba, not the Piper Alba/Lyra model used by some other projects. Identical timbre is not promised. “Relaxed” changes playback speed to 0.9× while keeping pitch at 1×; it does not select a different trained emotional voice.</p>
+<h2 id="user-setup">User setup<a class="anchor" href="#user-setup" aria-label="Link to this section">#</a></h2>
+<ol>
+<li>Install a newly compiled CareKosh Android APK containing the LiteRT native integration. An older APK, Expo Go, web or iOS cannot run this voice. The app still requires Android 8/API 26; this pack is offered on 64-bit ARM/x86 devices.</li>
+<li>Open <strong>Settings → Voice setup → Spoken replies</strong> (step 4 when online understanding is available) and choose <strong>Download Alba voice pack</strong>. Confirm the download; Wi-Fi is recommended. Keep CareKosh in the foreground. The preceding Listening section configures recognition, while Understanding configures optional online text interpretation; neither chooses the speaking voice.</li>
+<li>The nine data files total <strong>208,767,942 bytes</strong>, approximately 209 MB (199 MiB). Allow at least the pack size plus 64 MB free storage for setup and additional memory during synthesis. The speech-recognition pack is a separate download.</li>
+<li>Downloading selects Alba. <strong>Read answers aloud</strong> remains a separate user choice. Choose <strong>Relaxed</strong>, <strong>Natural</strong> or <strong>Brisk</strong> pace and press <strong>Preview voice</strong>. <strong>Hear answer</strong> can speak an answer on demand.</li>
+<li>Use <strong>Remove Alba voice pack</strong> to reclaim storage. It does not remove inventory, orders or the microphone recognition pack. A failed download removes its partial file and can reuse already verified completed files on retry. Leaving the app or pressing Cancel stops the download.</li>
+</ol>
+<h2 id="data-flow-and-safety">Data flow and safety<a class="anchor" href="#data-flow-and-safety" aria-label="Link to this section">#</a></h2>
+<p>Validated answer → concise <code>speechText</code> → native <code>speakPocket</code> → verified preset files → LiteRT inference → 24 kHz mono PCM → Android <code>AudioTrack</code> and audio focus.</p>
+<ul>
+<li>No question, answer or recording is uploaded by the Pocket speech path. The initial download contacts Hugging Face and its approved HTTPS CDN; its ordinary connection metadata is visible to that host.</li>
+<li>The model catalog is fixed inside the APK, revision-pinned and SHA-256 checked. Users cannot supply a model URL or clone a voice. Model files are data, not a downloaded native executable.</li>
+<li>Files live in the app-private no-backup directory and contain no account data. Removing app data/uninstalling removes them; ordinary APK updates should retain them unless the catalog changes.</li>
+<li>This implementation uses <strong>LiteRT Android 2.1.6</strong>, independently of Moonshine's ONNX runtime, avoiding a second <code>libonnxruntime.so</code>. No Sherpa/eSpeak/Piper phonemizer runtime was added.</li>
+<li>The fused language model and vocoder try GPU compilation with CPU fallback if compilation throws an ordinary exception; the small decoder transformer runs on CPU. GPU inference errors remain visible failures; there is no silent cloud or device-voice fallback.</li>
+<li>Inference runs serially away from the UI thread. Recognition model memory is released before synthesis. Native model/buffer resources are closed on the same worker after each utterance, including partial initialization failures. This adds compilation time to replies; performance must be measured on target phones.</li>
+<li>Text is limited to 640 characters and prepared chunks to 50 tokens, without silently dropping words. Generation/PCM/playback have finite bounds and malformed/non-finite output is rejected. Speech begins after full synthesis, not incrementally while generating.</li>
+<li>Cancel, another question, leaving the screen, backgrounding, logout or changing accounts invalidates speech. An in-flight native invocation may finish before resources close; stale results cannot start playback. Audio-focus loss stops playback.</li>
+<li>Synthesis failure keeps the factual answer visible. Neither this voice nor Groq interpretation gains inventory/order-save authority. Touch confirmation remains required to save an order.</li>
+<li>Device speech remains a selectable fallback controlled by the user. Withdrawing cloud consent preserves the selected offline Alba voice.</li>
+</ul>
+<h2 id="models-attribution-and-notices">Models, attribution and notices<a class="anchor" href="#models-attribution-and-notices" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Pinned source / licence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Original model and fixed Alba MacKenna preset</td>
+<td><a href="https://huggingface.co/kyutai/pocket-tts-without-voice-cloning">Kyutai non-cloning model</a>, <a href="https://huggingface.co/kyutai/tts-voices#alba-mackenna">Alba source recordings</a>; CC BY 4.0</td>
+</tr>
+<tr>
+<td>LiteRT conversion and preset repacking</td>
+<td><a href="https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT">Pocket-TTS-LiteRT</a>, revision <code>e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e</code>; CC BY 4.0</td>
+</tr>
+<tr>
+<td>Original Pocket TTS code</td>
+<td><a href="https://github.com/kyutai-labs/pocket-tts">Kyutai Pocket TTS</a>; MIT</td>
+</tr>
+<tr>
+<td>Adapted Android host/tokenizer example</td>
+<td><a href="https://github.com/john-rocky/LiteRT-Models/tree/310464b5988f59c03de9283c3d7451e51d9f0260/pockettts">LiteRT-Models/pockettts</a>; MIT, Daisuke Majima</td>
+</tr>
+<tr>
+<td>Android inference runtime</td>
+<td><a href="https://developers.google.com/edge/litert/android">Google LiteRT</a>, <code>2.1.6</code>; Apache 2.0 and SDK third-party notices</td>
+</tr>
+</tbody>
+</table></div>
+<p>Voice setup shows attribution and offers <strong>Export complete Alba licence notices</strong>. Full MIT, CC BY 4.0, Apache 2.0 and complete SDK third-party notices are bundled under <code>modules/carekosh-voice/android/src/main/assets/pocket-licences</code>. The SDK notice is compressed in the APK and expanded in the exported ZIP. Notices identify upstream changes and do not imply creator endorsement. The full SDK notice also covers build tooling; listing a tool does not establish that it is linked into the app. Review the final packaged dependency inventory before public distribution.</p>
+<h2 id="source-map">Source map<a class="anchor" href="#source-map" aria-label="Link to this section">#</a></h2>
+<p>Under <code>vitaltrack-mobile/</code>:</p>
+<ul>
+<li><code>features/assistant/offlineVoice.ts</code>: optional bridge; older APKs retain existing device speech.</li>
+<li><code>features/assistant/preferences.ts</code>: account-scoped provider/pace, no automatic opt-in.</li>
+<li><code>components/assistant/VoiceSetup.tsx</code>: download, readiness, provider, pace, preview and notices.</li>
+<li><code>components/assistant/AssistantExperience.tsx</code>: setup/session cancellation and factual-answer playback.</li>
+<li><code>modules/carekosh-voice/android/src/main/java/expo/modules/carekoshvoice/PocketPack.kt</code>: fixed catalog, storage, redirects, checksums and deletion.</li>
+<li><code>PocketTokenizer.kt</code>, <code>PocketText.kt</code>: tokenization, normalization and bounded sentence chunks.</li>
+<li><code>PocketSynthesizer.kt</code>: preset-only LiteRT model orchestration.</li>
+<li><code>PocketPlayback.kt</code>: foreground audio focus, cancellation and PCM playback.</li>
+<li><code>CareKoshVoiceModule.kt</code>: serial worker and Expo native API.</li>
+<li><code>modules/carekosh-voice/android/src/main/assets/pocket-alba-manifest.json</code>: exact file sizes/checksums; model weights are not committed.</li>
+</ul>
+<h2 id="verification-and-release-gate">Verification and release gate<a class="anchor" href="#verification-and-release-gate" aria-label="Link to this section">#</a></h2>
+<p>The subsequent 10 October settings/mixed-draft review passes <strong>240 mobile tests</strong> and <strong>275 backend tests</strong> in both disposable schema modes. It reorganizes the settings UI and updates local draft parsing/the backend interpretation prompt; it does not change Pocket's native synthesis or playback. The original native/asset checks below retain their tested scope. See <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html#settings-and-mixed-draft-verification--10-october-2026">the follow-up and device checks</a>.</p>
+<p>All <strong>231 mobile tests</strong> pass, including setup/provider choices, cancelled downloads, cloud-consent withdrawal, playback failure and Hear answer without a device voice, with native modules mocked. TypeScript and Android JavaScript export pass; lint has no errors and one pre-existing builder hook warning. Documentation checks find zero problems in 110 files and in all four system-design HTML pages/35 inlined figures. These are local checks, not device certification. JVM tests compare the real Kotlin tokenizer with 113 original SentencePiece reference cases and check lossless bounded chunking. The exact downloaded assets were size/SHA-256 verified. A Mac CPU fixture using those models produced finite, non-silent Alba PCM with EOS termination. This verifies the asset bundle and host inference, <strong>not Android audio quality or performance</strong>. Native sources compile against the actual LiteRT/Android API jars with Expo bridge stubs; this is not a full Gradle release build. Added ARM64/x86-64 native libraries have 16 KB ELF load-segment alignment; final APK ZIP alignment still requires inspection.</p>
+<p>For the JVM check, with <code>kotlinc</code> available and the verified tokenizer downloaded outside Git:</p>
+<pre><code class="language-bash">cd vitaltrack-mobile
+kotlinc modules/carekosh-voice/android/src/main/java/expo/modules/carekoshvoice/PocketTokenizer.kt \
+  modules/carekosh-voice/android/src/main/java/expo/modules/carekoshvoice/PocketText.kt \
+  scripts/check-pocket-text.kt -include-runtime -d /tmp/carekosh-pocket-text-check.jar
+java -jar /tmp/carekosh-pocket-text-check.jar /absolute/path/to/pt_tokenizer.tsv \
+  tests/fixtures/pocket-tokenizer-cases.tsv
+</code></pre>
+<p>Before calling this release-ready, build the new APK and test on the OnePlus Nord 4/OxygenOS 15 and another target phone:</p>
+<ol>
+<li>Download, cancel, retry, remove, reinstall the pack and export the licence ZIP.</li>
+<li>In airplane mode, preview Alba at each pace and use <strong>Hear answer</strong> with a current-session inventory snapshot. No speech endpoint should be called.</li>
+<li>Check names, quantities, units, long summary, volume, first-reply delay, repeated replies, temperature and memory use. Test a Bluetooth/headset output too.</li>
+<li>Stop during generation and playback; start another microphone query; background/logout/change account; interrupt with another app's audio. No late speech or frozen UI should remain.</li>
+<li>Keep the model unavailable/removed and verify the answer stays visible with a useful message. Device speech must work only when explicitly selected.</li>
+<li>Inspect the release manifest for no background microphone/system-overlay permission and no unused foreground-service permissions; inspect packaged native libraries and notices.</li>
+</ol>
+<p>No backend migration, new environment variable, Render deployment or database operation is needed for this speech-output feature.</p>
+<footer>Generated 2026-10-10 by <code>docs/tools/build_docs.py</code> from <code>docs/POCKET_TTS_ALBA.md</code>.</footer>
+</main>
+</div>
+<script>
+var tocDetails = document.getElementById('toc-details');
+if (tocDetails && window.matchMedia('(min-width: 901px)').matches) { tocDetails.open = true; }
+document.querySelectorAll('pre > code').forEach(function (code) {
+  var pre = code.parentElement, wrap = document.createElement('div');
+  wrap.className = 'codewrap'; pre.parentNode.insertBefore(wrap, pre); wrap.appendChild(pre);
+  var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+  b.setAttribute('aria-label', 'Copy this code block');
+  b.addEventListener('click', function () {
+    var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(code.innerText).then(done, function () { b.textContent = 'Select and copy'; }); }
+    else { b.textContent = 'Select and copy'; }
+  });
+  wrap.appendChild(b);
+});
+</script>
+</body>
+</html>

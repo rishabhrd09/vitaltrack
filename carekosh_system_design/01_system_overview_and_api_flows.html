@@ -12,7 +12,7 @@
 <script src="assets/carekosh.js" defer></script>
 </head>
 <body>
-<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside>
+<aside data-voice-architecture-sync="2026-10-10" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 10 October 2026.</strong> Current AI voice architecture, checked against the 10 October 2026 working tree at <code>078d53c</code> plus local Pocket TTS changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Optional downloaded Pocket TTS/Alba runs inside CareKosh through LiteRT; device TTS remains selectable. PDF rendering is local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. The new Alba integration requires a new native APK and phone validation; it is not certified as deployed. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside>
 <section style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px"><h2>Current inventory and draft path</h2><p>Microphone/local live captions → offline Moonshine or separately consented Groq Whisper final transcript → editable transcript and Send → local parser or consented Groq v2 specification → complete session-owned inventory → persistent table or local unsaved draft. Voice has no save, stock, apply, status or supplier-send tool. Review proposed quantities and choose merge/replace/cancel when manual work exists.</p><p>Only Create Order touch confirmation checks backend support and current item versions, then saves with a stable <code>localId</code>. A changed stock snapshot requires another review without rewriting order quantities. A saved order feeds the shared PDF template; printer failure offers re-export of that same order. No new migration or model is needed. Deployment and phone acceptance remain separate.</p></section>
 
 <!-- ============================================================ TOP BAR -->
@@ -181,9 +181,9 @@
         <p>The colours below mean the same thing in every diagram on these four pages. A dashed outline marks something that runs only when it is configured.</p>
         <figure class="diagram">
           <div class="frame wide" data-diagram="system-context">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1401" width="1000" height="1401" role="img" aria-labelledby="system-context-title system-context-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1426" width="1000" height="1426" role="img" aria-labelledby="system-context-title system-context-desc">
 <title id="system-context-title">CareKosh at a glance</title>
-<desc id="system-context-desc">The Android app talks to one FastAPI service over HTTPS with a bearer token. The service runs in a Docker container on Render and owns one PostgreSQL database, documented as hosted on Neon (CI and local use PostgreSQL 16). Default speech recognition and spoken replies run on the phone; the speech pack is downloaded once from Moonshine. Groq, Brevo and Sentry are used only when configured. There is no queue, no Redis, no worker service, no offline write queue and no over-the-air app update.</desc>
+<desc id="system-context-desc">The Android app talks to one FastAPI service over HTTPS with a bearer token. The service runs in a Docker container on Render and owns one PostgreSQL database, documented as hosted on Neon (CI and local use PostgreSQL 16). Default speech recognition runs on the phone with a Moonshine download. Spoken replies use optional downloaded Pocket TTS/Alba through LiteRT or selected offline device TTS. Groq, Brevo and Sentry are used only when configured. There is no queue, no Redis, no worker service, no offline write queue and no over-the-air app update.</desc>
 <defs><pattern id="system-context-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="system-context-ah-data" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#A9680F"/></marker><marker id="system-context-ah-main" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7B2C34"/></marker><marker id="system-context-ah-optional" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#6B3A6E"/></marker></defs>
 <rect width="100%" height="100%" fill="#FBF6EC"/>
 <rect width="100%" height="100%" fill="url(#system-context-dots)"/>
@@ -203,74 +203,75 @@
 <text x="665.3" y="124.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#4B3E35" text-anchor="start">Failure</text>
 <rect x="40.0" y="139.3" width="24.0" height="16.0" rx="4" fill="#FBF6EC" stroke="#A8946F" stroke-width="1.6" stroke-dasharray="4 3"/>
 <text x="72.0" y="152.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#4B3E35" text-anchor="start">Dashed outline: only when configured</text>
-<rect x="40.0" y="186.3" width="920.0" height="260.1" rx="16" fill="#EAE9D8" stroke="#557629" stroke-width="1.2"/>
-<rect x="56.0" y="234.3" width="284.0" height="194.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<rect x="40.0" y="186.3" width="920.0" height="285.6" rx="16" fill="#EAE9D8" stroke="#557629" stroke-width="1.2"/>
+<rect x="56.0" y="234.3" width="284.0" height="219.6" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
 <text x="74.0" y="271.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">CareKosh app</text>
 <text x="74.0" y="301.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Screens → hooks →</text>
 <text x="74.0" y="327.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">services/api.ts</text>
 <text x="74.0" y="352.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">TanStack Query cache, a copy</text>
 <text x="74.0" y="378.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">kept in AsyncStorage</text>
 <text x="74.0" y="403.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Tokens in SecureStore</text>
-<rect x="358.0" y="234.3" width="284.0" height="194.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<rect x="358.0" y="234.3" width="284.0" height="219.6" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
 <text x="376.0" y="271.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Answers + local drafts</text>
 <text x="376.0" y="301.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Tap-to-talk dock above the tabs</text>
 <text x="376.0" y="327.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Editable transcript, explicit Send</text>
 <text x="376.0" y="352.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">A local matcher handles familiar</text>
 <text x="376.0" y="378.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">wording first</text>
-<rect x="660.0" y="234.3" width="284.0" height="194.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<rect x="660.0" y="234.3" width="284.0" height="219.6" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
 <text x="678.0" y="271.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">On-device speech</text>
 <text x="678.0" y="301.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">AudioRecord WAV; Moonshine</text>
 <text x="678.0" y="327.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">live words and offline final</text>
 <text x="678.0" y="352.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">recognition</text>
-<text x="678.0" y="378.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Downloaded English pack;</text>
-<text x="678.0" y="403.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Android offline speech</text>
+<text x="678.0" y="378.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Recognition pack plus optional</text>
+<text x="678.0" y="403.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Pocket TTS/Alba via LiteRT;</text>
+<text x="678.0" y="429.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">device TTS selectable</text>
 <text x="56.0" y="216.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#557629" text-anchor="start" letter-spacing="1.6">ON THE PHONE · ANDROID</text>
-<path d="M500.0,450.3 L500.0,520.3" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#system-context-ah-main)" marker-start="url(#system-context-ah-main)"/>
-<text x="516.0" y="491.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">HTTPS + JSON · Authorization: Bearer token</text>
-<rect x="40.0" y="524.3" width="920.0" height="282.1" rx="16" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.2"/>
-<rect x="56.0" y="572.3" width="560.0" height="216.1" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
-<text x="74.0" y="609.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">FastAPI service · Python 3.12</text>
-<text x="74.0" y="638.2" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">SERVER</text>
-<text x="170.0" y="639.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Gunicorn starts 2 Uvicorn workers</text>
-<text x="74.0" y="669.8" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">ROUTES</text>
-<text x="170.0" y="671.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">47 operations, 44 of them under /api/v1</text>
-<text x="74.0" y="701.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">DATA</text>
-<text x="170.0" y="702.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">business rows scoped to the</text>
-<text x="170.0" y="728.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">signed-in user</text>
-<text x="74.0" y="758.4" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">START-UP</text>
-<text x="170.0" y="759.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">alembic upgrade head, then Gunicorn</text>
-<rect x="634.0" y="572.3" width="310.0" height="216.1" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
-<text x="652.0" y="609.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Health checks</text>
-<text x="652.0" y="639.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">/live: process only (Render</text>
-<text x="652.0" y="665.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">polls it)</text>
-<text x="652.0" y="690.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">/health: SELECT 1; 2 s limit</text>
-<text x="652.0" y="716.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Neither reports the</text>
-<text x="652.0" y="741.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">running commit</text>
-<text x="56.0" y="554.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#6E5D4E" text-anchor="start" letter-spacing="1.6">RENDER WEB SERVICE · DOCKER CONTAINER</text>
-<path d="M336.0,810.4 L336.0,876.4" fill="none" stroke="#A9680F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#system-context-ah-data)" marker-start="url(#system-context-ah-data)"/>
-<text x="352.0" y="849.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">SQLAlchemy async + asyncpg · TLS</text>
-<rect x="40.0" y="880.4" width="600.0" height="117.4" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
-<text x="58.0" y="917.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">PostgreSQL · on Neon (documented)</text>
-<text x="58.0" y="947.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">11 application tables plus alembic_version.</text>
-<text x="58.0" y="973.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">The source of truth; CI and local use PostgreSQL 16.</text>
-<text x="666.0" y="866.4" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#6B3A6E" text-anchor="start" letter-spacing="1.6">THE API CALLS, IF CONFIGURED</text>
-<rect x="666.0" y="880.4" width="294.0" height="126.0" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
-<text x="680.0" y="911.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#6B3A6E" text-anchor="start">Groq</text>
-<text x="680.0" y="939.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">question interpretation and optional</text>
-<text x="680.0" y="962.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">Whisper listening, with separate</text>
-<text x="680.0" y="986.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">consent and server AI settings</text>
-<rect x="666.0" y="1018.4" width="294.0" height="79.2" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
-<text x="680.0" y="1049.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#6B3A6E" text-anchor="start">Brevo email</text>
-<text x="680.0" y="1077.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">verification, reset and deletion links</text>
-<rect x="666.0" y="1109.6" width="294.0" height="102.6" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
-<text x="680.0" y="1141.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#6B3A6E" text-anchor="start">Sentry</text>
-<text x="680.0" y="1168.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">error reports and sampled traces, if</text>
-<text x="680.0" y="1192.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">SENTRY_DSN is set</text>
-<path d="M813.0,809.4 L813.0,848.4" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#system-context-ah-optional)"/>
-<rect x="40.0" y="1250.2" width="920.0" height="114.9" rx="12" fill="#EBDDC6" stroke="#D3BF9E" stroke-width="1.4"/>
-<text x="58.0" y="1285.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#1A1512" text-anchor="start">Not in this system</text>
-<text x="58.0" y="1314.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">No message queue or Redis · no background worker service · no offline write queue on the phone</text>
-<text x="58.0" y="1340.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">no over-the-air app updates · hosted speech off; optional Groq listening needs separate audio opt-in</text>
+<path d="M500.0,475.9 L500.0,545.9" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#system-context-ah-main)" marker-start="url(#system-context-ah-main)"/>
+<text x="516.0" y="516.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">HTTPS + JSON · Authorization: Bearer token</text>
+<rect x="40.0" y="549.9" width="920.0" height="282.1" rx="16" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.2"/>
+<rect x="56.0" y="597.9" width="560.0" height="216.1" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="74.0" y="635.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">FastAPI service · Python 3.12</text>
+<text x="74.0" y="663.8" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">SERVER</text>
+<text x="170.0" y="665.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Gunicorn starts 2 Uvicorn workers</text>
+<text x="74.0" y="695.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">ROUTES</text>
+<text x="170.0" y="696.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">47 operations, 44 of them under /api/v1</text>
+<text x="74.0" y="726.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">DATA</text>
+<text x="170.0" y="728.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">business rows scoped to the</text>
+<text x="170.0" y="753.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">signed-in user</text>
+<text x="74.0" y="784.0" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">START-UP</text>
+<text x="170.0" y="785.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">alembic upgrade head, then Gunicorn</text>
+<rect x="634.0" y="597.9" width="310.0" height="216.1" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="652.0" y="635.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Health checks</text>
+<text x="652.0" y="665.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">/live: process only (Render</text>
+<text x="652.0" y="690.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">polls it)</text>
+<text x="652.0" y="716.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">/health: SELECT 1; 2 s limit</text>
+<text x="652.0" y="741.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Neither reports the</text>
+<text x="652.0" y="767.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">running commit</text>
+<text x="56.0" y="579.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#6E5D4E" text-anchor="start" letter-spacing="1.6">RENDER WEB SERVICE · DOCKER CONTAINER</text>
+<path d="M336.0,835.9 L336.0,901.9" fill="none" stroke="#A9680F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#system-context-ah-data)" marker-start="url(#system-context-ah-data)"/>
+<text x="352.0" y="874.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">SQLAlchemy async + asyncpg · TLS</text>
+<rect x="40.0" y="905.9" width="600.0" height="117.4" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<text x="58.0" y="943.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">PostgreSQL · on Neon (documented)</text>
+<text x="58.0" y="973.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">11 application tables plus alembic_version.</text>
+<text x="58.0" y="998.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">The source of truth; CI and local use PostgreSQL 16.</text>
+<text x="666.0" y="891.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#6B3A6E" text-anchor="start" letter-spacing="1.6">THE API CALLS, IF CONFIGURED</text>
+<rect x="666.0" y="905.9" width="294.0" height="126.0" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
+<text x="680.0" y="937.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#6B3A6E" text-anchor="start">Groq</text>
+<text x="680.0" y="965.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">question interpretation and optional</text>
+<text x="680.0" y="988.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">Whisper listening, with separate</text>
+<text x="680.0" y="1011.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">consent and server AI settings</text>
+<rect x="666.0" y="1044.0" width="294.0" height="79.2" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
+<text x="680.0" y="1075.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#6B3A6E" text-anchor="start">Brevo email</text>
+<text x="680.0" y="1103.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">verification, reset and deletion links</text>
+<rect x="666.0" y="1135.2" width="294.0" height="102.6" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
+<text x="680.0" y="1166.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#6B3A6E" text-anchor="start">Sentry</text>
+<text x="680.0" y="1194.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">error reports and sampled traces, if</text>
+<text x="680.0" y="1217.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">SENTRY_DSN is set</text>
+<path d="M813.0,834.9 L813.0,873.9" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#system-context-ah-optional)"/>
+<rect x="40.0" y="1275.8" width="920.0" height="114.9" rx="12" fill="#EBDDC6" stroke="#D3BF9E" stroke-width="1.4"/>
+<text x="58.0" y="1311.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#1A1512" text-anchor="start">Not in this system</text>
+<text x="58.0" y="1340.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">No message queue or Redis · no background worker service · no offline write queue on the phone</text>
+<text x="58.0" y="1366.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">no over-the-air app updates · hosted speech off; optional Groq listening needs separate audio opt-in</text>
 </svg>
           </div>
           <div class="fig-tools"><a class="pill" href="diagrams/system-context.svg" target="_blank" rel="noopener">Open the SVG</a><span class="swipe">Swipe sideways, or tap Enlarge</span></div>
@@ -549,7 +550,8 @@
             <div class="stack-items">
               <span class="tech client"><b>carekosh-voice</b><span>local Kotlin Expo module</span></span>
               <span class="tech client"><b>Moonshine</b><span>moonshine-voice 0.1.5 · English</span></span>
-              <span class="tech client"><b>Android text-to-speech</b><span>offline voices only</span></span>
+              <span class="tech client"><b>Pocket TTS · Alba</b><span>optional download · LiteRT 2.1.6</span></span>
+              <span class="tech client"><b>Android text-to-speech</b><span>selectable offline device voice</span></span>
             </div></div>
           <div class="stack-layer"><div class="name">Backend<small>one FastAPI service</small></div>
             <div class="stack-items">
@@ -2145,7 +2147,7 @@ X-Content-Type-Options: nosniff
         <h3>Ask the assistant</h3>
         <figure class="diagram">
           <div class="frame wide" data-diagram="voice-flow">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 2475" width="1000" height="2475" role="img" aria-labelledby="voice-flow-title voice-flow-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 2526" width="1000" height="2526" role="img" aria-labelledby="voice-flow-title voice-flow-desc">
 <title id="voice-flow-title">Inventory answers and unsaved order drafts</title>
 <desc id="voice-flow-desc">Microphone, selected Moonshine or separately consented Groq transcription, transcript review and Send precede bounded interpretation. Inventory facts and local draft quantities are resolved on the phone. Voice has no save or stock tool. Only a separate touch confirmation on Create Order saves an order; applying stock remains separate.</desc>
 <defs><pattern id="voice-flow-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="voice-flow-ah-flow" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#4B3E35"/></marker><marker id="voice-flow-ah-optional" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#6B3A6E"/></marker><marker id="voice-flow-ah-reply" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7C6B5C"/></marker></defs>
@@ -2153,9 +2155,9 @@ X-Content-Type-Options: nosniff
 <rect width="100%" height="100%" fill="url(#voice-flow-dots)"/>
 <text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">Inventory answers and unsaved order drafts</text>
 <text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Speech → reviewed text → validated query/draft → verified data. A touch is required to save.</text>
-<rect x="40.0" y="122.3" width="381.9" height="2212.2" rx="14" fill="#F4F0E3" stroke="#CDD2B5" stroke-width="1.2"/>
-<rect x="447.9" y="122.3" width="260.4" height="2212.2" rx="14" fill="#F2EFE7" stroke="#C2C9CB" stroke-width="1.2"/>
-<rect x="734.3" y="122.3" width="225.7" height="2212.2" rx="14" fill="#F5EEE6" stroke="#D3C1C9" stroke-width="1.2"/>
+<rect x="40.0" y="122.3" width="381.9" height="2263.3" rx="14" fill="#F4F0E3" stroke="#CDD2B5" stroke-width="1.2"/>
+<rect x="447.9" y="122.3" width="260.4" height="2263.3" rx="14" fill="#F2EFE7" stroke="#C2C9CB" stroke-width="1.2"/>
+<rect x="734.3" y="122.3" width="225.7" height="2263.3" rx="14" fill="#F5EEE6" stroke="#D3C1C9" stroke-width="1.2"/>
 <text x="56.0" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#557629" text-anchor="start" letter-spacing="1.6">ON THE PHONE</text>
 <text x="463.9" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">CAREKOSH API</text>
 <text x="750.3" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#6B3A6E" text-anchor="start" letter-spacing="1.6">GROQ (OPTIONAL)</text>
@@ -2272,53 +2274,55 @@ X-Content-Type-Options: nosniff
 <text x="70.0" y="1492.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Ambiguous names/units require</text>
 <text x="70.0" y="1518.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">clarification. Offline = last known</text>
 <path d="M457.9,1346.3 L452.4,1346.3 Q446.9,1346.3 446.9,1351.8 L446.9,1394.3 Q446.9,1404.3 436.9,1404.3 L413.9,1404.3" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-reply)"/>
-<rect x="52.0" y="1572.8" width="357.9" height="194.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<rect x="52.0" y="1572.8" width="357.9" height="219.6" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
 <circle cx="85.0" cy="1599.6" r="16" fill="#7B2C34"/>
 <text x="85.0" y="1605.7" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">8</text>
 <text x="112.0" y="1610.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Table or unsaved draft</text>
 <text x="70.0" y="1639.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Persistent virtualized rows, concise</text>
-<text x="70.0" y="1665.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">speech, separate brand/supplier.</text>
-<text x="70.0" y="1691.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Drafts in session memory;</text>
-<text x="70.0" y="1716.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">merge/replace/cancel preserves</text>
-<text x="70.0" y="1742.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">manual work</text>
+<text x="70.0" y="1665.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">downloaded Pocket TTS/Alba or</text>
+<text x="70.0" y="1691.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">device TTS, separate brand/supplier.</text>
+<text x="70.0" y="1716.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Drafts in session memory;</text>
+<text x="70.0" y="1742.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">merge/replace/cancel preserves</text>
+<text x="70.0" y="1767.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">manual work</text>
 <path d="M231.0,1544.8 L231.0,1568.8" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#voice-flow-ah-flow)"/>
-<rect x="52.0" y="1802.8" width="2.5" height="83.1" fill="#7B2C34"/>
-<text x="70.0" y="1838.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">VOICE STOPS HERE: no order-save, order-PDF-save, stock/status/apply or supplier-send tool. Saying confirm cannot</text>
-<text x="70.0" y="1864.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">save. Inventory PDF requires a separate reviewed touch export.</text>
-<rect x="52.0" y="1915.9" width="357.9" height="194.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
-<circle cx="85.0" cy="1942.7" r="16" fill="#7B2C34"/>
-<text x="85.0" y="1948.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">9</text>
-<text x="112.0" y="1953.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Touch to save</text>
-<text x="70.0" y="1983.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Create Order: Confirm order &amp;</text>
-<text x="70.0" y="2008.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">export PDF. Require matching</text>
-<text x="70.0" y="2034.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">backend guard; refresh inventory;</text>
-<text x="70.0" y="2059.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">re-review changed stock without</text>
-<text x="70.0" y="2085.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">changing order quantities</text>
-<rect x="459.9" y="1973.9" width="236.4" height="270.7" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
-<circle cx="492.9" cy="2000.7" r="16" fill="#7B2C34"/>
-<text x="492.9" y="2006.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">10</text>
-<text x="519.9" y="2011.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">POST /orders</text>
-<text x="477.9" y="2041.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Authenticated</text>
-<text x="477.9" y="2066.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">ownership +</text>
-<text x="477.9" y="2092.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">expectedVersion under</text>
-<text x="477.9" y="2117.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">sorted item locks.</text>
-<text x="477.9" y="2143.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Stable localId returns</text>
-<text x="477.9" y="2168.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">the original order on</text>
-<text x="477.9" y="2194.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">retry. Saving does not</text>
-<text x="477.9" y="2220.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">increase stock</text>
-<path d="M411.9,1945.9 L417.4,1945.9 Q422.9,1945.9 422.9,1951.4 L422.9,1993.9 Q422.9,2003.9 432.9,2003.9 L455.9,2003.9" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-reply)"/>
-<rect x="52.0" y="2140.0" width="357.9" height="168.5" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
-<circle cx="85.0" cy="2166.8" r="16" fill="#7B2C34"/>
-<text x="85.0" y="2172.9" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">11</text>
-<text x="112.0" y="2177.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Export saved response</text>
-<text x="70.0" y="2207.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Shared local PDF template uses</text>
-<text x="70.0" y="2232.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">server-returned rows. PDF failure</text>
-<text x="70.0" y="2258.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">re-exports the same order. Unknown</text>
-<text x="70.0" y="2283.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">save outcome retains request and ID</text>
-<path d="M457.9,2035.9 L452.4,2035.9 Q446.9,2035.9 446.9,2041.4 L446.9,2160.0 Q446.9,2170.0 436.9,2170.0 L413.9,2170.0" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-reply)"/>
-<path d="M43.0,2362.5 H944.0 Q960.0,2362.5 960.0,2378.5 V2429.6 Q960.0,2445.6 944.0,2445.6 H43.0 Q40.0,2445.6 40.0,2442.6 V2365.5 Q40.0,2362.5 43.0,2362.5 Z" fill="#EBDDC6" stroke="none" stroke-width="1.4"/>
-<text x="58.0" y="2398.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Leaving or account change blocks late client dispatch/share; it cannot undo a write already sent.</text>
-<text x="58.0" y="2424.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Native/device/provider behavior and live deployments still require acceptance testing.</text>
+<rect x="52.0" y="1828.4" width="2.5" height="108.7" fill="#7B2C34"/>
+<text x="70.0" y="1864.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">VOICE STOPS HERE: no order-save, order-PDF-save, stock/status/apply</text>
+<text x="70.0" y="1889.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">or supplier-send tool. Saying confirm cannot save.</text>
+<text x="70.0" y="1915.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">Inventory PDF requires a separate reviewed touch export.</text>
+<rect x="52.0" y="1967.0" width="357.9" height="194.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="1993.9" r="16" fill="#7B2C34"/>
+<text x="85.0" y="1999.9" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">9</text>
+<text x="112.0" y="2004.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Touch to save</text>
+<text x="70.0" y="2034.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Create Order: Confirm order &amp;</text>
+<text x="70.0" y="2059.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">export PDF. Require matching</text>
+<text x="70.0" y="2085.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">backend guard; refresh inventory;</text>
+<text x="70.0" y="2110.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">re-review changed stock without</text>
+<text x="70.0" y="2136.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">changing order quantities</text>
+<rect x="459.9" y="2025.0" width="236.4" height="270.7" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="492.9" cy="2051.9" r="16" fill="#7B2C34"/>
+<text x="492.9" y="2057.9" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">10</text>
+<text x="519.9" y="2062.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">POST /orders</text>
+<text x="477.9" y="2092.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Authenticated</text>
+<text x="477.9" y="2117.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">ownership +</text>
+<text x="477.9" y="2143.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">expectedVersion under</text>
+<text x="477.9" y="2168.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">sorted item locks.</text>
+<text x="477.9" y="2194.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Stable localId returns</text>
+<text x="477.9" y="2220.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">the original order on</text>
+<text x="477.9" y="2245.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">retry. Saving does not</text>
+<text x="477.9" y="2271.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">increase stock</text>
+<path d="M411.9,1997.0 L417.4,1997.0 Q422.9,1997.0 422.9,2002.5 L422.9,2045.1 Q422.9,2055.1 432.9,2055.1 L455.9,2055.1" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-reply)"/>
+<rect x="52.0" y="2191.1" width="357.9" height="168.5" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="2217.9" r="16" fill="#7B2C34"/>
+<text x="85.0" y="2224.0" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">11</text>
+<text x="112.0" y="2228.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Export saved response</text>
+<text x="70.0" y="2258.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Shared local PDF template uses</text>
+<text x="70.0" y="2283.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">server-returned rows. PDF failure</text>
+<text x="70.0" y="2309.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">re-exports the same order. Unknown</text>
+<text x="70.0" y="2334.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">save outcome retains request and ID</text>
+<path d="M457.9,2087.1 L452.4,2087.1 Q446.9,2087.1 446.9,2092.6 L446.9,2211.1 Q446.9,2221.1 436.9,2221.1 L413.9,2221.1" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#voice-flow-ah-reply)"/>
+<path d="M43.0,2413.6 H944.0 Q960.0,2413.6 960.0,2429.6 V2480.7 Q960.0,2496.7 944.0,2496.7 H43.0 Q40.0,2496.7 40.0,2493.7 V2416.6 Q40.0,2413.6 43.0,2413.6 Z" fill="#EBDDC6" stroke="none" stroke-width="1.4"/>
+<text x="58.0" y="2449.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Leaving or account change blocks late client dispatch/share; it cannot undo a write already sent.</text>
+<text x="58.0" y="2475.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Alba needs a new APK and 209 MB pack; phone quality/speed and live deployments need acceptance testing.</text>
 </svg>
           </div>
           <div class="fig-tools"><a class="pill" href="diagrams/voice-flow.svg" target="_blank" rel="noopener">Open the SVG</a><span class="swipe">Swipe sideways, or tap Enlarge</span></div>
@@ -2334,7 +2338,7 @@ X-Content-Type-Options: nosniff
               <tr><td>Match familiar questions to a bounded query or local-draft specification</td><td>Phone, <code>parseLocal</code></td><td>Nothing</td></tr>
               <tr><td>Interpret unfamiliar wording</td><td>API, then Groq</td><td><span class="m post">POST</span> <code>/ai/interpret</code> with <code>{question, has_previous_item, contract_version:2}</code> when supported (legacy v1 omits version), only with <code>groq_text</code> consent, the phone's cloud switch on and the server's AI settings on</td></tr>
               <tr><td>Read inventory</td><td>Phone, then API</td><td>Cache under 30 s old from this login, or <span class="m get">GET</span> <code>/items</code></td></tr>
-              <tr><td>Build the answer; speak it if asked</td><td>Phone, offline Android voice</td><td>Nothing</td></tr>
+              <tr><td>Build the answer; speak it if asked</td><td>Phone: downloaded Pocket TTS/Alba or selected offline Android voice</td><td>Nothing</td></tr>
             </tbody>
           </table>
         </div>

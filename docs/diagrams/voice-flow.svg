@@ -26,8 +26,8 @@
 <path d="M 780.0 660.4 L 780.0 688.4" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
 <rect x="60.0" y="690.4" width="1440.0" height="100.0" rx="12" fill="#E6F4EA" stroke="#1E6B34" stroke-width="2"/>
 <text x="74.0" y="721.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1E6B34" text-anchor="start">5. In-app table or UNSAVED session draft</text>
-<text x="74.0" y="747.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Native virtualized rows, freshness/filters, concise Android offline TTS. Hosted speech is disabled. Explicit amounts win over deterministic minimum-stock suggestions. Manual draft:</text>
-<text x="74.0" y="767.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">review merge/replace/cancel.</text>
+<text x="74.0" y="747.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Native virtualized rows, freshness/filters, concise Pocket TTS/Alba (downloaded) or device TTS. Hosted speech is disabled. Explicit amounts win over deterministic minimum-stock</text>
+<text x="74.0" y="767.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">suggestions. Manual draft: review merge/replace/cancel.</text>
 <path d="M 780.0 790.4 L 780.0 818.4" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
 <rect x="60.0" y="820.4" width="1440.0" height="80.2" rx="12" fill="#FCEBEA" stroke="#A8261D" stroke-width="2"/>
 <text x="74.0" y="851.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#A8261D" text-anchor="start">VOICE BOUNDARY — no order or stock save</text>

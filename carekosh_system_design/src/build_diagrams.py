@@ -4,7 +4,7 @@
 Diagrams describe code and label unverified deployment assumptions, checked against branch feature/backend-hardening-ai-voice-agent-foundation
 at 03cfebb on 7 October 2026 (see docs/documentation-audit-2026-10-07/SOURCE_OF_TRUTH.md) and re-checked against the
 working tree on 8 October 2026 (FastAPI 0.115.6 request order, name lock on PUT /items, rollback scope, voice gating).
-Voice and system context were refreshed against the 9 October working tree at 0946eb7 plus local capture/UI changes.
+Voice and system context were refreshed against the 10 October working tree at 078d53c plus local Pocket TTS/Alba changes.
 
     python3 carekosh_system_design/src/build_diagrams.py               # all diagrams
     python3 carekosh_system_design/src/build_diagrams.py voice-flow    # one diagram
@@ -58,8 +58,8 @@ def system_context() -> Canvas:
     c = new("system-context", "CareKosh at a glance",
             "The Android app talks to one FastAPI service over HTTPS with a bearer token. The service runs in a "
             "Docker container on Render and owns one PostgreSQL database, documented as hosted on Neon (CI and local "
-            "use PostgreSQL 16). Default speech recognition and spoken replies run on the phone; the speech pack is downloaded "
-            "once from Moonshine. Groq, Brevo and Sentry are used only when configured. There is no queue, "
+            "use PostgreSQL 16). Default speech recognition runs on the phone with a Moonshine download. Spoken replies use "
+            "optional downloaded Pocket TTS/Alba through LiteRT or selected offline device TTS. Groq, Brevo and Sentry are used only when configured. There is no queue, "
             "no Redis, no worker service, no offline write queue and no over-the-air app update.")
     y = c.header("CareKosh at a glance",
                  "One phone app, one API service, one PostgreSQL database. Everything else supports them or is optional.")
@@ -72,7 +72,7 @@ def system_context() -> Canvas:
              ("Answers + local drafts", ["Tap-to-talk dock above the tabs", "Editable transcript, explicit Send",
                                         "A local matcher handles familiar wording first"]),
              ("On-device speech", ["AudioRecord WAV; Moonshine\nlive words and offline final\nrecognition",
-                                   "Downloaded English pack;\nAndroid offline speech"])]
+                                   "Recognition pack plus optional\nPocket TTS/Alba via LiteRT;\ndevice TTS selectable"])]
     hmax = max(Canvas.measure(cw, t, b) for t, b in cards)
     for i, (t, b) in enumerate(cards):
         c.card(56 + i * (cw + 18), y + 48, cw, t, b, "client", min_h=hmax)
@@ -450,12 +450,14 @@ def voice_flow() -> Canvas:
     step("groq", "Groq spec", "No tools. openai/gpt-oss-20b default, temperature 0, low reasoning, 25 s deadline. Query/draft JSON only; validation still cannot prove meaning", num="5", kind="optional", dashed=True)
     step("api", "Validate", "Settle usage. Names, units and number-to-item association checked. Legacy v1 remains supported. Only consent/usage metadata writes", num="6", kind="optional")
     step("phone", "Verify and resolve data", "Complete inventory owned by this login; pending writes block. Ambiguous names/units require clarification. Offline = last known", num="7", kind="reply")
-    step("phone", "Table or unsaved draft", "Persistent virtualized rows, concise speech, separate brand/supplier. Drafts in session memory; merge/replace/cancel preserves manual work", num="8")
-    f.note("VOICE STOPS HERE: no order-save, order-PDF-save, stock/status/apply or supplier-send tool. Saying confirm cannot save. Inventory PDF requires a separate reviewed touch export.", "key")
+    step("phone", "Table or unsaved draft", "Persistent virtualized rows, concise downloaded Pocket TTS/Alba or device TTS, separate brand/supplier. Drafts in session memory; merge/replace/cancel preserves manual work", num="8")
+    f.note("VOICE STOPS HERE: no order-save, order-PDF-save, stock/status/apply\n"
+           "or supplier-send tool. Saying confirm cannot save.\n"
+           "Inventory PDF requires a separate reviewed touch export.", "key")
     step("phone", "Touch to save", "Create Order: Confirm order & export PDF. Require matching backend guard; refresh inventory; re-review changed stock without changing order quantities", num="9", kind="reply")
     step("api", "POST /orders", "Authenticated ownership + expectedVersion under sorted item locks. Stable localId returns the original order on retry. Saving does not increase stock", num="10", kind="reply")
     step("phone", "Export saved response", "Shared local PDF template uses server-returned rows. PDF failure re-exports the same order. Unknown save outcome retains request and ID", num="11", kind="reply")
-    f.note("Leaving or account change blocks late client dispatch/share; it cannot undo a write already sent.\nNative/device/provider behavior and live deployments still require acceptance testing.", "lens", after=True)
+    f.note("Leaving or account change blocks late client dispatch/share; it cannot undo a write already sent.\nAlba needs a new APK and 209 MB pack; phone quality/speed and live deployments need acceptance testing.", "lens", after=True)
     c.height = f.finish() + 30
     return c
 
