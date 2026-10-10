@@ -35,6 +35,7 @@ class CareKoshVoiceModule : Module() {
     private val pocketPack by lazy { PocketPack(context) }
     private val playback = lazy { PocketPlayback(context) }
     private val pocketPlayback by playback
+    @Volatile private var pocketDiagnostic = "No audio check has run in this app session."
 
     private fun work(promise: Promise, cancellable: Boolean = true, task: (() -> Unit) -> Any?) {
         val expected = generation.get()
@@ -185,34 +186,60 @@ class CareKoshVoiceModule : Module() {
             require(text.isNotBlank() && text.length <= 640 && pace in 0.85..1.1)
             require(id == null || id.matches(Regex("[a-zA-Z0-9-]{1,80}")))
             val deadline = System.nanoTime() + 180_000_000_000L
+            val started = System.nanoTime()
+            val notes = ArrayList<String>()
+            var retryReason = ""
+            fun note(message: String) {
+                if (notes.size >= 40) notes.removeAt(1)
+                notes.add("${(System.nanoTime() - started) / 1_000_000}ms: $message")
+                pocketDiagnostic = notes.joinToString("\n") + if (retryReason.isNotEmpty()) "\nCPU recovery reason: $retryReason" else ""
+            }
+            note("Alba • LiteRT 2.1.6 • 24 kHz mono • PCM16 media output")
             val boundedCheck = { check(); kotlin.check(System.nanoTime() < deadline) { "Alba took too long. Try a shorter reply or select Device voice in Voice setup" } }
-            val report: (String) -> Unit = { stage ->
+            var lastStage = ""
+            val report: (String, Int?) -> Unit = { stage, frames ->
                 boundedCheck()
-                if (id != null) sendEvent("pocketSpeechProgress", mapOf("id" to id, "stage" to stage))
+                if (stage != lastStage || frames != null) { note("$stage${frames?.let { ": $it frames" } ?: ""}"); lastStage = stage }
+                if (id != null) sendEvent("pocketSpeechProgress", mapOf("id" to id, "stage" to stage, "frames" to frames))
             }
-            report("verifying")
-            require(pocketPack.ready(boundedCheck)) { "Download Alba in Voice setup first" }
-            transcriber?.close(); transcriber = null
-            val audio = recoverPocketAudio(boundedCheck, report) { cpuOnly ->
-                var usedGpu = false
-                try {
-                    report(if (cpuOnly) "loading_cpu" else "loading")
-                    PocketSynthesizer(pocketPack.root, boundedCheck, cpuOnly).use { voice ->
-                        try {
-                            voice.initialize()
-                            report(if (cpuOnly) "generating_cpu" else "generating")
-                            voice.synthesize(text, "alba").audio
-                        } finally { usedGpu = voice.usesGpu }
+            try {
+                report("verifying", null)
+                require(pocketPack.ready(boundedCheck)) { "Download Alba in Voice setup first" }
+                transcriber?.close(); transcriber = null
+                val audio = recoverPocketAudio(boundedCheck, { report(it, null) }) { cpuOnly ->
+                    var usedGpu = false
+                    try {
+                        report(if (cpuOnly) "loading_cpu" else "loading", null)
+                        PocketSynthesizer(pocketPack.root, boundedCheck, cpuOnly) { stage, frames ->
+                            report(if (cpuOnly) "${stage}_cpu" else stage, frames)
+                        }.use { voice ->
+                            try {
+                                voice.initialize()
+                                note(voice.placements)
+                                report(if (cpuOnly) "generating_cpu" else "generating", null)
+                                voice.synthesize(text, "alba").audio.also { pcm ->
+                                    // Validate within the attempt so invalid/silent GPU output also gets CPU recovery.
+                                    val levels = pocketAudioLevels(pcm)
+                                    note("Generated ${pcm.size} samples; peak=${levels.peak}; RMS=${levels.rms}")
+                                }
+                            } finally { usedGpu = voice.usesGpu }
+                        }
+                    } catch (e: Exception) {
+                        boundedCheck()
+                        if (usedGpu && !cpuOnly) retryReason = "$lastStage: ${e.message.orEmpty().replace(pocketPack.root.path, "[voice pack]").replace('\n', ' ').take(200)}"
+                        note("Generation failed: ${e.javaClass.simpleName}")
+                        if (usedGpu && !cpuOnly) throw PocketGpuFailure(e)
+                        throw e
                     }
-                } catch (e: Exception) {
-                    boundedCheck()
-                    if (usedGpu && !cpuOnly) throw PocketGpuFailure(e)
-                    throw e
                 }
+                report("playing", null)
+                val result = pocketPlayback.play(audio, pace.toFloat(), boundedCheck)
+                note("Playback completed: ${result.output}; media volume ${result.volumePercent}%; ${result.frames} rendered frames")
+                result.asMap()
+            } catch (e: Exception) {
+                note("Stopped at $lastStage: ${e.javaClass.simpleName}")
+                throw e
             }
-            report("playing")
-            pocketPlayback.play(audio, pace.toFloat(), boundedCheck)
-            null
         }
     }
 
@@ -250,6 +277,19 @@ class CareKoshVoiceModule : Module() {
         }
         AsyncFunction("speakPocketWithProgress") { text: String, pace: Double, id: String, promise: Promise ->
             speakPocket(text, pace, id, promise)
+        }
+        AsyncFunction("pocketAudioDiagnostic") { promise: Promise -> promise.resolve(pocketDiagnostic) }
+        AsyncFunction("checkPocketAudioOutput") { promise: Promise ->
+            work(promise) { check ->
+                val deadline = System.nanoTime() + 10_000_000_000L
+                val boundedCheck = { check(); kotlin.check(System.nanoTime() < deadline) { "Audio output check timed out" } }
+                pocketDiagnostic = "Output check • no model generation • 24 kHz mono PCM16 • media route"
+                try {
+                    val result = pocketPlayback.play(pocketOutputTone(), 1f, boundedCheck)
+                    pocketDiagnostic += "\nPlayback completed: ${result.output}; media volume ${result.volumePercent}%; ${result.frames} rendered frames"
+                    result.asMap()
+                } catch (e: Exception) { pocketDiagnostic += "\nOutput check failed: ${e.javaClass.simpleName}"; throw e }
+            }
         }
         AsyncFunction("pocketLicenceArchive") { promise: Promise ->
             work(promise) { check ->

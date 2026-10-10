@@ -38,7 +38,8 @@ import kotlin.math.sqrt
  * bounds text, token chunks, generation time and PCM length. Reference graph
  * parity is reported by the exporter; Android inference must be tested on-device.
  */
-internal class PocketSynthesizer(private val modelDir: File, private val checkOperation: () -> Unit, private val cpuOnly: Boolean = false) : Closeable {
+internal class PocketSynthesizer(private val modelDir: File, private val checkOperation: () -> Unit,
+    private val cpuOnly: Boolean = false, private val progress: (String, Int) -> Unit = { _, _ -> }) : Closeable {
 
     companion object {
         const val H = 1024               // flow-LM width
@@ -83,6 +84,8 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
     }
 
     private val resources = ArrayList<AutoCloseable>()
+    private val placement = ArrayList<String>()
+    val placements get() = placement.joinToString("; ")
     var usesGpu = false
         private set
     private fun path(name: String): File = File(modelDir, name).also {
@@ -91,12 +94,20 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
     private fun <T : AutoCloseable> own(value: T): T { resources.add(value); return value }
     private fun load(name: String, gpu: Boolean): CompiledModel {
         checkOperation()
+        fun cpu(): CompiledModel {
+            val options = CompiledModel.Options(Accelerator.CPU)
+            options.cpuOptions = CompiledModel.CpuOptions(numThreads = minOf(4, maxOf(1, Runtime.getRuntime().availableProcessors())))
+            placement.add("$name: CPU")
+            return CompiledModel.create(path(name).path, options, null)
+        }
         val result = if (gpu && !cpuOnly) try {
-            CompiledModel.create(path(name).path, CompiledModel.Options(Accelerator.GPU), null).also { usesGpu = true }
+            CompiledModel.create(path(name).path, CompiledModel.Options(Accelerator.GPU), null).also {
+                usesGpu = true; placement.add("$name: GPU")
+            }
         } catch (_: Exception) {
             checkOperation()
-            CompiledModel.create(path(name).path, CompiledModel.Options(Accelerator.CPU), null)
-        } else CompiledModel.create(path(name).path, CompiledModel.Options(Accelerator.CPU), null)
+            cpu()
+        } else cpu()
         return own(result)
     }
     private lateinit var lm: CompiledModel
@@ -213,6 +224,11 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
         lmIn[6].writeFloat(noise)
         lm.run(lmIn, lmOut)
         val out = lmOut[0].readFloat()
+        val expected = 1 + LDIM + 2 * G * HD
+        require(out.size >= expected && (0 until expected).all { out[it].isFinite() }) {
+            "Alba inference returned invalid values"
+        }
+        checkOperation() // GPU readback may block; check again before accepting its result.
         val eos = out[0]
         val latent = out.copyOfRange(1, 1 + LDIM)
         val kvBase = 1 + LDIM
@@ -237,6 +253,7 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
             checkOperation()
             val (prepared, eosGuess) = textPrompt.prepare(chunk)
             val ids = tokenizer.encode(prepared)
+            progress("prompting", 0)
             val latents = generateChunk(ids, framesAfterEos = eosGuess + 2)
             frames += latents.size
             require(latents.isNotEmpty()) { "Alba could not generate this reply" }
@@ -266,6 +283,7 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
                 (rnd.nextGaussian() * sqrt(TEMP.toDouble())).toFloat()
             }
             val (lat, eosLogit) = step(emb, noise)
+            if (g % 8 == 0) progress("generating", g)
             if (eosLogit > EOS_THRESHOLD && eosStep < 0) eosStep = g
             if (eosStep >= 0 && g >= eosStep + framesAfterEos) break
             latents.add(lat)
@@ -278,6 +296,7 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
     /** Mimi decode: overlapped dec_tx blocks -> one-shot SEANet window. */
     private fun decode(latents: List<FloatArray>): FloatArray {
         checkOperation()
+        progress("decoding", latents.size)
         require(latents.size in 1..DEC_FRAMES)
         val t = latents.size
         val feat = FloatArray(MIMI_D * S_DEC)

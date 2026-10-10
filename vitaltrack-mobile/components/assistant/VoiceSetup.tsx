@@ -17,6 +17,8 @@ type Props = {
   manageModel: () => void; previewVoice: () => void; recheck: () => void;
   openAssistant: () => void; listeningControls?: ReactNode; cloudControls?: ReactNode; understandingReady?: boolean;
   speechStatus: string; stopSpeech: () => void;
+  outputCheckSupported: boolean; checkAudioOutput: () => void;
+  speechFeedback: { message: string; details: string; failed: boolean } | null;
 };
 
 export function VoiceButton({ label, onPress, disabled = false, secondary = false }: {
@@ -33,6 +35,7 @@ export default function VoiceSetup(p: Props) {
   const { colors } = useTheme();
   const [help, setHelp] = useState(false);
   const [licence, setLicence] = useState(false);
+  const [audioDetails, setAudioDetails] = useState(false);
   const locked = !!p.busy || !!p.speechStatus || !p.loaded;
   const online = p.prefs.audioOptIn && p.prefs.inputProvider === 'groq';
   const ready = p.loaded && p.supported && (online || p.modelChecked && p.model.ready) && p.prefs.enabled && p.prefs.microphone;
@@ -91,6 +94,14 @@ export default function VoiceSetup(p: Props) {
       {!selectedReady && <Text style={body}>{p.prefs.speechProvider === 'pocket' ? 'Download Alba to hear this voice, or select an available device voice.' : 'No device voice is available. Download Alba above to hear replies entirely inside CareKosh.'}</Text>}
       <VoiceButton label="Preview voice" secondary onPress={p.previewVoice} disabled={locked || !selectedReady} />
       {!!p.speechStatus && <><Text accessibilityLiveRegion="polite" style={body}>{p.speechStatus}</Text><VoiceButton label="Stop voice preview" secondary onPress={p.stopSpeech} /></>}
+      {p.speechFeedback && <View style={{ gap: 8 }}>
+        <Text selectable accessibilityLiveRegion="polite" style={[body, p.speechFeedback.failed && { color: colors.statusRed }]}>{p.speechFeedback.message}</Text>
+        {!!p.speechFeedback.details && <><TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: audioDetails }}
+          onPress={() => setAudioDetails(!audioDetails)} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: colors.accentBlue, fontSize: 14 }}>Audio check details {audioDetails ? '−' : '+'}</Text></TouchableOpacity>
+          {audioDetails && <Text selectable style={[body, { fontSize: 12 }]}>{p.speechFeedback.details}</Text>}</>}
+      </View>}
+      {p.outputCheckSupported && <><VoiceButton label="Check audio output" secondary onPress={p.checkAudioOutput} disabled={locked} />
+        <Text style={body}>Plays a short tone through the same output as Alba. This checks volume and playback without preparing speech or changing your chosen voice.</Text></>}
     </View>
     <VoiceButton label={ready ? 'Practice a command here' : 'Try a typed question here'} onPress={p.openAssistant} disabled={locked || !p.prefs.enabled} />
     <View style={card}>

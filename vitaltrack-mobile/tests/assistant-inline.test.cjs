@@ -24,7 +24,7 @@ function load(file, dependencies = {}) {
 const host = name => function Host({ children, ...props }) { return React.createElement(name, props, children); };
 const VoiceButton = ({ label, onPress, disabled }) => React.createElement('Button', { label, onPress, disabled }, label);
 
-async function harness({ inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketDownloadWait, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false } = {}) {
+async function harness({ inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketOutput, pocketDiagnostics = 'Native audio details', pocketDownloadWait, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false } = {}) {
   const calls = { navigation: [], stock: 0, transcribe: 0, stop: 0, record: 0, permission: 0, interpret: [], consent: [], cloudAudio: 0 };
   const listeners = new Set();
   const lifecycle = state => { for (const listener of [...listeners]) listener(state); };
@@ -83,11 +83,13 @@ async function harness({ inventoryItems, pocketBuild = false, pocketReady = fals
     '@/features/assistant/snapshot': { cachedItemNames: () => inventoryItems ? inventoryItems.filter(i=>i.isActive).map(i=>i.name) : [inventoryName], categorySnapshot: async () => [], inventorySnapshot: async () => { calls.stock++; return { items: inventoryItems || [{ id: 'g', name: inventoryName, quantity: 18, minimumStock: 5, unit: 'pairs', isActive: true }], timestamp: Date.now(), stale: false }; } },
     '@/features/assistant/audioFiles': { rememberAudio: async () => { if (rememberBackground) { appState.currentState = 'background'; lifecycle('background'); } }, discardAudio: async () => {} },
     '@/features/assistant/capture': load('features/assistant/capture.ts'),
-    '@/features/assistant/offlineVoice': { pocketVoiceSupported: pocketBuild, pocketVoice: {
+    '@/features/assistant/offlineVoice': { pocketVoiceSupported: pocketBuild, pocketOutputCheckSupported: pocketBuild, pocketVoice: {
       status: async () => ({ ready: pocketReady, supported: pocketBuild, bytes: 208767942, name: 'Alba' }),
       download: async () => { calls.pocketDownloads = (calls.pocketDownloads || 0) + 1; if (pocketDownloadWait) await pocketDownloadWait; pocketReady = true; },
       remove: async () => { pocketReady = false; }, progress: () => ({ remove() {} }), licences: async () => 'file:///licences.zip',
-      speak: async (text, pace) => { (calls.pocketSpeech ||= []).push({ text, pace }); if (pocketSpeech) await pocketSpeech(); },
+      speak: async (text, pace) => { (calls.pocketSpeech ||= []).push({ text, pace }); if (pocketSpeech) return await pocketSpeech(); },
+      checkOutput: async () => { calls.outputChecks = (calls.outputChecks || 0) + 1; return pocketOutput ? await pocketOutput() : { output: 'Phone speaker', volumePercent: 60, frames: 12000, audioSeconds: 0.5 }; },
+      diagnostics: async () => pocketDiagnostics,
     }, offlineSupported: true, liveCaptureSupported: liveCapture, createLiveRecorder: () => Object.assign(recorder, { configure() {}, subscribe(listener) { liveListener = listener; return { remove() { liveListener = null; } }; } }), offlineVoice: { status: async () => ({ ready, bytes: 100 }),
       download: async () => { ready = true; }, remove: async () => { ready = false; }, deviceStatus: async () => ({ ready: deviceReady, name: 'English' }), progress: () => ({ remove() {} }), cancel() {},
       transcribe: async () => { calls.transcribe++; return { transcript }; }, speak: async () => {} } },
@@ -733,6 +735,41 @@ test('Alba preview shows preparation, prevents duplicate previews and can be sto
     await act(async () => { finish(); await waiting; });
     assert.equal(h.calls.pocketSpeech.length, 1);
   } finally { finish(); await h.dispose(); }
+});
+test('sound check isolates playback without speech, inventory fetch, download or preference changes', async () => {
+  const h = await harness({ mode: 'settings', pocketBuild: true, pocketReady: false });
+  const before = { ...h.prefs };
+  try {
+    await h.press('Check audio output');
+    assert.equal(h.calls.outputChecks, 1); assert.equal(h.calls.pocketSpeech?.length || 0, 0);
+    assert.equal(h.calls.stock, 0); assert.equal(h.calls.pocketDownloads || 0, 0);
+    assert.deepEqual(h.prefs, before);
+    assert.ok(h.tree.root.findAllByType('Text').some(n => n.children.join('').includes('Phone speaker · media volume 60%')));
+  } finally { await h.dispose(); }
+});
+test('preview failure appears next to the speech controls and exposes selectable native details', async () => {
+  const h = await harness({ mode: 'settings', pocketBuild: true, pocketReady: true, selectedPocket: true,
+    pocketSpeech: async () => { throw new Error('Alba generated inaudible audio.'); } });
+  try {
+    await h.press('Preview voice');
+    assert.ok(h.tree.root.findAllByType('Text').some(n => n.props.selectable && n.children.join('') === 'Alba generated inaudible audio.'));
+    await h.press('Audio check details +');
+    assert.ok(h.tree.root.findAllByType('Text').some(n => n.props.selectable && n.children.join('') === 'Native audio details'));
+    assert.equal(h.find('Preview voice').props.disabled, false);
+  } finally { await h.dispose(); }
+});
+test('cancelled sound check cannot overwrite a later preview result', async () => {
+  let finish; const waiting = new Promise(resolve => { finish = resolve; });
+  const h = await harness({ mode: 'settings', pocketBuild: true, pocketReady: true, selectedPocket: true,
+    pocketOutput: () => waiting, pocketSpeech: async () => ({ output: 'Bluetooth audio', volumePercent: 50 }) });
+  try {
+    await h.press('Check audio output'); assert.equal(h.find('Preview voice').props.disabled, true);
+    await h.press('Stop voice preview');
+    await h.press('Preview voice');
+    await act(async () => { finish({ output: 'Phone speaker', volumePercent: 10 }); await waiting; });
+    const text = h.tree.root.findAllByType('Text').map(n => n.children.join('')).join('\n');
+    assert.match(text, /Bluetooth audio · media volume 50%/); assert.doesNotMatch(text, /Phone speaker · media volume 10%/);
+  } finally { await h.dispose(); }
 });
 
 const mixedInventory = [

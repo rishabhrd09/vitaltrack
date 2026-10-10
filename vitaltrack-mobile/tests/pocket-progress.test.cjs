@@ -39,3 +39,29 @@ test('older Alba APK uses its original two-argument speech API', async () => {
   const voice = bridge({ ...pack, async speakPocket(...value) { args = value; } });
   await voice.speak('Hello', 1); assert.deepEqual(args, ['Hello', 1]);
 });
+test('completed playback returns its actual route and volume without assuming sound was heard', async () => {
+  const report = { output: 'Bluetooth audio', volumePercent: 60, audioSeconds: 2, frames: 48000 };
+  const voice = bridge({ ...pack, addListener() { return { remove() {} }; }, async speakPocketWithProgress() { return report; },
+    async checkPocketAudioOutput() { return report; }, async pocketAudioDiagnostic() { return '48000 rendered frames'; } });
+  assert.equal(await voice.speak('Hello'), report);
+  assert.equal(await voice.checkOutput(), report);
+  assert.equal(await voice.diagnostics(), '48000 rendered frames');
+});
+test('generation progress uses bounded counts and ignores invalid or old request data', async () => {
+  const seen = []; let listener;
+  const voice = bridge({ ...pack, addListener(_, fn) { listener = fn; return { remove() {} }; },
+    async speakPocketWithProgress(_, __, id) {
+      listener({ id, stage: 'generating_cpu', frames: 25 });
+      listener({ id, stage: 'generating', frames: 999999 });
+      listener({ id: 'old', stage: 'decoding' });
+      listener({ id, stage: 'decoding_cpu' });
+    } });
+  await voice.speak('Hello', 1, v => seen.push(v));
+  assert.equal(seen.length, 3); assert.match(seen[0], /2\.0s generated/);
+  assert.doesNotMatch(seen[1], /999999/); assert.match(seen[2], /Converting.*CPU/);
+});
+test('older APK has no sound-check API and no diagnostic upload', async () => {
+  const voice = bridge(pack);
+  assert.throws(() => voice.checkOutput(), /latest Android APK/);
+  assert.equal(await voice.diagnostics(), '');
+});

@@ -15,7 +15,7 @@ import { defaults, loadPreferences, savePreferences, type Preferences } from '@/
 import { cachedItemNames, inventorySnapshot, categorySnapshot } from '@/features/assistant/snapshot';
 import { discardAudio, rememberAudio } from '@/features/assistant/audioFiles';
 import { MicrophoneCapture, type CapturePhase } from '@/features/assistant/capture';
-import { createLiveRecorder, liveCaptureSupported, offlineVoice, offlineSupported, pocketVoice, pocketVoiceSupported, type PocketVoiceStatus } from '@/features/assistant/offlineVoice';
+import { createLiveRecorder, liveCaptureSupported, offlineVoice, offlineSupported, pocketVoice, pocketVoiceSupported, pocketOutputCheckSupported, type PocketVoiceStatus } from '@/features/assistant/offlineVoice';
 import { CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, CLOUD_VOICE_ENABLED } from '@/features/assistant/policy';
 import { ANSWER_VISIBLE_MS, canDismissAnswer, microphoneReadiness } from '@/features/assistant/readiness';
 import AnswerList from '@/components/assistant/AnswerList';
@@ -53,6 +53,11 @@ function blobBase64(blob: Blob): Promise<string> {
     reader.onerror = () => reject(new Error('Could not play speech.'));
     reader.readAsDataURL(blob);
   });
+}
+function speechFailure(error: unknown): string {
+  // Native rejections can be Error-like objects rather than this realm's Error class.
+  if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' && error.message.trim()) return error.message.slice(0, 1000);
+  return 'Speech unavailable.';
 }
 
 /** Queries and local drafts only. No order-save or inventory-mutation service is imported. */
@@ -96,6 +101,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const [screenReader, setScreenReader] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [speechStatus, setSpeechStatus] = useState('');
+  const [speechFeedback, setSpeechFeedback] = useState<{ message: string; details: string; failed: boolean } | null>(null);
   const [permissionBlocked, setPermissionBlocked] = useState(false);
   const permissionPending = useRef(false);
   const scroll = useRef<ScrollView>(null);
@@ -318,15 +324,20 @@ export default function AssistantExperience({ embedded = false, active = true, s
   async function playAnswer(value: Answer, current: number, signal: AbortSignal, preview = false) {
     if ((!prefs.spokenReplies && !preview) || capture.phase !== 'idle' || current !== turn.current || signal.aborted) return;
     setSpeaking(true);
+    setSpeechFeedback(null);
     setSpeechStatus(prefs.speechProvider === 'pocket' ? 'Preparing Alba speech…' : 'Reading aloud…');
     try {
       const session = captureSession();
       if (prefs.speechProvider === 'pocket') {
         assertSession(session);
         if (!alba.ready) throw new Error('Download Alba in Voice setup first.');
-        await pocketVoice.speak(speechText(value), prefs.speechPace ?? 1, message => {
+        const result = await pocketVoice.speak(speechText(value), prefs.speechPace ?? 1, message => {
           if (mounted.current && current === turn.current && !signal.aborted) setSpeechStatus(message);
         });
+        const details = await pocketVoice.diagnostics().catch(() => '') || '';
+        if (mounted.current && current === turn.current && !signal.aborted) {
+          setSpeechFeedback({ message: result ? `Android completed Alba playback · ${result.output} · media volume ${result.volumePercent}%. If you heard nothing, try Check audio output below.` : 'Voice playback completed. If you heard nothing, try Check audio output below.', details, failed: false });
+        }
         return;
       }
       if (!CLOUD_VOICE_ENABLED || prefs.speechProvider === 'device') {
@@ -348,8 +359,33 @@ export default function AssistantExperience({ embedded = false, active = true, s
       await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true, shouldPlayInBackground: false });
       if (current !== turn.current || signal.aborted) { await discard(uri); return; }
       assertSession(session); player.replace({ uri }); player.play();
-    } catch (e) { if (current === turn.current) setError(prefs.speechProvider === 'pocket' && e instanceof Error ? `${e.message} Your answer is still on screen.` : 'Speech unavailable. Your answer is still on screen.'); }
+    } catch (e) {
+      const message = prefs.speechProvider === 'pocket' ? speechFailure(e) : 'Speech unavailable.';
+      const details = prefs.speechProvider === 'pocket' ? await pocketVoice.diagnostics().catch(() => '') || '' : '';
+      if (mounted.current && current === turn.current && !signal.aborted) {
+        setError(`${message} Your answer is still on screen.`);
+        setSpeechFeedback({ message, details, failed: true });
+      }
+    }
     finally { if (current === turn.current) { setSpeaking(false); setSpeechStatus(''); } }
+  }
+  async function checkAudioOutput() {
+    cancel(); setError(''); setSpeechFeedback(null);
+    const abort = new AbortController(); controller.current = abort;
+    const current = turn.current;
+    setSpeaking(true); setSpeechStatus('Playing a short test tone…');
+    try {
+      const session = captureSession(); assertSession(session);
+      const result = await pocketVoice.checkOutput();
+      const details = await pocketVoice.diagnostics().catch(() => '');
+      assertSession(session);
+      if (mounted.current && current === turn.current && !abort.signal.aborted) setSpeechFeedback({
+        message: `Android completed the sound check · ${result.output} · media volume ${result.volumePercent}%. A short tone should have played.`, details, failed: false,
+      });
+    } catch (e) {
+      const details = await pocketVoice.diagnostics().catch(() => '');
+      if (mounted.current && current === turn.current && !abort.signal.aborted) setSpeechFeedback({ message: speechFailure(e), details, failed: true });
+    } finally { if (mounted.current && current === turn.current) { setSpeaking(false); setSpeechStatus(''); } }
   }
   async function ask(text = question, chosen?: Intent | Specification, force = false) {
     if (!loaded || !prefs.enabled || !text.trim() || busy || capture.phase !== 'idle') return;
@@ -550,6 +586,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
   </>;
   const setup = <VoiceSetup prefs={prefs} loaded={loaded} supported={offlineSupported} busy={busy} model={model} modelChecked={modelChecked} progress={downloadProgress} deviceVoice={deviceVoice}
     speechStatus={speechStatus} stopSpeech={cancel}
+    speechFeedback={speechFeedback} outputCheckSupported={pocketOutputCheckSupported} checkAudioOutput={() => { void checkAudioOutput(); }}
     alba={alba} albaChecked={albaChecked} albaProgress={albaProgress}
     manageAlba={() => {
       const session = captureSession(); const current = turn.current;

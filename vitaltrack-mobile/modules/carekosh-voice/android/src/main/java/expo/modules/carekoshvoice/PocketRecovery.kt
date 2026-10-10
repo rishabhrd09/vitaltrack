@@ -23,7 +23,6 @@ internal fun recoverPocketAudio(
         generate(true)
     }
     check()
-    require(audio.isNotEmpty() && audio.all { it.isFinite() }) { "Alba returned invalid audio" }
-    require(audio.any { kotlin.math.abs(it) > 0.00001f }) { "Alba generated silent audio. Try Preview voice again" }
+    pocketAudioLevels(audio)
     return audio
 }

@@ -30,6 +30,15 @@ fun main() {
         try { recoverPocketAudio({}, {}) { audio }; error("Invalid audio accepted") }
         catch (_: IllegalArgumentException) { }
     }
+    // One barely non-zero sample used to pass the old peak-only silent check.
+    val nearlySilent = FloatArray(24000).also { it[100] = 0.0001f }
+    try { recoverPocketAudio({}, {}) { nearlySilent }; error("Inaudible waveform accepted") }
+    catch (e: IllegalArgumentException) { check(e.message!!.contains("inaudible")) }
+    val pcm = pocketPcm16(floatArrayOf(-1f, -0.5f, 0f, 0.5f, 1f, 2f))
+    check(pcm.contentEquals(shortArrayOf(-32767, -16383, 0, 16383, 32767, 32767)))
+    val tone = pocketOutputTone()
+    check(tone.size == 12000 && tone.first() == 0f && tone.last() == 0f)
+    check(pocketAudioLevels(tone).rms in 0.05..0.15)
     var failures = 0
     try {
         recoverPocketAudio({}, {}) { cpu ->
@@ -42,5 +51,5 @@ fun main() {
     var direct = 0
     try { recoverPocketAudio({}, {}) { direct++; throw IllegalStateException("Asset failure") }; error("Asset failure accepted") }
     catch (e: IllegalStateException) { check(e.message == "Asset failure" && direct == 1) }
-    println("Pocket recovery: late EOS, KV/decoder bounds, GPU→CPU, cancellation, bounded retries, finite non-silent audio passed")
+    println("Pocket recovery/audio: late EOS, bounds, GPU→CPU, cancellation, inaudible PCM rejection, PCM16 and faded output tone passed")
 }
