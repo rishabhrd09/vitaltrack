@@ -68,7 +68,11 @@ The first fix (`f928abc`) set **Kotlin 2.2.20** through `expo-build-properties`,
 
 `plugins/withKotlinCompiler.js` now pins the **actual root Kotlin Gradle plugin classpath to 2.2.20**, using the same version as `expo-build-properties`. A clean Expo prebuild generates `classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.20')` and `android.kotlinVersion=2.2.20`; the installed Expo plugin selects **KSP 2.2.20-2.0.3**. The config plugin fails explicitly if the Gradle template changes or contains an ambiguous classpath. LiteRT, Moonshine, minimum SDK 26, microphone permission, environment URL guards and voice application code are unchanged. See [Expo's Kotlin setting](https://docs.expo.dev/versions/v54.0.0/sdk/build-properties/#pluginconfigtypeandroid), [the Expo compiler/classpath issue](https://github.com/expo/expo/issues/49668) and [Kotlin metadata compatibility](https://github.com/JetBrains/kotlin/blob/master/libraries/kotlinx-metadata/jvm/ReadMe.md).
 
-Verification reproduced the metadata failure using compiler 2.1.20, then compiled all voice-module Kotlin sources successfully with **2.2.20**, actual Android/Moonshine/LiteRT jars and Expo bridge stubs, without disabling metadata checks. All **243 mobile tests** pass, including the compiler pin's compatibility and template guards; TypeScript passes and lint has zero errors with the existing builder warning. Clean Expo prebuild confirms native voice autolinking and the retained microphone permission. A complete EAS preview APK build is the next verification gate; Android playback and microphone behavior still require the device checklist below.
+Verification reproduced the metadata failure using compiler 2.1.20, then compiled all voice-module Kotlin sources successfully with **2.2.20**, actual Android/Moonshine/LiteRT jars and Expo bridge stubs, without disabling metadata checks. All **243 mobile tests** pass, including the compiler pin's compatibility and template guards; TypeScript passes and lint has zero errors with the existing builder warning. Clean Expo prebuild confirms native voice autolinking and the retained microphone permission.
+
+The **complete EAS preview APK build of `ec9d209` succeeded** on 10 October 2026: `:carekosh-voice:compileReleaseKotlin`, Android release lint, signing validation, packaging and `:app:assembleRelease` passed; Gradle reported **BUILD SUCCESSFUL in 18m 11s**. [Verified preview build and install link](https://expo.dev/accounts/rishabhrd09/projects/vitaltrack-mobile/builds/3127659d-cfb3-49fe-8c4b-420742a0ba5e).
+
+Inspection of that actual APK confirms minimum SDK **26**, target SDK **36**, `RECORD_AUDIO`, the native voice classes, ARM64 Moonshine/LiteRT libraries, the unchanged Alba manifest and all six licence assets. The packaged third-party notice matches the original notice after AAPT expands its gzip asset. No system-overlay permission or foreground audio services are present. All **50 packaged ARM64/x86-64 libraries** pass both ELF load-segment and uncompressed APK ZIP **16 KB alignment** checks. The embedded JavaScript bundle contains the HTTPS staging API URL. APK SHA-256: `ce99af9f72a20fe922b5379bb2154c41c80a3e6fa850ea13621579b702f080f8`. These results establish build/package compatibility; actual recording, Alba playback, cancellation and performance still require phone testing.
 
 The subsequent 10 October settings/mixed-draft review passes **240 mobile tests** and **275 backend tests** in both disposable schema modes. It reorganizes the settings UI and updates local draft parsing/the backend interpretation prompt; it does not change Pocket's native synthesis or playback. The original native/asset checks below retain their tested scope. See [the follow-up and device checks](VOICE_INVENTORY_AND_ORDER_DRAFTS.md#settings-and-mixed-draft-verification--10-october-2026).
 
@@ -85,13 +89,13 @@ java -jar /tmp/carekosh-pocket-text-check.jar /absolute/path/to/pt_tokenizer.tsv
   tests/fixtures/pocket-tokenizer-cases.tsv
 ```
 
-Before calling this release-ready, build the new APK and test on the OnePlus Nord 4/OxygenOS 15 and another target phone:
+Before calling this release-ready, install the verified preview APK and test on the OnePlus Nord 4/OxygenOS 15 and another target phone:
 
 1. Download, cancel, retry, remove, reinstall the pack and export the licence ZIP.
 2. In airplane mode, preview Alba at each pace and use **Hear answer** with a current-session inventory snapshot. No speech endpoint should be called.
 3. Check names, quantities, units, long summary, volume, first-reply delay, repeated replies, temperature and memory use. Test a Bluetooth/headset output too.
 4. Stop during generation and playback; start another microphone query; background/logout/change account; interrupt with another app's audio. No late speech or frozen UI should remain.
 5. Keep the model unavailable/removed and verify the answer stays visible with a useful message. Device speech must work only when explicitly selected.
-6. Inspect the release manifest for no background microphone/system-overlay permission and no unused foreground-service permissions; inspect packaged native libraries and notices.
+6. Repeat manifest, native-library alignment and notice checks for each release artifact. These package checks passed for the preview APK above; they do not replace the device checks.
 
 No backend migration, new environment variable, Render deployment or database operation is needed for this speech-output feature.
