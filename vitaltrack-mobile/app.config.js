@@ -1,4 +1,5 @@
 const appJson = require('./app.json');
+const { KOTLIN_VERSION } = require('./plugins/withKotlinCompiler');
 
 const PRODUCTION_API_URL = 'https://api.carekosh.com';
 const PREVIEW_API_URL = 'https://staging-api.carekosh.com';
@@ -29,9 +30,9 @@ module.exports = ({ config }) => {
     ...appJson.expo,
     plugins: [
       ...(appJson.expo.plugins || []),
-      // LiteRT 2.1.6 carries Kotlin 2.3 metadata; Expo's default 2.1.20 cannot read it.
-      // 2.2.20 is supported by this SDK's KSP lookup and reads that metadata.
-      ['expo-build-properties', { android: { usesCleartextTraffic, kotlinVersion: '2.2.20' } }],
+      // Keep stdlib/KSP and the actual compiler aligned for LiteRT's metadata.
+      ['expo-build-properties', { android: { usesCleartextTraffic, kotlinVersion: KOTLIN_VERSION } }],
+      './plugins/withKotlinCompiler',
     ],
     extra: {
       ...appJson.expo.extra,
