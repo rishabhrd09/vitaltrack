@@ -1,0 +1,69 @@
+{
+  "repo": "mlboydaisuke/Pocket-TTS-LiteRT",
+  "revision": "e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e",
+  "assets": [
+    {
+      "name": "pt_tokenizer.tsv",
+      "path": "pt_tokenizer.tsv",
+      "bytes": 126498,
+      "sha256": "459022ec19619b30fa5cc807c2c756bf19cbfc14571e64f9fe51e20807a33092",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/pt_tokenizer.tsv"
+    },
+    {
+      "name": "pt_voice_alba.bin",
+      "path": "voices/pt_voice_alba.bin",
+      "bytes": 3096580,
+      "sha256": "f0f15ebfae5aa690ed3a3f25b478198d1892bd3022f39ca738ced07fcaec8e7b",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/voices/pt_voice_alba.bin"
+    },
+    {
+      "name": "pt_embed_f16.bin",
+      "path": "pt_embed_f16.bin",
+      "bytes": 8194048,
+      "sha256": "82c06e512863fc5b45b14e55e55a911fa2bede6df50e2a7472206af74fc0ac78",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/pt_embed_f16.bin"
+    },
+    {
+      "name": "pt_bos_input_f32.bin",
+      "path": "pt_bos_input_f32.bin",
+      "bytes": 4096,
+      "sha256": "184ae4fee2f3c629cc9908a351c8152204c5c076ea1ceae36c23badf8e7cacc8",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/pt_bos_input_f32.bin"
+    },
+    {
+      "name": "pt_input_linear_f32.bin",
+      "path": "pt_input_linear_f32.bin",
+      "bytes": 131072,
+      "sha256": "5f4738bbdba5b4c75ab64c5dfae1e37b884b5e1c7f93c0a1d487dcd5250f17fb",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/pt_input_linear_f32.bin"
+    },
+    {
+      "name": "pt_neutral_latent_f32.bin",
+      "path": "pt_neutral_latent_f32.bin",
+      "bytes": 128,
+      "sha256": "d5f0df1e55dcfcc01ab1f9e7ec41e799bad751911e3adda7f3833cfb7d0aa596",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/pt_neutral_latent_f32.bin"
+    },
+    {
+      "name": "pt_flowlm_fused_fp16.tflite",
+      "path": "pt_flowlm_fused_fp16.tflite",
+      "bytes": 169234128,
+      "sha256": "3e9297e8c997226941b6d21149e7dec96168e08207a07e5a5d972da7d85574a7",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/pt_flowlm_fused_fp16.tflite"
+    },
+    {
+      "name": "pt_mimi_dec_tx_fp16.tflite",
+      "path": "pt_mimi_dec_tx_fp16.tflite",
+      "bytes": 17431184,
+      "sha256": "5e4b277385bb7a2e5c7475d7421479a4b77431d6aa0ded535ae8c067c6edfa38",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/pt_mimi_dec_tx_fp16.tflite"
+    },
+    {
+      "name": "pt_mimi_deconly_fp16.tflite",
+      "path": "pt_mimi_deconly_fp16.tflite",
+      "bytes": 10550208,
+      "sha256": "ea7bd858b8e2841b30be7599e4bfedce7a751d23a9e1946d14101b0440de4e7e",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/pt_mimi_deconly_fp16.tflite"
+    }
+  ]
+}

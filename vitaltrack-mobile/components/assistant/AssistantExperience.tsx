@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, useAudioRecorder } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { captureSession, assertSession } from '@/services/assistantSession';
@@ -14,7 +15,7 @@ import { defaults, loadPreferences, savePreferences, type Preferences } from '@/
 import { cachedItemNames, inventorySnapshot, categorySnapshot } from '@/features/assistant/snapshot';
 import { discardAudio, rememberAudio } from '@/features/assistant/audioFiles';
 import { MicrophoneCapture, type CapturePhase } from '@/features/assistant/capture';
-import { createLiveRecorder, liveCaptureSupported, offlineVoice, offlineSupported } from '@/features/assistant/offlineVoice';
+import { createLiveRecorder, liveCaptureSupported, offlineVoice, offlineSupported, pocketVoice, pocketVoiceSupported, type PocketVoiceStatus } from '@/features/assistant/offlineVoice';
 import { CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, CLOUD_VOICE_ENABLED } from '@/features/assistant/policy';
 import { ANSWER_VISIBLE_MS, canDismissAnswer, microphoneReadiness } from '@/features/assistant/readiness';
 import AnswerList from '@/components/assistant/AnswerList';
@@ -85,6 +86,9 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const [model, setModel] = useState({ ready: false, bytes: 0 });
   const [modelChecked, setModelChecked] = useState(!offlineSupported);
   const [deviceVoice, setDeviceVoice] = useState({ ready: false, name: 'Checking device voice…' });
+  const [alba, setAlba] = useState<PocketVoiceStatus>({ ready: false, supported: pocketVoiceSupported, bytes: 0, name: 'Alba · Pocket TTS · English' });
+  const [albaChecked, setAlbaChecked] = useState(!pocketVoiceSupported);
+  const [albaProgress, setAlbaProgress] = useState(0);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
   const [keptOpen, setKeptOpen] = useState(false);
@@ -181,6 +185,11 @@ export default function AssistantExperience({ embedded = false, active = true, s
         void offlineVoice.deviceStatus().then(voice => { if (currentScreen) setDeviceVoice(voice); }).catch(() => { if (currentScreen) setDeviceVoice({ ready: false, name: 'Install an offline English voice in Android Text-to-speech settings.' }); });
       }
     }
+    if (session && pocketVoiceSupported) {
+      setAlbaChecked(false);
+      void pocketVoice.status().then(value => { if (currentScreen) setAlba(value); }).catch(() => { if (currentScreen) setAlba(value => ({ ...value, ready: false })); }).finally(() => { if (currentScreen) setAlbaChecked(true); });
+    }
+    const pocketProgress = pocketVoice.progress(event => { if (currentScreen && event.total > 0) setAlbaProgress(Math.round(100 * event.downloaded / event.total)); });
     const progress = offlineVoice.progress(event => { if (currentScreen && event.total > 0) setDownloadProgress(Math.round(100 * event.downloaded / event.total)); });
     const auth = useAuthStore.subscribe((state, previous) => {
       if (state.user?.id !== previous.user?.id || state.isAuthenticated !== previous.isAuthenticated) { cancel(); setAnswer(null); previousItem.current = undefined; }
@@ -199,7 +208,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
           : 'Microphone startup was interrupted because the app lost focus. Return here and tap the microphone again.');
       }
     });
-    return () => { currentScreen = false; mounted.current = false; auth(); lifecycle.remove(); progress?.remove(); cancel(); };
+    return () => { currentScreen = false; mounted.current = false; auth(); lifecycle.remove(); progress?.remove(); pocketProgress?.remove(); cancel(); };
     // Lifecycle closures use stable native objects and refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, active, screenKey]);
@@ -274,7 +283,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     if (!CLOUD_TEXT_ENABLED && !CLOUD_TRANSCRIPTION_ENABLED && !CLOUD_VOICE_ENABLED) return;
     cancel();
     setCaps(value => ({ ...value, scopes: [], consented: false }));
-    await update({ ...prefs, cloud: false, audioOptIn: false, inputProvider: 'offline', speechProvider: 'device' });
+    await update({ ...prefs, cloud: false, audioOptIn: false, inputProvider: 'offline', speechProvider: prefs.speechProvider === 'pocket' ? 'pocket' : 'device' });
     const current = turn.current;
     try { await assistant.setConsent(captureSession(), []); }
     catch { if (current === turn.current) setError('Cloud is off on this device. Server withdrawal failed; reconnect and press Withdraw again.'); }
@@ -289,11 +298,33 @@ export default function AssistantExperience({ embedded = false, active = true, s
     } catch (e) { if (current === turn.current) setError(e instanceof Error ? e.message : 'Speech pack setup failed. Please retry.'); }
     finally { if (current === turn.current) setBusy(''); }
   }
+  async function setupAlba(remove: boolean) {
+    if (!loaded || !pocketVoiceSupported) return;
+    const session = captureSession();
+    cancel(); setError(''); setBusy(remove ? 'Removing Alba voice pack…' : 'Downloading and verifying Alba voice pack…'); setAlbaProgress(0);
+    const current = turn.current;
+    try {
+      if (remove) await pocketVoice.remove(); else await pocketVoice.download();
+      const status = await pocketVoice.status();
+      if (current !== turn.current || !mounted.current) return;
+      assertSession(session); setAlba(status); setAlbaChecked(true);
+      // Download selects the voice; reading aloud stays a separate user choice.
+      if (!remove) await update({ ...prefs, speechProvider: 'pocket' });
+      else if (prefs.speechProvider === 'pocket') await update({ ...prefs, spokenReplies: false });
+    } catch (e) { if (current === turn.current) setError(e instanceof Error ? e.message : 'Alba setup failed. Please retry.'); }
+    finally { if (current === turn.current) setBusy(''); }
+  }
   async function playAnswer(value: Answer, current: number, signal: AbortSignal, preview = false) {
     if ((!prefs.spokenReplies && !preview) || capture.phase !== 'idle' || current !== turn.current || signal.aborted) return;
     setSpeaking(true);
     try {
       const session = captureSession();
+      if (prefs.speechProvider === 'pocket') {
+        assertSession(session);
+        if (!alba.ready) throw new Error('Download Alba in Voice setup first.');
+        await pocketVoice.speak(speechText(value), prefs.speechPace ?? 1);
+        return;
+      }
       if (!CLOUD_VOICE_ENABLED || prefs.speechProvider === 'device') {
         assertSession(session);
         await offlineVoice.speak(speechText(value));
@@ -313,7 +344,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
       await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true, shouldPlayInBackground: false });
       if (current !== turn.current || signal.aborted) { await discard(uri); return; }
       assertSession(session); player.replace({ uri }); player.play();
-    } catch { if (current === turn.current) setError('Speech unavailable. Your answer is still on screen.'); }
+    } catch (e) { if (current === turn.current) setError(prefs.speechProvider === 'pocket' && e instanceof Error ? `${e.message} Your answer is still on screen.` : 'Speech unavailable. Your answer is still on screen.'); }
     finally { if (current === turn.current) setSpeaking(false); }
   }
   async function ask(text = question, chosen?: Intent | Specification, force = false) {
@@ -509,11 +540,31 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const iconButton = (name: React.ComponentProps<typeof Ionicons>['name'], label: string, action: () => void) =>
     <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} onPress={action} style={[styles.iconButton, { backgroundColor: colors.bgTertiary }]}><Ionicons name={name} size={22} color={colors.textSecondary} /></TouchableOpacity>;
   const feedback = <>
-    {settingsOpen && !!busy && !busy.includes('speech pack') && <View style={styles.row}><ActivityIndicator color={colors.accentBlue} /><Text accessibilityLiveRegion="polite" style={[styles.body, textStyle, { flex: 1 }]}>{busy}</Text></View>}
+    {settingsOpen && !!busy && !busy.includes('speech pack') && !busy.includes('Alba voice pack') && <View style={styles.row}><ActivityIndicator color={colors.accentBlue} /><Text accessibilityLiveRegion="polite" style={[styles.body, textStyle, { flex: 1 }]}>{busy}</Text></View>}
     {!!error && <View style={[styles.feedback, { backgroundColor: colors.statusRedBg }]}><Text accessibilityRole="alert" style={[styles.body, { color: colors.statusRed }]}>{error}</Text>
       {permissionBlocked && button('Open Android app permissions', () => { void Linking.openSettings().catch(() => setError('Open Android Settings → Apps → CareKosh → Permissions → Microphone.')); })}</View>}
   </>;
   const setup = <VoiceSetup prefs={prefs} loaded={loaded} supported={offlineSupported} busy={busy} model={model} modelChecked={modelChecked} progress={downloadProgress} deviceVoice={deviceVoice}
+    alba={alba} albaChecked={albaChecked} albaProgress={albaProgress}
+    manageAlba={() => {
+      const session = captureSession(); const current = turn.current;
+      Alert.alert(alba.ready ? 'Remove Alba voice?' : 'Download Alba voice?', alba.ready
+        ? 'Remove only the downloaded speaking voice. You can download it again here.'
+        : `Download ${Math.ceil(alba.bytes / 1_000_000)} MB once. Speech is generated inside CareKosh. No additional app is needed. Wi-Fi is recommended.`,
+        [{ text: 'Cancel', style: 'cancel' }, { text: alba.ready ? 'Remove' : 'Download', onPress: () => { if (current !== turn.current || !mounted.current) return; assertSession(session); void setupAlba(alba.ready); } }]);
+    }}
+    cancelSetup={() => cancel()}
+    exportLicences={() => {
+      cancel(); setError(''); const session = captureSession(); const current = turn.current;
+      void pocketVoice.licences().then(async uri => {
+        if (current !== turn.current || !mounted.current) return;
+        assertSession(session);
+        if (!await Sharing.isAvailableAsync()) throw new Error('Sharing is unavailable');
+        if (current !== turn.current || !mounted.current) return;
+        assertSession(session);
+        await Sharing.shareAsync(uri, { mimeType: 'application/zip', dialogTitle: 'CareKosh offline voice licences' });
+      }).catch(() => { if (current === turn.current) setError('Licence export unavailable. The notices are also included in the Android APK.'); });
+    }}
     update={next => { void update(next); }} enableMicrophone={() => { void enableMicrophone(); }}
     openAssistant={openAssistant}
     manageModel={() => Alert.alert(model.ready ? 'Remove speech pack?' : 'Download English speech pack?', model.ready
@@ -531,16 +582,23 @@ export default function AssistantExperience({ embedded = false, active = true, s
       if (CLOUD_TEXT_ENABLED || CLOUD_TRANSCRIPTION_ENABLED || CLOUD_VOICE_ENABLED) void assistant.capabilities(session).then(value => { assertSession(session); if (mounted.current) setCaps(value); }).catch(() => { if (mounted.current) setError('Online understanding could not be checked. Basic commands remain available.'); });
       if (!offlineSupported) { setModelChecked(true); return; }
       void offlineVoice.status().then(value => { if (mounted.current) setModel(value); }).catch(() => { if (mounted.current) setError('Speech pack check failed. Please retry.'); }).finally(() => { if (mounted.current) setModelChecked(true); });
+      if (pocketVoiceSupported) { setAlbaChecked(false); void pocketVoice.status().then(value => { if (mounted.current) setAlba(value); }).catch(() => { if (mounted.current) setAlba(value => ({ ...value, ready: false })); }).finally(() => { if (mounted.current) setAlbaChecked(true); }); }
       void offlineVoice.deviceStatus().then(value => { if (mounted.current) setDeviceVoice(value); }).catch(() => { if (mounted.current) setDeviceVoice({ ready: false, name: 'No offline voice available' }); });
     }}
-    cloudControls={(CLOUD_TEXT_ENABLED || CLOUD_TRANSCRIPTION_ENABLED || CLOUD_VOICE_ENABLED) && <View style={[styles.card, { backgroundColor: colors.bgCard }]}>
-      <Text style={[styles.label, textStyle]}>Understand more wording · optional</Text>
+    understandingReady={caps.interpret && prefs.cloud && caps.scopes.includes('groq_text')}
+    cloudControls={CLOUD_TEXT_ENABLED && <>
+      <Text style={[styles.label, textStyle]}>Groq online understanding</Text>
       <Text style={[styles.body, textStyle]}>Groq helps interpret natural wording after Send. Internet and your consent are required. Stock changes and order saving remain unavailable by voice.</Text>
       <Text accessibilityLiveRegion="polite" style={[styles.body, textStyle]}>{!caps.interpret ? 'Online understanding is unavailable. Basic commands still work. Recheck below after the service is configured.' : prefs.cloud && caps.scopes.includes('groq_text') ? 'Online understanding is on. Familiar commands still work locally.' : 'Available — off until you choose to enable it.'}</Text>
       {CLOUD_TEXT_ENABLED && button('Enable Groq understanding', () => chooseCloud('groq_text', { ...prefs, cloud: true }), locked || !caps.interpret || (prefs.cloud && caps.scopes.includes('groq_text')))}
+      <Text style={[styles.caption, { color: colors.textSecondary }]}>Supports natural wording for current inventory and local drafts, including named quantities plus low/out-of-stock items. It cannot answer every possible request. Review the resulting items and quantities.</Text>
+      {button('Withdraw all cloud consent', () => { void revokeCloud(); }, locked)}
+      <Text style={[styles.caption, { color: colors.textSecondary }]}>Withdrawal turns off online understanding and online listening. Your downloaded offline voices stay available.</Text>
+    </>}
+    listeningControls={(CLOUD_TRANSCRIPTION_ENABLED || CLOUD_VOICE_ENABLED) && <>
       {CLOUD_TRANSCRIPTION_ENABLED && <>
-        <Text style={[styles.label, textStyle]}>Choose how speech becomes text</Text>
-        <Text style={[styles.body, textStyle]}>The downloaded Moonshine pack supplies live words locally. Offline mode also uses it for the final transcript. Optional Groq Whisper uploads the finished recording for final transcription. Review names and numbers before Send.</Text>
+        <Text style={[styles.label, textStyle]}>Optional online listening</Text>
+        <Text style={[styles.body, textStyle]}>Groq Whisper uploads the finished recording for its final transcript. This is separate from understanding a request. Check item names and numbers before Send.</Text>
         <Text accessibilityLiveRegion="polite" style={[styles.body, textStyle]}>{prefs.inputProvider === 'groq' && prefs.audioOptIn ? 'Selected: Groq online listening · recording upload enabled by your consent.' : 'Selected: Offline listening · recordings stay on this phone.'}</Text>
         {button('Use offline listening', () => { void update({ ...prefs, inputProvider: 'offline', audioOptIn: false }); }, locked || prefs.inputProvider === 'offline')}
         {button('Enable Groq online listening', () => chooseCloud('groq_audio', { ...prefs, inputProvider: 'groq', audioOptIn: true }), locked || !caps.transcription_providers.includes('groq') || (prefs.audioOptIn && prefs.inputProvider === 'groq' && caps.scopes.includes('groq_audio')))}
@@ -551,8 +609,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
       {button('Kokoro speech', () => chooseCloud('kokoro_speech', { ...prefs, speechProvider: 'kokoro' }), locked || !caps.speech_providers.includes('kokoro'))}
       {button('Sarvam speech', () => chooseCloud('sarvam_speech', { ...prefs, speechProvider: 'sarvam' }), locked || !caps.speech_providers.includes('sarvam'))}
       </>}
-      {button('Withdraw all cloud consent', () => { void revokeCloud(); }, locked)}
-    </View>}
+    </>}
   />;
 
   if (settingsOpen) return <SafeAreaView style={[styles.screen, { backgroundColor: colors.bgPrimary }]}>
@@ -630,7 +687,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const footer = answer && <View style={[styles.answerFooter, { borderColor: colors.borderPrimary, backgroundColor: colors.bgPrimary }]}>
     {!!draftRows && !proposalChoice && <VoiceButton label="Review unsaved order draft" onPress={() => { cancel(); setAnswer(null); router.navigate('/order/create'); }} disabled={locked} />}
     <View style={[styles.row, { flexWrap: 'wrap', gap: 8 }]}>
-      {speaking ? answerAction('stop', 'Cancel / stop speech', () => { cancel(); setKeptOpen(true); }) : answerAction('volume-medium-outline', 'Hear answer', () => { setKeptOpen(true); const abort = new AbortController(); controller.current = abort; void playAnswer(answer, turn.current, abort.signal, true); }, locked || !deviceVoice.ready)}
+      {speaking ? answerAction('stop', 'Cancel / stop speech', () => { cancel(); setKeptOpen(true); }) : answerAction('volume-medium-outline', 'Hear answer', () => { setKeptOpen(true); const abort = new AbortController(); controller.current = abort; void playAnswer(answer, turn.current, abort.signal, true); }, locked || !(prefs.speechProvider === 'pocket' ? alba.ready : deviceVoice.ready))}
       {!draftRows && answerAction('refresh-outline', 'Refresh answer', () => { void ask(answeredQuestion.current, pendingIntent.current, true); }, locked || pendingIntent.current?.intent === 'inventory_export')}
       {!!previousQuery.current && !draftRows && answerAction('download-outline', 'Export inventory report', () => { void ask('Export this inventory list as PDF', specification('inventory_export')); }, locked)}
       <View style={{ flex: 1, minWidth: 120 }}><VoiceButton label="Ask another question" secondary onPress={() => { cancel(); setAnswer(null); setQuestion(''); setError(''); setReviewOpen(false); }} /></View>

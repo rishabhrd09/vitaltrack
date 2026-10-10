@@ -32,6 +32,9 @@ class CareKoshVoiceModule : Module() {
         get() = requireNotNull(appContext.reactContext) { "Voice context unavailable" }
 
     private val pack by lazy { ModelPack(context) }
+    private val pocketPack by lazy { PocketPack(context) }
+    private val playback = lazy { PocketPlayback(context) }
+    private val pocketPlayback by playback
 
     private fun work(promise: Promise, cancellable: Boolean = true, task: (() -> Unit) -> Any?) {
         val expected = generation.get()
@@ -58,6 +61,8 @@ class CareKoshVoiceModule : Module() {
                         "Offline speech is not available in this build or CPU architecture.",
                         null,
                     )
+                } catch (_: OutOfMemoryError) {
+                    promise.reject("VOICE_MEMORY", "Not enough memory for offline speech. Your answer is still on screen.", null)
                 } catch (e: Exception) {
                     promise.reject("VOICE_OPERATION", e.message ?: "Offline voice unavailable", e)
                 } finally {
@@ -72,6 +77,7 @@ class CareKoshVoiceModule : Module() {
 
     private fun cancel() {
         generation.incrementAndGet()
+        if (playback.isInitialized()) pocketPlayback.stop()
         val previousRecording = recording
         previousRecording?.cancel() // Release the mic promptly; join only on worker.
         main.post {
@@ -176,7 +182,68 @@ class CareKoshVoiceModule : Module() {
 
     override fun definition() = ModuleDefinition {
         Name("CareKoshVoice")
-        Events("modelDownloadProgress", "liveTranscript")
+        Events("modelDownloadProgress", "liveTranscript", "pocketDownloadProgress")
+
+        AsyncFunction("pocketVoiceStatus") { promise: Promise ->
+            work(promise, cancellable = false) { check ->
+                val supported = android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" || it == "x86_64" }
+                mapOf("supported" to supported, "ready" to (supported && pocketPack.ready(check)),
+                    "bytes" to pocketPack.bytes, "name" to "Alba · Pocket TTS · English")
+            }
+        }
+        AsyncFunction("downloadPocketVoice") { promise: Promise ->
+            work(promise) { check ->
+                require(android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" || it == "x86_64" }) { "Alba needs a 64-bit Android device" }
+                transcriber?.close(); transcriber = null
+                var lastEvent = 0L
+                pocketPack.install(check) { done, total ->
+                    val now = System.nanoTime()
+                    if (now - lastEvent > 250_000_000 || done == total) {
+                        lastEvent = now
+                        sendEvent("pocketDownloadProgress", mapOf("downloaded" to done, "total" to total))
+                    }
+                }
+                mapOf("ready" to true, "supported" to true, "bytes" to pocketPack.bytes, "name" to "Alba · Pocket TTS · English")
+            }
+        }
+        AsyncFunction("removePocketVoice") { promise: Promise ->
+            work(promise) { _ -> pocketPack.remove(); null }
+        }
+        AsyncFunction("speakPocket") { text: String, pace: Double, promise: Promise ->
+            work(promise) { check ->
+                require(text.isNotBlank() && text.length <= 640 && pace in 0.85..1.1)
+                require(pocketPack.ready(check)) { "Download Alba in Voice setup first" }
+                // Free recognition memory before starting synthesis; microphone and speech never overlap.
+                transcriber?.close(); transcriber = null
+                val deadline = System.nanoTime() + 180_000_000_000L
+                val boundedCheck = { check(); kotlin.check(System.nanoTime() < deadline) { "Alba took too long. Your answer is still on screen" } }
+                PocketSynthesizer(pocketPack.root, boundedCheck).use { voice ->
+                    voice.initialize()
+                    val audio = voice.synthesize(text, "alba").audio
+                    boundedCheck()
+                    pocketPlayback.play(audio, pace.toFloat(), boundedCheck)
+                }
+                null
+            }
+        }
+        AsyncFunction("pocketLicenceArchive") { promise: Promise ->
+            work(promise) { check ->
+                val file = java.io.File(context.cacheDir, "carekosh-pocket-licences.zip")
+                java.util.zip.ZipOutputStream(file.outputStream().buffered()).use { zip ->
+                    for (name in requireNotNull(context.assets.list("pocket-licences"))) {
+                        check()
+                        require(name.matches(Regex("[A-Za-z0-9_.-]+")))
+                        zip.putNextEntry(java.util.zip.ZipEntry(name.removeSuffix(".gz")))
+                        context.assets.open("pocket-licences/$name").use { input ->
+                            if (name.endsWith(".gz")) java.util.zip.GZIPInputStream(input).use { it.copyTo(zip) }
+                            else input.copyTo(zip)
+                        }
+                        zip.closeEntry()
+                    }
+                }
+                android.net.Uri.fromFile(file).toString()
+            }
+        }
 
         AsyncFunction("prepareCapture") { id: String, preview: Boolean, promise: Promise ->
             work(promise) { check ->

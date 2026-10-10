@@ -24,7 +24,7 @@ function load(file, dependencies = {}) {
 const host = name => function Host({ children, ...props }) { return React.createElement(name, props, children); };
 const VoiceButton = ({ label, onPress, disabled }) => React.createElement('Button', { label, onPress, disabled }, label);
 
-async function harness({ ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false } = {}) {
+async function harness({ inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketDownloadWait, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false } = {}) {
   const calls = { navigation: [], stock: 0, transcribe: 0, stop: 0, record: 0, permission: 0, interpret: [], consent: [], cloudAudio: 0 };
   const listeners = new Set();
   const lifecycle = state => { for (const listener of [...listeners]) listener(state); };
@@ -34,7 +34,7 @@ async function harness({ ready = true, permission = true, canAskAgain = false, m
   let pendingAlert;
   const unavailable = { interpret: false, scopes: [], consented: false, transcription_providers: [], speech_providers: [] };
   let scopes = [...(cloudConsented ? ['groq_text'] : []), ...(audioConsented ? ['groq_audio'] : [])];
-  const prefs = { enabled: true, microphone: true, spokenReplies: false, audioOptIn: onlineListening, inputProvider: onlineListening ? 'groq' : 'offline', speechProvider: 'device', cloud: cloudConsented };
+  const prefs = { enabled: true, microphone: true, spokenReplies, audioOptIn: onlineListening, inputProvider: onlineListening ? 'groq' : 'offline', speechProvider: selectedPocket ? 'pocket' : 'device', cloud: cloudConsented };
   const recorder = { uri: 'file:///cache/test.m4a', isRecording: false,
     prepareToRecordAsync: async () => {}, record() { this.isRecording = true; calls.record++; },
     async stop() { this.isRecording = false; calls.stop++; },
@@ -67,7 +67,7 @@ async function harness({ ready = true, permission = true, canAskAgain = false, m
     'expo-audio': { RecordingPresets: { HIGH_QUALITY: {} }, AudioModule: { getRecordingPermissionsAsync: async () => ({ granted: permissionAlreadyGranted, canAskAgain: permissionMayAskInitially }), requestRecordingPermissionsAsync: async () => { calls.permission++; if (permissionBackground) { appState.currentState = 'background'; lifecycle('background'); await Promise.resolve(); if (!permissionReturnsInBackground) { appState.currentState = 'active'; lifecycle('active'); } } if (permissionWait) await permissionWait; return { granted: permission, canAskAgain }; } },
       setAudioModeAsync: async () => {}, useAudioRecorder: (_, cb) => { nativeEvent = cb; return recorder; },
       useAudioRecorderState: () => ({ durationMillis: 1000, metering: -20 }), useAudioPlayer: () => player, useAudioPlayerStatus: () => ({}) },
-    'expo-file-system/legacy': {}, '@/store/useAuthStore': { useAuthStore: auth }, '@/theme/ThemeContext': { useTheme: () => ({ colors }) },
+    'expo-file-system/legacy': {}, 'expo-sharing': { isAvailableAsync: async () => true, shareAsync: async () => {} }, '@/store/useAuthStore': { useAuthStore: auth }, '@/theme/ThemeContext': { useTheme: () => ({ colors }) },
     '@/services/assistantSession': sessionTools,
     '@/services/assistant': { unavailable,
       capabilities: async () => { if (++capabilityCalls === 1 && firstCapabilityFailure) throw new Error('Cold start'); return { ...unavailable, interpret: cloudAvailable, interpret_contracts: cloudV2Response ? [1,2] : [1], scopes, consented: scopes.length > 0, transcription_providers: cloudAvailable ? ['groq'] : [] }; },
@@ -80,17 +80,22 @@ async function harness({ ready = true, permission = true, canAskAgain = false, m
     '@/features/assistant/contracts': contracts, '@/features/assistant/queries': queries, '@/features/assistant/drafts': drafts,
     '@/components/assistant/AnswerList': table, '@/components/assistant/AssistantDock': dock, '@/components/assistant/AssistantLayer': layer, '@/utils/inventoryPdfExport': { exportInventoryPdf: async () => { calls.inventoryPdf = (calls.inventoryPdf || 0) + 1; return { shared: true }; } },
     '@/features/assistant/preferences': { defaults: { ...prefs, enabled: false }, loadPreferences: async () => ({ ...prefs }), savePreferences: async (_, next) => Object.assign(prefs, next) },
-    '@/features/assistant/snapshot': { cachedItemNames: () => [inventoryName], categorySnapshot: async () => [], inventorySnapshot: async () => { calls.stock++; return { items: [{ id: 'g', name: inventoryName, quantity: 18, minimumStock: 5, unit: 'pairs', isActive: true }], timestamp: Date.now(), stale: false }; } },
+    '@/features/assistant/snapshot': { cachedItemNames: () => inventoryItems ? inventoryItems.filter(i=>i.isActive).map(i=>i.name) : [inventoryName], categorySnapshot: async () => [], inventorySnapshot: async () => { calls.stock++; return { items: inventoryItems || [{ id: 'g', name: inventoryName, quantity: 18, minimumStock: 5, unit: 'pairs', isActive: true }], timestamp: Date.now(), stale: false }; } },
     '@/features/assistant/audioFiles': { rememberAudio: async () => { if (rememberBackground) { appState.currentState = 'background'; lifecycle('background'); } }, discardAudio: async () => {} },
     '@/features/assistant/capture': load('features/assistant/capture.ts'),
-    '@/features/assistant/offlineVoice': { offlineSupported: true, liveCaptureSupported: liveCapture, createLiveRecorder: () => Object.assign(recorder, { configure() {}, subscribe(listener) { liveListener = listener; return { remove() { liveListener = null; } }; } }), offlineVoice: { status: async () => ({ ready, bytes: 100 }),
+    '@/features/assistant/offlineVoice': { pocketVoiceSupported: pocketBuild, pocketVoice: {
+      status: async () => ({ ready: pocketReady, supported: pocketBuild, bytes: 208767942, name: 'Alba' }),
+      download: async () => { calls.pocketDownloads = (calls.pocketDownloads || 0) + 1; if (pocketDownloadWait) await pocketDownloadWait; pocketReady = true; },
+      remove: async () => { pocketReady = false; }, progress: () => ({ remove() {} }), licences: async () => 'file:///licences.zip',
+      speak: async (text, pace) => { (calls.pocketSpeech ||= []).push({ text, pace }); if (pocketSpeech) await pocketSpeech(); },
+    }, offlineSupported: true, liveCaptureSupported: liveCapture, createLiveRecorder: () => Object.assign(recorder, { configure() {}, subscribe(listener) { liveListener = listener; return { remove() { liveListener = null; } }; } }), offlineVoice: { status: async () => ({ ready, bytes: 100 }),
       download: async () => { ready = true; }, remove: async () => { ready = false; }, deviceStatus: async () => ({ ready: deviceReady, name: 'English' }), progress: () => ({ remove() {} }), cancel() {},
       transcribe: async () => { calls.transcribe++; return { transcript }; }, speak: async () => {} } },
     '@/features/assistant/policy': load('features/assistant/policy.ts'), '@/features/assistant/readiness': load('features/assistant/readiness.ts'),
     '@/components/assistant/VoiceSetup': mode ? load('components/assistant/VoiceSetup.tsx', {
       react: React, 'react/jsx-runtime': require('react/jsx-runtime'), 'react-native': rn,
       '@expo/vector-icons': { Ionicons: host('Icon') }, '@/theme/ThemeContext': { useTheme: () => ({ colors }) },
-      '@/features/assistant/core': core, '@/features/assistant/notices': { offlineSpeechNotice: 'Offline model licence' },
+      '@/features/assistant/core': core, '@/features/assistant/notices': { offlineSpeechNotice: 'Offline model licence', pocketSpeechNotice: 'Pocket model licence' },
     }) : { default: host('VoiceSetup'), VoiceButton },
   }).default;
   let tree;
@@ -519,7 +524,7 @@ test('voice cannot overwrite a manual draft without the merge/replace review cho
 });
 
 test('voice order commitment is refused and does not even fetch inventory', async () => {
-  for (const transcript of ['Confirm', 'Save my order', 'Export my order']) {
+  for (const transcript of ['Confirm', 'Save my order', 'Export my order', 'Prepare an order for 20 pairs of hand gloves and save it', 'Prepare a draft for 20 pairs of hand gloves and persist it']) {
     const h = await harness({ transcript, cloudAvailable:true, cloudConsented:true });
     try {
       await h.press('Start voice recording'); await h.press('Stop recording and review transcript'); await h.press('Send question');
@@ -632,4 +637,152 @@ test('first answer to another query repeatedly releases the answer layer and mic
     assert.equal(h.calls.permission, 0, 'granted permission must not open a permission activity');
     assert.deepEqual(h.calls.navigation, [], 'the complete loop stays on the same screen');
   } finally { await h.dispose(); }
+});
+
+
+test('Alba download is explicitly confirmed, selects the local voice and preserves the microphone', async () => {
+  const h = await harness({ mode: 'settings', pocketBuild: true, deviceReady: false });
+  try {
+    assert.equal(h.find('Preview voice').props.disabled, true);
+    await h.press('Download Alba voice pack');
+    assert.equal(h.calls.pocketDownloads || 0, 0);
+    await h.confirm();
+    assert.equal(h.calls.pocketDownloads, 1);
+    assert.equal(h.prefs.speechProvider, 'pocket');
+    assert.equal(h.prefs.spokenReplies, false);
+    assert.equal(h.prefs.microphone, true);
+    await h.toggle('Read answers aloud', true);
+    await h.press('Relaxed pace');
+    await h.press('Preview voice');
+    assert.equal(h.calls.pocketSpeech.length, 1);
+    assert.equal(h.calls.pocketSpeech[0].pace, 0.9);
+    assert.equal(h.calls.cloudAudio, 0);
+    assert.equal(h.calls.stock, 0);
+    await h.press('Remove Alba voice pack'); await h.confirm();
+    assert.equal(h.prefs.spokenReplies, false);
+    assert.equal(h.prefs.speechProvider, 'pocket', 'removal never silently selects another provider');
+    assert.equal(h.prefs.microphone, true);
+  } finally { await h.dispose(); }
+});
+
+test('an old APK keeps its device voice and offers no unsupported Alba action', async () => {
+  const h = await harness({ mode: 'settings' });
+  try {
+    assert.equal(h.find('Download Alba voice pack').props.disabled, true);
+    assert.equal(h.find('Use Alba voice').props.disabled, true);
+    assert.equal(h.find('Preview voice').props.disabled, false);
+    assert.equal(h.prefs.speechProvider, 'device');
+  } finally { await h.dispose(); }
+});
+
+test('Alba generation failure keeps the verified answer and never falls back to cloud speech', async () => {
+  const h = await harness({ embedded: false, pocketBuild: true, pocketReady: true, selectedPocket: true, spokenReplies: true,
+    pocketSpeech: async () => { throw new Error('Simulated audio failure'); } });
+  try {
+    await h.typeQuestion('How many hand gloves are left?'); await h.press('Show answer');
+    assert.ok(h.tree.root.findAllByType('Text').some(n => n.children.join('').includes('18 pairs remaining')));
+    assert.equal(h.calls.pocketSpeech.length, 1);
+    assert.equal(h.calls.cloudAudio, 0);
+    assert.equal(h.calls.stock, 1);
+  } finally { await h.dispose(); }
+});
+
+
+test('cloud withdrawal preserves explicitly selected offline Alba', async () => {
+  const h = await harness({ mode: 'settings', pocketBuild: true, pocketReady: true, selectedPocket: true,
+    spokenReplies: true, cloudAvailable: true, cloudConsented: true, onlineListening: true, audioConsented: true });
+  try {
+    await h.press('Withdraw all cloud consent');
+    assert.equal(h.prefs.cloud, false); assert.equal(h.prefs.audioOptIn, false);
+    assert.equal(h.prefs.inputProvider, 'offline'); assert.equal(h.prefs.speechProvider, 'pocket');
+    assert.equal(h.prefs.spokenReplies, true); assert.deepEqual(h.calls.consent.at(-1), []);
+    assert.equal(h.calls.cloudAudio, 0);
+  } finally { await h.dispose(); }
+});
+
+test('Hear answer uses Alba even when no Android device voice is installed', async () => {
+  const h = await harness({ embedded: false, pocketBuild: true, pocketReady: true, selectedPocket: true, deviceReady: false });
+  try {
+    await h.typeQuestion('How many hand gloves are left?'); await h.press('Show answer');
+    assert.equal(h.calls.pocketSpeech?.length || 0, 0);
+    await h.press('Hear answer');
+    assert.equal(h.calls.pocketSpeech.length, 1);
+    assert.equal(h.calls.cloudAudio, 0); assert.equal(h.calls.stock, 1);
+  } finally { await h.dispose(); }
+});
+
+const mixedInventory = [
+  { id:'a', name:'Ambu Bag', quantity:1, minimumStock:5, unit:'unit', isActive:true, version:2 },
+  { id:'g', name:'Hand gloves', quantity:2, minimumStock:5, unit:'pairs', isActive:true, version:3 },
+  { id:'m', name:'Masks', quantity:0, minimumStock:4, unit:'boxes', isActive:true, version:1 },
+  { id:'s', name:'Saline', quantity:10, minimumStock:5, unit:'bottles', isActive:true, version:1 },
+  { id:'d', name:'Old item', quantity:0, minimumStock:5, unit:'pieces', isActive:false, version:1 },
+];
+const mixedCommand = 'Create a saved order draft for the following items: first is two units of Ambu bag, and second is all the items which are low in stock or out of stock, create a saved order draft.';
+for (const typed of [false,true]) test(`mixed ${typed ? 'typed' : 'reviewed spoken'} request produces one unsaved draft with both stock groups`, async () => {
+  const h=await harness({embedded:!typed,transcript:mixedCommand,inventoryItems:mixedInventory});
+  try {
+    if (typed) await h.typeQuestion(mixedCommand);
+    else { await h.press('Start voice recording'); await h.press('Stop recording and review transcript'); }
+    assert.equal(h.calls.stock,0); assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()),null);
+    await h.press(typed ? 'Show answer' : 'Send question');
+    const draft=h.drafts.getDraft(h.sessionTools.captureSession());
+    assert.deepEqual(JSON.parse(JSON.stringify(draft.rows.map(r=>[r.item.id,r.quantity,r.source]))),[['a',2,'spoken'],['g',3,'suggested'],['m',4,'suggested']]);
+    assert.equal(draft.attempt,undefined); assert.equal(h.calls.stock,1); assert.equal(h.calls.interpret.length,0);
+    assert.equal(h.calls.inventoryPdf || 0,0); assert.deepEqual(h.calls.navigation,[]);
+    assert.ok(h.tree.root.findAllByType('Text').some(n=>n.children.join('').includes('Nothing has been saved')));
+    await h.press('Review unsaved order draft'); assert.deepEqual(h.calls.navigation,[['navigate','/order/create']]);
+    assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()).attempt,undefined);
+  } finally { await h.dispose(); }
+});
+
+test('consented unfamiliar mixed draft uses the complete specification and retains explicit quantity',async()=>{
+  const transcript='Could you put together a draft with Ambu bag: I need two units; include anything running low and anything out of stock';
+  const cloudV2Response={version:2,intent:'draft_order',draft_mode:'new',query:null,lines:[{operation:'set',item_query:'Ambu bag',quantity:2,unit:'units'}],include_low:true,include_out:true};
+  const h=await harness({transcript,inventoryItems:mixedInventory,cloudAvailable:true,cloudConsented:true,cloudV2Response});
+  try {
+    await h.press('Start voice recording'); await h.press('Stop recording and review transcript');
+    assert.equal(h.calls.interpret.length,0); await h.press('Send question');
+    assert.deepEqual(h.calls.interpret,[transcript]); assert.equal(h.calls.stock,1);
+    const draft=h.drafts.getDraft(h.sessionTools.captureSession());
+    assert.deepEqual(JSON.parse(JSON.stringify(draft.rows.map(r=>[r.item.id,r.quantity]))),[['a',2],['g',3],['m',4]]);
+    assert.equal(draft.attempt,undefined); assert.equal(h.calls.cloudAudio,0);
+  } finally { await h.dispose(); }
+});
+
+test('unresolved mixed draft cannot omit a named line or replace an existing draft',async()=>{
+  const h=await harness({transcript:mixedCommand,inventoryItems:mixedInventory.filter(i=>i.id!=='a')});
+  try {
+    h.drafts.writeDraft(h.sessionTools.captureSession(),[{item:mixedInventory[1],quantity:7,source:'manual'}]);
+    await h.press('Start voice recording'); await h.press('Stop recording and review transcript'); await h.press('Send question');
+    const draft=h.drafts.getDraft(h.sessionTools.captureSession());
+    assert.equal(draft.rows.length,1); assert.equal(draft.rows[0].quantity,7); assert.equal(draft.attempt,undefined);
+    assert.ok(h.tree.root.findAllByType('Text').some(n=>n.children.join('').includes('No draft changes were made')));
+  } finally { await h.dispose(); }
+});
+
+test('voice setup follows listening, understanding and reply stages with distinct controls',async()=>{
+  const h=await harness({mode:'settings',cloudAvailable:true,pocketBuild:true,pocketReady:true,selectedPocket:true});
+  try {
+    const headings=h.tree.root.findAll(n=>n.type==='Text' && n.props.accessibilityRole==='header').map(n=>n.children.join(''));
+    assert.deepEqual(headings,['Tap to talk','Listening · speech to text','Understanding · text to task','Spoken replies']);
+    await h.press('Relaxed pace'); assert.equal(h.prefs.speechPace,0.9);
+    assert.equal(h.prefs.cloud,false); assert.equal(h.prefs.audioOptIn,false);
+    await h.press('Enable Groq understanding'); await h.confirm();
+    assert.equal(h.prefs.cloud,true); assert.equal(h.prefs.inputProvider,'offline'); assert.equal(h.prefs.speechProvider,'pocket');
+  } finally { await h.dispose(); }
+});
+
+test('cancelled Alba download cannot change voice preferences when its promise settles late', async () => {
+  let finish;
+  const pocketDownloadWait = new Promise(resolve => { finish = resolve; });
+  const h = await harness({ mode: 'settings', pocketBuild: true, pocketDownloadWait });
+  try {
+    await h.press('Download Alba voice pack'); await h.confirm();
+    assert.equal(h.calls.pocketDownloads, 1);
+    await h.press('Cancel voice download');
+    await act(async () => { finish(); await pocketDownloadWait; });
+    assert.equal(h.prefs.speechProvider, 'device'); assert.equal(h.prefs.microphone, true);
+    assert.equal(h.prefs.spokenReplies, false); assert.equal(h.calls.stock, 0);
+  } finally { finish(); await h.dispose(); }
 });

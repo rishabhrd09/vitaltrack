@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 type ModelStatus = { ready: boolean; bytes: number; model?: string };
 type DeviceVoice = { ready: boolean; name: string };
+export type PocketVoiceStatus = { ready: boolean; supported: boolean; bytes: number; name: string };
 type NativeVoice = {
   modelStatus(): Promise<ModelStatus>;
   downloadModel(): Promise<ModelStatus>;
@@ -10,6 +11,11 @@ type NativeVoice = {
   transcribe(uri: string): Promise<{ transcript: string }>;
   deviceVoiceStatus(): Promise<DeviceVoice>;
   speakOffline(text: string): Promise<void>;
+  pocketVoiceStatus?(): Promise<PocketVoiceStatus>;
+  downloadPocketVoice?(): Promise<PocketVoiceStatus>;
+  removePocketVoice?(): Promise<void>;
+  speakPocket?(text: string, pace: number): Promise<void>;
+  pocketLicenceArchive?(): Promise<string>;
   cancel(): void;
   prepareCapture?(id: string, preview: boolean): Promise<{ uri: string }>;
   startCapture?(id: string): Promise<boolean>;
@@ -19,6 +25,7 @@ type NativeVoice = {
 const native = Platform.OS === 'android' ? requireOptionalNativeModule<NativeVoice>('CareKoshVoice') : null;
 export const offlineSupported = !!native;
 export const liveCaptureSupported = !!native?.prepareCapture && !!native?.startCapture && !!native?.finishCapture;
+export const pocketVoiceSupported = !!native?.pocketVoiceStatus && !!native?.downloadPocketVoice && !!native?.removePocketVoice && !!native?.speakPocket;
 export type LiveWords = { id: string; transcript?: string; finished?: boolean; error?: string; previewError?: boolean };
 let nextTake = 0;
 
@@ -64,4 +71,17 @@ export const offlineVoice = {
   speak: (text: string) => engine().speakOffline(text),
   cancel: () => native?.cancel(),
   progress: (listener: (event: { downloaded: number; total: number }) => void) => native?.addListener('modelDownloadProgress', listener),
+};
+
+function pocketEngine() {
+  if (!pocketVoiceSupported) throw new Error('Alba needs the new Android APK. Update the app to download this voice.');
+  return engine();
+}
+export const pocketVoice = {
+  status: () => pocketEngine().pocketVoiceStatus!(),
+  download: () => pocketEngine().downloadPocketVoice!(),
+  remove: () => pocketEngine().removePocketVoice!(),
+  speak: (text: string, pace = 1) => pocketEngine().speakPocket!(text, pace),
+  licences: () => pocketEngine().pocketLicenceArchive!(),
+  progress: (listener: (event: { downloaded: number; total: number }) => void) => pocketVoiceSupported ? native?.addListener('pocketDownloadProgress', listener) : undefined,
 };

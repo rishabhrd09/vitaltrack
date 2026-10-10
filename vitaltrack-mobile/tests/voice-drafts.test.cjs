@@ -67,3 +67,36 @@ test('near-spelling draft names require explicit selection even with one candida
   const selected=h.drafts.prepareDraft(s,items,[],{'hand glovs':choices[0].id});
   assert.equal(selected[0].quantity,20); assert.equal(selected[0].item.id,choices[0].id);
 });
+
+for (const question of [
+  'Create a saved order draft for two units of Ambu bag and all the items which are low in stock or out of stock',
+  'Create a saved order draft for the following items: first is two units of Ambu bag, and second is all the items which are low in stock or out of stock, create a saved order draft.',
+  'Prepare an order for 2 units of Ambu bag and include everything that is low in stock and out of stock',
+]) test('mixed spoken draft preserves explicit quantities and both stock groups: '+question,()=>{
+  const h=harness();
+  const source=[item('a','Ambu Bag',1,{unit:'unit'}),...items];
+  const before=plain(source);
+  const spec=h.queries.routeLocally(question,source.map(i=>i.name));
+  assert.equal(spec?.intent,'draft_order'); assert.equal(spec.include_low,true); assert.equal(spec.include_out,true);
+  const rows=h.drafts.prepareDraft(spec,source,[]);
+  assert.deepEqual(plain(rows.map(r=>[r.item.id,r.quantity,r.source])),[['a',2,'spoken'],['g',3,'suggested'],['m',5,'suggested']]);
+  assert.deepEqual(plain(source),before); assert.equal(h.drafts.getDraft(h.session),null);
+});
+
+test('mixed draft language cannot drop extra constraints, invent units or authorize saving',()=>{
+  const h=harness();
+  for (const q of [
+    'Create a saved order draft for 2 units of Ambu bag and all low-stock items except masks',
+    'Create a saved order draft for 2 units of Ambu bag and all low-stock items from supplier Good Supplier',
+    'Create a saved order draft for 2 units of Ambu bag and only 3 of the low-stock items',
+    'Create a saved order draft for 2 units of Ambu bag then save the order',
+    'Create a saved order draft for 2 units of Ambu bag and confirm the order',
+    'Create a saved order draft for 2 units of Ambu bag and save it',
+    'Prepare a draft for 2 units of Ambu bag then persist it',
+  ]) {
+    const parsed=h.queries.routeLocally(q,[]);
+    assert.ok(!parsed || ['clarify','unsupported_action'].includes(parsed.intent),q);
+  }
+  const s=h.queries.routeLocally('Create a saved order draft for two boxes of Ambu bag and all low-stock items',[]);
+  assert.throws(()=>h.drafts.prepareDraft(s,[item('a','Ambu Bag',1,{unit:'unit'})],[]),/no conversion/);
+});

@@ -86,6 +86,12 @@ local draft. inventory_export asks for a touch-reviewed inventory PDF only.
 Natural paraphrases such as 'put together', 'make a purchase order draft',
 'I would need ... in an unsaved order' and courteous sentences are allowed.
 The words order/purchase do not make an UNSAVED draft a purchase or a server write.
+When a create/prepare request calls it a 'saved order draft', prepare only a
+LOCAL UNSAVED draft for review; nothing is persisted by this assistant. An actual
+request to save, persist, confirm or send the draft/order remains unsupported.
+Named quantities and stock groups can coexist: keep every explicit line AND
+include_low/include_out. 'Items which are low in stock or out of stock' means
+both groups. Repeating 'create a draft' after a dictated list is the same intent.
 Combine all supported query filters in one specification; do not discard a
 condition. If the schema cannot represent a requested condition/calculation,
 return clarify or unsupported_action instead of answering a simpler question.
@@ -112,6 +118,15 @@ Examples (names/quantities are illustrative, never inventory facts):
 - 'Which items have no supplier recorded?' => inventory_query/missing_supplier.
 - 'Prepare an order for the low-stock and out-of-stock items' => draft_order/new,
   include_low=true, include_out=true, lines=[]. Replenishment is computed locally.
+- 'Create a saved order draft for the following items: first is two units of
+  Ambu bag, and second is all the items which are low in stock or out of stock,
+  create a saved order draft' => draft_order/new, set Ambu bag=2 units,
+  include_low=true, include_out=true. Still LOCAL and UNSAVED, never a save tool.
+- 'Put together a draft with Ambu bag: I need two units; include anything running
+  low and anything out of stock' => draft_order/new, set Ambu bag=2 units,
+  include_low=true, include_out=true. Do not replace explicit quantities with
+  suggested replenishment; that calculation and item resolution happen locally.
+- 'Prepare a draft for gloves and save it' => unsupported_action.
 - 'Set gloves to 20' => clarify (inventory versus draft is ambiguous).
 - 'Draft enough gloves for next month' => unsupported_action (no forecast data).
 """

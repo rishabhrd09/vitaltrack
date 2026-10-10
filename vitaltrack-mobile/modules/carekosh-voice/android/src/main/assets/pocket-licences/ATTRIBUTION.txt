@@ -1,0 +1,25 @@
+CareKosh offline Alba voice
+
+Kyutai Pocket TTS model weights: CC BY 4.0.
+https://huggingface.co/kyutai/pocket-tts-without-voice-cloning
+Alba MacKenna recordings: CC BY 4.0.
+https://huggingface.co/kyutai/tts-voices/tree/main/alba-mackenna
+Model conversion / preset repacking by Daisuke Majima: CC BY 4.0.
+https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT
+Pinned model revision: e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e
+Modifications: float16 LiteRT graphs, exported tokenizer and repacked fixed Alba KV prompt.
+Synthetic assistant speech; no endorsement or identity impersonation is implied.
+
+Original Pocket TTS code: Kyutai (MIT).
+Android host orchestration/tokenizer: Copyright (c) 2026 Daisuke Majima (MIT).
+https://github.com/john-rocky/LiteRT-Models
+Source revision: 310464b5988f59c03de9283c3d7451e51d9f0260
+CareKosh adaptations: private verified download, bounds, cancellation, preset-only
+voice selection, resource cleanup, foreground audio focus/playback.
+
+LiteRT + LiteRT API Android 2.1.6: Apache 2.0 plus third-party notices.
+https://github.com/google-ai-edge/LiteRT
+The SDK's two identical THIRD_PARTY_NOTICE files are included once. They include
+build-tool notices as well as runtime notices; inclusion does not mean every
+listed tool is packaged in the APK. Full text is exported from its compressed
+bundled asset. No Sherpa/eSpeak/Piper phonemizer library is added.

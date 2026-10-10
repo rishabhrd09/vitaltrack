@@ -60,6 +60,11 @@ const numbers: Record<string, number> = { one:1,two:2,three:3,four:4,five:5,six:
 export function spokenNumbers(text: string): string {
   return text.replace(/\b(?:(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[ -](?:one|two|three|four|five|six|seven|eight|nine))?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)\b/g, value => String(value.split(/[ -]/).reduce((n,w) => n + numbers[w],0)));
 }
+// Whole clauses only: a stock-group phrase with an extra supplier, exclusion or
+// limit must go to interpretation/clarification rather than lose that condition.
+const stockGroup = /^(?:(?:include|add) )?(?:(?:all|other|the|everything) )*(?:items? )?(?:(?:which|that) (?:are|is) )?(low(?:[- ]stock| in stock| on stock)?|out[- ]of[- ]stock)(?: (?:or|and) (low(?:[- ]stock| in stock| on stock)?|out[- ]of[- ]stock))?(?: items?)?$/;
+const draftPrefix = '(?:(?:prepare|create|make)(?: an?| my| the)?(?: (?:unsaved|saved))?(?: order)? draft(?: order)?|(?:prepare|create|make)(?: an?| my| the)? order|order)';
+const repeatedDraftRequest = /^(?:prepare|create|make)(?: an?| my| the)?(?: (?:unsaved|saved))?(?: order)? draft(?: order)?$/;
 /** Only fully understood local requests bypass the LLM. Legacy refusals are not a language model. */
 export function routeLocally(text: string, names: readonly string[], hasDraft = false): Intent | Specification | null {
   const legacy = parseLocal(text, names);
@@ -67,7 +72,8 @@ export function routeLocally(text: string, names: readonly string[], hasDraft = 
   const q = normalize(text);
   // Draft editing is local-only; stock edits and commitment are never routed to an action.
   const draft = /\b(?:draft|order)\b/.test(q);
-  if (/\b(?:delete|erase|apply|mark .{0,30}received|receive order|send .{0,50}(?:supplier|order)|save .{0,30}order|confirm .{0,30}order|export .{0,30}order)\b/.test(q) ||
+  if (draft && /\b(?:save|persist|commit|confirm)\b/.test(q) ||
+      /\b(?:delete|erase|apply|mark .{0,30}received|receive order|send .{0,50}(?:supplier|order)|save .{0,30}order|confirm .{0,30}order|export .{0,30}order)\b/.test(q) ||
       /\b(?:update|change|increase|decrease|set)\b.{0,50}\b(?:stock|inventory)\b/.test(q) ||
       !draft && /^(?:(?:please|can you|could you) )*(?:set|add|remove|update|change|increase|decrease)\b/.test(q) ||
       /^(?:yes|confirm|save (?:the |my )?order|export (?:the |my )?order)(?: now)?$/.test(q)) return command('unsupported_action');
@@ -80,22 +86,37 @@ export function routeLocally(text: string, names: readonly string[], hasDraft = 
 }
 /** Conservative local expansion; unfamiliar language can use the opt-in strict cloud contract. */
 export function parseExpanded(text: string, hasDraft = false): Specification | null {
-  let q = normalize(text).replace(/[.!?]+$/, '').replace(/^(?:please |can you |could you )/, '').replace(/ please$/, '');
+  const clean = (value: string) => normalize(value).replace(/[.!?]+$/, '').replace(/^(?:please |can you |could you )/, '').replace(/ please$/, '');
+  let q = clean(text);
   if (!q || q.length > 600) return null;
   if (/\b(?:apply|received|receive|send|supplier order|purchase|delete|inventory update|change stock|stock to|stock by|prescribe|dosage|yesterday|history)\b/.test(q)) return specification('unsupported_action');
   if (/\b(?:not|never|don't|except|instead)\b/.test(q)) return specification('clarify');
   if (/^(?:yes|confirm|save (?:the |my )?order|export (?:the |my )?order)(?: now)?$/.test(q)) return specification('unsupported_action');
   if (/^(?:show|review) (?:my |the )?(?:draft|draft order|order draft)$/.test(q)) return specification('review_draft');
   if (/^(?:export|generate|download) (?:this |the |my )?(?:inventory (?:list|report)|inventory|list)(?: as)?(?: a)? pdf$/.test(q)) return specification('inventory_export');
-  const draft = /^(?:(?:prepare|create|make)(?: an?| my| the)?(?: unsaved)?(?: order)? draft(?: order)?(?: for)?|(?:prepare|create|make)(?: an?| my| the)? order(?: for)?|order) (.+)$/.exec(q);
+  // Keep dictated list boundaries before normalize removes comma punctuation.
+  const draftText = clean(text.replace(/,\s+(?:and )?/gi, ' and '));
+  const draft = new RegExp(`^${draftPrefix}(?: for)? (.+)$`).exec(draftText);
   const editing = /^(?:add|remove|set)\b/.test(q) && /\b(?:draft|order)\b/.test(q) || hasDraft && /^include\b/.test(q);
   if (draft || editing) {
-    q = spokenNumbers(draft ? draft[1] : q.replace(/^include /, ''));
-    const include_low = /\b(?:other |all |the )?low[- ]stock items\b/.test(q);
-    const include_out = /\b(?:everything|all items|items|everything that is|all) (?:that (?:is|are) )?out of stock\b/.test(q) || /out[- ]of[- ]stock items/.test(q);
-    q = q.replace(/(?:and )?(?:include |add )?(?:the )?(?:all |other )?low[- ]stock items/g, '').replace(/(?:and )?(?:include )?(?:everything|all items|items|everything that is|all) (?:that (?:is|are) )?out of stock/g,'').replace(/(?:and )?(?:all |the )?out[- ]of[- ]stock items/g,'').replace(/^(?:for )/, '').trim();
-    const parts = q ? q.split(/\s+and\s+|,\s*/).filter(Boolean) : [];
-    const lines = parts.map(part => {
+    q = spokenNumbers(draft ? draft[1] : draftText.replace(/^include /, ''));
+    q = q.replace(/^(?:the )?following items? /, '').replace(/^for /, '').trim();
+    let include_low = false, include_out = false;
+    const parts = q ? q.split(/\s+and\s+|,\s*(?:and )?/).map(part => part.trim()).filter(Boolean) : [];
+    const itemParts: string[] = [];
+    for (const [index, raw] of parts.entries()) {
+      const part = raw.replace(/^(?:first|second|third|fourth|fifth)(?: item)? (?:is |are )?/, '');
+      // A repeated request at the end of a dictated list is the same local
+      // draft intent. An actual save/confirm clause is never removed here.
+      if (draft && index === parts.length - 1 && repeatedDraftRequest.test(part)) continue;
+      const group = stockGroup.exec(part);
+      if (group) {
+        const states = [group[1], group[2]].filter(Boolean);
+        include_low ||= states.some(state => state.startsWith('low'));
+        include_out ||= states.some(state => state.startsWith('out'));
+      } else itemParts.push(part);
+    }
+    const lines = itemParts.map(part => {
       part = part.replace(/ (?:to|from|in) (?:this |my |the )?(?:order )?draft(?: order)?$/, '');
       let m = /^remove (.+)$/.exec(part);
       if (m) return { operation: 'remove' as const, item_query: m[1], quantity: null, unit: null };

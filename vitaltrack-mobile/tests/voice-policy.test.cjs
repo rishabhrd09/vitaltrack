@@ -84,3 +84,17 @@ test('fresh audio opt-in can restore Groq listening but never cloud speech or Sa
   saved = { ...saved, inputProvider:'sarvam' };
   assert.equal((await preferences.loadPreferences('owner')).inputProvider,'offline');
 });
+
+test('Alba and a validated pace persist with cloud speech disabled, scoped to the owner', async () => {
+  const keys = [];
+  let saved = { speechProvider: 'pocket', speechPace: 0.9, spokenReplies: true };
+  const preferences = load('features/assistant/preferences.ts', {
+    '@react-native-async-storage/async-storage': { getItem: async key => { keys.push(key); return JSON.stringify(saved); } },
+    './policy': load('features/assistant/policy.ts', {}),
+  });
+  assert.equal((await preferences.loadPreferences('owner-a')).speechProvider, 'pocket');
+  assert.equal((await preferences.loadPreferences('owner-b')).speechPace, 0.9);
+  assert.notEqual(keys[0], keys[1]);
+  saved = { speechProvider: 'pocket', speechPace: 99 };
+  assert.equal((await preferences.loadPreferences('owner-a')).speechPace, undefined);
+});

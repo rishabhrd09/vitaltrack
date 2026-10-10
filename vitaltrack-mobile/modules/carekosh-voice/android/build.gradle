@@ -15,8 +15,10 @@ android {
   }
 }
 
-repositories { mavenCentral() }
+repositories { google(); mavenCentral() }
 dependencies {
   // Pin the native runtime and its embedded model catalog together.
   implementation 'ai.moonshine:moonshine-voice:0.1.5'
+  // Separate from Moonshine's ONNX library; no eSpeak/phonemizer runtime.
+  implementation 'com.google.ai.edge.litert:litert:2.1.6'
 }

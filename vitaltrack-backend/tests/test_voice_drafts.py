@@ -9,7 +9,7 @@ from pydantic import SecretStr, ValidationError
 from sqlalchemy import func, select
 
 from app.core.config import settings
-from app.models import Item, Order
+from app.models import ActivityLog, Item, Order
 from app.schemas.ai import Specification
 from app.services import ai_provider
 from tests.conftest import TestSession, create_category, create_item, order_item_payload, register_and_auth
@@ -87,6 +87,57 @@ async def test_interpret_v2_never_writes_inventory_or_orders(client, monkeypatch
         assert (await db.get(Item, item["id"])).quantity == 3
     caps = (await client.get('/api/v1/ai/capabilities', headers=headers)).json()
     assert caps['interpret_contracts'] == [1,2] and caps['order_review_guard'] is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("question", [
+    "Create a saved order draft for the following items: first is two units of Ambu bag, and second is all the items which are low in stock or out of stock, create a saved order draft.",
+    "Could you put together a draft with Ambu bag: I need two units; include anything running low and anything out of stock",
+])
+async def test_mixed_draft_route_validates_provider_then_reads_owned_inventory_without_saving(client, monkeypatch, question):
+    _, headers = await register_and_auth(client)
+    category = await create_category(client, headers)
+    bag = await create_item(client, headers, category_id=category["id"], name="Ambu Bag", quantity=1, unit="unit")
+    gloves = await create_item(client, headers, category_id=category["id"], name="Hand gloves", quantity=2, unit="pairs")
+    masks = await create_item(client, headers, category_id=category["id"], name="Masks", quantity=0, unit="boxes", minimumStock=4)
+    _, foreign = await register_and_auth(client, email="foreign-mixed@test.com")
+    foreign_category = await create_category(client, foreign)
+    await create_item(client, foreign, category_id=foreign_category["id"], name="Foreign item", quantity=0)
+    monkeypatch.setattr(settings, "AI_ENABLED", True)
+    monkeypatch.setattr(settings, "AI_DATA_CONTROLS_REVIEWED", True)
+    monkeypatch.setattr(settings, "GROQ_API_KEY", SecretStr("synthetic-key"))
+    response = spec(lines=[{"operation":"set","item_query":"Ambu bag","quantity":2,"unit":"units"}], include_low=True, include_out=True)
+    calls = []
+
+    async def fake_provider(url, headers, **kwargs):
+        calls.append(url)
+        request = kwargs["json"]
+        assert json.loads(request["messages"][1]["content"]) == {"question":question,"has_previous_item":False}
+        assert "tools" not in request
+        assert request["response_format"]["json_schema"]["strict"] is True
+        return json.dumps({"choices":[{"finish_reason":"stop","message":{"content":json.dumps(response)}}],"usage":{"prompt_tokens":20,"completion_tokens":40}}).encode()
+
+    # Replace external HTTP only. Authentication, consent/quota, schemas and the
+    # actual provider grounding adapter all run against the disposable database.
+    monkeypatch.setattr(ai_provider, "bounded_call", fake_provider)
+    request = {"question":question,"contract_version":2}
+    assert (await client.post('/api/v1/ai/interpret', headers=headers, json=request)).status_code == 403
+    assert calls == []
+    assert (await client.put('/api/v1/ai/consent', headers=headers, json={"version":"voice-2026-10-06","accepted":True,"scopes":["groq_text"]})).status_code == 200
+    async with TestSession() as db:
+        before = tuple([await db.scalar(select(func.count()).select_from(model)) for model in (Item, Order, ActivityLog)])
+    result = await client.post('/api/v1/ai/interpret', headers=headers, json=request)
+    assert result.status_code == 200, result.text
+    assert result.json() == response
+    assert len(calls) == 1
+    stock = await client.get('/api/v1/items?page=1&pageSize=100', headers=headers)
+    assert stock.status_code == 200
+    assert {row["id"] for row in stock.json()["items"]} == {bag["id"],gloves["id"],masks["id"]}
+    assert {row["id"]:row["quantity"] for row in stock.json()["items"]} == {bag["id"]:1,gloves["id"]:2,masks["id"]:0}
+    async with TestSession() as db:
+        after = tuple([await db.scalar(select(func.count()).select_from(model)) for model in (Item, Order, ActivityLog)])
+        assert after == before
+        assert await db.scalar(select(func.count()).select_from(Order)) == 0
 
 
 @pytest.mark.asyncio
