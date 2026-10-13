@@ -1,4 +1,4 @@
-"""Read-only inventory assistant transport. Writes ONLY consent/usage metadata."""
+"""Read-only inventory assistant transport. No inventory/order mutations."""
 
 import asyncio
 import math
@@ -16,10 +16,12 @@ from app.schemas.ai import (
     ConsentRequest,
     Intent,
     InterpretRequest,
+    Plan,
     SpeakRequest,
     Specification,
 )
-from app.services import ai_provider
+from app.services import ai_provider, sarvam_credentials
+from app.services.sarvam_speech import english_voice
 from app.services.ai_guard import (
     AIPrincipal,
     principal,
@@ -48,22 +50,36 @@ async def capabilities(user: Principal):
         except HTTPException:
             return False
 
+    personal = await sarvam_credentials.personal_status(user.user_id)
+    shared_sarvam = enabled("speak", "sarvam")
+    speech_providers = [
+        p
+        for p in ("kokoro", "sarvam", "alba")
+        if enabled("speak", p) or p == "sarvam" and personal["usable"]
+    ]
     return {
         "interpret": enabled("interpret"),
-        "interpret_contracts": [1, 2],
+        "interpret_contracts": [1, 2, 3],
         "order_review_guard": True,
         "transcribe": enabled("transcribe"),
-        "speak": enabled("speak"),
+        "speak": bool(speech_providers),
         "consent_version": CONSENT_VERSION,
         "consented": accepted,
-        "voice": "en_GB-alba-medium",
+        "voice": english_voice()["speaker"]
+        if "sarvam" in speech_providers
+        else "en_GB-alba-medium"
+        if "alba" in speech_providers
+        else "",
         "scopes": scopes,
         "transcription_providers": [
             p for p in ("groq", "sarvam") if enabled("transcribe", p)
         ],
-        "speech_providers": [
-            p for p in ("kokoro", "sarvam", "alba") if enabled("speak", p)
-        ],
+        "speech_providers": speech_providers,
+        "sarvam_application_available": shared_sarvam,
+        "sarvam_personal_key": personal,
+        "sarvam_english_voice": english_voice()
+        if "sarvam" in speech_providers
+        else None,
     }
 
 
@@ -93,15 +109,19 @@ async def consent(body: ConsentRequest, user: Principal):
     }
 
 
-@router.post("/interpret", response_model=Intent | Specification)
+@router.post("/interpret", response_model=Intent | Specification | Plan)
 async def interpret(body: InterpretRequest, user: Principal):
     ticket = await reserve(user.user_id, "interpret")
     success, usage = False, {}
     try:
-        if body.contract_version == 2:
-            result, usage = await ai_provider.interpret(body.question, body.has_previous_item, 2)
+        if body.contract_version in (2, 3):
+            result, usage = await ai_provider.interpret(
+                body.question, body.has_previous_item, body.contract_version
+            )
         else:
-            result, usage = await ai_provider.interpret(body.question, body.has_previous_item)
+            result, usage = await ai_provider.interpret(
+                body.question, body.has_previous_item
+            )
         success = True
         return result
     finally:
@@ -150,14 +170,26 @@ async def transcribe(
 
 @router.post("/speak")
 async def speak(body: SpeakRequest, user: Principal):
-    ticket = await reserve(user.user_id, "speak", provider=body.provider)
+    ticket = await reserve(
+        user.user_id,
+        "speak",
+        provider=body.provider,
+        credential_source=body.credential_source,
+    )
     success = False
     try:
-        audio = (
-            await ai_provider.speak(body.text)
-            if body.provider == "alba"
-            else await ai_provider.selected_speech(body.text, body.provider)
-        )
+        if body.credential_source == "personal":
+            # Re-read after reservation; removed keys cannot silently use the app key.
+            key = await sarvam_credentials.load_key(user.user_id)
+            audio = await ai_provider.selected_speech(
+                body.text, "sarvam", body.pace, api_key=key
+            )
+        elif body.provider == "alba":
+            audio = await ai_provider.speak(body.text)
+        else:
+            audio = await ai_provider.selected_speech(
+                body.text, body.provider, body.pace
+            )
         success = True
         return Response(
             audio, media_type="audio/wav", headers={"Cache-Control": "no-store"}

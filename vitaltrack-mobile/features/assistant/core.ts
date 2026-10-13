@@ -4,7 +4,17 @@ export type IntentName = 'read_item' | 'summary' | 'low_stock' | 'out_of_stock' 
 export type Field = 'quantity' | 'supplier' | 'status';
 export type Intent = { intent: IntentName; item_query: string | null; reference: 'named' | 'previous' | 'none'; fields: Field[] };
 export type Answer = { title: string; text: string; items: Item[]; choices: Item[]; resolvedId?: string; timestamp: number; stale: boolean;
-  statistics?: { label: string; value: number; tone: 'neutral' | 'low' | 'out' }[] };
+  statistics?: { label: string; value: number; tone: 'neutral' | 'low' | 'out' }[];
+  /** The filters as applied, shown so the person can check what was understood. */
+  filters?: string;
+  /** Why each row (by item ID) is in the answer. */
+  reasons?: Record<string, string[]>;
+  excluded?: { name: string; reason: string }[];
+  /** Plain warnings about the data, such as a supplier no active item records. */
+  notes?: string[];
+  /** Non-item choices for a clarification, such as a category or supplier. */
+  options?: { id: string; label: string }[];
+  kind?: 'list' | 'draft' | 'proposal' | 'clarify' };
 export const command = (intent: IntentName): Intent => ({ intent, item_query: null, reference: 'none', fields: [] });
 // Lower-case, unify apostrophes and drop the sentence punctuation that speech transcripts add.
 // Used for questions and item names alike, so exact name matching stays consistent.

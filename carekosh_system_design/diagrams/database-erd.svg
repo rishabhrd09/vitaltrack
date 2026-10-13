@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1388" width="1000" height="1388" role="img" aria-labelledby="database-erd-title database-erd-desc">
-<title id="database-erd-title">The database at migration 0010</title>
-<desc id="database-erd-desc">Eleven application tables. users owns its data directly or through orders; the global counter has no owner. User data uses ON DELETE CASCADE. order_items.item_id and activity_logs.item_id are plain references without foreign keys, so order history survives item deletion. Item and category names are not unique in the database; the API serialises duplicate checks with advisory locks.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1578" width="1000" height="1578" role="img" aria-labelledby="database-erd-title database-erd-desc">
+<title id="database-erd-title">The database at migration 0011</title>
+<desc id="database-erd-desc">Twelve application tables. users owns its data directly or through orders; the global counter has no owner. User data uses ON DELETE CASCADE. order_items.item_id and activity_logs.item_id are plain references without foreign keys, so order history survives item deletion. Item and category names are not unique in the database; the API serialises duplicate checks with advisory locks.</desc>
 <style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
 <defs><pattern id="database-erd-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="database-erd-ah-copy" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#A9680F"/></marker><marker id="database-erd-ah-data" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#A9680F"/></marker></defs>
 <rect width="100%" height="100%" fill="#FBF6EC"/>
 <rect width="100%" height="100%" fill="url(#database-erd-dots)"/>
-<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">The database at migration 0010</text>
-<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Eleven tables. User data cascades directly or through a parent; the daily order counter is global.</text>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">The database at migration 0011</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Twelve tables. User data cascades directly or through a parent; the daily order counter is global.</text>
 <rect x="300.0" y="126.3" width="400.0" height="224.0" rx="12" fill="#EEE2DA" stroke="#7B2C34" stroke-width="1.8"/>
 <path d="M300.0,170.3 H700.0" stroke="#7B2C34" stroke-width="1.2" opacity="0.5"/>
 <text x="316.0" y="156.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="18.5" font-weight="600" fill="#7B2C34" text-anchor="start">users</text>
@@ -103,24 +103,35 @@
 <text x="56.0" y="1142.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">version · accepted</text>
 <text x="56.0" y="1169.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">scopes</text>
 <text x="319.3" y="1169.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">e.g. groq_text</text>
-<rect x="353.3" y="1045.3" width="293.3" height="173.0" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<rect x="353.3" y="1045.3" width="293.3" height="200.0" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
 <path d="M353.3,1089.3 H646.7" stroke="#A9680F" stroke-width="1.2" opacity="0.5"/>
 <text x="369.3" y="1075.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="18.5" font-weight="600" fill="#A9680F" text-anchor="start">ai_usage</text>
 <text x="369.3" y="1115.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">kind · provider · status</text>
-<text x="369.3" y="1142.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">reserved cost</text>
-<text x="632.7" y="1142.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">micro-USD</text>
-<text x="369.3" y="1169.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">token counts</text>
-<text x="369.3" y="1202.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#A9680F" text-anchor="start" font-style="italic">user_id → users, cascade</text>
-<rect x="666.7" y="1045.3" width="293.3" height="143.0" rx="12" fill="#EEE2DA" stroke="#7B2C34" stroke-width="1.8"/>
-<path d="M666.7,1089.3 H960.0" stroke="#7B2C34" stroke-width="1.2" opacity="0.5"/>
-<text x="682.7" y="1075.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="18.5" font-weight="600" fill="#7B2C34" text-anchor="start">order_number_counters</text>
-<text x="682.7" y="1115.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">day</text>
-<text x="946.0" y="1115.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">YYYYMMDD, primary key</text>
-<text x="682.7" y="1142.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">last_value</text>
-<text x="682.7" y="1169.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">no user link</text>
-<text x="946.0" y="1169.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">kept forever</text>
-<rect x="40.0" y="1244.3" width="2.5" height="108.7" fill="#7B2C34"/>
-<text x="58.0" y="1280.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">Order lines cascade through orders; other user data links directly to users. The global counter has no owner. Later legacy localId</text>
-<text x="58.0" y="1305.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">duplicates are index-exempt. Item and category names are not unique in the database; the API checks them under an advisory</text>
-<text x="58.0" y="1331.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">lock.</text>
+<text x="369.3" y="1142.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">credential_source</text>
+<text x="369.3" y="1169.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">reserved cost</text>
+<text x="632.7" y="1169.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">micro-USD</text>
+<text x="369.3" y="1196.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">token counts</text>
+<text x="369.3" y="1229.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#A9680F" text-anchor="start" font-style="italic">user_id → users, cascade</text>
+<rect x="666.7" y="1045.3" width="293.3" height="173.0" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<path d="M666.7,1089.3 H960.0" stroke="#A9680F" stroke-width="1.2" opacity="0.5"/>
+<text x="682.7" y="1075.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="18.5" font-weight="600" fill="#A9680F" text-anchor="start">ai_sarvam_credentials</text>
+<text x="682.7" y="1115.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">user_id</text>
+<text x="946.0" y="1115.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">PK → users, cascade</text>
+<text x="682.7" y="1142.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">ciphertext</text>
+<text x="946.0" y="1142.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">Fernet</text>
+<text x="682.7" y="1169.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">updated_at</text>
+<text x="946.0" y="1169.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">no plaintext key stored</text>
+<text x="682.7" y="1202.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#A9680F" text-anchor="start" font-style="italic">user_id → users, cascade</text>
+<rect x="40.0" y="1265.3" width="293.3" height="143.0" rx="12" fill="#EEE2DA" stroke="#7B2C34" stroke-width="1.8"/>
+<path d="M40.0,1309.3 H333.3" stroke="#7B2C34" stroke-width="1.2" opacity="0.5"/>
+<text x="56.0" y="1295.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="18.5" font-weight="600" fill="#7B2C34" text-anchor="start">order_number_counters</text>
+<text x="56.0" y="1335.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">day</text>
+<text x="319.3" y="1335.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">YYYYMMDD, primary key</text>
+<text x="56.0" y="1362.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">last_value</text>
+<text x="56.0" y="1389.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">no user link</text>
+<text x="319.3" y="1389.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">kept forever</text>
+<rect x="40.0" y="1434.3" width="2.5" height="108.7" fill="#7B2C34"/>
+<text x="58.0" y="1470.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">User data cascades; global order numbers remain.</text>
+<text x="58.0" y="1495.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">Item IDs on order lines are snapshot references.</text>
+<text x="58.0" y="1521.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">Name checks use API locks; legacy duplicate local IDs stay index-exempt.</text>
 </svg>

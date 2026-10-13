@@ -4,7 +4,7 @@
 Diagrams describe code and label unverified deployment assumptions, checked against branch feature/backend-hardening-ai-voice-agent-foundation
 at 03cfebb on 7 October 2026 (see docs/documentation-audit-2026-10-07/SOURCE_OF_TRUTH.md) and re-checked against the
 working tree on 8 October 2026 (FastAPI 0.115.6 request order, name lock on PUT /items, rollback scope, voice gating).
-Voice and system context were refreshed against the 10 October working tree at 078d53c plus local Pocket TTS/Alba changes.
+Voice and system context were refreshed against the 11 October Sarvam narration and paused Alba selection changes.
 
     python3 carekosh_system_design/src/build_diagrams.py               # all diagrams
     python3 carekosh_system_design/src/build_diagrams.py voice-flow    # one diagram
@@ -59,7 +59,7 @@ def system_context() -> Canvas:
             "The Android app talks to one FastAPI service over HTTPS with a bearer token. The service runs in a "
             "Docker container on Render and owns one PostgreSQL database, documented as hosted on Neon (CI and local "
             "use PostgreSQL 16). Default speech recognition runs on the phone with a Moonshine download. Spoken replies use "
-            "optional downloaded Pocket TTS/Alba through LiteRT or selected offline device TTS. Groq, Brevo and Sentry are used only when configured. There is no queue, "
+            "default offline device TTS or separately consented Sarvam English narration via the API. Alba selection is paused. Groq, Sarvam, Brevo and Sentry are used only when configured. There is no queue, "
             "no Redis, no worker service, no offline write queue and no over-the-air app update.")
     y = c.header("CareKosh at a glance",
                  "One phone app, one API service, one PostgreSQL database. Everything else supports them or is optional.")
@@ -72,7 +72,7 @@ def system_context() -> Canvas:
              ("Answers + local drafts", ["Tap-to-talk dock above the tabs", "Editable transcript, explicit Send",
                                         "A local matcher handles familiar wording first"]),
              ("On-device speech", ["AudioRecord WAV; Moonshine\nlive words and offline final\nrecognition",
-                                   "Recognition pack plus optional\nPocket TTS/Alba via LiteRT;\ndevice TTS selectable"])]
+                                   "Device TTS is the default;\nSarvam narration is opt-in;\nAlba selection is paused"])]
     hmax = max(Canvas.measure(cw, t, b) for t, b in cards)
     for i, (t, b) in enumerate(cards):
         c.card(56 + i * (cw + 18), y + 48, cw, t, b, "client", min_h=hmax)
@@ -87,7 +87,7 @@ def system_context() -> Canvas:
     left_w = 560
     api = c.card(56, y + 48, left_w, "FastAPI service · Python 3.12",
                  kv=[("Server", "Gunicorn starts 2 Uvicorn workers"),
-                     ("Routes", "47 operations, 44 of them under /api/v1"),
+                     ("Routes", "50 operations, 47 of them under /api/v1"),
                      ("Data", "business rows scoped to the\nsigned-in user"),
                      ("Start-up", "alembic upgrade head, then Gunicorn")], role="server")
     hw = W - 80 - 32 - left_w - 18
@@ -101,13 +101,14 @@ def system_context() -> Canvas:
     c.arrow([(56 + left_w / 2, y + 4), (56 + left_w / 2, y + 70)], "data", "SQLAlchemy async + asyncpg · TLS",
             label_dx=16, label_anchor="start", label_dy=6, both=True)
     db = c.card(40, y + 74, 600, "PostgreSQL · on Neon (documented)",
-                "11 application tables plus alembic_version.\nThe source of truth; CI and local use PostgreSQL 16.",
+                "12 application tables plus alembic_version.\nThe source of truth; CI and local use PostgreSQL 16.",
                 "data")
     sx = 40 + 600 + 26
     sw = W - 40 - sx
     c.kicker(sx, y + 60, "The API calls, if configured", COLOR["service"], 12.5)
     yy = y + 74
     for t, b in [("Groq", "question interpretation and optional Whisper listening, with separate consent and server AI settings"),
+                 ("Sarvam English", "short answer text to Bulbul; separate consent and server-only key; live audio not yet verified"),
                  ("Brevo email", "verification, reset and deletion links"),
                  ("Sentry", "error reports and sampled traces, if SENTRY_DSN is set")]:
         sc = c.card(sx, yy, sw, t, b, "service", dashed=True, ts=19, bs=16.5, pad=14)
@@ -116,7 +117,7 @@ def system_context() -> Canvas:
     y = max(db.bottom, yy) + 26
     note = c.card(40, y, W - 80, "Not in this system",
                   "No message queue or Redis · no background worker service · no offline write queue on the phone\n"
-                  "no over-the-air app updates · hosted speech off; optional Groq listening needs separate audio opt-in", "note", ts=19)
+                  "no over-the-air app updates · Alba paused; optional Groq audio and Sarvam narration have separate opt-ins", "note", ts=19)
     c.height = note.bottom + 36
     return c
 
@@ -209,19 +210,19 @@ def backend_layers() -> Canvas:
                                             "error handlers: 422 validation · 409 conflict · 500 unexpected"],
                kicker="every request"))
     rtop = y
-    chips = [("auth.py", "18"), ("categories.py", "6"), ("items.py", "8"), ("orders.py", "6"), ("activity.py", "1"), ("ai.py", "5")]
+    chips = [("auth.py", "18"), ("categories.py", "6"), ("items.py", "8"), ("orders.py", "6"), ("activity.py", "1"), ("ai + key vault", "8")]
     ch_w = (mw - 36 - 2 * 12) / 3
     rh = 82 + 2 * 70 + 50
     c.rect(mx, rtop, mw, rh, fill_of("server"), COLOR["server"], 1.8, 12)
     c.kicker(mx + 18, rtop + 29, "app/api/v1", COLOR["server"])
-    c.text(mx + 18, rtop + 58, "Routers (44 routes)", 21, 600, COLOR["server"])
+    c.text(mx + 18, rtop + 58, "Routers (47 routes)", 21, 600, COLOR["server"])
     for i, (name, n) in enumerate(chips):
         cx = mx + 18 + (i % 3) * (ch_w + 12)
         cy = rtop + 76 + (i // 3) * 70
         c.rect(cx, cy, ch_w, 60, "#FBF6EC", COLOR["server"], 1.2, 9)
         c.text(cx + ch_w / 2, cy + 26, name, 15.5, 600, COLOR["server"], MONO, "middle")
         c.text(cx + ch_w / 2, cy + 48, f"{n} route{'s' if n != '1' else ''}", 15.5, 400, INK3, SERIF, "middle", True)
-    c.text(mx + 18, rtop + rh - 18, "app/main.py adds /, /health and /live: 47 in total", 16.5, 400, INK2, SERIF, "start", True)
+    c.text(mx + 18, rtop + rh - 18, "app/main.py adds /, /health and /live: 50 in total", 16.5, 400, INK2, SERIF, "start", True)
     y = rtop + rh + gap
     down(Card(mx, rtop, mw, rh))
     half = (mw - 20) / 2
@@ -236,13 +237,13 @@ def backend_layers() -> Canvas:
     down(Card(mx, y - gap - hh, mw, hh))
     svc = layer("Services and helpers",
                 kv=[("Audit", "audit.py writes before/after rows"), ("Names", "inventory_lock.py: advisory locks"),
-                    ("Assistant", "ai_guard.py (consent, quotas) and ai_provider.py (Groq)"),
+                    ("Assistant", "consent, quotas, Groq/Sarvam; encrypted personal-key vault"),
                     ("Email", "utils/email.py → Brevo"), ("Limits", "utils/rate_limiter.py, best effort")],
                 kicker="app/services · app/utils", kv_label=104)
     down(svc)
     down(layer("Models · app/models", "User, RefreshToken, Category, Item, Order, OrderItem, OrderNumberCounter, "
-                                      "ActivityLog, AuditLog, AIConsent, AIUsage", kicker="SQLAlchemy 2.0, async"))
-    db = layer("PostgreSQL", "11 tables with CHECK, UNIQUE and ON DELETE CASCADE rules. Alembic migrations 0001–0010 "
+                                      "ActivityLog, AuditLog, AIConsent, AIUsage, SarvamCredential", kicker="SQLAlchemy 2.0, async"))
+    db = layer("PostgreSQL", "12 tables with CHECK, UNIQUE and ON DELETE CASCADE rules. Alembic migrations 0001–0011 "
                              "own the schema. Version 16 in CI and local development.", "data", kicker="database")
     c.card(rx, top_y, rw, "app/core",
            kv=[("config", "settings from the environment; unsafe values refused"),
@@ -250,7 +251,7 @@ def backend_layers() -> Canvas:
                ("security", "JWT, Argon2, SHA-256 token digests"),
                ("logging", "tokens removed from logged URLs")], kicker="used by every layer", kv_label=90, bs=17)
     out = c.card(rx, svc.y, rw, "Outbound calls", ["Brevo email, if MAIL_PASSWORD is set",
-                                                   "Groq, with AI_* settings and consent", "Sentry, if SENTRY_DSN is set"],
+                                                   "Groq/Sarvam, with separate flags and consent", "Sentry, if SENTRY_DSN is set"],
                  "service", dashed=True, kicker="httpx · when configured", bs=17)
     c.arrow([(svc.right + 3, svc.y + 60), (out.x - 5, svc.y + 60)], "optional")
     c.height = db.bottom + 36
@@ -432,7 +433,7 @@ def voice_flow() -> Canvas:
             "Only a separate touch confirmation on Create Order saves an order; applying stock remains separate.")
     y = c.header("Inventory answers and unsaved order drafts",
                  "Speech → reviewed text → validated query/draft → verified data. A touch is required to save.")
-    f = Flow(c, [("phone", "On the phone", "client"), ("api", "CareKosh API", "server"), ("groq", "Groq (optional)", "service")],
+    f = Flow(c, [("phone", "On the phone", "client"), ("api", "CareKosh API", "server"), ("groq", "Groq / Sarvam (opt-in)", "service")],
              top=y + 4, widths=[44, 30, 26])
     def step(lane, title, body, **kw):
         # Leave room for the wider offline fallback fonts, not only Newsreader.
@@ -445,19 +446,22 @@ def voice_flow() -> Canvas:
     step("api", "Audio upload", "Optional POST /ai/transcribe only with groq_audio consent, auth, flags and quota. Temporary decoding; normalize to 16 kHz; inventory is not uploaded", num="2a", kind="optional", dashed=True)
     step("groq", "Whisper", "whisper-large-v3: audio to words only. It does not understand an intent or create a draft. Generic vocabulary prompt only", num="2b", kind="optional", dashed=True)
     step("phone", "Review words, then Send", "Offline mode skips the optional audio requests. Delete temporary audio; transcript editable. No interpretation or drafting before Send", num="2c", kind="reply")
-    step("phone", "Local bounded parser", "Legacy reads plus inventory filters and local draft commands. Save/apply/send actions remain unavailable", num="3")
-    step("api", "Interpret", "Optional POST /ai/interpret. Unmatched wording only; consent groq_text, auth, flags and quota. contract_version=2 if supported; text only", num="4", kind="optional", dashed=True)
+    step("phone", "Local bounded parser", "Reads, filters, comparisons, critical, exclusions, sorting, follow-ups and draft commands (contract 3 plans). Save/apply/send actions remain unavailable", num="3")
+    step("api", "Interpret", "Optional POST /ai/interpret. Unmatched reviewed text; groq_text consent, auth, flags and quota. Prefer contract 3; basic legacy requests allowed, detected unsupported conditions blocked", num="4", kind="optional", dashed=True)
     step("groq", "Groq spec", "No tools. openai/gpt-oss-20b default, temperature 0, low reasoning, 25 s deadline. Query/draft JSON only; validation still cannot prove meaning", num="5", kind="optional", dashed=True)
-    step("api", "Validate", "Settle usage. Names, units and number-to-item association checked. Legacy v1 remains supported. Only consent/usage metadata writes", num="6", kind="optional")
-    step("phone", "Verify and resolve data", "Complete inventory owned by this login; pending writes block. Ambiguous names/units require clarification. Offline = last known", num="7", kind="reply")
-    step("phone", "Table or unsaved draft", "Persistent virtualized rows, concise downloaded Pocket TTS/Alba or device TTS, separate brand/supplier. Drafts in session memory; merge/replace/cancel preserves manual work", num="8")
+    step("api", "Validate", "Settle usage. Schema plus lexical checks: numeric signs, names, filters, polarity, AND/OR, exclusions, item-threshold association and context. v1/v2 shapes retained; no business action executed", num="6", kind="optional")
+    step("phone", "Verify and execute", "Complete inventory owned by this login; pending writes block. Deterministic rows: AND groups, union, exclusions, sort, a reason per row. Unclear names ask first. Offline = last known", num="7", kind="reply")
+    step("phone", "Table or unsaved draft", "Persistent virtualized rows, separate brand/supplier. Drafts in session memory; merge/replace/cancel preserves manual work. Device TTS is the default; Alba selection is paused", num="8")
+    step("api", "Optional English narration", "POST /ai/speak: short verified answer text only; sarvam_speech consent, auth, model/voice gates and quota. Microphone settings are unchanged", num="8a", kind="optional", dashed=True)
+    step("groq", "Sarvam Bulbul", "v3/Ritu default; v4 Flash/Aparna after account review. English speech only; key never in mobile. Operator-owned key for pilot; authorised personal keys remain gated. No action selection", num="8b", kind="optional", dashed=True)
+    step("phone", "Play validated WAV", "API decodes and validates mono PCM16, then sends no-store WAV. Fresh Expo player waits for completion; cancellation deletes the clip and blocks late speech", num="8c", kind="reply")
     f.note("VOICE STOPS HERE: no order-save, order-PDF-save, stock/status/apply\n"
            "or supplier-send tool. Saying confirm cannot save.\n"
            "Inventory PDF requires a separate reviewed touch export.", "key")
     step("phone", "Touch to save", "Create Order: Confirm order & export PDF. Require matching backend guard; refresh inventory; re-review changed stock without changing order quantities", num="9", kind="reply")
     step("api", "POST /orders", "Authenticated ownership + expectedVersion under sorted item locks. Stable localId returns the original order on retry. Saving does not increase stock", num="10", kind="reply")
     step("phone", "Export saved response", "Shared local PDF template uses server-returned rows. PDF failure re-exports the same order. Unknown save outcome retains request and ID", num="11", kind="reply")
-    f.note("Leaving or account change blocks late client dispatch/share; it cannot undo a write already sent.\nAlba needs a new APK and 209 MB pack; phone quality/speed and live deployments need acceptance testing.", "lens", after=True)
+    f.note("Leaving or account change blocks late dispatch/playback; it cannot undo a write or billed request already sent.\nSarvam requires staging configuration, encrypted personal/shared billing and a new APK; live English audio and phone sound still need acceptance testing.", "lens", after=True)
     c.height = f.finish() + 30
     return c
 
@@ -560,7 +564,7 @@ def release_pipeline() -> Canvas:
                  "Two separate pipelines. Built is not deployed; deployed is not healthy; healthy is not proof of the commit.")
     f = Flow(c, [("be", "Backend", "server"), ("app", "Android app", "client")], top=y + 4, widths=[55, 45])
     f.step("be", "Pull request to main", "a feature push alone does not trigger this CI workflow", num="1", role="platform")
-    f.step("be", "CI on the pull request", kv=[("Fails run", "Ruff, pytest (242), route gate 44, coverage floors, "
+    f.step("be", "CI on the pull request", kv=[("Fails run", "Ruff, pytest (242), route gate 47, coverage floors, "
                                                            "autolinking, tsc, npm test (121), ESLint"),
                                              ("Advisory", "mypy, Trivy, Expo Doctor: never fail the run")],
            num="2", role="platform", kv_label=92)
@@ -643,13 +647,13 @@ def order_status() -> Canvas:
 
 @diagram("database-erd")
 def database_erd() -> Canvas:
-    c = new("database-erd", "The database at migration 0010",
-            "Eleven application tables. users owns its data directly or through orders; the global counter has no owner. "
+    c = new("database-erd", "The database at migration 0011",
+            "Twelve application tables. users owns its data directly or through orders; the global counter has no owner. "
             "User data uses ON DELETE CASCADE. order_items.item_id and activity_logs.item_id are plain references without "
             "foreign keys, so order history survives item deletion. Item and category names are not unique in the "
             "database; the API serialises duplicate checks with advisory locks.")
-    y = c.header("The database at migration 0010",
-                 "Eleven tables. User data cascades directly or through a parent; the daily order counter is global.")
+    y = c.header("The database at migration 0011",
+                 "Twelve tables. User data cascades directly or through a parent; the daily order counter is global.")
     y += 8
 
     def table(x, yy, w, name, rows, role="data", note=None) -> Card:
@@ -697,21 +701,22 @@ def database_erd() -> Canvas:
            ("activity_logs", [("action", "enum name"), ("item_name · details", ""), ("item_id · order_id", "no FK")]),
            ("audit_log", [("entity_type · entity_id", ""), ("old_values · new_values", "JSONB"), ("no API reads it", "")]),
            ("ai_consents", [("user_id", "PK → users, cascade"), ("version · accepted", ""), ("scopes", "e.g. groq_text")]),
-           ("ai_usage", [("kind · provider · status", ""), ("reserved cost", "micro-USD"), ("token counts", "")]),
+           ("ai_usage", [("kind · provider · status", ""), ("credential_source", ""), ("reserved cost", "micro-USD"), ("token counts", "")]),
+           ("ai_sarvam_credentials", [("user_id", "PK → users, cascade"), ("ciphertext", "Fernet"), ("updated_at", "no plaintext key stored")]),
            ("order_number_counters", [("day", "YYYYMMDD, primary key"), ("last_value", ""), ("no user link", "kept forever")])]
     yy = y4
-    for r in range(2):
+    for r in range((len(row) + 2) // 3):
         hrow = 0
         for i in range(3):
+            if r * 3 + i >= len(row):
+                break
             name, rows = row[r * 3 + i]
             role = "data" if name != "order_number_counters" else "key"
             t = table(40 + i * (tw + 20), yy, tw, name, rows, role,
                       note="user_id → users, cascade" if name not in ("order_number_counters", "ai_consents") else None)
             hrow = max(hrow, t.h)
         yy += hrow + 20
-    n = c.note(40, yy + 6, W - 80, "Order lines cascade through orders; other user data links directly to users. The global counter has no owner. Later legacy localId duplicates are index-exempt. Item "
-                                  "and category names are not unique in the database; the API checks them under an "
-                                  "advisory lock.", "key")
+    n = c.note(40, yy + 6, W - 80, "User data cascades; global order numbers remain.\nItem IDs on order lines are snapshot references.\nName checks use API locks; legacy duplicate local IDs stay index-exempt.", "key")
     c.height = n.bottom + 36
     return c
 
@@ -1064,16 +1069,16 @@ def domains_email() -> Canvas:
 
 @diagram("release-gate")
 def release_gate() -> Canvas:
-    c = new("release-gate", "The release gate for migrations 0007–0010",
-            "Merging the feature branch to main would run migrations 0007 to 0010 at the next container start. 0007 "
+    c = new("release-gate", "The release gate for migrations 0007–0011",
+            "Merging the feature branch to main would run migrations 0007 to 0011 at the next container start. 0011 adds encrypted credentials and usage billing-source metadata. 0007 "
             "cannot be downgraded, and old instances using COUNT-based order numbers must never write beside the new "
             "counter. The gate: control both deploy triggers, test fresh setup and a populated synthetic 0006 upgrade, stage without discarding shared data, back up and rehearse a restore, "
             "block new writes and drain old writers, deploy and verify, re-seed the counter only if writes could not be paused, "
             "check logs, monitor, then re-enable auto-deploy.")
-    y = c.header("The release gate for migrations 0007–0010",
+    y = c.header("The release gate for migrations 0007–0011",
                  "Why a plain merge is unsafe, and the order of steps that makes the release safe.")
     y += 6
-    why = c.note(40, y, W - 80, "A configured trigger can deploy a merge; container start runs 0007–0010. 0007 refuses to "
+    why = c.note(40, y, W - 80, "A configured trigger can deploy a merge; container start runs 0007–0011. 0007 refuses to "
                                "downgrade, so an older image cannot undo it. During a zero-downtime deploy old and new "
                                "instances overlap, and the old COUNT-based order numbers can collide with the new counter.",
                  "risk", "Why a plain merge is unsafe")
@@ -1091,7 +1096,7 @@ def release_gate() -> Canvas:
     f.y = f.top + 54
     f.step("go", "Cut over, writes paused", "block new writes, drain requests, stop old writers; 0010 SHARE-locks "
                                             "orders while it builds its index", num="4", kind="main")
-    f.step("go", "Deploy and verify", "Render's commit; alembic current = 0010_order_local_id_unique; /live and /health", num="5")
+    f.step("go", "Deploy and verify", "Render's commit; alembic current = 0011_sarvam_personal_keys; /live and /health", num="5")
     f.step("go", "Only if writes could not pause", "run the idempotent counter re-seed SQL (safe to repeat)", num="6",
            dashed=True, kind="optional")
     f.prev = None

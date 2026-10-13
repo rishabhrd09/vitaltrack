@@ -9,7 +9,7 @@ Each function below is the *source* of one diagram. Every box and label states a
 fact that was checked against the code on 7 October 2026 (see
 docs/documentation-audit-2026-10-07/SOURCE_OF_TRUTH.md) and re-checked against the
 working tree on 8 October 2026. Voice and system context were refreshed against
-078d53c plus local Pocket TTS output changes on 10 October 2026. Diagrams illustrate those
+11 October 2026 Sarvam narration and paused Alba selection changes. Diagrams illustrate those
 findings; they are not evidence by themselves. Edit the function, re-run the
 script, and re-inspect the PNG preview before committing.
 """
@@ -31,12 +31,12 @@ LEGEND = [("core", "Core (required)"), ("infra", "Supporting infrastructure"),
 def system_context() -> Svg:
     s = Svg(1400, 1010, "CareKosh system context",
             "The Android app talks to one FastAPI service over HTTPS; the service owns the PostgreSQL "
-            "database. Live captions, default recognition and spoken replies run on the phone. Groq text "
+            "database. Live captions, default recognition and device speech run on the phone. Optional Sarvam English narration sends short answer text through the API. Groq text "
             "interpretation and optional Whisper recognition need separate consent; Brevo and Sentry "
             "are optional and only used when configured. "
             "The core API has no queue, Redis cache or offline write queue. Optional speech-worker code "
-            "exists; deployment is unverified and the mobile build disables hosted speech output.")
-    s.heading("CareKosh — system context (voice source updated 10 Oct 2026)",
+            "exists; Kokoro/Piper deployment is unverified and their mobile choices remain disabled. Alba selection is paused.")
+    s.heading("CareKosh — system context (voice source updated 11 Oct 2026)",
               "One mobile app, one API service, one PostgreSQL database. Everything else is supporting or optional.")
     s.legend(40, 118, LEGEND)
 
@@ -53,15 +53,15 @@ def system_context() -> Svg:
     s.box(60, 533, 250, 172, "Moonshine (on device)",
           ["Kotlin module carekosh-voice", "English pack: one-time HTTPS download, checksummed",
            "live words + offline final transcript"], "provider")
-    s.box(330, 533, 250, 172, "Offline speech output",
-          ["Pocket TTS / Alba: optional 209 MB pack", "LiteRT 2.1.6; device TTS selectable", "new APK + device verification needed"], "provider")
+    s.box(330, 533, 250, 172, "Spoken answers",
+          ["Device TTS is the default", "Optional Sarvam English via API", "Alba selection/downloads paused", "new APK + phone sound test needed"], "provider")
 
     # API
     s.rect(720, 165, 640, 410, "infra", radius=18)
     s.text(740, 197, "Render web service (Docker) — provider: Render", 18, 700, color="#1B7563")
     s.box(740, 215, 600, 175, "FastAPI application (Python 3.12)",
           ["Gunicorn → 2 Uvicorn workers per instance",
-           "47 HTTP routes: auth, categories, items, orders, activities, ai, health",
+           "50 HTTP operations: auth, categories, items, orders, activities, ai, health",
            "Validation (Pydantic) · owner-scoped business resources",
            "Container start: alembic upgrade head, then Gunicorn"], "core")
     s.box(740, 410, 290, 145, "Rate limiter (slowapi)",
@@ -71,7 +71,7 @@ def system_context() -> Svg:
            "neither reports the commit"], "infra")
 
     s.box(720, 625, 640, 100, "PostgreSQL — provider: Neon (documented)",
-          "11 application tables + alembic_version · source of truth for all inventory data · CI and local "
+          "12 application tables + alembic_version · source of truth for all inventory data · CI and local "
           "development use PostgreSQL 16", "provider")
     s.arrow([(1040, 575), (1040, 625)], both=True)
     s.text(1054, 597, "SQLAlchemy async + asyncpg", 14, 500, color=MUTED)
@@ -79,8 +79,8 @@ def system_context() -> Svg:
     s.arrow([(600, 300), (720, 300)], "HTTPS JSON\nBearer JWT", both=True, label_dy=-26)
 
     # Optional services
-    s.box(40, 790, 300, 150, "Groq (optional)",
-          ["GPT-OSS text; optional Whisper audio", "separate text/audio consent", "server-side key; off by default"], "conditional")
+    s.box(40, 790, 300, 150, "Groq / Sarvam (opt-in)",
+          ["Groq: GPT-OSS text, Whisper audio", "Sarvam: short English narration", "separate scopes; private shared/BYOK keys", "operator flags off by default"], "conditional")
     s.box(370, 790, 300, 150, "Brevo email API",
           ["verification, reset, deletion links", "only if MAIL_PASSWORD is set"], "conditional")
     s.box(700, 790, 300, 150, "Sentry",
@@ -186,14 +186,14 @@ def table(s: Svg, x: float, y: float, w: float, name: str, cols: list[str], role
 
 
 def database_erd() -> Svg:
-    s = Svg(1560, 1330, "CareKosh database at migration 0010",
-            "Eleven application tables. users owns every other table except order_number_counters, directly or "
+    s = Svg(1560, 1620, "CareKosh database at migration 0011",
+            "Twelve application tables. users owns every other table except order_number_counters, directly or "
             "(for order_items) through orders, by foreign keys with ON DELETE CASCADE. order_items.item_id and "
             "activity_logs.item_id are plain "
             "references without foreign keys, so order history survives item deletion. Item and category "
             "names are not unique in the database; the API serializes duplicate checks with advisory locks.")
-    s.heading("Database at head 0010_order_local_id_unique — 11 application tables",
-              "Solid arrows are foreign keys (all ON DELETE CASCADE). Dashed arrows are plain id references without a foreign key. Verified with pg_dump of a freshly migrated database (7 Oct 2026; identical on 8 Oct).")
+    s.heading("Database at head 0011_sarvam_personal_keys — 12 application tables",
+              "Solid arrows are foreign keys (all ON DELETE CASCADE). Dashed arrows are plain id references without a foreign key. Current local migration 0011; previous consent/usage and business rows retained.")
     u = table(s, 590, 150, 380, "users", [
         "id  PK varchar(36) (Python uuid4)", "email  UNIQUE, nullable", "username  UNIQUE, nullable",
         "CHECK email OR username present", "hashed_password  (Argon2 via passlib)", "session_version  int, default 0 (0007)",
@@ -224,10 +224,12 @@ def database_erd() -> Svg:
     ac = table(s, 790, 920, 330, "ai_consents", [
         "user_id  PK + FK→users", "version, accepted", "scopes  JSON (0009)", "updated_at"], role="conditional")
     ag = table(s, 1150, 920, 370, "ai_usage", [
-        "id PK · user_id FK→users", "kind, provider, status", "reserved_microusd", "input/output tokens,", "  audio_seconds, expires_at"],
+        "id PK · user_id FK→users", "kind, provider, status", "credential_source (0011)", "reserved_microusd", "input/output tokens,", "  audio_seconds, expires_at"],
         role="conditional")
     cnt = table(s, 1090, 760, 430, "order_number_counters", [
         "day  PK  YYYYMMDD (UTC)", "last_value  bigint"], role="infra", note="no FK: numbers survive deletions (0007)")
+    ck = table(s, 590, 1210, 540, "ai_sarvam_credentials", [
+        "user_id PK + FK→users (CASCADE)", "ciphertext: Fernet owner/provider-bound envelope", "updated_at; never return key/ciphertext to clients"], role="conditional")
     ux, uy, uw, uh = u
     # users -> children (arrows point from child FK to parent)
     s.arrow([(c[0] + c[2], c[1] + 60), (ux, uy + 60)], "user_id", label_dy=-8)
@@ -242,9 +244,11 @@ def database_erd() -> Svg:
     for t in (al, au, ac, ag):
         s.arrow([(t[0] + t[2] / 2, t[1]), (t[0] + t[2] / 2, 890), (1040, 890), (1040, uy + uh - 30), (ux + uw, uy + uh - 30)], "")
     s.text_halo(1030, 880, "user_id (each table)", 14, "end", 600)
-    s.box(40, 1180, 1480, 120, "Deleting a user (POST /auth/confirm-delete/{token})",
+    s.arrow([(ck[0], ck[1] + 60), (20, ck[1] + 60), (20, uy + uh - 20), (ux, uy + uh - 20)], "")
+    s.text_halo(48, 1160, "user_id", 14, "start", 600)
+    s.box(40, 1460, 1480, 120, "Deleting a user (POST /auth/confirm-delete/{token})",
           ["PostgreSQL ON DELETE CASCADE removes the user's categories, items, orders, order_items, refresh_tokens, "
-           "activity_logs, audit_log, ai_consents and ai_usage in the same transaction. order_number_counters is untouched, so a "
+           "activity_logs, audit_log, ai_consents, ai_usage and encrypted Sarvam credentials in the same transaction. order_number_counters is untouched, so a "
            "deleted account's order numbers are never reused."], "danger")
     return s
 
@@ -364,9 +368,9 @@ def voice_flow() -> Svg:
     steps = [
         ("1. Tap → capture + local live words → tap again", "New APK: one Android AudioRecord, mono PCM16/16 kHz temporary WAV, provisional Moonshine English captions with the downloaded pack. Maximum 28 seconds; foreground only. Older modules: Expo AAC/M4A, 44.1 kHz/128 kb/s, words after Stop.", "core"),
         ("2. Final transcript → review/edit → Send", "Default: Moonshine locally. Optional Groq Whisper (whisper-large-v3) through POST /ai/transcribe after Stop requires groq_audio consent, fresh audioOptIn and server capability. Temporary audio deleted; no automatic interpretation or provider substitution.", "conditional"),
-        ("3. Local parsing or consented Groq specification", "Familiar wording stays local. Otherwise reviewed text → POST /ai/interpret → openai/gpt-oss-20b, groq_text consent, strict v2 schema. Names, quantities and units validated; no inventory list or executable tools sent. Correct schema does not prove correct meaning.", "conditional"),
-        ("4. Verified inventory snapshot and resolution", "Same-session owned complete inventory, no pending writes. Refresh as needed. Ambiguity, missing quantities or unit mismatches require clarification. Offline = last-known.", "core"),
-        ("5. In-app table or UNSAVED session draft", "Native virtualized rows, freshness/filters, concise Pocket TTS/Alba (downloaded) or device TTS. Hosted speech is disabled. Explicit amounts win over deterministic minimum-stock suggestions. Manual draft: review merge/replace/cancel.", "ok"),
+        ("3. Phone grammar, or consented Groq plan (contract 3)", "Local complete plans first; polite wording preserves groups. Unmatched reviewed text → POST /ai/interpret → openai/gpt-oss-20b with groq_text consent. Prefer v3; older contracts handle basic requests only, detected advanced conditions are blocked. Lexical checks reject lost numeric signs, filters, polarity and associations; no inventory snapshot or tools sent. Meaning still needs review.", "conditional"),
+        ("4. Owned snapshot → deterministic executor", "Same-session owned complete inventory, no pending writes. Union of AND-groups, minus exclusions, unique by item ID, then sorted; each row gets a reason. Ambiguous names, critical-versus-category, missing quantities or unit mismatches ask first. Offline = last-known.", "core"),
+        ("5. In-app table or UNSAVED session draft", "Native virtualized rows: filters, wrapping units, status icon + text, Why and Explicit/Suggested labels. Device TTS or consented Sarvam: explicit billing, short answer → POST /ai/speak → Bulbul → validated WAV → fresh player. Preview verifies live speech; configuration alone does not. Opt-in offline fallback runs only before playback starts. Alba stays paused. Explicit/exclusion conflicts clarify the whole draft; existing work needs merge/replace/cancel review.", "ok"),
         ("VOICE BOUNDARY — no order or stock save", "Voice can prepare/edit a draft; saying confirm cannot commit. Inventory-report PDF requires reviewed touch export. Consent/usage writes may occur in cloud mode.", "danger"),
         ("6. Separate TOUCH: Confirm order & export PDF", "Create Order checks matching backend capability, refreshes inventory, retains reviewed quantities, and asks for another review if stock changed. Saving requires internet.", "core"),
         ("7. Authenticated POST /orders", "Stable localId, ownership check, expectedVersion under item locks. Changed/inactive items return 409. A successful create writes order/lines/activity; inventory does not increase.", "core"),
@@ -379,6 +383,89 @@ def voice_flow() -> Svg:
         if i not in (5, len(steps)-1): s.arrow([(780,y+h),(780,y+h+28)])
         y += h + (58 if i == 5 else 30)
     s.height = y + 30
+    return s
+
+
+def voice_plan() -> Svg:
+    s = Svg(1560, 1500, "How a multi-part request becomes rows",
+            "Contract 3: a request becomes a bounded plan. The phone then filters, explains and sorts its own copy of the inventory. "
+            "Nothing is saved and no stock changes.")
+    s.heading("Multi-part requests: plan, then deterministic rows (contract 3)",
+              "Understood on the phone when every word is a known filter; otherwise Groq returns a plan that the server checks. "
+              "The same executor runs both. Example: “Low-stock wound-care items from supplier Good Supplier, excluding gloves, sorted alphabetically.”")
+    top = 150
+    inputs = [
+        ("You say or type, then Send", "Reviewed words only. Nothing is understood or fetched before Send.", "external"),
+        ("Phone grammar (parsePlan)", "Comparisons, stock states, critical, category, supplier, brand, exclusions, sorting, follow-ups and drafts. Unknown words → not guessed.", "core"),
+        ("Groq plan · only if chosen and consented", "Strict schema plus lexical checks: names, signs, comparisons, filters, critical polarity, groups and item-threshold association. Detectable lost conditions fail closed; arbitrary meaning is not guaranteed.", "conditional"),
+    ]
+    w = 466
+    h1 = max(s.measure(w, t, b) for t, b, _ in inputs)
+    for i, (title, body, role) in enumerate(inputs):
+        s.box(40 + i * (w + 40), top, w, h1, title, body, role)
+    s.arrow([(40 + w, top + h1 / 2), (40 + w + 40, top + h1 / 2)])
+    s.arrow([(40 + (w + 40) + w, top + h1 / 2), (40 + 2 * (w + 40), top + h1 / 2)], "else")
+    plan_y = top + h1 + 70
+    plan_body = ["any_of: [ low stock AND category “Wound care” AND supplier “Good Supplier” ]",
+                 "exclude: [ name contains “gloves” ]      sort: A–Z      scope: all active items",
+                 "Draft plans add explicit lines (set / add / remove) and include_selection for suggested quantities."]
+    ph = s.measure(1440, "Validated plan · version 3", plan_body, mono_body=True)
+    s.box(60, plan_y, 1440, ph, "Validated plan · version 3", plan_body, "core", mono_body=True)
+    for i in (1, 2):
+        cx = 40 + i * (w + 40) + w / 2
+        s.arrow([(cx, top + h1), (cx, plan_y)], "or" if i == 2 else "")
+    pipe_y = plan_y + ph + 70
+    stages = [
+        ("1 · Start", "All active items, or the list on screen for a follow-up. Values come from the fresh snapshot.", "core"),
+        ("2 · Each group = AND", "Every condition in a group must hold. “Low or out of stock” inside one condition means either.", "core"),
+        ("3 · Union, unique", "Rows from any group, each item once by ID. Every reason it matched is kept.", "core"),
+        ("4 · Minus exclusions", "Rows matching an exclusion are removed and listed in the answer.", "core"),
+        ("5 · Sort", "A–Z, quantity, shortfall, or order priority: out of stock, then critical, then largest share missing.", "core"),
+    ]
+    sw = (1480 - 4 * 34) / 5
+    hs = max(s.measure(sw, t, b) for t, b, _ in stages)
+    for i, (title, body, role) in enumerate(stages):
+        x = 40 + i * (sw + 34)
+        s.box(x, pipe_y, sw, hs, title, body, role)
+        if i < len(stages) - 1:
+            s.arrow([(x + sw, pipe_y + hs / 2), (x + sw + 34, pipe_y + hs / 2)])
+    # A validated plan enters stage 1, not the central union stage.
+    first_cx = 40 + sw / 2
+    s.arrow([(780, plan_y + ph), (780, pipe_y - 35), (first_cx, pipe_y - 35), (first_cx, pipe_y)])
+    out_y = pipe_y + hs + 70
+    outs = [
+        ("Answer sheet", "Filters understood · quantity with unit · status icon + text · a Why line per row · one-tap refinements that would change the list.", "ok"),
+        ("Unsaved draft", "Explicit amounts override suggestions. Contradictory exclusion → clarify all. Others show Suggested plus basis. Missing minimum → ask. Existing work → Merge, Replace or Cancel.", "ok"),
+        ("Ask first, run nothing", "Unclear or near-spelled names, “critical” versus a category named critical, a partly said supplier, or a follow-up with no list on screen.", "danger"),
+    ]
+    ho = max(s.measure(w, t, b) for t, b, _ in outs)
+    # Results leave the end of the pipeline; clarifications can stop any stage before rows are shown.
+    last_cx = 40 + 4 * (sw + 34) + sw / 2
+    bus_y = pipe_y + hs + 34
+    s.line(last_cx, pipe_y + hs, last_cx, bus_y, dashed=False, color="#2B3138", width=2.2)
+    s.line(40 + w / 2, bus_y, last_cx, bus_y, dashed=False, color="#2B3138", width=2.2)
+    for i, (title, body, role) in enumerate(outs):
+        x = 40 + i * (w + 40)
+        s.box(x, out_y, w, ho, title, body, role)
+        s.arrow([(x + w / 2, bus_y), (x + w / 2, out_y)])
+    reg_y = out_y + ho + 90
+    s.text(40, reg_y - 24, "Voice setup keeps four things apart", 20, 700)
+    reg = [
+        ("Prerequisites (derived)", "Ready, Needs download, Needs consent, Needs a configured key, Unavailable, Paused. Sarvam: Configured · preview to verify, not proof of live sound. Never stored.", "infra"),
+        ("Saved choice (per account)", "Listening, Understanding and Spoken replies, stored for this account only. Old choices load with no online opt-in.", "core"),
+        ("Consent (server)", "Accepted scopes: groq_text, groq_audio, sarvam_speech. Withdrawal is one separate action.", "conditional"),
+        ("In use", "The saved choice if it is ready. Otherwise the screen states why, for example “Needs your consent”. Never swapped silently.", "ok"),
+    ]
+    rw = (1480 - 3 * 34) / 4
+    hr = max(s.measure(rw, t, b) for t, b, _ in reg)
+    for i, (title, body, role) in enumerate(reg):
+        x = 40 + i * (rw + 34)
+        s.box(x, reg_y, rw, hr, title, body, role)
+        if i < 3:
+            s.arrow([(x + rw, reg_y + hr / 2), (x + rw + 34, reg_y + hr / 2)])
+    s.legend(40, reg_y + hr + 40, [("core", "Required"), ("conditional", "Only when chosen"), ("infra", "Derived state"),
+                                   ("external", "Person"), ("ok", "Result"), ("danger", "Asks first")])
+    s.height = reg_y + hr + 90
     return s
 
 
@@ -396,7 +483,7 @@ def release_pipeline() -> Svg:
          ["Feature pushes do not trigger this CI; a linked Render service may still auto-deploy.",
           "7 Oct ruleset evidence: PR required, 0 approvals, no required status checks."], "external"),
         (410, 520, "2. GitHub Actions CI",
-         ["Blocking in the run: Ruff, pytest (242, migrated schema), route gate 44, coverage floors, tsc, npm test (121), ESLint, autolinking check.",
+         ["Blocking in the run: Ruff, pytest on migrated schema, route gate 47, coverage floors, tsc, npm test, ESLint, autolinking check.",
           "Advisory (cannot fail the run): mypy (23 errors on 7 Oct), Trivy (PRs only), expo-doctor (|| echo).",
           "Optional: build-apk label → EAS preview build (APK)."], "infra"),
         (970, 550, "3. Staging candidate (manual)",
@@ -415,7 +502,7 @@ def release_pipeline() -> Svg:
          ["render.yaml: branch main, plan starter, health check /live.",
           "Render auto-deploy (dashboard setting, NOT VERIFIED) and/or CI deploy-backend calling RENDER_DEPLOY_HOOK after the test jobs, only if that secret is set.",
           "A 2xx from the hook means 'request accepted', not 'deployed'.",
-          "Migrations 0007–0010: follow the release gate, not a plain merge."], "provider"),
+          "Migrations 0007–0011: follow the release gate; 0011 adds encrypted personal credentials."], "provider"),
         (680, 840, "5. Every container start",
          ["Entrypoint: wait for PostgreSQL (≤30 × 2 s) → alembic upgrade head (exit on failure) → Gunicorn with 2 Uvicorn workers → Render polls /live.",
           "Migrations run on every start, serialized by an advisory lock; rolling back code does NOT undo them (0007 refuses downgrade).",
@@ -447,19 +534,19 @@ def release_pipeline() -> Svg:
     return s
 
 def release_gate() -> Svg:
-    s = Svg(1560, 1200, "Release gate for migrations 0007 to 0010",
-            "Deploying the candidate would run migrations 0007, 0008, 0009 and 0010 in one container "
+    s = Svg(1560, 1200, "Release gate for migrations 0007 to 0011",
+            "Deploying the candidate would run migrations 0007 through 0011 in one container "
             "start. 0007 cannot be downgraded and the old code's COUNT-based order numbers can collide with the "
             "new counter while old and new instances overlap. The gate: control both deploy triggers and record "
             "state, stage on isolated fresh and populated synthetic legacy databases without discarding existing "
             "staging data, back up and rehearse a restore, cut over with new writes blocked and old writers "
             "stopped, re-seed the counter only if writes could not be paused, check logs, monitor, then re-enable "
             "auto-deploy.")
-    s.heading("Release gate: migrations 0007 → 0010 reach production together",
+    s.heading("Release gate: migrations 0007 → 0011 reach production together",
               "Production is presumed to run main (835fad3, migrations ≤ 0006) — NOT VERIFIED. A plain merge is not a safe release for this change.")
     risks = ["0007 refuses downgrade. An image built before the applied migrations cannot start (Alembic cannot locate the revision), so it is no rollback.",
              "Zero-downtime overlap: main's COUNT-based order numbers can collide with the new counter → order creation can fail on either version.",
-             "0010 takes LOCK TABLE orders IN SHARE MODE while it builds a unique index (orders writes wait).",
+             "0010 takes LOCK TABLE orders IN SHARE MODE while it builds a unique index (orders writes wait). 0011 adds encrypted credentials and usage billing-source metadata.",
              "Unverified email accounts get 403 on login, refresh and protected bearer routes when verification and mail are configured. Public routes are outside that policy."]
     h = Svg.measure(1480, "Why a plain merge is unsafe", risks)
     s.box(40, 120, 1480, h, "Why a plain merge is unsafe", risks, "danger")
@@ -468,7 +555,7 @@ def release_gate() -> Svg:
         ("PREPARE", "1. Before merging", ["Control BOTH Render auto-deploy and the CI deploy hook.", "Record deployed commits and alembic current against confirmed targets."], "external"),
         ("PREPARE", "2. Stage the candidate", ["Preserve existing staging. Use isolated fresh and populated synthetic legacy databases.", "Verify old-to-new upgrades and E2E flows with a preview APK."], "provider"),
         ("PREPARE", "3. Back up", ["Take a production backup / restore point.", "Rehearse the restore on a separate throwaway database (restore_drill.py)."], "infra"),
-        ("RELEASE", "4. Cut over in a maintenance window", ["Block new writes AND drain old writers before migrating.", "Deploy; the container runs 0007 → 0010.", "Before reopening: Render commit, alembic current = 0010_order_local_id_unique, /live, /health."], "core"),
+        ("RELEASE", "4. Cut over in a maintenance window", ["Block new writes AND drain old writers before migrating.", "Deploy; the container runs 0007 → 0011.", "Before reopening: Render commit, alembic current = 0011_sarvam_personal_keys, /live, /health."], "core"),
         ("RELEASE", "5. Only if writes could not be paused", ["Run the idempotent order-counter re-seed SQL from BACKEND_HARDENING.md (safe to repeat)."], "conditional"),
         ("AFTER", "6. Check logs and privacy", ["Real access/error logs and telemetry with synthetic tokens."], "infra"),
         ("AFTER", "7. Monitor", ["Order-create failures (409), 401/403 spikes, refresh failures, DB connections and lock waits."], "infra"),
@@ -593,6 +680,7 @@ DIAGRAMS = {
     "order-idempotency.svg": order_idempotency,
     "order-status.svg": order_status,
     "voice-flow.svg": voice_flow,
+    "voice-plan.svg": voice_plan,
     "release-pipeline.svg": release_pipeline,
     "auth-session.svg": auth_session,
     "mobile-cache.svg": mobile_cache,

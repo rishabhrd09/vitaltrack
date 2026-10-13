@@ -1,4 +1,9 @@
-# Downloadable Alba voice inside CareKosh
+# Pocket TTS / Alba — paused in this release
+
+**Current release status — 13 October 2026: PAUSED.** Device voice remains the default. Alba selection and new downloads are disabled after failed OnePlus Nord 4 acceptance. Existing packs may be removed. Sarvam narration is separately optional; its offline fallback can use the previewed device voice.
+
+The native repair investigation and diagnostic APK profile are separate local experimental work, excluded from this reviewed release. Older dated implementation details below describe the retained native baseline; they are not a passed device test. [Current Sarvam setup](SARVAM_ENGLISH_VOICE.md).
+
 
 Latest speech-output follow-up: **11 October 2026**, on top of `2ded35a`. The owner tested the preceding preview APK on OnePlus Nord 4/OxygenOS 15: preparation reached CPU recovery and then finished without audible speech. This remains a failed device acceptance check, not proof that Alba works on that phone. The changes below improve playback compatibility and make generation/output failures inspectable. They require another native APK; backend code and model files are unchanged.
 
@@ -8,7 +13,7 @@ CareKosh can download **Kyutai Pocket TTS with the fixed Alba English preset** a
 
 This is Pocket TTS Alba, not the Piper Alba/Lyra model used by some other projects. Identical timbre is not promised. “Relaxed” changes playback speed to 0.9× while keeping pitch at 1×; it does not select a different trained emotional voice.
 
-## User setup
+## Historical user setup — unavailable while paused
 
 1. Install a newly compiled CareKosh Android APK containing the LiteRT native integration. An older APK, Expo Go, web or iOS cannot run this voice. The app still requires Android 8/API 26; this pack is offered on 64-bit ARM/x86 devices.
 2. Open **Settings → Voice setup → Spoken replies** (step 4 when online understanding is available) and choose **Download Alba voice pack**. Confirm the download; Wi-Fi is recommended. Keep CareKosh in the foreground. The preceding Listening section configures recognition, while Understanding configures optional online text interpretation; neither chooses the speaking voice.
@@ -125,3 +130,8 @@ Before calling this release-ready, install the verified preview APK and test on 
 6. Repeat manifest, native-library alignment and notice checks for each release artifact. These package checks passed for the preview APK above; they do not replace the device checks.
 
 No backend migration, new environment variable, Render deployment or database operation is needed for this speech-output feature.
+
+
+## Offline voice investigation — 13 October 2026
+
+A separate local host investigation measured roughly 10 GB peak memory on its CPU workload. That is not a measured OnePlus footprint or proof of the phone's exact failure. Experimental native repairs and diagnostic build support remain unpublished and are not enabled by this release. Device sound must be verified independently before Alba is offered again. The reviewed normal preview uses the previously committed microphone/native implementation and keeps Alba paused.

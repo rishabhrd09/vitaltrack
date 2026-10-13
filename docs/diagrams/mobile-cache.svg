@@ -66,7 +66,7 @@
 <path d="M 480.0 580.0 L 505.0 580.0 L 505.0 495.0 L 1280.0 495.0 L 1280.0 450.0" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
 <text x="1000.0" y="487.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="600" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">POST / PUT / PATCH / DELETE</text>
 <rect x="40.0" y="880.0" width="1480.0" height="160.0" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
-<text x="54.0" y="911.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">Voice assistant reads (read-only)</text>
+<text x="54.0" y="911.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">Assistant reads and local drafts</text>
 <text x="54.0" y="937.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Reuses [&#x27;items&#x27;] only if it was fetched in this login (in-memory ownership stamp), is not invalidated and is under 30 s old; otherwise fetchQuery([&#x27;items&#x27;]) → GET /api/v1/items (all pages,</text>
 <text x="54.0" y="957.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">20 s abort). Offline: last-known owned data labelled &#x27;Last known&#x27;. Restored disk data alone is never trusted, and no answer is given while a save is pending.</text>
 </svg>

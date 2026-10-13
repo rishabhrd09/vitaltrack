@@ -60,12 +60,19 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <a href="INDEX.html">Documentation home</a>
 <span class="meta">Generated from <code>docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md</code> — edit the Markdown, not this file.</span></div></header>
 <div class="layout">
-<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#complete-ai-voice-architecture--source-review-10-october-2026">Complete AI voice architecture — source review, 10 October 2026</a><ul><li><a href="#technology-and-responsibility-map">Technology and responsibility map</a></li><li><a href="#offline-alba-output--local-addition-10-october">Offline Alba output — local addition, 10 October</a></li><li><a href="#two-different-cloud-permissions">Two different cloud permissions</a></li><li><a href="#every-assistant-http-operation">Every assistant HTTP operation</a></li><li><a href="#architecture-and-request-sequence">Architecture and request sequence</a></li><li><a href="#examples-to-explain-in-an-interview">Examples to explain in an interview</a></li><li><a href="#groq-dependency-allowances-and-cost">Groq dependency, allowances and cost</a></li><li><a href="#setup-deployment-and-honest-portfolio-description">Setup, deployment and honest portfolio description</a></li><li><a href="#sources-to-trace-next">Sources to trace next</a></li></ul></li><li><a href="#the-authority-boundary">The authority boundary</a></li><li><a href="#end-to-end-flow">End-to-end flow</a></li><li><a href="#supported-bounded-questions">Supported bounded questions</a></li><li><a href="#speech-and-understanding-follow-up--8-october-2026">Speech and understanding follow-up — 8 October 2026</a></li><li><a href="#local-state-ambiguity-and-retries">Local state, ambiguity and retries</a></li><li><a href="#contracts-and-compatibility">Contracts and compatibility</a></li><li><a href="#pdfs-and-truthful-feedback">PDFs and truthful feedback</a></li><li><a href="#code-map-and-verification">Code map and verification</a></li><li><a href="#assistant-presentation-and-live-captions--9-october-2026">Assistant presentation and live captions — 9 October 2026</a></li><li><a href="#phone-acceptance-checklist">Phone acceptance checklist</a></li><li><a href="#settings-and-mixed-draft-verification--10-october-2026">Settings and mixed-draft verification — 10 October 2026</a><ul><li><a href="#alba-acceptance-checks--new-native-apk-required">Alba acceptance checks — new native APK required</a></li></ul></li></ul></details></nav>
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#complete-ai-voice-architecture--source-review-11-october-2026">Complete AI voice architecture — source review, 11 October 2026</a><ul><li><a href="#technology-and-responsibility-map">Technology and responsibility map</a></li><li><a href="#spoken-output--sarvam-integration-11-october">Spoken output — Sarvam integration, 11 October</a></li><li><a href="#two-different-cloud-permissions">Two different cloud permissions</a></li><li><a href="#every-assistant-http-operation">Every assistant HTTP operation</a></li><li><a href="#architecture-and-request-sequence">Architecture and request sequence</a></li><li><a href="#examples-to-explain-in-an-interview">Examples to explain in an interview</a></li><li><a href="#groq-dependency-allowances-and-cost">Groq dependency, allowances and cost</a></li><li><a href="#setup-deployment-and-honest-portfolio-description">Setup, deployment and honest portfolio description</a></li><li><a href="#sources-to-trace-next">Sources to trace next</a></li></ul></li><li><a href="#the-authority-boundary">The authority boundary</a></li><li><a href="#end-to-end-flow">End-to-end flow</a></li><li><a href="#supported-bounded-questions">Supported bounded questions</a></li><li><a href="#speech-and-understanding-follow-up--8-october-2026">Speech and understanding follow-up — 8 October 2026</a></li><li><a href="#local-state-ambiguity-and-retries">Local state, ambiguity and retries</a></li><li><a href="#contracts-and-compatibility">Contracts and compatibility</a></li><li><a href="#pdfs-and-truthful-feedback">PDFs and truthful feedback</a></li><li><a href="#code-map-and-verification">Code map and verification</a></li><li><a href="#assistant-presentation-and-live-captions--9-october-2026">Assistant presentation and live captions — 9 October 2026</a></li><li><a href="#phone-acceptance-checklist">Phone acceptance checklist</a></li><li><a href="#settings-and-mixed-draft-verification--10-october-2026">Settings and mixed-draft verification — 10 October 2026</a><ul><li><a href="#historical-alba-acceptance-checks--paused-not-current-setup">Historical Alba acceptance checks — paused, not current setup</a></li></ul></li><li><a href="#sarvam-narration-verification--11-october-2026">Sarvam narration verification — 11 October 2026</a></li><li><a href="#multi-part-requests-contract-3--13-october-2026">Multi-part requests (contract 3) — 13 October 2026</a></li><li><a href="#voice-setup-stages--13-october-2026">Voice setup stages — 13 October 2026</a></li></ul></details></nav>
 <main id="content">
 <h1 id="inventory-answers-and-voice-prepared-order-drafts">Inventory answers and voice-prepared order drafts</h1>
-<p>Current local implementation: 10 October 2026, on <code>feature/backend-hardening-ai-voice-agent-foundation</code>, with the earlier backend source at <code>0946eb7</code> and mobile UI/live-caption follow-up committed as <code>fbb3f0c</code>. Local additions on top of <code>078d53c</code> add downloadable offline Pocket TTS/Alba, clearer Voice setup stages and mixed-draft phrasing. The mixed-draft follow-up updates the backend interpretation prompt; API handlers, contracts and migrations are unchanged. The new native integration and UI need a newly built APK, and the prompt update needs the corresponding backend deployment. These additions are not yet committed/pushed by this review. Live staging and installed APK revisions have not been verified. Read this alongside the dated implementation and audit records.</p>
-<h2 id="complete-ai-voice-architecture--source-review-10-october-2026">Complete AI voice architecture — source review, 10 October 2026<a class="anchor" href="#complete-ai-voice-architecture--source-review-10-october-2026" aria-label="Link to this section">#</a></h2>
-<p>This is the maintained architecture reference for the <strong>current working tree</strong>, including local changes. Earlier setup documents and <code>future_plan/</code> preserve decisions and experiments; they are not evidence that every proposed provider or agent framework is running. The provider is <strong>Groq</strong>. The configured interpretation model is <code>openai/gpt-oss-20b</code>; a service environment can override that repository default. The owner's latest feedback reports that basic flows work better with online understanding. That is useful pilot feedback, not a measured recognition/intent accuracy score or independent verification of every device and live setting.</p>
+<blockquote>
+<p><strong>Update — 13 October 2026.</strong>
+- <strong>Contract 3.</strong> Multi-part requests now use a negotiated contract version 3. It covers quantity comparisons, critical equipment, exclusions, sorting, follow-ups and drafts from a filtered list. Every row in an answer gives its reason. The phone runs these requests itself, without Groq, whenever its grammar covers them.
+- <strong>Voice setup.</strong> It now has three independent stages: Listening, Understanding and Spoken replies.
+- <strong>Sarvam errors</strong> now name the cause.</p>
+<p>Read the <a href="AI_VOICE_END_TO_END_REVIEW.html">end-to-end review</a> first. The sections below describe the 11 October state, with dated notes where the behaviour changed.</p>
+</blockquote>
+<p>Current local implementation: <strong>11 October 2026</strong>, on <code>feature/backend-hardening-ai-voice-agent-foundation</code>, following <code>4bd1dff</code>. Alba selection/new downloads are paused after failed OnePlus acceptance; its code is retained. Optional Sarvam English narration now has a separate consented backend and playback path. Microphone, Moonshine/Groq listening, Groq interpretation, local drafts and touch-confirmed order saving retain their existing wiring. A matching backend deployment and new preview APK are required. No Sarvam account or physical phone sound has been verified by this source review. <a href="SARVAM_ENGLISH_VOICE.html">Activation, key configuration, costs and device checks</a>.</p>
+<h2 id="complete-ai-voice-architecture--source-review-11-october-2026">Complete AI voice architecture — source review, 11 October 2026<a class="anchor" href="#complete-ai-voice-architecture--source-review-11-october-2026" aria-label="Link to this section">#</a></h2>
+<p>This is the maintained architecture reference for the <strong>current working tree</strong>, including local changes. Earlier setup documents and <code>future_plan/</code> preserve decisions and experiments; they are not evidence that every proposed provider or agent framework is running. Text understanding and optional online recognition use <strong>Groq</strong>; optional online narration uses <strong>Sarvam</strong>. The configured interpretation model is <code>openai/gpt-oss-20b</code>; a service environment can override that repository default. The owner's latest feedback reports that basic flows work better with online understanding. That is useful pilot feedback, not a measured recognition/intent accuracy score or independent verification of every device and live setting.</p>
 <h3 id="technology-and-responsibility-map">Technology and responsibility map<a class="anchor" href="#technology-and-responsibility-map" aria-label="Link to this section">#</a></h3>
 <div class="tablewrap"><table>
 <thead>
@@ -109,7 +116,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <tr>
 <td>Unfamiliar wording</td>
 <td>Groq-hosted <code>openai/gpt-oss-20b</code>, called through Python HTTPX</td>
-<td>After Send and text consent, produces one bounded v2 query/draft specification. No inventory list, executable code or LLM tool execution is supplied.</td>
+<td>After Send and text consent, Groq produces one bounded plan: version 3 since 13 October 2026. Basic requests can use an older contract; detected advanced conditions that cannot be represented are blocked. No inventory snapshot, executable code or LLM tool execution is supplied. The question can contain user-entered names and quantities.</td>
 </tr>
 <tr>
 <td>Contract and grounding</td>
@@ -133,14 +140,16 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Answer/speech/report</td>
-<td>Native React Native components; optional Pocket TTS/Alba via LiteRT 2.1.6, or Android <code>TextToSpeech</code>; local HTML, <code>expo-print</code>, <code>expo-sharing</code></td>
-<td>Table, speech and PDF use validated result data. Downloaded Alba or an explicitly selected installed offline English voice speaks concise answers. Reports render locally; an open share sheet does not prove delivery.</td>
+<td>Native React Native components; device <code>TextToSpeech</code> or separately consented Sarvam English via FastAPI/HTTPX and Expo AudioPlayer; local HTML, <code>expo-print</code>, <code>expo-sharing</code></td>
+<td>Table, speech and PDF use validated result data. Sarvam receives only the concise narration text. Device voice is the default; Alba selection is paused. Reports render locally; an open share sheet does not prove delivery.</td>
 </tr>
 </tbody>
 </table></div>
-<p>Sarvam transcription/TTS, hosted Kokoro and Piper/Alba adapters exist as separately gated alternatives in the backend. <strong>They are not selectable in this mobile release</strong>: loaded preferences force input to offline/Groq and output to device or downloaded Pocket/Alba speech. The selected runtime does not use LangChain, LangGraph, a vector database, RAG, EmbeddingGemma, a multi-agent system or an autonomous planning loop. Sarvam's website was a visual reference, not the runtime recognizer or interpretation model.</p>
-<h3 id="offline-alba-output--local-addition-10-october">Offline Alba output — local addition, 10 October<a class="anchor" href="#offline-alba-output--local-addition-10-october" aria-label="Link to this section">#</a></h3>
-<p>Voice setup now offers a fixed <strong>Alba English Pocket TTS</strong> pack (208,767,942 bytes, approximately 209 MB), downloaded once and generated inside CareKosh. No second app or speech API is required. LiteRT is separate from Moonshine’s ONNX runtime. Downloading selects Alba; <strong>Read answers aloud</strong> remains optional. Relaxed/Natural/Brisk pace is 0.9×/1×/1.1× with unchanged pitch. This is not identical to Piper Alba/Lyra. Text is synthesized fully before playback; speed and sound quality still require phone testing. Device speech remains selectable; no provider is silently substituted. See <a href="POCKET_TTS_ALBA.html">setup, licensing, implementation and device release checks</a>. This feature changes no backend API or database.</p>
+<p>Sarvam English narration is selectable after backend configuration and separate answer-text consent. Sarvam transcription, hosted Kokoro and legacy Piper/Alba remain unselected alternatives; downloaded Pocket/Alba selection is paused. Listening remains offline Moonshine or opted-in Groq. This runtime does not use LangChain, LangGraph, a vector database, RAG, EmbeddingGemma, a multi-agent system or an autonomous planning loop. Sarvam now generates optional speech; it does not recognize or interpret the user's request.</p>
+<h3 id="spoken-output--sarvam-integration-11-october">Spoken output — Sarvam integration, 11 October<a class="anchor" href="#spoken-output--sarvam-integration-11-october" aria-label="Link to this section">#</a></h3>
+<p>The default remains Android device English TTS. Optional Sarvam narration sends at most 640 characters of verified answer text to the authenticated backend, which owns the private API key, model and English speaker. Default: <code>bulbul:v3</code> / <code>ritu</code>; optional latest <code>bulbul:v4-flash</code> / <code>aparna_en_companion</code> after account pricing/access review. The phone waits for complete WAV generation and actual player completion.
+- <strong>Fallback (13 October update):</strong> no provider is switched automatically. Instead there is an <a href="SARVAM_ENGLISH_VOICE.html#optional-offline-fallback--13-october-2026">optional offline fallback</a>, off by default. If the user chose and previewed an offline voice, a Sarvam failure before any audio leads that voice to read the same answer once. It never sends a second request and never switches key source. See the <a href="SARVAM_ENGLISH_VOICE.html">complete Sarvam setup and live acceptance checklist</a>.
+- <strong>Alba:</strong> the retained 209 MB Pocket/Alba pack cannot be downloaded or selected in normal builds. The <a href="POCKET_TTS_ALBA.html#offline-voice-investigation--13-october-2026">separate native investigation</a> remains local and unpublished; this reviewed release does not enable its diagnostics profile.</p>
 <h3 id="two-different-cloud-permissions">Two different cloud permissions<a class="anchor" href="#two-different-cloud-permissions" aria-label="Link to this section">#</a></h3>
 <div class="tablewrap"><table>
 <thead>
@@ -163,12 +172,12 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Read answers aloud</td>
-<td>Verified downloaded Pocket/Alba pack or selected eligible non-network English Android voice</td>
-<td>Local speech only. <code>CLOUD_VOICE_ENABLED=false</code> disables hosted <strong>speech output</strong>, not online transcription.</td>
+<td>Selected eligible non-network English Android voice, or separately selected/consented Sarvam English</td>
+<td>Device speech stays local. <code>SARVAM_SPEECH_ENABLED=true</code> permits the specifically gated narration path; <code>CLOUD_VOICE_ENABLED=false</code> keeps other hosted voices unavailable. Alba selection/downloads are paused.</td>
 </tr>
 </tbody>
 </table></div>
-<p>Mobile flags are <code>CLOUD_TEXT_ENABLED=true</code>, <code>CLOUD_TRANSCRIPTION_ENABLED=true</code>, <code>CLOUD_VOICE_ENABLED=false</code>. New-account preferences still start disabled: assistant, microphone, cloud interpretation, audio opt-in and spoken replies. Text consent does not authorize audio, and no provider is silently substituted after failure. <strong>Use offline listening</strong> stops uploads from this device; <strong>Withdraw all cloud consent</strong> disables local cloud use and attempts server revocation, visibly reporting failure.</p>
+<p>Mobile flags are <code>CLOUD_TEXT_ENABLED=true</code>, <code>CLOUD_TRANSCRIPTION_ENABLED=true</code>, <code>CLOUD_VOICE_ENABLED=false</code>, <code>SARVAM_SPEECH_ENABLED=true</code>, <code>ALBA_SELECTION_ENABLED=false</code>. Fresh <code>sarvamSpeechOptIn</code> and the server <code>sarvam_speech</code> scope are both required for online narration. New-account preferences still start disabled: assistant, microphone, cloud interpretation, audio opt-in and spoken replies. Text consent does not authorize audio, and no provider is silently substituted after failure. <strong>Use offline listening</strong> stops uploads from this device; <strong>Withdraw all cloud consent</strong> disables local cloud use, returns narration to device speech, and attempts server revocation, visibly reporting failure.</p>
 <h3 id="every-assistant-http-operation">Every assistant HTTP operation<a class="anchor" href="#every-assistant-http-operation" aria-label="Link to this section">#</a></h3>
 <div class="tablewrap"><table>
 <thead>
@@ -181,7 +190,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <tbody>
 <tr>
 <td><code>GET /api/v1/ai/capabilities</code></td>
-<td>Initialization/Recheck, consent changes, and renewed checks before unfamiliar interpretation or online transcription. Reports enabled providers, this account's scopes, <code>interpret_contracts:[1,2]</code> and <code>order_review_guard:true</code>.</td>
+<td>Initialization/Recheck, consent changes, and renewed checks before unfamiliar interpretation or online transcription. Reports enabled providers, this account's scopes, <code>interpret_contracts</code> (<code>[1,2]</code> earlier; <code>[1,2,3]</code> since 13 October 2026) and <code>order_review_guard:true</code>.</td>
 <td>Reads authentication/consent; no AI ledger insert.</td>
 </tr>
 <tr>
@@ -196,13 +205,28 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td><code>POST /api/v1/ai/interpret</code></td>
-<td>Unmatched reviewed text. Latest app negotiates <code>{question,has_previous_item,contract_version:2}</code>; older clients omit the version for v1.</td>
+<td>Unmatched reviewed text. The app prefers <code>{question,has_previous_item,contract_version:3}</code> when listed. Basic requests can use v2/v1; detected unsupported advanced requests ask for a backend update. Older clients omit the version and get v1.</td>
 <td>Reserves/settles <code>ai_usage</code>; returns a specification, no execution or inventory facts.</td>
 </tr>
 <tr>
 <td><code>POST /api/v1/ai/speak</code></td>
-<td>Backend alternative for hosted TTS; <strong>not called by this mobile build</strong>.</td>
-<td>Would use consent/quota/usage if separately enabled and invoked.</td>
+<td>Selected/consented Sarvam English Preview, Test, Hear answer or automatic reading; explicit personal/application billing source.</td>
+<td>Reserves/settles ai_usage; never inventory/order writes.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/ai/sarvam-key</code></td>
+<td>Own key status API; phone uses equivalent capabilities metadata.</td>
+<td>Reads encrypted credential metadata only.</td>
+</tr>
+<tr>
+<td><code>PUT /api/v1/ai/sarvam-key</code></td>
+<td>Masked settings input + explicit storage confirmation; Save/Replace.</td>
+<td>Owner-scoped Fernet-encrypted credential upsert; no provider call or narration consent.</td>
+</tr>
+<tr>
+<td><code>DELETE /api/v1/ai/sarvam-key</code></td>
+<td>Remove this account's saved key, even when paused.</td>
+<td>Deletes owned credential row; does not revoke provider key or erase encrypted backups.</td>
 </tr>
 <tr>
 <td>Existing item/category reads</td>
@@ -224,7 +248,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <p>The optional cloud paths are separate decisions: Whisper turns audio into words; GPT-OSS interprets reviewed text. Neither provider executes inventory or order mutations. These diagrams describe the current source, not a live deployment check.</p>
 <h3 id="examples-to-explain-in-an-interview">Examples to explain in an interview<a class="anchor" href="#examples-to-explain-in-an-interview" aria-label="Link to this section">#</a></h3>
 <ul>
-<li><strong>“Show low stock.”</strong> Review/Send → local parser → verified snapshot → deterministic low-stock filter → native table/optional local speech. Zero Groq model calls when recognized locally.</li>
+<li><strong>“Show low stock.”</strong> Review/Send → local parser → verified snapshot → deterministic low-stock filter → native table/optional local speech. Zero Groq model calls when recognized locally; selected Sarvam narration adds one separate speech request.</li>
 <li><strong>An unfamiliar compound filter.</strong> Review/Send → capability/text-consent checks → FastAPI authentication and credit reservation → Groq specification → server and phone validation → actual inventory/category resolution → visible filters/counts/rows. Unsupported history or forecasting requires clarification rather than dropping part of the request.</li>
 <li><strong>“Prepare twenty pairs of gloves and five boxes of masks.”</strong> Resolve names/recorded units and spoken quantities → local unsaved draft, with clarification or merge/replace review as needed → separate touch-confirmed Create Order. Saving retains <code>localId</code> across an uncertain retry; a saved order with PDF failure is re-exported without saving again.</li>
 <li><strong>Online recognition plus unfamiliar wording.</strong> Stop → one Whisper request → review/edit transcript → Send → one interpretation request if still unmatched locally. Live Moonshine words do not send either request or start a draft.</li>
@@ -282,7 +306,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <p>Limits are organization-wide and any threshold may bind first; the exact account allowance is in Groq Console. They renew by their windows, not after a guaranteed number of free months. A hypothetical 2,000 counted tokens/interpretation would permit about 100/day under the published daily token limit, before other traffic/minute limits. Prompt/schema and output tokens matter even for short questions. Free-plan exhaustion returns 429; paid Developer usage requires an account upgrade. See <a href="https://console.groq.com/docs/rate-limits">official limits</a>, <a href="https://console.groq.com/docs/models">prices</a>, <a href="https://console.groq.com/docs/speech-to-text">STT accounting</a> and <a href="https://console.groq.com/docs/billing-faqs">billing</a>. Recheck these dated figures before budgeting.</p>
 <p>CareKosh's <strong>repository defaults</strong> have separate UTC-day controls: 50 attempts/account, 500 globally, concurrency 4 globally and 1/account; fixed reserved credits of 5,000 micro-USD/interpretation and 1,000/transcription against 100,000/account and 1,000,000 globally. For interpretation-only traffic the credits bind at <strong>20/account/day and 200 globally/day</strong>. With one transcription plus one interpretation on every turn, they bind at <strong>16/account/day and 166 globally/day</strong> before other usage. Failed reserved attempts count; settlement records tokens/audio without refunding these fixed credits. Environment overrides can change these values. They are application allowances, <strong>not exact provider charges or an invoice cap</strong>. Real account usage, hosting cost and target-scale capacity have not been measured by this source review.</p>
 <h3 id="setup-deployment-and-honest-portfolio-description">Setup, deployment and honest portfolio description<a class="anchor" href="#setup-deployment-and-honest-portfolio-description" aria-label="Link to this section">#</a></h3>
-<p>For online text understanding, staging needs the current AI routes/migrations, private <code>GROQ_API_KEY</code>, <code>AI_ENABLED=true</code> and operator-reviewed <code>AI_DATA_CONTROLS_REVIEWED=true</code>. Optional online listening also needs <code>AI_TRANSCRIBE_ENABLED=true</code>. Model names and quotas can use the defaults above. Keep hosted speech disabled for this mobile release. These operator settings never replace each user's separate consent.</p>
+<p>For online text understanding, staging needs the current AI routes/migrations, private <code>GROQ_API_KEY</code>, <code>AI_ENABLED=true</code> and operator-reviewed <code>AI_DATA_CONTROLS_REVIEWED=true</code>. Optional online listening also needs <code>AI_TRANSCRIBE_ENABLED=true</code>. Model names and quotas can use the defaults above. Optional English narration uses the separate <a href="SARVAM_ENGLISH_VOICE.html">Sarvam configuration</a>; it does not change Groq settings. Personal keys can be saved encrypted per account; billing source is explicit and cannot silently fall back to the application key. These operator settings never replace each user's separate consent.</p>
 <p>The EAS <code>preview</code> profile embeds <code>https://staging-api.carekosh.com</code>; the backend deploy and mobile build are separate actions. A laptop EAS build uploads the current local files, including eligible uncommitted changes; Render uses the selected <strong>remote</strong> commit. Native changes require a newly installed APK/AAB; OTA updates are disabled. Confirm both candidate revisions and server capabilities before testing. This documentation update does not commit, push, merge, deploy, build or certify a live service.</p>
 <p>Describe the project as <strong>“an LLM-powered voice inventory assistant with bounded task routing and human approval.”</strong> It demonstrates agentic workflow patterns—intent extraction, deterministic data grounding, constrained actions, context, consent, failure handling and review. It has a predefined router/dispatcher; the LLM does not autonomously plan and execute repeated tool calls. Do not claim implemented RAG, LangGraph, multi-agent orchestration or universal natural-language understanding. See the primary <a href="https://www.anthropic.com/engineering/building-effective-agents">workflow/agent distinction</a>.</p>
 <h3 id="sources-to-trace-next">Sources to trace next<a class="anchor" href="#sources-to-trace-next" aria-label="Link to this section">#</a></h3>
@@ -294,7 +318,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <h2 id="end-to-end-flow">End-to-end flow<a class="anchor" href="#end-to-end-flow" aria-label="Link to this section">#</a></h2>
 <ol>
 <li>Tap the small <strong>Ask Care Coach</strong> microphone on the current tab. It glows while recording. The new Android module uses one <code>AudioRecord</code> (mono PCM16, 16 kHz, voice-recognition source) to feed a temporary WAV and local Moonshine streaming captions. Words beside the mic are genuine provisional recognition results and may be revised; they are not simulated typing. Tap again to finish (28-second native sample/wall-clock limit).</li>
-<li>With the downloaded speech pack, Moonshine Small Streaming English supplies live captions and the final offline transcript by default. Without the pack, selected/consented online listening can still record, but live words are unavailable and only the final online transcript appears after stopping. Older native modules retain the Expo AAC/M4A capture path until a new APK is installed. Separately opted-in Groq online listening sends the finished recording through <code>/ai/transcribe</code> to Whisper. The temporary audio is deleted on completion/failure; no interpretation or draft is started automatically. The selected local speaking engine is downloaded Pocket TTS/Alba or Android device TTS.</li>
+<li>With the downloaded speech pack, Moonshine Small Streaming English supplies live captions and the final offline transcript by default. Without the pack, selected/consented online listening can still record, but live words are unavailable and only the final online transcript appears after stopping. Older native modules retain the Expo AAC/M4A capture path until a new APK is installed. Separately opted-in Groq online listening sends the finished recording through <code>/ai/transcribe</code> to Whisper. The temporary audio is deleted on completion/failure; no interpretation or draft is started automatically. Narration is independently selected: Android device TTS by default, or consented online Sarvam English. Alba selection is paused.</li>
 <li>Review/edit the transcript, then tap <strong>Send</strong>. No question is interpreted or drafted before Send.</li>
 <li>Familiar wording uses the local parsers. Otherwise, explicitly consented Groq understanding sends reviewed text through authenticated <code>/ai/interpret</code>. Text understanding uploads no inventory list or recording. Online listening is a separate option requiring <code>groq_audio</code> consent and a fresh local <code>audioOptIn</code> choice.</li>
 <li>The app validates the interpretation, obtains a complete inventory snapshot owned by this login, and resolves names/calculations against real items. A valid interpretation can still misunderstand language; the screen is the review step.</li>
@@ -387,7 +411,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <p>The new Android module captures mono PCM16 at 16 kHz using <code>AudioRecord</code> and <code>VOICE_RECOGNITION</code>. Capture and inference have separate threads; PCM sample and wall-clock limits bound recordings, and native lifecycle cancellation releases the microphone. A bounded queue supplies captions; a failed or backlogged preview is disabled while the final recording continues. The same samples feed local streaming captions and a temporary WAV (up to 896,044 bytes). The offline decoder validates its exact header, duration and signal, and the upload declares <code>audio/wav</code>. The older-module compatibility path still requests mono AAC/M4A at 44.1 kHz and 128 kb/s through <code>expo-audio</code>, declared as <code>audio/mp4</code>; it provides words after stopping. Expo still supplies permission/audio-mode management and optional playback. The backend accepts both formats and normalizes audio for Whisper. The 28-second foreground limit and temporary-file cleanup remain. No noise-reduction or accuracy improvement is claimed without recordings from a phone. The Whisper prompt contains generic stock vocabulary, not an account's inventory or item-name list.</p>
 <p>Natural queries use the existing bounded v2 specification. For example, “Create a purchase order draft; for hand gloves I need twenty pairs” can reach Groq, and supported category/supplier/brand/status filters can be combined. Generic legacy refusals no longer block valid draft paraphrases. Quantity validation accepts bounded grammatical connectors while still binding each amount and unit to its named item. Wrong quantities, units and invented names are rejected. Conditions the contract cannot express—forecasts, history, arbitrary calculations or unsupported extra constraints—must be clarified/refused, not ignored. Results show whether the request was matched locally or understood with Groq; inventory results show the interpreted filters for review.</p>
 <p>The app rechecks backend capabilities before unfamiliar online queries instead of retaining a failed cold-start check. An old backend reports a deployment mismatch for natural draft requests. Provider/consent/quota errors remain visible. Typing is available directly from the microphone dock without making a recording.</p>
-<p>For a staging pilot, the existing backend settings must enable <code>AI_ENABLED</code>, <code>AI_TRANSCRIBE_ENABLED</code>, operator-reviewed <code>AI_DATA_CONTROLS_REVIEWED</code>, and a valid server-only <code>GROQ_API_KEY</code>. The intent model remains <code>openai/gpt-oss-20b</code>; listening uses <code>whisper-large-v3</code>. No new API key, database migration or autonomous mutation tool is added. Real provider behavior and recognition accuracy remain unverified by mocked tests.</p>
+<p>For a staging pilot, the existing backend settings must enable <code>AI_ENABLED</code>, <code>AI_TRANSCRIBE_ENABLED</code>, operator-reviewed <code>AI_DATA_CONTROLS_REVIEWED</code>, and a valid server-only <code>GROQ_API_KEY</code>. The intent model remains <code>openai/gpt-oss-20b</code>; listening uses <code>whisper-large-v3</code>. That Groq listening/draft follow-up adds no API key, migration or autonomous mutation tool. The separate 11 October Sarvam BYOK follow-up adds migration 0011 for encrypted narration credentials, not inventory/order changes. Real provider behavior and recognition accuracy remain unverified by mocked tests.</p>
 <p>Official references: <a href="https://www.sarvam.ai/">Sarvam public design reference</a>, <a href="https://developer.android.com/reference/android/media/AudioRecord">Android AudioRecord</a>, <a href="https://github.com/moonshine-ai/moonshine-v2/tree/main/examples/android/Transcriber">Moonshine Android source</a>, <a href="https://console.groq.com/docs/structured-outputs">Groq structured outputs</a>, <a href="https://console.groq.com/docs/speech-to-text">Groq speech-to-text</a>, <a href="https://docs.expo.dev/versions/v54.0.0/sdk/audio/">Expo SDK 54 audio</a>. Strict schema output constrains data shape; it does not certify semantic understanding or speech accuracy.</p>
 <h2 id="local-state-ambiguity-and-retries">Local state, ambiguity and retries<a class="anchor" href="#local-state-ambiguity-and-retries" aria-label="Link to this section">#</a></h2>
 <p><code>features/assistant/drafts.ts</code> holds one in-memory draft scoped by account and authentication epoch. It survives screen navigation; logout/account change/app restart clears it. This is not a persisted offline write queue.</p>
@@ -397,8 +421,8 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <p>A submission stores one immutable request and <code>localId</code> in memory. An uncertain save locks editing and offers <strong>Retry same submission</strong>. The existing hook retry also keeps the same variables. A definitive input/ownership/version rejection can unlock editing. A saved order with a failed PDF remains available as <strong>Re-export saved order</strong>; that path creates no new order. Recent Orders also re-exports saved orders. After an app restart, check Recent Orders before submitting again because the local draft/submission context is intentionally not persisted.</p>
 <h2 id="contracts-and-compatibility">Contracts and compatibility<a class="anchor" href="#contracts-and-compatibility" aria-label="Link to this section">#</a></h2>
 <ul>
-<li><code>/ai/capabilities</code> adds <code>interpret_contracts: [1, 2]</code> and <code>order_review_guard: true</code>.</li>
-<li><code>/ai/interpret</code> without <code>contract_version</code> retains the four-field <strong>v1</strong> intent contract for older APKs. New clients request <code>contract_version: 2</code> when supported.</li>
+<li><code>/ai/capabilities</code> adds <code>interpret_contracts: [1, 2]</code> and <code>order_review_guard: true</code>. <strong>13 October 2026:</strong> it reports <code>[1, 2, 3]</code>.</li>
+<li><code>/ai/interpret</code> without <code>contract_version</code> retains the four-field <strong>v1</strong> intent contract for older APKs. New clients request <code>contract_version: 2</code> when supported. <strong>13 October 2026:</strong> the current app requests <code>contract_version: 3</code> when it is listed, and version 2 is unchanged (<a href="#multi-part-requests-contract-3--13-october-2026">contract 3</a>).</li>
 <li><strong>v2</strong> returns <code>version</code>, <code>intent</code>, <code>draft_mode</code>, nullable bounded <code>query</code>, bounded <code>lines</code>, and <code>include_low</code>/<code>include_out</code>. Permitted names include <code>inventory_query</code>, <code>draft_order</code>, <code>review_draft</code>, <code>inventory_export</code>, <code>clarify</code>, <code>unsupported_action</code>. There is no save/apply/update/send operation.</li>
 <li>Python/Pydantic and TypeScript both reject extra fields and invalid shapes. The provider checks names/units and explicit quantities against reviewed text, including quantity-to-item association. Strict JSON validates shape, not the truth of stock or perfect understanding.</li>
 <li>New Create Order requests include per-line <code>expectedVersion</code>. Older clients can omit it and retain their previous contract. A <code>localId</code> replay returns the existing order before checking changed inventory; it never updates that original order.</li>
@@ -421,8 +445,16 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <td><code>vitaltrack-mobile/features/assistant/core.ts</code></td>
 </tr>
 <tr>
-<td>Strict v2 contract</td>
+<td>Strict v2 and v3 contracts</td>
 <td><code>vitaltrack-mobile/features/assistant/contracts.ts</code>; <code>vitaltrack-backend/app/schemas/ai.py</code></td>
+</tr>
+<tr>
+<td>Contract 3 executor and local grammar</td>
+<td><code>vitaltrack-mobile/features/assistant/selection.ts</code>; <code>queries.ts</code> (<code>parsePlan</code>, <code>draftFollowUp</code>)</td>
+</tr>
+<tr>
+<td>Voice provider registry</td>
+<td><code>vitaltrack-mobile/features/assistant/providers.ts</code></td>
 </tr>
 <tr>
 <td>Expanded parser, filters, deterministic resolution</td>
@@ -496,8 +528,8 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <ol>
 <li><strong>Tap to talk:</strong> assistant and microphone switches, Android permission guidance.</li>
 <li><strong>Listening · speech to text:</strong> offline Moonshine speech pack and separately consented optional Groq Whisper final transcription. The pack supplies live words even when online listening is selected.</li>
-<li><strong>Understanding · text to task:</strong> optional Groq interpretation after reviewed Send. Text consent is separate from audio consent; withdrawing all cloud consent disables both online modes, keeping the selected offline voice available.</li>
-<li><strong>Spoken replies:</strong> optional downloaded Alba or device speech, read-aloud choice, pace and preview. Recognition and speaking packs are different downloads. Help and full licence notices stay expandable.</li>
+<li><strong>Understanding · text to task:</strong> optional Groq interpretation after reviewed Send. Text consent is separate from audio consent; withdrawing all cloud consent disables online listening/understanding/narration and selects device voice.</li>
+<li><strong>Spoken replies:</strong> default device speech or optional Sarvam English, separate answer-text consent, read-aloud choice, Sarvam pace and preview. Alba is labelled paused and its existing pack can be removed. Recognition is a separate pack; help and retained licence notices remain expandable.</li>
 </ol>
 <p>The local parser now supports bounded mixed drafts such as:</p>
 <blockquote>
@@ -506,11 +538,91 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <p>After transcript review and Send, this prepares an <strong>unsaved, session-local</strong> draft: Ambu Bag gets the explicit quantity of 2 in its recorded unit; other active low-stock/out-of-stock items get deterministic suggestions from their meaningful recorded minimums. The explicit line takes priority even when that item also belongs to a stock group. Inactive items are excluded. Missing/ambiguous names, incompatible units or a missing meaningful minimum require clarification; the app does not publish a partial draft or overwrite manual work silently. Saying “saved draft” is not permission to persist an order or draft. Only the existing review-screen touch confirmation saves an order; restarting/logging out clears unsaved drafts.</p>
 <p>The backend's v2 prompt includes the same mixed-request examples for unfamiliar paraphrases. Stock-group clauses are consumed in full by the local parser; extra supplier constraints, exclusions or limits go to interpretation/clarification instead of being dropped. The schema remains bounded: arbitrary compound tasks, forecasts, history and unsupported calculations are not promised. <a href="https://console.groq.com/docs/structured-outputs">Groq structured outputs</a> constrain response shape; they do not establish correct meaning for every human sentence. Review visible item names, quantities and spoken-versus-suggested labels.</p>
 <p><strong>Reproduced checks:</strong> 240/240 mobile tests; 275/275 backend tests with both create-all and migrated disposable PostgreSQL schemas; TypeScript and Ruff pass. ESLint reports no errors and one existing builder-hook warning. New screen-flow checks cover typed and reviewed spoken mixed requests, unfamiliar consented v2 interpretation, unresolved lines preserving manual work and independent settings choices. New backend route checks use real authentication, consent/quota checks, schemas, provider grounding and owned inventory reads; only external HTTP is mocked. They confirm unchanged inventory/order/activity data. Cloud consent/usage metadata can still be written, as documented above. These are verified within that test scope, not live model or physical-device certification.</p>
-<p><strong>Still required on the release candidate:</strong> a new native APK, current staging prompt revision, real recordings and unfamiliar paraphrases, small-screen/large-text appearance, accessibility, repeated questions and Alba performance. This turn did not call real Groq, staging/production, deploy, commit or push. The local browser preview was blocked by its file-URL policy, so no new browser visual pass is claimed; component layout/control structure and interaction tests pass.</p>
+<p><strong>Still required on the release candidate:</strong> a new native APK, current staging prompt revision, real recordings and unfamiliar paraphrases, small-screen/large-text appearance, accessibility, repeated questions and target-phone narration. This dated review turn did not call real Groq, staging/production, deploy, commit or push. The local browser preview was blocked by its file-URL policy, so no new browser visual pass is claimed; component layout/control structure and interaction tests pass.</p>
 <p>Official references: <a href="https://www.sarvam.ai/">Sarvam public design reference</a>, <a href="https://developer.android.com/reference/android/media/AudioRecord">Android AudioRecord</a>, <a href="https://github.com/moonshine-ai/moonshine-v2/tree/main/examples/android/Transcriber">Moonshine Android source</a>, <a href="https://console.groq.com/docs/structured-outputs">Groq structured outputs</a>, <a href="https://docs.expo.dev/versions/v54.0.0/sdk/print/">Expo Print</a>, <a href="https://docs.expo.dev/versions/v54.0.0/sdk/sharing/">Expo Sharing</a>. Source code and reproduced tests remain the authority for project-specific claims.</p>
-<h3 id="alba-acceptance-checks--new-native-apk-required">Alba acceptance checks — new native APK required<a class="anchor" href="#alba-acceptance-checks--new-native-apk-required" aria-label="Link to this section">#</a></h3>
+<h3 id="historical-alba-acceptance-checks--paused-not-current-setup">Historical Alba acceptance checks — paused, not current setup<a class="anchor" href="#historical-alba-acceptance-checks--paused-not-current-setup" aria-label="Link to this section">#</a></h3>
 <p>Download/Cancel/Retry/Remove, Preview at each pace, Hear answer in airplane mode, repeated replies, interruption, another microphone query and logout/background cancellation must pass on the OnePlus and another target phone. The real asset bundle produced finite non-silent PCM in a Mac CPU fixture; Kotlin tokenization, setup and failure checks do not certify Android playback. Follow the <a href="POCKET_TTS_ALBA.html#verification-and-release-gate">Pocket TTS device checklist</a>. No Render change is needed for Alba.</p>
-<footer>Generated 2026-10-10 by <code>docs/tools/build_docs.py</code> from <code>docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md</code>.</footer>
+<h2 id="sarvam-narration-verification--11-october-2026">Sarvam narration verification — 11 October 2026<a class="anchor" href="#sarvam-narration-verification--11-october-2026" aria-label="Link to this section">#</a></h2>
+<p><strong>Current checks:</strong> 298 backend tests passed against a fresh disposable PostgreSQL 16 cluster, and all 260 mobile tests passed. TypeScript, changed-file lint and backend Ruff are checked separately. Provider requests and audio hardware are mocked. The source/contract, player lifecycle and consent changes are covered by these synthetic tests. The microphone, local/offline parser, Groq understanding/listening, mixed drafts, account isolation, order retry/PDF flows and existing business routes remain covered by the full suites. A live API key, provider voice audition and actual OnePlus speaker/Bluetooth playback are still pending. Use the <a href="SARVAM_ENGLISH_VOICE.html">Sarvam guide</a> for private Render configuration and the new-APK acceptance steps. Repeated Preview/Hear answer calls consume new speech allowances; internal quota reservations are shared with Groq and are not an invoice cap.</p>
+<h2 id="multi-part-requests-contract-3--13-october-2026">Multi-part requests (contract 3) — 13 October 2026<a class="anchor" href="#multi-part-requests-contract-3--13-october-2026" aria-label="Link to this section">#</a></h2>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="Contract 3: a request becomes a validated plan, then deterministic rows. Each group is an AND of conditions, groups are unioned, exclusions are removed, and rows are sorted; answers show filters and reasons, drafts show Explicit and Suggested quantities, and unclear requests ask first. Below, Voice setup keeps readiness, the saved choice, consent and the provider in use apart." src="diagrams/voice-plan.svg" /></div><figcaption>How a multi-part request becomes rows</figcaption></figure>
+<p><strong>What changed.</strong> Version 2 had no way to say "less than 3", "critical", "excluding gloves", "order priority" or "a draft from those". Such requests went to a clarification, or relied on Groq not dropping the condition. Version 3 represents them as a bounded plan, which the phone executes deterministically:</p>
+<ol>
+<li>Start from all active items, or from the list on screen when the request is a follow-up.</li>
+<li>Keep the rows that match <strong>any</strong> group. Inside one group every condition must hold. A list inside one condition, such as "low or out of stock", means either.</li>
+<li>Remove the rows that match an <strong>exclusion</strong>. The removed rows are listed.</li>
+<li>Sort, and show each item once.</li>
+</ol>
+<p><strong>Examples the phone understands without Groq.</strong> Each answer shows "Filters understood" and a "Why" line on every row.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>You say</th>
+<th>The plan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>How many items have quantity less than 3?</td>
+<td>quantity &lt; 3</td>
+</tr>
+<tr>
+<td>Show items with at most / exactly / more than three remaining</td>
+<td>≤ 3 / = 3 / &gt; 3</td>
+</tr>
+<tr>
+<td>Show items below 3 and also all low-stock or out-of-stock items; prepare an order draft for them.</td>
+<td>draft from (quantity &lt; 3) ∪ (low or out)</td>
+</tr>
+<tr>
+<td>Prepare a draft for critical items that are low or out of stock.</td>
+<td>draft from critical equipment <strong>and</strong> (low or out)</td>
+</tr>
+<tr>
+<td>Two units of Ambu Bag, plus the other low-stock and out-of-stock items; prepare an order draft.</td>
+<td>Ambu Bag 2 units (Explicit) + low or out (Suggested)</td>
+</tr>
+<tr>
+<td>Which stocks should I consider ordering now?</td>
+<td>low or out, in order priority</td>
+</tr>
+<tr>
+<td>Low-stock wound-care items from supplier Good Supplier, excluding gloves, sorted alphabetically.</td>
+<td>low <strong>and</strong> category <strong>and</strong> supplier, minus "gloves", A–Z</td>
+</tr>
+<tr>
+<td>Only the critical ones · Exclude masks · Create a draft from those</td>
+<td>follow-ups on the list on screen</td>
+</tr>
+<tr>
+<td>Add five more · Set the draft quantity to five</td>
+<td>change the draft line in focus (you choose if several could be meant)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Rules worth knowing.</strong></p>
+<ul>
+<li><strong>Critical</strong> means critical equipment: the item is marked ★, or its name matches a critical-equipment rule such as "ventilator" or "ambu bag". If one of your categories has "critical" in its name, the app asks which you meant.</li>
+<li><strong>Order priority</strong> puts rows in this order:
+  1. out of stock;
+  2. then critical equipment;
+  3. then the largest share of the minimum missing.</li>
+<li><strong>Suggested quantities</strong> bring stock up to the recorded minimum. A critical item with one left gets one backup. Items with no minimum are listed together in one clarification, and nothing changes.</li>
+<li><strong>Quantities you state</strong> take priority over suggestions. If an exclusion contradicts an explicitly quantified item, the whole proposal asks for clarification before changing the draft. Signed, fractional or otherwise unrepresentable amounts are never normalized into positive whole numbers.</li>
+<li><strong>The server checks Groq's plan</strong> before returning it. Names and numbers must come from your words. Detectable conditions, critical polarity, grouping, comparisons and item-to-threshold associations must agree. Recorded names remain names even when they contain words such as "Low Stock" or "Above Three". A follow-up needs a list on screen. Lexical checks cannot prove every interpretation.</li>
+</ul>
+<p><strong>Compatibility.</strong> The app asks for version 3 only when <code>/ai/capabilities</code> lists it. It upgrades compatible basic version 2 answers from older servers; detected advanced requests that an old contract cannot represent are blocked before cloud interpretation. Local version 3 plans can still work with an older backend. APKs without a version still get version 1. The marker gate is conservative, not a complete interpreter. Contract 3 adds no route, table or migration; the earlier Sarvam implementation requires migration 0011.</p>
+<p><strong>Evidence.</strong></p>
+<ul>
+<li>Mobile: <code>tests/voice-plans.test.cjs</code> and <code>tests/voice-providers.test.cjs</code>, plus inline UI tests. The initial 314-test baseline was independently reproduced, then additional regressions were found and fixed.</li>
+<li>Backend: <code>tests/test_voice_plans.py</code>, <code>tests/test_sarvam_transport.py</code> and <code>unit_tests/test_ai_plan_grounding.py</code>. See the <a href="AI_VOICE_END_TO_END_REVIEW.html#12-independent-follow-up">independent follow-up</a> for current full-suite results, business-row comparisons and remaining live checks.</li>
+</ul>
+<p>Live Groq understanding of these examples, and the phone layout, are <strong>NOT VERIFIED</strong>. See the <a href="AI_VOICE_END_TO_END_REVIEW.html#8-acceptance-matrix">review</a>.</p>
+<h2 id="voice-setup-stages--13-october-2026">Voice setup stages — 13 October 2026<a class="anchor" href="#voice-setup-stages--13-october-2026" aria-label="Link to this section">#</a></h2>
+<p>Voice setup now has an <strong>Assistant</strong> card (on/off) and three sections: <strong>1 Listening</strong>, <strong>2 Understanding</strong> and <strong>3 Spoken replies</strong>. Provider prerequisites are labelled Ready, Needs download, Needs your consent, Needs a configured key, Unavailable or Paused. Sarvam's positive label is <strong>Configured · preview to verify</strong>: configuration is not proof of live key validity, credits or audible output.</p>
+<p>The <strong>Selected</strong> line states whether the saved choice can run now. For example: "Selected: Sarvam English · online · Needs your consent". A choice that cannot run is never shown as working, and it is never swapped silently.</p>
+<p>Choices are saved per account. Old saved choices load with no online opt-in. "Use on-phone understanding only" turns off Groq for this account without withdrawing server consent; "Withdraw all cloud consent" remains separate. Alba shows as Paused in this published normal-preview release; diagnostics/native work remains separate and local.</p>
+<footer>Generated 2026-10-13 by <code>docs/tools/build_docs.py</code> from <code>docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md</code>.</footer>
 </main>
 </div>
 <script>

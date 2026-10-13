@@ -17,11 +17,11 @@ function load(file, deps={}) {
 const item={id:'g',name:'Hand gloves',quantity:2,minimumStock:5,unit:'pairs',isActive:true,isCritical:false,version:2};
 async function harness({loaded=true,offline=false,saveFails=0,pdfFails=0,oldBackend=false}={}) {
   const calls={posts:[],pdfs:[],back:0,snapshots:0};let alert,inventory=[item,{...item,id:'hidden',name:'Hidden',isActive:false}],fresh=[item],isSuccess=loaded;
-  const types=load('types/index.ts');const core=load('features/assistant/core.ts',{'../../types':types});const contracts=load('features/assistant/contracts.ts');const queries=load('features/assistant/queries.ts',{'@/types':types,'./core':core,'./contracts':contracts});
+  const types=load('types/index.ts');const core=load('features/assistant/core.ts',{'../../types':types});const contracts=load('features/assistant/contracts.ts');const selection=load('features/assistant/selection.ts',{'@/types':types,'./core':core,'./contracts':contracts});const queries=load('features/assistant/queries.ts',{'@/types':types,'./core':core,'./contracts':contracts,'./selection':selection});
   const session={owner:'a',epoch:0};let valid=true,epoch=0;
   const sessions={captureSession:()=>{if(!valid)throw new Error('Signed out');return {...session,epoch};},assertSession:s=>{if(!valid || s.epoch!==epoch)throw new Error('Session changed');},ownsSnapshot:()=>true};
   const auth=fn=>fn({isAuthenticated:true,user:{id:'a'}});auth.subscribe=()=>()=>{};
-  const drafts=load('features/assistant/drafts.ts',{react:React,'@/store/useAuthStore':{useAuthStore:auth},'@/services/assistantSession':sessions,'@/types':types,'@/utils/helpers':{generateId:()=> 'same-local-id'},'./queries':queries,'./contracts':contracts});
+  const drafts=load('features/assistant/drafts.ts',{react:React,'@/store/useAuthStore':{useAuthStore:auth},'@/services/assistantSession':sessions,'@/types':types,'@/utils/helpers':{generateId:()=> 'same-local-id'},'./selection':selection,'./contracts':contracts});
   const host=name=>({children,...props})=>React.createElement(name,props,children);
   const rn=Object.fromEntries(['View','Text','TouchableOpacity','TextInput','Image'].map(name=>[name,host(name)]));
   rn.FlatList=({data,renderItem,ListEmptyComponent})=>React.createElement('FlatList',{},data.length?data.map((i,index)=>React.createElement(React.Fragment,{key:i.item?.id||i.id},renderItem({item:i,index}))):ListEmptyComponent);

@@ -54,12 +54,21 @@ class Settings(BaseSettings):
     # Optional, explicitly consented providers. Offline phone speech needs none of these.
     SARVAM_API_KEY: SecretStr = SecretStr("")
     AI_SARVAM_ENABLED: bool = False
+    AI_SARVAM_BYOK_ENABLED: bool = False
+    # Separate from JWT/provider keys. Must be stable across deploys and workers.
+    AI_CREDENTIAL_ENCRYPTION_KEY: SecretStr = SecretStr("")
+    # Comma-separated former Fernet keys, only during a deliberate rotation.
+    AI_CREDENTIAL_PREVIOUS_ENCRYPTION_KEYS: SecretStr = SecretStr("")
+    # Enabling English narration must not enable microphone uploads to Sarvam.
+    AI_SARVAM_TRANSCRIBE_ENABLED: bool = False
     AI_SARVAM_DATA_CONTROLS_REVIEWED: bool = False
     SARVAM_STT_MODEL: str = "saaras:v4"
     SARVAM_TTS_MODEL: str = "bulbul:v3"
-    SARVAM_SPEAKER: str = "shubh"
+    # Empty selects the model-specific English voice. Never use a v3 ID with v4.
+    SARVAM_SPEAKER: str = ""
     AI_SARVAM_TRANSCRIBE_RESERVE_MICROUSD: int = Field(default=5_000, ge=1)
-    AI_SARVAM_SPEAK_RESERVE_MICROUSD: int = Field(default=20_000, ge=1)
+    # Upper bound for one reply: 640 characters of bulbul:v3 at INR 30 per 10,000 characters, with exchange-rate margin.
+    AI_SARVAM_SPEAK_RESERVE_MICROUSD: int = Field(default=25_000, ge=1)
     AI_KOKORO_ENABLED: bool = False
     AI_KOKORO_RIGHTS_APPROVED: bool = False
     KOKORO_SERVICE_URL: str = ""
@@ -70,7 +79,9 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/vitaltrack"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/vitaltrack"
+    )
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
     DATABASE_POOL_TIMEOUT: int = 30
@@ -115,7 +126,9 @@ class Settings(BaseSettings):
         env = info.data.get("ENVIRONMENT", "development")
         # The default is public: any deployed environment (staging included) using
         # it would accept forged tokens. Only local development and tests may.
-        if env not in ("development", "testing") and secret_value.startswith("CHANGE-THIS"):
+        if env not in ("development", "testing") and secret_value.startswith(
+            "CHANGE-THIS"
+        ):
             raise ValueError(
                 "SECRET_KEY must be set to a strong random value outside development and testing. "
                 'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
@@ -123,6 +136,7 @@ class Settings(BaseSettings):
         if len(secret_value) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters")
         return v
+
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -178,9 +192,11 @@ class Settings(BaseSettings):
     # Token Expiry
     EMAIL_VERIFICATION_EXPIRY_HOURS: int = 24
     PASSWORD_RESET_EXPIRY_HOURS: int = 1
-    
+
     # Email Verification Enforcement
-    REQUIRE_EMAIL_VERIFICATION: bool = False  # Default False — set True only when Brevo MAIL_PASSWORD is configured
+    REQUIRE_EMAIL_VERIFICATION: bool = (
+        False  # Default False — set True only when Brevo MAIL_PASSWORD is configured
+    )
 
     @property
     def database_url_sync(self) -> str:
@@ -196,7 +212,7 @@ class Settings(BaseSettings):
     def mail_password_value(self) -> str:
         """Raw Brevo API key for outbound email calls."""
         return self.MAIL_PASSWORD.get_secret_value()
-    
+
     @property
     def is_cors_allow_all(self) -> bool:
         """Check if CORS allows all origins (wildcard)."""

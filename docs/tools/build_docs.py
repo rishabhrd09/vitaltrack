@@ -33,8 +33,10 @@ ROOT = Path(__file__).resolve().parents[2]
 GUIDES = [
     "docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md",
     "docs/POCKET_TTS_ALBA.md",
+    "docs/SARVAM_ENGLISH_VOICE.md",
     "docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md",
     "docs/API_TRACEABILITY.md",
+    "docs/AI_VOICE_END_TO_END_REVIEW.md",
 ]
 # These records stay local; default builds also work from a public clone.
 PRIVATE_REVIEW_GUIDES = ["docs/documentation-audit-2026-10-07/README.md"]

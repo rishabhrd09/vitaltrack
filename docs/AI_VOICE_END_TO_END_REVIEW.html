@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="docs/tools/build_docs.py from docs/AI_VOICE_END_TO_END_REVIEW.md">
+<title>CareKosh AI voice assistant — end-to-end review (13 October 2026)</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d2328;--muted:#56606b;--card:#ffffff;--border:#d6dbe0;--accent:#0b5a73;
+--accent-bg:#e5f1f5;--code-bg:#f1f3f5;--code-fg:#1d2328;--warn-bg:#fff4d6;--warn-border:#9a6a00;--mark:#fff1a8}
+@media (prefers-color-scheme:dark){:root{--bg:#14181c;--fg:#e8ecef;--muted:#a9b3bc;--card:#1c2228;--border:#36404a;
+--accent:#7cc7df;--accent-bg:#17303a;--code-bg:#0f1316;--code-fg:#e8ecef;--warn-bg:#3a2f12;--warn-border:#d9a93a;--mark:#5b4e10}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+a{color:var(--accent);text-underline-offset:3px}a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:0}.skip:focus{left:12px;top:12px;background:var(--card);padding:8px 12px;z-index:9}
+header.site{border-bottom:1px solid var(--border);background:var(--card)}
+header.site .inner{max-width:1180px;margin:auto;padding:14px 20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;min-width:0}
+header.site .meta{min-width:0;overflow-wrap:anywhere}
+header.site .brand{font-weight:700}
+.layout{max-width:1180px;margin:auto;padding:0 20px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:36px}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:24px 0;font-size:14.5px;line-height:1.45}
+nav.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}nav.toc ul{list-style:none;padding-left:0;margin:0}nav.toc ul ul{padding-left:14px}nav.toc li{margin:5px 0}
+nav.toc a{color:var(--fg);text-decoration:none}nav.toc a:hover{text-decoration:underline}
+main{min-width:0;padding:28px 0 80px;max-width:78ch;overflow-wrap:break-word}
+:not(pre)>code{overflow-wrap:anywhere;word-break:break-word}
+h1{font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.15;margin:.2em 0 .4em}
+h2{font-size:1.6rem;margin-top:2.6rem;padding-top:.6rem;border-top:1px solid var(--border)}
+h3{font-size:1.25rem;margin-top:2rem}h4{font-size:1.05rem;margin-top:1.6rem}
+h2,h3,h4{scroll-margin-top:12px}.anchor{margin-left:.35em;font-size:.8em;text-decoration:none;opacity:.45}
+.anchor:hover,.anchor:focus{opacity:1}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--warn-border);background:var(--warn-bg)}
+blockquote p{margin:.4em 0}
+code{font:0.9em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code-bg);padding:.1em .3em;border-radius:4px}
+.codewrap{position:relative;margin:1.1em 0}
+pre{background:var(--code-bg);color:var(--code-fg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow:auto;line-height:1.5}
+pre code{background:none;padding:0;font-size:.86em}
+button.copy{position:absolute;top:8px;right:8px;font:600 12.5px system-ui,sans-serif;padding:4px 10px;border-radius:6px;
+border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer}
+.tablewrap{overflow-x:auto;margin:1.1em 0;border:1px solid var(--border);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.94em;background:var(--card)}
+th,td{border-bottom:1px solid var(--border);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--accent-bg);position:sticky;top:0}
+figure.diagram{margin:1.6em 0}figure.diagram .scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:#fff}
+figure.diagram img{display:block;width:100%;min-width:680px;height:auto}
+figcaption{font-size:.92em;color:var(--muted);margin-top:.5em}
+.meta{color:var(--muted);font-size:.92em}
+footer{color:var(--muted);font-size:.9em;border-top:1px solid var(--border);margin-top:3rem;padding-top:1rem}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.toc{position:static;max-height:none;border-bottom:1px solid var(--border)}
+main{max-width:none}}
+@media print{header.site,nav.toc,button.copy,.skip,.anchor{display:none!important}body{background:#fff;color:#000;font-size:11.5pt}
+.layout{display:block;max-width:none;padding:0}main{max-width:none;padding:0}a{color:#000}
+pre{white-space:pre-wrap;border:1px solid #999}.tablewrap{overflow:visible;border:none}th{position:static}
+figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{break-after:avoid}pre,figure,tr{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="site"><div class="inner"><span class="brand">CareKosh docs</span>
+<a href="INDEX.html">Documentation home</a>
+<span class="meta">Generated from <code>docs/AI_VOICE_END_TO_END_REVIEW.md</code> — edit the Markdown, not this file.</span></div></header>
+<div class="layout">
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#decisions-at-a-glance">Decisions at a glance</a></li><li><a href="#1-trace-map">1. Trace map</a><ul><li><a href="#11-spoken-question-to-spoken-answer">1.1 Spoken question to spoken answer</a></li><li><a href="#12-typed-question">1.2 Typed question</a></li><li><a href="#13-draft-to-saved-order-and-pdf">1.3 Draft to saved order and PDF</a></li><li><a href="#14-where-the-server-may-write-and-where-it-never-does">1.4 Where the server may write, and where it never does</a></li><li><a href="#15-groq-is-not-grok">1.5 Groq is not Grok</a></li></ul></li><li><a href="#2-contract-version-3-multi-part-requests">2. Contract version 3: multi-part requests</a><ul><li><a href="#21-why-a-new-version">2.1 Why a new version</a></li><li><a href="#22-shape-and-meaning">2.2 Shape and meaning</a></li><li><a href="#23-negotiation">2.3 Negotiation</a></li><li><a href="#24-server-checks-on-groqs-answer-ground_plan">2.4 Server checks on Groq's answer (ground_plan)</a></li><li><a href="#25-how-the-phone-executes-a-plan">2.5 How the phone executes a plan</a></li><li><a href="#26-drafts">2.6 Drafts</a></li><li><a href="#27-before-and-after">2.7 Before and after</a></li></ul></li><li><a href="#3-safety-boundary">3. Safety boundary</a></li><li><a href="#4-sarvam-review-against-current-sarvam-documentation">4. Sarvam review against current Sarvam documentation</a><ul><li><a href="#41-what-matches-verified-in-current-code">4.1 What matches (VERIFIED IN CURRENT CODE)</a></li><li><a href="#42-findings-and-fixes">4.2 Findings and fixes</a></li><li><a href="#43-pricing-credits-and-data-handling-from-sarvams-pages-owner-to-confirm">4.3 Pricing, credits and data handling (from Sarvam's pages; owner to confirm)</a></li><li><a href="#44-render-and-live-checks-manual-no-authenticated-access-was-used">4.4 Render and live checks (manual; no authenticated access was used)</a></li></ul></li><li><a href="#5-voice-setup-three-independent-stages">5. Voice setup: three independent stages</a></li><li><a href="#6-answer-sheet-changes-assistant-ui-only">6. Answer sheet changes (assistant UI only)</a></li><li><a href="#7-findings-all">7. Findings (all)</a></li><li><a href="#8-acceptance-matrix">8. Acceptance matrix</a></li><li><a href="#9-initial-verification-run-13-october-2026">9. Initial verification run (13 October 2026)</a></li><li><a href="#10-limits">10. Limits</a></li><li><a href="#11-files-changed-for-this-review">11. Files changed for this review</a></li><li><a href="#12-independent-follow-up">12. Independent follow-up</a><ul><li><a href="#121-confirmed-defects-and-corrections">12.1 Confirmed defects and corrections</a></li><li><a href="#122-verification-of-the-final-candidate">12.2 Verification of the final candidate</a></li><li><a href="#123-deployment-and-remaining-acceptance">12.3 Deployment and remaining acceptance</a></li></ul></li><li><a href="#13-publication-candidate">13. Publication candidate</a></li></ul></details></nav>
+<main id="content">
+<h1 id="carekosh-ai-voice-assistant--end-to-end-review-13-october-2026">CareKosh AI voice assistant — end-to-end review (13 October 2026)</h1>
+<p><strong>Scope.</strong> This review covers the whole assistant path:</p>
+<ul>
+<li>voice and typed questions, through understanding and the stock answer;</li>
+<li>the answer sheet and spoken replies, including Sarvam;</li>
+<li>local order drafts and the touch-confirmed order with its PDF.</li>
+</ul>
+<p>It also records what was changed on 13 October 2026, the evidence for each change, and what is still open.</p>
+<p><strong>State reviewed.</strong> Branch <code>feature/backend-hardening-ai-voice-agent-foundation</code> at <code>4bd1dff</code>, plus uncommitted work in the main checkout. Nothing was committed, pushed or deployed. No live database was used. No paid API call was made.</p>
+<p><strong>Evidence labels</strong> (same as the 7 October documentation audit):</p>
+<ul>
+<li><strong>VERIFIED IN CURRENT CODE</strong>: read in the source at the line given.</li>
+<li><strong>VERIFIED BY REPRODUCED TEST</strong>: a test in this repository shows it, and it passed on 13 October 2026.</li>
+<li><strong>NOT VERIFIED</strong>: needs a phone, a live provider or the deployed service.</li>
+</ul>
+<h2 id="decisions-at-a-glance">Decisions at a glance<a class="anchor" href="#decisions-at-a-glance" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Decision</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ready for <strong>staging testing</strong>?</td>
+<td><strong>Yes, for controlled testing after deployment of this reviewed candidate.</strong></td>
+<td>Independent working-tree checks passed 458 backend tests in both schema modes and 344 mobile tests. The clean publication candidate passes 458 backend and 341 mobile tests (§13). Use an operator-owned Sarvam key for the first staging pilot. Deploy the backend before testing cloud contract 3 in the new APK. Detected unsupported advanced requests must not silently downgrade. Contract 3 adds no route/migration; the earlier Sarvam implementation still requires migration 0011.</td>
+</tr>
+<tr>
+<td>Ready for <strong>production</strong>?</td>
+<td><strong>No, pending live acceptance and operator setup.</strong></td>
+<td>Verify the new APK on the OnePlus, real Groq interpretation and real Sarvam decoding/playback, plus the production deployment/privacy controls. Public third-party personal-key use needs a permitted provider arrangement (§4.3). Alba remains a separate experimental gate; keeping it paused does not block verified device/Sarvam speech.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="1-trace-map">1. Trace map<a class="anchor" href="#1-trace-map" aria-label="Link to this section">#</a></h2>
+<p>Line numbers are for the working tree on 13 October 2026. All paths are relative to the repository root.</p>
+<h3 id="11-spoken-question-to-spoken-answer">1.1 Spoken question to spoken answer<a class="anchor" href="#11-spoken-question-to-spoken-answer" aria-label="Link to this section">#</a></h3>
+<ol>
+<li><strong>Microphone permission and capture.</strong>
+   - <code>startRecording</code> asks for permission, waits until CareKosh is back in the foreground, and sets the audio mode to "do not mix" (<code>vitaltrack-mobile/components/assistant/AssistantExperience.tsx:730</code>).
+   - <code>MicrophoneCapture.start</code> begins the recording (<code>vitaltrack-mobile/features/assistant/capture.ts:38</code>).
+   - A 28-second timer stops the recording.</li>
+<li><strong>Live words while speaking.</strong> The native live recorder sends partial transcripts. The "Ask Care Coach" dock shows them only while recording (<code>vitaltrack-mobile/components/assistant/AssistantDock.tsx:60</code>).</li>
+<li><strong>Final transcript.</strong> <code>stopRecording</code> (<code>AssistantExperience.tsx:699</code>) calls one of two sources:
+   - Moonshine on the phone (<code>vitaltrack-mobile/features/assistant/offlineVoice.ts:105</code>);
+   - with the separate <code>groq_audio</code> consent, Groq Whisper through <code>POST /api/v1/ai/transcribe</code>.</li>
+</ol>
+<p>A failed online transcript is never replaced by an offline one. The temporary recording is deleted in <code>finally</code>.
+4. <strong>Editable transcript and explicit Send.</strong> The transcript goes into the text box. Nothing is understood or fetched until Send is tapped.
+5. <strong>Understanding.</strong> <code>ask()</code> (<code>AssistantExperience.tsx:526</code>) first tries the phone (<code>routeLocally</code>, <code>vitaltrack-mobile/features/assistant/queries.ts</code>), in this order:
+   - an exact item read;
+   - draft follow-ups;
+   - the complete version 3 inventory/complex-draft grammar (<code>parsePlan</code>);
+   - the version 2 grammar for compatible simple requests;
+   - the legacy phrases.</p>
+<p>Only unmatched text goes online, after this account chose Groq understanding and the server confirms <code>groq_text</code> consent. Contract 3 is preferred. Basic requests can use an older contract; detected advanced conditions that the server cannot represent ask for a backend update instead. Local version 3 plans do not need cloud interpretation support.
+6. <strong>Validated plan.</strong> Every answer from Groq is checked against the strict contract twice: on the server (<code>vitaltrack-backend/app/schemas/ai.py</code>, then <code>ground_plan</code> in <code>app/services/ai_provider.py:234</code>) and on the phone (<code>validatePlan</code>, <code>vitaltrack-mobile/features/assistant/contracts.ts:115</code>). <code>ai_plan_grounding.py</code> also checks detectable missing/invented conditions, polarity, grouping and quantity-to-item association. Version 2 answers are upgraded with the same meaning (<code>toPlan</code>). These checks cannot certify arbitrary language.
+7. <strong>Owner-scoped, complete snapshot.</strong> <code>inventorySnapshot</code> (<code>vitaltrack-mobile/features/assistant/snapshot.ts:28</code>) fetches the signed-in account's full item list. A cache counts only if it was stamped for this session and has not been invalidated. While stock edits are still saving, it refuses to answer. Offline answers are marked "Last known".
+8. <strong>Deterministic execution.</strong> <code>evaluateSelection</code> (<code>vitaltrack-mobile/features/assistant/selection.ts:176</code>) filters, explains and sorts the rows on the phone. Drafts use <code>prepareDraftResult</code> (<code>vitaltrack-mobile/features/assistant/drafts.ts:65</code>). No model output is ever executed as code or as an ID.
+9. <strong>Answer sheet.</strong> The overlay shows:
+   - the filters as applied;
+   - counts;
+   - a table with item, quantity with unit, and status as an icon plus text;
+   - a "Why" line on every row;
+   - expandable recorded details (<code>vitaltrack-mobile/components/assistant/AnswerList.tsx</code>).
+10. <strong>Narration.</strong> <code>playAnswer</code> (<code>AssistantExperience.tsx:373</code>) reads the short answer text with the chosen voice:
+    - <strong>Device voice</strong> speaks on the phone.
+    - <strong>Sarvam</strong> sends only the answer text to <code>POST /api/v1/ai/speak</code>. The server checks the WAV, and the clip plays in a player made for that reply (<code>vitaltrack-mobile/features/assistant/cloudSpeech.ts:33-108</code>). The temporary file is deleted in <code>finally</code>.
+    - <strong>Offline fallback</strong>, if you opted in, reads the same text once when Sarvam fails before playback has started (<code>narrateWithFallback</code>). Detected partial playback suppresses fallback, even if an error arrives without a <code>playing=true</code> sample.</p>
+<h3 id="12-typed-question">1.2 Typed question<a class="anchor" href="#12-typed-question" aria-label="Link to this section">#</a></h3>
+<p>A typed question uses the same <code>ask()</code> path from step 5 onwards. Typing never starts the microphone or a speech model (VERIFIED BY REPRODUCED TEST: <code>vitaltrack-mobile/tests/assistant-inline.test.cjs</code>, "typed compound query …").</p>
+<h3 id="13-draft-to-saved-order-and-pdf">1.3 Draft to saved order and PDF<a class="anchor" href="#13-draft-to-saved-order-and-pdf" aria-label="Link to this section">#</a></h3>
+<ol>
+<li>The assistant only writes the <strong>in-memory, session-scoped draft</strong> (<code>writeDraft</code>, <code>drafts.ts</code>). The draft is cleared on logout, on an account change and on app restart.</li>
+<li>"Review unsaved order draft" opens Create Order. The assistant imports no order-save service.</li>
+<li>The <strong>only</strong> commit point is the touch confirmation on Create Order (<code>generatePDF</code>, <code>vitaltrack-mobile/app/order/create.tsx:208</code>). It works in four steps:
+   - it re-reads the inventory and asks you to review again if anything changed;
+   - <code>beginSubmission</code> (<code>drafts.ts:146</code>) fixes one <code>localId</code>;
+   - <code>createOrderMutation.mutateAsync</code> (<code>create.tsx:263</code>) sends the authenticated <code>POST /api/v1/orders</code>;
+   - the server returns the existing order for a repeated <code>localId</code> (<code>vitaltrack-backend/app/api/v1/orders.py:279</code>, <code>_find_order_by_local_id</code> at <code>:159</code>).</li>
+<li>The PDF is built from the <strong>order the server returned</strong> (<code>create.tsx:268</code>). A re-export uses the same saved order.</li>
+</ol>
+<h3 id="14-where-the-server-may-write-and-where-it-never-does">1.4 Where the server may write, and where it never does<a class="anchor" href="#14-where-the-server-may-write-and-where-it-never-does" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>May write</th>
+<th>Never writes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /ai/capabilities</code></td>
+<td>nothing</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>PUT /ai/consent</code></td>
+<td><code>ai_consents</code> (this account)</td>
+<td>inventory, categories, orders, activity, audit</td>
+</tr>
+<tr>
+<td><code>POST /ai/interpret</code>, <code>/ai/transcribe</code>, <code>/ai/speak</code></td>
+<td><code>ai_usage</code> (reserve, then settle)</td>
+<td>inventory, categories, orders, order items, activity, audit</td>
+</tr>
+<tr>
+<td><code>PUT/DELETE /ai/sarvam-key</code></td>
+<td><code>ai_sarvam_credentials</code> (encrypted)</td>
+<td>the same business tables</td>
+</tr>
+<tr>
+<td><code>POST /auth/*</code></td>
+<td>authentication records</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>POST /orders</code></td>
+<td>order, order-item and associated activity/audit records through the authenticated order API</td>
+<td>No assistant dispatcher exposes this route; the app invokes it from touch review (§1.3). The server authenticates API callers; it does not prove a physical touch occurred.</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>VERIFIED BY REPRODUCED TEST.</strong> The test <code>vitaltrack-backend/tests/test_voice_plans.py::test_v3_route_captures_one_text_request_and_writes_no_business_data</code> runs on a migrated PostgreSQL 16 database. It compares serialized rows in six business tables, their counts, and item quantity/version totals before and after interpretation. Rejected hostile output is checked too. A successful interpretation adds only a usage row:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>items</th>
+<th>categories</th>
+<th>orders</th>
+<th>order items</th>
+<th>activity</th>
+<th>audit</th>
+<th>Σ quantity</th>
+<th>Σ version</th>
+<th><code>ai_usage</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>before</td>
+<td>4</td>
+<td>2</td>
+<td>0</td>
+<td>0</td>
+<td>8</td>
+<td>4</td>
+<td>3</td>
+<td>4</td>
+<td>0</td>
+</tr>
+<tr>
+<td>after</td>
+<td>4</td>
+<td>2</td>
+<td>0</td>
+<td>0</td>
+<td>8</td>
+<td>4</td>
+<td>3</td>
+<td>4</td>
+<td>1</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="15-groq-is-not-grok">1.5 Groq is not Grok<a class="anchor" href="#15-groq-is-not-grok" aria-label="Link to this section">#</a></h3>
+<p>"Groq" here is Groq Inc.'s hosted inference API at <code>api.groq.com</code>. The model is <code>openai/gpt-oss-20b</code> for understanding and <code>whisper-large-v3</code> for transcription. It has nothing to do with xAI's Grok model.</p>
+<h2 id="2-contract-version-3-multi-part-requests">2. Contract version 3: multi-part requests<a class="anchor" href="#2-contract-version-3-multi-part-requests" aria-label="Link to this section">#</a></h2>
+<h3 id="21-why-a-new-version">2.1 Why a new version<a class="anchor" href="#21-why-a-new-version" aria-label="Link to this section">#</a></h3>
+<p>Version 2 could not represent:</p>
+<ul>
+<li>quantity comparisons;</li>
+<li>critical equipment;</li>
+<li>exclusions;</li>
+<li>priority sorting;</li>
+<li>a draft made from a filtered or previous list.</li>
+</ul>
+<p>Its prompt asked Groq to answer "clarify" for these, but nothing on the server could detect a dropped condition. A model that ignored the prompt could, for example, drop "critical" and draft every low item. Version 2's schema and transport are unchanged (VERIFIED BY REPRODUCED TEST: <code>test_v2_contract_is_unchanged</code>). The follow-up also rejects signed or fractional amounts that its normalization cannot preserve.</p>
+<h3 id="22-shape-and-meaning">2.2 Shape and meaning<a class="anchor" href="#22-shape-and-meaning" aria-label="Link to this section">#</a></h3>
+<figure class="diagram"><div class="scroll"><img loading="lazy" alt="Contract 3: a request becomes a validated plan, then deterministic rows. Each group is an AND of conditions, groups are unioned, exclusions are removed, and rows are sorted; answers show filters and reasons, drafts show Explicit and Suggested quantities, and unclear requests ask first. Below, Voice setup keeps readiness, the saved choice, consent and the provider in use apart." src="diagrams/voice-plan.svg" /></div><figcaption>How a multi-part request becomes rows</figcaption></figure>
+<pre><code class="language-text">Plan     = { version: 3, intent, selection | null, draft | null, clarify_reason | null }
+Selection= { scope: inventory | previous, any_of: Condition[1..6], exclude: Condition[0..6],
+             sort: none | name | quantity_asc | quantity_desc | shortfall | priority }
+Condition= { item_queries[], stock[] (low, out, in_stock, below_minimum),
+             quantity[0..2] (lt, lte, eq, gte, gt), critical: true | false | null,
+             category, supplier, brand, missing_supplier }
+Draft    = { mode: new | edit, lines[0..100], include_selection }
+Line     = { operation: set | add | remove, target: named | previous, item_query, quantity, unit }
+</code></pre>
+<p>The rows are worked out in this order:</p>
+<ol>
+<li>Start from <strong>all active items</strong>, or from the <strong>previous list</strong> when <code>scope</code> is <code>previous</code>. Previous rows are re-read from the fresh snapshot.</li>
+<li>Each <code>any_of</code> group is an <strong>AND</strong> of its fields. A list inside one field (<code>stock</code>, <code>item_queries</code>) is an <strong>OR</strong>.</li>
+<li>Take the <strong>union</strong> of the groups. Each item appears <strong>once</strong>, by item ID, keeping every reason it matched.</li>
+<li>Remove every row that matches <strong>any exclusion</strong>. The removed rows are listed in the answer.</li>
+<li>Sort the rows.</li>
+</ol>
+<p>Draft lines with a quantity take priority over calculated suggestions. If an explicit line also matches an exclusion, the whole proposal asks for clarification before any draft change. A contradictory exclusion is never silently ignored.</p>
+<h3 id="23-negotiation">2.3 Negotiation<a class="anchor" href="#23-negotiation" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><code>GET /ai/capabilities</code> now reports <code>interpret_contracts: [1, 2, 3]</code> (<code>vitaltrack-backend/app/api/v1/ai.py:62</code>).</li>
+<li>The new app requests cloud contract 3 only when the server lists it. Supported basic requests retain legacy compatibility. An unmatched advanced request that needs contract 3 asks for a backend update or clarification instead of dropping its conditions into contract 2 or 1. Locally parsed v3 plans can run independently of the server's interpretation version.</li>
+<li>APKs that send no version still get the version 1 intent.</li>
+</ul>
+<p>All of this is VERIFIED BY REPRODUCED TEST ("version 3 is requested only from servers that list it …").</p>
+<h3 id="24-server-checks-on-groqs-answer-ground_plan">2.4 Server checks on Groq's answer (<code>ground_plan</code>)<a class="anchor" href="#24-server-checks-on-groqs-answer-ground_plan" aria-label="Link to this section">#</a></h3>
+<p>A plan is rejected (HTTP 502, nothing executed) when its strict schema or deterministic grounding checks fail. Those checks validate explicit names, numbers and supported condition associations; they do not prove every possible natural-language interpretation is correct:</p>
+<ul>
+<li>every <strong>name</strong> (item, category, supplier, brand, unit) appears as words in the question;</li>
+<li>every <strong>comparison</strong> is said with its own wording next to its number: "at most 3" cannot become "less than 3";</li>
+<li>every <strong>exclusion</strong> has an exclusion word ("excluding", "except", "other than", …) at most eight words before it, so a requested item can never be turned into an exclusion;</li>
+<li>every <strong>draft quantity</strong> is bound to its item the same way as in version 2;</li>
+<li><strong>critical</strong> and <strong>missing supplier</strong> are only accepted when the question says so;</li>
+<li><strong>previous-list references</strong> are only accepted when the phone reported context.</li>
+</ul>
+<p>These checks are VERIFIED BY REPRODUCED TEST: 20 accepted and rejected cases in <code>test_v3_parameters_are_grounded_in_reviewed_text</code>.</p>
+<h3 id="25-how-the-phone-executes-a-plan">2.5 How the phone executes a plan<a class="anchor" href="#25-how-the-phone-executes-a-plan" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>Stock states</strong> use the same rules as the dashboard and Create Order (<code>isLowStock</code>, <code>isOutOfStock</code>; <code>vitaltrack-mobile/types/index.ts:113-152</code>).</li>
+<li><strong>Critical</strong> means <em>critical equipment</em>: the item is marked critical (★) or its name matches a critical-equipment rule such as "ventilator" or "ambu bag" (<code>types/index.ts:90-103</code>). Each row says which rule applied. If one of your categories has "critical" in its name, the app asks which you meant before running anything (<code>criticalMeaning</code>, <code>selection.ts:86</code>).</li>
+<li><strong>"What should I order now"</strong> means "low or out of stock", sorted in this order:
+  1. out of stock first;
+  2. then critical equipment;
+  3. then the largest share of the minimum that is missing;
+  4. then the largest shortfall;
+  5. then the name.</li>
+</ul>
+<p>The filter line states this rule, and every row has a reason, such as "Low stock · critical equipment with 1 left".
+- <strong>Names are never guessed.</strong>
+  - A near spelling, or one name that matches several items, asks you to choose.
+  - A supplier or category said only in part offers the recorded names that contain every word you said.
+  - Extra words are never dropped: "wound care that we used last week" is not shortened to "Wound care".
+  - An exclusion term that matches no item asks you to choose or rephrase.
+- <strong>Follow-ups narrow the list on screen.</strong> Examples: "only the critical ones", "exclude masks", "sort them alphabetically", "create a draft from those". The chain is re-run on fresh stock and is limited to six steps. The one-tap refinement chips appear only when they would change the list.</p>
+<h3 id="26-drafts">2.6 Drafts<a class="anchor" href="#26-drafts" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>Explicit or Suggested.</strong></li>
+<li>A quantity from your request is labelled <strong>Explicit · Your request</strong>.</li>
+<li>A calculated one is labelled <strong>Suggested</strong> with its basis, for example "brings stock from 2 to its minimum of 5" or "1 backup for critical equipment".</li>
+<li>A quantity edited on Create Order is labelled <strong>Edited</strong>.</li>
+<li><strong>Add or set.</strong> "Add five more" adds to the line in focus; it needs an open draft. "Set the draft quantity to five" replaces it. If several lines could be meant, you choose one first.</li>
+<li><strong>Merge, replace or cancel.</strong> A new voice draft never silently changes a manual draft or a draft that has edits. You choose Merge, Replace or Cancel, and a merge refuses to combine two different quantities.</li>
+<li><strong>Missing minimums.</strong> Items with no minimum stock are listed together in one clarification. Nothing is changed.</li>
+</ul>
+<h3 id="27-before-and-after">2.7 Before and after<a class="anchor" href="#27-before-and-after" aria-label="Link to this section">#</a></h3>
+<p>Baseline: the parser files at <code>4bd1dff</code>, which were unchanged in the working tree before this work. Reproduce with the same phrases against both versions.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Request</th>
+<th>Before (on the phone)</th>
+<th>After (on the phone)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>How many items have quantity less than 3? Show their names, quantities and status.</td>
+<td>not understood</td>
+<td>query: quantity &lt; 3</td>
+</tr>
+<tr>
+<td>Show items with at most / exactly / more than three remaining</td>
+<td>not understood</td>
+<td>query: ≤ 3 / = 3 / &gt; 3</td>
+</tr>
+<tr>
+<td>Show items below 3 and also all low-stock or out-of-stock items; prepare an order draft for them.</td>
+<td>not understood</td>
+<td>draft: (quantity &lt; 3) ∪ (low or out)</td>
+</tr>
+<tr>
+<td>Prepare a draft for critical items that are low or out of stock.</td>
+<td>not understood</td>
+<td>draft: critical <strong>and</strong> (low or out)</td>
+</tr>
+<tr>
+<td>Two units of Ambu Bag, plus the other low-stock and out-of-stock items; prepare an order draft.</td>
+<td>not understood</td>
+<td>draft: Ambu Bag 2 units + (low or out)</td>
+</tr>
+<tr>
+<td>Which stocks should I consider ordering now? Show why each appears in the list.</td>
+<td>not understood</td>
+<td>query: low or out, priority order</td>
+</tr>
+<tr>
+<td>Low-stock wound-care items from supplier Good Supplier, excluding gloves, sorted alphabetically.</td>
+<td>not understood</td>
+<td>query: low <strong>and</strong> Wound care <strong>and</strong> supplier, minus "gloves", A–Z</td>
+</tr>
+<tr>
+<td>Only the critical ones · Exclude masks · Create a draft from those</td>
+<td>not understood</td>
+<td>follow-ups on the previous list</td>
+</tr>
+<tr>
+<td>Add five more (with a draft open)</td>
+<td>refused as a stock edit</td>
+<td>draft edit: +5 to the line in focus</td>
+</tr>
+<tr>
+<td>Set the draft quantity to five</td>
+<td>asked for an item called "the draft quantity"</td>
+<td>draft edit: set the line in focus to 5</td>
+</tr>
+</tbody>
+</table></div>
+<p>"Not understood" means the request went to Groq if you had enabled it, otherwise the app said it needs online understanding. Version 2 had no field for most of these conditions.</p>
+<h2 id="3-safety-boundary">3. Safety boundary<a class="anchor" href="#3-safety-boundary" aria-label="Link to this section">#</a></h2>
+<p>The boundary is enforced in code, not only in prompts:</p>
+<ul>
+<li><strong>Nothing to call.</strong> The contract has no save, update or send operation, and no tool, URL or ID field. Unknown fields fail validation on both the server and the phone. The model gets no <code>tools</code> parameter.</li>
+<li><strong>No inventory snapshot goes out.</strong> The interpret request contains only the reviewed question and one boolean. The question itself can include the item names or quantities the person said. VERIFIED BY REPRODUCED TEST, with the HTTP request captured at the transport:</li>
+<li>exactly one <code>POST https://api.groq.com/openai/v1/chat/completions</code>;</li>
+<li>redirects off and environment proxies ignored;</li>
+<li>no item, category or other-account name in the body.</li>
+<li><strong>Imports.</strong> The phone executor and planner import no service, storage or network module (VERIFIED BY REPRODUCED TEST: a source import check).</li>
+<li><strong>Hostile input fails safe.</strong></li>
+<li>Prompt injection in a question, names or suppliers, SQL text, URLs and tool names are all treated as data.</li>
+<li>Extra fields, invented names, a requested item moved into an exclusion, or a follow-up without context all fail closed with 502.</li>
+<li>The usage row is settled as "failed", and no business table changes (<code>test_v3_route_fails_closed_on_hostile_model_output</code>).</li>
+<li><strong>Drafts only.</strong> "Create an order" prepares a local unsaved draft. "… and confirm it", "mark it received", "send it to the supplier" and "delete …" are refused. Only the Create Order touch confirmation saves, and a repeated <code>localId</code> returns the same order.</li>
+</ul>
+<h2 id="4-sarvam-review-against-current-sarvam-documentation">4. Sarvam review against current Sarvam documentation<a class="anchor" href="#4-sarvam-review-against-current-sarvam-documentation" aria-label="Link to this section">#</a></h2>
+<p>The Sarvam documentation and legal pages were read on 13 October 2026. The raw OpenAPI file returned 404, so each enum was confirmed in two separate documentation pages. No Sarvam API call was made.</p>
+<h3 id="41-what-matches-verified-in-current-code">4.1 What matches (VERIFIED IN CURRENT CODE)<a class="anchor" href="#41-what-matches-verified-in-current-code" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>Endpoint and authentication.</strong></li>
+<li><code>POST https://api.sarvam.ai/text-to-speech</code> with the header <code>api-subscription-key</code>.</li>
+<li>Model <code>bulbul:v3</code> (default) or <code>bulbul:v4-flash</code>, each with an allow-listed English speaker:<ul>
+<li>v3: <code>ritu</code>;</li>
+<li>v4-flash: <code>aparna_en_companion</code> and three other reviewed voices.</li>
+</ul>
+</li>
+<li><code>language_code</code> is fixed at <code>en-IN</code>.</li>
+<li><strong>Request fields.</strong></li>
+<li>Text is 1–640 characters (Sarvam allows 2,500).</li>
+<li>Pace is 0.9, 1.0 or 1.1, inside Sarvam's 0.5–2.0.</li>
+<li><code>speech_sample_rate</code> is 24000, <code>output_audio_codec</code> is <code>wav</code>, and <code>temperature</code> is 0.3.</li>
+<li><code>pitch</code>, <code>loudness</code> and preprocessing are not sent. Sarvam's own pages disagree about them.</li>
+<li><strong>Response.</strong></li>
+<li>Exactly one base64 clip.</li>
+<li>Strict decoding.</li>
+<li>Mono 16-bit PCM, 8–48 kHz, at most 80 s.</li>
+<li>A clip that is effectively silent is rejected.</li>
+<li><strong>Personal keys.</strong></li>
+<li>The key is encrypted with an envelope bound to the owner.</li>
+<li>It is never returned or logged.</li>
+<li>A missing or unreadable personal key fails with 409/503 and <strong>never</strong> falls back to the shared account (tested).</li>
+<li>One request is in flight per account, with daily request and budget limits.</li>
+</ul>
+<h3 id="42-findings-and-fixes">4.2 Findings and fixes<a class="anchor" href="#42-findings-and-fixes" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Finding</th>
+<th>Severity</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S-1</td>
+<td>A revoked key, exhausted credits and Sarvam's rate limit all showed up as "provider unavailable" or "busy, retry in 30 s". Credits can run out as 402 or as 429 <code>insufficient_quota_error</code>.</td>
+<td>Medium–High (personal keys)</td>
+<td><strong>Fixed.</strong> <code>sarvam_failure</code> (<code>ai_provider.py:618</code>) maps them. A rejected key returns 409 for a personal key (replace it in Voice setup) or 503 for the shared account. No credits returns 402. Busy returns 429 with <code>Retry-After</code>. A bad request returns 502. The log records only the status, Sarvam's error code and <code>request_id</code>, never the key or the text. There is still no retry and no key switch. Tested through the real HTTP adapter.</td>
+</tr>
+<tr>
+<td>S-2</td>
+<td>The 4 MB response cap allowed only about 62 s of audio, below the 80 s duration check, so a long reply could be billed and then rejected.</td>
+<td>Low</td>
+<td><strong>Fixed.</strong> The Sarvam cap is 5.2 MB (80 s at 24 kHz, base64, plus the envelope). Tested with a 70 s clip, plus an oversized response.</td>
+</tr>
+<tr>
+<td>S-3</td>
+<td>The internal per-reply allowance was increased from 20,000 to 25,000 units.</td>
+<td>Low</td>
+<td><strong>Changed.</strong> This is a conservative application quota, not a live currency conversion or guaranteed provider invoice cap. With the default 100,000/account budget, at most four Sarvam attempts fit before other AI usage. Render may override it.</td>
+</tr>
+<tr>
+<td>S-4</td>
+<td>With Sentry enabled, its default settings would add trace and baggage headers to outbound calls, including to Sarvam and Groq.</td>
+<td>Low (privacy)</td>
+<td><strong>Fixed.</strong> <code>trace_propagation_targets=[]</code> (<code>vitaltrack-backend/app/main.py:54</code>). Verified against sentry-sdk 2.20.</td>
+</tr>
+<tr>
+<td>S-5</td>
+<td>CI ran <code>pytest tests/</code> only, so the 23 Sarvam unit tests in <code>unit_tests/</code> never ran in CI.</td>
+<td>Medium (test gap)</td>
+<td><strong>Fixed.</strong> <code>.github/workflows/ci.yml</code> now runs <code>tests/ unit_tests/</code>.</td>
+</tr>
+<tr>
+<td>S-6</td>
+<td>Sarvam documents WAV/base64 output, but not a guaranteed channel count or PCM bit depth. Automated tests use synthetic PCM16 mono WAV.</td>
+<td>Medium (compatibility)</td>
+<td><strong>NOT VERIFIED live.</strong> An authorised real call must verify the implementation's decoding assumptions and actual phone playback (§4.4). <a href="https://docs.sarvam.ai/api-reference/text-to-speech/convert">REST response contract</a>.</td>
+</tr>
+<tr>
+<td>S-7</td>
+<td>Sarvam's pages disagree about retention and training defaults. The consent text does not mention retention, training or transfer abroad.</td>
+<td>Medium</td>
+<td><strong>Operator setup and disclosure review.</strong> Configure the workspace's <strong>Model APIs</strong> retention override to 0 days and disable training in <strong>Organisation → General</strong>. Review consent wording before production; changes require a new consent version. These controls do not establish another user's workspace policy.</td>
+</tr>
+<tr>
+<td>S-8</td>
+<td>General terms §3.2 restrict third-party credential disclosure; applicable product agreements can take precedence. No specific permission for CareKosh's third-party personal-key proxy was established.</td>
+<td>Medium (deployment)</td>
+<td>Keep public third-party BYOK disabled pending a permitted arrangement. An operator using its own key on its own backend is a separate documented API integration. <a href="https://www.sarvam.ai/terms-of-service">Terms</a>.</td>
+</tr>
+<tr>
+<td>S-9</td>
+<td><code>ritu</code> is valid, but Sarvam's own guide recommends <code>ishita</code> or <code>ratan</code> for v3 English.</td>
+<td>Low (quality)</td>
+<td>Owner listening test. Set <code>SARVAM_SPEAKER</code> to change it.</td>
+</tr>
+<tr>
+<td>S-10</td>
+<td>The two v4-flash pages disagree about <code>temperature</code>.</td>
+<td>Low</td>
+<td>Applies only if <code>SARVAM_TTS_MODEL=bulbul:v4-flash</code>. Check with one real call before switching.</td>
+</tr>
+<tr>
+<td>S-11</td>
+<td>A revoked personal key still reports <code>usable: true</code> in capabilities, because "usable" only means "can be decrypted".</td>
+<td>Low</td>
+<td>The first failed request now says exactly what is wrong. Not tracking a "rejected" state avoids a migration.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="43-pricing-credits-and-data-handling-from-sarvams-pages-owner-to-confirm">4.3 Pricing, credits and data handling (from Sarvam's pages; owner to confirm)<a class="anchor" href="#43-pricing-credits-and-data-handling-from-sarvams-pages-owner-to-confirm" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>Price.</strong> Bulbul v3 costs ₹30 per 10,000 characters. No price is published for v4-flash.</li>
+<li><strong>Credits.</strong> New accounts get ₹100 of free credit. Credits are shared across a whole organisation. Sarvam's terms say free credits may have conditions or expire, while other pages say they never expire.</li>
+<li><strong>Data location.</strong> Data is processed in India but may be transferred abroad. Workspace retention and organisation training controls are separate (see S-7).</li>
+<li><strong>Commercial use.</strong> Generated audio may be used commercially.</li>
+</ul>
+<p>For the first pilot, use the operator's <code>SARVAM_API_KEY</code> on its own staging backend and leave <code>AI_SARVAM_BYOK_ENABLED=false</code>. The personal-key implementation remains encrypted, isolated and gated; this code review does not approve disclosure of another customer's credentials. Workspace data retention and organisation training controls are separate. Review <a href="https://docs.sarvam.ai/api/platform/data-retention">Model API retention</a> and the <a href="https://docs.sarvam.ai/api/platform/faq">organisation training setting</a>. Controls for the operator's workspace do not establish the settings of a personal-key user's workspace.</p>
+<h3 id="44-render-and-live-checks-manual-no-authenticated-access-was-used">4.4 Render and live checks (manual; no authenticated access was used)<a class="anchor" href="#44-render-and-live-checks-manual-no-authenticated-access-was-used" aria-label="Link to this section">#</a></h3>
+<ol>
+<li>In the Render dashboard for the <strong>staging</strong> backend, check these variables:
+   - <code>AI_ENABLED</code>, <code>AI_SPEECH_ENABLED</code>, <code>AI_SARVAM_ENABLED</code>, <code>AI_SARVAM_DATA_CONTROLS_REVIEWED</code>;
+   - for the first pilot: operator-owned <code>SARVAM_API_KEY</code>, with <code>AI_SARVAM_BYOK_ENABLED=false</code>;
+   - for an authorised personal-key deployment: <code>AI_SARVAM_BYOK_ENABLED</code> and <code>AI_CREDENTIAL_ENCRYPTION_KEY</code>;
+   - <code>SARVAM_TTS_MODEL</code> and <code>SARVAM_SPEAKER</code>;
+   - <code>AI_SARVAM_SPEAK_RESERVE_MICROUSD</code>: if set, use 25000 or more.</li>
+<li>Deploy the backend from this branch, then open <code>/api/v1/ai/capabilities</code> signed in as a test account. It should show <code>interpret_contracts: [1,2,3]</code> and the expected <code>speech_providers</code>.</li>
+<li><strong>One authorised Sarvam smoke call</strong> (it uses credits): in the new APK, choose Sarvam and tap <strong>Preview voice</strong> once. If it fails, the error now names the reason. In the Render logs, look for <code>Sarvam speech failed: status=… code=… request_id=…</code>. Neither the key nor the text is logged.</li>
+<li>In Sarvam, set <strong>workspace → Data retention → Model APIs override → 0 days</strong>. Separately turn off training in <strong>Organisation → General</strong> (S-7). These settings require the appropriate owner access and are not proof of historical deletion.</li>
+</ol>
+<h2 id="5-voice-setup-three-independent-stages">5. Voice setup: three independent stages<a class="anchor" href="#5-voice-setup-three-independent-stages" aria-label="Link to this section">#</a></h2>
+<p>Voice setup now has an <strong>Assistant</strong> card and three numbered sections: <strong>Listening</strong>, <strong>Understanding</strong> and <strong>Spoken replies</strong>. A typed registry describes each provider (<code>vitaltrack-mobile/features/assistant/providers.ts</code>) and keeps four things apart:</p>
+<ul>
+<li><strong>Readiness</strong>: what the phone and server can do now. It is worked out each time and never stored.</li>
+<li><strong>The saved choice</strong>: kept per account in <code>carekosh-voice-settings-v2:&lt;account&gt;</code>.</li>
+<li><strong>Consent</strong>: the server's record of accepted scopes.</li>
+<li><strong>The provider in use</strong>: the saved choice if its local/server prerequisites hold. Otherwise the screen explains what is missing. Sarvam shows <strong>Configured · preview to verify</strong>; this does not claim a valid key, available credits or audible live output. No choice is swapped silently.</li>
+</ul>
+<p>Other changes:</p>
+<ul>
+<li><strong>On-phone understanding.</strong> "Use on-phone understanding only" turns off Groq for this account without withdrawing server consent. "Withdraw all cloud consent" remains separate.</li>
+<li><strong>Old preferences.</strong> They load with no automatic online opt-in. Hosted voices that were never released (<code>kokoro</code>), Sarvam listening and paused Alba all fall back to the offline defaults (VERIFIED BY REPRODUCED TEST: <code>vitaltrack-mobile/tests/voice-providers.test.cjs</code>).</li>
+<li><strong>Alba</strong> shows as <strong>Paused</strong> in normal builds. A separate local diagnostics/native experiment is excluded from this published candidate; selection stays disabled until it passes the phone checks in <a href="POCKET_TTS_ALBA.html">POCKET_TTS_ALBA.md</a>.</li>
+</ul>
+<h2 id="6-answer-sheet-changes-assistant-ui-only">6. Answer sheet changes (assistant UI only)<a class="anchor" href="#6-answer-sheet-changes-assistant-ui-only" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>Filters understood</strong>: one line under the title, with the full follow-up chain, for example <code>quantity &lt; 3 → within the previous results · out of stock</code>.</li>
+<li><strong>Aligned table</strong>: item, quantity with its unit, and status (icon plus text, never colour alone). A <strong>★ Critical</strong> badge marks critical equipment.</li>
+<li><strong>Reasons</strong>: a <strong>Why</strong> line on every row. Excluded rows and data notes appear above the table, for example "No active item records supplier …".</li>
+<li><strong>Draft rows</strong>: these show the stock and the order quantity together with <strong>Explicit</strong>, <strong>Suggested</strong> (with its basis) or <strong>Edited</strong>.</li>
+<li><strong>One-tap chips</strong>:</li>
+<li>Only critical, Only low stock, Only out of stock, Sort A–Z and Order priority, each shown only when it changes the list;</li>
+<li><strong>Draft these items</strong>.</li>
+<li><strong>States</strong>:</li>
+<li>an empty result says so and suggests removing a filter;</li>
+<li>a clarification shows item or option buttons (category, supplier, critical meaning);</li>
+<li>while busy, the dock shows "Thinking…" or "Finishing your words…";</li>
+<li>the "Ask Care Coach" dock still shows real partial words while recording.</li>
+<li><strong>Accessibility</strong>:</li>
+<li>every row has one complete spoken label (position, name, quantity, status, critical, why, order and provenance) and an expanded state;</li>
+<li>section titles are headings;</li>
+<li>large text switches to stacked rows.</li>
+</ul>
+<h2 id="7-findings-all">7. Findings (all)<a class="anchor" href="#7-findings-all" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Location</th>
+<th>Finding</th>
+<th>Severity</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>V-1</td>
+<td><code>vitaltrack-mobile/features/assistant/contracts.ts</code> (v2)</td>
+<td>Comparisons, critical, exclusions, priority and filtered drafts could not be represented, so they went to clarification or risked a dropped condition.</td>
+<td>High (correctness)</td>
+<td>Fixed with contract 3 (§2).</td>
+</tr>
+<tr>
+<td>V-2</td>
+<td><code>vitaltrack-mobile/features/assistant/queries.ts</code> <code>parseExpanded</code> (v2 grammar)</td>
+<td>Two misreadings. "… in wound care that we used last week" became a category with the history words inside it. "Show items in stock" became the category "stock".</td>
+<td>Medium</td>
+<td>Fixed. History, usage and forecast words are refused, and "in stock" is not a category. Tested.</td>
+</tr>
+<tr>
+<td>V-3</td>
+<td><code>queries.ts</code> routing</td>
+<td>"Set the draft quantity to five" asked for an item called "the draft quantity". "Add five more" was refused even with a draft open.</td>
+<td>Low</td>
+<td>Fixed. Both are follow-ups on the line in focus. Tested.</td>
+</tr>
+<tr>
+<td>V-4</td>
+<td><code>contracts.ts</code> <code>condition()</code> (found during this work, before release)</td>
+<td>A shallow copy shared the list fields between conditions, so one clause's stock state leaked into another.</td>
+<td>High (caught by tests)</td>
+<td>Fixed. Each condition owns fresh lists, and the default is frozen. Tested.</td>
+</tr>
+<tr>
+<td>V-5</td>
+<td><code>vitaltrack-mobile/utils/inventoryPdfExport.ts</code> vs <code>types/index.ts</code></td>
+<td>The inventory PDF's "Critical Equipment" count used only the recorded flag; the app also counted name rules.</td>
+<td>Low</td>
+<td>Fixed in the independent follow-up: count and markers now use <code>isCriticalEquipment</code>, with the rule printed in the report. Stock status stays separate.</td>
+</tr>
+<tr>
+<td>V-6</td>
+<td>Sarvam (S-1 … S-11)</td>
+<td>See §4.2.</td>
+<td>—</td>
+<td>S-1 to S-5 fixed; the rest open.</td>
+</tr>
+<tr>
+<td>V-7</td>
+<td><code>.github/workflows/ci.yml</code></td>
+<td><code>unit_tests/</code> was not run in CI.</td>
+<td>Medium</td>
+<td>Fixed (S-5).</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="8-acceptance-matrix">8. Acceptance matrix<a class="anchor" href="#8-acceptance-matrix" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Evidence</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Comparisons &lt;, ≤, =, ≥, &gt; and ranges</td>
+<td><code>vitaltrack-mobile/tests/voice-plans.test.cjs</code>; backend grounding cases</td>
+<td>VERIFIED BY REPRODUCED TEST</td>
+</tr>
+<tr>
+<td>AND/OR, union, de-duplication, exclusions, precedence</td>
+<td>voice-plans "union, intersection …"</td>
+<td>VERIFIED BY REPRODUCED TEST</td>
+</tr>
+<tr>
+<td>Critical meaning and ambiguity</td>
+<td>voice-plans and inline "critical is clarified …"</td>
+<td>VERIFIED BY REPRODUCED TEST</td>
+</tr>
+<tr>
+<td>Order-now list with reasons</td>
+<td>voice-plans "order-now list is transparent …"</td>
+<td>VERIFIED BY REPRODUCED TEST</td>
+</tr>
+<tr>
+<td>Follow-ups (only critical, exclude, sort, draft from those, add more, set)</td>
+<td>voice-plans and inline tests</td>
+<td>VERIFIED BY REPRODUCED TEST</td>
+</tr>
+<tr>
+<td>Explicit vs Suggested labels; merge, replace or cancel</td>
+<td>voice-plans, inline and existing draft tests</td>
+<td>VERIFIED BY REPRODUCED TEST</td>
+</tr>
+<tr>
+<td>Contract negotiation; unsupported advanced requests blocked on old servers</td>
+<td>inline compatibility tests; backend capabilities</td>
+<td>VERIFIED BY REPRODUCED TEST</td>
+</tr>
+<tr>
+<td>No business writes; one text-only provider request</td>
+<td>backend HTTP capture and serialized business rows (§1.4)</td>
+<td>VERIFIED BY REPRODUCED TEST</td>
+</tr>
+<tr>
+<td>Hostile model output fails closed</td>
+<td><code>test_v3_route_fails_closed_on_hostile_model_output</code></td>
+<td>VERIFIED BY REPRODUCED TEST</td>
+</tr>
+<tr>
+<td>Sarvam error mapping, no retry, no key switch, size cap</td>
+<td><code>vitaltrack-backend/tests/test_sarvam_transport.py</code></td>
+<td>VERIFIED BY REPRODUCED TEST</td>
+</tr>
+<tr>
+<td>Voice setup stages; no fake selections; migration</td>
+<td><code>voice-providers.test.cjs</code>; inline settings tests</td>
+<td>VERIFIED BY REPRODUCED TEST</td>
+</tr>
+<tr>
+<td>Live Groq understanding of the example requests</td>
+<td>one run per example on staging</td>
+<td>NOT VERIFIED</td>
+</tr>
+<tr>
+<td>Sarvam real audio, WAV format, voice quality</td>
+<td>§4.4 step 3</td>
+<td>NOT VERIFIED</td>
+</tr>
+<tr>
+<td>Nord 4: overlay layout, TalkBack labels, large text, partial words, speaker playback</td>
+<td>new APK on the phone</td>
+<td>NOT VERIFIED</td>
+</tr>
+<tr>
+<td>Alba device acceptance</td>
+<td><a href="POCKET_TTS_ALBA.html">POCKET_TTS_ALBA.md</a></td>
+<td>NOT VERIFIED (Alba stays paused)</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="9-initial-verification-run-13-october-2026">9. Initial verification run (13 October 2026)<a class="anchor" href="#9-initial-verification-run-13-october-2026" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backend <code>pytest tests/ unit_tests/ --migrated-schema</code> on a fresh PostgreSQL 16 database (all migrations to <code>0011</code>)</td>
+<td><strong>375 passed</strong></td>
+</tr>
+<tr>
+<td>Backend, same suite on a create-all schema</td>
+<td><strong>375 passed</strong></td>
+</tr>
+<tr>
+<td>Backend <code>ruff check app tests unit_tests</code></td>
+<td>clean</td>
+</tr>
+<tr>
+<td>API route gate <code>scripts/check_api_routes.py --expected 47</code></td>
+<td>passed (no route added)</td>
+</tr>
+<tr>
+<td>Mobile <code>npm test</code></td>
+<td><strong>314 passed</strong></td>
+</tr>
+<tr>
+<td><code>tsc --noEmit</code></td>
+<td>clean</td>
+</tr>
+<tr>
+<td><code>npm run lint</code></td>
+<td>0 errors; 1 existing warning in <code>app/builder.tsx</code> (not part of this change)</td>
+</tr>
+<tr>
+<td><code>docs/tools/build_docs.py</code>, then <code>check_docs.py --strict</code></td>
+<td>115 files, 0 problems</td>
+</tr>
+<tr>
+<td><code>carekosh_system_design/src/check_guides.py</code></td>
+<td>0 problems</td>
+</tr>
+</tbody>
+</table></div>
+<p>All providers were mocked: Groq, Sarvam, Moonshine, Android speech and audio. Data was synthetic. The disposable database ran only on <code>127.0.0.1</code> and was deleted afterwards.</p>
+<h2 id="10-limits">10. Limits<a class="anchor" href="#10-limits" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>Language.</strong> The phone grammar is deliberately narrow. Every word must be a known filter or a filler word; anything else goes to Groq (if chosen) or to a clarification. Ordinary paraphrases will still often need Groq.</li>
+<li><strong>Understanding is not guaranteed.</strong> A schema-valid, grounded plan can still be a misreading. The answer shows the applied filters for review. The server's lexical checks and the old-contract marker gate cannot recognize every paraphrase or detect every misreading.</li>
+<li><strong>Category hints.</strong> A category used as an adjective ("wound-care items") is recognised on the phone only after the category list has been loaded in this session. Before that, the request goes online.</li>
+<li><strong>Sarvam.</strong> Real audio, voice quality, Sarvam's error bodies in practice, and whether failed requests are billed are all NOT VERIFIED.</li>
+<li><strong>Phone layout.</strong> The overlay was checked through rendered component trees, not on a phone. Spacing, TalkBack order and large-text behaviour need the Nord 4 check.</li>
+</ul>
+<h2 id="11-files-changed-for-this-review">11. Files changed for this review<a class="anchor" href="#11-files-changed-for-this-review" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>Mobile</strong>: <code>features/assistant/contracts.ts</code>, <code>selection.ts</code> (new), <code>queries.ts</code>, <code>drafts.ts</code>, <code>core.ts</code>, <code>snapshot.ts</code>, <code>providers.ts</code> (new); <code>services/assistant.ts</code>; <code>components/assistant/AssistantExperience.tsx</code>, <code>AnswerList.tsx</code>, <code>VoiceSetup.tsx</code>.</li>
+<li><strong>Mobile tests</strong>: <code>tests/voice-plans.test.cjs</code> and <code>tests/voice-providers.test.cjs</code> (new), plus harness updates in five existing test files.</li>
+<li><strong>Backend</strong>: <code>app/schemas/ai.py</code>, <code>app/services/ai_provider.py</code>, <code>app/api/v1/ai.py</code>, <code>app/core/config.py</code>, <code>app/main.py</code>, <code>.env.example</code>.</li>
+<li><strong>Backend tests</strong>: <code>tests/test_voice_plans.py</code> and <code>tests/test_sarvam_transport.py</code> (new), plus one assertion updated in <code>tests/test_voice_drafts.py</code>.</li>
+<li><strong>CI</strong>: <code>.github/workflows/ci.yml</code>.</li>
+<li><strong>Docs</strong>: this review, <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">VOICE_INVENTORY_AND_ORDER_DRAFTS.md</a>, <a href="SARVAM_ENGLISH_VOICE.html">SARVAM_ENGLISH_VOICE.md</a>, <a href="API_TRACEABILITY.html">API_TRACEABILITY.md</a>, <a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html">CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md</a>, and the voice-flow diagrams.</li>
+</ul>
+<h2 id="12-independent-follow-up">12. Independent follow-up<a class="anchor" href="#12-independent-follow-up" aria-label="Link to this section">#</a></h2>
+<p>The initial 375-backend/314-mobile baseline was reproduced before this follow-up. Passing that suite did not expose the following defects. The reviewed starting tree was copied to a recovery snapshot before coordinated edits. Existing documentation and native offline-voice work were preserved.</p>
+<h3 id="121-confirmed-defects-and-corrections">12.1 Confirmed defects and corrections<a class="anchor" href="#121-confirmed-defects-and-corrections" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Finding</th>
+<th>Previously possible</th>
+<th>Current behavior and regression evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Signed and fractional quantities</td>
+<td><code>below -3</code> could become <code>below 3</code>; a negative draft amount could become positive.</td>
+<td>Unsupported signs, decimals and fractions clarify or fail validation before use. Recorded names such as <code>Filter-3</code> and <code>Saline0.9%</code> remain names. Signed number words and signs after punctuation are covered. <code>voice-plans.test.cjs</code>, <code>test_ai_plan_grounding.py</code>, v2 signed-number cases.</td>
+</tr>
+<tr>
+<td>Spoken zero</td>
+<td>“Exactly zero” was not normalized into a supported comparison.</td>
+<td>Zero comparisons now work in local and cloud plans; zero stock still means out of stock. Signed zero is rejected, recorded Zero names stay intact and order quantities remain positive. Positive and adversarial numeric tests.</td>
+</tr>
+<tr>
+<td>Union routed through a legacy intersection</td>
+<td>“Show low-stock items and items from supplier Good Supplier” could return only low-stock supplier items. Polite wrappers could bypass the complete grammar.</td>
+<td>Complete v3 plans take precedence; courtesy prefixes preserve the two groups. The single phrase “low-stock items from supplier …” still means an intersection. Parser tests assert resulting item IDs.</td>
+</tr>
+<tr>
+<td>Courtesy tail became an item name</td>
+<td>The expanded grammar could target <code>hand gloves for me</code> and block cloud understanding of a valid draft paraphrase.</td>
+<td>The entire request goes to interpretation unless the full name is recorded. Existing end-to-end tests still verify one interpretation and a 20-pair glove draft; genuine <code>Gloves for me</code> names remain valid.</td>
+</tr>
+<tr>
+<td>Filter words inside recorded names</td>
+<td>Supplier <code>Low Stock Limited</code>, brand <code>Above 3</code> or category <code>Critical Care</code> could introduce unrelated predicates.</td>
+<td>Recorded names are fenced before filter checks, including number-word forms such as <code>Above Three</code>. Local executor tests and accepted backend plans cover these cases.</td>
+</tr>
+<tr>
+<td>Explicit quantity contradicts an exclusion</td>
+<td>A draft could silently retain an explicitly quantified item even when also excluded.</td>
+<td>The whole proposal asks for clarification; neither instruction wins. Existing draft rows remain unchanged. <code>voice-plans.test.cjs</code>.</td>
+</tr>
+<tr>
+<td>Weak model grounding</td>
+<td>Schema-valid output could omit a condition, reverse critical polarity, swap thresholds between items or change AND/OR scope.</td>
+<td>New pure <code>ai_plan_grounding.py</code> checks detectable conditions and clause associations before returning a plan. Generic OR groups remain valid; low/out lists and “3 or more/fewer” keep their intended meaning. Unknown semantics are not guessed. Adversarial and positive backend cases.</td>
+</tr>
+<tr>
+<td>Advanced request sent to an older contract</td>
+<td>An older server could receive wording its contract could not represent.</td>
+<td>A conservative marker gate blocks detected unsupported conditions before cloud interpretation. Basic legacy requests remain available; locally parsed v3 requests do not require cloud v3. Inline and provider tests.</td>
+</tr>
+<tr>
+<td>Consent dialog survived an account change</td>
+<td>Confirming an old dialog could grant scopes or change preferences on the newly signed-in account.</td>
+<td>Dialogs retain the original session and turn. Account changes, leaving and backgrounding prevent stale actions; additive consent refreshes scopes first. Speech-pack confirmation uses the same boundary. Inline account-switch tests.</td>
+</tr>
+<tr>
+<td>Withdrawal changed the next account</td>
+<td>A slow preference save followed by an account switch could withdraw the next account's consent.</td>
+<td>Withdrawal binds the original session and turn before awaiting storage. A delayed-storage regression reproduced the wrong account before the fix and now confirms no late request to the next account.</td>
+</tr>
+<tr>
+<td>Sarvam configuration presented as readiness</td>
+<td>A configured or decryptable key could look proven to work despite revoked credentials or no credits.</td>
+<td>Positive UI label is <strong>Configured · preview to verify</strong>. Provider validity, credits and actual sound still require a real request. Settings tests.</td>
+</tr>
+<tr>
+<td>Partial playback followed by a fallback repeat</td>
+<td>A player error with detected progress but no sampled <code>playing=true</code> could trigger offline repetition.</td>
+<td>Progress marks playback as started before errors are handled. Fallback is suppressed after detected playback. <code>cloud-speech.test.cjs</code>.</td>
+</tr>
+<tr>
+<td>Large-text controls and units</td>
+<td>Grouped accessibility could hide nested provider actions; long units could truncate.</td>
+<td>Provider controls remain separate accessibility targets; narrow cards and large-text rows stack, and units wrap. Six source-derived browser previews fit their viewport. Native TalkBack acceptance remains open.</td>
+</tr>
+<tr>
+<td>PDF critical count disagreed with the app</td>
+<td>Name-classified critical equipment could be omitted from the PDF count and markers.</td>
+<td>Both use the canonical <code>isCriticalEquipment</code> helper. The PDF states flag/name-rule provenance without changing stock status. <code>pdf-reports.test.cjs</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The mobile interpreter, selector and draft engine still have no save-order, stock-update or supplier-send operation. The backend interpretation route validates data only; it does not execute a plan. No new route, migration, credential-storage policy or native dependency was added by this follow-up.</p>
+<h3 id="122-verification-of-the-final-candidate">12.2 Verification of the final candidate<a class="anchor" href="#122-verification-of-the-final-candidate" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Final candidate evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backend, fresh PostgreSQL 16 through all Alembic migrations to 0011</td>
+<td><strong>458 passed</strong></td>
+</tr>
+<tr>
+<td>Backend, separate fresh PostgreSQL 16 using model-created schema</td>
+<td><strong>458 passed</strong></td>
+</tr>
+<tr>
+<td>Backend Ruff: <code>app tests unit_tests</code></td>
+<td>clean</td>
+</tr>
+<tr>
+<td>Registered <code>/api/v1</code> route-object gate</td>
+<td><strong>47</strong>, unchanged</td>
+</tr>
+<tr>
+<td>Mobile full suite</td>
+<td><strong>344 passed</strong>, no failures or skipped tests</td>
+</tr>
+<tr>
+<td>Mobile TypeScript and ESLint</td>
+<td>clean type-check; <strong>0 lint errors, 1 existing warning</strong> in <code>app/builder.tsx:118</code></td>
+</tr>
+<tr>
+<td>Settings/table previews, 320/390 px and text scale 1/1.6</td>
+<td><strong>6 passed</strong>, no horizontal overflow; source-derived CSS previews, not native Android</td>
+</tr>
+<tr>
+<td>Updated review/Sarvam/voice HTML and three architecture SVGs at 390/1440 px</td>
+<td><strong>12 browser checks passed</strong>, no broken loaded images, script errors or SVG text outside its canvas; wide diagrams remain scrollable</td>
+</tr>
+<tr>
+<td>Strict local documentation links and anchors</td>
+<td><strong>115 files, 0 problems</strong>; external links not fetched by this checker</td>
+</tr>
+<tr>
+<td>System-design diagrams and inline figures</td>
+<td><strong>22 SVGs, 35 inline figures, 0 problems</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>Providers and acoustic output were mocked. Business data was synthetic, and both disposable clusters used loopback only and were stopped afterwards. The tests include actual HTTP adapters with mocked external transports. Live APIs, Render deployment and physical phone audio are outside this evidence.</p>
+<h3 id="123-deployment-and-remaining-acceptance">12.3 Deployment and remaining acceptance<a class="anchor" href="#123-deployment-and-remaining-acceptance" aria-label="Link to this section">#</a></h3>
+<p>Use the <a href="SARVAM_ENGLISH_VOICE.html#exact-render-steps-for-staging">staging setup guide</a>. For the first pilot, configure the operator's own server-side <code>SARVAM_API_KEY</code> and leave public BYOK off. Keep the existing Groq configuration. Verify migration 0011, contract 3 capabilities and the expected staging API URL before installing the new APK.</p>
+<p>Then test the requested comparison/union/draft examples, Preview voice, Hear answer, a second question during speech, account changes and offline fallback on the Nord 4. Verify one real Groq interpretation and a real Sarvam WAV/playback. Preview tests consume credits. No such call, deployment or APK build was performed by this review.</p>
+<p><strong>Production remains pending</strong> those checks and operator privacy/disclosure review. Paused Alba belongs to its separate experimental acceptance gate. Customer-supplied third-party keys require a permitted provider arrangement before public enablement; operator workspace settings do not establish every personal workspace's policy.</p>
+<h2 id="13-publication-candidate">13. Publication candidate<a class="anchor" href="#13-publication-candidate" aria-label="Link to this section">#</a></h2>
+<p>The operator requested a feature-branch commit after the review. This publication candidate contains Sarvam narration, contract 3, the independent correctness/security/UI fixes and their maintained documentation. It uses the previously committed Android microphone/native code. The separate native Alba experiments, diagnostic EAS profile, private audit records and generated coverage data stay local.</p>
+<p>Alba selection and native diagnostics are disabled in this candidate. The optional bridge methods are retained for interface compatibility but no diagnostic action is exposed. The earlier 344-test working-tree evidence included three tests for the unpublished diagnostics profile; the clean publication candidate is verified separately before commit/push.</p>
+<p>Build a preview APK from a clean checkout of the pushed commit: EAS includes eligible uncommitted local files, so the original checkout's remaining native experiments would otherwise enter its build.</p>
+<p><strong>Publication verification:</strong> 458 backend tests passed on a fresh migrated PostgreSQL 16 database; 341 mobile tests passed. TypeScript is clean; ESLint has 0 errors and the existing Builder warning. Public-clone documentation checks cover 88 files with 0 problems; 22 diagrams and 35 inline figures pass. No native code, main branch, live database, provider call or deployment was changed by the publication preparation.</p>
+<footer>Generated 2026-10-13 by <code>docs/tools/build_docs.py</code> from <code>docs/AI_VOICE_END_TO_END_REVIEW.md</code>.</footer>
+</main>
+</div>
+<script>
+var tocDetails = document.getElementById('toc-details');
+if (tocDetails && window.matchMedia('(min-width: 901px)').matches) { tocDetails.open = true; }
+document.querySelectorAll('pre > code').forEach(function (code) {
+  var pre = code.parentElement, wrap = document.createElement('div');
+  wrap.className = 'codewrap'; pre.parentNode.insertBefore(wrap, pre); wrap.appendChild(pre);
+  var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+  b.setAttribute('aria-label', 'Copy this code block');
+  b.addEventListener('click', function () {
+    var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(code.innerText).then(done, function () { b.textContent = 'Select and copy'; }); }
+    else { b.textContent = 'Select and copy'; }
+  });
+  wrap.appendChild(b);
+});
+</script>
+</body>
+</html>

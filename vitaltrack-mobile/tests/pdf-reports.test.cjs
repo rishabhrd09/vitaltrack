@@ -8,3 +8,20 @@ test('failed report rename shares the real original file, never a nonexistent de
 test('unavailable sharing is reported as generated only',async()=>{const h=harness({sharing:false});const result=await h.order.exportOrderPdf({id:'ORD-1',items},false);assert.equal(result.shared,false);assert.equal(h.calls.shared.length,0);});
 test('order PDF escapes title/links and has no write service',async()=>{const h=harness();await h.order.exportOrderPdf({id:'ORD-<1>',items:[{...items[0],purchaseLink:'https://example.test/" onclick="bad'}]},false);const html=h.calls.html[0];assert.match(html,/ORD-&lt;1&gt;/);assert.doesNotMatch(html,/href="[^"\n]*" onclick=/);});
 test('session changes after rendering prevent sharing old-account data',async()=>{const h=harness({cancelAtPrint:true});await assert.rejects(h.inventory.exportInventoryPdf({items,categories:[],includePhotos:false,assertReady:h.ready}),/Session changed/);assert.equal(h.calls.shared.length,0);});
+test('inventory PDF critical count and markers match the app flag-or-name rule without changing stock status',async()=>{
+  const h=harness();
+  const rows=[
+    {...items[0],name:'Gauze',quantity:8,minimumStock:5,isCritical:true},
+    {...items[0],id:'c',name:'Ambu Bag',quantity:1,minimumStock:1,isCritical:false},
+    {...items[1],isCritical:false},
+  ];
+  await h.inventory.exportInventoryPdf({items:rows,categories:[],includePhotos:false});
+  const html=h.calls.html[0];
+  assert.match(html,/Critical Equipment<\/span><span class="value">2<\/span>/);
+  assert.equal((html.match(/class="critical-marker"/g)||[]).length,2);
+  assert.match(html,/title="Marked critical equipment"/);
+  assert.match(html,/title="Critical equipment by name rule"/);
+  assert.match(html,/using the recorded flag or the app's equipment-name rules/);
+  assert.match(html,/Gauze[\s\S]*?sb-ok">OK/);
+  assert.match(html,/Ambu Bag[\s\S]*?sb-low">LOW/);
+});

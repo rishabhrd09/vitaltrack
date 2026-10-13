@@ -50,6 +50,8 @@ if settings.SENTRY_DSN:
             send_default_pii=False,
             max_request_body_size="never",
             include_local_variables=False,
+            # No trace or baggage headers on outbound calls to AI providers (Groq, Sarvam).
+            trace_propagation_targets=[],
             before_send=scrub_telemetry_event,
             before_send_transaction=scrub_telemetry_event,
         )

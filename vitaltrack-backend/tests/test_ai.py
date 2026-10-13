@@ -17,8 +17,14 @@ from app.api.v1 import ai
 from app.core.config import settings
 from app.models.ai import AIConsent, AIUsage
 from app.schemas.ai import CONSENT_VERSION, CONSENT_SCOPES, Intent
-from app.services import ai_guard, ai_provider
-from tests.conftest import TestSession, register_and_auth, test_engine
+from app.services import ai_guard, ai_provider, sarvam_credentials
+from tests.conftest import (
+    TestSession,
+    create_category,
+    create_item,
+    register_and_auth,
+    test_engine,
+)
 
 
 @pytest.mark.parametrize(
@@ -29,6 +35,7 @@ async def test_audio_consent_does_not_follow_text_consent(
 ):
     _, headers = await register_and_auth(client)
     monkeypatch.setattr(settings, "AI_SARVAM_ENABLED", True)
+    monkeypatch.setattr(settings, "AI_SARVAM_TRANSCRIBE_ENABLED", True)
     monkeypatch.setattr(settings, "AI_SARVAM_DATA_CONTROLS_REVIEWED", True)
     monkeypatch.setattr(settings, "SARVAM_API_KEY", SecretStr("synthetic-sarvam-key"))
     await client.put(
@@ -70,6 +77,7 @@ async def test_sarvam_is_independent_of_groq_and_accounted(client, monkeypatch):
     monkeypatch.setattr(settings, "GROQ_API_KEY", SecretStr(""))
     monkeypatch.setattr(settings, "AI_DATA_CONTROLS_REVIEWED", False)
     monkeypatch.setattr(settings, "AI_SARVAM_ENABLED", True)
+    monkeypatch.setattr(settings, "AI_SARVAM_TRANSCRIBE_ENABLED", True)
     monkeypatch.setattr(settings, "AI_SARVAM_DATA_CONTROLS_REVIEWED", True)
     monkeypatch.setattr(settings, "SARVAM_API_KEY", SecretStr("synthetic-sarvam-key"))
     await client.put(
@@ -131,6 +139,83 @@ async def test_speech_requires_its_own_scope(client, monkeypatch, provider):
         json={"text": "Synthetic stock", "provider": provider},
     )
     assert response.status_code == 403
+
+
+async def test_sarvam_narration_route_preserves_stock_and_listening(
+    client, monkeypatch
+):
+    _, headers = await register_and_auth(client)
+    category = await create_category(client, headers, name="Speech fixture")
+    item = await create_item(
+        client,
+        headers,
+        category_id=category["id"],
+        name="Synthetic gloves",
+        quantity=18,
+        unit="pairs",
+    )
+    paths = [f"/api/v1/items/{item['id']}", "/api/v1/orders", "/api/v1/activities"]
+    before = [(await client.get(path, headers=headers)).json() for path in paths]
+    for key, value in {
+        "AI_SPEECH_ENABLED": True,
+        "AI_SARVAM_ENABLED": True,
+        "AI_SARVAM_TRANSCRIBE_ENABLED": False,
+        "AI_SARVAM_DATA_CONTROLS_REVIEWED": True,
+        "SARVAM_API_KEY": SecretStr("synthetic-sarvam-key"),
+        "SARVAM_TTS_MODEL": "bulbul:v3",
+        "SARVAM_SPEAKER": "ritu",
+    }.items():
+        monkeypatch.setattr(settings, key, value)
+    payload = {
+        "text": "There are 18 pairs of synthetic gloves.",
+        "provider": "sarvam",
+        "pace": 0.9,
+    }
+    assert (await client.post("/api/v1/ai/speak", json=payload)).status_code == 401
+    assert (
+        await client.post("/api/v1/ai/speak", headers=headers, json=payload)
+    ).status_code == 403
+    consent = await client.put(
+        "/api/v1/ai/consent",
+        headers=headers,
+        json={
+            "version": CONSENT_VERSION,
+            "accepted": True,
+            "scopes": ["sarvam_speech"],
+        },
+    )
+    assert consent.status_code == 200
+    available = (await client.get("/api/v1/ai/capabilities", headers=headers)).json()
+    assert available["speak"] and "sarvam" in available["speech_providers"]
+    assert "sarvam" not in available["transcription_providers"]
+    assert available["sarvam_english_voice"] == {
+        "model": "bulbul:v3",
+        "speaker": "ritu",
+        "language_code": "en-IN",
+    }
+    called = []
+
+    async def transport(url, outbound_headers, **kwargs):
+        assert test_engine.pool.checkedout() == 0
+        called.append((url, outbound_headers, kwargs))
+        return json.dumps({"audios": [base64.b64encode(wav()).decode()]}).encode()
+
+    monkeypatch.setattr(ai_provider, "bounded_call", transport)
+    result = await client.post("/api/v1/ai/speak", headers=headers, json=payload)
+    assert result.status_code == 200 and result.content == wav()
+    assert result.headers["cache-control"] == "no-store"
+    assert result.headers["content-type"] == "audio/wav"
+    assert len(called) == 1 and called[0][2]["json"]["pace"] == 0.9
+    after = [(await client.get(path, headers=headers)).json() for path in paths]
+    assert before == after
+    async with TestSession() as db:
+        usage = (await db.scalars(select(AIUsage))).one()
+        assert (
+            usage.provider == "sarvam"
+            and usage.kind == "speak"
+            and usage.status == "complete"
+        )
+        assert usage.reserved_microusd == settings.AI_SARVAM_SPEAK_RESERVE_MICROUSD
 
 
 async def test_sarvam_rest_contract_and_kokoro_speech(monkeypatch):
@@ -223,6 +308,7 @@ INTENT = dict(
 def isolated_ai(monkeypatch):
     monkeypatch.setattr(ai, "AsyncSessionLocal", TestSession)
     monkeypatch.setattr(ai_guard, "AsyncSessionLocal", TestSession)
+    monkeypatch.setattr(sarvam_credentials, "AsyncSessionLocal", TestSession)
     for name, value in dict(
         AI_ENABLED=True,
         AI_DATA_CONTROLS_REVIEWED=True,
@@ -744,7 +830,9 @@ async def test_malformed_usage_cannot_break_settlement(monkeypatch, usage):
     assert error.value.status_code == 502
 
 
-async def test_settlement_failure_does_not_replace_a_successful_answer(client, monkeypatch):
+async def test_settlement_failure_does_not_replace_a_successful_answer(
+    client, monkeypatch
+):
     _, headers = await consented(client)
 
     async def interpret(question, previous):
@@ -775,7 +863,14 @@ async def test_cloud_voice_off_writes_nothing(client, monkeypatch):
     async def forbidden(*args, **kwargs):
         raise AssertionError("no provider may run while cloud voice is off")
 
-    for name in ("interpret", "transcribe", "sarvam_transcribe", "speak", "selected_speech", "bounded_call"):
+    for name in (
+        "interpret",
+        "transcribe",
+        "sarvam_transcribe",
+        "speak",
+        "selected_speech",
+        "bounded_call",
+    ):
         monkeypatch.setattr(ai_provider, name, forbidden)
 
     granted = await client.put(
@@ -784,18 +879,34 @@ async def test_cloud_voice_off_writes_nothing(client, monkeypatch):
         json={"version": CONSENT_VERSION, "accepted": True, "scopes": ["groq_text"]},
     )
     assert granted.status_code == 503
-    assert (await client.get("/api/v1/ai/capabilities", headers=headers)).json()["consented"] is False
-    assert (await client.post("/api/v1/ai/interpret", headers=headers, json={"question": "summary"})).status_code == 503
+    assert (await client.get("/api/v1/ai/capabilities", headers=headers)).json()[
+        "consented"
+    ] is False
     assert (
-        await client.post("/api/v1/ai/transcribe", headers=headers, files={"file": ("q.wav", wav(), "audio/wav")})
+        await client.post(
+            "/api/v1/ai/interpret", headers=headers, json={"question": "summary"}
+        )
     ).status_code == 503
-    assert (await client.post("/api/v1/ai/speak", headers=headers, json={"text": "Synthetic"})).status_code == 503
+    assert (
+        await client.post(
+            "/api/v1/ai/transcribe",
+            headers=headers,
+            files={"file": ("q.wav", wav(), "audio/wav")},
+        )
+    ).status_code == 503
+    assert (
+        await client.post(
+            "/api/v1/ai/speak", headers=headers, json={"text": "Synthetic"}
+        )
+    ).status_code == 503
     async with TestSession() as db:
         assert await db.scalar(select(func.count()).select_from(AIConsent)) == 0
         assert await db.scalar(select(func.count()).select_from(AIUsage)) == 0
 
     # Withdrawing consent is always allowed (a privacy action, not cloud use).
     revoked = await client.put(
-        "/api/v1/ai/consent", headers=headers, json={"version": CONSENT_VERSION, "accepted": False}
+        "/api/v1/ai/consent",
+        headers=headers,
+        json={"version": CONSENT_VERSION, "accepted": False},
     )
     assert revoked.status_code == 200

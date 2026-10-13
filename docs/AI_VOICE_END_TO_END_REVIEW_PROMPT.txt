@@ -1,0 +1,117 @@
+CareKosh: independently review and improve the complete AI voice assistant and Sarvam integration
+
+Repository: /Users/rishabh/courses_tutorials/vital_track/first_playstore_version/vitaltrack
+Expected feature branch: feature/backend-hardening-ai-voice-agent-foundation
+Primary acceptance device: OnePlus Nord 4, OxygenOS 15 / Android 15.
+
+Your task is to independently understand the current code, verify the complete voice-to-action-to-answer flow, fix confirmed defects, and implement the bounded improvements below. Do not merely run tests or accept previous reports as proof. Preserve existing features, account isolation and the final-touch boundary for saving orders. Assess readiness for staging and production separately, based on evidence.
+
+Read applicable AGENTS.md instructions, Git status, recent commits and the actual working tree first. This repository has substantial uncommitted work and may be changing in another task. Inventory the baseline, preserve unrelated edits, and check for concurrent changes before editing a file. Do not reset, delete unrelated files, modify main, commit/push, deploy, change a live database, expose secrets or start a paid build/API call without an explicit request. Perform the authorized local improvements and verification sequentially; ask only for genuinely necessary missing information while continuing independent work.
+
+1. Establish the source of truth and trace every boundary
+
+Start with these sources, resolving their actual current locations under the repository root and following imports/callers:
+
+- Mobile UI: components/assistant/AssistantExperience.tsx, AssistantDock.tsx, AssistantLayer.tsx, VoiceSetup.tsx, SarvamKeySettings.tsx and AnswerList.tsx under vitaltrack-mobile/.
+- Mobile engine: features/assistant/capture.ts, offlineVoice.ts, policy.ts, preferences.ts, readiness.ts, contracts.ts, core.ts, queries.ts, drafts.ts, snapshot.ts, narration.ts, cloudSpeech.ts and audioFiles.ts.
+- Mobile transport/session/data: services/assistant.ts, assistantSession.ts, api.ts, orders.ts; inventory hooks, auth/query-cache stores, types/index.ts stock helpers; app/order/create.tsx and inventory/order PDF utilities.
+- Native voice module, microphone/Moonshine recognition and retained Pocket TTS code under vitaltrack-mobile/modules/carekosh-voice/; Android/build config, compiler plugin, eas.json and asset manifests.
+- FastAPI: vitaltrack-backend/app/api/v1/ai.py, sarvam_keys.py, orders.py and item/auth routes; services/ai_guard.py, ai_provider.py, sarvam_credentials.py and sarvam_speech.py; schemas/ai.py, core config/database/logging, models and migrations.
+- Existing focused/mobile/backend/native tests, CI route gates, Docker entrypoint, .env.example and render.yaml.
+- docs/SARVAM_ENGLISH_VOICE.md, POCKET_TTS_ALBA.md, VOICE_INVENTORY_AND_ORDER_DRAFTS.md, API_TRACEABILITY.md and their HTML companions; the four carekosh_system_design guides and diagram generators. The separate offline-voice investigation task is described in docs/OFFLINE_TTS_INVESTIGATION_PROMPT.txt.
+
+Produce a concise trace map with concrete source evidence:
+microphone permission/capture -> actual partial/final transcription -> editable transcript -> explicit Send -> local routing or chosen consented LLM -> validated structured specification -> owner-scoped complete inventory snapshot -> deterministic filtering/item resolution/calculation -> read-only answer or local draft -> overlay/table -> short narration -> Sarvam/provider response -> validated audio -> playback/cleanup.
+
+Trace typed input through the same engine and separately trace local-draft handoff -> Create Order review -> final touch -> authenticated save -> same-order PDF export. Identify where consent, usage, credentials or auth/session data can legitimately be written, and where inventory/order writes must never happen. Verify real function calls and HTTP payloads, not just UI labels.
+
+Do not confuse Groq (the current service used for opted-in understanding/listening) with xAI Grok. Keep speech recognition, language interpretation and speech output conceptually separate.
+
+2. Review Sarvam security, configuration and playback end to end
+
+Read the latest primary Sarvam API documentation for authentication, REST TTS, supported model/voice combinations, response encoding, limits, pricing/credits and data handling. Compare every implemented request field and header against that contract. A model described as free, latest or best must have current evidence; audition quality separately. Do not change the selected model simply because a newer name exists. The existing default is v3/Ritu, with optional v4 support; verify the actual current defaults.
+
+Verify:
+- Independent feature gates for narration versus microphone upload, exact answer-text consent and account-scoped preferences. Saving a provider key must not enable recording, cloud interpretation or automatic narration.
+- Authenticated personal-key save/status/replace/remove. Raw keys must not appear in responses, logs, telemetry, errors, LLM prompts, mobile preferences, APK/EAS public variables or committed files.
+- Authenticated encryption, owner/provider binding, stable master-key configuration, rotation behavior, cascade/removal and honest backup/revocation explanations. The provider key and encryption master key are different secrets. Status/readability does not prove provider authentication or remaining credits.
+- Explicit personal/application credential source: missing, revoked, malformed, unreadable or credit-exhausted personal keys must never silently use shared billing or another account's key.
+- Quotas/concurrency, failed-attempt accounting, cancellation and no unbounded billable retries. Check default quotas so tests/previews do not unexpectedly appear to be a voice malfunction. Introductory credits are not unlimited free service.
+- Fixed/validated provider destinations, bounded input/HTTP deadlines/response sizes, base64 decoding, complete supported PCM/WAV audio and non-silent waveform checks. Never trust a success status alone.
+- Media playback mode, actual loaded/playing/completed states, speaker/headset/Bluetooth routing, audio focus, volume, per-turn player ownership and file cleanup. Verify abort/logout/background/navigation/another question cannot start late speech.
+- Current offline-fallback code, if present: opt-in, selected ready voice, actual outcome reporting, no second billable request and no duplicate reading after partial online playback. Do not overwrite newer fallback work based on an older document saying it is absent.
+
+Use mocked provider calls for automated checks. A real account call requires authorization and consumes credits. If authenticated read-only Render information is available, verify the linked branch, deployed commit, migration and configuration without exposing values. Otherwise supply exact manual steps and mark live configuration unverified.
+
+3. Make listener, interpretation and speaker settings genuinely modular
+
+Organize Voice setup into clearly separated sections:
+- Listening: offline Moonshine and supported consented online transcription, microphone permission, download/readiness, language/limitations and a listening test.
+- Understanding: local deterministic routing versus actual supported LLM-assisted interpretation, provider/model readiness and text consent. Local routing is not an offline LLM. Explain which complex requests work locally and which need a configured provider.
+- Spoken replies: device speech, optional Sarvam, any verified available offline voice, personal/shared billing, pace, preview, automatic read-aloud and explicit fallback choice.
+
+Design typed provider interfaces/adapters and a capability registry rather than a tangle of provider-name checks in one component. Readiness, configuration, consent, selected source and transient operation state must remain separate. An unavailable provider cannot appear usable merely because it is selected. Do not expose arbitrary provider URLs, executable tools, model identifiers or secrets to the model or client. Use server-controlled allowlists/versioned contracts for cloud models.
+
+Support only working, licensed, configured providers. Unimplemented future options may be clearly disabled or documented; do not create fake selections. Changing speaker must not change the listener/brain, and changing a listener must not silently grant cloud consent. Store choices per account and migrate older preferences without automatic online opt-in. Keep current microphone, draft/PDF, device speech and Sarvam functionality working. Keep Alba paused unless the separate offline investigation actually clears its device acceptance gate.
+
+4. Improve complex natural-language understanding through contracts and deterministic execution
+
+Starting observation to recheck against the current checkout: the version-2 InventoryQuery contract has stock states/category/supplier/brand but no numeric quantity comparison or explicit critical-item filter; draft specifications do not accept a filtered query. Therefore complex filtered drafts may require a compatible contract extension, validators, local parser, cloud prompt/schema, execution and presentation changes together. A better LLM prompt alone is not enough. Maintain compatibility with installed clients/server contract versions; add a new negotiated version when required rather than silently changing version 2.
+
+Support bounded, validated predicates for quantity comparisons, stock-state combinations, criticality, category/supplier/brand, exclusions, sorting and previous-result references as needed. For multi-part requests, use a bounded typed plan of allowed read/query/local-draft operations with deterministic execution. Do not create an unrestricted autonomous agent, arbitrary SQL, eval, generated code, unconstrained tool loops or an HTTP-operation selector.
+
+At minimum, verify and implement these families:
+- "How many items have quantity less than 3? Show their names, quantities and status."
+- "Show items with at most three remaining", "exactly three", and "more than three"; distinguish <, <=, = and >.
+- "Show items below 3 and also all low-stock or out-of-stock items; prepare an order draft for them."
+- "Prepare a draft for critical items that are low or out of stock."
+- "Two units of Ambu Bag, plus the other low-stock and out-of-stock items; prepare an order draft."
+- "Which stocks should I consider ordering now? Show why each appears in the list."
+- "Low-stock wound-care items from supplier X, excluding gloves, sorted alphabetically."
+- "Only the critical ones", "Exclude masks", "Create a draft from those", "Add five more", and "Set the draft quantity to five" as explicit, correctly scoped follow-ups.
+
+Define AND/OR, union/intersection, precedence and exclusions explicitly. Deduplicate by item ID. Do not count twice when an item meets several conditions. If wording permits materially different readings, clarify before executing the draft and show the understood filter. Negation, extra clauses or quantities cannot be silently dropped by a simple parser. If the local parser cannot fully represent a request, use the selected consented interpreter or a useful clarification; never perform a simpler different action while claiming success.
+
+Compute counts, statuses, selections, order suggestions and totals from verified application data, never LLM-invented inventory facts. Use existing stock helpers consistently across dashboard, assistant, speech and PDF. Inspect the difference between the stored isCritical flag, current keyword-based critical-equipment rules and a recorded category named "Critical". Do not treat them as interchangeable or silently invent criticality; explain the actual rule/source and clarify category-versus-flag ambiguity when it matters. Keep brand, supplier and manufacturer distinct.
+
+For "order now", provide transparent stock-based prioritization from recorded criticality, current quantity, minimum and existing rules. It is not a demand forecast, optimal purchase plan, delivery-time prediction or clinical recommendation. If data to support a claim is missing, say so. Distinguish counts of inventory entries from sums of quantities; do not total boxes/pairs/pieces as one comparable physical unit.
+
+Draft quantities: preserve explicitly reviewed numbers and units; distinguish add from set; reuse only a meaningful deterministic replenishment rule for valid thresholds and label its result Suggested. Ask for missing/invalid quantities; never invent unit conversions. Explicit lines take priority over overlapping automatic selections. Resolve ambiguous item names and all unresolved lines before completing the draft. Never silently overwrite existing manual work: merge/replace/cancel must be explicit. Respect snapshot ownership, active items, freshness/completeness and account-scoped follow-up context. Do not claim cached offline stock is live.
+
+5. Keep business data safe independently of what an LLM says
+
+The assistant may read current inventory, present answers, prepare/edit an unsaved local order draft, and generate an explicitly requested/reviewed inventory report. Only final touch confirmation in the existing Create Order review screen can create an order and export its order PDF. Saving an order does not increase stock.
+
+Voice/typed assistant instructions such as "save", "confirm", "yes", "mark received", "apply this order", "delete stock", "send to supplier", or a malicious model result must not trigger inventory/order mutations. "Create an order" means prepare a local draft with an honest unsaved label, not call POST /orders. Do not imply cloud persistence when the user says "saved draft"; explain the actual local lifecycle or clarify the request.
+
+Make this boundary enforceable through strict schemas, server-side allowlists/authentication, constrained dispatchers and dedicated local draft functions, not just a system prompt. Show that assistant paths have no callable save-order/stock-update/delete/send capability. Do not grant new business write permissions to an AI endpoint. Trace indirect callbacks/navigation/export helpers too; an innocent-looking PDF action must not save an order without final touch review.
+
+Test ordinary and adversarial inputs/model outputs, cross-account IDs, unknown/extra schema fields, arbitrary URLs/SQL/tool names and prompt injection in item names, suppliers or transcripts. Revalidate ownership, availability and relevant changed stock on manual confirmation without silently rewriting reviewed quantities. Preserve retry-safe localId/idempotency, block double submissions, retain the draft after failure, and re-export the same saved order if PDF generation fails. Account changes/cancellation must block stale dispatch and late commits originating from the assistant.
+
+Prove allowed writes with both HTTP capture and disposable-database before/after evidence. Queries, narration and local drafting must create zero inventory/category/order/order-item/activity/audit changes. Existing authentication/session bookkeeping, explicit consent/usage and user-initiated encrypted-key management are separate permitted writes. Final manual save is a separate tested workflow. Do not claim "the assistant never writes the database" while consent/usage/credentials legitimately do.
+
+6. Improve assistant-only overlays and presentation
+
+Keep the design changes limited to the assistant dock/input, answer overlay and Voice setup. Preserve other application pages. Use existing native React Native components/theme and shared validated answer data; a Python presentation service or generated screenshot is unnecessary.
+
+Create a compact professional answer sheet: clear title, concise matched-count summary, readable aligned table rows, quantity with recorded unit, text-plus-colour stock status, optional critical/reorder reason and expandable supplier/brand details. For a draft, show current stock, order quantity/unit and Spoken/Explicit versus Suggested provenance; make the unsaved status and review action unambiguous.
+
+Show understood filters, last-sync/offline status, empty/error/clarification/loading states and concise actions appropriate to the result. Avoid oversized repeated summary cards, large blank regions, raw LLM/model/JSON/debug text or dozens of unrelated buttons. Keep actions reachable and the result open until dismissed. Use efficient scrolling/virtualization for large inventories; test long names/units, small phones, large text, dark/light mode, screen readers, safe areas, keyboard and Android Back behavior. No overlapping headers/footers/tables or duplicate modals/navigation screens. Restore focus and provide accessible button labels.
+
+Keep the compact "Ask Care Coach" microphone dock with a clearly visible listening state. Show actual partial transcription when the recognition engine provides it, then the editable complete transcript and explicit Send. Never fake live words or auto-submit speech merely to make the animation appear smoother. Processing, speaking and error states should be clear and concise. Another question must stop the previous audio cleanly and keep the microphone usable. Tables, speech and PDFs must agree because they use the same verified data.
+
+7. Verification, documentation and staging/production gates
+
+Build an acceptance matrix for each request: transcript/input, selected listener/brain/speaker, expected validated specification, fixture-selected item IDs/counts, draft quantities, actual requests, permitted DB changes, displayed answer, narrated text, cancellation and result. Cover the exact examples above plus paraphrases, spoken numbers, typos, ambiguous names/units, missing thresholds, inactive items, exclusions, union duplicates, critical-rule differences, follow-ups and clearing an old filter. Include boundary fixtures with quantities 0/1/2/3/4, different minima, explicitly critical versus keyword-matched items and multiple categories/units. Assert actual actions/data, not strings that merely echo the input.
+
+Run relevant fresh backend/mobile tests, TypeScript/lint, real migration upgrade checks on disposable databases, route/contract checks and document generators/link checks. Add regression tests for defects and new predicates/dispatch boundaries rather than tests mirroring implementation. Use native/real device checks for recognition/audio; mock tests cannot certify acoustic sound. Verify the full Android build when native/compiler/runtime changes require it, with authorization before a paid EAS build. Preserve working Kotlin/autolinking/microphone permissions and native-library compatibility.
+
+Manually verify on OnePlus: transcription review, a typed equivalent of each complex request, correct selected rows and draft, Sarvam preview and answer speech, enabled/disabled fallback, second question during/after speech, speaker/Bluetooth, offline and slow-network behavior, quota/key/consent failures, backgrounding, logout/account switch, long inventory, merge/replace/cancel and final-touch save/PDF retries. Test actual microphone recordings separately from typed semantic tests so recognition and interpretation failures can be distinguished.
+
+Update canonical Markdown and generated HTML, architecture/API traces/diagrams, supported-command examples, provider settings, privacy/billing boundaries and manual Render instructions to match the final code. Preserve dated historical evidence with clear labels; fix contradictory current statements. Do not publish personal paths, credentials or private audit records. Keep the active offline-voice task separate and compatible.
+
+For staging, verify the deployed candidate commit, staging API URL and isolated database, actual Alembic head, encrypted credential configuration, provider/model/key-source gates and real provider/device acceptance. The existing blueprint describes production on main; do not change it to activate staging. Adding Render variables alone does not deploy uncommitted code. /health does not prove the running revision or audible speech.
+
+For production, additionally assess older APK compatibility, schema/contract negotiation, the actual pending migration chain, backups/restore rehearsal, one-way migrations and old/new writer overlap, production key/privacy setup, cost/rate limits, operational monitoring and rollback/forward-fix procedures. Do not mark production ready because unit tests or staging mocks pass. If live/device access is absent, finish authorized local work and clearly identify the remaining gates.
+
+Deliver: confirmed findings with file/line evidence and severity; concrete implemented fixes; before/after behavior for the user's complex queries; the final modular listener/brain/speaker and safe-action design; tests/migrations/UI/device evidence and limits; updated documentation; exact manual configuration steps; and separate decisions for "ready for staging testing" and "ready for production". Avoid absolute claims such as every possible human query being understood or the entire codebase being guaranteed safe. Be candid about what was tested and what remains unverified.

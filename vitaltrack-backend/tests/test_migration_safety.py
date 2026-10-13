@@ -66,7 +66,7 @@ async def test_upgrade_preserves_every_existing_record_and_seeds_highest_order_i
         assert await fingerprints(connection) == before
         assert await connection.scalar(text('SELECT session_version FROM users')) == 0
         assert await connection.scalar(text('SELECT last_value FROM order_number_counters')) == 9
-        assert await connection.scalar(text('SELECT version_num FROM alembic_version')) == '0010_order_local_id_unique'
+        assert await connection.scalar(text('SELECT version_num FROM alembic_version')) == '0011_sarvam_personal_keys'
     async with TestSession() as db:
         assert await allocate_order_id(db, now) == f'ORD-{day}-0010'
         await db.rollback()
@@ -107,3 +107,28 @@ async def test_local_id_index_keeps_existing_duplicate_orders_and_replays_the_ol
     replay = await client.post('/api/v1/orders', headers=headers, json={'orderId': 'CLIENT-SIDE-ID', 'localId': 'retried-key', 'items': [order_item_payload(item, quantity=1)]})
     assert replay.status_code == 200 and replay.json()['id'] == 'order-original'
     assert (await client.get('/api/v1/orders', headers=headers)).json()['total'] == 5
+
+
+@pytest.mark.asyncio
+async def test_personal_key_upgrade_preserves_existing_ai_consent_and_usage():
+    now = datetime.now(timezone.utc)
+    async with test_engine.begin() as connection:
+        await connection.run_sync(Base.metadata.drop_all)
+        await connection.execute(text('DROP TABLE IF EXISTS alembic_version'))
+        await connection.run_sync(lambda conn: migrate(conn, '0010_order_local_id_unique'))
+        metadata = MetaData()
+        await connection.run_sync(metadata.reflect)
+        await connection.execute(metadata.tables['users'].insert(), {'id': 'voice-owner', 'email': 'voice-owner@example.com', 'hashed_password': 'synthetic', 'name': 'Voice Owner', 'is_active': True, 'is_verified': False, 'is_superuser': False, 'is_email_verified': True, 'session_version': 0, 'created_at': now, 'updated_at': now})
+        await connection.execute(metadata.tables['ai_consents'].insert(), {'user_id': 'voice-owner', 'version': 'voice-2026-10-06', 'accepted': True, 'scopes': ['groq_text'], 'updated_at': now})
+        await connection.execute(metadata.tables['ai_usage'].insert(), {'id': 'legacy-usage', 'user_id': 'voice-owner', 'kind': 'interpret', 'provider': 'groq', 'status': 'complete', 'reserved_microusd': 2000, 'created_at': now, 'expires_at': now + timedelta(seconds=30), 'audio_seconds': 0, 'input_tokens': 10, 'output_tokens': 5})
+        before = {}
+        for table in ('ai_consents', 'ai_usage'):
+            before[table] = await connection.scalar(text(f"SELECT to_jsonb(t) FROM {table} t"))
+        await connection.run_sync(lambda conn: migrate(conn, 'head'))
+        assert await connection.scalar(text('SELECT to_jsonb(t) FROM ai_consents t')) == before['ai_consents']
+        assert await connection.scalar(text("SELECT to_jsonb(t)-'credential_source' FROM ai_usage t")) == before['ai_usage']
+        assert await connection.scalar(text('SELECT credential_source FROM ai_usage')) == 'application'
+        assert await connection.scalar(text('SELECT count(*) FROM ai_sarvam_credentials')) == 0
+        await connection.execute(text("INSERT INTO ai_sarvam_credentials VALUES ('voice-owner', 'synthetic-ciphertext', :now)"), {'now': now})
+        await connection.execute(text("DELETE FROM users WHERE id='voice-owner'"))
+        assert await connection.scalar(text('SELECT count(*) FROM ai_sarvam_credentials')) == 0

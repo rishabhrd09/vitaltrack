@@ -97,7 +97,7 @@ jobs:
           ENVIRONMENT: testing
         run: |
           cd vitaltrack-backend
-          python -m pytest tests/ -q --migrated-schema --cov=app --cov-report=term-missing --cov-report=json
+          python -m pytest tests/ unit_tests/ -q --migrated-schema --cov=app --cov-report=term-missing --cov-report=json
       
       - name: Verify API route count
         env:
@@ -106,7 +106,7 @@ jobs:
           ENVIRONMENT: testing
         run: |
           cd vitaltrack-backend
-          python scripts/check_api_routes.py --expected 44
+          python scripts/check_api_routes.py --expected 47
 
       - name: Verify item/order coverage floors
         run: |

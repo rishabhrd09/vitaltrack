@@ -12,7 +12,7 @@
 <script src="assets/carekosh.js" defer></script>
 </head>
 <body>
-<aside data-voice-architecture-sync="2026-10-09" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 9 October 2026.</strong> Current AI voice architecture, checked against the 9 October 2026 working tree at <code>0946eb7</code> plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. <a href="../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete stack, request flow, consent, costs and code map</a>.</p></aside>
+<aside data-voice-architecture-sync="2026-10-11" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 11 October 2026.</strong> Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, an explicit shared or encrypted per-account personal key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Personal-key migration 0011 adds encrypted credentials and billing-source metadata; the current local inventory is 50 HTTP operations (47 under /api/v1) and 12 application tables. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. <a href="../docs/SARVAM_ENGLISH_VOICE.html">Sarvam activation, costs and device checks</a> · <a href="../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete voice architecture</a>.</p></aside>
 <section style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px"><h2>Current inventory and draft path</h2><p>Microphone/local live captions → offline Moonshine or separately consented Groq Whisper final transcript → editable transcript and Send → local parser or consented Groq v2 specification → complete session-owned inventory → persistent table or local unsaved draft. Voice has no save, stock, apply, status or supplier-send tool. Review proposed quantities and choose merge/replace/cancel when manual work exists.</p><p>Only Create Order touch confirmation checks backend support and current item versions, then saves with a stable <code>localId</code>. A changed stock snapshot requires another review without rewriting order quantities. A saved order feeds the shared PDF template; printer failure offers re-export of that same order. No new migration or model is needed. Deployment and phone acceptance remain separate.</p></section>
 
 <!-- ============================================================ TOP BAR -->
@@ -248,7 +248,7 @@
         <h3>What to draw on a whiteboard</h3>
         <figure class="diagram">
           <div class="frame wide" data-diagram="backend-layers">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1843" width="1000" height="1843" role="img" aria-labelledby="backend-layers-title backend-layers-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1869" width="1000" height="1869" role="img" aria-labelledby="backend-layers-title backend-layers-desc">
 <title id="backend-layers-title">The backend in layers</title>
 <desc id="backend-layers-desc">An HTTPS request reaches Gunicorn and one of two Uvicorn workers, passes the middleware and reaches a router in app/api/v1. Routers use dependencies, Pydantic schemas and services; SQLAlchemy models map to PostgreSQL tables owned by Alembic migrations. app/core provides configuration, the database engine, security and logging to every layer. Brevo, Groq and Sentry are called only when configured.</desc>
 <defs><pattern id="backend-layers-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="backend-layers-ah-main" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7B2C34"/></marker><marker id="backend-layers-ah-optional" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#6B3A6E"/></marker></defs>
@@ -274,7 +274,7 @@
 <path d="M330.0,574.3 L330.0,606.3" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#backend-layers-ah-main)"/>
 <rect x="40.0" y="611.3" width="580.0" height="272.0" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
 <text x="58.0" y="640.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">APP/API/V1</text>
-<text x="58.0" y="669.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Routers (44 routes)</text>
+<text x="58.0" y="669.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Routers (47 routes)</text>
 <rect x="58.0" y="687.3" width="173.3" height="60.0" rx="9" fill="#FBF6EC" stroke="#2E5677" stroke-width="1.2"/>
 <text x="144.7" y="713.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15.5" font-weight="600" fill="#2E5677" text-anchor="middle">auth.py</text>
 <text x="144.7" y="735.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="middle" font-style="italic">18 routes</text>
@@ -291,9 +291,9 @@
 <text x="330.0" y="783.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15.5" font-weight="600" fill="#2E5677" text-anchor="middle">activity.py</text>
 <text x="330.0" y="805.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="middle" font-style="italic">1 route</text>
 <rect x="428.7" y="757.3" width="173.3" height="60.0" rx="9" fill="#FBF6EC" stroke="#2E5677" stroke-width="1.2"/>
-<text x="515.3" y="783.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15.5" font-weight="600" fill="#2E5677" text-anchor="middle">ai.py</text>
-<text x="515.3" y="805.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="middle" font-style="italic">5 routes</text>
-<text x="58.0" y="865.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start" font-style="italic">app/main.py adds /, /health and /live: 47 in total</text>
+<text x="515.3" y="783.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15.5" font-weight="600" fill="#2E5677" text-anchor="middle">ai + key vault</text>
+<text x="515.3" y="805.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="middle" font-style="italic">8 routes</text>
+<text x="58.0" y="865.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start" font-style="italic">app/main.py adds /, /health and /live: 50 in total</text>
 <path d="M330.0,886.3 L330.0,918.3" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#backend-layers-ah-main)"/>
 <rect x="40.0" y="923.3" width="280.0" height="216.1" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
 <text x="58.0" y="952.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">API/DEPS.PY</text>
@@ -319,24 +319,25 @@
 <text x="58.0" y="1298.8" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">NAMES</text>
 <text x="162.0" y="1300.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">inventory_lock.py: advisory locks</text>
 <text x="58.0" y="1330.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">ASSISTANT</text>
-<text x="162.0" y="1331.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">ai_guard.py (consent, quotas) and ai_provider.py (Groq)</text>
+<text x="162.0" y="1331.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">consent, quotas, Groq/Sarvam; encrypted personal-key vault</text>
 <text x="58.0" y="1361.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">EMAIL</text>
 <text x="162.0" y="1363.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">utils/email.py → Brevo</text>
 <text x="58.0" y="1393.4" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">LIMITS</text>
 <text x="162.0" y="1394.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">utils/rate_limiter.py, best effort</text>
 <path d="M330.0,1426.4 L330.0,1458.4" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#backend-layers-ah-main)"/>
-<rect x="40.0" y="1463.4" width="580.0" height="139.4" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<rect x="40.0" y="1463.4" width="580.0" height="164.9" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
 <text x="58.0" y="1492.4" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">SQLALCHEMY 2.0, ASYNC</text>
 <text x="58.0" y="1522.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Models · app/models</text>
 <text x="58.0" y="1552.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">User, RefreshToken, Category, Item, Order, OrderItem,</text>
-<text x="58.0" y="1578.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">OrderNumberCounter, ActivityLog, AuditLog, AIConsent, AIUsage</text>
-<path d="M330.0,1605.7 L330.0,1637.7" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#backend-layers-ah-main)"/>
-<rect x="40.0" y="1642.7" width="580.0" height="164.9" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
-<text x="58.0" y="1671.7" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#A9680F" text-anchor="start" letter-spacing="1.6">DATABASE</text>
-<text x="58.0" y="1702.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">PostgreSQL</text>
-<text x="58.0" y="1731.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">11 tables with CHECK, UNIQUE and ON DELETE CASCADE rules.</text>
-<text x="58.0" y="1757.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Alembic migrations 0001–0010 own the schema. Version 16 in CI and</text>
-<text x="58.0" y="1783.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">local development.</text>
+<text x="58.0" y="1578.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">OrderNumberCounter, ActivityLog, AuditLog, AIConsent, AIUsage,</text>
+<text x="58.0" y="1603.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">SarvamCredential</text>
+<path d="M330.0,1631.3 L330.0,1663.3" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#backend-layers-ah-main)"/>
+<rect x="40.0" y="1668.3" width="580.0" height="164.9" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<text x="58.0" y="1697.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#A9680F" text-anchor="start" letter-spacing="1.6">DATABASE</text>
+<text x="58.0" y="1727.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">PostgreSQL</text>
+<text x="58.0" y="1757.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">12 tables with CHECK, UNIQUE and ON DELETE CASCADE rules.</text>
+<text x="58.0" y="1783.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Alembic migrations 0001–0011 own the schema. Version 16 in CI and</text>
+<text x="58.0" y="1808.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">local development.</text>
 <rect x="650.0" y="124.3" width="310.0" height="327.5" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
 <text x="668.0" y="153.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">USED BY EVERY LAYER</text>
 <text x="668.0" y="183.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">app/core</text>
@@ -353,13 +354,14 @@
 <text x="668.0" y="398.2" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">LOGGING</text>
 <text x="758.0" y="399.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">tokens removed from</text>
 <text x="758.0" y="423.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">logged URLs</text>
-<rect x="650.0" y="1179.3" width="310.0" height="184.8" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
+<rect x="650.0" y="1179.3" width="310.0" height="208.9" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
 <text x="668.0" y="1208.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#6B3A6E" text-anchor="start" letter-spacing="1.6">HTTPX · WHEN CONFIGURED</text>
 <text x="668.0" y="1238.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6B3A6E" text-anchor="start">Outbound calls</text>
 <text x="668.0" y="1267.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">Brevo email, if MAIL_PASSWORD is</text>
 <text x="668.0" y="1291.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">set</text>
-<text x="668.0" y="1315.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">Groq, with AI_* settings and consent</text>
-<text x="668.0" y="1339.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">Sentry, if SENTRY_DSN is set</text>
+<text x="668.0" y="1315.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">Groq/Sarvam, with separate flags and</text>
+<text x="668.0" y="1339.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">consent</text>
+<text x="668.0" y="1364.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">Sentry, if SENTRY_DSN is set</text>
 <path d="M623.0,1239.3 L645.0,1239.3" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#backend-layers-ah-optional)"/>
 </svg>
           </div>
@@ -371,7 +373,7 @@
           <li><strong>The phone.</strong> The app, its TanStack Query cache and the tokens kept in SecureStore.</li>
           <li><strong>One instance.</strong> Gunicorn with two Uvicorn workers. Write “2 × (5 + 10) = 30 database connections” next to it.</li>
           <li><strong>Inside a worker.</strong> Middleware, then a router, then dependencies (<code>get_db</code>, <code>get_current_user</code>), then the handler.</li>
-          <li><strong>The database.</strong> PostgreSQL with 11 application tables. Draw <code>users</code> owning user data, order lines through <code>orders</code>, and the global daily counter without a user link.</li>
+          <li><strong>The database.</strong> PostgreSQL with 12 application tables. Draw <code>users</code> owning user data, order lines through <code>orders</code>, and the global daily counter without a user link.</li>
           <li><strong>Optional services, dashed.</strong> Brevo for email, Sentry for errors and Groq for the assistant. Each one runs only when configured.</li>
         </ol>
         <p>Then walk one item edit across the board: the name lock, the version check inside the <code>UPDATE</code>, the activity and audit rows, and the handler's commit that saves them together.</p>
@@ -383,7 +385,7 @@
         <div class="table-wrap"><table class="wide">
           <thead><tr><th>Number</th><th>What it means</th><th>Where it comes from</th></tr></thead>
           <tbody>
-            <tr><td class="nowrap"><strong>47</strong> operations</td><td>On the feature branch: 44 under <code>/api/v1</code> (auth 18, categories 6, items 8, orders 6, activities 1, ai 5) plus <code>/</code>, <code>/health</code> and <code>/live</code>. Each current route has one registered method; this count does not include browser preflights or debug-only documentation routes. <code>main</code> has 39 under <code>/api/v1</code>, without the AI routes.</td><td>Counted from <code>app.routes</code>; CI route gate <code>--expected 44</code></td></tr>
+            <tr><td class="nowrap"><strong>50</strong> operations</td><td>On the current feature implementation: 47 under <code>/api/v1</code> (auth 18, categories 6, items 8, orders 6, activities 1, ai 8) plus <code>/</code>, <code>/health</code> and <code>/live</code>. Each current route has one registered method; this count does not include browser preflights or debug-only documentation routes. <code>main</code> has 39 under <code>/api/v1</code>, without the AI routes.</td><td>Counted from <code>app.routes</code>; CI route gate <code>--expected 47</code></td></tr>
             <tr><td class="nowrap"><strong>11</strong> tables</td><td>Application tables at migration head <code>0010</code> on the feature branch; 12 with <code>alembic_version</code>.</td><td><code>pg_dump</code> of a freshly migrated database</td></tr>
             <tr><td class="nowrap"><strong>242 + 121</strong> tests</td><td>Backend (pytest on PostgreSQL 16, <code>--migrated-schema</code>) and mobile (<code>npm test</code>).</td><td>Local runs 7 and 8 Oct 2026; CI run 37583748644 (7 Oct) matched</td></tr>
             <tr><td class="nowrap"><strong>88 %</strong> coverage</td><td>Total backend line coverage; <code>items.py</code> 96 %, <code>orders.py</code> 91 %.</td><td>Same runs; CI floor is 70 % for those two files</td></tr>
@@ -938,7 +940,7 @@ router.include_router(ai.router)           <span class="c"># /api/v1/ai         
           <li><strong>One router per resource.</strong> Each module owns an <code>APIRouter</code> with its own prefix and tag. <code>include_router</code> copies the routes into one flat table at start-up; it adds no runtime proxy. A future <code>/api/v2</code> would be a second aggregate router.</li>
           <li><strong>Health routes sit outside.</strong> <code>/</code>, <code>/health</code> and <code>/live</code> are registered on the app itself, so probes need no API version.</li>
           <li><strong>Route order matters.</strong> <code>/items/stats</code> and <code>/items/needs-attention</code> are declared before <code>/items/{item_id}</code>. Otherwise <code>stats</code> would be read as an item id.</li>
-          <li><strong>CI counts the routes.</strong> <code>scripts/check_api_routes.py --expected 44</code> fails if the <code>/api/v1</code> count changes, a <code>/sync</code> route returns, or a health route moves under <code>/api/v1</code>. A count proves registration; it says nothing about behaviour.</li>
+          <li><strong>CI counts the routes.</strong> <code>scripts/check_api_routes.py --expected 47</code> fails if the <code>/api/v1</code> count changes, a <code>/sync</code> route returns, or a health route moves under <code>/api/v1</code>. A count proves registration; it says nothing about behaviour.</li>
         </ul>
       </div>
 
@@ -1319,14 +1321,14 @@ user = result.scalar_one_or_none()</code></pre></div>
         <h3>The schema at migration 0010</h3>
         <figure class="diagram">
           <div class="frame wide" data-diagram="database-erd">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1388" width="1000" height="1388" role="img" aria-labelledby="database-erd-title database-erd-desc">
-<title id="database-erd-title">The database at migration 0010</title>
-<desc id="database-erd-desc">Eleven application tables. users owns its data directly or through orders; the global counter has no owner. User data uses ON DELETE CASCADE. order_items.item_id and activity_logs.item_id are plain references without foreign keys, so order history survives item deletion. Item and category names are not unique in the database; the API serialises duplicate checks with advisory locks.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1578" width="1000" height="1578" role="img" aria-labelledby="database-erd-title database-erd-desc">
+<title id="database-erd-title">The database at migration 0011</title>
+<desc id="database-erd-desc">Twelve application tables. users owns its data directly or through orders; the global counter has no owner. User data uses ON DELETE CASCADE. order_items.item_id and activity_logs.item_id are plain references without foreign keys, so order history survives item deletion. Item and category names are not unique in the database; the API serialises duplicate checks with advisory locks.</desc>
 <defs><pattern id="database-erd-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="database-erd-ah-copy" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#A9680F"/></marker><marker id="database-erd-ah-data" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#A9680F"/></marker></defs>
 <rect width="100%" height="100%" fill="#FBF6EC"/>
 <rect width="100%" height="100%" fill="url(#database-erd-dots)"/>
-<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">The database at migration 0010</text>
-<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Eleven tables. User data cascades directly or through a parent; the daily order counter is global.</text>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">The database at migration 0011</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Twelve tables. User data cascades directly or through a parent; the daily order counter is global.</text>
 <rect x="300.0" y="126.3" width="400.0" height="224.0" rx="12" fill="#EEE2DA" stroke="#7B2C34" stroke-width="1.8"/>
 <path d="M300.0,170.3 H700.0" stroke="#7B2C34" stroke-width="1.2" opacity="0.5"/>
 <text x="316.0" y="156.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="18.5" font-weight="600" fill="#7B2C34" text-anchor="start">users</text>
@@ -1423,30 +1425,41 @@ user = result.scalar_one_or_none()</code></pre></div>
 <text x="56.0" y="1142.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">version · accepted</text>
 <text x="56.0" y="1169.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">scopes</text>
 <text x="319.3" y="1169.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">e.g. groq_text</text>
-<rect x="353.3" y="1045.3" width="293.3" height="173.0" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<rect x="353.3" y="1045.3" width="293.3" height="200.0" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
 <path d="M353.3,1089.3 H646.7" stroke="#A9680F" stroke-width="1.2" opacity="0.5"/>
 <text x="369.3" y="1075.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="18.5" font-weight="600" fill="#A9680F" text-anchor="start">ai_usage</text>
 <text x="369.3" y="1115.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">kind · provider · status</text>
-<text x="369.3" y="1142.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">reserved cost</text>
-<text x="632.7" y="1142.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">micro-USD</text>
-<text x="369.3" y="1169.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">token counts</text>
-<text x="369.3" y="1202.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#A9680F" text-anchor="start" font-style="italic">user_id → users, cascade</text>
-<rect x="666.7" y="1045.3" width="293.3" height="143.0" rx="12" fill="#EEE2DA" stroke="#7B2C34" stroke-width="1.8"/>
-<path d="M666.7,1089.3 H960.0" stroke="#7B2C34" stroke-width="1.2" opacity="0.5"/>
-<text x="682.7" y="1075.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="18.5" font-weight="600" fill="#7B2C34" text-anchor="start">order_number_counters</text>
-<text x="682.7" y="1115.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">day</text>
-<text x="946.0" y="1115.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">YYYYMMDD, primary key</text>
-<text x="682.7" y="1142.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">last_value</text>
-<text x="682.7" y="1169.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">no user link</text>
-<text x="946.0" y="1169.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">kept forever</text>
-<rect x="40.0" y="1244.3" width="2.5" height="108.7" fill="#7B2C34"/>
-<text x="58.0" y="1280.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">Order lines cascade through orders; other user data links directly to users. The global counter has no owner. Later legacy localId</text>
-<text x="58.0" y="1305.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">duplicates are index-exempt. Item and category names are not unique in the database; the API checks them under an advisory</text>
-<text x="58.0" y="1331.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">lock.</text>
+<text x="369.3" y="1142.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">credential_source</text>
+<text x="369.3" y="1169.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">reserved cost</text>
+<text x="632.7" y="1169.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">micro-USD</text>
+<text x="369.3" y="1196.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">token counts</text>
+<text x="369.3" y="1229.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#A9680F" text-anchor="start" font-style="italic">user_id → users, cascade</text>
+<rect x="666.7" y="1045.3" width="293.3" height="173.0" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<path d="M666.7,1089.3 H960.0" stroke="#A9680F" stroke-width="1.2" opacity="0.5"/>
+<text x="682.7" y="1075.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="18.5" font-weight="600" fill="#A9680F" text-anchor="start">ai_sarvam_credentials</text>
+<text x="682.7" y="1115.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">user_id</text>
+<text x="946.0" y="1115.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">PK → users, cascade</text>
+<text x="682.7" y="1142.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">ciphertext</text>
+<text x="946.0" y="1142.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">Fernet</text>
+<text x="682.7" y="1169.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">updated_at</text>
+<text x="946.0" y="1169.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">no plaintext key stored</text>
+<text x="682.7" y="1202.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#A9680F" text-anchor="start" font-style="italic">user_id → users, cascade</text>
+<rect x="40.0" y="1265.3" width="293.3" height="143.0" rx="12" fill="#EEE2DA" stroke="#7B2C34" stroke-width="1.8"/>
+<path d="M40.0,1309.3 H333.3" stroke="#7B2C34" stroke-width="1.2" opacity="0.5"/>
+<text x="56.0" y="1295.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="18.5" font-weight="600" fill="#7B2C34" text-anchor="start">order_number_counters</text>
+<text x="56.0" y="1335.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">day</text>
+<text x="319.3" y="1335.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">YYYYMMDD, primary key</text>
+<text x="56.0" y="1362.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">last_value</text>
+<text x="56.0" y="1389.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#4B3E35" text-anchor="start">no user link</text>
+<text x="319.3" y="1389.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="end" font-style="italic">kept forever</text>
+<rect x="40.0" y="1434.3" width="2.5" height="108.7" fill="#7B2C34"/>
+<text x="58.0" y="1470.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">User data cascades; global order numbers remain.</text>
+<text x="58.0" y="1495.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">Item IDs on order lines are snapshot references.</text>
+<text x="58.0" y="1521.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">Name checks use API locks; legacy duplicate local IDs stay index-exempt.</text>
 </svg>
           </div>
           <div class="fig-tools"><a class="pill" href="diagrams/database-erd.svg" target="_blank" rel="noopener">Open the SVG</a><span class="swipe">Swipe sideways, or tap Enlarge</span></div>
-          <figcaption><b>Figure 7.</b> The 11 application tables, their keys, constraints and cascades.</figcaption>
+          <figcaption><b>Figure 7.</b> The 12 application tables, their keys, constraints and cascades.</figcaption>
         </figure>
         <dl class="kv">
           <dt>Tables</dt><dd><code>users</code>, <code>refresh_tokens</code>, <code>categories</code>, <code>items</code>, <code>orders</code>, <code>order_items</code>, <code>order_number_counters</code>, <code>activity_logs</code>, <code>audit_log</code>, <code>ai_consents</code>, <code>ai_usage</code>.</dd>
@@ -2315,7 +2328,7 @@ function sharedRefresh(): Promise&lt;string&gt; {
         <div class="codeblock"><pre><code><span class="c"># .github/workflows/ci.yml, test-backend job (run in vitaltrack-backend/)</span>
 ruff check app/ tests/ scripts/ --output-format=github
 python -m pytest tests/ -q --migrated-schema --cov=app --cov-report=term-missing --cov-report=json
-python scripts/check_api_routes.py --expected 44
+python scripts/check_api_routes.py --expected 47
 python scripts/check_file_coverage.py coverage.json --threshold 70 \
   --file app/api/v1/items.py \
   --file app/api/v1/orders.py</code></pre></div>
@@ -2351,7 +2364,7 @@ python scripts/check_file_coverage.py coverage.json --threshold 70 \
           <tbody>
             <tr><td>Ruff lint</td><td>Yes</td><td>Clean</td></tr>
             <tr><td>pytest <code>--migrated-schema</code> with coverage</td><td>Yes</td><td>242 passed; 88 % total</td></tr>
-            <tr><td>Route gate (<code>--expected 44</code>)</td><td>Yes</td><td>Passed</td></tr>
+            <tr><td>Route gate (<code>--expected 47</code>)</td><td>Yes</td><td>Passed</td></tr>
             <tr><td>70 % floor for <code>items.py</code> and <code>orders.py</code></td><td>Yes</td><td>96 % and 91 %</td></tr>
             <tr><td>mypy</td><td>No (advisory job)</td><td>23 errors in 8 files</td></tr>
             <tr><td>Mobile: <code>tsc</code>, <code>npm test</code>, ESLint</td><td>Yes</td><td>Clean; 121 passed; 0 errors, 3 warnings</td></tr>
@@ -2403,7 +2416,8 @@ python scripts/check_file_coverage.py coverage.json --threshold 70 \
         </div>
         <p>The phone understands familiar questions on its own, such as “How many nitrile gloves are left?”. For wording the local matcher cannot handle, the server can ask Groq to classify the question, but only after Send, with <code>groq_text</code> consent, the phone's cloud switch on and the server's AI settings enabled.</p>
         <p>The model must never answer with stock facts or cause a write. The phone builds every answer from inventory it reads itself.</p>
-        <p>The app sends <code>{question,has_previous_item,contract_version:2}</code> to CareKosh when v2 is supported; older clients use v1. The backend sends question/context flag plus its system instructions and strict schema to Groq, without inventory or recordings in the interpretation call. The latest local build also offers Groq Whisper listening through <code>/ai/transcribe</code>, requiring separate <code>groq_audio</code> consent and fresh local audio opt-in. It does not interpret before transcript review and Send. Hosted speech <code>/ai/speak</code> remains unreachable from this build.</p>
+        <p>The app prefers <code>{question,has_previous_item,contract_version:3}</code> when the server lists contract 3. Basic requests can use older contracts; detected advanced conditions that an old server cannot represent ask for a backend update. Contract 3 is a bounded plan: groups of AND conditions are unioned, exclusions removed and rows sorted on the phone. Schema and lexical guards reject detectable lost filters, signs, critical polarity and item-to-threshold associations; they cannot prove arbitrary meaning. Groq receives the reviewed question, context flag, instructions and schema, without an inventory snapshot or recording in this call.</p>
+        <p>Groq Whisper listening uses <code>/ai/transcribe</code> with separate <code>groq_audio</code> consent and fresh local audio opt-in. Interpretation starts only after transcript review and Send. Optional Sarvam English narration uses <code>/ai/speak</code> with separate answer-text consent, explicit billing, bounded synthesis and validated WAV playback. The first staging pilot uses the operator's own key; public customer-key use remains gated pending a permitted arrangement. <a href="../docs/AI_VOICE_END_TO_END_REVIEW.html#12-independent-follow-up">Independent review and live acceptance limits</a>.</p>
       </div>
 
       <div class="sub" id="ai-flow">

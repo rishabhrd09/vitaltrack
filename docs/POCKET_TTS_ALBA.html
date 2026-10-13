@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="generator" content="docs/tools/build_docs.py from docs/POCKET_TTS_ALBA.md">
-<title>Downloadable Alba voice inside CareKosh</title>
+<title>Pocket TTS / Alba — paused in this release</title>
 <style>
 :root{--bg:#fbfaf7;--fg:#1d2328;--muted:#56606b;--card:#ffffff;--border:#d6dbe0;--accent:#0b5a73;
 --accent-bg:#e5f1f5;--code-bg:#f1f3f5;--code-fg:#1d2328;--warn-bg:#fff4d6;--warn-border:#9a6a00;--mark:#fff1a8}
@@ -60,14 +60,16 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <a href="INDEX.html">Documentation home</a>
 <span class="meta">Generated from <code>docs/POCKET_TTS_ALBA.md</code> — edit the Markdown, not this file.</span></div></header>
 <div class="layout">
-<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#what-it-does">What it does</a></li><li><a href="#user-setup">User setup</a></li><li><a href="#data-flow-and-safety">Data flow and safety</a></li><li><a href="#models-attribution-and-notices">Models, attribution and notices</a></li><li><a href="#source-map">Source map</a></li><li><a href="#verification-and-release-gate">Verification and release gate</a><ul><li><a href="#silent-preview-after-cpu-recovery--11-october-2026">Silent preview after CPU recovery — 11 October 2026</a></li><li><a href="#reported-silent-replies--eos-failure--10-october-2026">Reported silent replies / EOS failure — 10 October 2026</a></li><li><a href="#android-build-compatibility--10-october-2026">Android build compatibility — 10 October 2026</a></li></ul></li></ul></details></nav>
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#what-it-does">What it does</a></li><li><a href="#historical-user-setup--unavailable-while-paused">Historical user setup — unavailable while paused</a></li><li><a href="#data-flow-and-safety">Data flow and safety</a></li><li><a href="#models-attribution-and-notices">Models, attribution and notices</a></li><li><a href="#source-map">Source map</a></li><li><a href="#verification-and-release-gate">Verification and release gate</a><ul><li><a href="#silent-preview-after-cpu-recovery--11-october-2026">Silent preview after CPU recovery — 11 October 2026</a></li><li><a href="#reported-silent-replies--eos-failure--10-october-2026">Reported silent replies / EOS failure — 10 October 2026</a></li><li><a href="#android-build-compatibility--10-october-2026">Android build compatibility — 10 October 2026</a></li></ul></li><li><a href="#offline-voice-investigation--13-october-2026">Offline voice investigation — 13 October 2026</a></li></ul></details></nav>
 <main id="content">
-<h1 id="downloadable-alba-voice-inside-carekosh">Downloadable Alba voice inside CareKosh</h1>
+<h1 id="pocket-tts--alba--paused-in-this-release">Pocket TTS / Alba — paused in this release</h1>
+<p><strong>Current release status — 13 October 2026: PAUSED.</strong> Device voice remains the default. Alba selection and new downloads are disabled after failed OnePlus Nord 4 acceptance. Existing packs may be removed. Sarvam narration is separately optional; its offline fallback can use the previewed device voice.</p>
+<p>The native repair investigation and diagnostic APK profile are separate local experimental work, excluded from this reviewed release. Older dated implementation details below describe the retained native baseline; they are not a passed device test. <a href="SARVAM_ENGLISH_VOICE.html">Current Sarvam setup</a>.</p>
 <p>Latest speech-output follow-up: <strong>11 October 2026</strong>, on top of <code>2ded35a</code>. The owner tested the preceding preview APK on OnePlus Nord 4/OxygenOS 15: preparation reached CPU recovery and then finished without audible speech. This remains a failed device acceptance check, not proof that Alba works on that phone. The changes below improve playback compatibility and make generation/output failures inspectable. They require another native APK; backend code and model files are unchanged.</p>
 <h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
 <p>CareKosh can download <strong>Kyutai Pocket TTS with the fixed Alba English preset</strong> and generate spoken assistant summaries on the phone. No extra Android application, hosted speech service, API key or per-answer provider fee is needed. This does not make Groq understanding offline: optional online interpretation and transcription retain their own consent and internet requirements.</p>
 <p>This is Pocket TTS Alba, not the Piper Alba/Lyra model used by some other projects. Identical timbre is not promised. “Relaxed” changes playback speed to 0.9× while keeping pitch at 1×; it does not select a different trained emotional voice.</p>
-<h2 id="user-setup">User setup<a class="anchor" href="#user-setup" aria-label="Link to this section">#</a></h2>
+<h2 id="historical-user-setup--unavailable-while-paused">Historical user setup — unavailable while paused<a class="anchor" href="#historical-user-setup--unavailable-while-paused" aria-label="Link to this section">#</a></h2>
 <ol>
 <li>Install a newly compiled CareKosh Android APK containing the LiteRT native integration. An older APK, Expo Go, web or iOS cannot run this voice. The app still requires Android 8/API 26; this pack is offered on 64-bit ARM/x86 devices.</li>
 <li>Open <strong>Settings → Voice setup → Spoken replies</strong> (step 4 when online understanding is available) and choose <strong>Download Alba voice pack</strong>. Confirm the download; Wi-Fi is recommended. Keep CareKosh in the foreground. The preceding Listening section configures recognition, while Understanding configures optional online text interpretation; neither chooses the speaking voice.</li>
@@ -178,7 +180,9 @@ java -jar /tmp/carekosh-pocket-text-check.jar /absolute/path/to/pt_tokenizer.tsv
 <li>Repeat manifest, native-library alignment and notice checks for each release artifact. These package checks passed for the preview APK above; they do not replace the device checks.</li>
 </ol>
 <p>No backend migration, new environment variable, Render deployment or database operation is needed for this speech-output feature.</p>
-<footer>Generated 2026-10-11 by <code>docs/tools/build_docs.py</code> from <code>docs/POCKET_TTS_ALBA.md</code>.</footer>
+<h2 id="offline-voice-investigation--13-october-2026">Offline voice investigation — 13 October 2026<a class="anchor" href="#offline-voice-investigation--13-october-2026" aria-label="Link to this section">#</a></h2>
+<p>A separate local host investigation measured roughly 10 GB peak memory on its CPU workload. That is not a measured OnePlus footprint or proof of the phone's exact failure. Experimental native repairs and diagnostic build support remain unpublished and are not enabled by this release. Device sound must be verified independently before Alba is offered again. The reviewed normal preview uses the previously committed microphone/native implementation and keeps Alba paused.</p>
+<footer>Generated 2026-10-13 by <code>docs/tools/build_docs.py</code> from <code>docs/POCKET_TTS_ALBA.md</code>.</footer>
 </main>
 </div>
 <script>

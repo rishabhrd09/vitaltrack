@@ -21,7 +21,7 @@ import { readAsStringAsync, documentDirectory, copyAsync } from 'expo-file-syste
 import { Alert } from 'react-native';
 import { escapeHtml, validateImageUri } from '@/utils/sanitize';
 import { formatDate, now } from '@/utils/helpers';
-import { isLowStock, isOutOfStock, type Item, type Category } from '@/types';
+import { isCriticalEquipment, isLowStock, isOutOfStock, type Item, type Category } from '@/types';
 import { logger } from '@/utils/logger';
 
 async function getBase64Image(uri: string): Promise<string> {
@@ -104,10 +104,11 @@ function statusBadgeHtml(item: Item): string {
 }
 
 function criticalMarkerHtml(item: Item): string {
-  if (!item.isCritical) return '';
+  if (!isCriticalEquipment(item)) return '';
   // Inline gold star + small label, sits next to the item name. Doesn't
   // compete with the status badge for the row's primary color signal.
-  return ' <span class="critical-marker" title="Critical equipment">★</span>';
+  const basis = item.isCritical ? 'Marked critical equipment' : 'Critical equipment by name rule';
+  return ` <span class="critical-marker" title="${basis}">★</span>`;
 }
 
 function stockClass(item: Item): string {
@@ -126,7 +127,7 @@ export function buildHtml(opts: {
   const outOfStock = activeItems.filter(isOutOfStock);
   const lowStock = activeItems.filter((i) => !isOutOfStock(i) && isLowStock(i));
   const fullyStocked = activeItems.filter((i) => !isOutOfStock(i) && !isLowStock(i));
-  const criticalCount = activeItems.filter((i) => i.isCritical).length;
+  const criticalCount = activeItems.filter(isCriticalEquipment).length;
   const groups = groupByCategory(activeItems, categories);
 
   const itemsWithPhotos = includePhotos
@@ -494,7 +495,7 @@ export function buildHtml(opts: {
     </table>
     ${criticalCount > 0 ? `
         <div class="table-legend">
-            <span class="marker">★</span> marks critical equipment (${criticalCount} ${criticalCount === 1 ? 'item' : 'items'})
+            <span class="marker">★</span> marks critical equipment (${criticalCount} ${criticalCount === 1 ? 'item' : 'items'}), using the recorded flag or the app's equipment-name rules.
         </div>
     ` : ''}
 

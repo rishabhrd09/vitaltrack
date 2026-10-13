@@ -19,11 +19,13 @@ function load(file, dependencies) {
   return mod.exports;
 }
 
-test('online listening is available separately; cloud speaking stays off', () => {
+test('Groq listening and Sarvam narration have separate flags; Alba and legacy hosted choices stay off', () => {
   const policy = load('features/assistant/policy.ts', {});
   assert.equal(policy.CLOUD_VOICE_ENABLED, false);
   assert.equal(policy.CLOUD_TEXT_ENABLED, true);
   assert.equal(policy.CLOUD_TRANSCRIPTION_ENABLED, true);
+  assert.equal(policy.SARVAM_SPEECH_ENABLED, true);
+  assert.equal(policy.ALBA_SELECTION_ENABLED, false);
 });
 
 test('existing text opt-in never restores old cloud audio providers', async () => {
@@ -43,16 +45,16 @@ test('every cloud audio call remains gated independently of cloud text', () => {
   const source = ts.createSourceFile('assistant.tsx', read('components/assistant/AssistantExperience.tsx'), ts.ScriptTarget.ES2020, true, ts.ScriptKind.TSX);
   const cloudCalls = [];
   const visit = (node) => {
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+    if (ts.isCallExpression(node) && ((ts.isPropertyAccessExpression(node.expression)
       && node.expression.expression.getText(source) === 'assistant'
-      && ['transcribe', 'speak'].includes(node.expression.name.text)) {
+      && node.expression.name.text === 'transcribe') || (ts.isIdentifier(node.expression) && node.expression.text === 'playSarvamSpeech'))) {
       cloudCalls.push(node);
     }
     ts.forEachChild(node, visit);
   };
   visit(source);
   const guarded = (call) => {
-    const flag = call.expression.name.text === 'transcribe' ? 'CLOUD_TRANSCRIPTION_ENABLED' : 'CLOUD_VOICE_ENABLED';
+    const flag = ts.isPropertyAccessExpression(call.expression) ? 'CLOUD_TRANSCRIPTION_ENABLED' : 'SARVAM_SPEECH_ENABLED';
     const mentionsSwitch = (node) => node.getText(source).includes(flag);
     let child = call;
     for (let node = call.parent; node; child = node, node = node.parent) {
@@ -85,16 +87,43 @@ test('fresh audio opt-in can restore Groq listening but never cloud speech or Sa
   assert.equal((await preferences.loadPreferences('owner')).inputProvider,'offline');
 });
 
-test('Alba and a validated pace persist with cloud speech disabled, scoped to the owner', async () => {
+test('paused Alba preferences use device speech; validated pace remains account scoped', async () => {
   const keys = [];
   let saved = { speechProvider: 'pocket', speechPace: 0.9, spokenReplies: true };
   const preferences = load('features/assistant/preferences.ts', {
     '@react-native-async-storage/async-storage': { getItem: async key => { keys.push(key); return JSON.stringify(saved); } },
     './policy': load('features/assistant/policy.ts', {}),
   });
-  assert.equal((await preferences.loadPreferences('owner-a')).speechProvider, 'pocket');
+  assert.equal((await preferences.loadPreferences('owner-a')).speechProvider, 'device');
   assert.equal((await preferences.loadPreferences('owner-b')).speechPace, 0.9);
   assert.notEqual(keys[0], keys[1]);
   saved = { speechProvider: 'pocket', speechPace: 99 };
   assert.equal((await preferences.loadPreferences('owner-a')).speechPace, undefined);
+});
+
+test('only an explicit new Sarvam narration choice can restore online speech; Kokoro stays disabled', async () => {
+  let saved = { speechProvider: 'sarvam', sarvamSpeechOptIn: true, cloud: false, audioOptIn: false };
+  const preferences = load('features/assistant/preferences.ts', {
+    '@react-native-async-storage/async-storage': { getItem: async () => JSON.stringify(saved), setItem: async (_, value) => { saved = JSON.parse(value); } },
+    './policy': load('features/assistant/policy.ts', {}),
+  });
+  const selected = await preferences.loadPreferences('owner');
+  assert.equal(selected.speechProvider, 'sarvam');
+  assert.equal(selected.cloud, false); assert.equal(selected.inputProvider, 'offline');
+  await preferences.savePreferences('owner', { ...selected, speechProvider: 'kokoro' });
+  assert.equal(saved.speechProvider, 'device');
+});
+
+
+test('personal billing preference is account scoped and raw keys are never loaded as preferences', async () => {
+  const reads = [];
+  const saved = { sarvamKeySource: 'personal', api_key: 'synthetic-private-key', speechProvider: 'device' };
+  const preferences = load('features/assistant/preferences.ts', {
+    '@react-native-async-storage/async-storage': { getItem: async key => { reads.push(key); return JSON.stringify(saved); } },
+    './policy': load('features/assistant/policy.ts', {}),
+  });
+  const a = await preferences.loadPreferences('a'); const b = await preferences.loadPreferences('b');
+  assert.equal(a.sarvamKeySource, 'personal'); assert.equal(b.sarvamKeySource, 'personal');
+  assert.notEqual(reads[0], reads[1]);
+  assert.equal(JSON.stringify(a).includes('synthetic-private-key'), false);
 });

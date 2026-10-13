@@ -1,0 +1,71 @@
+Investigate silent Alba speech and deliver a reliable embedded offline voice for CareKosh
+
+Repository: /Users/rishabh/courses_tutorials/vital_track/first_playstore_version/vitaltrack
+Target device: OnePlus Nord 4, OxygenOS 15 / Android 15.
+
+Read the current working tree, applicable AGENTS.md files, Git status and recent commits before doing anything. There are substantial uncommitted Sarvam narration, personal-key and documentation changes. Preserve them and all unrelated work. Work on the existing feature branch or an explicitly requested isolated worktree; do not touch main, reset files, commit, push, deploy, buy services or start a paid APK build without an explicit request. Do not assume this prompt's file paths or earlier investigation are still current.
+
+Objective
+
+Provide one calm, natural English voice generated entirely inside CareKosh after a one-time voice/model download. No additional Android application, API key, running desktop, hosted speech server or per-answer provider fee is acceptable for this offline path. First investigate the retained Kyutai Pocket TTS Alba integration. If it cannot be made reliable on target Android hardware, evaluate and implement embedded Kokoro or another demonstrably suitable open-source alternative. Naturalness is an audition result, not a claim based on the voice's name.
+
+Observed failure and current boundaries
+
+- Device TTS is audible on the owner's phone; Alba has never been audible despite repeated APKs and a downloaded/verified pack. Some attempts reportedly finished silently; others stayed at preparation/CPU conversion. Screenshots showed loading/generation progress, including about 1.3 seconds generated, but did not establish that usable PCM reached playback.
+- Earlier errors included: "Alba could not finish this sentence. Try a shorter reply." Do not assume every attempt has the same cause.
+- Bluetooth was used during some tests, but its involvement is not an established root cause. Do not ask the owner to repeat generic volume/Bluetooth checks as the only investigation.
+- Earlier Mac CPU tests using the pinned assets produced non-silent PCM; mocked native playback and a successful APK build did not prove OnePlus sound. State exactly which Android JNI/GPU/HAL and physical audio checks are still missing.
+- Alba selection/download is currently paused by ALBA_SELECTION_ENABLED=false. Keep it paused in normal builds until the candidate passes the release criteria. Retain existing pack removal and licence export. A debug-only diagnostic path can be added without silently enabling the feature for users.
+- Current Sarvam English narration and personal-key settings are separate, optional online features. Preserve their consent, credential-source choice, billing isolation, timeouts and cancellation. Device voice stays available.
+
+Read and trace these current sources, following imports and actual native call paths:
+
+1. docs/POCKET_TTS_ALBA.md, docs/SARVAM_ENGLISH_VOICE.md, docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md and voice-service/README.kokoro.md. Treat dated investigations as evidence, not proof of the current code.
+2. vitaltrack-mobile/components/assistant/AssistantExperience.tsx, VoiceSetup.tsx and SarvamKeySettings.tsx.
+3. vitaltrack-mobile/features/assistant/offlineVoice.ts, cloudSpeech.ts, preferences.ts, policy.ts, audioFiles.ts and the account/session guards under services/.
+4. vitaltrack-mobile/modules/carekosh-voice/android/src/main/java/expo/modules/carekoshvoice/: CareKoshVoiceModule.kt, PocketPack.kt, PocketTokenizer.kt, PocketText.kt, PocketSynthesizer.kt, PocketRecovery.kt, PocketAudio.kt and PocketPlayback.kt; also the microphone/Moonshine implementation.
+5. The pinned pocket-alba-manifest.json, bundled notices, Android build.gradle, app config, withKotlinCompiler.js, autolinking and packaging configuration.
+6. Existing mobile/native tests, scripts/check-pocket-text.kt, scripts/check-pocket-recovery.kt and relevant private local investigation records when available. Do not publish private paths, logs or credentials.
+
+Proceed sequentially
+
+Phase 1 — establish the failure before another speculative patch
+
+Trace the exact pipeline: text -> tokenizer/chunks -> voice conditioning -> compiled graph inputs/outputs -> autoregressive/EOS generation -> vocoder -> waveform validation -> PCM conversion -> audio focus/route -> AudioTrack writes -> rendered completion -> UI cleanup. Identify every point where an error, cancellation or empty result can look like success.
+
+Check pinned asset hashes/shapes, tensor names/order/dtypes, FP16 conversion, byte order, buffer offsets, KV/voice-cache alignment, masks, decoder windows/tails, EOS and bounds. Compare the actual host/native implementation against the exact upstream exporter/example revision; do not rely on a new Python reimplementation alone. Verify CPU/GPU execution and native ABI/library selection independently. Measure first usable audio latency, generation speed, peak memory and resource cleanup on Android. A stage label or generated-duration counter is not proof that playback started.
+
+Provide bounded, privacy-preserving diagnostics for each utterance: a session/operation ID, build/revision, actual accelerator placement, elapsed stage timings, generated frames/samples, sample rate/channels, peak/RMS/non-finite counts, AudioTrack state/write results/rendered frames, audio-focus result, output category and media volume. Never record keys, transcripts, inventory data or microphone audio in logs. Avoid an unbounded wait, an infinite retry or merely increasing all timeouts. UI remains responsive; Stop must work.
+
+Use a short known PCM test to isolate native playback from synthesis, and test the generated waveform separately. A host WAV with healthy RMS is insufficient: confirm an actual Android clip reaches the playback path. If USB/logcat is available, capture a scoped native trace without wiping the device's general logs. If not, add selectable in-app diagnostic details and report device acceptance as pending. Do not pretend to know the exact OnePlus root cause without evidence.
+
+Phase 2 — choose the offline implementation from evidence
+
+Prefer a small repair of Alba if its actual Android synthesis/playback is reproducible and reliable. Otherwise compare embedded Kokoro candidates using primary upstream documentation, model cards, exact voice assets and runtime/phonemizer licences. Record URLs, revisions, asset checksums, download size, storage/RAM, Android/API/ABI support, first-audio delay, throughput, speaker quality and distribution obligations. Model licence alone does not cover runtime/phonemizer/voice dependencies; specifically inspect any eSpeak/GPL dependency and do not silently change the app's distribution obligations. Do not describe an online Hugging Face endpoint or hosted voice-service as offline phone inference. Keep native runtime compatibility with the existing Moonshine/ONNX and LiteRT libraries; avoid duplicate incompatible shared libraries or unsafe metadata-check workarounds.
+
+If implementing a replacement, use a modular output-provider interface for readiness, download/cancel/verify, preview/speak/stop, removal, progress and diagnostics. Reuse account/turn cancellation and the concise validated speechText; speech generation must not invoke Groq or reinterpret inventory answers. Use fixed, revision-pinned HTTPS model/voice assets with checksum verification, app-private storage and atomic readiness. Interrupted downloads leave no falsely ready pack. Removal must not touch Moonshine recognition, inventory, drafts or orders. No arbitrary model URLs, voice cloning, downloaded executable code or hidden background listening.
+
+Phase 3 — optional offline fallback when Sarvam fails
+
+Add an explicit setting such as "Use downloaded offline voice when online speech is unavailable", initially off. The user chooses the fallback voice after a successful preview. Use only a verified, ready local pack or the explicitly chosen installed device voice; never auto-download, enable cloud consent, switch API-key billing or retry another paid service. If the offline model is unavailable, show an honest error and retain the answer. Clearly identify when the offline voice is used.
+
+Do not alter factual answers, microphone/transcription/Groq settings, command dispatch, local drafts, final-touch order confirmation, stock changes or PDF generation. Online failure followed by offline narration must read the same validated short answer exactly once. Cancel/invalidate the old online operation before fallback; late online responses must not start a second clip. Stop, another question, navigation, backgrounding, logout/account change and audio-focus loss must stop both paths and clean resources. A sent provider request may still be charged; do not promise cancellation reverses charges.
+
+Phase 4 — verification and release criteria
+
+Add meaningful regressions for confirmed defects and the fallback state machine. Test native inference/playback as native behavior, not only mocked JavaScript. Run relevant backend/mobile tests, TypeScript/lint, Kotlin/native compilation, clean autolinking/prebuild and Android package checks as appropriate. Use fresh disposable databases for backend tests, never staging/production data. A successful JavaScript export or host compiler check is not a complete Android release build.
+
+Before enabling the new offline voice, demonstrate on OnePlus Nord 4 and, when available, a second representative Android device:
+
+- Airplane-mode Preview voice and Hear answer are physically audible after the download, with zero TTS server requests.
+- The spoken summary agrees with the visible answer; names, units and quantities survive correctly. Test short and bounded longer replies at the supported paces.
+- First and repeated replies have measured acceptable delay/RAM, finish accurately and do not freeze the UI or remain forever "preparing".
+- Stop during download, inference and playback; second-question recording immediately works, and old speech cannot resume.
+- Speaker and Bluetooth/headset playback work, with clear actionable failures when media is muted or audio focus is unavailable.
+- Backgrounding, account changes, consent withdrawal, corrupt/missing packs, low storage and removed models do not produce late audio or lose app data.
+- Simulated Sarvam timeout/network failure invokes offline fallback only with explicit opt-in and a ready selected voice; the disabled/unavailable cases remain truthful. No second paid request, shared-key fallback or inventory/order mutation occurs.
+- The actual APK contains the intended native module/assets/notices, microphone permission is unchanged, no overlay permission is added, and supported native libraries satisfy Android packaging/alignment requirements. A new runtime/compiler change must pass a real Gradle release build; obtain authorization before starting a paid EAS build.
+
+Update the canonical Markdown and generated HTML companions, setup architecture, source/status references and affected diagrams. Use existing document generators; distinguish retained historical evidence from the current implementation. Document download/storage, licences, offline versus online boundaries, fallback choice, failure recovery, measurements and exact build/test steps.
+
+Deliver a concise evidence-based root-cause report (confirmed findings versus remaining hypotheses), the selected solution and trade-offs, changed files, tests/build results and a short phone acceptance checklist. If hardware access or licensing prevents completion, finish independent diagnosis/tests and report the precise missing evidence. Do not claim "fixed", "safe on OnePlus" or "offline-ready" based only on mocks, progress labels or host-generated waveforms.

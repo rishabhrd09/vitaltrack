@@ -67,6 +67,14 @@ export async function inventorySnapshot(session: Session, signal: AbortSignal, f
 }
 
 let categoryCache: { session: Session; categories: Category[] } | null = null;
+/** Category names as parsing hints only ("wound-care items"); filtering always uses a fresh categorySnapshot. */
+export function cachedCategoryNames(session: Session): string[] {
+  assertSession(session);
+  if (categoryCache?.session.owner === session.owner && categoryCache.session.epoch === session.epoch) return categoryCache.categories.map(c => c.name);
+  // The shared query cache is cleared on logout; an owned item snapshot shows it belongs to this session.
+  const cached = queryClient.getQueryState<Category[]>(['categories'])?.data;
+  return cachedItemNames(session).length && Array.isArray(cached) ? cached.map(c => c.name).filter((n): n is string => typeof n === 'string') : [];
+}
 /** Categories are read only when a category query or reviewed export needs them. */
 export async function categorySnapshot(session: Session, signal: AbortSignal): Promise<Category[]> {
   assertSession(session);

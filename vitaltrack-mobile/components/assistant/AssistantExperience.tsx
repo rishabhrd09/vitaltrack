@@ -3,29 +3,35 @@ import { AccessibilityInfo, ActivityIndicator, Alert, AppState, Keyboard, Keyboa
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, useAudioRecorder } from 'expo-audio';
-import * as FileSystem from 'expo-file-system/legacy';
+import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import * as Sharing from 'expo-sharing';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
-import { captureSession, assertSession } from '@/services/assistantSession';
+import { captureSession, assertSession, type Session } from '@/services/assistantSession';
 import * as assistant from '@/services/assistant';
 import { answerIntent, command, commandExamples, speechText, type Answer, type Intent } from '@/features/assistant/core';
-import { defaults, loadPreferences, savePreferences, type Preferences } from '@/features/assistant/preferences';
-import { cachedItemNames, inventorySnapshot, categorySnapshot } from '@/features/assistant/snapshot';
+import { defaults, loadPreferences, permittedSpeechProvider, savePreferences, type OfflineFallbackVoice, type Preferences } from '@/features/assistant/preferences';
+import { playSarvamSpeech } from '@/features/assistant/cloudSpeech';
+import { fallbackVoiceLabel, narrateWithFallback } from '@/features/assistant/narration';
+import { sarvamSourceAvailable } from '@/features/assistant/sarvam';
+import { cachedCategoryNames, cachedItemNames, inventorySnapshot, categorySnapshot } from '@/features/assistant/snapshot';
 import { discardAudio, rememberAudio } from '@/features/assistant/audioFiles';
 import { MicrophoneCapture, type CapturePhase } from '@/features/assistant/capture';
-import { createLiveRecorder, liveCaptureSupported, offlineVoice, offlineSupported, pocketVoice, pocketVoiceSupported, pocketOutputCheckSupported, type PocketVoiceStatus } from '@/features/assistant/offlineVoice';
-import { CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, CLOUD_VOICE_ENABLED } from '@/features/assistant/policy';
+import { createLiveRecorder, liveCaptureSupported, offlineVoice, offlineSupported, pocketVoice, pocketVoiceSupported, pocketOutputCheckSupported, type PocketPlacementName, type PocketVoiceStatus } from '@/features/assistant/offlineVoice';
+import { ALBA_SELECTION_ENABLED, CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, CLOUD_VOICE_ENABLED, SARVAM_SPEECH_ENABLED, VOICE_DIAGNOSTICS_ENABLED } from '@/features/assistant/policy';
+import { minimumInterpretContract } from '@/features/assistant/providers';
 import { ANSWER_VISIBLE_MS, canDismissAnswer, microphoneReadiness } from '@/features/assistant/readiness';
 import AnswerList from '@/components/assistant/AnswerList';
 import AssistantDock from '@/components/assistant/AssistantDock';
 import { AssistantLayer } from '@/components/assistant/AssistantLayer';
-import { routeLocally, queryInventory, inventoryAnswer, describeQuery, Clarification } from '@/features/assistant/queries';
-import { queryDefaults, specification, type Specification, type InventoryQuery } from '@/features/assistant/contracts';
-import { getDraft, prepareDraft, writeDraft, mergeDrafts, type CartItem } from '@/features/assistant/drafts';
+import { routeLocally, inventoryAnswer, Clarification } from '@/features/assistant/queries';
+import { condition, plan, queryDefaults, selection, toPlan, upgradeQuery, type ClarifyReason, type Plan, type Selection, type Specification } from '@/features/assistant/contracts';
+import { getDraft, prepareDraftResult, writeDraft, mergeDrafts, type CartItem } from '@/features/assistant/drafts';
+import { describeSelection, evaluateSelection, selectionAnswer } from '@/features/assistant/selection';
+import { isCriticalEquipment, isLowStock, isOutOfStock, type Category, type Item } from '@/types';
 import { exportInventoryPdf } from '@/utils/inventoryPdfExport';
 import VoiceSetup, { VoiceButton } from '@/components/assistant/VoiceSetup';
+import SarvamKeySettings from '@/components/assistant/SarvamKeySettings';
 
 const recordingOptions = { ...RecordingPresets.HIGH_QUALITY, sampleRate: 44100, numberOfChannels: 1, bitRate: 128000, isMeteringEnabled: true,
   android: { ...RecordingPresets.HIGH_QUALITY.android, audioSource: 'voice_recognition' as const } };
@@ -46,19 +52,39 @@ function waitForMicrophoneForeground(signal: AbortSignal): Promise<void> {
     else if (AppState.currentState === 'active') finish();
   });
 }
-function blobBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1]);
-    reader.onerror = () => reject(new Error('Could not play speech.'));
-    reader.readAsDataURL(blob);
-  });
+function scopeEnabled(scope: assistant.ConsentScope) {
+  if (scope === 'groq_text') return CLOUD_TEXT_ENABLED;
+  if (scope === 'groq_audio') return CLOUD_TRANSCRIPTION_ENABLED;
+  if (scope === 'sarvam_speech') return SARVAM_SPEECH_ENABLED;
+  return false;
 }
 function speechFailure(error: unknown): string {
   // Native rejections can be Error-like objects rather than this realm's Error class.
   if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' && error.message.trim()) return error.message.slice(0, 1000);
   return 'Speech unavailable.';
 }
+
+/** One step of the current list: a selection plus the item choices made for it. Follow-ups narrow the last rows. */
+type ChainLink = { selection: Selection; selected: Record<string, string> };
+const MAX_FOLLOW_UPS = 6;
+/** Rows of the current list, re-evaluated on this snapshot so a refresh never reuses stale stock. */
+function chainRows(chain: ChainLink[], items: Item[], categories: Category[], categoriesKnown: boolean): Item[] | undefined {
+  let rows: Item[] | undefined;
+  for (const link of chain) rows = evaluateSelection(link.selection, items, { categories, categoriesKnown, previous: rows, selected: link.selected }).rows;
+  return rows;
+}
+const describeChain = (chain: ChainLink[]) => chain.map(link => describeSelection(link.selection)).join(' → ');
+const conditionsOf = (list: (Selection | null | undefined)[]) => list.flatMap(sel => sel ? [...sel.any_of, ...sel.exclude] : []);
+const CLARIFY_TEXT: Record<ClarifyReason, string> = {
+  ambiguous: 'This request could mean more than one thing. Name the exact items, filters or quantities you mean.',
+  unsupported_condition: 'Part of this request, such as dates, usage or forecasts, cannot be checked against current stock. Nothing was dropped; ask again without it.',
+  conflict: 'This request contains conflicting instructions, such as two quantities for one item. Say one final instruction.',
+  missing_context: 'Ask for a list or prepare a draft first, then refer to it.',
+};
+const draftSummary = (rows: CartItem[]) => {
+  const explicit = rows.filter(r => r.source === 'spoken').length, suggested = rows.filter(r => r.source === 'suggested').length;
+  return `${rows.length} ${rows.length === 1 ? 'line' : 'lines'} ready${explicit || suggested ? ` · ${explicit} from your request, ${suggested} suggested` : ''}. Nothing has been saved. Review it and tap Confirm order & export PDF.`;
+};
 
 /** Queries and local drafts only. No order-save or inventory-mutation service is imported. */
 export default function AssistantExperience({ embedded = false, active = true, screenKey = '' }: {
@@ -81,7 +107,9 @@ export default function AssistantExperience({ embedded = false, active = true, s
   if (liveCaptureSupported && !liveRecorder.current) liveRecorder.current = createLiveRecorder();
   const [proposalChoice, setProposalChoice] = useState<((merge: boolean) => void) | null>(null);
   const [draftRows, setDraftRows] = useState<CartItem[] | undefined>(undefined);
-  const previousQuery = useRef<InventoryQuery | undefined>(undefined);
+  const resultChain = useRef<ChainLink[]>([]);
+  /** Items a follow-up such as "add five more" may refer to: the draft or single item just shown. */
+  const focusItems = useRef<Item[]>([]);
   const selections = useRef<Record<string,string>>({});
   const choiceQuery = useRef('');
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -102,24 +130,22 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const [speaking, setSpeaking] = useState(false);
   const [speechStatus, setSpeechStatus] = useState('');
   const [speechFeedback, setSpeechFeedback] = useState<{ message: string; details: string; failed: boolean } | null>(null);
+  const [fallbackNotice, setFallbackNotice] = useState('');
   const [permissionBlocked, setPermissionBlocked] = useState(false);
   const permissionPending = useRef(false);
   const scroll = useRef<ScrollView>(null);
   const mounted = useRef(true);
   const previousItem = useRef<string | undefined>(undefined);
-  const pendingIntent = useRef<Intent | Specification | undefined>(undefined);
+  const pendingIntent = useRef<Intent | Specification | Plan | undefined>(undefined);
   const answeredQuestion = useRef('');
   const understandingSource = useRef('Matched locally');
   const turn = useRef(0);
   const controller = useRef<AbortController | null>(null);
-  const audioFile = useRef<string | null>(null);
   const recordingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recordingEvent = useRef<(error: string | null) => void>(() => {});
   const recorder = useAudioRecorder(recordingOptions, status => {
     if (status.hasError || status.isFinished) recordingEvent.current(status.hasError ? status.error || 'Android interrupted the microphone. Please try again.' : null);
   });
-  const player = useAudioPlayer(null);
-  const playback = useAudioPlayerStatus(player);
   const captureRef = useRef<MicrophoneCapture | null>(null);
   if (!captureRef.current) captureRef.current = new MicrophoneCapture(liveRecorder.current || recorder, rememberAudio, discardAudio,
     phase => { if (mounted.current) setCapturePhase(phase); },
@@ -144,12 +170,10 @@ export default function AssistantExperience({ embedded = false, active = true, s
     offlineVoice.cancel();
     if (recordingTimer.current) clearTimeout(recordingTimer.current);
     recordingTimer.current = null;
-    try { player.pause(); } catch { /* native object may already be released */ }
-    void discard(audioFile.current); audioFile.current = null;
     capture.cancel();
-    setBusy(''); setSpeaking(false); setSpeechStatus(''); setLiveWords('');
+    setBusy(''); setSpeaking(false); setSpeechStatus(''); setLiveWords(''); setFallbackNotice('');
   };
-  const close = () => { cancel(); previousItem.current = undefined; previousQuery.current = undefined; selections.current = {}; setDraftRows(undefined); setProposalChoice(null); setAnswer(null); setQuestion(''); setError(''); setReviewOpen(false); if (!embedded) { if (router.canGoBack()) router.back(); else router.replace('/(tabs)'); } };
+  const close = () => { cancel(); previousItem.current = undefined; resultChain.current = []; focusItems.current = []; selections.current = {}; setDraftRows(undefined); setProposalChoice(null); setAnswer(null); setQuestion(''); setError(''); setReviewOpen(false); if (!embedded) { if (router.canGoBack()) router.back(); else router.replace('/(tabs)'); } };
   const openSetup = () => { cancel(); setAnswer(null); if (embedded) router.navigate({ pathname: '/assistant', params: { mode: 'settings' } }); else router.setParams({ mode: 'settings', listen: undefined }); };
   const openAssistant = () => { cancel(); setAnswer(null); router.setParams({ mode: undefined, listen: undefined }); };
   const closeRef = useRef(close); closeRef.current = close;
@@ -170,23 +194,19 @@ export default function AssistantExperience({ embedded = false, active = true, s
   }, [answer, keptOpen, busy, speaking, capturePhase, screenReader, settingsOpen, active]);
 
   useEffect(() => {
-    if (playback.didJustFinish) { void discardAudio(audioFile.current).catch(() => {}); audioFile.current = null; }
-  }, [playback.didJustFinish]);
-
-  useEffect(() => {
     mounted.current = true;
     if (!active) { cancel(); setAnswer(null); setQuestion(''); setReviewOpen(false); return; }
     let currentScreen = true;
     const session = userId ? captureSession() : null;
     setPrefs(defaults); setCaps(assistant.unavailable); setAnswer(null); setQuestion('');
-    previousItem.current = undefined; pendingIntent.current = undefined; previousQuery.current = undefined; selections.current = {}; setDraftRows(undefined); answeredQuestion.current = ''; setLoaded(false); setModelChecked(!offlineSupported); setError(''); setReviewOpen(false);
+    previousItem.current = undefined; pendingIntent.current = undefined; resultChain.current = []; focusItems.current = []; selections.current = {}; setDraftRows(undefined); answeredQuestion.current = ''; setLoaded(false); setModelChecked(!offlineSupported); setError(''); setReviewOpen(false);
     if (session) {
       // Local setup is never held hostage by a slow/unavailable cloud server.
       void loadPreferences(session.owner)
-        .then(preferences => { if (currentScreen) { assertSession(session); setPrefs(preferences); setLoaded(true); } })
+        .then(preferences => { if (currentScreen) { assertSession(session); setPrefs({ ...preferences, speechProvider: permittedSpeechProvider(preferences.speechProvider, preferences.sarvamSpeechOptIn) }); setLoaded(true); } })
         .catch(() => { if (currentScreen) setError('Session changed. Reopen the assistant.'); });
       // This reads availability only; no question is sent until opt-in and Send.
-      if (CLOUD_TEXT_ENABLED || CLOUD_TRANSCRIPTION_ENABLED || CLOUD_VOICE_ENABLED) void assistant.capabilities(session).then(available => { if (currentScreen) { assertSession(session); setCaps(available); } }).catch(() => {});
+      if (CLOUD_TEXT_ENABLED || CLOUD_TRANSCRIPTION_ENABLED || SARVAM_SPEECH_ENABLED || CLOUD_VOICE_ENABLED) void assistant.capabilities(session).then(available => { if (currentScreen) { assertSession(session); setCaps(available); } }).catch(() => {});
       if (offlineSupported) {
         void offlineVoice.status().then(status => { if (currentScreen) setModel(status); }).catch(() => { if (currentScreen) setError('Offline speech pack could not be checked. Open Voice setup and recheck.'); }).finally(() => { if (currentScreen) setModelChecked(true); });
         void offlineVoice.deviceStatus().then(voice => { if (currentScreen) setDeviceVoice(voice); }).catch(() => { if (currentScreen) setDeviceVoice({ ready: false, name: 'Install an offline English voice in Android Text-to-speech settings.' }); });
@@ -221,9 +241,12 @@ export default function AssistantExperience({ embedded = false, active = true, s
   }, [userId, active, screenKey]);
 
   async function update(next: Preferences) {
-    if (!userId) return;
-    cancel(); setError('');
+    if (!userId || !active || !mounted.current) return;
     const session = captureSession();
+    // A callback from a previous render must never change the next account's preferences.
+    if (session.owner !== userId) return;
+    next = { ...next, speechProvider: permittedSpeechProvider(next.speechProvider, next.sarvamSpeechOptIn) };
+    cancel(); setError('');
     setPrefs(next); // Disabling must take effect even if storage/network is unavailable.
     try { await savePreferences(session.owner, next); assertSession(session); }
     catch { if (mounted.current) setError('Settings changed for this screen, but could not be saved for next time.'); }
@@ -259,40 +282,65 @@ export default function AssistantExperience({ embedded = false, active = true, s
     } catch (e) { if (current === turn.current) setError(e instanceof Error ? e.message : 'Microphone permission unavailable.'); }
     finally { if (mounted.current && controller.current === abort) setBusy(''); }
   }
-  async function cloudConsent(scope: assistant.ConsentScope, next: Preferences) {
-    if (!(scope === 'groq_text' ? CLOUD_TEXT_ENABLED : scope === 'groq_audio' ? CLOUD_TRANSCRIPTION_ENABLED : CLOUD_VOICE_ENABLED)) return;
+  async function cloudConsent(scope: assistant.ConsentScope, next: Preferences, session: Session) {
+    if (!scopeEnabled(scope)) return;
+    try { assertSession(session); } catch { return; }
     cancel(); setBusy('Saving consent…');
     const current = turn.current;
+    const abort = new AbortController(); controller.current = abort;
+    const assertCurrent = () => {
+      assertSession(session);
+      if (!active || !mounted.current || current !== turn.current || abort.signal.aborted) throw new Error('Consent cancelled.');
+    };
     try {
-      const session = captureSession();
+      // Re-read current scopes: an old capability snapshot must not re-grant a withdrawn scope.
+      const before = await assistant.capabilities(session, abort.signal);
+      assertCurrent();
       // Adding text consent must not silently revoke an explicitly chosen listening scope.
-      await assistant.setConsent(session, [...new Set([...caps.scopes, scope])]);
-      const available = await assistant.capabilities(session);
-      if (current !== turn.current) return;
-      assertSession(session); setCaps(available); await update(next);
+      await assistant.setConsent(session, [...new Set([...before.scopes, scope])]);
+      assertCurrent();
+      const available = await assistant.capabilities(session, abort.signal);
+      assertCurrent();
+      setCaps(available); await update(next);
     } catch { if (current === turn.current) setError('Consent could not be saved. Please retry.'); }
     finally { if (current === turn.current) setBusy(''); }
   }
   function chooseCloud(scope: assistant.ConsentScope, next: Preferences) {
-    if (!(scope === 'groq_text' ? CLOUD_TEXT_ENABLED : scope === 'groq_audio' ? CLOUD_TRANSCRIPTION_ENABLED : CLOUD_VOICE_ENABLED)) return;
+    if (!scopeEnabled(scope)) return;
+    const session = captureSession(), current = turn.current;
+    const canConfirm = () => {
+      if (!mounted.current || !active || current !== turn.current || AppState.currentState !== 'active') return false;
+      try { assertSession(session); return session.owner === userId; } catch { return false; }
+    };
+    if (!canConfirm()) return;
     if (caps.scopes.includes(scope)) { void update(next); return; }
     const disclosure = {
       groq_text: 'After you tap Send, unfamiliar typed questions or reviewed transcripts go through CareKosh to Groq for understanding. This text option uploads no recording or inventory list. Words and item names you include in your question are sent. CareKosh saves your consent and usage counts; this cannot change your stock.',
       groq_audio: 'Recordings go through CareKosh to Groq (US) for Whisper transcription. This is an online, potentially paid service.',
       sarvam_audio: 'Recordings go through CareKosh to Sarvam for Saaras transcription. This is an online, potentially paid service, not an offline model.',
       kokoro_speech: 'The answer text, including quantities and recorded suppliers, goes to our hosted Kokoro speech service. Hosting has a cost; no audio is uploaded for this speaking option.',
-      sarvam_speech: 'The answer text, including quantities and recorded suppliers, goes through CareKosh to Sarvam Bulbul for paid speech generation.',
+      sarvam_speech: 'The short answer text, which may include item names, quantities and recorded suppliers, goes through CareKosh to Sarvam to create English speech. Internet and API credits are required. This choice does not enable microphone uploads or change your stock.',
     }[scope];
-    Alert.alert('Optional cloud processing — adult pilot', disclosure + ' Avoid patient identifiers. Groq may retain request content for reliability or abuse monitoring unless the service account has Zero Data Retention enabled. Continue only if you are 18+ and agree. Use “Withdraw all cloud consent” below to turn it off.',
-      [{ text: 'Cancel', style: 'cancel' }, { text: 'I am 18+ and agree', onPress: () => { void cloudConsent(scope, next); } }]);
+    const retention = scope.startsWith('groq_') ? ' Groq may retain request content for reliability or abuse monitoring unless the service account has Zero Data Retention enabled.' : ' Answer text is processed by the selected speech service under its data policy.';
+    Alert.alert('Optional cloud processing — adult pilot', disclosure + ' Avoid patient identifiers.' + retention + ' Continue only if you are 18+ and agree. Use “Withdraw all cloud consent” below to turn it off.',
+      [{ text: 'Cancel', style: 'cancel' }, { text: 'I am 18+ and agree', onPress: () => { if (canConfirm()) void cloudConsent(scope, next, session); } }]);
   }
   async function revokeCloud() {
-    if (!CLOUD_TEXT_ENABLED && !CLOUD_TRANSCRIPTION_ENABLED && !CLOUD_VOICE_ENABLED) return;
+    if (!CLOUD_TEXT_ENABLED && !CLOUD_TRANSCRIPTION_ENABLED && !SARVAM_SPEECH_ENABLED && !CLOUD_VOICE_ENABLED) return;
+    if (!mounted.current || !active) return;
+    let session: Session;
+    try { session = captureSession(); } catch { return; }
+    if (session.owner !== userId) return;
     cancel();
     setCaps(value => ({ ...value, scopes: [], consented: false }));
-    await update({ ...prefs, cloud: false, audioOptIn: false, inputProvider: 'offline', speechProvider: prefs.speechProvider === 'pocket' ? 'pocket' : 'device' });
+    // update() cancels synchronously, then awaits account-scoped preference storage. Bind
+    // that new turn before the await: a slow save must not withdraw the next user's consent.
+    const saving = update({ ...prefs, cloud: false, audioOptIn: false, sarvamSpeechOptIn: false, inputProvider: 'offline', speechProvider: ALBA_SELECTION_ENABLED && prefs.speechProvider === 'pocket' ? 'pocket' : 'device' });
     const current = turn.current;
-    try { await assistant.setConsent(captureSession(), []); }
+    await saving;
+    if (!mounted.current || !active || current !== turn.current) return;
+    try { assertSession(session); } catch { return; }
+    try { await assistant.setConsent(session, []); }
     catch { if (current === turn.current) setError('Cloud is off on this device. Server withdrawal failed; reconnect and press Withdraw again.'); }
   }
   async function setupOffline(remove = false) {
@@ -307,6 +355,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
   }
   async function setupAlba(remove: boolean) {
     if (!loaded || !pocketVoiceSupported) return;
+    if (!remove && !ALBA_SELECTION_ENABLED) return;
     const session = captureSession();
     cancel(); setError(''); setBusy(remove ? 'Removing Alba voice pack…' : 'Downloading and verifying Alba voice pack…'); setAlbaProgress(0);
     const current = turn.current;
@@ -317,50 +366,70 @@ export default function AssistantExperience({ embedded = false, active = true, s
       assertSession(session); setAlba(status); setAlbaChecked(true);
       // Download selects the voice; reading aloud stays a separate user choice.
       if (!remove) await update({ ...prefs, speechProvider: 'pocket' });
-      else if (prefs.speechProvider === 'pocket') await update({ ...prefs, spokenReplies: false });
+      else if (prefs.speechProvider === 'pocket') await update({ ...prefs, speechProvider: 'device' });
     } catch (e) { if (current === turn.current) setError(e instanceof Error ? e.message : 'Alba setup failed. Please retry.'); }
     finally { if (current === turn.current) setBusy(''); }
   }
-  async function playAnswer(value: Answer, current: number, signal: AbortSignal, preview = false) {
-    if ((!prefs.spokenReplies && !preview) || capture.phase !== 'idle' || current !== turn.current || signal.aborted) return;
+  async function playAnswer(value: Answer, current: number, signal: AbortSignal, preview = false, personalTest = false) {
+    if ((!prefs.spokenReplies && !preview) || speaking || capture.phase !== 'idle' || current !== turn.current || signal.aborted) return;
     setSpeaking(true);
     setSpeechFeedback(null);
     setSpeechStatus(prefs.speechProvider === 'pocket' ? 'Preparing Alba speech…' : 'Reading aloud…');
     try {
       const session = captureSession();
-      if (prefs.speechProvider === 'pocket') {
+      const provider = personalTest ? 'sarvam' : prefs.speechProvider;
+      const keySource = personalTest ? 'personal' : prefs.sarvamKeySource ?? 'application';
+      if (provider === 'pocket' && ALBA_SELECTION_ENABLED) {
         assertSession(session);
         if (!alba.ready) throw new Error('Download Alba in Voice setup first.');
         const result = await pocketVoice.speak(speechText(value), prefs.speechPace ?? 1, message => {
           if (mounted.current && current === turn.current && !signal.aborted) setSpeechStatus(message);
-        });
+        }, signal);
         const details = await pocketVoice.diagnostics().catch(() => '') || '';
         if (mounted.current && current === turn.current && !signal.aborted) {
           setSpeechFeedback({ message: result ? `Android completed Alba playback · ${result.output} · media volume ${result.volumePercent}%. If you heard nothing, try Check audio output below.` : 'Voice playback completed. If you heard nothing, try Check audio output below.', details, failed: false });
         }
         return;
       }
-      if (!CLOUD_VOICE_ENABLED || prefs.speechProvider === 'device') {
+      if (!personalTest && permittedSpeechProvider(provider, prefs.sarvamSpeechOptIn) === 'device') {
         assertSession(session);
         await offlineVoice.speak(speechText(value));
         return;
       }
-      const scope = prefs.speechProvider === 'sarvam' ? 'sarvam_speech' : 'kokoro_speech';
-      if (!caps.scopes.includes(scope) || !caps.speech_providers.includes(prefs.speechProvider)) throw new Error('Selected speech provider unavailable');
-      const blob = await assistant.speak(session, speechText(value), signal, prefs.speechProvider);
-      const encoded = await blobBase64(blob);
-      if (current !== turn.current || signal.aborted) return;
-      assertSession(session);
-      const uri = FileSystem.cacheDirectory + 'carekosh-voice-' + Date.now() + '.wav';
-      await rememberAudio(uri);
-      await FileSystem.writeAsStringAsync(uri, encoded, { encoding: FileSystem.EncodingType.Base64 });
-      if (current !== turn.current || signal.aborted) { await discard(uri); return; }
-      audioFile.current = uri;
-      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true, shouldPlayInBackground: false });
-      if (current !== turn.current || signal.aborted) { await discard(uri); return; }
-      assertSession(session); player.replace({ uri }); player.play();
+      if (provider !== 'sarvam' || !SARVAM_SPEECH_ENABLED) throw new Error('This speaking voice is unavailable. Select device voice in Voice setup.');
+      const text = speechText(value);
+      const status = (message: string) => { if (mounted.current && current === turn.current && !signal.aborted) setSpeechStatus(message); };
+      const outcome = await narrateWithFallback({
+        speakOnline: async onPlaybackStarted => {
+          status('Checking Sarvam English voice…');
+          const available = await assistant.capabilities(session, signal);
+          if (current !== turn.current || signal.aborted) throw new Error('Speech cancelled.');
+          assertSession(session); setCaps(available);
+          if (!available.scopes.includes('sarvam_speech')) throw new Error('Enable Sarvam English voice in Voice setup to confirm answer-text consent.');
+          if (!sarvamSourceAvailable(available, keySource)) throw new Error(keySource === 'personal' ? 'Your personal Sarvam key is unavailable. Recheck, replace your key or choose another voice. Shared credits were not used.' : 'The application Sarvam account is unavailable. Choose your personal key or device voice.');
+          await playSarvamSpeech(session, text, prefs.speechPace ?? 1, signal, status, keySource, onPlaybackStarted);
+        },
+        // Same validated answer text, read once, on the phone; nothing further is sent online.
+        speakOffline: async voice => {
+          assertSession(session);
+          if (voice === 'pocket') await pocketVoice.speak(text, prefs.speechPace ?? 1, status, signal);
+          else await offlineVoice.speak(text);
+        },
+        // A personal-key test checks that key; it never falls back. Loaded preferences are already sanitised.
+        fallback: personalTest ? null : prefs.speechFallback ?? null,
+        fallbackReady: voice => voice === 'device' ? deviceVoice.ready : ALBA_SELECTION_ENABLED && alba.ready,
+        stillCurrent: () => {
+          if (!mounted.current || current !== turn.current || signal.aborted) return false;
+          try { assertSession(session); return true; } catch { return false; }
+        },
+        onFallback: voice => status(`Sarvam unavailable · reading with ${fallbackVoiceLabel(voice)}…`),
+      });
+      if (mounted.current && current === turn.current && !signal.aborted && outcome.voice !== 'online') setFallbackNotice(`Read aloud with ${fallbackVoiceLabel(outcome.voice)} because Sarvam was unavailable.`);
+      if (mounted.current && current === turn.current && !signal.aborted) setSpeechFeedback(outcome.voice === 'online'
+        ? { message: 'Sarvam voice playback completed.', details: '', failed: false }
+        : { message: `Sarvam was unavailable, so this answer was read with ${fallbackVoiceLabel(outcome.voice)}. No second online request was sent.`, details: `Sarvam reason: ${outcome.onlineError ?? 'unknown'}`, failed: false });
     } catch (e) {
-      const message = prefs.speechProvider === 'pocket' ? speechFailure(e) : 'Speech unavailable.';
+      const message = speechFailure(e);
       const details = prefs.speechProvider === 'pocket' ? await pocketVoice.diagnostics().catch(() => '') || '' : '';
       if (mounted.current && current === turn.current && !signal.aborted) {
         setError(`${message} Your answer is still on screen.`);
@@ -369,6 +438,28 @@ export default function AssistantExperience({ embedded = false, active = true, s
     }
     finally { if (current === turn.current) { setSpeaking(false); setSpeechStatus(''); } }
   }
+  async function changePersonalKey(key?: string) {
+    if (!loaded || busy || speaking || capture.phase !== 'idle') return;
+    const session = captureSession();
+    cancel(); setError(''); setBusy(key ? 'Saving personal key securely…' : 'Removing personal key…');
+    const abort = new AbortController(); controller.current = abort;
+    const current = turn.current;
+    try {
+      if (key) await assistant.saveSarvamKey(session, key, abort.signal);
+      else await assistant.removeSarvamKey(session, abort.signal);
+      const available = await assistant.capabilities(session, abort.signal);
+      if (current !== turn.current || abort.signal.aborted || !mounted.current) return;
+      assertSession(session); setCaps(available);
+      // Explicitly saving a personal key selects its billing source, not narration.
+      // Removing a selected personal key returns to device speech, never shared billing.
+      await update({ ...prefs, sarvamKeySource: key ? 'personal' : prefs.sarvamKeySource,
+        speechProvider: !key && prefs.sarvamKeySource === 'personal' ? 'device' : prefs.speechProvider });
+    } catch {
+      if (current === turn.current && mounted.current) setError('Personal key changes could not be confirmed. Recheck before retrying; the server may have saved the change.');
+    } finally {
+      if (current === turn.current && mounted.current) setBusy('');
+    }
+  }
   async function checkAudioOutput() {
     cancel(); setError(''); setSpeechFeedback(null);
     const abort = new AbortController(); controller.current = abort;
@@ -376,7 +467,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     setSpeaking(true); setSpeechStatus('Playing a short test tone…');
     try {
       const session = captureSession(); assertSession(session);
-      const result = await pocketVoice.checkOutput();
+      const result = await pocketVoice.checkOutput(abort.signal);
       const details = await pocketVoice.diagnostics().catch(() => '');
       assertSession(session);
       if (mounted.current && current === turn.current && !abort.signal.aborted) setSpeechFeedback({
@@ -387,19 +478,67 @@ export default function AssistantExperience({ embedded = false, active = true, s
       if (mounted.current && current === turn.current && !abort.signal.aborted) setSpeechFeedback({ message: speechFailure(e), details, failed: true });
     } finally { if (mounted.current && current === turn.current) { setSpeaking(false); setSpeechStatus(''); } }
   }
-  async function ask(text = question, chosen?: Intent | Specification, force = false) {
+  /** The fallback is saved only after this exact voice was heard in a successful preview. */
+  async function chooseFallback(voice: OfflineFallbackVoice | null) {
+    if (!voice) { await update({ ...prefs, speechFallback: undefined }); setSpeechFeedback({ message: 'Offline fallback is off. A failed online reply keeps the answer on screen without speaking it.', details: '', failed: false }); return; }
+    cancel(); setError(''); setSpeechFeedback(null);
+    const abort = new AbortController(); controller.current = abort;
+    const current = turn.current;
+    setSpeaking(true); setSpeechStatus(`Previewing ${fallbackVoiceLabel(voice)} as the fallback…`);
+    try {
+      const session = captureSession(); assertSession(session);
+      const preview = 'Hello. I am your CareKosh stock assistant.';
+      if (voice === 'pocket') {
+        if (!ALBA_SELECTION_ENABLED || !alba.ready) throw new Error('Download Alba before choosing it as the fallback.');
+        await pocketVoice.speak(preview, prefs.speechPace ?? 1, undefined, abort.signal);
+      } else {
+        if (!deviceVoice.ready) throw new Error('No offline English device voice is installed.');
+        await offlineVoice.speak(preview);
+      }
+      if (current !== turn.current || abort.signal.aborted || !mounted.current) return;
+      assertSession(session);
+      await update({ ...prefs, speechFallback: voice });
+      setSpeechFeedback({ message: `Fallback set to ${fallbackVoiceLabel(voice)}. It reads an answer only when Sarvam is unavailable and never sends anything online.`, details: '', failed: false });
+    } catch (e) {
+      if (mounted.current && current === turn.current && !abort.signal.aborted) setSpeechFeedback({ message: `Fallback unchanged: ${speechFailure(e)}`, details: '', failed: true });
+    } finally { if (mounted.current && current === turn.current) { setSpeaking(false); setSpeechStatus(''); } }
+  }
+  /** Diagnostics builds only. Counts, timings and states are reported; no answer text or inventory. */
+  async function runAlbaDiagnostic(play: boolean, placement: PocketPlacementName) {
+    if (!VOICE_DIAGNOSTICS_ENABLED) return;
+    cancel(); setError(''); setSpeechFeedback(null);
+    const abort = new AbortController(); controller.current = abort;
+    const current = turn.current;
+    const header = `Diagnostic placement: ${placement} (app version and code are in the native header)\n`;
+    setSpeaking(true); setSpeechStatus(play ? 'Alba diagnostic: generating and playing…' : 'Alba diagnostic: generating without playing…');
+    try {
+      const session = captureSession(); assertSession(session);
+      const result = await pocketVoice.speakDiagnostic('Hello. I am your CareKosh stock assistant. Low stock: 1 item. Surgical mask: 3 boxes.', play, placement, abort.signal);
+      const details = await pocketVoice.diagnostics().catch(() => '');
+      if (mounted.current && current === turn.current && !abort.signal.aborted) setSpeechFeedback({ message: play
+        ? `Alba diagnostic finished · ${result.output} · media volume ${result.volumePercent}%. Record whether you heard it.`
+        : `Synthesis-only diagnostic finished · ${result.audioSeconds.toFixed(1)} s of audio generated; nothing was played.`, details: header + details, failed: false });
+    } catch (e) {
+      const details = await pocketVoice.diagnostics().catch(() => '');
+      if (mounted.current && current === turn.current && !abort.signal.aborted) setSpeechFeedback({ message: speechFailure(e), details: header + details, failed: true });
+    } finally { if (mounted.current && current === turn.current) { setSpeaking(false); setSpeechStatus(''); } }
+  }
+  async function ask(text = question, chosen?: Intent | Specification | Plan, force = false) {
     if (!loaded || !prefs.enabled || !text.trim() || busy || capture.phase !== 'idle') return;
     Keyboard.dismiss();
+    // Refreshing a follow-up re-runs it on the same base list instead of narrowing twice.
+    const refreshing = force && !!chosen && chosen === pendingIntent.current;
     cancel(); setError(''); setDetailsOpen(false); setAnswer(null); setDraftRows(undefined); setProposalChoice(null); setKeptOpen(false);
     if (!chosen) selections.current = {};
     const current = turn.current;
     const abort = new AbortController(); controller.current = abort;
     setBusy('Understanding…');
-    understandingSource.current = 'Matched locally';
+    if (!chosen) understandingSource.current = 'Matched locally';
     try {
       const session = captureSession();
       const names = cachedItemNames(session);
-      let intent = chosen || routeLocally(text, names, !!getDraft(session)?.rows.length);
+      const hasDraft = !!getDraft(session)?.rows.length;
+      let intent = chosen || routeLocally(text, names, hasDraft, cachedCategoryNames(session));
       if (!intent) {
         if (!CLOUD_TEXT_ENABLED || !prefs.cloud) throw new Error('That wording needs online understanding. Enable Groq understanding in Voice setup, or use an example while offline.');
         // A cold start or a new staging deployment must not leave availability stale for this screen.
@@ -409,9 +548,15 @@ export default function AssistantExperience({ embedded = false, active = true, s
         setCaps(available);
         if (!available.interpret) throw new Error('Groq understanding is unavailable on this backend. Recheck the staging deployment and AI settings in Voice setup.');
         if (!available.scopes.includes('groq_text')) throw new Error('Enable Groq understanding in Voice setup to confirm text-processing consent for this account.');
-        if (!available.interpret_contracts?.includes(2) && /\b(?:draft|order)\b/i.test(text)) throw new Error('This backend does not support voice order drafts yet. Deploy the latest feature branch to staging, then recheck Voice setup.');
-        try { intent = available.interpret_contracts?.includes(2)
-          ? await assistant.interpretExpanded(session, text.trim(), !!previousQuery.current || !!previousItem.current, abort.signal)
+        const contracts = available.interpret_contracts || [];
+        const required = minimumInterpretContract(text);
+        if (required === 3 && !contracts.includes(3) || required === 2 && !contracts.includes(2) && !contracts.includes(3)) {
+          throw new Error(`This request needs interpretation contract ${required}, which this backend does not offer. Deploy the latest feature branch to staging and recheck Voice setup. No filters were dropped and no draft was changed.`);
+        }
+        if (!contracts.includes(2) && !contracts.includes(3) && /\b(?:draft|order)\b/i.test(text)) throw new Error('This backend does not support voice order drafts yet. Deploy the latest feature branch to staging, then recheck Voice setup.');
+        const context = resultChain.current.length > 0 || !!previousItem.current || hasDraft;
+        try { intent = contracts.includes(3) ? await assistant.interpretPlan(session, text.trim(), context, abort.signal)
+          : contracts.includes(2) ? await assistant.interpretExpanded(session, text.trim(), context, abort.signal)
           : await assistant.interpret(session, text.trim(), !!previousItem.current, abort.signal);
           understandingSource.current = 'Understood with Groq'; }
         catch (e) {
@@ -427,14 +572,17 @@ export default function AssistantExperience({ embedded = false, active = true, s
         if (intent.intent === 'stop_speaking') { cancel(); return; }
         if (intent.intent !== 'read_item' || intent.reference === 'named') previousItem.current = undefined;
       }
-      if ('version' in intent && intent.intent === 'inventory_export') {
-        if (!previousQuery.current) throw new Error('Show and review an inventory list first, then request its inventory PDF.');
+      // Version 2 answers from older servers are upgraded; every plan runs through one deterministic executor.
+      const planned = 'version' in intent ? toPlan(intent) : null;
+      const baseChain = refreshing && planned?.selection?.scope === 'previous' ? resultChain.current.slice(0, -1) : resultChain.current;
+      if (planned?.intent === 'inventory_export') {
+        if (!resultChain.current.length) throw new Error('Show and review an inventory list first, then request its inventory PDF.');
         const snapshot = await inventorySnapshot(session, abort.signal, force);
-        let categories = [] as Awaited<ReturnType<typeof categorySnapshot>>;
+        let categories = [] as Category[], categoriesKnown = true;
         try { categories = await categorySnapshot(session, abort.signal); }
-        catch (e) { if (previousQuery.current.category) throw e; assertReady(); /* Missing category names are labelled in the PDF; rows are never dropped. */ }
-        const rows = queryInventory(previousQuery.current, snapshot.items, categories, undefined, selections.current);
-        assertReady(); const result = inventoryAnswer(rows, snapshot.timestamp, snapshot.stale);
+        catch (e) { if (conditionsOf(resultChain.current.map(l => l.selection)).some(c => c.category !== null)) throw e; assertReady(); categoriesKnown = false; /* Missing category names are labelled in the PDF; rows are never dropped. */ }
+        const rows = chainRows(resultChain.current, snapshot.items, categories, categoriesKnown) || [];
+        assertReady(); const result: Answer = { ...inventoryAnswer(rows, snapshot.timestamp, snapshot.stale), filters: describeChain(resultChain.current) };
         setAnswer(result); setKeptOpen(true); setBusy('');
         let exporting = false;
         // Voice only requests the report. A touch reviews the exact rows before printing/sharing.
@@ -451,11 +599,11 @@ export default function AssistantExperience({ embedded = false, active = true, s
           } }]);
         return;
       }
-      if ('version' in intent && intent.intent === 'review_draft') {
+      if (planned?.intent === 'review_draft') {
         const local = getDraft(session);
         if (!local?.rows.length) throw new Error('There is no unsaved draft in this session.');
-        previousQuery.current = undefined;
-        setDraftRows(local.rows); setAnswer({ ...inventoryAnswer(local.rows.map(r => r.item), Date.now(), true), title: local.attempt?.saved ? 'Saved order · PDF pending' : local.attempt ? 'Submission outcome unknown' : 'Unsaved order draft', text: (local.attempt?.saved ? 'This order is already saved. Re-export it from Create Order; no new order will be created.' : local.attempt ? 'The server may already have saved this order. Open Create Order to retry the same submission.' : 'Nothing has been saved. Review the quantities and tap Confirm order & export PDF on the Create Order screen.') + ' Stock shown is the draft snapshot; a new confirmation refreshes it.' });
+        resultChain.current = []; focusItems.current = local.rows.map(r => r.item);
+        setDraftRows(local.rows); setAnswer({ ...inventoryAnswer(local.rows.map(r => r.item), Date.now(), true), kind: 'draft', title: local.attempt?.saved ? 'Saved order · PDF pending' : local.attempt ? 'Submission outcome unknown' : 'Unsaved order draft', text: (local.attempt?.saved ? 'This order is already saved. Re-export it from Create Order; no new order will be created.' : local.attempt ? 'The server may already have saved this order. Open Create Order to retry the same submission.' : 'Nothing has been saved. Review the quantities and tap Confirm order & export PDF on the Create Order screen.') + ' Stock shown is the draft snapshot; a new confirmation refreshes it.' });
         setKeptOpen(true); return;
       }
       const needsStock = ['read_item','summary','low_stock','out_of_stock','inventory_query','draft_order'].includes(intent.intent);
@@ -463,52 +611,90 @@ export default function AssistantExperience({ embedded = false, active = true, s
       const snapshot = needsStock ? await inventorySnapshot(session, abort.signal, force) : { items: [], timestamp: Date.now(), stale: false };
       assertReady();
       let result: Answer;
-      if ('version' in intent && intent.intent === 'inventory_query') {
-        const query = intent.query!;
-        const categories = query.category || query.previous && previousQuery.current?.category ? await categorySnapshot(session, abort.signal) : [];
-        assertReady();
-        result = inventoryAnswer(queryInventory(query, snapshot.items, categories, previousQuery.current, selections.current), snapshot.timestamp, snapshot.stale);
-        previousQuery.current = query.previous ? { ...previousQuery.current!, ...Object.fromEntries(Object.entries(query).filter(([k,v]) => k !== 'previous' && v !== null && v !== false && v !== 'any' && v !== 'none' && (!Array.isArray(v) || v.length))), previous: false } as InventoryQuery : query;
-        result.text = `Filters understood: ${describeQuery(previousQuery.current)}. ${result.text}`;
-      } else if ('version' in intent && intent.intent === 'draft_order') {
-        const local = getDraft(session);
-        if (local?.attempt) throw new Error('A submission is already in progress or may be saved. Open the draft review screen to retry or re-export it.');
-        if (intent.draft_mode === 'edit' && !local?.rows.length) throw new Error('Prepare a draft first, then ask to edit its order quantities.');
-        const rows = prepareDraft(intent, snapshot.items, intent.draft_mode === 'edit' ? local!.rows : [], selections.current);
-        if (!rows.length && intent.draft_mode === 'new') throw new Clarification('No active items matched this draft request. Low-stock and out-of-stock are separate groups. Ask for both groups, or name the items and quantities you want. Your existing draft is unchanged.');
-        assertReady();
-        previousQuery.current = undefined;
-        const publish = (next: CartItem[]) => {
-          assertReady();
-          if (getDraft(session)?.revision !== local?.revision) throw new Error('The existing draft changed. Ask again before replacing it.');
-          writeDraft(session, next, true, 'voice'); setDraftRows(next);
-          setAnswer({ ...inventoryAnswer(next.map(r => r.item), snapshot.timestamp, snapshot.stale), title: 'Unsaved order draft', text: `${next.length} lines ready. Nothing has been saved. Review it and tap Confirm order & export PDF.` }); setKeptOpen(true);
-        };
-        if (local?.rows.length && (intent.draft_mode === 'new' || local.origin === 'manual' || local.rows.some(r => r.source === 'manual'))) {
-          setDraftRows(rows); setKeptOpen(true);
-          setAnswer({ ...inventoryAnswer(rows.map(r => r.item), snapshot.timestamp, snapshot.stale), title: 'Proposed draft — existing work retained', text: 'Review these proposed quantities. Your existing draft is unchanged until you choose Merge or Replace. Nothing is saved.' });
-          setBusy('');
-          const apply = (merge: boolean) => { try { publish(merge ? mergeDrafts(local.rows, rows) : rows); return true; } catch(e) { if (current === turn.current) setError(e instanceof Error ? e.message : 'Draft could not be prepared.'); return false; } };
-          setProposalChoice(() => (merge: boolean) => { if (apply(merge)) setProposalChoice(null); });
-          return;
+      if (planned && (planned.intent === 'inventory_query' || planned.intent === 'draft_order')) {
+        const used = conditionsOf([planned.selection, ...(planned.selection?.scope === 'previous' ? baseChain.map(l => l.selection) : [])]);
+        let categories = [] as Category[], categoriesKnown = false;
+        if (used.some(c => c.category !== null)) { categories = await categorySnapshot(session, abort.signal); categoriesKnown = true; }
+        else if (used.some(c => c.critical !== null)) {
+          // Only to ask whether "critical" means a category; offline, critical equipment is used and labelled.
+          try { categories = await categorySnapshot(session, abort.signal); categoriesKnown = true; } catch { assertReady(); }
         }
-        publish(rows); result = { ...inventoryAnswer(rows.map(r => r.item), snapshot.timestamp, snapshot.stale), title: 'Unsaved order draft', text: `${rows.length} lines ready. Nothing has been saved. Review it and tap Confirm order & export PDF.` };
-      } else if ('version' in intent) {
-        result = answerIntent(command(intent.intent === 'unsupported_action' ? 'unsupported_action' : 'clarify'), [], snapshot.timestamp);
+        assertReady();
+        const previousRows = planned.selection?.scope === 'previous' && baseChain.length ? chainRows(baseChain, snapshot.items, categories, categoriesKnown) : undefined;
+        if (planned.intent === 'inventory_query') {
+          const sel = planned.selection!;
+          const evaluation = evaluateSelection(sel, snapshot.items, { categories, categoriesKnown, previous: previousRows, selected: selections.current });
+          const link = { selection: sel, selected: { ...selections.current } };
+          const nextChain = sel.scope === 'previous' ? [...baseChain, link] : [link];
+          if (nextChain.length > MAX_FOLLOW_UPS) throw new Clarification('That is a long chain of follow-ups. Ask the full question again so every filter is explicit.');
+          assertReady();
+          result = { ...selectionAnswer(evaluation, sel, snapshot.timestamp, snapshot.stale), filters: describeChain(nextChain) };
+          resultChain.current = nextChain; focusItems.current = evaluation.rows;
+        } else {
+          const draft = planned.draft!;
+          const local = getDraft(session);
+          if (local?.attempt) throw new Error('A submission is already in progress or may be saved. Open the draft review screen to retry or re-export it.');
+          if (draft.mode === 'edit' && !local?.rows.length) throw new Error('Prepare a draft first, then ask to edit its order quantities.');
+          const { rows, evaluation } = prepareDraftResult(planned, snapshot.items, draft.mode === 'edit' ? local!.rows : [], selections.current,
+            { categories, categoriesKnown, previous: previousRows, focus: draft.mode === 'edit' && !focusItems.current.length ? local!.rows.map(r => r.item) : focusItems.current });
+          if (!rows.length && draft.mode === 'new') throw new Clarification('No active items matched this draft request. Low-stock and out-of-stock are separate groups. Ask for both groups, or name the items and quantities you want. Your existing draft is unchanged.');
+          assertReady();
+          resultChain.current = [];
+          const filters = planned.selection ? describeSelection(planned.selection) : undefined;
+          const excluded = evaluation?.excluded.map(e => ({ name: e.item.name, reason: e.reason }));
+          const draftAnswer = (next: CartItem[], title: string, body: string): Answer => ({ ...inventoryAnswer(next.map(r => r.item), snapshot.timestamp, snapshot.stale),
+            title, text: body, filters, excluded, reasons: evaluation?.reasons, kind: 'draft' });
+          const publish = (next: CartItem[]) => {
+            assertReady();
+            if (getDraft(session)?.revision !== local?.revision) throw new Error('The existing draft changed. Ask again before replacing it.');
+            writeDraft(session, next, true, 'voice'); setDraftRows(next); focusItems.current = next.map(r => r.item);
+            setAnswer(draftAnswer(next, 'Unsaved order draft', draftSummary(next))); setKeptOpen(true);
+          };
+          if (local?.rows.length && (draft.mode === 'new' || local.origin === 'manual' || local.rows.some(r => r.source === 'manual'))) {
+            setDraftRows(rows); setKeptOpen(true);
+            setAnswer({ ...draftAnswer(rows, 'Proposed draft — existing work retained', 'Review these proposed quantities. Your existing draft is unchanged until you choose Merge or Replace. Nothing is saved.'), kind: 'proposal' });
+            setBusy('');
+            const apply = (merge: boolean) => { try { publish(merge ? mergeDrafts(local.rows, rows) : rows); return true; } catch(e) { if (current === turn.current) setError(e instanceof Error ? e.message : 'Draft could not be prepared.'); return false; } };
+            setProposalChoice(() => (merge: boolean) => { if (apply(merge)) setProposalChoice(null); });
+            return;
+          }
+          publish(rows); result = draftAnswer(rows, 'Unsaved order draft', draftSummary(rows));
+        }
+      } else if (planned) {
+        result = planned.intent === 'clarify' && planned.clarify_reason
+          ? { title: 'Please clarify', text: CLARIFY_TEXT[planned.clarify_reason], items: [], choices: [], timestamp: snapshot.timestamp, stale: false, kind: 'clarify' }
+          : answerIntent(command(planned.intent === 'unsupported_action' ? 'unsupported_action' : 'clarify'), [], snapshot.timestamp);
       } else {
-        result = answerIntent(intent, snapshot.items, snapshot.timestamp, previousItem.current, snapshot.stale);
-        if (intent.intent === 'read_item') previousQuery.current = undefined;
-        if (result.resolvedId) previousItem.current = result.resolvedId;
-        if (['summary','low_stock','out_of_stock'].includes(intent.intent)) previousQuery.current = { ...queryDefaults, status: intent.intent === 'low_stock' ? 'low' : intent.intent === 'out_of_stock' ? 'out' : 'any' };
+        const legacy = 'version' in intent ? command('clarify') : intent;
+        result = answerIntent(legacy, snapshot.items, snapshot.timestamp, previousItem.current, snapshot.stale);
+        if (intent.intent === 'read_item') resultChain.current = [];
+        if (result.resolvedId) { previousItem.current = result.resolvedId; focusItems.current = result.items; }
+        if (['summary','low_stock','out_of_stock'].includes(intent.intent)) {
+          resultChain.current = [{ selection: upgradeQuery({ ...queryDefaults, status: intent.intent === 'low_stock' ? 'low' : intent.intent === 'out_of_stock' ? 'out' : 'any' }), selected: {} }];
+          focusItems.current = result.items;
+        }
       }
       assertReady(); setAnswer(result); setBusy(''); if (needsStock) setKeptOpen(true);
       await playAnswer(result, current, abort.signal);
     } catch (e) {
       if (current === turn.current && e instanceof Clarification) {
         choiceQuery.current = e.query;
-        setAnswer({ title: 'Please clarify', text: e.message, items: [], choices: e.choices, timestamp: Date.now(), stale: false }); setKeptOpen(true);
+        setAnswer({ title: 'Please clarify', text: e.message, items: [], choices: e.choices, options: e.options, timestamp: Date.now(), stale: false, kind: 'clarify' }); setKeptOpen(true);
       } else if (current === turn.current) setError(e instanceof Error ? e.message : 'Question failed. Try the regular inventory screen.');
     } finally { if (current === turn.current) setBusy(''); }
+  }
+  /** One-tap refinements of the list on screen, offered only when they would change it. */
+  function refinements(items: Item[]): { label: string; spoken: string; plan: Plan }[] {
+    const narrow = (label: string, spoken: string, patch: Parameters<typeof condition>[0], keep: (item: Item) => boolean) =>
+      items.some(keep) && !items.every(keep) ? [{ label, spoken, plan: plan('inventory_query', { selection: selection([condition(patch)], { scope: 'previous' }) }) }] : [];
+    const sorted = (label: string, spoken: string, sort: Selection['sort']) => items.length > 1 ? [{ label, spoken, plan: plan('inventory_query', { selection: selection([condition()], { scope: 'previous', sort }) }) }] : [];
+    return [
+      ...narrow('Only critical', 'Only the critical ones', { critical: true }, isCriticalEquipment),
+      ...narrow('Only low stock', 'Only show the low-stock ones', { stock: ['low'] }, isLowStock),
+      ...narrow('Only out of stock', 'Only show the out-of-stock ones', { stock: ['out'] }, isOutOfStock),
+      ...sorted('Sort alphabetically', 'Sort alphabetically', 'name'),
+      ...(items.some(i => isLowStock(i) || isOutOfStock(i)) ? sorted('Order priority', 'Sort by order priority', 'priority') : []),
+    ];
   }
   async function stopRecording() {
     if (capture.phase !== 'recording') return;
@@ -585,13 +771,29 @@ export default function AssistantExperience({ embedded = false, active = true, s
       {permissionBlocked && button('Open Android app permissions', () => { void Linking.openSettings().catch(() => setError('Open Android Settings → Apps → CareKosh → Permissions → Microphone.')); })}</View>}
   </>;
   const setup = <VoiceSetup prefs={prefs} loaded={loaded} supported={offlineSupported} busy={busy} model={model} modelChecked={modelChecked} progress={downloadProgress} deviceVoice={deviceVoice}
+    caps={caps}
+    chooseListening={id => { if (id === 'groq') chooseCloud('groq_audio', { ...prefs, inputProvider: 'groq', audioOptIn: true }); else void update({ ...prefs, inputProvider: 'offline', audioOptIn: false }); }}
+    chooseUnderstanding={id => { if (id === 'groq') chooseCloud('groq_text', { ...prefs, cloud: true }); else void update({ ...prefs, cloud: false }); }}
+    withdrawCloud={() => { void revokeCloud(); }}
+    selectSarvam={() => chooseCloud('sarvam_speech', { ...prefs, speechProvider: 'sarvam', sarvamSpeechOptIn: true })}
+    sarvamKeyControls={<SarvamKeySettings key={userId} status={caps.sarvam_personal_key} source={prefs.sarvamKeySource ?? 'application'}
+      applicationAvailable={sarvamSourceAvailable(caps, 'application')} consented={caps.scopes.includes('sarvam_speech')} locked={locked || speaking}
+      saveKey={key => changePersonalKey(key)} removeKey={() => changePersonalKey()}
+      chooseSource={source => { void update({ ...prefs, sarvamKeySource: source }); }}
+      testKey={() => {
+        cancel(); setError(''); const abort = new AbortController(); controller.current = abort;
+        void playAnswer({ title: 'Personal voice test', text: 'Hello. Your personal Sarvam voice is ready.', items: [], choices: [], timestamp: Date.now(), stale: false }, turn.current, abort.signal, true, true);
+      }} />}
     speechStatus={speechStatus} stopSpeech={cancel}
     speechFeedback={speechFeedback} outputCheckSupported={pocketOutputCheckSupported} checkAudioOutput={() => { void checkAudioOutput(); }}
+    chooseFallback={voice => { void chooseFallback(voice); }}
+    diagnosticsEnabled={VOICE_DIAGNOSTICS_ENABLED} runAlbaDiagnostic={(play, placement) => { void runAlbaDiagnostic(play, placement); }}
     alba={alba} albaChecked={albaChecked} albaProgress={albaProgress}
     manageAlba={() => {
+      if (!alba.ready && !ALBA_SELECTION_ENABLED) return;
       const session = captureSession(); const current = turn.current;
       Alert.alert(alba.ready ? 'Remove Alba voice?' : 'Download Alba voice?', alba.ready
-        ? 'Remove only the downloaded speaking voice. You can download it again here.'
+        ? `Remove only the downloaded Alba pack.${ALBA_SELECTION_ENABLED ? '' : ' Alba selection and new downloads are currently disabled.'} Speech recognition, inventory, drafts and orders are not affected.`
         : `Download ${Math.ceil(alba.bytes / 1_000_000)} MB once. Speech is generated inside CareKosh. No additional app is needed. Wi-Fi is recommended.`,
         [{ text: 'Cancel', style: 'cancel' }, { text: alba.ready ? 'Remove' : 'Download', onPress: () => { if (current !== turn.current || !mounted.current) return; assertSession(session); void setupAlba(alba.ready); } }]);
     }}
@@ -609,10 +811,17 @@ export default function AssistantExperience({ embedded = false, active = true, s
     }}
     update={next => { void update(next); }} enableMicrophone={() => { void enableMicrophone(); }}
     openAssistant={openAssistant}
-    manageModel={() => Alert.alert(model.ready ? 'Remove speech pack?' : 'Download English speech pack?', model.ready
-      ? 'Only the speech model is removed. Your inventory stays unchanged. Voice recording will need a new download.'
-      : 'Download the offline English model from Moonshine. Wi-Fi is recommended. No recording or inventory is uploaded.',
-      [{ text: 'Cancel', style: 'cancel' }, { text: model.ready ? 'Remove' : 'Download', onPress: () => { void setupOffline(model.ready); } }])}
+    manageModel={() => {
+      const session = captureSession(), current = turn.current;
+      Alert.alert(model.ready ? 'Remove speech pack?' : 'Download English speech pack?', model.ready
+        ? 'Only the speech model is removed. Your inventory stays unchanged. Voice recording will need a new download.'
+        : 'Download the offline English model from Moonshine. Wi-Fi is recommended. No recording or inventory is uploaded.',
+        [{ text: 'Cancel', style: 'cancel' }, { text: model.ready ? 'Remove' : 'Download', onPress: () => {
+          if (!mounted.current || current !== turn.current || AppState.currentState !== 'active') return;
+          try { assertSession(session); } catch { return; }
+          void setupOffline(model.ready);
+        } }]);
+    }}
     previewVoice={() => {
       cancel(); setError('');
       const abort = new AbortController(); controller.current = abort;
@@ -621,37 +830,12 @@ export default function AssistantExperience({ embedded = false, active = true, s
     recheck={() => {
       setError(''); setModelChecked(false);
       const session = captureSession();
-      if (CLOUD_TEXT_ENABLED || CLOUD_TRANSCRIPTION_ENABLED || CLOUD_VOICE_ENABLED) void assistant.capabilities(session).then(value => { assertSession(session); if (mounted.current) setCaps(value); }).catch(() => { if (mounted.current) setError('Online understanding could not be checked. Basic commands remain available.'); });
+      if (CLOUD_TEXT_ENABLED || CLOUD_TRANSCRIPTION_ENABLED || SARVAM_SPEECH_ENABLED || CLOUD_VOICE_ENABLED) void assistant.capabilities(session).then(value => { assertSession(session); if (mounted.current) setCaps(value); }).catch(() => { if (mounted.current) setError('Online services could not be checked. Basic commands remain available.'); });
       if (!offlineSupported) { setModelChecked(true); return; }
       void offlineVoice.status().then(value => { if (mounted.current) setModel(value); }).catch(() => { if (mounted.current) setError('Speech pack check failed. Please retry.'); }).finally(() => { if (mounted.current) setModelChecked(true); });
       if (pocketVoiceSupported) { setAlbaChecked(false); void pocketVoice.status().then(value => { if (mounted.current) setAlba(value); }).catch(() => { if (mounted.current) setAlba(value => ({ ...value, ready: false })); }).finally(() => { if (mounted.current) setAlbaChecked(true); }); }
       void offlineVoice.deviceStatus().then(value => { if (mounted.current) setDeviceVoice(value); }).catch(() => { if (mounted.current) setDeviceVoice({ ready: false, name: 'No offline voice available' }); });
     }}
-    understandingReady={caps.interpret && prefs.cloud && caps.scopes.includes('groq_text')}
-    cloudControls={CLOUD_TEXT_ENABLED && <>
-      <Text style={[styles.label, textStyle]}>Groq online understanding</Text>
-      <Text style={[styles.body, textStyle]}>Groq helps interpret natural wording after Send. Internet and your consent are required. Stock changes and order saving remain unavailable by voice.</Text>
-      <Text accessibilityLiveRegion="polite" style={[styles.body, textStyle]}>{!caps.interpret ? 'Online understanding is unavailable. Basic commands still work. Recheck below after the service is configured.' : prefs.cloud && caps.scopes.includes('groq_text') ? 'Online understanding is on. Familiar commands still work locally.' : 'Available — off until you choose to enable it.'}</Text>
-      {CLOUD_TEXT_ENABLED && button('Enable Groq understanding', () => chooseCloud('groq_text', { ...prefs, cloud: true }), locked || !caps.interpret || (prefs.cloud && caps.scopes.includes('groq_text')))}
-      <Text style={[styles.caption, { color: colors.textSecondary }]}>Supports natural wording for current inventory and local drafts, including named quantities plus low/out-of-stock items. It cannot answer every possible request. Review the resulting items and quantities.</Text>
-      {button('Withdraw all cloud consent', () => { void revokeCloud(); }, locked)}
-      <Text style={[styles.caption, { color: colors.textSecondary }]}>Withdrawal turns off online understanding and online listening. Your downloaded offline voices stay available.</Text>
-    </>}
-    listeningControls={(CLOUD_TRANSCRIPTION_ENABLED || CLOUD_VOICE_ENABLED) && <>
-      {CLOUD_TRANSCRIPTION_ENABLED && <>
-        <Text style={[styles.label, textStyle]}>Optional online listening</Text>
-        <Text style={[styles.body, textStyle]}>Groq Whisper uploads the finished recording for its final transcript. This is separate from understanding a request. Check item names and numbers before Send.</Text>
-        <Text accessibilityLiveRegion="polite" style={[styles.body, textStyle]}>{prefs.inputProvider === 'groq' && prefs.audioOptIn ? 'Selected: Groq online listening · recording upload enabled by your consent.' : 'Selected: Offline listening · recordings stay on this phone.'}</Text>
-        {button('Use offline listening', () => { void update({ ...prefs, inputProvider: 'offline', audioOptIn: false }); }, locked || prefs.inputProvider === 'offline')}
-        {button('Enable Groq online listening', () => chooseCloud('groq_audio', { ...prefs, inputProvider: 'groq', audioOptIn: true }), locked || !caps.transcription_providers.includes('groq') || (prefs.audioOptIn && prefs.inputProvider === 'groq' && caps.scopes.includes('groq_audio')))}
-      </>}
-      {CLOUD_VOICE_ENABLED && <>
-      {button('Groq listening', () => chooseCloud('groq_audio', { ...prefs, inputProvider: 'groq' }), locked || !caps.transcription_providers.includes('groq'))}
-      {button('Sarvam listening', () => chooseCloud('sarvam_audio', { ...prefs, inputProvider: 'sarvam' }), locked || !caps.transcription_providers.includes('sarvam'))}
-      {button('Kokoro speech', () => chooseCloud('kokoro_speech', { ...prefs, speechProvider: 'kokoro' }), locked || !caps.speech_providers.includes('kokoro'))}
-      {button('Sarvam speech', () => chooseCloud('sarvam_speech', { ...prefs, speechProvider: 'sarvam' }), locked || !caps.speech_providers.includes('sarvam'))}
-      </>}
-    </>}
   />;
 
   if (settingsOpen) return <SafeAreaView style={[styles.screen, { backgroundColor: colors.bgPrimary }]}>
@@ -683,16 +867,22 @@ export default function AssistantExperience({ embedded = false, active = true, s
               {(!keptOpen || !!answer.choices.length || speaking) && <Text accessibilityLiveRegion="polite" style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>{answer.choices.length ? 'Choose an item to continue' : speaking ? speechStatus : keptOpen || screenReader ? 'Answer stays open' : `Closes in ${secondsLeft}s`}</Text>}
               {!answer.choices.length && !keptOpen && !screenReader && button('Keep open', () => setKeptOpen(true))}
             </View>
+            {!!fallbackNotice && <Text accessibilityLiveRegion="polite" style={[styles.caption, { color: colors.textSecondary }]}>{fallbackNotice}</Text>}
             <View style={styles.answerCard}>
-              <Text style={[styles.answerTitle, textStyle]}>{answer.title}</Text>
-              {!!previousQuery.current && !draftRows && <Text style={[styles.caption, { color: colors.textSecondary }]}>{describeQuery(previousQuery.current)}</Text>}
+              <Text accessibilityRole="header" style={[styles.answerTitle, textStyle]}>{answer.title}</Text>
+              {!!answer.filters && <View style={[styles.filters, { backgroundColor: colors.bgTertiary }]}>
+                <Ionicons name="funnel-outline" size={14} color={colors.textSecondary} />
+                <Text selectable style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>Filters understood: {answer.filters}</Text>
+              </View>}
               {!!answer.statistics?.length && <View style={styles.statistics}>
                 {answer.statistics.map(stat => <View key={stat.label} style={[styles.stat, { backgroundColor: stat.tone === 'out' ? colors.statusRedBg : stat.tone === 'low' ? colors.statusOrangeBg : colors.accentBlueBg }]}>
                   <Text style={[styles.statValue, { color: stat.tone === 'out' ? colors.statusRed : stat.tone === 'low' ? colors.statusOrange : colors.accentBlue }]}>{stat.value}</Text>
                   <Text style={[styles.caption, { color: colors.textSecondary }]}>{stat.label}</Text>
                 </View>)}
               </View>}
-              {(!answer.statistics?.length || detailsOpen || !!draftRows || !!proposalChoice) && <Text selectable accessibilityLiveRegion="polite" style={[styles.answer, textStyle]} onPress={() => setKeptOpen(true)}>{answer.text}</Text>}
+              {(!answer.statistics?.length || detailsOpen || !!draftRows || !!proposalChoice || answer.kind === 'list' && !answer.items.length) && <Text selectable accessibilityLiveRegion="polite" style={[styles.answer, textStyle]} onPress={() => setKeptOpen(true)}>{answer.text}</Text>}
+              {!!answer.excluded?.length && <Text selectable style={[styles.caption, { color: colors.textSecondary }]}>Excluded by your request: {answer.excluded.map(e => e.name).join(', ')}</Text>}
+              {answer.notes?.map(note => <Text key={note} style={[styles.caption, { color: colors.statusOrange }]}>{note}</Text>)}
               {<TouchableOpacity accessibilityRole="button" accessibilityLabel="Show answer details" accessibilityState={{ expanded: detailsOpen }} onPress={() => { setDetailsOpen(!detailsOpen); setKeptOpen(true); }} style={{ minHeight: 44, justifyContent: 'center' }}>
                 <Text style={[styles.caption, { color: colors.textSecondary }]}>Filters & question {detailsOpen ? '−' : '+'}</Text>
               </TouchableOpacity>}
@@ -706,16 +896,18 @@ export default function AssistantExperience({ embedded = false, active = true, s
                 if ('version' in intent) { selections.current[choiceQuery.current] = item.id; void ask(answeredQuestion.current, intent); }
                 else { previousItem.current = item.id; void ask(answeredQuestion.current, { ...intent, reference: 'previous', item_query: null }); }
               }, locked)}</View>)}
-
+              {answer.options?.map(option => <View key={option.id}>{button(option.label, () => {
+                selections.current[choiceQuery.current] = option.id;
+                if (pendingIntent.current) void ask(answeredQuestion.current, pendingIntent.current);
+              }, locked)}</View>)}
             </View>
             <View style={styles.chips}>
-              {!!previousQuery.current && !draftRows && <>
-                {button('Only low stock', () => { void ask('Only show the low-stock ones', specification('inventory_query', { query: { ...queryDefaults, previous: true, status: 'low' } })); }, locked)}
-                {button('Only out of stock', () => { void ask('Only show the out-of-stock ones', specification('inventory_query', { query: { ...queryDefaults, previous: true, status: 'out' } })); }, locked)}
-                {button('Sort alphabetically', () => { void ask('Sort alphabetically', specification('inventory_query', { query: { ...queryDefaults, previous: true, sort: 'name' } })); }, locked)}
+              {answer.kind === 'list' && !draftRows && !!resultChain.current.length && <>
+                {refinements(answer.items).map(r => <View key={r.label}>{button(r.label, () => { void ask(r.spoken, r.plan); }, locked)}</View>)}
+                {!!answer.items.length && button('Draft these items', () => { void ask('Create a draft from those', plan('draft_order', { selection: selection([condition()], { scope: 'previous' }), draft: { mode: 'new', lines: [], include_selection: true } })); }, locked)}
               </>}
               {!!proposalChoice && <>
-                {pendingIntent.current && 'version' in pendingIntent.current && pendingIntent.current.draft_mode === 'new' && button('Merge with existing draft', () => proposalChoice(true), locked)}
+                {pendingIntent.current && 'version' in pendingIntent.current && toPlan(pendingIntent.current).draft?.mode === 'new' && button('Merge with existing draft', () => proposalChoice(true), locked)}
                 {button('Replace existing draft with this proposal', () => proposalChoice(false), locked)}
                 {button('Cancel proposal · keep existing draft', () => { cancel(); setProposalChoice(null); setAnswer(null); setDraftRows(undefined); }, locked)}
               </>}
@@ -729,9 +921,9 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const footer = answer && <View style={[styles.answerFooter, { borderColor: colors.borderPrimary, backgroundColor: colors.bgPrimary }]}>
     {!!draftRows && !proposalChoice && <VoiceButton label="Review unsaved order draft" onPress={() => { cancel(); setAnswer(null); router.navigate('/order/create'); }} disabled={locked} />}
     <View style={[styles.row, { flexWrap: 'wrap', gap: 8 }]}>
-      {speaking ? answerAction('stop', 'Cancel / stop speech', () => { cancel(); setKeptOpen(true); }) : answerAction('volume-medium-outline', 'Hear answer', () => { setKeptOpen(true); const abort = new AbortController(); controller.current = abort; void playAnswer(answer, turn.current, abort.signal, true); }, locked || !(prefs.speechProvider === 'pocket' ? alba.ready : deviceVoice.ready))}
+      {speaking ? answerAction('stop', 'Cancel / stop speech', () => { cancel(); setKeptOpen(true); }) : answerAction('volume-medium-outline', 'Hear answer', () => { setKeptOpen(true); const abort = new AbortController(); controller.current = abort; void playAnswer(answer, turn.current, abort.signal, true); }, locked || !(prefs.speechProvider === 'sarvam' ? SARVAM_SPEECH_ENABLED && caps.speech_providers.includes('sarvam') && caps.scopes.includes('sarvam_speech') : prefs.speechProvider === 'pocket' ? ALBA_SELECTION_ENABLED && alba.ready : deviceVoice.ready))}
       {!draftRows && answerAction('refresh-outline', 'Refresh answer', () => { void ask(answeredQuestion.current, pendingIntent.current, true); }, locked || pendingIntent.current?.intent === 'inventory_export')}
-      {!!previousQuery.current && !draftRows && answerAction('download-outline', 'Export inventory report', () => { void ask('Export this inventory list as PDF', specification('inventory_export')); }, locked)}
+      {!!resultChain.current.length && !draftRows && answerAction('download-outline', 'Export inventory report', () => { void ask('Export this inventory list as PDF', plan('inventory_export')); }, locked)}
       <View style={{ flex: 1, minWidth: 120 }}><VoiceButton label="Ask another question" secondary onPress={() => { cancel(); setAnswer(null); setQuestion(''); setError(''); setReviewOpen(false); }} /></View>
     </View>
   </View>;
@@ -742,11 +934,11 @@ export default function AssistantExperience({ embedded = false, active = true, s
       <View accessibilityViewIsModal style={[styles.sheet, answer && { height: Math.min(windowHeight * 0.86, (300 + Math.min(answer.items.length, 7) * 70) * Math.max(1, Math.min(fontScale, 1.5))) }, { backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary }]}>
         <View style={[styles.handle, { backgroundColor: colors.borderSecondary }]} />
         <View style={styles.header}>
-          <View style={{ flex: 1 }}><Text style={[styles.heading, textStyle]}>Care Coach</Text><Text style={[styles.caption, { color: colors.textSecondary }]}>{draftRows ? 'Unsaved draft · review to continue' : 'Your inventory, at a glance'}</Text></View>
+          <View style={{ flex: 1 }}><Text accessibilityRole="header" style={[styles.heading, textStyle]}>Care Coach</Text><Text style={[styles.caption, { color: colors.textSecondary }]}>{draftRows ? 'Unsaved draft · review to continue' : 'Your inventory, at a glance'}</Text></View>
           {iconButton('settings-outline', 'Voice setup', openSetup)}
           {iconButton('close', 'Close assistant', close)}
         </View>
-        {answer ? <AnswerList items={answer.items} draftRows={draftRows} header={content} /> : <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>{content}</ScrollView>}
+        {answer ? <AnswerList items={answer.items} draftRows={draftRows} reasons={answer.reasons} header={content} /> : <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>{content}</ScrollView>}
         {footer}
       </View>
     </SafeAreaView>
@@ -777,5 +969,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   iconButton: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   freshness: { paddingVertical: 6, borderRadius: 8, flexDirection: 'row', gap: 8, alignItems: 'center' },
+  filters: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   feedback: { padding: 14, borderRadius: 14, gap: 12 },
 });

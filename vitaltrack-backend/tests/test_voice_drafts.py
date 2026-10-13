@@ -36,6 +36,9 @@ def test_draft_contract_excludes_server_actions_and_invalid_values(patch):
 @pytest.mark.parametrize("response,question,accepted", [
     (spec(), "Prepare an order for twenty pairs of Synthetic gloves", True),
     (spec(), "Prepare an order for 20 pairs of Synthetic gloves", True),
+    (spec(), "Prepare an order for -20 pairs of Synthetic gloves", False),
+    (spec(), "Prepare an order for negative twenty pairs of Synthetic gloves", False),
+    (spec(), "Prepare an order for 20.5 pairs of Synthetic gloves", False),
     (spec(), "Create a purchase order draft: for Synthetic gloves I would need twenty pairs please", True),
     (spec(), "In my draft, Synthetic gloves: please make it 20 pairs", True),
     (spec(), "Put 20 pairs of the Synthetic gloves into an unsaved order", True),
@@ -86,7 +89,7 @@ async def test_interpret_v2_never_writes_inventory_or_orders(client, monkeypatch
         assert await db.scalar(select(func.count()).select_from(Order)) == 0
         assert (await db.get(Item, item["id"])).quantity == 3
     caps = (await client.get('/api/v1/ai/capabilities', headers=headers)).json()
-    assert caps['interpret_contracts'] == [1,2] and caps['order_review_guard'] is True
+    assert caps['interpret_contracts'] == [1,2,3] and caps['order_review_guard'] is True
 
 
 @pytest.mark.asyncio

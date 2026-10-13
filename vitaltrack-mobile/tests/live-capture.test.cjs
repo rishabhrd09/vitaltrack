@@ -51,7 +51,7 @@ for (const [uri, name, mime] of [['file:///take.wav','question.wav','audio/wav']
   test('authenticated transcription uploads the actual audio format: ' + mime, async () => {
     let body; const parts = [];
     const service = load('services/assistant.ts', { './api': { api: { assistantRequest: async (_, request, check) => { check(); body = request.body; return { transcript: 'Synthetic' }; } } },
-      './assistantSession': { assertSession() {} }, '@/features/assistant/contracts': { validateSpecification: x => x }, '@/features/assistant/core': { validateIntent: x => x } },
+      './assistantSession': { assertSession() {} }, '@/features/assistant/contracts': { validateSpecification: x => x, validatePlan: x => x }, '@/features/assistant/core': { validateIntent: x => x } },
     { FormData: class { append(...args) { parts.push(args); } } });
     await service.transcribe({ owner: 'test' }, uri, new AbortController().signal);
     assert.ok(body); assert.equal(parts[0][0], 'file');

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1843" width="1000" height="1843" role="img" aria-labelledby="backend-layers-title backend-layers-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1869" width="1000" height="1869" role="img" aria-labelledby="backend-layers-title backend-layers-desc">
 <title id="backend-layers-title">The backend in layers</title>
 <desc id="backend-layers-desc">An HTTPS request reaches Gunicorn and one of two Uvicorn workers, passes the middleware and reaches a router in app/api/v1. Routers use dependencies, Pydantic schemas and services; SQLAlchemy models map to PostgreSQL tables owned by Alembic migrations. app/core provides configuration, the database engine, security and logging to every layer. Brevo, Groq and Sentry are called only when configured.</desc>
 <style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
@@ -25,7 +25,7 @@
 <path d="M330.0,574.3 L330.0,606.3" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#backend-layers-ah-main)"/>
 <rect x="40.0" y="611.3" width="580.0" height="272.0" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
 <text x="58.0" y="640.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">APP/API/V1</text>
-<text x="58.0" y="669.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Routers (44 routes)</text>
+<text x="58.0" y="669.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Routers (47 routes)</text>
 <rect x="58.0" y="687.3" width="173.3" height="60.0" rx="9" fill="#FBF6EC" stroke="#2E5677" stroke-width="1.2"/>
 <text x="144.7" y="713.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15.5" font-weight="600" fill="#2E5677" text-anchor="middle">auth.py</text>
 <text x="144.7" y="735.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="middle" font-style="italic">18 routes</text>
@@ -42,9 +42,9 @@
 <text x="330.0" y="783.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15.5" font-weight="600" fill="#2E5677" text-anchor="middle">activity.py</text>
 <text x="330.0" y="805.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="middle" font-style="italic">1 route</text>
 <rect x="428.7" y="757.3" width="173.3" height="60.0" rx="9" fill="#FBF6EC" stroke="#2E5677" stroke-width="1.2"/>
-<text x="515.3" y="783.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15.5" font-weight="600" fill="#2E5677" text-anchor="middle">ai.py</text>
-<text x="515.3" y="805.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="middle" font-style="italic">5 routes</text>
-<text x="58.0" y="865.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start" font-style="italic">app/main.py adds /, /health and /live: 47 in total</text>
+<text x="515.3" y="783.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="15.5" font-weight="600" fill="#2E5677" text-anchor="middle">ai + key vault</text>
+<text x="515.3" y="805.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7C6B5C" text-anchor="middle" font-style="italic">8 routes</text>
+<text x="58.0" y="865.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start" font-style="italic">app/main.py adds /, /health and /live: 50 in total</text>
 <path d="M330.0,886.3 L330.0,918.3" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#backend-layers-ah-main)"/>
 <rect x="40.0" y="923.3" width="280.0" height="216.1" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
 <text x="58.0" y="952.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">API/DEPS.PY</text>
@@ -70,24 +70,25 @@
 <text x="58.0" y="1298.8" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">NAMES</text>
 <text x="162.0" y="1300.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">inventory_lock.py: advisory locks</text>
 <text x="58.0" y="1330.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">ASSISTANT</text>
-<text x="162.0" y="1331.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">ai_guard.py (consent, quotas) and ai_provider.py (Groq)</text>
+<text x="162.0" y="1331.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">consent, quotas, Groq/Sarvam; encrypted personal-key vault</text>
 <text x="58.0" y="1361.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">EMAIL</text>
 <text x="162.0" y="1363.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">utils/email.py → Brevo</text>
 <text x="58.0" y="1393.4" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">LIMITS</text>
 <text x="162.0" y="1394.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">utils/rate_limiter.py, best effort</text>
 <path d="M330.0,1426.4 L330.0,1458.4" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#backend-layers-ah-main)"/>
-<rect x="40.0" y="1463.4" width="580.0" height="139.4" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<rect x="40.0" y="1463.4" width="580.0" height="164.9" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
 <text x="58.0" y="1492.4" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">SQLALCHEMY 2.0, ASYNC</text>
 <text x="58.0" y="1522.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Models · app/models</text>
 <text x="58.0" y="1552.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">User, RefreshToken, Category, Item, Order, OrderItem,</text>
-<text x="58.0" y="1578.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">OrderNumberCounter, ActivityLog, AuditLog, AIConsent, AIUsage</text>
-<path d="M330.0,1605.7 L330.0,1637.7" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#backend-layers-ah-main)"/>
-<rect x="40.0" y="1642.7" width="580.0" height="164.9" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
-<text x="58.0" y="1671.7" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#A9680F" text-anchor="start" letter-spacing="1.6">DATABASE</text>
-<text x="58.0" y="1702.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">PostgreSQL</text>
-<text x="58.0" y="1731.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">11 tables with CHECK, UNIQUE and ON DELETE CASCADE rules.</text>
-<text x="58.0" y="1757.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Alembic migrations 0001–0010 own the schema. Version 16 in CI and</text>
-<text x="58.0" y="1783.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">local development.</text>
+<text x="58.0" y="1578.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">OrderNumberCounter, ActivityLog, AuditLog, AIConsent, AIUsage,</text>
+<text x="58.0" y="1603.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">SarvamCredential</text>
+<path d="M330.0,1631.3 L330.0,1663.3" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#backend-layers-ah-main)"/>
+<rect x="40.0" y="1668.3" width="580.0" height="164.9" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<text x="58.0" y="1697.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#A9680F" text-anchor="start" letter-spacing="1.6">DATABASE</text>
+<text x="58.0" y="1727.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">PostgreSQL</text>
+<text x="58.0" y="1757.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">12 tables with CHECK, UNIQUE and ON DELETE CASCADE rules.</text>
+<text x="58.0" y="1783.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Alembic migrations 0001–0011 own the schema. Version 16 in CI and</text>
+<text x="58.0" y="1808.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">local development.</text>
 <rect x="650.0" y="124.3" width="310.0" height="327.5" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
 <text x="668.0" y="153.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">USED BY EVERY LAYER</text>
 <text x="668.0" y="183.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">app/core</text>
@@ -104,12 +105,13 @@
 <text x="668.0" y="398.2" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">LOGGING</text>
 <text x="758.0" y="399.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">tokens removed from</text>
 <text x="758.0" y="423.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">logged URLs</text>
-<rect x="650.0" y="1179.3" width="310.0" height="184.8" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
+<rect x="650.0" y="1179.3" width="310.0" height="208.9" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
 <text x="668.0" y="1208.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#6B3A6E" text-anchor="start" letter-spacing="1.6">HTTPX · WHEN CONFIGURED</text>
 <text x="668.0" y="1238.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6B3A6E" text-anchor="start">Outbound calls</text>
 <text x="668.0" y="1267.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">Brevo email, if MAIL_PASSWORD is</text>
 <text x="668.0" y="1291.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">set</text>
-<text x="668.0" y="1315.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">Groq, with AI_* settings and consent</text>
-<text x="668.0" y="1339.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">Sentry, if SENTRY_DSN is set</text>
+<text x="668.0" y="1315.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">Groq/Sarvam, with separate flags and</text>
+<text x="668.0" y="1339.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">consent</text>
+<text x="668.0" y="1364.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">Sentry, if SENTRY_DSN is set</text>
 <path d="M623.0,1239.3 L645.0,1239.3" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#backend-layers-ah-optional)"/>
 </svg>

@@ -1,6 +1,8 @@
 # Option 1 — offline Android voice with optional cloud pilots
 
-> **AI voice source update — 10 October 2026:** Current AI voice architecture, checked against the 10 October 2026 working tree at `078d53c` plus local Pocket TTS changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Optional downloaded Pocket TTS/Alba runs inside CareKosh through LiteRT; device TTS remains selectable. PDF rendering is local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. The new Alba integration requires a new native APK and phone validation; it is not certified as deployed. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+> **Independent voice follow-up — 13 October 2026:** Contract 3 preserves grouped comparisons, filters, exclusions and local drafts. The independent review fixed numeric/grouping errors, stale account-scoped consent dialogs, old-contract downgrades and partial-playback fallback. Voice still cannot save orders or change stock. Use an operator-owned Sarvam key for the first staging pilot; live phone/provider acceptance remains pending. [Evidence and remaining checks](AI_VOICE_END_TO_END_REVIEW.md#12-independent-follow-up).
+
+> **AI voice source update — 11 October 2026:** Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, an explicit shared or encrypted per-account personal key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Personal-key migration 0011 adds encrypted credentials and billing-source metadata; the current local inventory is 50 HTTP operations (47 under /api/v1) and 12 application tables. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. [Sarvam activation, costs and device checks](SARVAM_ENGLISH_VOICE.md) · [Complete voice architecture](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
 
 > **8 October 2026 local feature update:** richer inventory tables, bounded queries and unsaved voice-prepared drafts are implemented locally. Only touch confirmation saves an order; saving does not change stock. Matching backend/mobile deployment and phone acceptance remain pending. [Current flow, code map and verification limits](VOICE_INVENTORY_AND_ORDER_DRAFTS.md). Earlier dated results remain historical.
 
@@ -134,7 +136,7 @@ The backend code in the local tree matches the pushed feature commit; the new re
 test and recent mobile changes remain local. Production/main were not changed by this verification.
 *(Later on 7 October: the regression test and those mobile changes were pushed as `03cfebb`.)*
 
-## Provider inventory (Groq listening available; Sarvam and hosted speech not selected)
+## Current provider inventory — 11 October 2026
 
 ## Defaults and boundaries
 
@@ -144,23 +146,23 @@ test and recent mobile changes remain local. Production/main were not changed by
 | Listening | Moonshine Small Streaming English, native Android, pinned `ai.moonshine:moonshine-voice:0.1.5` | Current selectable alternative: separately consented Groq `whisper-large-v3`. Sarvam `saaras:v4` is a backend-only, gated alternative, not offered in this app. |
 | Understanding | Conservative whole-utterance TypeScript parser and clarification | Groq `openai/gpt-oss-20b`, strict query/draft specification JSON (v2), legacy read intent JSON (v1) |
 | Stock | Existing server-authoritative inventory; reuse only a complete, account-owned, non-invalidated snapshot | Existing targeted refresh when needed/online |
-| Speaking | Optional downloaded Pocket TTS/Alba via LiteRT 2.1.6, or installed non-network Android English TTS voice | Backend-only alternatives: hosted Kokoro `bf_emma`, Sarvam `bulbul:v3` / `shubh`, Piper/Alba. None is offered while `CLOUD_VOICE_ENABLED=false`. |
+| Speaking | Default installed non-network Android English TTS voice, or separately consented Sarvam English | Default `bulbul:v3` / `ritu`; latest v4 Flash / Aparna supported after account review. Alba selection is paused. Hosted Kokoro `bf_emma` and legacy Piper remain disabled in mobile. |
 | Display/actions | Same deterministic answer object for card and speech; summary, low stock, out of stock, item quantity/status/supplier, close/stop | No stock mutations, voice-triggered order saving, supplier sending or autonomous agent loop; local drafts can be reviewed on Create Order |
 
 Assistant, microphone and spoken replies start disabled until the user enables them. The selected providers default to offline listening and device speech; cloud understanding is off. There is **no local LLM** and no silent cloud fallback: recognition never falls back to a cloud service, and an unmatched question goes to Groq only after opt-in. The app is not advertised as understanding arbitrary instructions offline.
 
-Selecting an offline recognizer does not make every configured path private: enabling cloud understanding sends unfamiliar transcripts/questions to Groq; choosing a hosted voice sends answer text to that service. The consent dialog in Voice setup states this. In the latest local build, Groq text understanding and Groq Whisper listening can be chosen with separate consent. Listening also requires a fresh `audioOptIn` choice; old audio preferences are not restored. Hosted voices and Sarvam listening are not offered.
+Selecting an offline recognizer does not make every configured path private: enabling cloud understanding sends unfamiliar transcripts/questions to Groq; choosing a hosted voice sends answer text to that service. The consent dialog in Voice setup states this. In the latest local build, Groq text understanding and Groq Whisper listening can be chosen with separate consent. Listening also requires a fresh `audioOptIn` choice; old audio preferences are not restored. Sarvam English narration is offered after separate answer-text consent and backend configuration; Sarvam listening and other hosted voices are not offered.
 
 ## Question journey
 
 1. Record on the phone after microphone permission; no background recording or wake word. The unused `listen=1` automatic-start path was removed on 8 October 2026. A microphone tap is required even when such a route parameter is present; text upload still requires Send.
-2. In the 9 October local follow-up, one native AudioRecord supplies local streaming words and a temporary mono PCM16/16 kHz WAV; the validated WAV is decoded for final offline Moonshine recognition. Older native builds retain AAC/M4A and words after stopping. Live captions are provisional and never trigger requests by themselves. Optional online listening (`CLOUD_TRANSCRIPTION_ENABLED=true`): send the finished recording through authenticated FastAPI to Groq Whisper only after separate audio consent and provider checks. `CLOUD_VOICE_ENABLED=false` still blocks hosted speech.
+2. In the 9 October local follow-up, one native AudioRecord supplies local streaming words and a temporary mono PCM16/16 kHz WAV; the validated WAV is decoded for final offline Moonshine recognition. Older native builds retain AAC/M4A and words after stopping. Live captions are provisional and never trigger requests by themselves. Optional online listening (`CLOUD_TRANSCRIPTION_ENABLED=true`): send the finished recording through authenticated FastAPI to Groq Whisper only after separate audio consent and provider checks. `CLOUD_VOICE_ENABLED=false` blocks legacy hosted choices; the specific `SARVAM_SPEECH_ENABLED` flag permits consented Sarvam narration.
 3. Review/edit the transcript and press Send. No confidence score is fabricated for Moonshine or Sarvam. The new UI removes the advisory meter; quiet speakers are not rejected by a volume threshold. The decoder still rejects effectively flat-line recordings.
 4. Match the **whole** request locally. Exact known item names protect legitimate product words from broad legacy safety checks. Unfamiliar draft paraphrases and compound filters can use separately consented Groq understanding. Unqualified stock edits and order-save/apply/send commands stay blocked.
 5. If no fully understood local request matches, optional Groq proposes a bounded v2 query/draft specification; generic legacy refusals no longer block valid draft paraphrases. The server and phone validate shape, and provider validation checks name/unit/quantity grounding; these checks still cannot certify meaning, so a valid specification can misread a question. Its named item must appear in the question, so it cannot invent an item; it can return explicit requested draft quantities grounded in the question, but cannot invent stock facts, execute tools or access inventory.
 6. Resolve exact names on the phone. Singular/near-spelling candidates ask for a choice, even if only one is suggested. Size qualifiers are retained. Previous-item context remains local to this session.
 7. Only `read_item`, `summary`, `low_stock` and `out_of_stock` read inventory; `close`, `stop_speaking`, `clarify` and `unsupported_action` do not. Read a safe snapshot of the signed-in owner's items. If online and older than 30 s, refresh through existing item reads (`GET /api/v1/items`, filtered by owner on the server). If that refresh fails, eligible last-known data is used with a warning. If known offline, answer immediately from eligible last-known data with a warning. Unowned/restored disk data, invalidated data and any save still running fail closed.
-8. Render the validated answer in a compact native in-app layer, with summary statistics, a virtualized table, expandable details, filters/freshness and local draft review actions. Speak its matching text with the selected downloaded Pocket TTS/Alba or installed offline Android voice: automatically only when **Read answers aloud** is on, or on demand with **Hear answer**. Missing supplier data stays “not recorded,” not invented. Close, Stop, backgrounding and account changes cancel results/playback and clear appropriate context.
+8. Render the validated answer in a compact native in-app layer, with summary statistics, a virtualized table, expandable details, filters/freshness and local draft review actions. Speak its matching text with installed offline Android device TTS or selected/consented Sarvam English: automatically only when **Read answers aloud** is on, or on demand with **Hear answer**. Missing supplier data stays “not recorded,” not invented. Close, Stop, backgrounding and account changes cancel results/playback and clear appropriate context.
 
 **Offline inventory limitation:** the user must have synced a complete snapshot in the current login session. A cold restart with only restored disk data does not qualify. This preserves the existing ownership safety boundary; it is not a new offline database. Offline recognition can still produce a transcript without stock data.
 
@@ -172,7 +174,7 @@ Selecting an offline recognizer does not make every configured path private: ena
 - Pack files are stored in the app's no-backup directory, shared on the device because they contain no account data. Transcripts and user preferences are not stored in the model pack. Partial failed downloads are removed; verified completed files can be reused on retry.
 - The current upstream Small English pack is about 142 MB without word-timestamp weights; the app displays the size from its pinned catalog. Allow additional free space and runtime memory. Measure actual release size and peak memory on target phones.
 - During recognition, only local file loading/decoding/inference occurs; the SDK's automatic downloader and mic/agent wrapper are not used. In-flight native computation may finish after Cancel, but the result is suppressed; native model memory is released serially, never concurrently with inference.
-- The 10 October local addition offers [Pocket TTS/Alba inside CareKosh](POCKET_TTS_ALBA.md), a separate approximately 209 MB SHA-256-pinned download. It needs a new 64-bit Android APK and device verification. No additional Android app or hosted speech API is required.
+- The 10 October [Pocket TTS/Alba experiment](POCKET_TTS_ALBA.md) is retained but selection/new downloads are paused on 11 October after failed OnePlus acceptance. Optional [Sarvam English narration](SARVAM_ENGLISH_VOICE.md) now has a separate consent, configuration and playback path; device TTS remains available.
 - Device TTS filters out network-required and not-installed voices. If no offline English voice exists, install one through Android's Text-to-speech settings and use Recheck. There is no silent network TTS fallback. A vendor engine's actual behavior must also be checked in airplane mode.
 - The module is Android-only. Web/iOS retain typed questions and, after opt-in, Groq text understanding; do not describe them as having offline listening/device speech from this implementation.
 - The selected English streaming model and Moonshine code have an MIT notice, shown in Voice setup (**Offline speech licence**). Review and include the complete transitive native component notices from the exact release artifacts before public distribution; the Moonshine notice is not a licence for all unrelated TTS assets or third-party code.
@@ -185,7 +187,7 @@ The normal CareKosh login/inventory backend still exists. Listening and device s
 
 ### Additive database migration
 
-Use the normal reviewed migration/deployment procedure. The AI tables come from `0008_ai_consent_usage` and `0009_ai_provider_scopes`, which add consent and usage metadata only, not inventory tables. This branch's head is now `0010_order_local_id_unique`. Upgrading from `main`'s 0006 also applies 0007 (its downgrade refuses) and 0010 (holds a SHARE lock on `orders` until the upgrade commits). Old broad consent is **not** promoted into new-provider permission. AI routes remain registered even when disabled.
+Use the normal reviewed migration/deployment procedure. The AI tables come from `0008_ai_consent_usage` and `0009_ai_provider_scopes`, which add consent and usage metadata only, not inventory tables. This local implementation's head is now `0011_sarvam_personal_keys`, which adds encrypted personal narration keys and usage billing-source metadata. Keys are configured separately from microphone/Groq consent; see the [Sarvam guide](SARVAM_ENGLISH_VOICE.md). Upgrading from `main`'s 0006 also applies 0007 (its downgrade refuses) and 0010 (holds a SHARE lock on `orders` until the upgrade commits). Old broad consent is **not** promoted into new-provider permission. AI routes remain registered even when disabled.
 
 ### Groq setup (current optional text and audio modes)
 
@@ -202,7 +204,7 @@ GROQ_INTENT_MODEL=openai/gpt-oss-20b
 
 `AI_DATA_CONTROLS_REVIEWED` is an operator attestation, not an API that configures Groq. Verify organisation/project retention controls, terms, adult-pilot disclosures and spending controls before setting it. Hosted transcription is not needed if you use offline listening with cloud interpretation only.
 
-### Sarvam backend alternative (not offered by the current mobile release)
+### Sarvam English narration — current optional integration
 
 Create a Sarvam account/key and review its pricing/credits, terms, audio/text handling and retention. Groq's controls do not apply to Sarvam. Configure only on the backend:
 
@@ -211,14 +213,13 @@ SARVAM_API_KEY=<private Sarvam key>
 AI_ENABLED=true
 AI_SARVAM_ENABLED=true
 AI_SARVAM_DATA_CONTROLS_REVIEWED=true
-AI_TRANSCRIBE_ENABLED=true
-SARVAM_STT_MODEL=saaras:v4
+AI_SARVAM_TRANSCRIBE_ENABLED=false
 AI_SPEECH_ENABLED=true
 SARVAM_TTS_MODEL=bulbul:v3
-SARVAM_SPEAKER=shubh
+SARVAM_SPEAKER=ritu
 ```
 
-Saaras and Bulbul consent are separate. They can run without a Groq key. This release sends `language_code=en-IN`; multilingual behavior is not certified just because Sarvam supports more languages. Sarvam does not replace the optional Groq intent adapter in this release.
+English narration sends `language_code=en-IN` and requires `sarvam_speech`, distinct from `groq_text` and `groq_audio`. Keep existing Groq configuration unchanged. Sarvam microphone uploads have a separate default-off gate; this app does not select them. The latest v4 Flash model uses different persona IDs; [the activation guide](SARVAM_ENGLISH_VOICE.md) explains pairing, credits, the private key and live/device acceptance. No Hindi translation/voice is activated here.
 
 ### Kokoro hosted audition (optional; additional hosting)
 
@@ -235,13 +236,13 @@ KOKORO_SERVICE_URL=https://<your-private-speech-service>
 KOKORO_SERVICE_TOKEN=<strong shared private service token>
 ```
 
-Kokoro here is **hosted TTS**, not an embedded phone model or recognizer. Default device speech remains available without it. Legacy Piper/Alba worker code is preserved but is not offered by the mobile selection UI. The new embedded Pocket TTS/Alba is a different local implementation, not that worker.
+Kokoro here is **hosted TTS**, not an embedded phone model or recognizer. Default device speech remains available without it. Legacy Piper/Alba worker code is preserved but is not offered by the mobile selection UI. The retained, paused embedded Pocket TTS/Alba is a different local implementation, not that worker.
 
 ### Consent and cost controls
 
-- API endpoints require existing login, matching consent version and the scope for the exact provider/action. The backend accepts six scopes: Groq text, Groq audio, Sarvam audio, Kokoro speech, Sarvam speech and Alba speech. This build offers Groq text and separately Groq audio consent; Sarvam/hosted speech remain unavailable in mobile policy.
+- API endpoints require existing login, matching consent version and the scope for the exact provider/action. The backend accepts six scopes: Groq text, Groq audio, Sarvam audio, Kokoro speech, Sarvam speech and Alba speech. This build offers Groq text, separately Groq audio, and separately Sarvam answer-text narration consent. Hosted Kokoro, legacy Piper and Sarvam listening remain unavailable in mobile policy.
 - Settings belong to each account on each device. “Withdraw all cloud consent” immediately restores local choices and attempts server revocation. If offline, the screen says to retry server withdrawal; it does not falsely claim success. Withdrawal always writes an `ai_consents` row, even for an account that never consented.
-- Daily request limits and PostgreSQL atomic cost-credit reservations still span all providers/workers. One active external call per account. Default Sarvam credits are 5,000 micro-USD/transcription and 20,000 micro-USD/speech attempt; these are conservative application allowances, **not live prices or an exact invoice cap**. Review against actual prices and maximum input length.
+- Daily request limits and PostgreSQL atomic cost-credit reservations still span all providers/workers. One active external call per account. Default Sarvam credits are 5,000 micro-USD/transcription and 25,000 micro-USD/speech attempt; these are fixed application accounting allowances, **not live prices or an exact invoice cap**. Review against actual prices and maximum input length.
 - Groq audio accounting has a ten-second floor. Sarvam records the actual duration rounded up (one-second minimum), not the Groq floor. No content is added to the usage ledger.
 - All keys remain server-side. There is no BYOK or public “free unlimited API” feature. Flags default off; no code or test turns on production services.
 

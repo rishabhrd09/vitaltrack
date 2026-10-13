@@ -17,6 +17,7 @@ type NativeVoice = {
   removePocketVoice?(): Promise<void>;
   speakPocket?(text: string, pace: number): Promise<PocketAudioReport | void>;
   speakPocketWithProgress?(text: string, pace: number, id: string): Promise<PocketAudioReport | void>;
+  speakPocketDiagnostic?(text: string, pace: number, id: string, play: boolean, placement: string): Promise<PocketAudioReport>;
   checkPocketAudioOutput?(): Promise<PocketAudioReport>;
   pocketAudioDiagnostic?(): Promise<string>;
   pocketLicenceArchive?(): Promise<string>;
@@ -35,13 +36,34 @@ export type LiveWords = { id: string; transcript?: string; finished?: boolean; e
 let nextTake = 0;
 let nextSpeech = 0;
 export const pocketSpeechStages = {
-  verifying: 'Checking Alba voice pack…', loading: 'Loading Alba on this phone…',
-  generating: 'Preparing Alba speech…', cpu_retry: 'Retrying Alba with the CPU…',
-  prompting: 'Preparing Alba speech…', prompting_cpu: 'Preparing Alba speech with the CPU…',
-  decoding: 'Converting Alba speech to audio…', decoding_cpu: 'Converting Alba speech to audio with the CPU…',
-  loading_cpu: 'Loading Alba with the CPU…', generating_cpu: 'Preparing Alba speech with the CPU…',
+  verifying: 'Checking Alba voice pack…', loading: 'Loading Alba on this phone (the first reply takes longer)…',
+  generating: 'Preparing Alba speech…', prompting: 'Preparing Alba speech…',
+  decoding: 'Converting Alba speech to audio…',
   playing: 'Playing Alba · check media volume and audio output',
 } as const;
+/** Native work is bounded at 180 s; this backstop also settles the call if the native side never answers. */
+export const POCKET_BACKSTOP_MS = 195_000;
+export type PocketPlacementName = 'default' | 'lm_gpu' | 'vocoder_fp32';
+
+/**
+ * Settles a native call even if it never answers. An aborted turn stops waiting at once and leaves
+ * native work alone (the turn's own cancel already stopped it), so a late backstop can never cancel
+ * a later question's recording; only an expired, still-current call cancels native work.
+ */
+export function withBackstop<T>(operation: Promise<T>, ms = POCKET_BACKSTOP_MS, signal?: AbortSignal): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
+  const backstop = new Promise<never>((_, reject) => {
+    if (signal?.aborted) { reject(new Error('Speech cancelled.')); return; }
+    onAbort = () => reject(new Error('Speech cancelled.'));
+    signal?.addEventListener('abort', onAbort, { once: true });
+    timer = setTimeout(() => { native?.cancel(); reject(new Error('Alba did not respond in time. Your answer is still on screen.')); }, ms);
+  });
+  return Promise.race([operation, backstop]).finally(() => {
+    clearTimeout(timer);
+    if (onAbort) signal?.removeEventListener('abort', onAbort);
+  });
+}
 
 /** Adapter preserves MicrophoneCapture's single-owner and cleanup contract. */
 export function createLiveRecorder() {
@@ -95,24 +117,30 @@ export const pocketVoice = {
   status: () => pocketEngine().pocketVoiceStatus!(),
   download: () => pocketEngine().downloadPocketVoice!(),
   remove: () => pocketEngine().removePocketVoice!(),
-  async speak(text: string, pace = 1, progress?: (message: string) => void) {
+  async speak(text: string, pace = 1, progress?: (message: string) => void, signal?: AbortSignal) {
     const voice = pocketEngine();
-    if (!voice.speakPocketWithProgress) return voice.speakPocket!(text, pace);
+    if (!voice.speakPocketWithProgress) return withBackstop(voice.speakPocket!(text, pace), POCKET_BACKSTOP_MS, signal);
     const id = `speech-${Date.now()}-${++nextSpeech}`;
     const sub = voice.addListener<{ id: string; stage: string; frames?: number }>('pocketSpeechProgress', event => {
       if (event.id !== id || !Object.prototype.hasOwnProperty.call(pocketSpeechStages, event.stage)) return;
       const frames = event.frames;
-      const detail = (event.stage === 'generating' || event.stage === 'generating_cpu') &&
+      const detail = event.stage === 'generating' &&
         typeof frames === 'number' && Number.isInteger(frames) && frames >= 0 && frames <= 256
         ? ` · ${(frames / 12.5).toFixed(1)}s generated` : '';
       progress?.(pocketSpeechStages[event.stage as keyof typeof pocketSpeechStages] + detail);
     });
-    try { return await voice.speakPocketWithProgress(text, pace, id); }
+    try { return await withBackstop(voice.speakPocketWithProgress(text, pace, id), POCKET_BACKSTOP_MS, signal); }
     finally { sub.remove(); }
   },
-  checkOutput: () => {
+  /** Diagnostics builds only: synthesis-only or playback runs with a named placement experiment. */
+  speakDiagnostic(text: string, play: boolean, placement: PocketPlacementName, signal?: AbortSignal, pace = 1) {
+    const voice = pocketEngine();
+    if (!voice.speakPocketDiagnostic) throw new Error('Alba diagnostics need the latest test APK.');
+    return withBackstop(voice.speakPocketDiagnostic(text, pace, `diagnostic-${Date.now()}-${++nextSpeech}`, play, placement), POCKET_BACKSTOP_MS, signal);
+  },
+  checkOutput: (signal?: AbortSignal) => {
     if (!native?.checkPocketAudioOutput) throw new Error('Audio output check needs the latest Android APK.');
-    return native.checkPocketAudioOutput();
+    return withBackstop(native.checkPocketAudioOutput(), 20_000, signal);
   },
   diagnostics: async () => native?.pocketAudioDiagnostic ? await native.pocketAudioDiagnostic() : '',
   licences: () => pocketEngine().pocketLicenceArchive!(),

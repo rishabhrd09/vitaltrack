@@ -15,13 +15,14 @@ function harness() {
   const types = load('types/index.ts');
   const core = load('features/assistant/core.ts', {'../../types':types});
   const contracts = load('features/assistant/contracts.ts');
-  const queries = load('features/assistant/queries.ts', {'@/types':types,'./core':core,'./contracts':contracts});
+  const selection = load('features/assistant/selection.ts', {'@/types':types,'./core':core,'./contracts':contracts});
+  const queries = load('features/assistant/queries.ts', {'@/types':types,'./core':core,'./contracts':contracts,'./selection':selection});
   let state = {user:{id:'a'},isAuthenticated:true}, epoch=0, changed; let uuid=0;
   const session = {owner:'a',epoch:0};
   const sessionTools = { captureSession:()=>({owner:state.user.id,epoch}), assertSession(s) { if (!state.isAuthenticated || s.owner!==state.user.id || s.epoch!==epoch) throw new Error('Session changed'); } };
-  const drafts = load('features/assistant/drafts.ts', { react:{},'@/types':types,'./queries':queries,'./contracts':contracts,
+  const drafts = load('features/assistant/drafts.ts', { react:{},'@/types':types,'./selection':selection,'./contracts':contracts,
     '@/store/useAuthStore':{useAuthStore:{subscribe(fn){changed=fn;}}},'@/services/assistantSession':sessionTools,'@/utils/helpers':{generateId:()=>`submission-${++uuid}`} });
-  return { core,contracts,queries,drafts,session, switchAccount(){const prev=state; state={...state,user:{id:'b'}}; epoch++;changed(state,prev);}, current:()=>sessionTools.captureSession() };
+  return { core,contracts,queries,selection,drafts,session, switchAccount(){const prev=state; state={...state,user:{id:'b'}}; epoch++;changed(state,prev);}, current:()=>sessionTools.captureSession() };
 }
 const item=(id,name,quantity=2,extra={})=>({id,name,quantity,minimumStock:5,unit:'pairs',isActive:true,isCritical:false,version:2,categoryId:'w',...extra});
 const items=[item('g','Hand gloves'),item('m','Surgical masks',0,{unit:'boxes',brand:'MaskCo',supplierName:'Good Supplier'}),item('s','Saline',10,{unit:'bottles',categoryId:'f'}),item('d','Deleted',0,{isActive:false})];
@@ -53,9 +54,17 @@ test('unknown save outcomes retain one request/localId and lock editing; saved o
 
 test('unknown constraints are not silently stripped from a locally supported query',()=>{const h=harness();for(const q of ['Show low-stock items expiring tomorrow','Show all inventory items under 3 units','Show items with no brand recorded']){const spec=h.queries.parseExpanded(q);assert.ok(!spec||['clarify','unsupported_action'].includes(spec.intent),q);}});
 
-test('compound filters go to online interpretation without losing a condition',()=>{
+test('compound filters are understood locally (version 3) without losing a condition',()=>{
   const h=harness();
-  for(const q of ['Show low-stock items in wound care supplied by Good Supplier, sorted by name','Show low-stock items from supplier Good Supplier with brand Recorded Brand']) assert.equal(h.queries.routeLocally(q,[]),null,q);
+  const first=h.queries.routeLocally('Show low-stock items in wound care supplied by Good Supplier, sorted by name',[]);
+  assert.equal(first.version,3); assert.equal(first.selection.sort,'name');
+  assert.deepEqual(plain(first.selection.any_of),[{...plain(h.contracts.anyCondition),stock:['low'],category:'wound care',supplier:'good supplier'}]);
+  for (const q of ['Show low-stock items from supplier Good Supplier with brand Recorded Brand','Show low-stock items with brand Recorded Brand from supplier Good Supplier']) {
+    const plan=h.queries.routeLocally(q,[]);
+    assert.deepEqual(plain(plan.selection.any_of),[{...plain(h.contracts.anyCondition),stock:['low'],supplier:'good supplier',brand:'recorded brand'}],q);
+  }
+  // A condition the grammar cannot account for still goes online or to a clarification, never a simpler question.
+  for (const q of ['Show low-stock items expiring next month from supplier Good Supplier','Show low and critical items','Show low-stock items in wound care that we used last week']) assert.equal(h.queries.routeLocally(q,[]),null,q);
 });
 
 test('near-spelling draft names require explicit selection even with one candidate',()=>{
@@ -83,11 +92,18 @@ for (const question of [
   assert.deepEqual(plain(source),before); assert.equal(h.drafts.getDraft(h.session),null);
 });
 
+test('mixed draft language keeps exclusions and supplier filters (version 3)',()=>{
+  const h=harness();
+  const except=h.queries.routeLocally('Create a saved order draft for 2 units of Ambu bag and all low-stock items except masks',[]);
+  assert.deepEqual(plain(except.draft.lines),[{operation:'set',target:'named',item_query:'ambu bag',quantity:2,unit:'units'}]);
+  assert.deepEqual(plain(except.selection.any_of[0].stock),['low']); assert.deepEqual(plain(except.selection.exclude[0].item_queries),['masks']);
+  const supplier=h.queries.routeLocally('Create a saved order draft for 2 units of Ambu bag and all low-stock items from supplier Good Supplier',[]);
+  assert.equal(supplier.selection.any_of[0].supplier,'good supplier'); assert.equal(supplier.draft.include_selection,true);
+});
+
 test('mixed draft language cannot drop extra constraints, invent units or authorize saving',()=>{
   const h=harness();
   for (const q of [
-    'Create a saved order draft for 2 units of Ambu bag and all low-stock items except masks',
-    'Create a saved order draft for 2 units of Ambu bag and all low-stock items from supplier Good Supplier',
     'Create a saved order draft for 2 units of Ambu bag and only 3 of the low-stock items',
     'Create a saved order draft for 2 units of Ambu bag then save the order',
     'Create a saved order draft for 2 units of Ambu bag and confirm the order',

@@ -11,7 +11,7 @@ from sqlalchemy import func, select, text, update
 from app.api.deps import get_current_user, security
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
-from app.models.ai import AIConsent, AIUsage
+from app.models.ai import AIConsent, AIUsage, SarvamCredential
 from app.schemas.ai import CONSENT_VERSION
 
 logger = logging.getLogger("carekosh.ai")
@@ -44,9 +44,17 @@ def consent_scope(kind: str, provider: str) -> str:
     return allowed[kind, provider]
 
 
-def require_enabled(kind: str, provider: str | None = None):
+def require_enabled(
+    kind: str, provider: str | None = None, credential_source: str = "application"
+):
     provider = provider or ("alba" if kind == "speak" else "groq")
     consent_scope(kind, provider)
+    if (
+        credential_source not in ("application", "personal")
+        or credential_source == "personal"
+        and (kind != "speak" or provider != "sarvam")
+    ):
+        raise HTTPException(422, "Unsupported credential source.")
     available = settings.AI_ENABLED
     if kind == "transcribe":
         available = available and settings.AI_TRANSCRIBE_ENABLED
@@ -63,8 +71,21 @@ def require_enabled(kind: str, provider: str | None = None):
             available
             and settings.AI_SARVAM_ENABLED
             and settings.AI_SARVAM_DATA_CONTROLS_REVIEWED
-            and bool(settings.SARVAM_API_KEY.get_secret_value())
+            and (
+                credential_source == "personal"
+                or bool(settings.SARVAM_API_KEY.get_secret_value())
+            )
         )
+        if kind == "transcribe":
+            available = available and settings.AI_SARVAM_TRANSCRIBE_ENABLED
+        elif kind == "speak" and available:
+            from app.services.sarvam_speech import english_voice
+
+            english_voice()  # Invalid model/speaker pairs are unavailable before billing.
+            if credential_source == "personal":
+                from app.services.sarvam_credentials import require_personal_setup
+
+                require_personal_setup()
     elif provider == "kokoro":
         available = (
             available
@@ -93,10 +114,14 @@ def require_enabled(kind: str, provider: str | None = None):
 
 
 async def reserve(
-    user_id: str, kind: str, audio_seconds: int = 0, provider: str | None = None
+    user_id: str,
+    kind: str,
+    audio_seconds: int = 0,
+    provider: str | None = None,
+    credential_source: str = "application",
 ) -> str:
     provider = provider or ("alba" if kind == "speak" else "groq")
-    require_enabled(kind, provider)
+    require_enabled(kind, provider, credential_source)
     now = datetime.now(timezone.utc)
     midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
     credit = {
@@ -123,6 +148,16 @@ async def reserve(
             raise HTTPException(
                 403, "Enable cloud processing in AI & Voice settings first."
             )
+        if credential_source == "personal":
+            from app.services.sarvam_credentials import decrypt_key
+
+            credential = await db.get(SarvamCredential, user_id)
+            if credential is None:
+                raise HTTPException(
+                    409,
+                    "No personal Sarvam key is saved. Add your key or explicitly choose another voice.",
+                )
+            decrypt_key(user_id, credential.ciphertext)
         daily = (
             select(func.count())
             .select_from(AIUsage)
@@ -170,6 +205,7 @@ async def reserve(
             user_id=user_id,
             kind=kind,
             provider=provider,
+            credential_source=credential_source,
             status="reserved",
             reserved_microusd=credit,
             created_at=now,

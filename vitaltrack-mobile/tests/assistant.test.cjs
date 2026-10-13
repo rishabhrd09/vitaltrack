@@ -16,7 +16,8 @@ function load(file, dependencies = {}) {
 const types = load('types/index.ts');
 const core = load('features/assistant/core.ts', { '../../types': types });
 const contracts = load('features/assistant/contracts.ts');
-const queries = load('features/assistant/queries.ts', { '@/types': types, './core': core, './contracts': contracts });
+const selection = load('features/assistant/selection.ts', { '@/types': types, './core': core, './contracts': contracts });
+const queries = load('features/assistant/queries.ts', { '@/types': types, './core': core, './contracts': contracts, './selection': selection });
 const captureTools = load('features/assistant/capture.ts');
 const item = (id, name = 'Hand gloves', quantity = 18) => ({ id, name, quantity, minimumStock: 5, unit: 'pairs', isActive: true, isCritical: false });
 const read = (query, fields = ['quantity', 'supplier']) => ({ intent: 'read_item', item_query: query, reference: 'named', fields });

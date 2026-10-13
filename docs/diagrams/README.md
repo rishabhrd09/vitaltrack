@@ -1,6 +1,6 @@
 # CareKosh documentation diagrams
 
-> **AI voice source update — 9 October 2026:** Current AI voice architecture, checked against the 9 October 2026 working tree at `0946eb7` plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](../VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+> **AI voice source update — 11 October 2026:** Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, a backend-only key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. [Sarvam activation, costs and device checks](../SARVAM_ENGLISH_VOICE.md) · [Complete voice architecture](../VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
 
 These SVG files illustrate behaviour that was checked against the code on **7 October 2026** (branch `feature/backend-hardening-ai-voice-agent-foundation`, commit `03cfebb`). A diagram is a teaching aid. It is not evidence by itself; the evidence is listed in the audit's verification record (local review reference; not published).
 
@@ -12,13 +12,15 @@ The 7 October application test counts remain historical evidence.
 
 **Local feature follow-up — 8 October 2026:** voice/system diagrams now show richer inventory answers, unsaved drafts and the separate touch-only order-save boundary. See [the current implementation guide](../VOICE_INVENTORY_AND_ORDER_DRAFTS.md). Device/provider acceptance remains pending.
 
+**13 October voice refresh:** `voice-flow.svg` now shows the phone grammar, the contract 3 plan with server checks, and the deterministic executor. The new `voice-plan.svg` explains how a multi-part request becomes rows. See the [end-to-end review](../AI_VOICE_END_TO_END_REVIEW.md).
+
 **9 October voice refresh:** the system and voice diagrams now include AudioRecord PCM16/16 kHz WAV capture, provisional local Moonshine words, separate Whisper audio consent, GPT-OSS v2 text interpretation, device speech and reviewed local drafts. They are embedded in the maintained AI voice guide and the broader developer/system pages.
 
 ## Generated diagrams (edit the source, then regenerate)
 
 | File | Shows | Source function |
 |---|---|---|
-| [system-context.svg](system-context.svg) | Phone, API, database and optional services; no core queue/cache server. Optional speech-worker code exists but is not selected by this mobile build. | `system_context()` |
+| [system-context.svg](system-context.svg) | Phone, API, database and optional services; no core queue/cache server. Optional Kokoro/Piper workers remain unselected; Sarvam narration is a separate consented API path and Alba is paused. | `system_context()` |
 | [request-lifecycle.svg](request-lifecycle.svg) | One successful API-only stock PATCH from a test client to PostgreSQL and back; current UI uses PUT | `request_lifecycle()` |
 | [request-rollback.svg](request-rollback.svg) | Validation error, ownership 404, and a rolled-back order apply | `request_rollback()` |
 | [database-erd.svg](database-erd.svg) | The 11 application tables at migration head `0010`, keys and cascades | `database_erd()` |
@@ -26,6 +28,7 @@ The 7 October application test counts remain historical evidence.
 | [order-idempotency.svg](order-idempotency.svg) | Order submission keys (`localId`), retries and order numbers | `order_idempotency()` |
 | [order-status.svg](order-status.svg) | Order status machine and the apply-to-stock transaction | `order_status()` |
 | [voice-flow.svg](voice-flow.svg) | AudioRecord/live words → offline or consented online final transcript → reviewed Send → bounded query/local draft → separate touch-confirmed order save | `voice_flow()` |
+| [voice-plan.svg](voice-plan.svg) | 13 Oct 2026: contract 3, from a request to a validated plan, then deterministic rows (AND within a group, union, exclusions, sort), plus the four separate parts of Voice setup | `voice_plan()` |
 | [auth-session.svg](auth-session.svg) | Login, token refresh rotation, logout and password change | `auth_session()` |
 | [mobile-cache.svg](mobile-cache.svg) | TanStack Query cache versus the server as the source of truth | `mobile_cache()` |
 | [release-pipeline.svg](release-pipeline.svg) | CI → staging → production backend → Play Store | `release_pipeline()` |

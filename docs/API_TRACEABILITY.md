@@ -1,6 +1,6 @@
 # CareKosh API traceability: every endpoint from screen to database
 
-> **AI voice source update — 9 October 2026:** Current AI voice architecture, checked against the 9 October 2026 working tree at `0946eb7` plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+> **AI voice source update — 11 October 2026:** Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, an explicit shared or encrypted per-account personal key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Personal-key migration 0011 adds encrypted credentials and billing-source metadata; the current local inventory is 50 HTTP operations (47 under /api/v1) and 12 application tables. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. [Sarvam activation, costs and device checks](SARVAM_ENGLISH_VOICE.md) · [Complete voice architecture](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
 
 
 > 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
@@ -39,17 +39,17 @@
 ## How the inventory was counted
 
 - **Source of the list:** the routes registered on the FastAPI application object (`app.routes`), not the documentation and not the OpenAPI page. [`docs/tools/route_inventory.py`](tools/route_inventory.py) prints them and checks that each has a section in this file.
-- **Result:** **47 operations** = **44 under `/api/v1`** + `GET /`, `GET /health`, `GET /live`. Every route object has exactly one method, so route objects and operations are the same number.
-  - Under `/api/v1`: auth 18, categories 6, items 8, orders 6, activities 1, ai 5.
+- **Result:** **50 operations** = **47 under `/api/v1`** + `GET /`, `GET /health`, `GET /live`. Every route object has exactly one method, so route objects and operations are the same number.
+  - Under `/api/v1`: auth 18, categories 6, items 8, orders 6, activities 1, ai 8.
   - Three auth routes are hidden from the OpenAPI schema (`include_in_schema=False`): `GET` and `POST /api/v1/auth/confirm-delete/{token}` and `GET /api/v1/auth/reset-password`. They are still real, public routes.
   - `/docs`, `/docs/oauth2-redirect`, `/redoc` and `/openapi.json` exist only when `DEBUG=true` (local development) and are not counted.
-- **Cross-checks:** CI runs `scripts/check_api_routes.py --expected 44` (route objects whose path starts with `/api/v1`), and `tests/test_auth.py::TestHealthDiagnostics::test_api_v1_route_count_remains_44` asserts the same. Both passed on 7 Oct 2026 and again on 8 Oct 2026. A route count proves that routes are registered; it says nothing about whether they behave correctly.
+- **Cross-checks:** CI runs `scripts/check_api_routes.py --expected 47` (route objects whose path starts with `/api/v1`), and `tests/test_auth.py::TestHealthDiagnostics::test_api_v1_route_count_remains_47` asserts the same. The previous 44-route gate passed on 7/8 Oct; the updated 47-route gate and full backend suite passed locally on 11 Oct after adding personal-key management. A route count proves that routes are registered; it says nothing about whether they behave correctly.
 
 ## Summary matrix
 
 "Writes" lists tables changed on success. "Tests" summarises the test map (local review reference; not published): **Yes** = the main behaviour is asserted, **Partial** = important branches untested, **None** = no test sends the request.
 
-"Mobile caller": 27 operations are reachable from the app (reset-password only through a deep link; `interpret` only after opt-in). 13 have a service function but no reachable caller ("none (service function only)" and similar). 7 have no mobile code at all: `/`, `/live`, `email-service-status` and the four browser pages opened from emails.
+Historical 8 October caller inventory (before online narration and personal-key controls): 27 operations are reachable from the app (reset-password only through a deep link; `interpret` only after opt-in). 13 have a service function but no reachable caller ("none (service function only)" and similar). 7 have no mobile code at all: `/`, `/live`, `email-service-status` and the four browser pages opened from emails.
 
 | # | Operation | Auth | Mobile caller | Writes | Tests |
 |---|---|---|---|---|---|
@@ -99,7 +99,10 @@
 | 44 | `PUT /api/v1/ai/consent` | access | Voice setup → Enable Groq / Withdraw | ai_consents | Yes |
 | 45 | `POST /api/v1/ai/interpret` | access + consent | assistant Send (unfamiliar wording) | ai_usage | Partial |
 | 46 | `POST /api/v1/ai/transcribe` | access + consent | separately consented Groq online listening | ai_usage | Partial |
-| 47 | `POST /api/v1/ai/speak` | access + consent | none in this build (cloud speech off) | ai_usage | Partial |
+| 47 | `POST /api/v1/ai/speak` | access + exact provider consent | Sarvam Preview/Hear answer/opted-in read-aloud; device speech skips this route | ai_usage | Yes (synthetic HTTP) |
+| 48 | `GET /api/v1/ai/sarvam-key` | access + owner | status API; app reads equivalent metadata through capabilities | – | Yes |
+| 49 | `PUT /api/v1/ai/sarvam-key` | access + owner + storage confirmation | Voice setup → Save/Replace personal key | ai_sarvam_credentials | Yes |
+| 50 | `DELETE /api/v1/ai/sarvam-key` | access + owner | Voice setup → Remove personal key | deletes owned ai_sarvam_credentials row | Yes |
 
 ## What every request has in common
 
@@ -582,10 +585,10 @@ Router: `app/api/v1/ai.py`; guards: `app/services/ai_guard.py`; provider adapter
 | Field | Detail |
 |---|---|
 | Purpose | Tell the app which cloud features the **server** allows and what this account consented to. |
-| Caller | `services/assistant.ts:10-14`. Because the assistant dock is embedded in the tab bar and re-initialises on every tab change, this request runs on **every tab switch** and every return to the tabs while signed in (two small database reads each time), plus after consent changes and on "Recheck". The app treats a different `consent_version` as "unavailable". |
+| Caller | `services/assistant.ts:10-14`. Because the assistant dock is embedded in the tab bar and re-initialises on every tab change, this request runs on **every tab switch** and every return to the tabs while signed in (three small owner-scoped database reads each time), plus after consent changes and on "Recheck". The app treats a different `consent_version` as "unavailable". |
 | Logic | `interpret` is true only if `AI_ENABLED`, `AI_DATA_CONTROLS_REVIEWED` and `GROQ_API_KEY` are set; transcription and speech need further flags (all off by default). |
-| Database | Reads `users` (authentication, in its own short session) and `ai_consents`. |
-| Response | 200 `{interpret, interpret_contracts:[1,2], order_review_guard:true, transcribe, speak, consent_version:"voice-2026-10-06", consented, voice, scopes, transcription_providers, speech_providers}`. The legacy `voice` field names Alba; it is not evidence that the mobile app uses hosted speech. |
+| Database | Reads `users` (authentication, in its own short session), `ai_consents` and `ai_sarvam_credentials`. |
+| Response | 200 `{interpret, interpret_contracts:[1,2,3] (was [1,2] before 13 Oct 2026), order_review_guard:true, transcribe, speak, consent_version:"voice-2026-10-06", consented, voice, scopes, transcription_providers, speech_providers}`. Now also includes optional `sarvam_english_voice: {model,speaker,language_code}`; It also reports `sarvam_application_available` and `sarvam_personal_key:{setup_available,configured,usable,updated_at}`. `speak` is true if any speech provider is enabled, including a usable personal Sarvam key. `voice` reflects the Sarvam speaker when available, otherwise legacy Alba or empty. Capability is not user consent or physical playback proof. |
 | Status | VERIFIED IN CURRENT CODE; reproduced (all false with default flags). |
 
 ### `PUT /api/v1/ai/consent`
@@ -602,11 +605,11 @@ Router: `app/api/v1/ai.py`; guards: `app/services/ai_guard.py`; provider adapter
 | Field | Detail |
 |---|---|
 | Purpose | Turn one unfamiliar question into **one allowed intent**. It never returns stock facts. |
-| Caller | Assistant `ask()` (`components/assistant/AssistantExperience.tsx:293-330`) only when the local matcher found nothing **and** capabilities say `interpret: true` with a stored `groq_text` consent **and** this device's cloud switch is on, and only after the person pressed Send. Current clients negotiate `{question, has_previous_item, contract_version:2}` when supported; v1 clients omit the version. Capabilities are refreshed before unmatched online requests. |
-| Request | `InterpretRequest` (strict, ≤ 12 KB body): `question` 1–600 chars, `has_previous_item` bool, `contract_version` 1 or 2 (default 1). No inventory list or recording is sent by this operation. |
+| Caller | Assistant `ask()` (`components/assistant/AssistantExperience.tsx`) only when the local matcher found nothing **and** capabilities say `interpret: true` with `groq_text` consent **and** this account's cloud choice is on, after Send. The app prefers `{question, has_previous_item, contract_version:3}` when listed. Basic requests can use older contracts; `minimumInterpretContract` blocks detected advanced conditions unsupported by that server. It is a conservative marker gate, not a complete interpreter. v1 clients omit the version. `has_previous_item` is true when a list, single item or draft is in context. Capabilities are refreshed before unmatched online requests. |
+| Request | `InterpretRequest` (strict, ≤ 12 KB body): `question` 1–600 chars, `has_previous_item` bool, `contract_version` 1, 2 or 3 (default 1; 3 added 13 Oct 2026). No inventory list or recording is sent by this operation. |
 | Guards | `reserve()` (`ai_guard.py:95-181`): flags enabled; consent version and the `groq_text` scope; under a global advisory lock, daily limits (50 per user, 500 overall), a conservative cost budget (default 5,000 micro-USD per attempt → at most 20 attempts per user per day), at most 4 calls in flight overall and 1 per user (429 with `Retry-After`). A "day" starts at 00:00 UTC (05:30 IST). Inserts an `ai_usage` row with status `reserved`. |
-| Provider call | `POST https://api.groq.com/openai/v1/chat/completions`, model `GROQ_INTENT_MODEL` (default `openai/gpt-oss-20b`), temperature 0, `response_format` strict JSON schema of v1 `Intent` or v2 `Specification`, low reasoning effort, no tools, 3,072 maximum completion tokens for v2 / 1,024 for v1, 25 s total deadline (5 s to connect), no retries. |
-| Output checks | Valid JSON, `finish_reason == "stop"`, schema-valid v1 `Intent` or v2 `Specification`; v2 additionally grounds names/units/explicit quantity-to-item associations in the question; a `previous` reference needs context; a named item must be a contiguous sequence of words in the question after case/punctuation normalisation (otherwise 502). This is a name-containment check, not proof of correct semantics. The app validates the intent again before using it. Strict JSON output does not guarantee correct interpretation of arbitrary wording; question text can itself contain sensitive item names or other user-entered details. |
+| Provider call | `POST https://api.groq.com/openai/v1/chat/completions`, model `GROQ_INTENT_MODEL` (default `openai/gpt-oss-20b`), temperature 0, `response_format` strict JSON schema of v1 `Intent`, v2 `Specification` or v3 `Plan` (prompt `SYSTEM_V3`), low reasoning effort, no tools, 3,072 maximum completion tokens for v2 and v3 / 1,024 for v1, 25 s total deadline (5 s to connect), no retries. |
+| Output checks | Valid JSON, `finish_reason == "stop"`, schema-valid v1 `Intent`, v2 `Specification` or v3 `Plan`. v2 grounds names/units/quantity-to-item associations and rejects amounts whose signs or fractions would be lost. v3 `ground_plan` also calls `ai_plan_grounding.require_lexical_constraints`: detectable missing/invented filters, critical polarity, AND/OR groups, exclusions, sorts and item-to-threshold associations fail closed. Names containing filter or number words are fenced before checks. Previous references need context. Rejection returns a sanitized 502 and runs no business action. The app validates again. These checks cannot prove arbitrary semantics; question text can contain sensitive names and other user-entered details. |
 | Settle | `ai_usage` updated to `complete` or `failed` with token counts; failed reserved attempts still count against limits. Settlement errors are logged and leave the row reserved until its in-flight expiry; they do not replace an otherwise successful answer with a 500. |
 | Response | 200 legacy `{intent, item_query, reference, fields}` or v2 `{version,intent,draft_mode,query,lines,include_low,include_out}`; 401; 403 no consent; 408 body not received within 10 s; 413 body too large; 422; 429 (own quotas, or the provider busy with `Retry-After: 30`); 502 unusable output or provider error; 503 disabled; 504 timeout **or** any network/DNS failure reaching the provider. The current app wraps the failure with retry/edit/basic-command guidance and states that nothing was saved; earlier A-35 evidence describes the old generic message. |
 | Status | VERIFIED IN CURRENT CODE; reproduced with Groq replaced by an in-process recorder. **Real Groq behaviour is NOT VERIFIED.** |
@@ -624,13 +627,30 @@ Router: `app/api/v1/ai.py`; guards: `app/services/ai_guard.py`; provider adapter
 | Field | Detail |
 |---|---|
 | Purpose | Server-side text-to-speech (Alba/Piper worker, Kokoro worker or Sarvam). |
-| Caller | **None in this build** (cloud speech disabled; the app uses Android text-to-speech). |
-| Gating | `AI_SPEECH_ENABLED` and provider-specific rights/keys; `voice-service/` contains worker implementations; their actual deployment is NOT VERIFIED. Returns 503 with defaults. |
-| Status | VERIFIED IN CURRENT CODE. No test exercises a successful response. |
+| Caller | Sarvam selection with fresh `sarvamSpeechOptIn`, exact `sarvam_speech` scope and current provider capability: Preview, Hear answer or automatic reading. Device voice bypasses this route; legacy/Kokoro choices are not exposed. |
+| Gating | Login; `AI_ENABLED`, `AI_SPEECH_ENABLED`, `AI_SARVAM_ENABLED`, `AI_SARVAM_DATA_CONTROLS_REVIEWED`, explicit application key or encrypted owner-scoped personal key, valid English model/speaker and exact consent. Default flags are false. `AI_SARVAM_TRANSCRIBE_ENABLED=false` prevents enabling Sarvam recording uploads with narration. Existing usage quotas/concurrency apply. |
+| Errors (13 Oct 2026) | Sarvam errors are mapped by `sarvam_failure` (`ai_provider.py:618`), with no retry and no key switch:<br>• rejected key → **409** (personal key; replace it) or **503** (CareKosh account);<br>• no credits (402, or 429 `insufficient_quota_error`) → **402**;<br>• busy (429/503) → **429** with `Retry-After: 30`;<br>• bad request (400/422) → **502**;<br>• anything else → 502.<br>Only the status, error code and `request_id` are logged. The response limit is 5.2 MB for Sarvam (80 s of 24 kHz audio). |
+| Status | Current code and synthetic HTTP/provider tests cover successful WAV output, authentication, consent, accounting, unchanged stock/orders/activity and, since 13 October 2026, the error mapping and size limit through the real HTTP adapter (`tests/test_sarvam_transport.py`). Actual provider synthesis, staging settings and OnePlus sound remain NOT VERIFIED. |
+
+The English narration body is `{text, provider:"sarvam", pace, credential_source:"application"|"personal"}`; pace is optional (default 1), with allowed values 0.9/1/1.1. The backend chooses model/speaker/language, decodes/validates mono PCM16 WAV and rejects effectively silent output, then returns `audio/wav` with `Cache-Control: no-store`. Client limits/cancellation/player cleanup are in [the Sarvam integration guide](SARVAM_ENGLISH_VOICE.md). No inventory/order authority is added.
+
+### `GET /api/v1/ai/sarvam-key`
+
+Owner-authenticated encrypted-key metadata, also included in capabilities. Returns only `setup_available,configured,usable,updated_at`; never key/ciphertext/prefix/suffix. `usable` checks configuration and decryption, not live provider validity or credits.
+
+### `PUT /api/v1/ai/sarvam-key`
+
+Voice setup sends `{api_key,storage_consent:true}` over authenticated HTTPS, with no client-selected owner. Strict 8–512 printable ASCII characters; no whitespace/extra fields. `AI_SARVAM_BYOK_ENABLED`, narration flags, reviewed Sarvam controls, valid English model and Fernet configuration are required. Atomic owner-scoped upsert into `ai_sarvam_credentials`; no provider test, usage reservation, consent grant or inventory/order write. Format errors are sanitized and do not return the key.
+
+### `DELETE /api/v1/ai/sarvam-key`
+
+Deletes only the authenticated owner's credential. Works while BYOK/AI is paused or encryption configuration is unavailable. It does not revoke the provider key, erase retained encrypted backups, change other users or undo an in-flight Sarvam request. The phone returns a removed personal selection to device speech and requires an explicit choice for shared billing.
+
+All three routes return no-store metadata and require a current authenticated account. Migration `0011_sarvam_personal_keys` adds this table with user-deletion cascade and `ai_usage.credential_source` defaulting existing rows to `application`. Speech/test uses existing exact consent, quotas, deadlines and cleanup; personal-key failures never use the operator key. Full configuration and lifecycle: [Sarvam narration guide](SARVAM_ENGLISH_VOICE.md).
 
 ## Local inventory/draft feature follow-up — 8 October 2026
 
-`GET /ai/capabilities` now also advertises `interpret_contracts: [1, 2]` and `order_review_guard: true`. `POST /ai/interpret` defaults to the legacy intent schema; `contract_version: 2` requests a strict inventory-query/local-draft specification. Interpretation still never executes order/inventory writes; consent/usage are the only AI transport writes. New request/response schemas live in `app/schemas/ai.py` and the mobile `features/assistant/contracts.ts`.
+`GET /ai/capabilities` now also advertises `interpret_contracts: [1, 2]` and `order_review_guard: true`. **13 October 2026:** `[1, 2, 3]`. `POST /ai/interpret` defaults to the legacy intent schema; `contract_version: 2` requests a strict inventory-query/local-draft specification. `contract_version: 3` requests a bounded selection plan: union of AND-groups, exclusions, comparisons, critical equipment, sorting, previous-list follow-ups and filtered drafts. The phone executes the plan deterministically; see the [voice review](AI_VOICE_END_TO_END_REVIEW.md#2-contract-version-3-multi-part-requests). Interpretation still never executes order/inventory writes; interpretation writes only consent/usage; the separate personal-key routes write encrypted credentials. New request/response schemas live in `app/schemas/ai.py` and the mobile `features/assistant/contracts.ts`.
 
 `POST /orders` accepts optional `expectedVersion` on each item line. For a new guarded submission, ownership is checked and item rows are locked in ID order; inactive or version-changed items return 409 before order creation. Legacy submissions omit this guard and retain their behavior. A replayed existing `localId` returns its original order first, even after stock changes. No migration or stock formula changed. The review screen waits for verified inventory, keeps a failed draft, preserves submission identity across retries, and re-exports saved orders without creating another one.
 
@@ -782,7 +802,7 @@ These come from reading every test (the ledger (local review reference; not publ
 - Account deletion: the route test checks only the `users` row; the inventory cascade is shown only by this audit's walkthrough (a separate test deletes a user row directly and checks that the AI rows go).
 - No test sends a name that cleans to empty, a non-empty `supplierContact` on an update, a missing `orderId` or a reused `localId` with a changed payload (A-24 to A-26; the 8 Oct probes did).
 - Concurrent duplicate registration (would return 409, not 400) is untested.
-- AI quotas are tested at service level, not as HTTP 429; the provider error mapping (`bounded_call`) is untested; no successful `/ai/speak`.
+- AI quotas are tested at service level, not as HTTP 429. The provider error mapping (`bounded_call`) was untested until 13 October 2026; it is now tested for Groq status codes, refused redirects, oversized streams and Sarvam's error codes (`tests/test_voice_plans.py`, `tests/test_sarvam_transport.py`). the historical audit had no successful `/ai/speak`; the 11 October synthetic Sarvam narration test now covers success with real auth/consent/usage and mocked provider HTTP.
 - Migration downgrades (including 0007's refusal) are untested.
 - About ten concurrency tests start requests together without forcing the overlap, so a pass does not prove the race was exercised.
 - Mobile tests cover the API client, logout and order-creation services, item paging, the sanitising helpers, the query provider, assistant logic and assistant UI; screens, stores and the category service are not loaded by any test.

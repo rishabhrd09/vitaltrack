@@ -32,6 +32,8 @@ SKIP_DIRS = {"node_modules", ".git", ".claude", ".pytest_cache", ".ruff_cache", 
              "evidence-after-fixes", "independent-verification", "android", "ios"}
 CURRENT = {
     "docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md", "docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html",
+    "docs/SARVAM_ENGLISH_VOICE.md", "docs/SARVAM_ENGLISH_VOICE.html",
+    "docs/POCKET_TTS_ALBA.md", "docs/POCKET_TTS_ALBA.html",
     "README.md", "CAREKOSH_DEVELOPER_GUIDE.md", "CAREKOSH_ROADMAP.md",
     "carekosh_architecture_diagrams.html", "CAREKOSH_BACKEND_INTERVIEW_GUIDE.html",
     "CAREKOSH_E2E_VERIFICATION_GUIDE.html", "CAREKOSH_ENVIRONMENT_ARCHITECTURE.html",

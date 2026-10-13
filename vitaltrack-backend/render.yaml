@@ -38,3 +38,8 @@ services:
       # Error tracking — paste your Sentry DSN here (leave unset to disable)
       - key: SENTRY_DSN
         sync: false
+      # Optional Sarvam narration is configured separately in the staging
+      # service's Environment; see docs/SARVAM_ENGLISH_VOICE.md. This production
+      # Blueprint does not enable it or store a speech key. Personal keys also
+      # require AI_SARVAM_BYOK_ENABLED and a private, stable
+      # AI_CREDENTIAL_ENCRYPTION_KEY on that service, plus migration 0011.

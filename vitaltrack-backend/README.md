@@ -1,6 +1,8 @@
 # CareKosh Backend
 
-> **AI voice source update — 9 October 2026:** Current AI voice architecture, checked against the 9 October 2026 working tree at `0946eb7` plus local UI/capture changes: Android AudioRecord → Moonshine provisional live words → offline Moonshine or separately opted-in Groq Whisper final transcript → review/edit and Send → local parser or consented Groq GPT-OSS v2 specification → validated real inventory answers/local unsaved drafts. Device TTS and PDF rendering are local. Only touch confirmation saves an order; voice cannot change stock. Groq text and audio permissions are separate; hosted speech/Sarvam are not selected. Earlier dated test/release claims retain their original scope. This source review does not certify live deployment, account billing, all phones or recognition accuracy. [Complete stack, request flow, consent, costs and code map](../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+> **Independent voice follow-up — 13 October 2026:** Contract 3 preserves grouped comparisons, filters, exclusions and local drafts. The independent review fixed numeric/grouping errors, stale account-scoped consent dialogs, old-contract downgrades and partial-playback fallback. Voice still cannot save orders or change stock. Use an operator-owned Sarvam key for the first staging pilot; live phone/provider acceptance remains pending. [Evidence and remaining checks](../docs/AI_VOICE_END_TO_END_REVIEW.md#12-independent-follow-up).
+
+> **AI voice source update — 11 October 2026:** Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, an explicit shared or encrypted per-account personal key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Personal-key migration 0011 adds encrypted credentials and billing-source metadata; the current local inventory is 50 HTTP operations (47 under /api/v1) and 12 application tables. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. [Sarvam activation, costs and device checks](../docs/SARVAM_ENGLISH_VOICE.md) · [Complete voice architecture](../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
 
 
 > 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](../docs/BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
@@ -91,7 +93,7 @@ vitaltrack-backend/
 
 ## API endpoints
 
-Counts under `/api/v1`: 18 auth, 6 categories, 8 items, 6 orders, 1 activity = 39 on `main`; the feature branch adds 5 `ai` routes = 44. With the root routes `GET /`, `GET /health` and `GET /live` the feature branch has 47 routes. CI checks the `/api/v1` count with `scripts/check_api_routes.py --expected 44` (39 on `main`). Every endpoint with its handler, tables and tests: [API traceability](../docs/API_TRACEABILITY.md).
+Counts under `/api/v1`: 18 auth, 6 categories, 8 items, 6 orders, 1 activity = 39 on `main`; the current feature implementation adds 8 `ai` routes = 47. With the root routes `GET /`, `GET /health` and `GET /live` the current feature implementation has 50 routes. CI checks the `/api/v1` count with `scripts/check_api_routes.py --expected 47` (39 on `main`). Every endpoint with its handler, tables and tests: [API traceability](../docs/API_TRACEABILITY.md).
 
 ### Auth (`/api/v1/auth`) — 18 endpoints
 
@@ -173,7 +175,7 @@ Rate limiting is best effort: five auth routes, counters in memory per worker pr
 | POST | `/ai/transcribe` | cloud speech-to-text; off unless extra flags are set; not used by the current app build |
 | POST | `/ai/speak` | cloud speech; off unless extra flags are set; not used by the current app build |
 
-All five need a Bearer token (401 before the body is read). Bodies are capped at 12,000 bytes (900,000 for `/ai/transcribe`). They write only `ai_consents` and `ai_usage`. Setup: [docs/VOICE_AGENT_SETUP.md](../docs/VOICE_AGENT_SETUP.md).
+All eight need a Bearer token (401 before the body is read). Bodies are capped at 12,000 bytes (900,000 for `/ai/transcribe`). Inference writes only `ai_consents` and `ai_usage`; separate personal-key management writes `ai_sarvam_credentials`. Setup: [docs/VOICE_AGENT_SETUP.md](../docs/VOICE_AGENT_SETUP.md).
 
 The former offline-first `/api/v1/sync/*` route surface has been removed (the CI route check also fails if a `/sync` route reappears). The
 mobile app is server-first and uses the normal REST endpoints above.
@@ -285,7 +287,7 @@ users ──┬── categories ── items
 order_number_counters              (feature branch; one row per UTC day, no user link)
 ```
 
-At head (`0010`, feature branch) there are 11 application tables plus `alembic_version`. Every user-owned table has `ON DELETE CASCADE` on its `user_id` FK (`order_items` cascades through `orders.id`), so deleting a user leaves no orphans. `order_number_counters` is deliberately not user-linked and survives account deletion, so order numbers are never reused. `order_items.item_id` and the item/order ids in `activity_logs` are plain references without a foreign key, so order history survives item deletion. Primary keys are 36-character UUID strings (not the PostgreSQL `uuid` type). Status/action enums are stored as text holding upper-case enum names (for example `STOCK_UPDATED`), while the API returns lower-case values.
+At current local head (`0011`, feature branch implementation) there are 12 application tables plus `alembic_version`. Every user-owned table has `ON DELETE CASCADE` on its `user_id` FK (`order_items` cascades through `orders.id`), so deleting a user leaves no orphans. `order_number_counters` is deliberately not user-linked and survives account deletion, so order numbers are never reused. `order_items.item_id` and the item/order ids in `activity_logs` are plain references without a foreign key, so order history survives item deletion. Primary keys are 36-character UUID strings (not the PostgreSQL `uuid` type). Status/action enums are stored as text holding upper-case enum names (for example `STOCK_UPDATED`), while the API returns lower-case values.
 
 ### Migrations (in order)
 
@@ -300,7 +302,7 @@ At head (`0010`, feature branch) there are 11 application tables plus `alembic_v
 | 7 | `20260923_session_order_safety.py` | feature branch: `users.session_version`, `order_number_counters` (seeded from existing order ids), token-digest indexes. **One-way: `downgrade()` raises on purpose** |
 | 8 | `20260924_ai_consent_usage.py` | feature branch: `ai_consents`, `ai_usage` |
 | 9 | `20261006_ai_provider_scopes.py` | feature branch: `ai_consents.scopes`, `ai_usage.provider` |
-| 10 | `20261006_order_local_id_unique.py` | feature branch: partial unique index on `orders (user_id, local_id)`; briefly blocks writes to `orders` while it runs; keeps any older duplicates — head `0010_order_local_id_unique` |
+| 10 | `20261006_order_local_id_unique.py` | feature branch: partial unique index on `orders (user_id, local_id)`; briefly blocks writes to `orders` while it runs; keeps any older duplicates |
 
 On the feature branch, migrations run in one transaction with `SET LOCAL lock_timeout = '30s'` and a PostgreSQL advisory lock (`alembic/env.py`), so two containers starting at once do not migrate concurrently; `main` has no such lock. Upgrading an empty PostgreSQL 16 database to `0010` succeeded locally on 7 Oct 2026 and again on 8 Oct 2026. Before upgrading any shared database past `0006`, take a restorable backup: see [docs/BACKEND_HARDENING.md](../docs/BACKEND_HARDENING.md).
 
@@ -353,7 +355,7 @@ export DATABASE_URL=postgresql+asyncpg://test:test@localhost:5432/test_db   # di
 export SECRET_KEY=test-secret-key-for-local-testing-minimum-32-chars
 export ENVIRONMENT=testing
 pytest tests/ -q --migrated-schema --cov=app --cov-report=term-missing --cov-report=json
-python scripts/check_api_routes.py --expected 44          # 39 on main
+python scripts/check_api_routes.py --expected 47          # 39 on main
 python scripts/check_file_coverage.py coverage.json --threshold 70 \
   --file app/api/v1/items.py \
   --file app/api/v1/orders.py
@@ -452,3 +454,10 @@ Replace `localhost:8000` with `https://staging-api.carekosh.com` or `https://api
 ---
 
 For overall architecture, CI/CD, and full troubleshooting, see the [complete developer guide](../docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) (main onboarding entry) and the shorter repo-root [CAREKOSH_DEVELOPER_GUIDE.md](../CAREKOSH_DEVELOPER_GUIDE.md).
+
+
+## Personal Sarvam narration keys — 11 October 2026
+
+New authenticated GET/PUT/DELETE `/api/v1/ai/sarvam-key` routes store only owner-bound Fernet ciphertext. `/ai/speak` takes an explicit personal/application credential source; failures never use another source. Migration `20261011_sarvam_personal_keys.py` / head `0011_sarvam_personal_keys` adds `ai_sarvam_credentials` and `ai_usage.credential_source` (existing rows default application). Old consent and all business data are preserved. Account deletion cascades live credentials; removal is available even while feature/encryption configuration is paused.
+
+Start staging with the operator's own server-side `SARVAM_API_KEY` and `AI_SARVAM_BYOK_ENABLED=false`. Public third-party personal-key disclosure needs a permitted provider arrangement. An authorised personal-key deployment additionally enables BYOK and sets a stable private `AI_CREDENTIAL_ENCRYPTION_KEY`. No new native dependency or speech worker is required. Follow [exact Render steps, rotation, consent and device testing](../docs/SARVAM_ENGLISH_VOICE.md).

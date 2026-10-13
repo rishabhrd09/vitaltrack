@@ -11,8 +11,8 @@ vitaltrack-backend/ with the backend dependencies installed:
 
 How routes are counted: one row per (method, path) on `app.routes`. Each CareKosh
 route object has exactly one method, so route objects = operations. CI's gate
-(scripts/check_api_routes.py) counts only paths starting with /api/v1 (44);
-this inventory also includes /, /health and /live (47 in total). The Swagger
+(scripts/check_api_routes.py) counts only paths starting with /api/v1 (47);
+this inventory also includes /, /health and /live (50 in total). The Swagger
 routes (/docs, /redoc, /openapi.json) exist only when DEBUG=true and are excluded.
 """
 
