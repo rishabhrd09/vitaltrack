@@ -1,6 +1,7 @@
 // Adapted from john-rocky/LiteRT-Models @ 310464b5988f59c03de9283c3d7451e51d9f0260.
 // Copyright (c) 2026 Daisuke Majima. MIT; see assets/pocket-licences/SAMPLE-MIT.txt.
-// CareKosh: preset Alba only, private files, bounded generation, cancellation and cleanup.
+// CareKosh: preset Alba only, private files, evidence-based placement, bounded generation,
+// reusable compiled models, per-chunk delivery, cancellation and cleanup.
 package expo.modules.carekoshvoice
 
 import android.util.Half
@@ -18,28 +19,21 @@ import kotlin.math.sqrt
 /**
  * Pocket TTS (Kyutai, 100M) on LiteRT CompiledModel.
  *
- * Pocket TTS is a flow-matching LM over continuous 32-dim Mimi latents: per
- * 12.5 Hz frame a 6-layer/1024-wide causal transformer conditions a 6-block
- * AdaLN MLP flow head that turns one Gaussian draw into the next latent
- * (Lagrangian Self Distillation, 1 step — no iterative sampling loop); a 20M
- * tiny Mimi (x16 ConvTranspose upsample + 2-layer transformer + SEANet)
- * decodes latents to 24 kHz audio. The voice is a precomputed prompt KV cache
- * (`pt_voice_*.bin`, repacked from Kyutai's published per-voice states).
+ * Pocket TTS is a flow-matching LM over continuous 32-dim Mimi latents: per 12.5 Hz frame a
+ * 6-layer/1024-wide causal transformer conditions a 1-step LSD flow head that turns one Gaussian
+ * draw into the next latent; a 20M tiny Mimi (x16 upsample + 2-layer transformer + SEANet) decodes
+ * latents to 24 kHz audio. The voice is a precomputed prompt KV cache (`pt_voice_*.bin`).
  *
- * Three exported graphs, all stateless with host-side state:
- *  * `pt_flowlm_fused` — one AR step and flow head; packed KV in/out.
- *  * `pt_mimi_dec_tx`  — 64-latent-frame block of the Mimi decoder
- *    transformer; blocks overlap 32 frames because the 2-layer sliding-window
- *    (250) attention has a stacked receptive field of 498 positions.
- *  * `pt_mimi_deconly` — SEANet decoder, one-shot 256-frame window (causal,
- *    so real frames are exact regardless of the zero tail).
+ * Three exported graphs, all stateless with host-side state (input/output order confirmed against
+ * the exporter `build_pockettts.py` @ 310464b and by same-seed host runs):
+ *  * `pt_flowlm_fused` — (x, cos, sin, mask, K, V, noise) -> eos | latent | new K | new V.
+ *  * `pt_mimi_dec_tx`  — 64-latent-frame decoder-transformer blocks overlapping 32 frames.
+ *  * `pt_mimi_deconly` — SEANet vocoder, one-shot 256-frame window (causal; zero tail is exact).
  *
- * Adapted from the pinned upstream Android example. CareKosh additionally
- * bounds text, token chunks, generation time and PCM length. Reference graph
- * parity is reported by the exporter; Android inference must be tested on-device.
+ * Placement follows [PocketPlacement]: the vocoder never runs on CPU (≈10 GB on LiteRT 2.1.6).
+ * Create, use and close on one worker thread (GPU context affinity); never free during inference.
  */
-internal class PocketSynthesizer(private val modelDir: File, private val checkOperation: () -> Unit,
-    private val cpuOnly: Boolean = false, private val progress: (String, Int) -> Unit = { _, _ -> }) : Closeable {
+internal class PocketSynthesizer(private val modelDir: File, val placement: PocketPlacement = PocketPlacement.DEFAULT) : Closeable {
 
     companion object {
         const val H = 1024               // flow-LM width
@@ -60,6 +54,7 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
         const val S_DEC = DEC_FRAMES * UPS
         const val SPF = 1920             // samples per 12.5 Hz frame
         const val SAMPLE_RATE = 24000
+        const val FADE_IN = 120          // 5 ms per chunk start (pocket-tts PR #332: chunk-start click)
 
         // Generation defaults from the english config / pocket_tts defaults.
         const val TEMP = 0.3f
@@ -67,9 +62,6 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
         const val MAX_TOKENS_PER_CHUNK = PocketText.MAX_TOKENS_PER_CHUNK
         const val MASK_NEG = -1e4f
 
-        // step + flow head fused into one graph with one output tensor: on
-        // Mali the per-frame cost is dispatch/sync-bound, and two invocations
-        // plus four readbacks per frame cost more than the math itself.
         const val LM = "pt_flowlm_fused_fp16.tflite"
         const val DEC_TX = "pt_mimi_dec_tx_fp16.tflite"
         const val DECONLY = "pt_mimi_deconly_fp16.tflite"
@@ -78,38 +70,50 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
         const val BOS = "pt_bos_input_f32.bin"
         const val NEUTRAL = "pt_neutral_latent_f32.bin"
         const val TOKENIZER = "pt_tokenizer.tsv"
-
-        // Only the CC-BY-4.0 Alba preset is offered. No voice-cloning input.
-        val VOICES = listOf("alba")
     }
 
+    /** Counts and timings only — never text, tokens' content or audio. */
+    data class ChunkStats(val tokens: Int, val frames: Int, val eosStep: Int, val maxEosLogit: Float,
+                          val promptMs: Long, val generateMs: Long, val decodeMs: Long) {
+        fun describe(index: Int) = "chunk %d: %d tokens, %d frames, EOS at %d (max logit %.1f), prompt %d ms, generate %d ms (%.1f ms/step), decode %d ms"
+            .format(index, tokens, frames, eosStep, maxEosLogit, promptMs, generateMs,
+                if (frames + tokens > 0) generateMs.toDouble() / maxOf(1, frames + 1) else 0.0, decodeMs)
+    }
+    data class Result(val samples: Int, val frames: Int, val ms: Long, val chunks: List<ChunkStats>)
+
     private val resources = ArrayList<AutoCloseable>()
-    private val placement = ArrayList<String>()
-    val placements get() = placement.joinToString("; ")
-    var usesGpu = false
+    private val placement_ = ArrayList<String>()
+    val placements get() = placement_.joinToString("; ")
+    var initializeMs = 0L
         private set
+    private val threads = minOf(4, maxOf(1, Runtime.getRuntime().availableProcessors()))
     private fun path(name: String): File = File(modelDir, name).also {
         require(it.isFile) { "Download the Alba voice pack in Voice setup first" }
     }
     private fun <T : AutoCloseable> own(value: T): T { resources.add(value); return value }
-    private fun load(name: String, gpu: Boolean): CompiledModel {
-        checkOperation()
-        fun cpu(): CompiledModel {
-            val options = CompiledModel.Options(Accelerator.CPU)
-            options.cpuOptions = CompiledModel.CpuOptions(numThreads = minOf(4, maxOf(1, Runtime.getRuntime().availableProcessors())))
-            placement.add("$name: CPU")
-            return CompiledModel.create(path(name).path, options, null)
-        }
-        val result = if (gpu && !cpuOnly) try {
-            CompiledModel.create(path(name).path, CompiledModel.Options(Accelerator.GPU), null).also {
-                usesGpu = true; placement.add("$name: GPU")
-            }
-        } catch (_: Exception) {
-            checkOperation()
-            cpu()
-        } else cpu()
-        return own(result)
+
+    private fun cpu(name: String): CompiledModel {
+        val options = CompiledModel.Options(Accelerator.CPU)
+        options.cpuOptions = CompiledModel.CpuOptions(threads, null, null)
+        return CompiledModel.create(path(name).path, options, null).also { placement_.add("$name: CPU ${threads}t") }
     }
+    private fun gpu(name: String, precision: PocketGpuPrecision): CompiledModel {
+        val options = CompiledModel.Options(Accelerator.GPU)
+        if (precision == PocketGpuPrecision.FP32)
+            options.gpuOptions = CompiledModel.GpuOptions(precision = CompiledModel.GpuOptions.Precision.FP32)
+        return CompiledModel.create(path(name).path, options, null).also {
+            placement_.add("$name: GPU" + if (precision == PocketGpuPrecision.FP32) " FP32" else "")
+        }
+    }
+    /** LM/decoder transformer: GPU only when an experiment asks, with CPU as a safe fallback. */
+    private fun cpuOrGpu(name: String, device: PocketDevice, check: () -> Unit): CompiledModel {
+        check()
+        if (device == PocketDevice.CPU) return own(cpu(name))
+        return own(try { gpu(name, PocketGpuPrecision.DEFAULT) } catch (e: Exception) {
+            check(); placement_.add("$name: GPU failed (${e.javaClass.simpleName})"); cpu(name)
+        })
+    }
+
     private lateinit var lm: CompiledModel
     private lateinit var dectx: CompiledModel
     private lateinit var deconly: CompiledModel
@@ -119,14 +123,12 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
     private lateinit var dectxOut: List<com.google.ai.edge.litert.TensorBuffer>
     private lateinit var deconlyIn: List<com.google.ai.edge.litert.TensorBuffer>
     private lateinit var deconlyOut: List<com.google.ai.edge.litert.TensorBuffer>
-    // ---- host assets ------------------------------------------------------
-    private val embMap = ByteBuffer.wrap(path(EMBED).readBytes()).order(ByteOrder.LITTLE_ENDIAN)
-    private val inputLinear = readF32(path(INPUT_LINEAR))      // [1024, 32] row-major
-    private val bosInput = readF32(path(BOS))                  // [1024]
-    private val neutral = readF32(path(NEUTRAL))               // [32]
-    val tokenizer = PocketTokenizer(path(TOKENIZER))
-
-    private val textPrompt = PocketText(tokenizer)
+    // ---- host assets (loaded by initialize) ---------------------------------
+    private lateinit var embMap: ByteBuffer
+    private lateinit var inputLinear: FloatArray      // [1024, 32] row-major
+    private lateinit var bosInput: FloatArray         // [1024], already projected by the exporter
+    private lateinit var neutral: FloatArray          // [32]
+    private lateinit var textPrompt: PocketText
 
     // ---- host state -------------------------------------------------------
     private val pk = FloatArray(G * PMAX * HD)
@@ -134,7 +136,6 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
     private val mask = FloatArray(NH * (PMAX + 1))
     private var pos = 0
 
-    private var voiceName = ""
     private var voiceK = FloatArray(0)
     private var voiceV = FloatArray(0)
     private var voiceLen = 0
@@ -143,25 +144,21 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
     private val sinArr = FloatArray(HD)
     private val invFreq = DoubleArray(HD / 2) { 1.0 / Math.pow(THETA, it / 32.0) }
     private val rnd = Random()
-
-    data class Result(val audio: FloatArray, val frames: Int, val ms: Long)
+    private var stepCheck: () -> Unit = {}
 
     /** Load a repacked voice state: int32 T, then k and v as fp16 `[96][T][64]`. */
-    fun loadVoice(name: String) {
-        require(name == "alba") { "Only the reviewed Alba voice is available" }
-        if (name == voiceName) return
-        val bb = ByteBuffer.wrap(path("pt_voice_$name.bin").readBytes())
-            .order(ByteOrder.LITTLE_ENDIAN)
+    private fun loadAlba() {
+        val bb = ByteBuffer.wrap(path("pt_voice_alba.bin").readBytes()).order(ByteOrder.LITTLE_ENDIAN)
         val t = bb.int
         require(t in 1..200 && bb.remaining() == 2 * G * t * HD * 2) { "Invalid Alba voice state" }
         val n = G * t * HD
-        val k = FloatArray(n) { Half.toFloat(bb.short) }
-        val v = FloatArray(n) { Half.toFloat(bb.short) }
-        voiceK = k; voiceV = v; voiceLen = t; voiceName = name
+        voiceK = FloatArray(n) { Half.toFloat(bb.short) }
+        voiceV = FloatArray(n) { Half.toFloat(bb.short) }
+        voiceLen = t
     }
 
     private fun resetToVoice() {
-        pk.fill(0f); pv.fill(0f)
+        pk.fill(0f); pv.fill(0f) // masked slots must stay finite: −1e4 cannot cancel NaN/Inf
         for (g in 0 until G) {
             System.arraycopy(voiceK, g * voiceLen * HD, pk, g * PMAX * HD, voiceLen * HD)
             System.arraycopy(voiceV, g * voiceLen * HD, pv, g * PMAX * HD, voiceLen * HD)
@@ -205,14 +202,9 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
 
     private val zeroNoise = FloatArray(LDIM)
 
-    /**
-     * One fused frame: flow-LM step + flow head in a single invocation.
-     * Output layout: eos(1) | latent(32) | new-k(96*64) | new-v(96*64).
-     * Returns (latent, eosLogit) and appends this step's K/V at [pos].
-     * Text prompting passes zero noise and ignores the latent.
-     */
+    /** One fused frame. Output layout: eos(1) | latent(32) | new-k(96*64) | new-v(96*64). */
     private fun step(emb: FloatArray, noise: FloatArray): Pair<FloatArray, Float> {
-        checkOperation()
+        stepCheck()
         check(pos < PMAX) { "KV cache overflow at $pos" }
         ropeFill(pos)
         lmIn[0].writeFloat(emb)
@@ -228,7 +220,7 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
         require(out.size >= expected && (0 until expected).all { out[it].isFinite() }) {
             "Alba inference returned invalid values"
         }
-        checkOperation() // GPU readback may block; check again before accepting its result.
+        stepCheck() // a long native call may outlive cancellation; check before accepting its result
         val eos = out[0]
         val latent = out.copyOfRange(1, 1 + LDIM)
         val kvBase = 1 + LDIM
@@ -241,61 +233,72 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
         return latent to eos
     }
 
-    /** Generate speech for `text` with the currently loaded voice. */
-    fun synthesize(text: String, voice: String): Result {
+    /**
+     * Generate speech chunk by chunk with the fixed Alba preset. Each decoded chunk is handed to
+     * [onChunk] immediately, so playback can begin after the first sentence. Bounded by the caller's
+     * [check] (cancellation and deadline) and by the KV/decoder window.
+     */
+    fun synthesize(text: String, check: () -> Unit, progress: (String, Int) -> Unit, onChunk: (FloatArray) -> Unit): Result {
         require(text.isNotBlank() && text.length <= 640) { "Speech text must be 1–640 characters" }
-        val t0 = System.nanoTime()
-        loadVoice(voice)
-        val audio = ArrayList<FloatArray>()
-        var frames = 0
-        val chunks = textPrompt.chunks(text)
-        for (chunk in chunks) {
-            checkOperation()
-            val (prepared, eosGuess) = textPrompt.prepare(chunk)
-            val ids = tokenizer.encode(prepared)
-            progress("prompting", 0)
-            val latents = generateChunk(ids, framesAfterEos = eosGuess + 2)
-            frames += latents.size
-            require(latents.isNotEmpty()) { "Alba could not generate this reply" }
-            audio.add(decode(latents))
-            require(audio.sumOf { it.size } <= SAMPLE_RATE * 90) { "Spoken reply exceeded the limit" }
-        }
-        val total = audio.sumOf { it.size }
-        val out = FloatArray(total)
-        var o = 0
-        for (a in audio) { System.arraycopy(a, 0, out, o, a.size); o += a.size }
-        return Result(out, frames, (System.nanoTime() - t0) / 1_000_000)
+        val started = System.nanoTime()
+        stepCheck = check
+        try {
+            val stats = ArrayList<ChunkStats>()
+            var samples = 0
+            var frames = 0
+            for (chunk in textPrompt.chunks(text)) {
+                check()
+                val (prepared, eosGuess) = textPrompt.prepare(chunk)
+                val ids = textPrompt.encode(prepared)
+                progress("prompting", 0)
+                val (latents, partial) = generateChunk(ids, framesAfterEos = eosGuess + 2, progress)
+                require(latents.isNotEmpty()) { "Alba could not generate this reply" }
+                val decodeStart = System.nanoTime()
+                val audio = decode(latents, progress)
+                for (i in 0 until minOf(FADE_IN, audio.size)) audio[i] *= i / FADE_IN.toFloat()
+                frames += latents.size
+                samples += audio.size
+                require(samples <= SAMPLE_RATE * 90) { "Spoken reply exceeded the limit" }
+                stats.add(partial.copy(decodeMs = (System.nanoTime() - decodeStart) / 1_000_000))
+                onChunk(audio)
+            }
+            return Result(samples, frames, (System.nanoTime() - started) / 1_000_000, stats)
+        } finally { stepCheck = {} }
     }
 
     /** Bounded autoregressive loop; a length estimate is not an EOS deadline. */
-    private fun generateChunk(ids: IntArray, framesAfterEos: Int): List<FloatArray> {
+    private fun generateChunk(ids: IntArray, framesAfterEos: Int, progress: (String, Int) -> Unit): Pair<List<FloatArray>, ChunkStats> {
         require(ids.size in 1..MAX_TOKENS_PER_CHUNK && ids.all { it in 0 until 4000 })
+        val promptStart = System.nanoTime()
         resetToVoice()
         for (id in ids) step(embRow(id), zeroNoise)
-        // The old 3-tokens/second estimate could expire before a valid slower
-        // utterance reached EOS. Keep the actual KV/decoder bounds and deadline.
+        val generateStart = System.nanoTime()
         val maxGen = pocketFrameBudget(PMAX - pos - 1, DEC_FRAMES)
         val latents = ArrayList<FloatArray>(maxGen)
         var emb = bosInput
         var eosStep = -1
+        var maxEos = Float.NEGATIVE_INFINITY
         for (g in 0 until maxGen) {
-            val noise = FloatArray(LDIM) {
-                (rnd.nextGaussian() * sqrt(TEMP.toDouble())).toFloat()
-            }
+            val noise = FloatArray(LDIM) { (rnd.nextGaussian() * sqrt(TEMP.toDouble())).toFloat() }
             val (lat, eosLogit) = step(emb, noise)
+            maxEos = maxOf(maxEos, eosLogit)
             if (g % 8 == 0) progress("generating", g)
-            if (eosLogit > EOS_THRESHOLD && eosStep < 0) eosStep = g
+            if (eosStep < 0 && pocketEosAccepted(g, eosLogit, EOS_THRESHOLD)) eosStep = g
             if (eosStep >= 0 && g >= eosStep + framesAfterEos) break
             latents.add(lat)
             emb = projectLatent(lat)
         }
-        require(pocketSentenceFinished(eosStep, latents.size, framesAfterEos, maxGen)) { "Alba could not finish this sentence. Try Preview voice again or select Device voice in Voice setup" }
-        return latents
+        val now = System.nanoTime()
+        require(pocketSentenceFinished(eosStep, latents.size, framesAfterEos, maxGen)) {
+            "Alba could not finish this sentence (no end-of-speech signal within ${latents.size} frames). Your answer is still on screen"
+        }
+        return latents to ChunkStats(ids.size, latents.size, eosStep, maxEos,
+            (generateStart - promptStart) / 1_000_000, (now - generateStart) / 1_000_000, 0)
     }
 
     /** Mimi decode: overlapped dec_tx blocks -> one-shot SEANet window. */
-    private fun decode(latents: List<FloatArray>): FloatArray {
-        checkOperation()
+    private fun decode(latents: List<FloatArray>, progress: (String, Int) -> Unit): FloatArray {
+        stepCheck()
         progress("decoding", latents.size)
         require(latents.size in 1..DEC_FRAMES)
         val t = latents.size
@@ -303,7 +306,7 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
         val blk = FloatArray((1 + F_BLK) * LDIM)
 
         fun runBlock(prev: FloatArray, start: Int): FloatArray {
-            checkOperation()
+            stepCheck()
             System.arraycopy(prev, 0, blk, 0, LDIM)
             for (f in 0 until F_BLK) {
                 val src = if (start + f < t) latents[start + f] else neutral
@@ -329,30 +332,41 @@ internal class PocketSynthesizer(private val modelDir: File, private val checkOp
             kept += n - F_HOP
         }
 
-        checkOperation()
+        stepCheck()
         deconlyIn[0].writeFloat(feat)
         deconly.run(deconlyIn, deconlyOut)
         val wav = deconlyOut[0].readFloat()
         require(wav.size >= t * SPF) { "Invalid Alba audio length" }
-        for (i in 0 until t * SPF) require(wav[i].isFinite()) { "Invalid Alba audio" }
-        checkOperation()
+        for (i in 0 until t * SPF) require(wav[i].isFinite()) { "Alba returned invalid audio values" }
+        stepCheck()
         return FloatArray(t * SPF) { wav[it].coerceIn(-1f, 1f) }
     }
 
-    // Create/close on the same worker (GPU context affinity). Never free during inference.
-    fun initialize() {
+    /** Compile once; the same instance then serves many replies on the same worker thread. */
+    fun initialize(check: () -> Unit) {
+        val started = System.nanoTime()
         try {
-            lm = load(LM, true)
-            // CPU decoder transformer preserves voice quality on Mali devices.
-            dectx = load(DEC_TX, false)
-            deconly = load(DECONLY, true)
+            check()
+            embMap = ByteBuffer.wrap(path(EMBED).readBytes()).order(ByteOrder.LITTLE_ENDIAN)
+            inputLinear = readF32(path(INPUT_LINEAR))
+            bosInput = readF32(path(BOS))
+            neutral = readF32(path(NEUTRAL))
+            textPrompt = PocketText(PocketTokenizer(path(TOKENIZER)))
+            loadAlba()
+            check()
+            lm = cpuOrGpu(LM, placement.lm, check)
+            dectx = cpuOrGpu(DEC_TX, placement.decoderTransformer, check)
+            check()
+            deconly = own(try { gpu(DECONLY, placement.vocoderPrecision) } catch (e: Exception) {
+                placement_.add("$DECONLY: GPU failed (${e.javaClass.simpleName})"); throw PocketVocoderUnavailable(e)
+            })
             fun buffers(m: CompiledModel, input: Boolean) =
                 (if (input) m.createInputBuffers() else m.createOutputBuffers()).also { b -> b.forEach { own(it) } }
             lmIn = buffers(lm, true); lmOut = buffers(lm, false)
             dectxIn = buffers(dectx, true); dectxOut = buffers(dectx, false)
             deconlyIn = buffers(deconly, true); deconlyOut = buffers(deconly, false)
-            loadVoice("alba")
-            checkOperation()
+            check()
+            initializeMs = (System.nanoTime() - started) / 1_000_000
         } catch (error: Throwable) { close(); throw error }
     }
     override fun close() {

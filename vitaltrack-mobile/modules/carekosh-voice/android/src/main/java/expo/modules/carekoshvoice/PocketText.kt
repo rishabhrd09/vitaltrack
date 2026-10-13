@@ -6,6 +6,15 @@ internal class PocketText(private val tokenizer: PocketTokenizer) {
     private val endTokens = tokenizer.encode(".!...?").drop(1).toSet()
     private val fallbackTokens = tokenizer.encode(",;:").drop(1).toSet()
     companion object { const val MAX_TOKENS_PER_CHUNK = 32 }
+    fun encode(text: String): IntArray = tokenizer.encode(text)
+
+    /** pocket-tts PR #217: "0.9" or "1.5" is a number, not a sentence end. */
+    private fun decimalPoint(list: List<Int>, i: Int): Boolean {
+        if (i == 0 || i + 1 >= list.size || tokenizer.piece(list[i]) != ".") return false
+        val before = tokenizer.piece(list[i - 1])
+        val after = tokenizer.piece(list[i + 1])
+        return before.lastOrNull()?.isDigit() == true && after.firstOrNull()?.isDigit() == true
+    }
     // ---- text preparation (ports of pocket_tts.models.tts_model) ----------
 
     /** prepare_text_prompt: normalize whitespace/case/punctuation; guess EOS tail. */
@@ -30,7 +39,7 @@ internal class PocketText(private val tokenizer: PocketTokenizer) {
             idx.add(0)
             var prevWasBoundary = false
             for ((i, tok) in list.withIndex()) {
-                if (tok in marks) prevWasBoundary = true
+                if (tok in marks && !decimalPoint(list, i)) prevWasBoundary = true
                 else {
                     if (prevWasBoundary) idx.add(i)
                     prevWasBoundary = false

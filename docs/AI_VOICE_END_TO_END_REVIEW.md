@@ -20,7 +20,7 @@ It also records what was changed on 13 October 2026, the evidence for each chang
 
 | Question | Decision | Why |
 |---|---|---|
-| Ready for **staging testing**? | **Yes, for controlled testing after deployment of this reviewed candidate.** | Independent working-tree checks passed 458 backend tests in both schema modes and 344 mobile tests. The clean publication candidate passes 458 backend and 341 mobile tests (§13). Use an operator-owned Sarvam key for the first staging pilot. Deploy the backend before testing cloud contract 3 in the new APK. Detected unsupported advanced requests must not silently downgrade. Contract 3 adds no route/migration; the earlier Sarvam implementation still requires migration 0011. |
+| Ready for **staging testing**? | **Yes, for controlled testing after deployment of this reviewed candidate.** | Final follow-up checks pass: 458 backend tests in both isolated schema modes and 344 mobile tests. Use an operator-owned Sarvam key for the first staging pilot. Deploy the backend before testing cloud contract 3 in the new APK. Detected unsupported advanced requests must not silently downgrade. Contract 3 adds no route/migration; the earlier Sarvam implementation still requires migration 0011. |
 | Ready for **production**? | **No, pending live acceptance and operator setup.** | Verify the new APK on the OnePlus, real Groq interpretation and real Sarvam decoding/playback, plus the production deployment/privacy controls. Public third-party personal-key use needs a permitted provider arrangement (§4.3). Alba remains a separate experimental gate; keeping it paused does not block verified device/Sarvam speech. |
 
 ## 1. Trace map
@@ -301,7 +301,7 @@ Other changes:
 
 - **On-phone understanding.** "Use on-phone understanding only" turns off Groq for this account without withdrawing server consent. "Withdraw all cloud consent" remains separate.
 - **Old preferences.** They load with no automatic online opt-in. Hosted voices that were never released (`kokoro`), Sarvam listening and paused Alba all fall back to the offline defaults (VERIFIED BY REPRODUCED TEST: `vitaltrack-mobile/tests/voice-providers.test.cjs`).
-- **Alba** shows as **Paused** in normal builds. A separate local diagnostics/native experiment is excluded from this published candidate; selection stays disabled until it passes the phone checks in [POCKET_TTS_ALBA.md](POCKET_TTS_ALBA.md).
+- **Alba** shows as **Paused** in normal builds. It can be selected only in the `preview-voice-diagnostics` test build until it passes the phone checks in [POCKET_TTS_ALBA.md](POCKET_TTS_ALBA.md).
 
 ## 6. Answer sheet changes (assistant UI only)
 
@@ -437,7 +437,6 @@ Then test the requested comparison/union/draft examples, Preview voice, Hear ans
 
 **Production remains pending** those checks and operator privacy/disclosure review. Paused Alba belongs to its separate experimental acceptance gate. Customer-supplied third-party keys require a permitted provider arrangement before public enablement; operator workspace settings do not establish every personal workspace's policy.
 
-
 ## 13. Publication candidate
 
 The operator requested a feature-branch commit after the review. This publication candidate contains Sarvam narration, contract 3, the independent correctness/security/UI fixes and their maintained documentation. It uses the previously committed Android microphone/native code. The separate native Alba experiments, diagnostic EAS profile, private audit records and generated coverage data stay local.
@@ -448,3 +447,5 @@ Build a preview APK from a clean checkout of the pushed commit: EAS includes eli
 
 
 **Publication verification:** 458 backend tests passed on a fresh migrated PostgreSQL 16 database; 341 mobile tests passed. TypeScript is clean; ESLint has 0 errors and the existing Builder warning. Public-clone documentation checks cover 88 files with 0 problems; 22 diagrams and 35 inline figures pass. No native code, main branch, live database, provider call or deployment was changed by the publication preparation.
+
+**13 October 2026 — separate Alba follow-up publication:** The native Alba repair, the `preview-voice-diagnostics` profile and their tests were published later in a separate commit on this feature branch. Normal builds still keep Alba paused. This does not change the original publication evidence above. The follow-up passed 344 mobile tests, TypeScript, lint with no errors, Kotlin 2.2.20 compilation against Android/LiteRT/Moonshine API jars with Expo stubs, JVM recovery checks and real LiteRT 2.1.6 host synthesis. Host synthesis required graphics-driver access outside the sandbox; these checks do not prove phone sound, Adreno behaviour or a real Gradle release build.

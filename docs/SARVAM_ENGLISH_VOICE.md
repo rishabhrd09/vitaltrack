@@ -8,7 +8,7 @@ Source/configuration review: **13 October 2026**, rechecking the 11 October impl
 |---|---|---|
 | Device English voice | Default; retained | An eligible installed offline Android TTS voice; no Sarvam key |
 | Sarvam English | Implemented; optional online narration | Backend configuration, user answer-text consent, internet and API credits |
-| Pocket TTS / Alba | Paused in normal builds. The native repair and diagnostics profile remain separate local experimental work | Phone acceptance on the OnePlus Nord 4 and a second phone |
+| Pocket TTS / Alba | Paused in normal builds. A repaired implementation is offered only in the `preview-voice-diagnostics` test build | Phone acceptance on the OnePlus Nord 4 and a second phone |
 | Offline fallback for Sarvam | Optional, **off by default** | Choose an offline voice after a successful preview |
 | Hosted Kokoro / legacy Piper | Existing backend adapters remain disabled in this mobile release | Separate service, asset/runtime review and a later mobile integration |
 
@@ -77,7 +77,7 @@ Keep `AI_TRANSCRIBE_ENABLED` and `AI_DATA_CONTROLS_REVIEWED` as required for you
 5. Build/install a new preview APK pointing at this staging service. No API key or encryption key belongs in EAS or `EXPO_PUBLIC_*`. Current build command:
 
 ```bash
-cd "/Users/rishabh/courses_tutorials/vital_track/first_playstore_version/vitaltrack/vitaltrack-mobile"
+cd vitaltrack-mobile
 eas build --profile preview --platform android
 ```
 
@@ -167,7 +167,7 @@ The full table, with severities and the manual Render steps, is in the [end-to-e
 
 - **Choosing a voice.** Turning it on lists the offline voices that are ready.
   - Device voice: an installed offline Android English voice.
-  - Alba: not available in this normal-preview release; a separate local experiment remains pending.
+  - Alba: only in the diagnostics test build, once its verified pack is downloaded.
   - The chosen voice is previewed first and saved only if the preview plays. Turning the setting off removes it.
   - A paused or unknown voice saved earlier loads as "off"; it is never swapped for another voice.
 - **When it is used.** Only after Sarvam fails before any Sarvam audio started, for example a timeout, network or provider error, missing consent, or an unavailable key.
@@ -197,7 +197,7 @@ Sarvam states that API output made using consumed account credits, including int
 
 Yes: Kokoro-82M weights are Apache-2.0 licensed, and its published English inference pipeline is a possible self-hosted alternative without a third-party per-answer speech API fee. Compute, storage, power and hosting still have costs. Embedding an Android version needs measured phone inference/playback and review of the exact runtime, phonemizer and voice assets. The model's licence does not automatically cover every dependency; eSpeak-related components require separate review. Installing another Android app is not a prerequisite for an embedded implementation, but that implementation is not completed here. [Kokoro model card](https://huggingface.co/hexgrad/Kokoro-82M), [Misaki phonemizer](https://github.com/hexgrad/misaki).
 
-Embedded Kokoro remains a separate evaluation; this release adds no Kokoro runtime or selectable voice. The repository retains a disabled hosted Kokoro worker (`bf_emma`, ONNX) and backend adapter. That worker is not offline phone inference, and deployment and real synthesis remain unverified. Sarvam is the optional online narrator. A future Kokoro integration needs its own asset/runtime review, device acceptance and UI/consent work. See the [retained worker guide](../voice-service/README.kokoro.md).
+For an **embedded** (on-phone) Kokoro, the 13 October evaluation picked one GPL-free route with no new native library: the `TextToSpeech` API in the already-shipped Moonshine 0.1.5 library. It is plan B if Alba fails on the phone; see [the evaluation](POCKET_TTS_ALBA.md#embedded-kokoro-evaluation-and-plan-b). The repository already retains a disabled hosted Kokoro worker (`bf_emma`, ONNX) and backend adapter. That hosted worker is not offline phone inference. Its deployment and real synthesis are unverified. Sarvam is the current optional online integration; switching to Kokoro later requires its own service/device acceptance, UI enablement and consent work. See [the retained Kokoro worker guide](../voice-service/README.kokoro.md).
 
 ## Verification and OnePlus acceptance
 
@@ -230,7 +230,7 @@ The fresh review found stale consent dialogs that could act after an account swi
 
 The speech player now records detected partial playback before handling a player error, so optional offline fallback cannot repeat an answer already started online. Voice setup says **Configured · preview to verify** for Sarvam, rather than claiming live key validity or audible output. Large-text provider controls remain individually accessible, and long table units wrap.
 
-The wider query fixes and reproduced results are in the [independent review](AI_VOICE_END_TO_END_REVIEW.md#12-independent-follow-up). They do not add microphone, order-save or stock-update tools. Native Alba changes remain a separate local experimental investigation, excluded from this published candidate; device, live provider and deployment acceptance are still pending.
+The wider query fixes and reproduced results are in the [independent review](AI_VOICE_END_TO_END_REVIEW.md#12-independent-follow-up). They do not add microphone, order-save or stock-update tools. Native Alba changes remain a separate experimental investigation; device, live provider and deployment acceptance are still pending.
 
 ## Modular source map
 

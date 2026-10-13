@@ -84,10 +84,10 @@ const policyNormal = load('features/assistant/policy.ts');
 const policyDiagnostics = load('features/assistant/policy.ts', {}, { process: { env: { EXPO_PUBLIC_VOICE_DIAGNOSTICS: '1' } } });
 const preferences = (store, policy = policyNormal) => load('features/assistant/preferences.ts', { '@react-native-async-storage/async-storage': store, './policy': policy });
 
-test('the reviewed release keeps Alba and diagnostics paused even with a stale diagnostics environment flag', () => {
+test('normal builds hide diagnostics and keep Alba paused; only the diagnostics build enables both', () => {
   assert.equal(policyNormal.VOICE_DIAGNOSTICS_ENABLED, false); assert.equal(policyNormal.ALBA_SELECTION_ENABLED, false);
   assert.equal(load('features/assistant/policy.ts', {}, { process: { env: {} } }).ALBA_SELECTION_ENABLED, false);
-  assert.equal(policyDiagnostics.VOICE_DIAGNOSTICS_ENABLED, false); assert.equal(policyDiagnostics.ALBA_SELECTION_ENABLED, false);
+  assert.equal(policyDiagnostics.VOICE_DIAGNOSTICS_ENABLED, true); assert.equal(policyDiagnostics.ALBA_SELECTION_ENABLED, true);
 });
 
 test('fallback preference: off by default, device kept, paused or unknown voices read as off', async () => {
@@ -96,7 +96,7 @@ test('fallback preference: off by default, device kept, paused or unknown voices
   for (const value of ['pocket', 'kokoro', 'sarvam', true, 'https://example.invalid/voice']) {
     assert.equal((await preferences(storage({ speechFallback: value })).loadPreferences('owner')).speechFallback, undefined, String(value));
   }
-  assert.equal((await preferences(storage({ speechFallback: 'pocket' }), policyDiagnostics).loadPreferences('owner')).speechFallback, undefined);
+  assert.equal((await preferences(storage({ speechFallback: 'pocket' }), policyDiagnostics).loadPreferences('owner')).speechFallback, 'pocket');
   const store = storage({});
   await preferences(store).savePreferences('owner', { enabled: true, cloud: false, microphone: true, spokenReplies: true, audioOptIn: false, inputProvider: 'offline', speechProvider: 'sarvam', sarvamSpeechOptIn: true, speechFallback: 'pocket' });
   assert.equal(JSON.parse(store.data.value).speechFallback, undefined, 'a paused voice is never stored as the fallback');

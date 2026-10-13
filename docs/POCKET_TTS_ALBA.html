@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="generator" content="docs/tools/build_docs.py from docs/POCKET_TTS_ALBA.md">
-<title>Pocket TTS / Alba — paused in this release</title>
+<title>Pocket TTS / Alba — paused implementation and investigation</title>
 <style>
 :root{--bg:#fbfaf7;--fg:#1d2328;--muted:#56606b;--card:#ffffff;--border:#d6dbe0;--accent:#0b5a73;
 --accent-bg:#e5f1f5;--code-bg:#f1f3f5;--code-fg:#1d2328;--warn-bg:#fff4d6;--warn-border:#9a6a00;--mark:#fff1a8}
@@ -60,12 +60,18 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <a href="INDEX.html">Documentation home</a>
 <span class="meta">Generated from <code>docs/POCKET_TTS_ALBA.md</code> — edit the Markdown, not this file.</span></div></header>
 <div class="layout">
-<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#what-it-does">What it does</a></li><li><a href="#historical-user-setup--unavailable-while-paused">Historical user setup — unavailable while paused</a></li><li><a href="#data-flow-and-safety">Data flow and safety</a></li><li><a href="#models-attribution-and-notices">Models, attribution and notices</a></li><li><a href="#source-map">Source map</a></li><li><a href="#verification-and-release-gate">Verification and release gate</a><ul><li><a href="#silent-preview-after-cpu-recovery--11-october-2026">Silent preview after CPU recovery — 11 October 2026</a></li><li><a href="#reported-silent-replies--eos-failure--10-october-2026">Reported silent replies / EOS failure — 10 October 2026</a></li><li><a href="#android-build-compatibility--10-october-2026">Android build compatibility — 10 October 2026</a></li></ul></li><li><a href="#offline-voice-investigation--13-october-2026">Offline voice investigation — 13 October 2026</a></li></ul></details></nav>
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#what-it-does">What it does</a></li><li><a href="#historical-user-setup--unavailable-while-paused">Historical user setup — unavailable while paused</a></li><li><a href="#data-flow-and-safety">Data flow and safety</a></li><li><a href="#models-attribution-and-notices">Models, attribution and notices</a></li><li><a href="#source-map">Source map</a></li><li><a href="#verification-and-release-gate">Verification and release gate</a><ul><li><a href="#offline-voice-investigation--13-october-2026">Offline voice investigation — 13 October 2026</a></li><li><a href="#silent-preview-after-cpu-recovery--11-october-2026">Silent preview after CPU recovery — 11 October 2026</a></li><li><a href="#reported-silent-replies--eos-failure--10-october-2026">Reported silent replies / EOS failure — 10 October 2026</a></li><li><a href="#android-build-compatibility--10-october-2026">Android build compatibility — 10 October 2026</a></li></ul></li></ul></details></nav>
 <main id="content">
-<h1 id="pocket-tts--alba--paused-in-this-release">Pocket TTS / Alba — paused in this release</h1>
-<p><strong>Current release status — 13 October 2026: PAUSED.</strong> Device voice remains the default. Alba selection and new downloads are disabled after failed OnePlus Nord 4 acceptance. Existing packs may be removed. Sarvam narration is separately optional; its offline fallback can use the previewed device voice.</p>
-<p>The native repair investigation and diagnostic APK profile are separate local experimental work, excluded from this reviewed release. Older dated implementation details below describe the retained native baseline; they are not a passed device test. <a href="SARVAM_ENGLISH_VOICE.html">Current Sarvam setup</a>.</p>
-<p>Latest speech-output follow-up: <strong>11 October 2026</strong>, on top of <code>2ded35a</code>. The owner tested the preceding preview APK on OnePlus Nord 4/OxygenOS 15: preparation reached CPU recovery and then finished without audible speech. This remains a failed device acceptance check, not proof that Alba works on that phone. The changes below improve playback compatibility and make generation/output failures inspectable. They require another native APK; backend code and model files are unchanged.</p>
+<h1 id="pocket-tts--alba--paused-implementation-and-investigation">Pocket TTS / Alba — paused implementation and investigation</h1>
+<p><strong>Current status — 13 October 2026: PAUSED in normal builds; repaired implementation awaiting phone acceptance.</strong></p>
+<ul>
+<li><strong>Normal builds:</strong> Alba selection and new downloads stay disabled. <code>ALBA_SELECTION_ENABLED</code> is false unless the separate test profile is used. Device voice remains the default and is audible on the owner's phone.</li>
+<li><strong>Investigation:</strong> the <a href="#offline-voice-investigation--13-october-2026">13 October investigation</a> found integration defects that can explain "stuck converting" and silent results. The optimized vocoder CPU path measured about 10 GB of memory on the desktop host. Repairs are tested there; the phone's exact failure remains unproven.</li>
+<li><strong>Unproven on the phone:</strong> nothing yet shows the repaired voice is audible on the OnePlus Nord 4. Do not call it "fixed" or "offline-ready" until the device checks below pass.</li>
+<li><strong>Test build:</strong> the <code>preview-voice-diagnostics</code> EAS profile shows a diagnostics panel and allows Alba for testing. Normal <code>preview</code> and <code>production</code> builds do not.</li>
+<li><strong>Optional fallback:</strong> an offline fallback for failed Sarvam replies now exists. It is off by default; see <a href="SARVAM_ENGLISH_VOICE.html#optional-offline-fallback--13-october-2026">the Sarvam guide</a>.</li>
+</ul>
+<p>Older dated sections below are kept as evidence. They describe earlier code, including a GPU-to-CPU retry that has since been removed.</p>
 <h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
 <p>CareKosh can download <strong>Kyutai Pocket TTS with the fixed Alba English preset</strong> and generate spoken assistant summaries on the phone. No extra Android application, hosted speech service, API key or per-answer provider fee is needed. This does not make Groq understanding offline: optional online interpretation and transcription retain their own consent and internet requirements.</p>
 <p>This is Pocket TTS Alba, not the Piper Alba/Lyra model used by some other projects. Identical timbre is not promised. “Relaxed” changes playback speed to 0.9× while keeping pitch at 1×; it does not select a different trained emotional voice.</p>
@@ -79,19 +85,45 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <li>Use <strong>Remove Alba voice pack</strong> to reclaim storage. It does not remove inventory, orders or the microphone recognition pack. A failed download removes its partial file and can reuse already verified completed files on retry. Leaving the app or pressing Cancel stops the download.</li>
 </ol>
 <h2 id="data-flow-and-safety">Data flow and safety<a class="anchor" href="#data-flow-and-safety" aria-label="Link to this section">#</a></h2>
-<p>Validated answer → concise <code>speechText</code> → native <code>speakPocket</code> → verified preset files → LiteRT inference → 24 kHz mono floating-point waveform → validated PCM16 samples → Android <code>AudioTrack</code> using the media route/volume and audio focus.</p>
+<p>Validated answer → concise <code>speechText</code> → native <code>speakPocket</code> (its own Alba worker thread) → verified preset files → LiteRT inference: flow LM and decoder transformer on the CPU, SEANet vocoder on the GPU → one 24 kHz mono waveform per sentence chunk → validated PCM16 → streamed to Android <code>AudioTrack</code> as each chunk is ready, using the media route/volume and audio focus.</p>
 <ul>
 <li>No question, answer or recording is uploaded by the Pocket speech path. The initial download contacts Hugging Face and its approved HTTPS CDN; its ordinary connection metadata is visible to that host.</li>
 <li>The model catalog is fixed inside the APK, revision-pinned and SHA-256 checked. Users cannot supply a model URL or clone a voice. Model files are data, not a downloaded native executable.</li>
 <li>Files live in the app-private no-backup directory and contain no account data. Removing app data/uninstalling removes them; ordinary APK updates should retain them unless the catalog changes.</li>
 <li>This implementation uses <strong>LiteRT Android 2.1.6</strong>, independently of Moonshine's ONNX runtime, avoiding a second <code>libonnxruntime.so</code>. No Sherpa/eSpeak/Piper phonemizer runtime was added.</li>
-<li>The fused language model and vocoder try GPU compilation with CPU fallback if compilation throws an ordinary exception; the small decoder transformer runs on CPU. If a generation attempt that used GPU subsequently fails, its resources close before one all-CPU retry using the same Alba preset and text. Invalid or inaudible output is checked inside the generation attempt, so a GPU attempt returning unusable PCM can also take the one CPU retry. CPU compilation requests up to four available processor threads. Cancellation, deadlines and CPU-only failures do not trigger further attempts. There is no cloud or device-voice fallback.</li>
-<li>Inference runs serially away from the UI thread. Recognition model memory is released before synthesis. Native model/buffer resources are closed on the same worker after each utterance, including partial initialization failures. This adds compilation time to replies; performance must be measured on target phones.</li>
-<li>Text is limited to 640 characters and prepared chunks to <strong>32 tokens</strong>, without silently dropping words. The previous 50-token chunks and estimated three-tokens-per-second frame cutoff could leave insufficient room for a slower utterance. Each new chunk may use at most 256 audio frames (20.48 seconds), also bounded by remaining KV space, and must reach EOS plus its tail. A reply has a 90-second PCM cap and a 180-second native operation deadline shared by generation, a possible CPU retry and playback. Malformed and non-finite model-step results are rejected immediately. Final PCM must have finite samples and RMS at least <code>0.0001</code> (about −80 dBFS); a single non-zero spike no longer passes the silence check. Unusable output is rejected, not amplified. Speech begins after full synthesis, not incrementally while generating.</li>
-<li>Playback uses <strong>PCM16, 24 kHz mono</strong>, <code>USAGE_MEDIA</code> with speech content, explicit track gain 1.0, and Android audio focus. It respects the Android-selected speaker/headset/Bluetooth route; it does not force the phone speaker or change system volume. Muted media, rejected focus, failed track start, write errors and stalled completion produce a visible message. Completion reports rendered frames, the actual route category and current media volume, not acoustic proof.</li>
-<li>Cancel, another question, leaving the screen, backgrounding, logout or changing accounts invalidates speech. An in-flight native invocation may finish before resources close; stale results cannot start playback. Audio-focus loss stops playback.</li>
+<li><strong>Placement.</strong> The flow LM and the decoder transformer run on the CPU with up to four threads. The SEANet vocoder runs <strong>only on the GPU</strong>.</li>
+<li>Why: on the desktop host, an optimized LiteRT 2.1.6 CPU run of the pinned vocoder graph needs about <strong>10 GB</strong> of memory. That measured path is unsuitable for this phone integration; the alternative reference kernels are too slow on the host.</li>
+<li>If the GPU cannot compile the vocoder, Alba stops with a clear message. That failure is remembered until the pack is reinstalled or the app restarts.</li>
+<li>There is no CPU retry and no automatic cloud or device-voice substitution.</li>
+<li>Two placement experiments exist only in the diagnostics build: the flow LM on the GPU, and an FP32 vocoder.</li>
+<li><strong>Lifecycle.</strong> Models compile once and stay warm between replies on a dedicated Alba thread, so a slow or stuck GPU call cannot block the microphone thread.</li>
+<li>Models are freed after 90 seconds unused, when CareKosh goes to the background, when the pack is removed or reinstalled, and after a failed reply.</li>
+<li>Cancellation keeps the warm models; each chunk starts again from the voice state.</li>
+<li>First-reply compile time must be measured on target phones.</li>
+<li><strong>Generation bounds.</strong></li>
+<li>Text is limited to 640 characters, and prepared chunks to <strong>32 tokens</strong> without dropping words.</li>
+<li>A decimal point between digits ("0.9%") is not treated as a sentence end (<a href="https://github.com/kyutai-labs/pocket-tts">pocket-tts PR #217</a>).</li>
+<li>Each chunk may use at most 256 audio frames (20.48 s), also bounded by the remaining KV space, and must reach EOS plus its tail.</li>
+<li>EOS is ignored for the first 6 frames, as in <a href="https://github.com/kyutai-labs/pocket-tts">pocket-tts PR #319</a>. On short texts the EOS logit can cross the threshold during the leading pause.</li>
+<li>Each chunk starts with a 5 ms fade-in against clicks (<a href="https://github.com/kyutai-labs/pocket-tts">PR #332</a>).</li>
+<li>A reply has a 90-second PCM cap and a 180-second native deadline. A JavaScript backstop (195 s) also settles the call if the native side never answers.</li>
+<li>Malformed and non-finite model-step results are rejected immediately.</li>
+<li><strong>Output check.</strong> Each chunk must be finite, have RMS of at least <strong>−50 dBFS</strong>, and have at least 20% active 20 ms windows before it is played.</li>
+<li>The old −80 dBFS floor accepted near-silence.</li>
+<li>Healthy Alba speech measured about −20 dBFS with 0.7–0.8 active windows.</li>
+<li>Unusable output is rejected, never amplified.</li>
+<li><strong>Playback.</strong> Speech starts as soon as the first sentence is decoded; later sentences keep generating while it plays. The format is <strong>PCM16, 24 kHz mono</strong>, <code>USAGE_MEDIA</code> with speech content, track gain 1.0 and Android audio focus.</li>
+<li>A 120 ms lead-in lets the audio route settle.</li>
+<li>On Android 12 and later, playback starts after 200 ms of buffered audio. On older versions a short clip is padded past the buffer, so it always starts.</li>
+<li>Completion waits for rendered frames within the clip length plus 5 s, never indefinitely.</li>
+<li>The Android-selected speaker, headset or Bluetooth route is respected. The speaker is never forced and system volume is never changed.</li>
+<li>Muted media, rejected focus, failed start, write errors and stalled completion produce a visible message. Completion reports rendered frames, route category and media volume; that is not acoustic proof.</li>
+<li><strong>Cancellation.</strong> Cancel, another question, leaving the screen, backgrounding, logout or changing accounts invalidates speech. Playback is flushed at once.</li>
+<li>An in-flight native model call may finish before it is noticed.</li>
+<li>Stale results cannot start playback, and audio-focus loss stops it.</li>
+<li>An aborted turn stops waiting immediately and never cancels a later question's recording.</li>
 <li>Synthesis failure keeps the factual answer visible. Neither this voice nor Groq interpretation gains inventory/order-save authority. Touch confirmation remains required to save an order.</li>
-<li>Device speech remains a selectable fallback controlled by the user. Withdrawing cloud consent preserves the selected offline Alba voice.</li>
+<li>Device speech remains a selectable fallback controlled by the user. While paused, withdrawing cloud consent returns narration to device voice.</li>
 </ul>
 <h2 id="models-attribution-and-notices">Models, attribution and notices<a class="anchor" href="#models-attribution-and-notices" aria-label="Link to this section">#</a></h2>
 <div class="tablewrap"><table>
@@ -128,20 +160,207 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <h2 id="source-map">Source map<a class="anchor" href="#source-map" aria-label="Link to this section">#</a></h2>
 <p>Under <code>vitaltrack-mobile/</code>:</p>
 <ul>
-<li><code>features/assistant/offlineVoice.ts</code>: optional bridge; older APKs retain existing device speech.</li>
-<li><code>features/assistant/preferences.ts</code>: account-scoped provider/pace, no automatic opt-in.</li>
-<li><code>components/assistant/VoiceSetup.tsx</code>: download, readiness, provider, pace, preview and notices.</li>
-<li><code>components/assistant/AssistantExperience.tsx</code>: setup/session cancellation and factual-answer playback.</li>
+<li><code>features/assistant/offlineVoice.ts</code>: optional bridge, progress stages and the abortable JavaScript backstop; <code>speakDiagnostic</code> for test builds; older APKs retain existing device speech.</li>
+<li><code>features/assistant/policy.ts</code>: <code>VOICE_DIAGNOSTICS_ENABLED</code> (build-time <code>EXPO_PUBLIC_VOICE_DIAGNOSTICS=1</code>, only in the <code>preview-voice-diagnostics</code> EAS profile) and <code>ALBA_SELECTION_ENABLED</code>, which follows it. <code>app.config.js</code> refuses the flag in production builds.</li>
+<li><code>features/assistant/preferences.ts</code>: account-scoped provider/pace and the optional <code>speechFallback</code>; no automatic opt-in.</li>
+<li><code>features/assistant/narration.ts</code>: the online-to-offline fallback state machine (read once, never a second online request).</li>
+<li><code>components/assistant/VoiceSetup.tsx</code>: download, readiness, provider, pace, preview, the fallback choice, the diagnostics panel (test builds only) and notices.</li>
+<li><code>components/assistant/AssistantExperience.tsx</code>: setup/session cancellation, factual-answer playback, fallback and diagnostics runs.</li>
 <li><code>modules/carekosh-voice/android/src/main/java/expo/modules/carekoshvoice/PocketPack.kt</code>: fixed catalog, storage, redirects, checksums and deletion.</li>
-<li><code>PocketTokenizer.kt</code>, <code>PocketText.kt</code>: tokenization, normalization and bounded sentence chunks.</li>
-<li><code>PocketSynthesizer.kt</code>: preset-only LiteRT model orchestration.</li>
-<li><code>PocketRecovery.kt</code>: bounded generation-window checks and one cancellable GPU-to-CPU retry.</li>
-<li><code>PocketAudio.kt</code>: whole-waveform levels, bounded PCM16 conversion and the faded sound-check tone.</li>
-<li><code>PocketPlayback.kt</code>: media routing, foreground audio focus, cancellation and PCM16 playback reports.</li>
-<li><code>CareKoshVoiceModule.kt</code>: serial worker and Expo native API.</li>
+<li><code>PocketTokenizer.kt</code>, <code>PocketText.kt</code>: tokenization, normalization, decimal-aware bounded sentence chunks.</li>
+<li><code>PocketSynthesizer.kt</code>: preset-only LiteRT orchestration. Compiles once, delivers chunk by chunk and keeps per-chunk counts and timings.</li>
+<li><code>PocketRecovery.kt</code>: placement policy (vocoder GPU-only), EOS guard and generation-window checks.</li>
+<li><code>PocketAudio.kt</code>: waveform levels (dBFS, active windows, non-finite count), PCM16 conversion, playback framing and the sound-check tone.</li>
+<li><code>PocketPlayback.kt</code>: streaming writer, start-threshold handling, focus, route and volume, cancellation and playback reports.</li>
+<li><code>PocketDiagnostics.kt</code>: bounded, path-redacted record for each operation, mirrored to logcat tag <code>CareKoshVoice</code>.</li>
+<li><code>CareKoshVoiceModule.kt</code>: separate Moonshine and Alba worker lanes, the warm engine and the Expo native API.</li>
 <li><code>modules/carekosh-voice/android/src/main/assets/pocket-alba-manifest.json</code>: exact file sizes/checksums; model weights are not committed.</li>
+<li><code>scripts/check-pocket-recovery.kt</code>: pure-JVM checks, including the streaming writer against a fake AudioTrack.</li>
+<li><code>scripts/pocket-host-check/</code>: the actual Kotlin synthesizer with real LiteRT 2.1.6 numerics on a desktop host, plus a per-graph memory probe.</li>
 </ul>
 <h2 id="verification-and-release-gate">Verification and release gate<a class="anchor" href="#verification-and-release-gate" aria-label="Link to this section">#</a></h2>
+<h3 id="offline-voice-investigation--13-october-2026">Offline voice investigation — 13 October 2026<a class="anchor" href="#offline-voice-investigation--13-october-2026" aria-label="Link to this section">#</a></h3>
+<p><strong>Scope.</strong> The investigation ran on a macOS host with LiteRT 2.1.6, the same runtime version as the APK, using the exact pinned Alba files (size- and SHA-256-verified). No Android phone or emulator was available. So there is no logcat trace, no phone GPU driver and no audio HAL behind any result below.</p>
+<p><strong>Pipeline traced.</strong> text → chunks → voice state → three graphs → EOS → vocoder → validation → PCM16 → focus/route → AudioTrack → completion → UI cleanup.</p>
+<h4 id="confirmed-findings">Confirmed findings<a class="anchor" href="#confirmed-findings" aria-label="Link to this section">#</a></h4>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Finding</th>
+<th>Evidence</th>
+<th>Effect</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The selected optimized CPU vocoder path is unsuitable for this phone integration.</td>
+<td>Desktop runs of <code>pt_mimi_deconly_fp16</code> (fixed 256-frame window) peak at about <strong>10.1 GB</strong> with XNNPACK and <strong>8.3 GB</strong> with builtin kernels; its op outputs total 9.6 GB. Reference kernels use 0.8 GB but take 57 s per call. The GPU run uses about 142 MB.</td>
+<td>Both the "one CPU retry" and the silent CPU fallback after a GPU compile error sent the vocoder to the CPU. Those paths risk allocation failure or extreme slowness on the phone and can explain "Converting Alba speech to audio with the CPU". The exact Nord 4 failure is not proven without a device trace.</td>
+<td>Vocoder is GPU-only, with a clear error if it cannot compile. The CPU retry is removed.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The silence check accepted unusable audio.</td>
+<td>The −80 dBFS floor passed a near-silent clip. A garbled clip from deliberately swapped K/V inputs measured −33 dBFS and also passed.</td>
+<td>A failed generation could "complete" without audible speech.</td>
+<td>Each chunk needs ≥ −50 dBFS RMS and ≥ 20% active windows; levels go into diagnostics.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Every reply recompiled every model.</td>
+<td>The synthesizer was created and closed for each utterance; the upstream example loads once.</td>
+<td>GPU or CPU compile time was added to every reply.</td>
+<td>Warm engine; released when idle, in the background or after a failure.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>A native Error could leave the screen waiting forever.</td>
+<td>The worker caught only <code>LinkageError</code>, <code>OutOfMemoryError</code> and <code>Exception</code>. JavaScript had no bound of its own.</td>
+<td>Possible endless "preparing".</td>
+<td>Catch <code>Throwable</code>; abortable 195 s JavaScript backstop.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Alba shared the microphone's worker thread.</td>
+<td>One single-thread executor ran Moonshine, recording and Alba.</td>
+<td>A stuck GPU call would block the next recording.</td>
+<td>Separate Alba and Moonshine lanes.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Short clips might never start.</td>
+<td><code>MODE_STREAM</code>, a 1 s buffer and no <code>stop()</code>. Android's default streaming start threshold is the buffer capacity (<a href="https://developer.android.com/reference/android/media/AudioTrack#getStartThresholdInFrames()"><code>getStartThresholdInFrames</code></a>). A fake-track test reproduces it.</td>
+<td>The 0.5 s "Check audio output" tone could time out silently.</td>
+<td>200 ms start threshold on API 31+; padding on older versions; completion bounded by clip length.</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Upstream fixes were missing.</td>
+<td>The pinned port predates pocket-tts PR #319 (early EOS), #332 (chunk-start click) and #217 (decimal split).</td>
+<td>Short words cut off; clicks; "0.9%" split mid-number.</td>
+<td>Ported.</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Not a defect.</strong> The tensor wiring is correct.
+- The exporter at the pinned revision defines <code>FusedStep.forward(x, cos, sin, mask, pk, pv, noise)</code>. Its output is <code>cat([eos, lat, new_k, new_v])</code> (<a href="https://github.com/john-rocky/LiteRT-Models/blob/310464b5988f59c03de9283c3d7451e51d9f0260/pockettts/build_pockettts.py"><code>build_pockettts.py</code></a>).
+- Same-seed host runs confirm it: the app's order gives speech, while swapping K/V or cos/sin gives garbage or no EOS.</p>
+<h4 id="remaining-hypotheses-no-phone-evidence">Remaining hypotheses (no phone evidence)<a class="anchor" href="#remaining-hypotheses-no-phone-evidence" aria-label="Link to this section">#</a></h4>
+<ul>
+<li><strong>H1:</strong> with the old default the flow LM ran on the Adreno GPU at fp16. That may have degraded its output, giving "could not finish this sentence" or garbled audio.</li>
+<li>On the host, Metal fp16 latents matched the CPU (cosine 0.93–1.0).</li>
+<li>A derivative benchmark found PowerVR fp16 changed the take (correlation 0.77).</li>
+<li>Upstream never measured the fused graph on Adreno.</li>
+<li>The new default runs the LM on the CPU; the <code>lm_gpu</code> experiment tests this hypothesis.</li>
+<li><strong>H2:</strong> the vocoder's GPU compile failed on the phone and silently fell back to the CPU (finding 1). Diagnostics now report "vocoder GPU compile failed".</li>
+<li><strong>H3:</strong> route, volume or Bluetooth start-up. Use the native tone first.</li>
+<li><strong>H4:</strong> phone CPU speed for the LM. The host takes 4.3 ms per step; a phone is estimated at 10–25 ms per step but has not been measured.</li>
+</ul>
+<h4 id="host-measurements-apple-silicon-litert-216-exact-pinned-files">Host measurements (Apple silicon, LiteRT 2.1.6, exact pinned files)<a class="anchor" href="#host-measurements-apple-silicon-litert-216-exact-pinned-files" aria-label="Link to this section">#</a></h4>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Graph</th>
+<th>CPU, 4 threads</th>
+<th>GPU (Metal)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Flow LM (<code>pt_flowlm_fused_fp16</code>)</td>
+<td>4.3 ms/step · 632 MB peak</td>
+<td>38 ms/step (dispatch-bound) · 923 MB</td>
+</tr>
+<tr>
+<td>Decoder transformer (<code>pt_mimi_dec_tx_fp16</code>)</td>
+<td>23 ms/block · 179 MB</td>
+<td>20 ms/block · 153 MB</td>
+</tr>
+<tr>
+<td>Vocoder (<code>pt_mimi_deconly_fp16</code>)</td>
+<td>0.9–1.5 s/call · <strong>8.6–10.1 GB</strong></td>
+<td>65–490 ms/call · 142 MB</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Default placement, end to end.</strong> This uses the actual Kotlin code through <code>scripts/pocket-host-check</code>, including the shim's data-transfer overhead.</li>
+<li>Replies of 2.6–8.4 s of audio measured −19 to −21 dBFS with 0.71–0.80 active windows.</li>
+<li>The EOS maximum logit was +6.4 to +9.7.</li>
+<li>Peak process memory was 0.89 GB (measured with the Python mirror).</li>
+<li><strong>Same seed, compared with all-CPU.</strong> Latents are bit-identical; the GPU vocoder's waveform differs by −44 dB.</li>
+<li>These are desktop figures, not phone figures.</li>
+</ul>
+<h4 id="embedded-kokoro-evaluation-and-plan-b">Embedded Kokoro evaluation and plan B<a class="anchor" href="#embedded-kokoro-evaluation-and-plan-b" aria-label="Link to this section">#</a></h4>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kokoro-82M through Moonshine's <code>TextToSpeech</code> (in the <code>moonshine-voice</code> 0.1.5 already shipped)</td>
+<td><strong>Plan B.</strong> The shipped jar contains <code>ai.moonshine.voice.TextToSpeech</code>. It uses Moonshine's MIT G2P (no eSpeak) and the same minimal ONNX Runtime 1.23.2, so no native library is added. One US voice plus G2P is 108,987,341 bytes. Phone speed is unpublished; its English G2P error is 12.6% vs 9.8% for eSpeak/misaki. Its voice-cloning API must never be used.</td>
+</tr>
+<tr>
+<td>sherpa-onnx (any model)</td>
+<td>Blocked: statically links GPL-3.0 eSpeak-NG and ships its own <code>libonnxruntime.so</code>.</td>
+</tr>
+<tr>
+<td>kokoro-onnx, misaki with eSpeak fallback, Kitten, Piper's current fork</td>
+<td>Blocked: GPL phonemizer, and stock ONNX Runtime would duplicate Moonshine's <code>libonnxruntime.so</code> (Moonshine's build loads only <code>.ort</code> models).</td>
+</tr>
+<tr>
+<td>Kokoro on LiteRT (<code>litert-community</code> preview)</td>
+<td>Not ready: FP32 CPU only, about 1.8× slower than real time on a Pixel 8a.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Switch to plan B only if the diagnostics build shows a vocoder GPU compile failure, or synthesis slower than real time, on the Nord 4. Unusual item names such as "chlorhexidine" are missing from every GPL-free lexicon checked, so either voice needs an app-side pronunciation list and an audition.</p>
+<h4 id="licence-notes">Licence notes<a class="anchor" href="#licence-notes" aria-label="Link to this section">#</a></h4>
+<ul>
+<li>Weights and the fixed Alba preset are CC BY 4.0; the code notices are MIT and Apache 2.0. All are bundled and exportable. No GPL or eSpeak component was added.</li>
+<li>Kyutai's original Hugging Face repository is gated behind prohibited-use terms. CareKosh downloads the CC BY 4.0 LiteRT conversion instead. <strong>Owner review:</strong> confirm whether those use terms apply to this use.</li>
+</ul>
+<h4 id="checks-run-13-october">Checks run (13 October)<a class="anchor" href="#checks-run-13-october" aria-label="Link to this section">#</a></h4>
+<ul>
+<li><strong>Mobile:</strong> 290/290 tests (21 new: fallback state machine, preferences/build flags, screen-level fallback, backstop and stages, build-profile guards), TypeScript clean, lint 0 errors.</li>
+<li><strong>Native compile:</strong> every module source against the Android API, LiteRT 2.1.6 and Moonshine 0.1.5 jars and Expo stubs. Compiler: Kotlin 2.3.20 at language/API 2.2. This is not the real Gradle 2.2.20 build.</li>
+<li><strong><code>scripts/check-pocket-recovery.kt</code> (JVM):</strong> EOS guard, placement, level checks, framing, the streaming writer, cancellation, write errors, stall bounds and diagnostics redaction all pass.</li>
+<li><strong><code>scripts/pocket-host-check/run.sh</code>:</strong> the actual Kotlin synthesizer with real LiteRT numerics passes. That covers warm reuse, cancellation, decimal chunking, and "vocoder GPU failure gives a clear error with no CPU attempt".</li>
+<li><strong>Android JavaScript bundle export, <code>preview</code> and <code>preview-voice-diagnostics</code> profiles:</strong> both succeed. The normal bundle constant-folds both flags to false.</li>
+</ul>
+<p><strong>Not verified — device acceptance pending:</strong>
+- Android JNI/LiteRT on the Nord 4;
+- Adreno OpenCL compile and numerics of the vocoder;
+- phone CPU timing, first-audio delay and peak memory;
+- OxygenOS AudioTrack behaviour;
+- physical sound on the speaker and over Bluetooth;
+- a real Gradle release build. EAS needs the owner's authorization; a local build needs an Android SDK, which is not installed here.</p>
+<h4 id="how-to-rerun-the-host-checks">How to rerun the host checks<a class="anchor" href="#how-to-rerun-the-host-checks" aria-label="Link to this section">#</a></h4>
+<pre><code class="language-bash">cd vitaltrack-mobile
+# JVM checks (android.jar on the compile classpath only; no Android class loads at runtime)
+kotlinc -cp /path/to/android.jar modules/carekosh-voice/android/src/main/java/expo/modules/carekoshvoice/{PocketAudio,PocketRecovery,PocketPlayback,PocketDiagnostics}.kt \
+  scripts/check-pocket-recovery.kt -include-runtime -d /tmp/pocket-native-check.jar
+java -cp /tmp/pocket-native-check.jar expo.modules.carekoshvoice.Check_pocket_recoveryKt
+# Actual Kotlin synthesizer with real LiteRT 2.1.6 (assets downloaded and verified outside Git)
+ASSETS=/path/to/verified/alba PYTHON=/path/to/python-with-ai-edge-litert-2.1.6 KOTLINC=$(command -v kotlinc) scripts/pocket-host-check/run.sh
+$PYTHON scripts/pocket-host-check/probe_graphs.py /path/to/verified/alba
+</code></pre>
+<h4 id="phone-acceptance--diagnostics-build">Phone acceptance — diagnostics build<a class="anchor" href="#phone-acceptance--diagnostics-build" aria-label="Link to this section">#</a></h4>
+<p>Build the <code>preview-voice-diagnostics</code> profile only with the owner's authorization. Then, on the OnePlus Nord 4 and a second phone, in Voice setup → Offline voice diagnostics:</p>
+<ol>
+<li><strong>Play native test tone.</strong> Record whether you heard it, plus the route and volume shown.</li>
+<li><strong>Download the Alba pack</strong>, then <strong>Generate Alba without playing.</strong> Record the timings, levels and placements. A "vocoder GPU compile failed" line means plan B.</li>
+<li><strong>Generate and play Alba.</strong> Did you hear it? Record the first-audio and total times. Repeat once (the warm engine should be faster). Then try both experiments.</li>
+<li><strong>Copy "Audio check details" after each step.</strong> If USB is available, <code>adb logcat -s CareKoshVoice</code> captures only these lines without clearing other logs.</li>
+<li><strong>Run the release criteria below in airplane mode:</strong> preview and Hear answer, Stop, a second question, Bluetooth, backgrounding, account change, a removed pack and low storage. Keep <code>ALBA_SELECTION_ENABLED</code> off in normal builds until they pass.</li>
+</ol>
 <h3 id="silent-preview-after-cpu-recovery--11-october-2026">Silent preview after CPU recovery — 11 October 2026<a class="anchor" href="#silent-preview-after-cpu-recovery--11-october-2026" aria-label="Link to this section">#</a></h3>
 <p>The screenshots show a verified pack, Alba selected and automatic narration enabled. The owner reports preview ending without sound and cannot currently provide a USB device trace. Therefore the exact phone failure remains <strong>not verified</strong>: screenshots of preparation do not establish that playback began, and silent completion alone cannot distinguish a weak waveform, output routing or native playback behavior.</p>
 <p>This follow-up replaces float <code>USAGE_ASSISTANT</code> playback with standard PCM16 media playback, validates track start/gain and the whole waveform, includes PCM validation within GPU recovery, checks model-step values before continuing, and makes preview errors/results visible beside its controls. Prompting, frame generation and decoding now have separate progress; a model-independent sound check and selectable session diagnostics identify the next failure without uploading speech. A ten-second limit applies to the sound check; speech retains its existing bounds.</p>
@@ -180,8 +399,6 @@ java -jar /tmp/carekosh-pocket-text-check.jar /absolute/path/to/pt_tokenizer.tsv
 <li>Repeat manifest, native-library alignment and notice checks for each release artifact. These package checks passed for the preview APK above; they do not replace the device checks.</li>
 </ol>
 <p>No backend migration, new environment variable, Render deployment or database operation is needed for this speech-output feature.</p>
-<h2 id="offline-voice-investigation--13-october-2026">Offline voice investigation — 13 October 2026<a class="anchor" href="#offline-voice-investigation--13-october-2026" aria-label="Link to this section">#</a></h2>
-<p>A separate local host investigation measured roughly 10 GB peak memory on its CPU workload. That is not a measured OnePlus footprint or proof of the phone's exact failure. Experimental native repairs and diagnostic build support remain unpublished and are not enabled by this release. Device sound must be verified independently before Alba is offered again. The reviewed normal preview uses the previously committed microphone/native implementation and keeps Alba paused.</p>
 <footer>Generated 2026-10-13 by <code>docs/tools/build_docs.py</code> from <code>docs/POCKET_TTS_ALBA.md</code>.</footer>
 </main>
 </div>

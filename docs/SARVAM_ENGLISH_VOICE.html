@@ -86,7 +86,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Pocket TTS / Alba</td>
-<td>Paused in normal builds. The native repair and diagnostics profile remain separate local experimental work</td>
+<td>Paused in normal builds. A repaired implementation is offered only in the <code>preview-voice-diagnostics</code> test build</td>
 <td>Phone acceptance on the OnePlus Nord 4 and a second phone</td>
 </tr>
 <tr>
@@ -221,7 +221,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <li>In the initial operator-key pilot, <code>sarvam_application_available</code> should be true and personal setup stays unavailable. For an authorised personal-key deployment, <code>sarvam_personal_key.setup_available</code> must be true. Before saving, <code>configured</code> and <code>usable</code> are false. With no operator key, Sarvam is absent from <code>speech_providers</code> until this account has an unlockable saved key. <code>usable:true</code> means decryptable/configured, not authenticated by Sarvam or funded. <code>/health</code> alone cannot prove the revision or speech configuration.</li>
 <li>Build/install a new preview APK pointing at this staging service. No API key or encryption key belongs in EAS or <code>EXPO_PUBLIC_*</code>. Current build command:</li>
 </ol>
-<pre><code class="language-bash">cd &quot;/Users/rishabh/courses_tutorials/vital_track/first_playstore_version/vitaltrack/vitaltrack-mobile&quot;
+<pre><code class="language-bash">cd vitaltrack-mobile
 eas build --profile preview --platform android
 </code></pre>
 <ol start="6">
@@ -301,7 +301,7 @@ eas build --profile preview --platform android
 <ul>
 <li><strong>Choosing a voice.</strong> Turning it on lists the offline voices that are ready.</li>
 <li>Device voice: an installed offline Android English voice.</li>
-<li>Alba: not available in this normal-preview release; a separate local experiment remains pending.</li>
+<li>Alba: only in the diagnostics test build, once its verified pack is downloaded.</li>
 <li>The chosen voice is previewed first and saved only if the preview plays. Turning the setting off removes it.</li>
 <li>A paused or unknown voice saved earlier loads as "off"; it is never swapped for another voice.</li>
 <li><strong>When it is used.</strong> Only after Sarvam fails before any Sarvam audio started, for example a timeout, network or provider error, missing consent, or an unavailable key.</li>
@@ -324,7 +324,7 @@ eas build --profile preview --platform android
 <p>Sarvam states that API output made using consumed account credits, including introductory credits, can be shipped commercially subject to its terms. This does not grant rights to its model weights or make the service an offline open-source voice. <a href="https://docs.sarvam.ai/api/getting-started/commercial-licensing">Commercial licensing</a>.</p>
 <h2 id="can-kokoro-be-free-instead">Can Kokoro be free instead?<a class="anchor" href="#can-kokoro-be-free-instead" aria-label="Link to this section">#</a></h2>
 <p>Yes: Kokoro-82M weights are Apache-2.0 licensed, and its published English inference pipeline is a possible self-hosted alternative without a third-party per-answer speech API fee. Compute, storage, power and hosting still have costs. Embedding an Android version needs measured phone inference/playback and review of the exact runtime, phonemizer and voice assets. The model's licence does not automatically cover every dependency; eSpeak-related components require separate review. Installing another Android app is not a prerequisite for an embedded implementation, but that implementation is not completed here. <a href="https://huggingface.co/hexgrad/Kokoro-82M">Kokoro model card</a>, <a href="https://github.com/hexgrad/misaki">Misaki phonemizer</a>.</p>
-<p>Embedded Kokoro remains a separate evaluation; this release adds no Kokoro runtime or selectable voice. The repository retains a disabled hosted Kokoro worker (<code>bf_emma</code>, ONNX) and backend adapter. That worker is not offline phone inference, and deployment and real synthesis remain unverified. Sarvam is the optional online narrator. A future Kokoro integration needs its own asset/runtime review, device acceptance and UI/consent work. See the <a href="../voice-service/README.kokoro.md">retained worker guide</a>.</p>
+<p>For an <strong>embedded</strong> (on-phone) Kokoro, the 13 October evaluation picked one GPL-free route with no new native library: the <code>TextToSpeech</code> API in the already-shipped Moonshine 0.1.5 library. It is plan B if Alba fails on the phone; see <a href="POCKET_TTS_ALBA.html#embedded-kokoro-evaluation-and-plan-b">the evaluation</a>. The repository already retains a disabled hosted Kokoro worker (<code>bf_emma</code>, ONNX) and backend adapter. That hosted worker is not offline phone inference. Its deployment and real synthesis are unverified. Sarvam is the current optional online integration; switching to Kokoro later requires its own service/device acceptance, UI enablement and consent work. See <a href="../voice-service/README.kokoro.md">the retained Kokoro worker guide</a>.</p>
 <h2 id="verification-and-oneplus-acceptance">Verification and OnePlus acceptance<a class="anchor" href="#verification-and-oneplus-acceptance" aria-label="Link to this section">#</a></h2>
 <p>Automated tests use synthetic audio and mocked provider/device APIs. They exercise exact provider headers/payloads, model/voice matching, separate consent and listening gates, authentication/usage reservation, WAV validation, file cleanup, player completion, cancellation, account changes, spoken answer and second-question wiring. They do not audition Ritu/Aparna or emulate OxygenOS audio hardware.</p>
 <p><strong>Fresh recheck — 13 October 2026:</strong> 312 backend tests passed using a fresh disposable local PostgreSQL database, plus a repeated run of 70 AI/personal-key checks against a disposable database built by Alembic; 269 mobile tests, TypeScript and focused backend/mobile lint checks passed. All 50 registered operations are documented, including the three personal-key routes. The request headers, v3/Ritu model/voice pairing and WAV payload were rechecked against the current <a href="https://docs.sarvam.ai/api-reference/text-to-speech/convert">Sarvam REST contract</a> and <a href="https://docs.sarvam.ai/api-reference/authentication">authentication documentation</a>. No further implementation defect was found within this reviewed scope. No real provider synthesis, Render configuration/deployment or new Android release build was performed.</p>
@@ -347,7 +347,7 @@ eas build --profile preview --platform android
 <h2 id="independent-follow-up--13-october-2026">Independent follow-up — 13 October 2026<a class="anchor" href="#independent-follow-up--13-october-2026" aria-label="Link to this section">#</a></h2>
 <p>The fresh review found stale consent dialogs that could act after an account switch. Dialogs now retain the originating session and turn; backgrounding, leaving or changing accounts makes them ineffective. Additive consent rechecks current scopes before updating. Withdrawal also binds the original account across a slow preference save. Speech-pack actions have the same session guard.</p>
 <p>The speech player now records detected partial playback before handling a player error, so optional offline fallback cannot repeat an answer already started online. Voice setup says <strong>Configured · preview to verify</strong> for Sarvam, rather than claiming live key validity or audible output. Large-text provider controls remain individually accessible, and long table units wrap.</p>
-<p>The wider query fixes and reproduced results are in the <a href="AI_VOICE_END_TO_END_REVIEW.html#12-independent-follow-up">independent review</a>. They do not add microphone, order-save or stock-update tools. Native Alba changes remain a separate local experimental investigation, excluded from this published candidate; device, live provider and deployment acceptance are still pending.</p>
+<p>The wider query fixes and reproduced results are in the <a href="AI_VOICE_END_TO_END_REVIEW.html#12-independent-follow-up">independent review</a>. They do not add microphone, order-save or stock-update tools. Native Alba changes remain a separate experimental investigation; device, live provider and deployment acceptance are still pending.</p>
 <h2 id="modular-source-map">Modular source map<a class="anchor" href="#modular-source-map" aria-label="Link to this section">#</a></h2>
 <div class="tablewrap"><table>
 <thead>

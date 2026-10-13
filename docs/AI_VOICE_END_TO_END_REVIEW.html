@@ -90,7 +90,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <tr>
 <td>Ready for <strong>staging testing</strong>?</td>
 <td><strong>Yes, for controlled testing after deployment of this reviewed candidate.</strong></td>
-<td>Independent working-tree checks passed 458 backend tests in both schema modes and 344 mobile tests. The clean publication candidate passes 458 backend and 341 mobile tests (§13). Use an operator-owned Sarvam key for the first staging pilot. Deploy the backend before testing cloud contract 3 in the new APK. Detected unsupported advanced requests must not silently downgrade. Contract 3 adds no route/migration; the earlier Sarvam implementation still requires migration 0011.</td>
+<td>Final follow-up checks pass: 458 backend tests in both isolated schema modes and 344 mobile tests. Use an operator-owned Sarvam key for the first staging pilot. Deploy the backend before testing cloud contract 3 in the new APK. Detected unsupported advanced requests must not silently downgrade. Contract 3 adds no route/migration; the earlier Sarvam implementation still requires migration 0011.</td>
 </tr>
 <tr>
 <td>Ready for <strong>production</strong>?</td>
@@ -529,7 +529,7 @@ Line     = { operation: set | add | remove, target: named | previous, item_query
 <ul>
 <li><strong>On-phone understanding.</strong> "Use on-phone understanding only" turns off Groq for this account without withdrawing server consent. "Withdraw all cloud consent" remains separate.</li>
 <li><strong>Old preferences.</strong> They load with no automatic online opt-in. Hosted voices that were never released (<code>kokoro</code>), Sarvam listening and paused Alba all fall back to the offline defaults (VERIFIED BY REPRODUCED TEST: <code>vitaltrack-mobile/tests/voice-providers.test.cjs</code>).</li>
-<li><strong>Alba</strong> shows as <strong>Paused</strong> in normal builds. A separate local diagnostics/native experiment is excluded from this published candidate; selection stays disabled until it passes the phone checks in <a href="POCKET_TTS_ALBA.html">POCKET_TTS_ALBA.md</a>.</li>
+<li><strong>Alba</strong> shows as <strong>Paused</strong> in normal builds. It can be selected only in the <code>preview-voice-diagnostics</code> test build until it passes the phone checks in <a href="POCKET_TTS_ALBA.html">POCKET_TTS_ALBA.md</a>.</li>
 </ul>
 <h2 id="6-answer-sheet-changes-assistant-ui-only">6. Answer sheet changes (assistant UI only)<a class="anchor" href="#6-answer-sheet-changes-assistant-ui-only" aria-label="Link to this section">#</a></h2>
 <ul>
@@ -911,6 +911,7 @@ Line     = { operation: set | add | remove, target: named | previous, item_query
 <p>Alba selection and native diagnostics are disabled in this candidate. The optional bridge methods are retained for interface compatibility but no diagnostic action is exposed. The earlier 344-test working-tree evidence included three tests for the unpublished diagnostics profile; the clean publication candidate is verified separately before commit/push.</p>
 <p>Build a preview APK from a clean checkout of the pushed commit: EAS includes eligible uncommitted local files, so the original checkout's remaining native experiments would otherwise enter its build.</p>
 <p><strong>Publication verification:</strong> 458 backend tests passed on a fresh migrated PostgreSQL 16 database; 341 mobile tests passed. TypeScript is clean; ESLint has 0 errors and the existing Builder warning. Public-clone documentation checks cover 88 files with 0 problems; 22 diagrams and 35 inline figures pass. No native code, main branch, live database, provider call or deployment was changed by the publication preparation.</p>
+<p><strong>13 October 2026 — separate Alba follow-up publication:</strong> The native Alba repair, the <code>preview-voice-diagnostics</code> profile and their tests were published later in a separate commit on this feature branch. Normal builds still keep Alba paused. This does not change the original publication evidence above. The follow-up passed 344 mobile tests, TypeScript, lint with no errors, Kotlin 2.2.20 compilation against Android/LiteRT/Moonshine API jars with Expo stubs, JVM recovery checks and real LiteRT 2.1.6 host synthesis. Host synthesis required graphics-driver access outside the sandbox; these checks do not prove phone sound, Adreno behaviour or a real Gradle release build.</p>
 <footer>Generated 2026-10-13 by <code>docs/tools/build_docs.py</code> from <code>docs/AI_VOICE_END_TO_END_REVIEW.md</code>.</footer>
 </main>
 </div>

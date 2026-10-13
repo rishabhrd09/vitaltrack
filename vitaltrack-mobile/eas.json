@@ -25,6 +25,13 @@
         "EXPO_PUBLIC_API_URL": "https://staging-api.carekosh.com"
       }
     },
+    "preview-voice-diagnostics": {
+      "extends": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://staging-api.carekosh.com",
+        "EXPO_PUBLIC_VOICE_DIAGNOSTICS": "1"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production",

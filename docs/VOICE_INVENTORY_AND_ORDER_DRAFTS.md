@@ -36,7 +36,7 @@ Sarvam English narration is selectable after backend configuration and separate 
 
 The default remains Android device English TTS. Optional Sarvam narration sends at most 640 characters of verified answer text to the authenticated backend, which owns the private API key, model and English speaker. Default: `bulbul:v3` / `ritu`; optional latest `bulbul:v4-flash` / `aparna_en_companion` after account pricing/access review. The phone waits for complete WAV generation and actual player completion.
 - **Fallback (13 October update):** no provider is switched automatically. Instead there is an [optional offline fallback](SARVAM_ENGLISH_VOICE.md#optional-offline-fallback--13-october-2026), off by default. If the user chose and previewed an offline voice, a Sarvam failure before any audio leads that voice to read the same answer once. It never sends a second request and never switches key source. See the [complete Sarvam setup and live acceptance checklist](SARVAM_ENGLISH_VOICE.md).
-- **Alba:** the retained 209 MB Pocket/Alba pack cannot be downloaded or selected in normal builds. The [separate native investigation](POCKET_TTS_ALBA.md#offline-voice-investigation--13-october-2026) remains local and unpublished; this reviewed release does not enable its diagnostics profile.
+- **Alba:** the retained 209 MB Pocket/Alba pack cannot be downloaded or selected in normal builds. A [repaired implementation](POCKET_TTS_ALBA.md#offline-voice-investigation--13-october-2026) is available only in the `preview-voice-diagnostics` test build until it passes phone acceptance.
 
 ### Two different cloud permissions
 
@@ -340,4 +340,4 @@ Voice setup now has an **Assistant** card (on/off) and three sections: **1 Liste
 
 The **Selected** line states whether the saved choice can run now. For example: "Selected: Sarvam English · online · Needs your consent". A choice that cannot run is never shown as working, and it is never swapped silently.
 
-Choices are saved per account. Old saved choices load with no online opt-in. "Use on-phone understanding only" turns off Groq for this account without withdrawing server consent; "Withdraw all cloud consent" remains separate. Alba shows as Paused in this published normal-preview release; diagnostics/native work remains separate and local.
+Choices are saved per account. Old saved choices load with no online opt-in. "Use on-phone understanding only" turns off Groq for this account without withdrawing server consent; "Withdraw all cloud consent" remains separate. Alba shows as Paused outside the diagnostics test build.

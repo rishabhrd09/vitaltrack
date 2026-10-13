@@ -17,12 +17,17 @@ module.exports = ({ config }) => {
   const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
   const usesCleartextTraffic = isCleartextDevelopmentBuild();
 
-  if (profile === 'preview' && apiUrl && apiUrl !== PREVIEW_API_URL) {
+  if ((profile === 'preview-voice-diagnostics' || (profile === 'preview' && apiUrl)) && apiUrl !== PREVIEW_API_URL) {
     throw new Error('Preview Android builds must use the HTTPS staging API URL.');
   }
 
   if (profile === 'production' && apiUrl && apiUrl !== PRODUCTION_API_URL) {
     throw new Error('Production Android builds must use the HTTPS production API URL.');
+  }
+
+  // The offline-voice diagnostics panel (and paused Alba selection) is for test builds only.
+  if (profile === 'production' && process.env.EXPO_PUBLIC_VOICE_DIAGNOSTICS) {
+    throw new Error('Production builds must not enable offline voice diagnostics.');
   }
 
   return {

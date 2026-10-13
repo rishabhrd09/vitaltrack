@@ -121,6 +121,12 @@ internal class PocketTokenizer(file: File) {
         return out.toIntArray()
     }
 
+    /** Raw piece text, keeping "▁" (a preceding space); used for decimal-point boundary checks. */
+    fun piece(id: Int): String {
+        require(id in 0 until 4000) { "Invalid speech token" }
+        return if (idIsByte[id]) "" else requireNotNull(idToPiece[id])
+    }
+
     /** Inverse of [encode]: pieces joined, "▁" back to space, dummy prefix dropped. */
     fun decode(ids: List<Int>): String {
         val bytes = java.io.ByteArrayOutputStream()
