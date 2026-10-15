@@ -1,5 +1,5 @@
 import type { Capabilities } from '@/services/assistant';
-import { ALBA_SELECTION_ENABLED, CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, SARVAM_SPEECH_ENABLED } from './policy';
+import { ALBA_SELECTION_ENABLED, CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, KOKORO_SELECTION_ENABLED, SARVAM_SPEECH_ENABLED } from './policy';
 import type { OfflineFallbackVoice, Preferences } from './preferences';
 import { sarvamSourceAvailable } from './sarvam';
 
@@ -14,15 +14,22 @@ import { sarvamSourceAvailable } from './sarvam';
 export type Stage = 'listening' | 'understanding' | 'speaking';
 export type ListenerId = 'offline' | 'groq';
 export type InterpreterId = 'local' | 'groq';
-export type SpeakerId = 'device' | 'pocket' | 'sarvam';
+export type SpeakerId = 'device' | 'pocket' | 'kokoro_offline' | 'sarvam';
 export type Readiness = 'ready' | 'checking' | 'needs_download' | 'needs_consent' | 'needs_key' | 'unavailable' | 'paused';
 export type Provider<Id extends string> = { id: Id; label: string; online: boolean; readiness: Readiness; detail: string };
+/** Whether the capability request itself worked; distinct from what the server offers. */
+export type ServerStatus = { state: 'checking' | 'loaded' | 'failed'; reason?: string };
 export type Environment = {
   supported: boolean;
   model: { checked: boolean; ready: boolean };
-  deviceVoice: { ready: boolean };
+  /** `checked: false` while Android text-to-speech is still starting. */
+  deviceVoice: { ready: boolean; checked?: boolean };
   alba: { checked: boolean; ready: boolean; supported: boolean };
+  /** Kokoro test voice (diagnostics builds); `ready` = the chosen voice can speak now. Absent = not offered. */
+  kokoro?: { checked: boolean; ready: boolean; supported: boolean };
   caps: Capabilities;
+  /** Absent means loaded (older callers). */
+  server?: ServerStatus;
 };
 export type Choices = { listening: ListenerId; understanding: InterpreterId; speaking: SpeakerId; fallback: OfflineFallbackVoice | null };
 export type InUse<Id extends string> = { chosen: Id; ready: boolean; reason: string };
@@ -32,12 +39,39 @@ export const READINESS_LABEL: Record<Readiness, string> = {
   needs_key: 'Needs a configured key', unavailable: 'Unavailable', paused: 'Paused',
 };
 
+/**
+ * Online providers first need a capability answer. A pending or failed request is reported as such,
+ * never as "not configured on this server", which only a successful answer can establish.
+ */
+function serverGate(env: Environment): { readiness: Readiness; detail: string } | null {
+  const server = env.server;
+  if (server?.state === 'checking') return { readiness: 'checking', detail: 'Checking the CareKosh server…' };
+  if (server?.state === 'failed') return { readiness: 'unavailable', detail: `Could not reach the CareKosh server${server.reason ? ` (${server.reason})` : ''}. Tap Recheck.` };
+  if (env.caps.consent_mismatch) return { readiness: 'unavailable', detail: 'This app and the CareKosh server use different consent versions. Update the app, then tap Recheck.' };
+  return null;
+}
+
+/** A short, user-facing reason for a failed capability request. */
+export function serverFailureReason(error: unknown, offline = false): string {
+  if (offline) return 'no internet connection';
+  const status = typeof error === 'object' && error !== null && 'status' in error && typeof error.status === 'number' ? error.status : undefined;
+  const data = typeof error === 'object' && error !== null && 'data' in error ? (error as { data?: { originalError?: string } }).data : undefined;
+  if (status === 401 || status === 403) return 'your sign-in needs renewing';
+  if (data?.originalError === 'request_timeout') return 'the server took too long to answer';
+  if (status === 0) return 'the server did not respond; it may be starting up';
+  if (status !== undefined && status >= 500) return `server error ${status}`;
+  if (status !== undefined) return `unexpected answer ${status}`;
+  return 'the server did not respond';
+}
+
 /** The saved choices, read from preferences that loadPreferences has already sanitised. */
 export function choicesFrom(prefs: Preferences): Choices {
   return {
     listening: CLOUD_TRANSCRIPTION_ENABLED && prefs.inputProvider === 'groq' && prefs.audioOptIn ? 'groq' : 'offline',
     understanding: CLOUD_TEXT_ENABLED && prefs.cloud ? 'groq' : 'local',
-    speaking: prefs.speechProvider === 'sarvam' && SARVAM_SPEECH_ENABLED && prefs.sarvamSpeechOptIn ? 'sarvam' : prefs.speechProvider === 'pocket' && ALBA_SELECTION_ENABLED ? 'pocket' : 'device',
+    speaking: prefs.speechProvider === 'sarvam' && SARVAM_SPEECH_ENABLED && prefs.sarvamSpeechOptIn ? 'sarvam'
+      : prefs.speechProvider === 'pocket' && ALBA_SELECTION_ENABLED ? 'pocket'
+      : prefs.speechProvider === 'kokoro_offline' && KOKORO_SELECTION_ENABLED ? 'kokoro_offline' : 'device',
     fallback: prefs.speechFallback ?? null,
   };
 }
@@ -51,9 +85,9 @@ export function listeners(env: Environment): Provider<ListenerId>[] {
   if (!CLOUD_TRANSCRIPTION_ENABLED) return [offline];
   const groq: Provider<ListenerId> = { id: 'groq', label: 'Groq Whisper · online', online: true,
     ...(!env.supported ? { readiness: 'unavailable', detail: 'Recording needs the Android app. You can still type.' }
-      : !env.caps.transcription_providers.includes('groq') ? { readiness: 'unavailable', detail: 'Not configured on this server.' }
+      : serverGate(env) ?? (!env.caps.transcription_providers.includes('groq') ? { readiness: 'unavailable', detail: 'Not configured on this server.' }
       : !env.caps.scopes.includes('groq_audio') ? { readiness: 'needs_consent', detail: 'Uploads the finished recording for its transcript.' }
-      : { readiness: 'ready', detail: 'The finished recording is uploaded; review the words before Send.' }) };
+      : { readiness: 'ready', detail: 'The finished recording is uploaded; review the words before Send.' })) };
   return [offline, groq];
 }
 
@@ -63,17 +97,18 @@ export function interpreters(env: Environment): Provider<InterpreterId>[] {
   if (!CLOUD_TEXT_ENABLED) return [local];
   const contracts = env.caps.interpret_contracts || [];
   const groq: Provider<InterpreterId> = { id: 'groq', label: 'Groq · online', online: true,
-    ...(!env.caps.interpret ? { readiness: 'unavailable', detail: 'Not configured on this server.' }
+    ...(serverGate(env) ?? (!env.caps.interpret ? { readiness: 'unavailable', detail: 'Not configured on this server.' }
       : !env.caps.scopes.includes('groq_text') ? { readiness: 'needs_consent', detail: 'Sends the reviewed question text after Send, only when the phone cannot understand it.' }
       : { readiness: 'ready', detail: contracts.includes(3) ? 'Ready for multi-part requests (contract 3).' : contracts.includes(2)
         ? 'Ready, but this server is older (contract 2): some multi-part requests will ask you to rephrase.'
-        : 'Ready for basic requests only (contract 1). Update the backend for filters and drafts.' }) };
+        : 'Ready for basic requests only (contract 1). Update the backend for filters and drafts.' })) };
   return [local, groq];
 }
 
 export function speakers(env: Environment, prefs: Preferences): Provider<SpeakerId>[] {
   const device: Provider<SpeakerId> = { id: 'device', label: 'Device voice · offline', online: false,
-    ...(env.deviceVoice.ready ? { readiness: 'ready', detail: 'Android text-to-speech on this phone.' }
+    ...(env.deviceVoice.checked === false ? { readiness: 'checking', detail: 'Checking Android text-to-speech…' }
+      : env.deviceVoice.ready ? { readiness: 'ready', detail: 'Android text-to-speech on this phone.' }
       : { readiness: 'unavailable', detail: 'Install an English voice in Android Text-to-speech settings.' }) };
   const pocket: Provider<SpeakerId> = { id: 'pocket', label: 'Alba · offline', online: false,
     ...(!ALBA_SELECTION_ENABLED ? { readiness: 'paused', detail: 'Paused until it passes the phone acceptance checks.' }
@@ -81,15 +116,22 @@ export function speakers(env: Environment, prefs: Preferences): Provider<Speaker
       : !env.alba.checked ? { readiness: 'checking', detail: 'Checking the Alba pack…' }
       : env.alba.ready ? { readiness: 'ready', detail: 'Generated inside CareKosh.' }
       : { readiness: 'needs_download', detail: 'Download the Alba pack once.' }) };
-  if (!SARVAM_SPEECH_ENABLED) return [device, pocket];
+  const kokoroEnv = env.kokoro ?? { checked: true, ready: false, supported: false };
+  const kokoro: Provider<SpeakerId> = { id: 'kokoro_offline', label: 'Kokoro · offline test', online: false,
+    ...(!kokoroEnv.supported ? { readiness: 'unavailable', detail: 'Needs the latest Android test APK.' }
+      : !kokoroEnv.checked ? { readiness: 'checking', detail: 'Checking the Kokoro files…' }
+      : kokoroEnv.ready ? { readiness: 'ready', detail: 'Generated inside CareKosh. Test voice for comparison.' }
+      : { readiness: 'needs_download', detail: 'Download the Kokoro test voice once.' }) };
+  const offline = KOKORO_SELECTION_ENABLED ? [device, pocket, kokoro] : [device, pocket];
+  if (!SARVAM_SPEECH_ENABLED) return offline;
   const source = prefs.sarvamKeySource ?? 'application';
   const sarvam: Provider<SpeakerId> = { id: 'sarvam', label: 'Sarvam English · online', online: true,
-    ...(!sarvamSourceAvailable(env.caps, source) ? source === 'personal'
+    ...(serverGate(env) ?? (!sarvamSourceAvailable(env.caps, source) ? source === 'personal'
         ? { readiness: 'needs_key', detail: 'Your personal key is missing or cannot be used. Shared credits are never used instead.' }
         : { readiness: 'unavailable', detail: 'The CareKosh Sarvam account is not configured on this server.' }
       : !env.caps.scopes.includes('sarvam_speech') ? { readiness: 'needs_consent', detail: 'Sends the short answer text for speech.' }
-      : { readiness: 'ready', detail: (source === 'personal' ? 'Uses your personal key.' : 'Uses the CareKosh Sarvam account.') + ' Provider validity and credits are checked when speech is requested.' }) };
-  return [device, pocket, sarvam];
+      : { readiness: 'ready', detail: (source === 'personal' ? 'Uses your personal key.' : 'Uses the CareKosh Sarvam account.') + ' Provider validity and credits are checked when speech is requested.' })) };
+  return [...offline, sarvam];
 }
 
 /** The chosen provider and whether it can run now; a blocked choice says why instead of pretending to work. */

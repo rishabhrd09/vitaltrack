@@ -222,9 +222,9 @@ Exercise: after each step, find the handler in `vitaltrack-backend/app/api/v1/` 
 **The order in this codebase** (verified in `app/main.py`; Starlette inserts each new middleware at the front, so the last one added is the outermost):
 
 1. Starlette `ServerErrorMiddleware` (always outermost; runs the generic 500 handler).
-2. `AIBodyLimit` (`app/services/ai_body_limit.py`) reads the **whole body** before anything else: ≤ 2 MB for normal routes, ≤ 12 KB for AI JSON, ≤ 900 KB for `/ai/transcribe`; AI routes without a bearer header get 401 before the body is read; AI uploads must finish in 10 s (408).
+2. `AIBodyLimit` reads the **whole body** before parsing: ≤2 MB normally, ≤12 KB for AI JSON, ≤900 KB for `/ai/transcribe`. AI requests without a bearer header get 401 before reading the body. Transcription uploads get 30 s, AI JSON 10 s; an expired upload gets 408. Early refusals include security headers and a sanitized request ID.
 3. `add_security_headers` (nosniff, frame deny, referrer policy, `Cache-Control: no-store`, HSTS in production).
-4. `add_request_id` (echo `X-Request-ID` or create one; it is **not** written into logs).
+4. `add_request_id` preserves a short ASCII `X-Request-ID` containing letters, numbers, dot, underscore, colon or hyphen; controls, whitespace or oversized input get a generated ID. The same validator serves early body-limit refusals. This middleware does **not** write IDs into logs.
 5. `CORSMiddleware`.
 6. Starlette `ExceptionMiddleware` (validation, `IntegrityError`, rate-limit and `HTTPException` handlers), then the router.
 
@@ -233,7 +233,7 @@ Then, inside FastAPI 0.115.6 (read in the framework source; the SQL counts in st
 1. **Body parsing.** If the route takes a JSON body, it is parsed first. Malformed JSON → 422 `json_invalid` before any dependency runs: no token check, no SQL.
 2. **Dependencies** (`Depends`) run in order. `get_db` creates one `AsyncSession` (pool: 5 connections plus 10 overflow per worker; no SQL yet). `get_current_user` checks the bearer token (a bad token → 401 with no SQL), then loads the user with one `SELECT`.
 3. **Validation.** Path, query and body fields are validated. A failure → 422, after the user `SELECT` has already run; the handler never runs.
-4. **Handler.** It executes SQL through the session. On the five rate-limited auth routes the limit is checked here, after validation. Every write handler calls `await db.commit()` itself; any SQL after that (usually `db.refresh(...)`) starts a new transaction.
+4. **Handler.** It executes SQL through the session. Decorated rate limits are checked after dependencies and validation. AI limits use the validated account ID, rather than forwarded headers, and remain per route/per worker; PostgreSQL separately enforces shared AI budgets/concurrency. Every write handler commits explicitly; later SQL starts a new transaction.
 5. **Response.** The return value is validated against `response_model` and serialised with field aliases (camelCase).
 6. **Clean-up.** `get_db` (a dependency with `yield`) commits whatever is still open, rolls back if an exception is propagating, and closes the session. A 422 leaves it normally. Then the response is sent; `BackgroundTasks` (emails) run after that.
 

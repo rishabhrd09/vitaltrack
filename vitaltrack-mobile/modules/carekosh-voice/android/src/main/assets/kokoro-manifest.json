@@ -1,0 +1,76 @@
+{
+  "repo": "moonshine-ai/moonshine-voice-assets",
+  "revision": "0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae",
+  "library": "ai.moonshine:moonshine-voice:0.1.5",
+  "language": "en_us",
+  "assets": [
+    {
+      "path": "kokoro/config.json",
+      "bytes": 2351,
+      "sha256": "5abb01e2403b072bf03d04fde160443e209d7a0dad49a423be15196b9b43c17f"
+    },
+    {
+      "path": "kokoro/prosody.model.ort",
+      "bytes": 12376656,
+      "sha256": "e4f83bf18d786ab8c9cd2ad21e326021b9d7d5fe776458755e075c8574ff876a"
+    },
+    {
+      "path": "kokoro/prosody.weights.ort",
+      "bytes": 16480288,
+      "sha256": "7ead0eed0498a6b8f7abebb7c9bc2867293c5d7cbb71d2bdf442b7ba48ae77e7"
+    },
+    {
+      "path": "kokoro/decoder.model.ort",
+      "bytes": 39257640,
+      "sha256": "1deaf4c42124a9034e325cf6057ebe58f80f429af68401c573c519a3dd7e56bd"
+    },
+    {
+      "path": "kokoro/decoder.weights.ort",
+      "bytes": 15299512,
+      "sha256": "80272c16d48026641ee0971252be2a3e24ae0bea75a35ad1a822c124cb3a266e"
+    },
+    {
+      "path": "en_us/dict_filtered_heteronyms.tsv",
+      "bytes": 2900453,
+      "sha256": "8fb0fa0e3ce1a74b864f03c06ace015257660fa2116c6157d11061f4e35bb6b7"
+    },
+    {
+      "path": "en_us/g2p-config.json",
+      "bytes": 60,
+      "sha256": "f10e652b28c49edd90a94ceb139b94d2368de5814650d81289fcb985fe1ca0f5"
+    },
+    {
+      "path": "en_us/oov/model.ort",
+      "bytes": 22143488,
+      "sha256": "ef8d07a0577a07617fabf5282d80d680e4e17ad07a763e7e3748417f94554d94"
+    },
+    {
+      "path": "en_us/oov/onnx-config.json",
+      "bytes": 4641,
+      "sha256": "60a7cf2592ae66702f56e4368a8614e72235eef89205de96f4cf6bace96c5692"
+    }
+  ],
+  "voices": [
+    {
+      "id": "af_heart",
+      "label": "Heart",
+      "path": "kokoro/voices/af_heart.kokorovoice",
+      "bytes": 522252,
+      "sha256": "908e14de5b4709da55562129164e618f5d135fcc34dac419e0c3de5189b72d2c"
+    },
+    {
+      "id": "af_bella",
+      "label": "Bella",
+      "path": "kokoro/voices/af_bella.kokorovoice",
+      "bytes": 522252,
+      "sha256": "2adf09d23249eb9bb9be45e1c9ef65f7f292240e90ad7ec4dc7887481b21e216"
+    },
+    {
+      "id": "bf_emma",
+      "label": "Emma",
+      "path": "kokoro/voices/bf_emma.kokorovoice",
+      "bytes": 522252,
+      "sha256": "f956baef58dfb4ef837e805d5954bdc5074131260590220265bc3c2c9f389eea"
+    }
+  ]
+}

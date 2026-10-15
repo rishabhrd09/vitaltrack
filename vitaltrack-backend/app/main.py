@@ -6,7 +6,6 @@ FastAPI application with middleware, CORS, rate limiting, and lifecycle events
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from uuid import uuid4
 
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -25,6 +24,7 @@ from app.core.database import create_tables, dispose_engine, get_db_context
 from app.core.logging import configure_safe_logging, scrub_telemetry_event
 from app.schemas import HealthCheck
 from app.utils.rate_limiter import limiter
+from app.utils.request_ids import safe_request_id
 
 import logging
 
@@ -120,7 +120,7 @@ def create_app() -> FastAPI:
             allow_credentials=False,  # MUST be False with wildcard
             allow_methods=["*"],
             allow_headers=["*"],
-            expose_headers=["X-Total-Count", "X-Page", "X-Page-Size"],
+            expose_headers=["X-Total-Count", "X-Page", "X-Page-Size", "Retry-After", "X-AI-Error", "X-Request-ID"],
         )
     else:
         # Production mode: Specific origins with credentials
@@ -131,7 +131,7 @@ def create_app() -> FastAPI:
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
-            expose_headers=["X-Total-Count", "X-Page", "X-Page-Size"],
+            expose_headers=["X-Total-Count", "X-Page", "X-Page-Size", "Retry-After", "X-AI-Error", "X-Request-ID"],
         )
     
     # =========================================================================
@@ -139,7 +139,7 @@ def create_app() -> FastAPI:
     # =========================================================================
     @app.middleware("http")
     async def add_request_id(request: Request, call_next):
-        request_id = request.headers.get("X-Request-ID") or uuid4().hex
+        request_id = safe_request_id(request.headers.get("X-Request-ID"))
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response

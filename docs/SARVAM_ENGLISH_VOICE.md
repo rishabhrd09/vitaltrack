@@ -67,6 +67,16 @@ python3 -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token
 | `AI_SARVAM_TRANSCRIBE_ENABLED` | `false` |
 | `SARVAM_API_KEY` | Operator's own key for the initial pilot; unset for an authorised personal-key-only deployment |
 
+**Budget for a test day (15 October 2026).** The defaults allow 50 AI requests and 100,000 accounting units per account per day. For staging tests, also set:
+
+| Variable | Suggested staging value | What it allows |
+|---|---|---|
+| `AI_USER_DAILY_BUDGET_MICROUSD` | `500000` | about 40 Sarvam replies of 300 characters, plus understanding |
+| `AI_USER_DAILY_REQUESTS` | `200` | room for previews and follow-up questions |
+| `AI_GLOBAL_DAILY_BUDGET_MICROUSD` | `2000000` | at least the per-account value for every tester |
+
+These are CareKosh's own limits, not Sarvam's billing; Sarvam credits still apply. See [cost accounting](#cost-accounting--15-october-2026).
+
 If personal storage is enabled, keep the encryption master key in a password manager as well. Use separate encryption keys and provider accounts for staging and production. Do not replace your JWT `SECRET_KEY`, `DATABASE_URL`, Groq key or other existing settings. Losing the encryption master key makes saved personal credentials unreadable.
 
 Before enabling `AI_SARVAM_DATA_CONTROLS_REVIEWED`, configure the Sarvam workspace's **Model APIs retention override to 0 days**. Separately disable training in **Organisation → General**. These require owner access, do not change historical retention retroactively and do not establish a personal-key user's workspace policy. Review the production consent disclosure for retention and international transfers. [Retention controls](https://docs.sarvam.ai/api/platform/data-retention), [training control](https://docs.sarvam.ai/api/platform/faq).
@@ -128,6 +138,14 @@ Defaults remain device speech and no automatic reading. Choosing Sarvam does not
   - Busy returns 429 with `Retry-After`.
   - A rejected request format returns 502.
   - Only the status, Sarvam's error code and `request_id` are logged; never the key or the answer text. See the [review against Sarvam's documentation](#review-against-sarvams-documentation--13-october-2026).
+- **Since 15 October 2026, limits explain themselves.**
+  - **Per kind, not per account.** Each account may have one understanding, one speech and one transcription request in flight at once. Earlier (13 October 2026), any one request blocked the others, so a question asked while an answer was being spoken was refused.
+  - **Cancel reaches the provider.** If the phone disconnects, interpretation, narration and transcription work are cancelled. Transcription cancellation also stops normalization and deletes its temporary source file. A request already accepted by a provider may still be billed; its full reservation stays counted.
+  - **Busy.** A long wait for the shared budget lock answers 503 "AI is busy", with `Retry-After: 5`.
+  - **Daily limits** say they reset at 00:00 UTC (05:30 in India). `Retry-After` counts the seconds until then; earlier it said "3600".
+  - **On the phone.** A 429 keeps the server's wording. A wait of up to 90 s is shown in seconds, a longer one as a local clock time. Understanding and listening retry once only for a 429 marked `X-AI-Error: busy` with a delay of at most 10 s. Daily limits and route rate limits never automatically retry. Speech never automatically retries.
+  - **Rate limits.** Soft counters follow the authenticated account, not forwarded IP headers, so clinic Wi-Fi users do not share one AI counter. Each route permits 30 calls/minute, capabilities 60; key routes permit 30 reads, 10 saves and 10 deletes. These counters are per route and per server process: two workers can admit twice a single-worker limit. They are not a distributed abuse-control guarantee. Daily request/budget limits and global/per-kind concurrency are separately enforced in PostgreSQL across workers. Public-scale rollout still needs a deliberate shared limiter/edge policy.
+  - **Timeouts.** Each AI attempt has a 70 s phone deadline. A short busy retry can make the whole interaction longer. A timeout says the server took too long and may be starting up, not "Request cancelled". Provider, normalization and upload limits do not certify Render's proxy deadline or cold-start latency.
 - Provider/quota/timeout, corrupt/silent audio and playback failures are visible while the factual answer remains on screen. Selecting device voice requires the user's choice. The native Check audio output tone tests a separate native playback path; it does not certify Sarvam's generated clip or Expo player.
 - If the user has turned on the [optional offline fallback](#optional-offline-fallback--13-october-2026), a Sarvam failure that happens before any Sarvam audio played is followed by the chosen offline voice reading the same answer once. Nothing else changes.
 
@@ -189,13 +207,27 @@ Source: `vitaltrack-mobile/features/assistant/narration.ts`, wired in `component
 
 Each personal key bills its own Sarvam account. Multiple keys from the same Sarvam account share that account's credits; they do not each grant a new free balance. Sarvam is **not unlimited free TTS**. Current documentation grants new accounts ₹100 in introductory API credits. Published v3 pricing is ₹30 per 10,000 characters: a 300-character reply is about ₹0.90, a 500-character reply ₹1.50, and 640 characters ₹1.92 before any applicable adjustments/taxes. ₹100 could cover roughly 111 replies at 300 characters if those credits are available and used only for speech. Account balances, eligibility and v4 pricing have not been checked. [Pricing](https://docs.sarvam.ai/api/getting-started/pricing), [credits and rate limits](https://docs.sarvam.ai/api/getting-started/ratelimits).
 
-Personal and application sources share the existing CareKosh quotas across all external AI operations: default 50 requests/account/day, 500 globally/day, 100,000 micro-USD account/day and 1,000,000 globally/day. Sarvam speech reserves 25,000 accounting units per attempt (20,000 before 13 October 2026). So the default account allowance admits at most four speech attempts if no other AI usage consumes it. Preview also counts. This internal reservation is not a live INR/USD calculation, actual invoice or provider billing cap; check both application usage limits and Sarvam credits before changing limits. Do not promise that the credit pool alone determines how many answers the app allows. Only one in-flight external request per account is allowed; there is no unbounded billable queue.
+Personal and application sources share the existing CareKosh quotas across all external AI operations: default 50 requests/account/day, 500 globally/day, 100,000 micro-USD account/day and 1,000,000 globally/day. Sarvam speech reserves 25,000 accounting units per attempt (20,000 before 13 October 2026). Earlier (13 October 2026), every attempt was charged its whole reservation, so the default account allowance admitted at most four speech attempts. Preview also counts. This internal accounting is not a live INR/USD calculation, actual invoice or provider billing cap; check both application usage limits and Sarvam credits before changing limits. Do not promise that the credit pool alone determines how many answers the app allows. Earlier, only one in-flight external request per account was allowed; since 15 October 2026 it is one per kind (understanding, speech, transcription). There is no unbounded billable queue.
+
+### Cost accounting — 15 October 2026
+
+The reservation still guards each call. After a **successful** call, the server lowers the charge to an estimate from published prices, never above the reservation. A failed or cancelled call keeps the whole reservation, because the provider may still bill it.
+
+| Call | Estimate | Price source (checked 15 October 2026) |
+|---|---|---|
+| Sarvam speech (`bulbul:v3`) | 38 micro-USD per character (`AI_SARVAM_SPEAK_MICROUSD_PER_CHAR`) | ₹30 per 10,000 characters is about 34 micro-USD per character at ₹88/USD; 38 adds margin. Taxes are not included. [Sarvam pricing](https://docs.sarvam.ai/api/getting-started/pricing) |
+| Groq understanding (`openai/gpt-oss-20b`) | 75 per 1,000 input tokens and 300 per 1,000 output tokens | USD 0.075 and 0.30 per million tokens. [Groq models](https://console.groq.com/docs/models) |
+| Groq listening (`whisper-large-v3`) | 31 micro-USD per second, at least 10 s | USD 0.111 per audio hour; Groq bills at least 10 s |
+
+**Examples.** A successful 300-character reply settles at 11,400 units; a 150-character reply settles at 5,700. However, the full 25,000-unit reservation must fit **before each call**. With the default 100,000-unit day and no other AI usage, this permits **seven** 300-character replies or **fourteen** 150-character replies. A remaining balance below the reservation cannot start another call. For identical successful calls, the count is `floor((budget - reservation) / settled_cost) + 1` when the first reservation fits; daily request/global limits can reduce it. One Groq understanding call of 1,500 input and 300 output tokens settles at 203 units. Failures, previews and other AI use consume the same allowances.
+
+Source: `estimated_cost` and `settle` in `vitaltrack-backend/app/services/ai_guard.py`; settings in `app/core/config.py`. Tests: the V-23 tests in `tests/test_ai.py`.
 
 Sarvam states that API output made using consumed account credits, including introductory credits, can be shipped commercially subject to its terms. This does not grant rights to its model weights or make the service an offline open-source voice. [Commercial licensing](https://docs.sarvam.ai/api/getting-started/commercial-licensing).
 
 ## Can Kokoro be free instead?
 
-Yes: Kokoro-82M weights are Apache-2.0 licensed, and its published English inference pipeline is a possible self-hosted alternative without a third-party per-answer speech API fee. Compute, storage, power and hosting still have costs. Embedding an Android version needs measured phone inference/playback and review of the exact runtime, phonemizer and voice assets. The model's licence does not automatically cover every dependency; eSpeak-related components require separate review. Installing another Android app is not a prerequisite for an embedded implementation, but that implementation is not completed here. [Kokoro model card](https://huggingface.co/hexgrad/Kokoro-82M), [Misaki phonemizer](https://github.com/hexgrad/misaki).
+Kokoro-82M weights are Apache-2.0 licensed. The current working tree includes an embedded **diagnostics-only** English experiment through Moonshine 0.1.5, without another Android app or eSpeak. It is not enabled for normal users: phone inference/playback, item pronunciation and the OOV pronunciation-model rights still need acceptance. The weight licence does not automatically cover every dependency. A hosted alternative also has compute/storage costs even without a third-party per-answer speech fee. See [the offline experiment](POCKET_TTS_ALBA.md#kokoro-test-voice-v-41) and the [Kokoro model card](https://huggingface.co/hexgrad/Kokoro-82M).
 
 For an **embedded** (on-phone) Kokoro, the 13 October evaluation picked one GPL-free route with no new native library: the `TextToSpeech` API in the already-shipped Moonshine 0.1.5 library. It is plan B if Alba fails on the phone; see [the evaluation](POCKET_TTS_ALBA.md#embedded-kokoro-evaluation-and-plan-b). The repository already retains a disabled hosted Kokoro worker (`bf_emma`, ONNX) and backend adapter. That hosted worker is not offline phone inference. Its deployment and real synthesis are unverified. Sarvam is the current optional online integration; switching to Kokoro later requires its own service/device acceptance, UI enablement and consent work. See [the retained Kokoro worker guide](../voice-service/README.kokoro.md).
 

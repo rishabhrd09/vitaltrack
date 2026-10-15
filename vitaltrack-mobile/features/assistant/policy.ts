@@ -18,3 +18,8 @@ export const SARVAM_SPEECH_ENABLED = true;
 const voiceDiagnosticsFlag = typeof process === 'undefined' ? undefined : process.env.EXPO_PUBLIC_VOICE_DIAGNOSTICS;
 export const VOICE_DIAGNOSTICS_ENABLED = voiceDiagnosticsFlag === '1';
 export const ALBA_SELECTION_ENABLED = VOICE_DIAGNOSTICS_ENABLED;
+/**
+ * Kokoro-82M through Moonshine is an offline TEST voice: offered, downloaded and played only in the
+ * diagnostics build until it passes the phone release criteria. Normal builds constant-fold it off.
+ */
+export const KOKORO_SELECTION_ENABLED = VOICE_DIAGNOSTICS_ENABLED;

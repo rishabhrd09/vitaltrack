@@ -20,8 +20,10 @@ It also records what was changed on 13 October 2026, the evidence for each chang
 
 | Question | Decision | Why |
 |---|---|---|
-| Ready for **staging testing**? | **Yes, for controlled testing after deployment of this reviewed candidate.** | Final follow-up checks pass: 458 backend tests in both isolated schema modes and 344 mobile tests. Use an operator-owned Sarvam key for the first staging pilot. Deploy the backend before testing cloud contract 3 in the new APK. Detected unsupported advanced requests must not silently downgrade. Contract 3 adds no route/migration; the earlier Sarvam implementation still requires migration 0011. |
+| Ready for **staging testing**? | **Use the current follow-up results in §15 before deployment.** | Earlier 458-backend/344-mobile results describe the 13 October candidate. The 15 October implementation and independent-review repairs remain uncommitted. Use an operator-owned Sarvam key for the pilot; deploy the reviewed backend before testing its cloud changes. Contract 3 adds no route/migration; the earlier Sarvam implementation still requires migration 0011. |
 | Ready for **production**? | **No, pending live acceptance and operator setup.** | Verify the new APK on the OnePlus, real Groq interpretation and real Sarvam decoding/playback, plus the production deployment/privacy controls. Public third-party personal-key use needs a permitted provider arrangement (§4.3). Alba remains a separate experimental gate; keeping it paused does not block verified device/Sarvam speech. |
+
+**Status note (15 October 2026).** The first implementation of V-8 … V-45 is recorded in [§14](#14-october-follow-up-audit-and-fixes). Independent verification then found regressions despite passing suites. The repairs, remaining limits and fresh checks are in [§15](#15-independent-verification-follow-up). Nothing has been committed, pushed or deployed. Alba and Kokoro remain diagnostics-only; Sarvam still needs the operator's staging configuration.
 
 ## 1. Trace map
 
@@ -353,6 +355,13 @@ Other changes:
 | Sarvam real audio, WAV format, voice quality | §4.4 step 3 | NOT VERIFIED |
 | Nord 4: overlay layout, TalkBack labels, large text, partial words, speaker playback | new APK on the phone | NOT VERIFIED |
 | Alba device acceptance | [POCKET_TTS_ALBA.md](POCKET_TTS_ALBA.md) | NOT VERIFIED (Alba stays paused) |
+| *Added 15 October 2026 (§14):* clarifications, proposals and draft review are read aloud | inline V-9 tests | VERIFIED BY REPRODUCED TEST |
+| A failed or pending server check is named, never shown as "not configured" | inline and `voice-providers.test.cjs` V-10 tests | VERIFIED BY REPRODUCED TEST |
+| Busy, daily-limit and timeout answers explain the wait; successful AI calls are charged their estimate | `assistant-api-errors.test.cjs`; backend V-23 … V-26 tests | VERIFIED BY REPRODUCED TEST |
+| Groq plans that drop or change a condition are rejected (contracts 1, 2 and 3) | `test_ai_plan_grounding.py` V-21/V-22 cases | VERIFIED BY REPRODUCED TEST |
+| Groq receives only documented schema keywords; the server still enforces the rest | `test_voice_plans.py` V-42 tests | VERIFIED BY REPRODUCED TEST |
+| Sarvam can be selected and previewed on staging | Render settings, then Recheck and one Preview (§14.6) | NOT VERIFIED |
+| Alba voices, "Alba (updated)" and the Kokoro test voice on the Nord 4 | diagnostics APK on the phone (§14.6) | NOT VERIFIED |
 
 ## 9. Initial verification run (13 October 2026)
 
@@ -449,3 +458,166 @@ Build a preview APK from a clean checkout of the pushed commit: EAS includes eli
 **Publication verification:** 458 backend tests passed on a fresh migrated PostgreSQL 16 database; 341 mobile tests passed. TypeScript is clean; ESLint has 0 errors and the existing Builder warning. Public-clone documentation checks cover 88 files with 0 problems; 22 diagrams and 35 inline figures pass. No native code, main branch, live database, provider call or deployment was changed by the publication preparation.
 
 **13 October 2026 — separate Alba follow-up publication:** The native Alba repair, the `preview-voice-diagnostics` profile and their tests were published later in a separate commit on this feature branch. Normal builds still keep Alba paused. This does not change the original publication evidence above. The follow-up passed 344 mobile tests, TypeScript, lint with no errors, Kotlin 2.2.20 compilation against Android/LiteRT/Moonshine API jars with Expo stubs, JVM recovery checks and real LiteRT 2.1.6 host synthesis. Host synthesis required graphics-driver access outside the sandbox; these checks do not prove phone sound, Adreno behaviour or a real Gradle release build.
+
+## 14. October follow-up audit and fixes
+
+**Why.** The owner tested the APK built from `398bb29` and reported two problems. "Sarvam English · online" could not be selected, and Alba was audible but did not sound good. The first 15 October implementation addressed V-8 … V-45, but independent verification found further defects. The table below preserves that initial audit; §15 supersedes its blanket “Fixed” claims. Nothing was committed, pushed or deployed. No paid provider call was made.
+
+**Evidence labels** are those listed at the top of this review. "Host" means a desktop computer, not the phone.
+
+### 14.1 Why Sarvam could not be selected
+
+Two causes looked identical on the phone.
+
+- **The staging server** may not have Sarvam switched on. That needs the Render settings in [SARVAM_ENGLISH_VOICE.md](SARVAM_ENGLISH_VOICE.md#exact-render-steps-for-staging). This is an owner step.
+- **The app (V-10).** When the capability request was still running or had failed, the Sarvam row said "Not configured on this server". A Render cold start or a weak signal produced the same message as a missing key.
+
+Current (15 October 2026): the row says "Checking the CareKosh server…" or "Could not reach the CareKosh server (reason). Tap Recheck." Only a successful answer can say "not configured". A consent-version mismatch is named as well.
+
+### 14.2 All items
+
+Severity is from the audit. Test names are abbreviated; each test title starts with its V-number.
+
+| # | Finding | Severity | Fix (current behaviour) | Test | Status |
+|---|---|---|---|---|---|
+| V-8 | A reply reached by tapping during speech was never spoken. The speaking state was read from a stale value. | Major | A ref guards `playAnswer`; the old speech stops first. | inline V-8 | Fixed |
+| V-9 | Clarifications, proposals and draft review were shown but never spoken. | Major (eyes-free) | `Answer.spoken` holds the spoken form: the question plus up to three choices. Proposals, merges and review are read aloud. | inline V-9 (2) | Fixed |
+| V-10 | A failed or pending server check read "Not configured on this server". | Major | `ServerStatus` (checking, failed, loaded) with a short reason and Recheck. The device voice shows "checking". | inline V-10 (2); `voice-providers.test.cjs` (3) | Fixed |
+| V-11 | A 429 lost the server's wording and showed a wrong wait. | Minor | The server text is kept. `Retry-After` may be seconds or a date: up to 90 s it shows seconds, otherwise a clock time. Understanding and listening retry once after a short busy answer; speech never retries. | `assistant-api-errors.test.cjs` (4) | Fixed |
+| V-12 | AI timeouts said "Request cancelled". | Minor | A 70 s deadline; the message says the server took too long and may be starting up. | `assistant-api-errors.test.cjs` | Fixed |
+| V-13 | Refresh while offline removed the answer. | Minor | The answer stays; a failed refresh marks it "Last known". | inline V-13 | Fixed |
+| V-14 | The offline-fallback switch could say On with nothing usable saved. | Minor | The switch shows only a saved choice. Choosing is a separate, previewed step, and a voice that cannot play is flagged. | inline V-14 | Fixed |
+| V-15 | Removing the last draft line left an empty "ready" draft. | Minor | The draft is cleared: "The draft is now empty. Nothing was saved." | inline V-15 | Fixed |
+| V-16 | The answer sheet was too short for choices at large text sizes. | Minor | Its height counts choices, options and proposal buttons; the text scale counted is capped at 2. | inline V-16 | Fixed |
+| V-17 | TalkBack gaps. | Major (TalkBack) | Answers that are not read aloud are announced. Expanded row details are in labels. The dock is quiet while recording; the transcript is announced. | inline V-17 | Fixed; phone NOT VERIFIED |
+| V-18 | A follow-up could loop on the same clarification. | Minor | One choice resolves the whole follow-up chain, including Refresh and Export. | inline V-18 | Fixed |
+| V-19 | Groq listening looked ready offline, and a failed upload lost the recording. | Minor | The take is kept: "Transcribe on this phone instead" or "Discard recording". | inline V-19 | Fixed |
+| V-20 | Spoken text was not prepared for speech. | Major (Alba) | `speechFriendly` turns units, symbols, ₹, %, fractions and medical sizes into words. An optional pronunciation map exists. The 640-character limit applies after this. | `speech-text.test.cjs` (3); inline V-20 | Fixed |
+| V-21 | Contract-3 checks accepted Groq plans that dropped or changed what was asked. | Major | `require_complete_plan` accounts for every word, number and cue. Operation cues are checked per clause; a follow-up needs a reference. | `test_ai_plan_grounding.py` V-21 cases | Fixed |
+| V-22 | Contracts 1 and 2 (older APKs) had no condition grounding. | Minor | `require_v1_conditions` and `require_v2_conditions`. | `test_ai_plan_grounding.py` V-22 cases | Fixed |
+| V-23 | Usage was charged at the whole reservation: about 4 Sarvam replies a day. | Major (with Sarvam) | Success settles at an estimate from published prices: Sarvam per character, Groq per token, Whisper per second. A failure keeps the reservation. | `test_ai.py` V-23 (3) | Fixed |
+| V-24 | Daily-limit 429s said "wait 3600 seconds". | Minor | The reset is named (00:00 UTC); `Retry-After` counts to it. | `test_ai.py` V-24 | Fixed |
+| V-25 | One request per user blocked quick follow-ups; a cancelled request kept running. | Minor | One in-flight call per kind (interpret, speak, transcribe). A disconnected phone cancels the provider call. | `test_ai.py` V-25 (2) | Fixed |
+| V-26 | AI request hardening. | Minor | Soft per-account/route/worker limits; budget-lock wait gives 503/`Retry-After: 5`. Consent precedes audio inspection, decoding and provider upload; FastAPI parses multipart framing earlier. Uploads get 30 s; refusals carry security headers and a sanitized request ID. | `test_ai.py`; review regression tests | See §15; optional index migration skipped (pilot scale) |
+| V-27 | The consent version was defined in two places. | Minor (latent) | One server constant; a test compares it with the phone. | `unit_tests/test_consent_version.py` | Fixed |
+| V-28 | Any audio-focus loss aborted Alba and discarded the warm engine. | Major | A short notification ducks the voice (gain 0.3). A real interruption stops calmly and keeps the engine. | JVM focus and engine policy; inline V-32 | Fixed; phone NOT VERIFIED |
+| V-29 | Unplugging headphones kept talking on the loudspeaker. | Minor | "Audio becoming noisy" stops playback. | code review | Fixed; phone NOT VERIFIED |
+| V-30 | Backgrounding silently cancelled downloads and on-phone recognition. | Major | Downloads stop only on their own Cancel. Recognition says it stopped. Voice engines are released after 30 s hidden. | inline V-30 (2) | Fixed |
+| V-31 | Download robustness. | Minor | Resumable HTTP Range downloads keep finished parts; size and SHA-256 are checked after. Free space counts only missing bytes. | JVM resumable-download checks | Fixed |
+| V-32 | Errors were classified and worded inconsistently. | Minor | Stable native codes (`VoiceErrors.kt`). A cancel is silent; an interruption is neutral; suffixes are not doubled. | inline V-32; JVM | Fixed |
+| V-33 | The speech pack was re-hashed on every voice turn. | Minor | The verified file stamp is kept per process and forgotten after a load failure. | compile only | Fixed |
+| V-34 | A reply seemed to hang about 1.5 s after its last word. | Minor | The audio track drains, then stops at the end. | JVM streaming-drain checks | Fixed |
+| V-35 | Nothing responded to memory pressure. | Minor | Low-memory and trim callbacks release voice engines. Low-memory phones see a warning before a download. | compile only | Fixed; phone NOT VERIFIED |
+| V-36 | Alba chunks were too short and missed upstream's end-punctuation fix. | Major (quality) | 50-token chunks (the first up to 32); sentence, then comma, then word splits. Pocket TTS PR #296 punctuation and trimmed joins. | JVM chunking checks; host check | Fixed |
+| V-37 | Relaxed and Brisk time-stretched Alba, and the pace control was hidden. | Major when pace ≠ 1 | Pace changes the pauses only; no Android speed change. The control is shown with that note. | inline V-37; JVM pauses | Fixed |
+| V-38 | Only one Alba voice. | Major (quality), cheap | Charles, Eve, Mary (VCTK, CC BY 4.0), Javert and Marius (CC0), diagnostics builds only. | inline V-38; manifest test | Fixed |
+| V-39 | Alba was quiet (about −20 dBFS). | Optional | Evened towards −18 dBFS, at most +4 dB, peak at most 0.9. | JVM loudness; host RMS −18.0 dBFS | Fixed |
+| V-40 | Alba's voice state comes from a clip cut mid-word. | Major (quality) | "Alba (updated)": Kyutai's corrected state, packed on the phone and checked by SHA-256 (§14.3). The default stays Alba. | JVM packing; inline V-40; host comparison | Fixed; phone comparison pending |
+| V-41 | No calmer offline voice. | Feature | Kokoro-82M test voice through Moonshine 0.1.5, diagnostics builds only (§14.4). | inline and policy V-41 (4); JVM; host check | Fixed; phone release criteria pending |
+| V-42 | The strict schema sent to Groq used keywords Groq does not document. | Major risk | Groq gets a portable schema; the server still enforces the dropped rules. Groq errors are mapped and logged without content. | `test_voice_plans.py` V-42 (3) | Fixed |
+| V-43 | Some Sarvam authentication failures showed a generic error. | Minor | 401, 403 and `authentication_error` name the rejected key. | `test_sarvam_speech.py` V-43 | Fixed |
+| V-44 | The disabled Sarvam transcription path sent `mode` with `saaras:v4`. | Minor (latent) | `mode` is sent only for `saaras:v3`. | `test_sarvam_speech.py` V-44 | Fixed |
+| V-45 | A new HTTPS client for every provider call. | Optional | Not changed: per-call clients keep test transport injection and avoid reuse across event loops. | — | Skipped |
+
+### 14.3 Alba sound quality (host evidence)
+
+The host check runs CareKosh's own Kotlin synthesizer on real LiteRT 2.1.6 numerics (see [POCKET_TTS_ALBA.md](POCKET_TTS_ALBA.md)).
+
+- **Before and after V-36 … V-39**, same four replies: loudness is now even at −18.0 dBFS, against −18.9 to −22.3 dBFS before. Time to the first chunk is unchanged (about 0.8–0.9 s on the host). VERIFIED BY REPRODUCED TEST (host).
+- **"Alba (updated)" (V-40).** Kyutai regenerated its voice states on 27 September 2026 so that each prompt ends on a short pause (pocket-tts PR #334). On 1 October an upload for other languages put the old English files back. Kyutai's PR #351 (10 October) still names the old state as the cause of chunk-start bursts. So the revert was not a quality decision.
+- **Packing.** `pack_voice.py` (host) and `PocketVoiceState.kt` (phone) reproduce the pinned `pt_voice_alba.bin` byte for byte from Kyutai's original state. The updated state packs to 127 frames, which fits the 512-frame KV cache.
+- **Comparison**, per state: 72 short replies of one to three words and 24 multi-sentence replies. Both spoke everything at the same speed (real-time factor 0.20 on the host). The updated state starts each chunk after a natural pause (median 80 ms against 40 ms). Whisper `base.en` heard all 72 short replies correctly, against 70 of 72 for the original Alba (one was "Done. Done.").
+
+### 14.4 Kokoro test voice (V-41)
+
+- **Licence check.** The Kokoro-82M weights and voices (hexgrad) and their ONNX export are Apache 2.0. The English pronunciation dictionary comes from CMUdict, which has a BSD-style licence. Moonshine's asset page says its pronunciation data "follow the terms of the projects they come from". Its own out-of-vocabulary model has no separate licence text. **Owner review** is recorded in §14.6.
+- **Files.** Exactly the moonshine-voice 0.1.5 file set: the split prosody and decoder stages, `config.json` and the English pronunciation files (108.5 MB), plus about 0.5 MB per voice. They come from Moonshine's Hugging Face mirror at commit `0bf2f2e5`, each checked by size and SHA-256. The library is never asked to download.
+- **Voices.** Heart and Bella (US) and Emma (UK). Emma needs the `en_gb` profile, which uses the same English files.
+- **Host results** (moonshine-voice 0.1.5 on a Mac, same native core): each voice loads in about 0.2 s and runs at a real-time factor of about 0.10. Phone speed is NOT VERIFIED.
+- **Pronunciation.** Moonshine's dictionary misread decimals ("12.5" as "12 up 5") and British spellings ("litres" as "lighters"). CareKosh now says "12 point 5" and uses US spellings for Kokoro only. Whisper's word error rate on CareKosh replies fell from 27–35 % to 10–14 %. Remaining misses are item names such as "Ambu" and "Paracetamol".
+
+### 14.5 Verification (15 October 2026)
+
+| Check | Result |
+|---|---|
+| Backend, fresh PostgreSQL 16 migrated through all Alembic revisions | **521 passed** |
+| Backend, fresh PostgreSQL 16 with the model-created schema | **521 passed** |
+| Backend Ruff (`app tests unit_tests`) and the 47-route gate | clean; passed |
+| Mobile `npm test` | **378 passed** |
+| Mobile TypeScript and ESLint | clean; 0 errors, the existing `app/builder.tsx` warning |
+| `scripts/check-pocket-recovery.kt` (JVM) | passed, including packing (two deliberately broken packers were caught) and Kokoro text checks |
+| Native module compile against Android, LiteRT 2.1.6 (with the LiteRT API jar) and moonshine-voice 0.1.5 with Expo stubs | Initial run: 72 classes; deprecation warnings include `URL` and the legacy `onError` override. This is not Gradle or release lint. |
+| `scripts/pocket-host-check/run.sh` and its `COMPARE` mode | passed |
+| `scripts/kokoro-host-check.py` | passed |
+| Android JavaScript export of `preview` and `preview-voice-diagnostics` (`--clear`) | both built. In `preview`, the diagnostics, Alba and Kokoro flags are compiled as `false`. |
+
+All providers were mocked in tests. Business data was synthetic, and the disposable database used loopback only. The host checks downloaded public, pinned model files outside Git; no recording or inventory left the computer.
+
+### 14.6 Owner actions and open checks
+
+1. **Sarvam on staging.** Apply the [Render settings](SARVAM_ENGLISH_VOICE.md#exact-render-steps-for-staging), deploy, then tap "Recheck voice & online understanding" and run one Preview (it uses credits).
+2. **Review and commit** the working tree, then build the `preview-voice-diagnostics` APK (an EAS build needs the owner's approval).
+3. **On the Nord 4:** compare Alba with "Alba (updated)" and the other voices. Try Kokoro Heart, Bella and Emma, and note the time to first audio and real-time factor from "Audio check details". Check a notification during speech (it should duck) and unplugging headphones (it should stop).
+4. **Kokoro licence review** before any wider release: Moonshine's out-of-vocabulary pronunciation model has no separate licence text.
+5. **Kokoro release criteria:** first audio within 1.5 s, real-time factor below 1, no crash in 20 replies, and acceptable item names.
+
+## 15. Independent verification follow-up
+
+**15 October 2026 — local repairs, not committed or deployed.** Independent verification found that passing the initial suites did not establish safe playback, complete grammar or correct download lifetime. This section records the subsequent repairs. The original private review remains unchanged as historical evidence; it must not be published with the repository.
+
+### 15.1 What changed after the independent review
+
+| Review item | Repair or explicit limit |
+|---|---|
+| R-1: downloads delay a reopened microphone | A dedicated download worker separates network waits from capture/transcription and synthesis. App-wide download progress and Cancel survive screen closure. Short pack-publication/removal locks prevent a cancelled install from recreating removed files. |
+| R-2: stop resets the playback head | Completion is measured while playing; rendered frames are captured before stop. The regression fake resets its counter like Android. This covers Alba, Kokoro and Check audio output; Sarvam keeps its separate player. |
+| R-3: narration changes units/codes | Unknown slash expressions and fractional quantities remain intact. Suture pronunciation requires an integer size in suture context. Screen data is unchanged. |
+| R-4–R-7: faithful plans are refused | Bounded courtesy grammar, projection/filter distinction, copied-name masking and legacy stock/sort aliases replace the overly narrow checks. Numeric and clause-association checks remain. |
+| R-8: alternate Alba reinstall strands controls | Playback readiness follows the selected voice; Remove/catalog depend on any installed voice. Reinstalling only “Alba (updated)” is valid. |
+| R-9: budget examples too high | Defaults permit seven 300-character or fourteen 150-character successful replies before other usage, because the next full reservation must fit. No quota was relaxed. |
+| R-10: Kokoro alters dotted identifiers | Dates, versions and item codes are preserved before standalone decimal pronunciation. |
+| R-11: short daily 429 retries | Automatic retry requires a 429 explicitly marked `X-AI-Error: busy`, a finite delay of 0–10 seconds, and a current, uncancelled turn. Speech, daily limits, generic route limits and old unmarked responses do not retry. |
+| R-12: stale download error after account change | Completion and error updates check the originating session/turn. Shared pack readiness can refresh without changing another account's preferences. |
+| R-13: first chunk exceeds 32 tokens | Overlong initial pieces are split with the first-chunk limit too. Later chunks remain bounded at 50. |
+| R-14: cached status trusts same metadata | Status checks may reuse a metadata stamp. Every fresh recognition engine load re-verifies the catalog checksums; both capture and transcription load failures invalidate the cache. |
+| R-15: misleading and header-keyed throttling | Soft AI limits now follow a validated account ID, so forged forwarding headers cannot reset its counter or target another clinic account. Counters remain per route/per worker; shared budget/concurrency enforcement is in PostgreSQL. A distributed public-scale limiter is still an operator design decision. |
+| R-16: transcription ignores disconnect | Normalization and Groq/Sarvam transcription now run under the same disconnect guard as understanding/narration. An already-closed request starts no provider work. Cancelled attempts retain the full reservation. |
+| R-17: unsafe correlation IDs | Both ordinary responses and early body-limit refusals use the same bounded ASCII request-ID validator. Controls, whitespace and oversized values receive a generated ID. |
+| R-18: overstated docs | Consent precedes audio inspection/decoding/provider upload, not FastAPI's multipart framing parser. Loud Alba chunks are attenuated to headroom; old warning/measurement claims are labelled accurately. |
+| R-19: bridge declarations differ | Kokoro download returns its declared catalog; frame progress omits absent frames; the current speech method requires a voice ID with an explicit legacy adapter. |
+| R-20: dropped “stocked items” clause | “Stocked” is recognized as in-stock. A plan that loses that group is rejected; stock negations remain guarded. |
+
+The server still has no inventory/order-mutation tool for Groq. Drafts remain local proposals until touch confirmation through the existing authenticated save flow. Sarvam's model, voice, consent scopes, key ownership and billing-source boundaries are unchanged. Normal builds keep Alba and Kokoro selection off.
+
+### 15.2 Verification after repairs
+
+All provider responses use mocks; only disposable synthetic PostgreSQL databases are used. Host models and generated audio stay outside Git. Fresh results after the repairs:
+
+| Check | Result and scope |
+|---|---|
+| Backend, all migrations on PostgreSQL 16 | **640 passed**, no skips |
+| Backend, model-created schema on PostgreSQL 16 | **640 passed**, no skips |
+| Backend Ruff and route gate | Clean; **47 routes**, unchanged |
+| Mobile tests | **390 passed** |
+| Mobile TypeScript / ESLint | Clean types; zero lint errors and the existing `app/builder.tsx:118` hook warning |
+| Review corpus through actual interpreter, mocked Groq | **202/202 faithful plans accepted; 18/18 hostile plans refused**. This tests the validator, not live Groq accuracy. |
+| Portable schema and provider errors | Eleven invalid replies rejected; 270 error/status cases and deeply malformed errors handled without content logging |
+| Raw ASGI/middleware checks | Seven JSON/audio/upload/HEAD/OPTIONS/refusal/ordinary keep-alive scenarios finish with no remaining watcher tasks |
+| Native JVM regressions | Passed, including Android-faithful playback counter reset, independent workers, first-chunk bound and headroom |
+| Synthetic actual ModelPack checks | Passed: same-stamp corruption rejected before engine load, capture not held by blocked HTTP, cancelled removal not undone by late publication |
+| Native type compile | **72 classes**, Kotlin 2.2.20 with Android/LiteRT/Moonshine jars and Expo stubs; not Gradle/release lint |
+| Host synthesis | Alba and original/updated comparison pass (12 short +4 long replies per state); Kokoro passes all three voices and paces. These are numerical host checks, not Android sound certification. |
+| Additional numerical checks | Fresh fp16 comparison: **294,443 values, zero mismatches**. Kokoro short replies: **60/60 pass**. Available pinned files match size/SHA-256; four optional Alba presets were not downloaded or synthesized. |
+| Preview and diagnostics JS exports | Both pass with `--clear`. Preview diagnostics/Alba/Kokoro flags are all false; diagnostics flags all true. |
+| Generated documentation | Six updated HTML companions regenerated; strict check **121 files, zero problems**. Unrelated/private generated pages left alone. |
+
+The first scratch-only backend run lacked the copied mobile source and skipped its consent-constant check; both complete suites were rerun with that fixture present and passed all 640. An old review probe in scratch also caused a Ruff warning until excluded from the candidate copy. Neither issue was in the application checkout. The original private verification report is preserved; its original verdict does not describe this repaired tree.
+
+### 15.3 Remaining acceptance
+
+- No new commit, push, EAS build or deployment is part of this work. Main is unchanged.
+- A real Android release build, OnePlus microphone, speaker/Bluetooth output, TalkBack and repeated questions still need acceptance on the resulting APK.
+- Live Groq schema/interpretation and a real Sarvam preview remain unverified. A preview uses credits and cannot be inferred from mocked transport tests.
+- Alba/Kokoro host generation is narrower evidence than audible Android playback. Keep both diagnostic gates off for normal users until device acceptance.
+- Moonshine's English OOV pronunciation-model licence still needs an applicable rights decision before broader Kokoro distribution. The report did not establish a separate grant. No model, voice or licence was silently replaced.
+- Per-worker soft rate counters and configured provider estimates are not a distributed abuse-control guarantee or a provider invoice cap. Render's actual proxy/header/deployment settings were not accessed.

@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     AI_USER_DAILY_REQUESTS: int = Field(default=50, ge=0, le=10000)
     AI_GLOBAL_DAILY_REQUESTS: int = Field(default=500, ge=0, le=100000)
     AI_GLOBAL_CONCURRENCY: int = Field(default=4, ge=1, le=32)
+    # Longest wait for the shared AI budget lock before answering "busy" (milliseconds).
+    AI_BUDGET_LOCK_TIMEOUT_MS: int = Field(default=3000, ge=100, le=8000)
     # Conservative credits, millionths of USD. Not a provider billing cap.
     AI_USER_DAILY_BUDGET_MICROUSD: int = Field(default=100_000, ge=0)
     AI_GLOBAL_DAILY_BUDGET_MICROUSD: int = Field(default=1_000_000, ge=0)
@@ -69,6 +71,16 @@ class Settings(BaseSettings):
     AI_SARVAM_TRANSCRIBE_RESERVE_MICROUSD: int = Field(default=5_000, ge=1)
     # Upper bound for one reply: 640 characters of bulbul:v3 at INR 30 per 10,000 characters, with exchange-rate margin.
     AI_SARVAM_SPEAK_RESERVE_MICROUSD: int = Field(default=25_000, ge=1)
+    # A successful call is settled at an estimate from published prices (never above its
+    # reservation); failed or cancelled calls keep the whole reservation.
+    # Sarvam bulbul:v3: INR 30 per 10,000 characters (docs.sarvam.ai pricing, checked 15 Oct 2026),
+    # about 34 micro-USD per character at INR 88/USD; 38 adds margin. Taxes are not included.
+    AI_SARVAM_SPEAK_MICROUSD_PER_CHAR: int = Field(default=38, ge=1)
+    # Groq openai/gpt-oss-20b: USD 0.075 input and 0.30 output per million tokens; whisper-large-v3:
+    # USD 0.111 per audio hour (console.groq.com/docs/models, checked 15 Oct 2026).
+    AI_GROQ_INPUT_MICROUSD_PER_1K_TOKENS: int = Field(default=75, ge=0)
+    AI_GROQ_OUTPUT_MICROUSD_PER_1K_TOKENS: int = Field(default=300, ge=0)
+    AI_GROQ_STT_MICROUSD_PER_SECOND: int = Field(default=31, ge=0)
     AI_KOKORO_ENABLED: bool = False
     AI_KOKORO_RIGHTS_APPROVED: bool = False
     KOKORO_SERVICE_URL: str = ""

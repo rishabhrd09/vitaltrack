@@ -24,7 +24,8 @@ function load(file, dependencies = {}) {
 const host = name => function Host({ children, ...props }) { return React.createElement(name, props, children); };
 const VoiceButton = ({ label, onPress, disabled }) => React.createElement('Button', { label, onPress, disabled }, label);
 
-async function harness({ personalSetup = false, personalConfigured = false, personalUsable = false, personalSource = false, keyWait, sarvamAvailable = false, sarvamConsented = false, selectedSarvam = false, sarvamPlayback, inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketOutput, pocketDiagnostics = 'Native audio details', pocketDownloadWait, speechFallback, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, cloudV3Response, categories = [], firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false, width = 390, fontScale = 1, preferenceSaveWait } = {}) {
+async function harness({ personalSetup = false, personalConfigured = false, personalUsable = false, personalSource = false, keyWait, sarvamAvailable = false, sarvamConsented = false, selectedSarvam = false, sarvamPlayback, inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketOutput, pocketDiagnostics = 'Native audio details', pocketDownloadWait, speechFallback, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, cloudV3Response, categories = [], firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false, width = 390, fontScale = 1, preferenceSaveWait, deviceSpeechWait, offline = false, refreshFailure = false, screenReaderOn = false, categoryFailures = 0, diagnostics = false, modelDownloadWait, transcribeWait, pocketVoices = ['alba'], kokoroBuild = false, kokoroVoices = [], selectedKokoro = false, downloadStore, pocketRemovalWait } = {}) {
+  const downloads = downloadStore || load('features/assistant/downloads.ts');
   const calls = { navigation: [], stock: 0, transcribe: 0, stop: 0, record: 0, permission: 0, interpret: [], consent: [], cloudAudio: 0 };
   const listeners = new Set();
   const lifecycle = state => { for (const listener of [...listeners]) listener(state); };
@@ -34,18 +35,19 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
   let pendingAlert;
   const unavailable = { interpret: false, scopes: [], consented: false, transcription_providers: [], speech_providers: [] };
   let scopes = [...(cloudConsented ? ['groq_text'] : []), ...(audioConsented ? ['groq_audio'] : []), ...(sarvamConsented ? ['sarvam_speech'] : [])];
-  const prefs = { enabled: true, microphone: true, spokenReplies, audioOptIn: onlineListening, sarvamSpeechOptIn: selectedSarvam, sarvamKeySource: personalSource ? 'personal' : undefined, inputProvider: onlineListening ? 'groq' : 'offline', speechProvider: selectedSarvam ? 'sarvam' : selectedPocket ? 'pocket' : 'device', cloud: cloudConsented, ...(speechFallback ? { speechFallback } : {}) };
+  const prefs = { enabled: true, microphone: true, spokenReplies, audioOptIn: onlineListening, sarvamSpeechOptIn: selectedSarvam, sarvamKeySource: personalSource ? 'personal' : undefined, inputProvider: onlineListening ? 'groq' : 'offline', speechProvider: selectedSarvam ? 'sarvam' : selectedPocket ? 'pocket' : selectedKokoro ? 'kokoro_offline' : 'device', cloud: cloudConsented, ...(speechFallback ? { speechFallback } : {}) };
   const recorder = { uri: 'file:///cache/test.m4a', isRecording: false,
     prepareToRecordAsync: async () => {}, record() { this.isRecording = true; calls.record++; },
     async stop() { this.isRecording = false; calls.stop++; },
   };
-  const policy = load('features/assistant/policy.ts');
+  // Diagnostics builds (EXPO_PUBLIC_VOICE_DIAGNOSTICS=1) offer Alba selection and the diagnostics card.
+  const policy = diagnostics ? { ...load('features/assistant/policy.ts'), VOICE_DIAGNOSTICS_ENABLED: true, ALBA_SELECTION_ENABLED: true, KOKORO_SELECTION_ENABLED: true } : load('features/assistant/policy.ts');
   const permittedSpeechProvider = load('features/assistant/preferences.ts', { '@react-native-async-storage/async-storage': {}, './policy': policy }).permittedSpeechProvider;
   const appState = { currentState: 'active', addEventListener: (_, fn) => { listeners.add(fn); return { remove() { listeners.delete(fn); } }; } };
   const rn = Object.fromEntries(['ActivityIndicator', 'KeyboardAvoidingView', 'Pressable', 'Text', 'TextInput', 'TouchableOpacity', 'View', 'ScrollView', 'Switch'].map(name => [name, host(name)]));
   rn.Modal = ({ visible, children }) => visible ? React.createElement('Modal', {}, children) : null;
   Object.assign(rn, { StyleSheet: { create: v => v, absoluteFill: {}, hairlineWidth: 1 }, Keyboard: { dismiss() { calls.keyboardDismiss = (calls.keyboardDismiss || 0) + 1; } }, BackHandler: { addEventListener: () => ({ remove() {} }) }, useWindowDimensions: () => ({ width, height: 844, fontScale }), Animated: { Value: class { setValue() {} }, View: host('AnimatedView'), timing: () => ({ start() {}, stop() {} }), sequence: () => ({}), loop: () => ({ start() {}, stop() {} }) }, Platform: { OS: 'android' }, AppState: appState,
-    AccessibilityInfo: { isScreenReaderEnabled: async () => false, isReduceMotionEnabled: async () => true, addEventListener: () => ({ remove() {} }) },
+    AccessibilityInfo: { isScreenReaderEnabled: async () => screenReaderOn, isReduceMotionEnabled: async () => true, addEventListener: () => ({ remove() {} }), announceForAccessibility: text => { (calls.announcements ||= []).push(text); } },
     Alert: { alert(title, message, buttons) { pendingAlert = buttons; } }, Linking: { openSettings: async () => {} } });
   let owner = 'test-user', epoch = 0;
   const authListeners = new Set();
@@ -67,12 +69,12 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
   const table = load('components/assistant/AnswerList.tsx', { ...uiDeps, react: React, 'react/jsx-runtime': require('react/jsx-runtime'), 'react-native': rn, '@/theme/ThemeContext': { useTheme: () => ({ colors }) }, '@/features/assistant/queries': queries, '@/types': types });
   const Screen = load('components/assistant/AssistantExperience.tsx', {
     react: React, 'react/jsx-runtime': require('react/jsx-runtime'), 'react-native': rn,
-    'expo-router': { useLocalSearchParams: () => ({ mode, listen }), useRouter: () => Object.fromEntries(['navigate', 'setParams', 'back', 'replace'].map(name => [name, value => calls.navigation.push([name, value])])) },
+    'expo-router': { useLocalSearchParams: () => ({ mode, listen }), useRouter: () => ({ canGoBack: () => true, ...Object.fromEntries(['navigate', 'setParams', 'back', 'replace'].map(name => [name, value => calls.navigation.push([name, value])])) }) },
     '@expo/vector-icons': { Ionicons: host('Icon') }, 'react-native-safe-area-context': { SafeAreaView: host('SafeAreaView') },
     'expo-audio': { RecordingPresets: { HIGH_QUALITY: {} }, AudioModule: { getRecordingPermissionsAsync: async () => ({ granted: permissionAlreadyGranted, canAskAgain: permissionMayAskInitially }), requestRecordingPermissionsAsync: async () => { calls.permission++; if (permissionBackground) { appState.currentState = 'background'; lifecycle('background'); await Promise.resolve(); if (!permissionReturnsInBackground) { appState.currentState = 'active'; lifecycle('active'); } } if (permissionWait) await permissionWait; return { granted: permission, canAskAgain }; } },
       setAudioModeAsync: async () => {}, useAudioRecorder: (_, cb) => { nativeEvent = cb; return recorder; },
       useAudioRecorderState: () => ({ durationMillis: 1000, metering: -20 }), useAudioPlayerStatus: () => ({}) },
-    'expo-file-system/legacy': {}, 'expo-sharing': { isAvailableAsync: async () => true, shareAsync: async () => {} }, '@/store/useAuthStore': { useAuthStore: auth }, '@/theme/ThemeContext': { useTheme: () => ({ colors }) },
+    'expo-file-system/legacy': {}, 'expo-sharing': { isAvailableAsync: async () => true, shareAsync: async () => {} }, '@react-native-community/netinfo': { fetch: async () => ({ isConnected: !offline }) }, '@/store/useAuthStore': { useAuthStore: auth }, '@/theme/ThemeContext': { useTheme: () => ({ colors }) },
     '@/services/assistantSession': sessionTools,
     '@/services/assistant': { unavailable,
       capabilities: async () => { if (++capabilityCalls === 1 && firstCapabilityFailure) throw new Error('Cold start'); return { ...unavailable, interpret: cloudAvailable, interpret_contracts: cloudV3Response ? [1,2,3] : cloudV2Response ? [1,2] : [1], scopes, consented: scopes.length > 0, transcription_providers: cloudAvailable ? ['groq'] : [], speech_providers: sarvamAvailable || personalUsable ? ['sarvam'] : [], sarvam_application_available: sarvamAvailable, sarvam_personal_key: { setup_available: personalSetup, configured: personalConfigured, usable: personalUsable, updated_at: null } }; },
@@ -92,25 +94,33 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
     '@/features/assistant/cloudSpeech': { playSarvamSpeech: async (session, text, pace, signal, onStatus, source, onPlaybackStarted) => { (calls.sarvamSpeech ||= []).push({ text, pace, signal, source }); onStatus('Reading aloud with Sarvam…'); if (sarvamPlayback) await sarvamPlayback(signal, onPlaybackStarted); } },
     '@/features/assistant/narration': load('features/assistant/narration.ts'),
     '@/features/assistant/preferences': { permittedSpeechProvider, defaults: { ...prefs, enabled: false }, loadPreferences: async () => ({ ...prefs }), savePreferences: async (owner, next) => { (calls.preferenceSaveOwners ||= []).push(owner); if (preferenceSaveWait) await preferenceSaveWait; Object.assign(prefs, next); } },
-    '@/features/assistant/snapshot': { cachedCategoryNames: () => [], cachedItemNames: () => inventoryItems ? inventoryItems.filter(i=>i.isActive).map(i=>i.name) : [inventoryName], categorySnapshot: async () => { calls.categories = (calls.categories || 0) + 1; return categories; }, inventorySnapshot: async () => { calls.stock++; return { items: inventoryItems || [{ id: 'g', name: inventoryName, quantity: 18, minimumStock: 5, unit: 'pairs', isActive: true }], timestamp: Date.now(), stale: false }; } },
-    '@/features/assistant/audioFiles': { rememberAudio: async () => { if (rememberBackground) { appState.currentState = 'background'; lifecycle('background'); } }, discardAudio: async () => {} },
+    '@/features/assistant/snapshot': { cachedCategoryNames: () => [], cachedItemNames: () => inventoryItems ? inventoryItems.filter(i=>i.isActive).map(i=>i.name) : [inventoryName], categorySnapshot: async () => { calls.categories = (calls.categories || 0) + 1; if (categoryFailures-- > 0) throw new Error('Categories unavailable offline'); return categories; }, inventorySnapshot: async (_, __, force) => { calls.stock++; if (force && refreshFailure) throw new Error('Offline: a new refresh needs internet. Ask again without Refresh to see last-known stock.'); return { items: inventoryItems || [{ id: 'g', name: inventoryName, quantity: 18, minimumStock: 5, unit: 'pairs', isActive: true }], timestamp: Date.now(), stale: false }; } },
+    '@/features/assistant/downloads': downloads,
+    '@/features/assistant/audioFiles': { rememberAudio: async () => { if (rememberBackground) { appState.currentState = 'background'; lifecycle('background'); } }, discardAudio: async uri => { if (uri) (calls.discarded ||= []).push(uri); } },
     '@/features/assistant/capture': load('features/assistant/capture.ts'),
     '@/features/assistant/offlineVoice': { pocketVoiceSupported: pocketBuild, pocketOutputCheckSupported: pocketBuild, pocketVoice: {
-      status: async () => ({ ready: pocketReady, supported: pocketBuild, bytes: 208767942, name: 'Alba' }),
-      download: async () => { calls.pocketDownloads = (calls.pocketDownloads || 0) + 1; if (pocketDownloadWait) await pocketDownloadWait; pocketReady = true; },
-      remove: async () => { pocketReady = false; }, progress: () => ({ remove() {} }), licences: async () => 'file:///licences.zip',
-      speak: async (text, pace) => { (calls.pocketSpeech ||= []).push({ text, pace }); if (pocketSpeech) return await pocketSpeech(); },
+      status: async () => ({ ready: pocketReady && pocketVoices.includes('alba'), supported: pocketBuild, bytes: 208767942, name: 'Alba',
+        readyVoices: pocketReady ? [...pocketVoices] : [], voices: [{ id: 'alba', label: 'Alba' }, { id: 'albapause', label: 'Alba (updated)' }, { id: 'charles', label: 'Charles' }, { id: 'eve', label: 'Eve' }], lowMemory: false }),
+      download: async voice => { calls.pocketDownloads = (calls.pocketDownloads || 0) + 1; (calls.pocketVoiceDownloads ||= []).push(voice); if (pocketDownloadWait) await pocketDownloadWait; pocketReady = true; if (!pocketVoices.includes(voice)) pocketVoices = [...pocketVoices, voice]; },
+      remove: async () => { if (pocketRemovalWait) await pocketRemovalWait; pocketReady = false; pocketVoices = []; }, progress: () => ({ remove() {} }), licences: async () => 'file:///licences.zip',
+      speak: async (text, pace, progress, signal, voice) => { (calls.pocketSpeech ||= []).push({ text, pace, voice }); if (pocketSpeech) return await pocketSpeech(); },
       checkOutput: async () => { calls.outputChecks = (calls.outputChecks || 0) + 1; return pocketOutput ? await pocketOutput() : { output: 'Phone speaker', volumePercent: 60, frames: 12000, audioSeconds: 0.5 }; },
       diagnostics: async () => pocketDiagnostics,
-    }, offlineSupported: true, liveCaptureSupported: liveCapture, createLiveRecorder: () => Object.assign(recorder, { configure() {}, subscribe(listener) { liveListener = listener; return { remove() { liveListener = null; } }; } }), offlineVoice: { status: async () => ({ ready, bytes: 100 }),
-      download: async () => { ready = true; }, remove: async () => { ready = false; }, deviceStatus: async () => ({ ready: deviceReady, name: 'English' }), progress: () => ({ remove() {} }), cancel() {},
-      transcribe: async () => { calls.transcribe++; return { transcript }; }, speak: async text => { calls.deviceSpeech = (calls.deviceSpeech || 0) + 1; (calls.deviceTexts ||= []).push(text); } } },
-    '@/features/assistant/policy': load('features/assistant/policy.ts'), '@/features/assistant/readiness': load('features/assistant/readiness.ts'),
+    }, kokoroVoiceSupported: kokoroBuild, kokoroVoice: {
+      status: async () => ({ supported: kokoroBuild, readyVoices: [...kokoroVoices], voices: [{ id: 'af_heart', label: 'Heart' }, { id: 'af_bella', label: 'Bella' }, { id: 'bf_emma', label: 'Emma' }], bytes: 110031845, name: 'Kokoro', lowMemory: false }),
+      download: async voice => { (calls.kokoroDownloads ||= []).push(voice); if (!kokoroVoices.includes(voice)) kokoroVoices = [...kokoroVoices, voice]; },
+      remove: async () => { calls.kokoroRemoved = (calls.kokoroRemoved || 0) + 1; kokoroVoices = []; },
+      speak: async (text, pace, progress, signal, voice, play = true) => { (calls.kokoroSpeech ||= []).push({ text, pace, voice, play }); return { output: 'Phone speaker', volumePercent: 60, audioSeconds: 2, frames: 48000 }; },
+      progress: () => ({ remove() {} }),
+    }, voiceErrorCode: e => (e && typeof e === 'object' && typeof e.code === 'string' ? e.code : undefined), offlineSupported: true, liveCaptureSupported: liveCapture, createLiveRecorder: () => Object.assign(recorder, { configure() {}, subscribe(listener) { liveListener = listener; return { remove() { liveListener = null; } }; } }), offlineVoice: { status: async () => ({ ready, bytes: 100 }),
+      download: async () => { calls.modelDownloads = (calls.modelDownloads || 0) + 1; if (modelDownloadWait) await modelDownloadWait; ready = true; }, remove: async () => { ready = false; }, deviceStatus: async () => ({ ready: deviceReady, name: 'English' }), progress: () => ({ remove() {} }), cancel() {}, cancelDownloads() { calls.cancelledDownloads = (calls.cancelledDownloads || 0) + 1; },
+      transcribe: async () => { calls.transcribe++; if (transcribeWait) await transcribeWait; return { transcript }; }, speak: async text => { calls.deviceSpeech = (calls.deviceSpeech || 0) + 1; (calls.deviceTexts ||= []).push(text); if (deviceSpeechWait) await deviceSpeechWait(text); } } },
+    '@/features/assistant/policy': policy, '@/features/assistant/readiness': load('features/assistant/readiness.ts'),
     '@/features/assistant/providers': load('features/assistant/providers.ts', { './policy': policy, './sarvam': load('features/assistant/sarvam.ts') }),
     '@/components/assistant/VoiceSetup': mode ? load('components/assistant/VoiceSetup.tsx', {
       react: React, 'react/jsx-runtime': require('react/jsx-runtime'), 'react-native': rn,
       '@expo/vector-icons': { Ionicons: host('Icon') }, '@/theme/ThemeContext': { useTheme: () => ({ colors }) },
-      '@/features/assistant/policy': policy, '@/features/assistant/core': core, '@/features/assistant/notices': { offlineSpeechNotice: 'Offline model licence', pocketSpeechNotice: 'Pocket model licence' },
+      '@/features/assistant/policy': policy, '@/features/assistant/core': core, '@/features/assistant/notices': { offlineSpeechNotice: 'Offline model licence', pocketSpeechNotice: 'Pocket model licence', kokoroSpeechNotice: 'Kokoro model licence' },
       '@/features/assistant/narration': load('features/assistant/narration.ts'),
       '@/features/assistant/providers': load('features/assistant/providers.ts', { './policy': policy, './sarvam': load('features/assistant/sarvam.ts') }),
     }) : { default: host('VoiceSetup'), VoiceButton },
@@ -961,16 +971,18 @@ test('Stop during Sarvam narration never starts the offline fallback', async () 
 test('choosing a fallback previews that voice first, saves it only afterwards, and can turn it off', async () => {
   const h = await harness({ mode: 'settings', selectedSarvam: true, sarvamAvailable: true, sarvamConsented: true });
   try {
-    assert.equal(h.find('Use an offline voice when online speech is unavailable').props.value, false, 'off by default');
+    assert.equal(h.find('Use an offline voice when online speech is unavailable'), undefined, 'off by default: no switch shows On before a choice is saved');
     assert.equal(h.find('Preview & use device voice'), undefined);
-    await h.toggle('Use an offline voice when online speech is unavailable', true);
+    await h.press('Choose an offline fallback voice');
     assert.equal(h.prefs.speechFallback, undefined, 'not saved before a preview');
     await h.press('Preview & use device voice');
     assert.equal(h.calls.deviceSpeech, 1); assert.equal(h.prefs.speechFallback, 'device');
     assert.equal(h.prefs.speechProvider, 'sarvam', 'the online voice choice is unchanged');
     assert.equal(h.find('Preview & use Alba'), undefined, 'Alba is not offered while paused');
+    assert.equal(h.find('Use an offline voice when online speech is unavailable').props.value, true, 'the switch shows the saved choice');
     await h.toggle('Use an offline voice when online speech is unavailable', false);
     assert.equal(h.prefs.speechFallback, undefined);
+    assert.ok(h.find('Choose an offline fallback voice'));
     assert.equal(h.calls.sarvamSpeech?.length || 0, 0, 'choosing a fallback sends nothing online');
   } finally { await h.dispose(); }
 });
@@ -1160,4 +1172,405 @@ test('delayed preference saving cannot withdraw cloud consent from a different a
     await act(async () => { release(); await waiting; });
     assert.deepEqual(h.calls.consentOwners || [], [], 'no withdrawal request is sent for either account after the original session becomes stale');
   } finally { release(); await h.dispose(); }
+});
+
+// 14 October 2026 audit fixes (V-n IDs match docs/AI_VOICE_END_TO_END_REVIEW.md §14).
+test('V-8: an answer reached by tapping during speech is spoken once, and the old speech stops', async () => {
+  let finish; const waiting = new Promise(resolve => { finish = resolve; }); let first = true;
+  const h = await harness({ embedded:false, inventoryItems:planInventory, spokenReplies:true,
+    deviceSpeechWait: () => { if (first) { first = false; return waiting; } } });
+  try {
+    await h.typeQuestion('How many items have quantity less than 3? Show their names, quantities and status.'); await h.press('Show answer');
+    assert.equal(h.calls.deviceTexts.length, 1, 'the first answer is being read');
+    await h.press('Only out of stock');
+    assert.equal(h.calls.deviceTexts.length, 2, 'the refined answer is read too');
+    assert.match(h.calls.deviceTexts[1], /1 item matches\. Masks/);
+    await act(async () => { finish(); await waiting; });
+    assert.ok(!hasText(h, 'Speech unavailable.'));
+    // Refresh during speech is read as well.
+    first = true;
+    await h.press('Refresh answer');
+    assert.equal(h.calls.deviceTexts.length, 3);
+  } finally { finish(); await h.dispose(); }
+});
+
+const twoGloves = [
+  { id:'h', name:'Hand gloves', quantity:2, minimumStock:5, unit:'pairs', isActive:true, isCritical:false, version:1 },
+  { id:'s', name:'Surgical gloves', quantity:9, minimumStock:5, unit:'pairs', isActive:true, isCritical:false, version:1 },
+];
+test('V-9: clarifications, proposals, merge/replace results and draft review are read aloud', async () => {
+  const h = await harness({ embedded:false, inventoryItems:twoGloves, spokenReplies:true });
+  try {
+    await h.typeQuestion('Prepare an order for 5 pairs of gloves'); await h.press('Show answer');
+    assert.ok(hasText(h, 'Please clarify'));
+    assert.equal(h.calls.deviceTexts.length, 1);
+    assert.match(h.calls.deviceTexts[0], /Choose the item meant by "gloves".*Choices: Hand gloves, or Surgical gloves\./, 'curly quotes are spoken as plain quotes (V-20)');
+    // A manual draft makes the next voice draft a proposal; the proposal and then the replacement are read.
+    h.drafts.writeDraft(h.sessionTools.captureSession(), [{ item: twoGloves[1], quantity:7, source:'manual' }]);
+    await h.press('Ask another question');
+    await h.typeQuestion('Prepare an order for 20 pairs of hand gloves'); await h.press('Show answer');
+    assert.match(h.calls.deviceTexts.at(-1), /Review these proposed quantities/);
+    await h.press('Replace existing draft with this proposal');
+    assert.match(h.calls.deviceTexts.at(-1), /1 line ready/);
+    await h.press('Ask another question');
+    await h.typeQuestion('show my draft'); await h.press('Show answer');
+    assert.match(h.calls.deviceTexts.at(-1), /1 line is in your unsaved draft\. Nothing has been saved\./);
+  } finally { await h.dispose(); }
+});
+
+test('V-9: with spoken replies off a clarification is shown, not spoken', async () => {
+  const h = await harness({ embedded:false, inventoryItems:twoGloves, spokenReplies:false });
+  try {
+    await h.typeQuestion('Prepare an order for 5 pairs of gloves'); await h.press('Show answer');
+    assert.ok(hasText(h, 'Please clarify'));
+    assert.equal(h.calls.deviceTexts, undefined);
+  } finally { await h.dispose(); }
+});
+
+test('V-10: a failed capability check is reported as unreachable, never as not configured, and Recheck recovers', async () => {
+  const h = await harness({ mode:'settings', sarvamAvailable:true, firstCapabilityFailure:true, offline:false });
+  try {
+    assert.ok(hasText(h, 'Could not reach the CareKosh server (the server did not respond). Tap Recheck.'));
+    assert.ok(!hasText(h, 'The CareKosh Sarvam account is not configured on this server.'));
+    assert.equal(h.find('Use Sarvam English voice').props.disabled, true);
+    assert.ok(hasText(h, 'Online services could not be checked (the server did not respond).'));
+    await h.press('Recheck online services');
+    assert.ok(!hasText(h, 'Could not reach the CareKosh server'));
+    assert.equal(h.find('Use Sarvam English voice').props.disabled, false, 'Sarvam is offered once the server answers');
+  } finally { await h.dispose(); }
+});
+
+test('V-10: offline phones are told the online check needs internet', async () => {
+  const h = await harness({ mode:'settings', firstCapabilityFailure:true, offline:true });
+  try {
+    assert.ok(hasText(h, 'Could not reach the CareKosh server (no internet connection). Tap Recheck.'));
+  } finally { await h.dispose(); }
+});
+
+test('V-13: a failed refresh keeps the answer on screen, marked last known', async () => {
+  const h = await harness({ embedded:true, inventoryItems:planInventory, refreshFailure:true });
+  try {
+    await h.press('Type a question here');
+    await h.editTranscript('How many items have quantity less than 3? Show their names, quantities and status.'); await h.press('Send question');
+    assert.ok(hasText(h, 'Hand gloves') && hasText(h, 'Last synced'));
+    await h.press('Refresh answer');
+    assert.ok(hasText(h, 'Offline: a new refresh needs internet'));
+    assert.equal(h.layer(), 1, 'the answer sheet stays open');
+    assert.ok(hasText(h, 'Hand gloves'), 'the rows stay visible');
+    assert.ok(hasText(h, 'Last known stock'), 'and are marked last known');
+  } finally { await h.dispose(); }
+});
+
+test('V-14: a saved fallback voice that cannot play is flagged, not shown as working', async () => {
+  const h = await harness({ mode:'settings', selectedSarvam:true, sarvamAvailable:true, sarvamConsented:true, speechFallback:'device', deviceReady:false });
+  try {
+    assert.equal(h.find('Use an offline voice when online speech is unavailable').props.value, true);
+    assert.ok(hasText(h, 'No English device voice is installed, so nothing will be read after a Sarvam failure.'));
+  } finally { await h.dispose(); }
+});
+
+test('V-15: removing the last draft line clears the draft instead of leaving an empty "ready" draft', async () => {
+  const h = await harness({ embedded:false, inventoryItems:planInventory });
+  try {
+    await h.typeQuestion('Prepare an order for 20 pairs of hand gloves'); await h.press('Show answer');
+    assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()).rows.length, 1);
+    await h.press('Ask another question');
+    await h.typeQuestion('Remove hand gloves from this order draft'); await h.press('Show answer');
+    assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()), null, 'no empty draft is kept');
+    assert.ok(hasText(h, 'The draft is now empty. Nothing was saved.'));
+    assert.ok(!hasText(h, '0 lines ready'));
+    assert.equal(h.find('Review unsaved order draft'), undefined);
+  } finally { await h.dispose(); }
+});
+
+test('V-16: a clarification sheet makes room for its choices at large text sizes', async () => {
+  const h = await harness({ embedded:false, inventoryItems:twoGloves, fontScale:2 });
+  try {
+    await h.typeQuestion('Prepare an order for 5 pairs of gloves'); await h.press('Show answer');
+    const sheet = h.tree.root.findAll(n => typeof n.type === 'string' && n.props.accessibilityViewIsModal && Array.isArray(n.props.style))[0];
+    const height = sheet.props.style.find(part => part && typeof part.height === 'number').height;
+    assert.ok(height > 600, `sheet height ${height} leaves room for both choices at 200% text`);
+    assert.ok(h.find('Hand gloves · pairs · h') && h.find('Surgical gloves · pairs · s'));
+  } finally { await h.dispose(); }
+});
+
+test('V-17: TalkBack hears answers that are not read aloud, expanded row details and the final transcript', async () => {
+  const h = await harness({ embedded:false, inventoryItems:planInventory, screenReaderOn:true, spokenReplies:false });
+  try {
+    await h.typeQuestion('How many items have quantity less than 3? Show their names, quantities and status.'); await h.press('Show answer');
+    assert.ok(h.calls.announcements.some(text => /^Inventory results\. 3 items match\./.test(text)), JSON.stringify(h.calls.announcements));
+    const row = () => h.tree.root.findAll(n => typeof n.type === 'string' && /^2\. Hand gloves/.test(n.props.accessibilityLabel || ''))[0];
+    assert.doesNotMatch(row().props.accessibilityLabel, /Supplier ·/);
+    await act(async () => { row().props.onPress(); });
+    assert.match(row().props.accessibilityLabel, /Supplier · Good Supplier\. Brand · Not recorded\. Minimum stock · 5 pairs\. Hide recorded details$/);
+    assert.ok(h.calls.announcements.some(text => text.startsWith('Hand gloves. Supplier · Good Supplier')));
+  } finally { await h.dispose(); }
+  const spoken = await harness({ embedded:false, inventoryItems:planInventory, screenReaderOn:true, spokenReplies:true });
+  try {
+    await spoken.typeQuestion('How many items have quantity less than 3?'); await spoken.press('Show answer');
+    assert.equal(spoken.calls.announcements, undefined, 'a spoken reply is not announced twice');
+  } finally { await spoken.dispose(); }
+  const listening = await harness({ screenReaderOn:true });
+  try {
+    await listening.press('Start voice recording');
+    const live = listening.tree.root.findAll(n => typeof n.type === 'string' && n.type === 'Text' && 'accessibilityLiveRegion' in n.props);
+    assert.ok(live.length && live.every(n => n.props.accessibilityLiveRegion === 'none'), 'no live announcements while recording');
+    await listening.press('Stop recording and review transcript');
+    assert.ok(listening.calls.announcements.some(text => text === 'Heard: How many hand gloves are left? Review it, then send.'));
+  } finally { await listening.dispose(); }
+});
+
+test('V-18: one choice resolves an ambiguity for the whole follow-up chain, including Refresh and Export', async () => {
+  const h = await harness({ embedded:false, inventoryItems:planInventory, categories:[{ id:'e', name:'Critical care' }, { id:'w', name:'Wound care' }], categoryFailures:1 });
+  try {
+    await h.typeQuestion('Show critical items'); await h.press('Show answer');
+    assert.ok(hasText(h, 'Ventilator circuit'), 'answered from critical equipment while categories were unavailable');
+    await h.press('Ask another question');
+    await h.typeQuestion('Only the low stock ones'); await h.press('Show answer');
+    assert.ok(hasText(h, '“Critical” could mean critical equipment or one of your categories'));
+    await h.press('Critical equipment · marked ★ or named like a ventilator');
+    assert.ok(!hasText(h, 'could mean'), 'the choice is applied to the earlier step, so the question is not asked again');
+    await h.press('Refresh answer');
+    assert.ok(!hasText(h, 'could mean'), 'Refresh keeps the choice');
+    await h.press('Export inventory report');
+    assert.ok(!hasText(h, 'could mean'), 'Export keeps the choice');
+  } finally { await h.dispose(); }
+});
+
+test('V-19: a failed online transcription keeps the take for an explicit on-phone transcription', async () => {
+  const h = await harness({ onlineListening:true, audioConsented:true, cloudAvailable:true, audioFailure:true, ready:true });
+  try {
+    await h.press('Start voice recording'); await h.press('Stop recording and review transcript');
+    assert.equal(h.calls.cloudAudio, 1);
+    assert.ok(hasText(h, 'Your recording is kept on this phone until you choose below.'));
+    assert.equal(h.calls.discarded, undefined, 'the take is not deleted yet');
+    assert.equal(h.calls.transcribe, 0, 'nothing is substituted silently');
+    await h.press('Transcribe on this phone instead');
+    assert.equal(h.calls.transcribe, 1);
+    assert.equal(h.find('Review voice transcript').props.value, 'How many hand gloves are left?');
+    assert.deepEqual(h.calls.discarded, ['file:///cache/test.m4a'], 'deleted after use');
+    assert.equal(h.calls.cloudAudio, 1, 'nothing was uploaded again');
+  } finally { await h.dispose(); }
+  const dismissed = await harness({ onlineListening:true, audioConsented:true, cloudAvailable:true, audioFailure:true, ready:true });
+  try {
+    await dismissed.press('Start voice recording'); await dismissed.press('Stop recording and review transcript');
+    await dismissed.press('Discard recording');
+    assert.deepEqual(dismissed.calls.discarded, ['file:///cache/test.m4a']);
+    assert.equal(dismissed.find('Transcribe on this phone instead'), undefined);
+    assert.equal(dismissed.calls.transcribe, 0);
+  } finally { await dismissed.dispose(); }
+});
+
+test('V-38: the diagnostics build offers other commercial-use voices, downloading each once', async () => {
+  const h = await harness({ mode:'settings', diagnostics:true, pocketBuild:true, pocketReady:true, selectedPocket:true });
+  try {
+    assert.ok(hasText(h, 'Voice · Alba.'));
+    assert.equal(h.find('Alba voice').props.disabled, true, 'the voice in use is not offered again');
+    await h.press('Charles voice');
+    assert.deepEqual(h.calls.pocketVoiceDownloads, ['charles'], 'only the missing voice is downloaded');
+    assert.equal(h.prefs.albaVoice, 'charles'); assert.equal(h.prefs.speechProvider, 'pocket');
+    await h.press('Alba voice');
+    await h.press('Eve voice');
+    assert.deepEqual(h.calls.pocketVoiceDownloads, ['charles', 'eve']);
+    await h.press('Charles voice');
+    assert.deepEqual(h.calls.pocketVoiceDownloads, ['charles', 'eve'], 'a downloaded voice switches without downloading again');
+    await h.press('Preview voice');
+    assert.equal(h.calls.pocketSpeech.at(-1).voice, 'charles');
+  } finally { await h.dispose(); }
+});
+
+test('V-40: the updated Alba voice is its own choice, downloaded once and previewed by id', async () => {
+  const h = await harness({ mode:'settings', diagnostics:true, pocketBuild:true, pocketReady:true, selectedPocket:true });
+  try {
+    assert.ok(hasText(h, '3–6 MB once'));
+    await h.press('Alba (updated) voice');
+    assert.deepEqual(h.calls.pocketVoiceDownloads, ['albapause'], 'only the updated voice state is fetched');
+    assert.equal(h.prefs.albaVoice, 'albapause'); assert.equal(h.prefs.speechProvider, 'pocket');
+    assert.ok(hasText(h, 'Voice · Alba (updated).'));
+    await h.press('Preview voice');
+    assert.equal(h.calls.pocketSpeech.at(-1).voice, 'albapause');
+    await h.press('Alba voice');
+    assert.equal(h.prefs.albaVoice, 'alba');
+    assert.deepEqual(h.calls.pocketVoiceDownloads, ['albapause'], 'the original Alba stays installed');
+  } finally { await h.dispose(); }
+});
+
+test('V-41: the diagnostics build offers the Kokoro test voice: download, choose a voice, preview and diagnose', async () => {
+  const h = await harness({ mode:'settings', diagnostics:true, kokoroBuild:true });
+  try {
+    assert.ok(hasText(h, 'Kokoro · offline test'));
+    assert.equal(h.find('Use Kokoro voice').props.disabled, true, 'nothing to use before the download');
+    await h.press('Download Kokoro test voice');
+    await h.confirm();
+    assert.deepEqual(h.calls.kokoroDownloads, ['af_heart'], 'Heart is the default voice');
+    assert.equal(h.prefs.speechProvider, 'kokoro_offline'); assert.equal(h.prefs.kokoroVoice, 'af_heart');
+    await h.press('Kokoro Emma');
+    assert.deepEqual(h.calls.kokoroDownloads, ['af_heart', 'bf_emma'], 'only the missing voice style is downloaded');
+    assert.equal(h.prefs.kokoroVoice, 'bf_emma');
+    await h.press('Preview voice');
+    assert.deepEqual(h.calls.kokoroSpeech.at(-1), { text: 'Hello. I am your CareKosh stock assistant.', pace: 1, voice: 'bf_emma', play: true });
+    assert.ok(hasText(h, 'Kokoro changes its speaking speed.'));
+    await h.press('Brisk pace');
+    assert.equal(h.prefs.speechPace, 1.1);
+    await h.press('Generate Kokoro without playing');
+    assert.equal(h.calls.kokoroSpeech.at(-1).play, false);
+    assert.ok(hasText(h, 'Synthesis-only Kokoro diagnostic finished'));
+    await h.press('Kokoro Heart');
+    assert.deepEqual(h.calls.kokoroDownloads, ['af_heart', 'bf_emma'], 'a downloaded voice switches without downloading again');
+    assert.equal(h.prefs.kokoroVoice, 'af_heart');
+  } finally { await h.dispose(); }
+});
+
+test('V-41: normal builds never offer Kokoro, and a saved Kokoro choice speaks with the device voice', async () => {
+  const settings = await harness({ mode:'settings', kokoroBuild:true, kokoroVoices:['af_heart'] });
+  try {
+    assert.equal(hasText(settings, 'Kokoro · offline test'), false);
+    assert.equal(settings.find('Download Kokoro test voice'), undefined);
+    assert.equal(settings.find('Generate Kokoro without playing'), undefined);
+  } finally { await settings.dispose(); }
+  const h = await harness({ mode:'settings', kokoroBuild:true, kokoroVoices:['af_heart'], selectedKokoro:true });
+  try {
+    await h.press('Preview voice');
+    assert.equal(h.calls.kokoroSpeech, undefined, 'Kokoro never runs outside the diagnostics build');
+    assert.equal(h.calls.deviceSpeech, 1);
+  } finally { await h.dispose(); }
+});
+
+test('V-37: Alba shows a pace control that changes pauses, never the voice speed', async () => {
+  const h = await harness({ mode:'settings', diagnostics:true, pocketBuild:true, pocketReady:true, selectedPocket:true });
+  try {
+    assert.ok(hasText(h, 'Alba changes the pauses between sentences, not the speed of the voice.'));
+    await h.press('Relaxed pace');
+    assert.equal(h.prefs.speechPace, 0.9);
+    await h.press('Preview voice');
+    assert.equal(h.calls.pocketSpeech.at(-1).pace, 0.9);
+  } finally { await h.dispose(); }
+});
+
+test('V-30: a pack download survives backgrounding and is stopped only by its own Cancel', async () => {
+  let finish; const waiting = new Promise(resolve => { finish = resolve; });
+  const h = await harness({ mode:'settings', ready:false, modelDownloadWait:waiting });
+  try {
+    await h.press('Download speech pack'); await h.confirm();
+    assert.ok(hasText(h, 'Downloading and verifying the speech pack…'));
+    await h.background();
+    assert.ok(hasText(h, 'Downloading and verifying the speech pack…'), 'backgrounding does not cancel it');
+    await h.foreground();
+    await act(async () => { finish(); await waiting; });
+    assert.ok(hasText(h, 'English speech pack downloaded and verified.'));
+    assert.equal(h.calls.cancelledDownloads || 0, 0);
+  } finally { finish(); await h.dispose(); }
+  let stop; const pending = new Promise(resolve => { stop = resolve; });
+  const cancelled = await harness({ mode:'settings', ready:false, modelDownloadWait:pending });
+  try {
+    await cancelled.press('Download speech pack'); await cancelled.confirm();
+    await cancelled.press('Cancel speech download');
+    assert.equal(cancelled.calls.cancelledDownloads, 1);
+  } finally { stop(); await cancelled.dispose(); }
+});
+
+test('V-30: on-phone recognition interrupted by backgrounding says so', async () => {
+  let finish; const waiting = new Promise(resolve => { finish = resolve; });
+  const h = await harness({ transcribeWait:waiting });
+  try {
+    await h.press('Start voice recording'); await h.press('Stop recording and review transcript');
+    await h.background();
+    assert.ok(hasText(h, 'Recognition stopped because CareKosh went to the background.'));
+  } finally { finish(); await h.dispose(); }
+});
+
+test('V-32: an interrupted Alba reply is not shown as a failure, and suffixes are not doubled', async () => {
+  const interrupted = await harness({ embedded:false, diagnostics:true, pocketBuild:true, pocketReady:true, selectedPocket:true, spokenReplies:true,
+    pocketSpeech: async () => { throw Object.assign(new Error('Speech paused because another app needed audio. Your answer is still on screen'), { code: 'SPEECH_INTERRUPTED' }); } });
+  try {
+    await interrupted.typeQuestion('How many hand gloves are left?'); await interrupted.press('Show answer');
+    assert.ok(!texts(interrupted).some(t => /Your answer is still on screen\. Your answer is still on screen/.test(t)));
+    assert.ok(!interrupted.tree.root.findAll(n => n.props?.accessibilityRole === 'alert').some(n => n.findAllByType('Text').some(t => t.children.join('').includes('Speech paused'))), 'no error alert');
+  } finally { await interrupted.dispose(); }
+  const failed = await harness({ embedded:false, diagnostics:true, pocketBuild:true, pocketReady:true, selectedPocket:true, spokenReplies:true,
+    pocketSpeech: async () => { throw Object.assign(new Error('Alba generated inaudible audio (levels). Your answer is still on screen'), { code: 'VOICE_OPERATION' }); } });
+  try {
+    await failed.typeQuestion('How many hand gloves are left?'); await failed.press('Show answer');
+    assert.ok(hasText(failed, 'Alba generated inaudible audio (levels). Your answer is still on screen'));
+    assert.ok(!texts(failed).some(t => /on screen\. Your answer is still on screen/.test(t)), 'the suffix is not doubled');
+  } finally { await failed.dispose(); }
+});
+
+test('reinstalling the selected alternate Alba voice keeps Preview, voice choices and removal available', async () => {
+  const h = await harness({ mode: 'settings', diagnostics: true, pocketBuild: true, pocketReady: true, selectedPocket: true });
+  try {
+    await h.press('Alba (updated) voice');
+    await h.press('Remove Alba voice pack'); await h.confirm();
+    assert.equal(h.prefs.albaVoice, 'albapause');
+    await h.press('Download Alba voice pack'); await h.confirm();
+    assert.equal(h.calls.pocketVoiceDownloads.at(-1), 'albapause');
+    assert.ok(h.find('Remove Alba voice pack'));
+    assert.ok(h.find('Alba voice'));
+    await h.press('Preview voice');
+    assert.equal(h.calls.pocketSpeech.at(-1).voice, 'albapause');
+  } finally { await h.dispose(); }
+});
+
+test('a download completed after an account switch cannot display an old error or save old preferences', async () => {
+  let finish; const waiting = new Promise(resolve => { finish = resolve; });
+  const h = await harness({ mode: 'settings', diagnostics: true, pocketBuild: true, pocketReady: true, pocketDownloadWait: waiting });
+  try {
+    await h.press('Charles voice'); await h.switchAccount();
+    await act(async () => { finish(); await waiting; });
+    assert.equal(h.calls.preferenceSaveOwners, undefined);
+    assert.ok(!hasText(h, 'Session changed'));
+    assert.ok(h.find('Remove Alba voice pack'));
+  } finally { finish(); await h.dispose(); }
+});
+
+test('closing setup preserves the download Cancel control on a fresh assistant instance', async () => {
+  const downloadStore = load('features/assistant/downloads.ts');
+  let finish; const waiting = new Promise(resolve => { finish = resolve; });
+  const h = await harness({ mode: 'settings', ready: false, modelDownloadWait: waiting, downloadStore });
+  let next;
+  try {
+    await h.press('Download speech pack'); await h.confirm();
+    await h.press('Close voice setup'); await h.dispose();
+    next = await harness({ onlineListening: true, audioConsented: true, cloudAvailable: true, downloadStore });
+    assert.ok(hasText(next, 'Downloading speech pack'));
+    assert.equal(next.find('Start voice recording').props.disabled, true);
+    await next.press('Cancel voice download');
+    assert.equal(next.calls.cancelledDownloads, 1);
+    await act(async () => { finish(); await waiting; });
+    assert.equal(downloadStore.downloadSnapshot(), null);
+    assert.equal(next.find('Cancel voice download'), undefined);
+    assert.equal(next.find('Start voice recording').props.disabled, false);
+  } finally { finish(); if (next) await next.dispose(); }
+});
+
+test('a pending removal keeps a fresh setup from downloading files that the old removal could delete', async () => {
+  const downloadStore = load('features/assistant/downloads.ts');
+  let finish; const waiting = new Promise(resolve => { finish = resolve; });
+  const h = await harness({ mode: 'settings', diagnostics: true, pocketBuild: true, pocketReady: true, downloadStore, pocketRemovalWait: waiting });
+  let next;
+  try {
+    await h.press('Remove Alba voice pack'); await h.confirm();
+    await h.press('Close voice setup'); await h.dispose();
+    next = await harness({ mode: 'settings', diagnostics: true, pocketBuild: true, downloadStore });
+    assert.ok(hasText(next, 'Removing Alba voice'));
+    assert.equal(next.find('Download Alba voice pack').props.disabled, true);
+    assert.equal(next.find('Cancel Alba download'), undefined);
+    await act(async () => { finish(); await waiting; });
+    assert.equal(next.find('Download Alba voice pack').props.disabled, false);
+    await next.press('Download Alba voice pack'); await next.confirm();
+    assert.equal(next.calls.pocketDownloads, 1);
+  } finally { finish(); if (next) await next.dispose(); }
+});
+
+for (const action of ['account', 'background', 'unmount']) test('kept recording is deleted on ' + action, async () => {
+  const h = await harness({ onlineListening: true, audioConsented: true, cloudAvailable: true, audioFailure: true });
+  let disposed = false;
+  try {
+    await h.press('Start voice recording'); await h.press('Stop recording and review transcript');
+    assert.equal(h.calls.discarded, undefined);
+    if (action === 'account') await h.switchAccount();
+    if (action === 'background') await h.background();
+    if (action === 'unmount') { await h.dispose(); disposed = true; }
+    assert.deepEqual(h.calls.discarded, ['file:///cache/test.m4a']);
+  } finally { if (!disposed) await h.dispose(); }
 });

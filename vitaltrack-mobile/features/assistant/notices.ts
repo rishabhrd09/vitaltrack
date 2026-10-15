@@ -40,8 +40,19 @@ https://huggingface.co/kyutai/pocket-tts-without-voice-cloning
 Converted Pocket TTS models and repacked Alba preset by Daisuke Majima:
 https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT
 Revision e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e, CC BY 4.0.
-CareKosh uses the fixed preset for synthetic assistant speech, not arbitrary voice cloning.
+CareKosh uses fixed presets for synthetic assistant speech, never arbitrary voice cloning.
 This is a different model from Piper Alba/Lyra; identical output is not claimed.
+
+Alba (updated): Kyutai's Alba voice state regenerated to end on a short pause
+(pocket-tts #334), kyutai/pocket-tts-without-voice-cloning revision
+069025daa1d6a8a9640bd52581e2a2252f8bede4, english_2026-04, CC BY 4.0.
+Modified: converted to float16 and repacked on this phone by CareKosh.
+
+Optional preset voices from the Pocket-TTS-LiteRT revision above:
+Charles, Eve and Mary: CSTR VCTK Corpus (University of Edinburgh), CC BY 4.0.
+https://huggingface.co/kyutai/tts-voices/tree/main/vctk
+Javert and Marius: Unmute Voice Donation Project, CC0.
+https://huggingface.co/kyutai/tts-voices/tree/main/voice-donations
 
 Android orchestration adapted from john-rocky/LiteRT-Models:
 Copyright (c) 2026 Daisuke Majima, MIT License.
@@ -56,3 +67,17 @@ This integration uses LiteRT, not the eSpeak-containing Sherpa/Piper runtime.
 Complete licence texts and SDK notices are bundled in the APK's
 assets/pocket-licences. Use “Export complete Alba licence notices” to read them.
 Attribution does not imply endorsement by the original creators.`;
+
+/** Diagnostics builds only: the Kokoro test voice and the files it downloads. */
+export const kokoroSpeechNotice = `Kokoro test voice · Kokoro-82M through Moonshine (diagnostics builds only)
+Kokoro-82M model and voices (Heart, Bella, Emma): hexgrad, Apache License 2.0.
+https://huggingface.co/hexgrad/Kokoro-82M
+ONNX export: onnx-community/Kokoro-82M-v1.0-ONNX, Apache License 2.0; int8-packed
+and split by Moonshine AI. Files from moonshine-ai/moonshine-voice-assets,
+revision 0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae, checked against pinned SHA-256.
+English pronunciation data: CMU Pronouncing Dictionary (BSD-style licence),
+Copyright (C) 1993-2015 Carnegie Mellon University, filtered by Moonshine AI,
+plus Moonshine's out-of-vocabulary model; Moonshine states that its
+pronunciation data follow the terms of their dictionary sources.
+moonshine-voice library: Copyright (c) 2025 Useful Sensors, Inc. (dba Moonshine AI), MIT.
+No voice cloning is used. Full texts: assets/pocket-licences (KOKORO-ATTRIBUTION.txt).`;

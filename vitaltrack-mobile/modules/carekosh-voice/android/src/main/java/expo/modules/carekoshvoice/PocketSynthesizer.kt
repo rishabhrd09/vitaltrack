@@ -1,7 +1,7 @@
 // Adapted from john-rocky/LiteRT-Models @ 310464b5988f59c03de9283c3d7451e51d9f0260.
 // Copyright (c) 2026 Daisuke Majima. MIT; see assets/pocket-licences/SAMPLE-MIT.txt.
-// CareKosh: preset Alba only, private files, evidence-based placement, bounded generation,
-// reusable compiled models, per-chunk delivery, cancellation and cleanup.
+// CareKosh: fixed preset voices only, private files, evidence-based placement, bounded generation,
+// reusable compiled models, per-chunk delivery, pace as pauses, cancellation and cleanup.
 package expo.modules.carekoshvoice
 
 import android.util.Half
@@ -33,7 +33,10 @@ import kotlin.math.sqrt
  * Placement follows [PocketPlacement]: the vocoder never runs on CPU (≈10 GB on LiteRT 2.1.6).
  * Create, use and close on one worker thread (GPU context affinity); never free during inference.
  */
-internal class PocketSynthesizer(private val modelDir: File, val placement: PocketPlacement = PocketPlacement.DEFAULT) : Closeable {
+internal class PocketSynthesizer(private val modelDir: File, val placement: PocketPlacement = PocketPlacement.DEFAULT, voiceFile: String = "pt_voice_alba.bin") : Closeable {
+    /** The preset voice state in use; switching it reloads only the voice, never the compiled graphs. */
+    var voiceFile: String = voiceFile
+        private set
 
     companion object {
         const val H = 1024               // flow-LM width
@@ -55,6 +58,7 @@ internal class PocketSynthesizer(private val modelDir: File, val placement: Pock
         const val SPF = 1920             // samples per 12.5 Hz frame
         const val SAMPLE_RATE = 24000
         const val FADE_IN = 120          // 5 ms per chunk start (pocket-tts PR #332: chunk-start click)
+        const val FADE_OUT = 120         // 5 ms at a trimmed chunk end
 
         // Generation defaults from the english config / pocket_tts defaults.
         const val TEMP = 0.3f
@@ -111,6 +115,8 @@ internal class PocketSynthesizer(private val modelDir: File, val placement: Pock
         if (device == PocketDevice.CPU) return own(cpu(name))
         return own(try { gpu(name, PocketGpuPrecision.DEFAULT) } catch (e: Exception) {
             check(); placement_.add("$name: GPU failed (${e.javaClass.simpleName})"); cpu(name)
+        } catch (e: LinkageError) {
+            check(); placement_.add("$name: GPU library missing (${e.javaClass.simpleName})"); cpu(name)
         })
     }
 
@@ -147,15 +153,21 @@ internal class PocketSynthesizer(private val modelDir: File, val placement: Pock
     private var stepCheck: () -> Unit = {}
 
     /** Load a repacked voice state: int32 T, then k and v as fp16 `[96][T][64]`. */
-    private fun loadAlba() {
-        val bb = ByteBuffer.wrap(path("pt_voice_alba.bin").readBytes()).order(ByteOrder.LITTLE_ENDIAN)
+    private fun loadVoice(name: String) {
+        require(name.matches(Regex("pt_voice_[a-z]+\\.bin"))) { "Invalid Alba voice" }
+        val bb = ByteBuffer.wrap(path(name).readBytes()).order(ByteOrder.LITTLE_ENDIAN)
         val t = bb.int
-        require(t in 1..200 && bb.remaining() == 2 * G * t * HD * 2) { "Invalid Alba voice state" }
+        // The voice prompt, the longest chunk and a full decoder window must fit the KV cache.
+        require(t in 1..200 && t + MAX_TOKENS_PER_CHUNK + 1 < PMAX && bb.remaining() == 2 * G * t * HD * 2) { "Invalid Alba voice state" }
         val n = G * t * HD
         voiceK = FloatArray(n) { Half.toFloat(bb.short) }
         voiceV = FloatArray(n) { Half.toFloat(bb.short) }
         voiceLen = t
+        voiceFile = name
     }
+
+    /** Switch the preset voice on a warm engine. Same worker thread as [synthesize]. */
+    fun useVoice(name: String) { if (name != voiceFile || voiceLen == 0) loadVoice(name) }
 
     private fun resetToVoice() {
         pk.fill(0f); pv.fill(0f) // masked slots must stay finite: −1e4 cannot cancel NaN/Inf
@@ -234,12 +246,13 @@ internal class PocketSynthesizer(private val modelDir: File, val placement: Pock
     }
 
     /**
-     * Generate speech chunk by chunk with the fixed Alba preset. Each decoded chunk is handed to
+     * Generate speech chunk by chunk with the chosen preset voice. Each decoded chunk is handed to
      * [onChunk] immediately, so playback can begin after the first sentence. Bounded by the caller's
      * [check] (cancellation and deadline) and by the KV/decoder window.
      */
-    fun synthesize(text: String, check: () -> Unit, progress: (String, Int) -> Unit, onChunk: (FloatArray) -> Unit): Result {
+    fun synthesize(text: String, check: () -> Unit, progress: (String, Int) -> Unit, pace: Float = 1f, onChunk: (FloatArray) -> Unit): Result {
         require(text.isNotBlank() && text.length <= 640) { "Speech text must be 1–640 characters" }
+        val pauses = pocketPauses(pace)
         val started = System.nanoTime()
         stepCheck = check
         try {
@@ -254,8 +267,12 @@ internal class PocketSynthesizer(private val modelDir: File, val placement: Pock
                 val (latents, partial) = generateChunk(ids, framesAfterEos = eosGuess + 2, progress)
                 require(latents.isNotEmpty()) { "Alba could not generate this reply" }
                 val decodeStart = System.nanoTime()
-                val audio = decode(latents, progress)
+                // Steady pauses at joins; corrupt or inaudible output is rejected before any gain.
+                val trimmed = pocketTrimJoin(decode(latents, progress), first = stats.isEmpty(), pauses = pauses)
+                pocketAudioLevels(trimmed)
+                val audio = pocketEvenLoudness(trimmed)
                 for (i in 0 until minOf(FADE_IN, audio.size)) audio[i] *= i / FADE_IN.toFloat()
+                for (i in 0 until minOf(FADE_OUT, audio.size)) audio[audio.size - 1 - i] *= i / FADE_OUT.toFloat()
                 frames += latents.size
                 samples += audio.size
                 require(samples <= SAMPLE_RATE * 90) { "Spoken reply exceeded the limit" }
@@ -268,7 +285,7 @@ internal class PocketSynthesizer(private val modelDir: File, val placement: Pock
 
     /** Bounded autoregressive loop; a length estimate is not an EOS deadline. */
     private fun generateChunk(ids: IntArray, framesAfterEos: Int, progress: (String, Int) -> Unit): Pair<List<FloatArray>, ChunkStats> {
-        require(ids.size in 1..MAX_TOKENS_PER_CHUNK && ids.all { it in 0 until 4000 })
+        require(ids.size in 1..MAX_TOKENS_PER_CHUNK && ids.all { it in 0 until 4000 }) { "Alba could not prepare this sentence" }
         val promptStart = System.nanoTime()
         resetToVoice()
         for (id in ids) step(embRow(id), zeroNoise)
@@ -300,7 +317,7 @@ internal class PocketSynthesizer(private val modelDir: File, val placement: Pock
     private fun decode(latents: List<FloatArray>, progress: (String, Int) -> Unit): FloatArray {
         stepCheck()
         progress("decoding", latents.size)
-        require(latents.size in 1..DEC_FRAMES)
+        require(latents.size in 1..DEC_FRAMES) { "Alba produced an invalid sentence length" }
         val t = latents.size
         val feat = FloatArray(MIMI_D * S_DEC)
         val blk = FloatArray((1 + F_BLK) * LDIM)
@@ -352,13 +369,15 @@ internal class PocketSynthesizer(private val modelDir: File, val placement: Pock
             bosInput = readF32(path(BOS))
             neutral = readF32(path(NEUTRAL))
             textPrompt = PocketText(PocketTokenizer(path(TOKENIZER)))
-            loadAlba()
+            loadVoice(voiceFile)
             check()
             lm = cpuOrGpu(LM, placement.lm, check)
             dectx = cpuOrGpu(DEC_TX, placement.decoderTransformer, check)
             check()
             deconly = own(try { gpu(DECONLY, placement.vocoderPrecision) } catch (e: Exception) {
                 placement_.add("$DECONLY: GPU failed (${e.javaClass.simpleName})"); throw PocketVocoderUnavailable(e)
+            } catch (e: LinkageError) {
+                placement_.add("$DECONLY: GPU library missing (${e.javaClass.simpleName})"); throw PocketVocoderUnavailable(e)
             })
             fun buffers(m: CompiledModel, input: Boolean) =
                 (if (input) m.createInputBuffers() else m.createOutputBuffers()).also { b -> b.forEach { own(it) } }

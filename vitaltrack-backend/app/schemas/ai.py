@@ -108,7 +108,8 @@ class SarvamKeyRequest(StrictModel):
 
 
 class ConsentRequest(StrictModel):
-    version: Literal["voice-2026-10-06"]
+    # One source of truth: a new consent text changes CONSENT_VERSION only.
+    version: Literal[CONSENT_VERSION]  # type: ignore[valid-type]
     accepted: bool
     scopes: list[ConsentScope] = Field(default_factory=list, max_length=6)
 

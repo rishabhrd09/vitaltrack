@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { AccessibilityInfo, FlatList, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { isCriticalEquipment, type Item } from '@/types';
@@ -38,14 +38,20 @@ export default function AnswerList({ items, header, draftRows, reasons }: { item
       const why = (reasons?.[item.id] || []).join(' · ');
       const provenance = row && `${PROVENANCE[row.source]}${row.source !== 'manual' && row.basis ? ` · ${row.basis.replace(/^Suggested · /, '')}` : ''}`;
       const open = expanded.has(item.id);
+      const details = [`Supplier · ${item.supplierName?.trim() || 'Not recorded'}`, `Brand · ${item.brand?.trim() || 'Not recorded'}`, `Minimum stock · ${item.minimumStock} ${item.unit}`,
+        ...(critical ? [`Critical equipment · ${item.isCritical ? 'marked on the item' : 'by name rule'}`] : [])];
+      // The expanded details are part of the row's label, so TalkBack reads what sighted users see.
       const label = [`${index + 1}. ${item.name}`, `${item.quantity} ${item.unit}`, status, critical && 'Critical equipment', why && `Why: ${why}`,
-        row && `Order ${row.quantity} ${item.unit}, ${provenance}`, open ? 'Hide recorded details' : 'Show recorded details'].filter(Boolean).join('. ');
+        row && `Order ${row.quantity} ${item.unit}, ${provenance}`, open && details.join('. '), open ? 'Hide recorded details' : 'Show recorded details'].filter(Boolean).join('. ');
       const statusView = <View style={styles.statusLine}>
         <Ionicons name={STATUS_ICON[status]} size={13} color={tone} />
         <Text style={[styles.status, { color: tone }]}>{status}</Text>
       </View>;
       return <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ expanded: open }}
-        onPress={() => setExpanded(old => { const next = new Set(old); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })}
+        onPress={() => {
+          if (!open) AccessibilityInfo.announceForAccessibility(`${item.name}. ${details.join('. ')}`);
+          setExpanded(old => { const next = new Set(old); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; });
+        }}
         style={[styles.item, { borderColor: colors.borderPrimary }]}>
         <View style={styles.line}>
           <Text style={[styles.index, { color: colors.textTertiary }]}>{String(index + 1).padStart(2, '0')}</Text>
@@ -75,10 +81,7 @@ export default function AnswerList({ items, header, draftRows, reasons }: { item
           {stacked ? null : statusView}
         </View>}
         {open && <View style={styles.details}>
-          <Text style={[styles.detail, { color: colors.textSecondary }]}>Supplier · {item.supplierName?.trim() || 'Not recorded'}</Text>
-          <Text style={[styles.detail, { color: colors.textSecondary }]}>Brand · {item.brand?.trim() || 'Not recorded'}</Text>
-          <Text style={[styles.detail, { color: colors.textSecondary }]}>Minimum stock · {item.minimumStock} {item.unit}</Text>
-          {critical && <Text style={[styles.detail, { color: colors.textSecondary }]}>Critical equipment · {item.isCritical ? 'marked on the item' : 'by name rule'}</Text>}
+          {details.map(line => <Text key={line} style={[styles.detail, { color: colors.textSecondary }]}>{line}</Text>)}
         </View>}
       </TouchableOpacity>;
     }} />;

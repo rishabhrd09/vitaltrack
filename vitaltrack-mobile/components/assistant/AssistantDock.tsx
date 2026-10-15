@@ -57,7 +57,8 @@ export default function AssistantDock(p: Props) {
       {(p.recording || !!p.busy) ? <View style={styles.live}>
         {!!p.busy && <ActivityIndicator size="small" color={colors.accentBlue} />}
         <ScrollView ref={liveScroll} style={{ maxHeight: 100 }} onContentSizeChange={() => liveScroll.current?.scrollToEnd({ animated: !reduceMotion })}>
-          <Text accessibilityLiveRegion="polite" style={[styles.words, { color: p.live && p.recording ? colors.textPrimary : colors.textSecondary }]}>{p.recording && p.live ? p.live : status}</Text>
+          {/* No live announcements while the microphone records: TalkBack speech would be recorded too. */}
+          <Text accessibilityLiveRegion={p.recording ? 'none' : 'polite'} style={[styles.words, { color: p.live && p.recording ? colors.textPrimary : colors.textSecondary }]}>{p.recording && p.live ? p.live : status}</Text>
         </ScrollView>
       </View> : <View style={{ flex: 1 }} />}
       {!p.recording && !p.busy && !p.review && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Type a question here" onPress={p.onType} style={styles.smallButton}>

@@ -4,6 +4,7 @@ import base64
 import io
 import json
 import wave
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
@@ -164,7 +165,8 @@ async def test_capabilities_advertise_sarvam_without_legacy_alba(monkeypatch):
     from app.services import sarvam_credentials
 
     monkeypatch.setattr(sarvam_credentials, "AsyncSessionLocal", FakeDb)
-    available = await ai.capabilities(ai_guard.AIPrincipal("synthetic-user"))
+    # The undecorated route: rate limiting needs a real HTTP request and is covered elsewhere.
+    available = await ai.capabilities.__wrapped__(SimpleNamespace(scope={}), ai_guard.AIPrincipal("synthetic-user"))
     assert available["speak"] is True
     assert available["speech_providers"] == ["sarvam"]
     assert available["transcription_providers"] == []
@@ -185,13 +187,14 @@ async def test_api_speech_passes_pace_returns_wav_and_settles_usage(monkeypatch)
         events.append(("speech", text, provider, pace))
         return clip()
 
-    async def settle(ticket, success):
-        events.append(("settle", ticket, success))
+    async def settle(ticket, success, usage=None):
+        events.append(("settle", ticket, success, usage))
 
     monkeypatch.setattr(ai, "reserve", reserve)
     monkeypatch.setattr(ai_provider, "selected_speech", speech)
     monkeypatch.setattr(ai, "settle", settle)
-    result = await ai.speak(
+    result = await ai.speak.__wrapped__(
+        SimpleNamespace(scope={}),
         SpeakRequest(text="Synthetic", provider="sarvam", pace=1.1),
         ai_guard.AIPrincipal("synthetic-user"),
     )
@@ -205,7 +208,7 @@ async def test_api_speech_passes_pace_returns_wav_and_settles_usage(monkeypatch)
             {"provider": "sarvam", "credential_source": "application"},
         ),
         ("speech", "Synthetic", "sarvam", 1.1),
-        ("settle", "ticket", True),
+        ("settle", "ticket", True, {"characters": 9}),
     ]
 
 
@@ -234,3 +237,29 @@ async def test_personal_provider_header_is_exact_and_never_retried_on_failure(mo
     with pytest.raises(HTTPException):
         await ai_provider.selected_speech("Synthetic", "sarvam", api_key=SecretStr("synthetic-personal"))
     assert calls == [{"api-subscription-key": "synthetic-personal"}]
+
+
+@pytest.mark.parametrize("status,body,personal,expected", [
+    (401, b'{"error":{"message":"bad key","code":"authentication_error","request_id":"r1"}}', False, 503),
+    (401, b'{"error":{"message":"bad key","code":"authentication_error","request_id":"r1"}}', True, 409),
+    (400, b'{"error":{"message":"x","code":"authentication_error","request_id":"r1"}}', False, 503),
+])
+def test_v43_sarvam_authentication_errors_name_the_rejected_key(status, body, personal, expected):
+    mapped = ai_provider.sarvam_failure(personal)(status, body)
+    assert mapped.status_code == expected
+    assert "rejected" in mapped.detail
+
+
+@pytest.mark.parametrize("model,has_mode", [("saaras:v4", False), ("saaras:v3", True)])
+async def test_v44_sarvam_transcription_sends_mode_only_where_documented(monkeypatch, model, has_mode):
+    sent = {}
+
+    async def call(url, headers, **kwargs):
+        sent.update(kwargs)
+        return json.dumps({"transcript": "How many gloves are left?"}).encode()
+
+    monkeypatch.setattr(settings, "SARVAM_STT_MODEL", model)
+    monkeypatch.setattr(ai_provider, "bounded_call", call)
+    assert await ai_provider.sarvam_transcribe(b"RIFF") == "How many gloves are left?"
+    assert ("mode" in sent["data"]) is has_mode
+    assert sent["data"]["model"] == model and sent["data"]["language_code"] == "en-IN"

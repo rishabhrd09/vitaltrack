@@ -10,13 +10,6 @@
       "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/pt_tokenizer.tsv"
     },
     {
-      "name": "pt_voice_alba.bin",
-      "path": "voices/pt_voice_alba.bin",
-      "bytes": 3096580,
-      "sha256": "f0f15ebfae5aa690ed3a3f25b478198d1892bd3022f39ca738ced07fcaec8e7b",
-      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/voices/pt_voice_alba.bin"
-    },
-    {
       "name": "pt_embed_f16.bin",
       "path": "pt_embed_f16.bin",
       "bytes": 8194048,
@@ -64,6 +57,75 @@
       "bytes": 10550208,
       "sha256": "ea7bd858b8e2841b30be7599e4bfedce7a751d23a9e1946d14101b0440de4e7e",
       "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/pt_mimi_deconly_fp16.tflite"
+    }
+  ],
+  "voices": [
+    {
+      "id": "alba",
+      "label": "Alba",
+      "name": "pt_voice_alba.bin",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/voices/pt_voice_alba.bin",
+      "bytes": 3096580,
+      "sha256": "f0f15ebfae5aa690ed3a3f25b478198d1892bd3022f39ca738ced07fcaec8e7b",
+      "source": "alba-mackenna casual, CC BY 4.0"
+    },
+    {
+      "id": "albapause",
+      "label": "Alba (updated)",
+      "name": "pt_voice_albapause.bin",
+      "bytes": 3121156,
+      "sha256": "1653af47fd20be6d43bd5ed312af35496b3c1835dd63ad846cfbff6244659726",
+      "voiceState": {
+        "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/069025daa1d6a8a9640bd52581e2a2252f8bede4/languages/english_2026-04/embeddings/alba.safetensors",
+        "bytes": 6244152,
+        "sha256": "1b704240aa9da36ab32ac05c46a8a9172031c82bc07dbab9df834f0063b24985"
+      },
+      "source": "alba-mackenna casual, CC BY 4.0; Kyutai voice state ending on a short pause (pocket-tts #334), CC BY 4.0, packed on the phone"
+    },
+    {
+      "id": "charles",
+      "label": "Charles",
+      "name": "pt_voice_charles.bin",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/voices/pt_voice_charles.bin",
+      "bytes": 3096580,
+      "sha256": "1ab35c90e580a4413b7391419c854b1bd644329692e3a0b15caa76c816aec32a",
+      "source": "VCTK p254, CC BY 4.0"
+    },
+    {
+      "id": "eve",
+      "label": "Eve",
+      "name": "pt_voice_eve.bin",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/voices/pt_voice_eve.bin",
+      "bytes": 3268612,
+      "sha256": "6a8a1391bbfc12c7b861708f82a3b39946baf178928b05915f359c327332af6f",
+      "source": "VCTK p361, CC BY 4.0"
+    },
+    {
+      "id": "mary",
+      "label": "Mary",
+      "name": "pt_voice_mary.bin",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/voices/pt_voice_mary.bin",
+      "bytes": 3096580,
+      "sha256": "b872ee2e16f04726968c7217575e3986712586345787a65da0494b74c9f21cdd",
+      "source": "VCTK p333, CC BY 4.0"
+    },
+    {
+      "id": "javert",
+      "label": "Javert",
+      "name": "pt_voice_javert.bin",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/voices/pt_voice_javert.bin",
+      "bytes": 3096580,
+      "sha256": "d9bc65bad1c86041200d5e6b090802867ed32e8a76e07b52774d86d821b62dfb",
+      "source": "voice donation, CC0"
+    },
+    {
+      "id": "marius",
+      "label": "Marius",
+      "name": "pt_voice_marius.bin",
+      "url": "https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT/resolve/e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e/voices/pt_voice_marius.bin",
+      "bytes": 3096580,
+      "sha256": "261dd8eef5a3e1f20ff5244e0fc9342a0e4d2cf47142353dc486ba621f89e86f",
+      "source": "voice donation, CC0"
     }
   ]
 }

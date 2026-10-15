@@ -17,7 +17,8 @@ function messageOf(error: unknown): string {
   if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' && error.message.trim()) return error.message.trim();
   return 'Online speech was unavailable.';
 }
-const cancelled = (error: unknown) => /^Speech cancelled\.?$/.test(messageOf(error));
+const cancelled = (error: unknown) => (typeof error === 'object' && error !== null && 'code' in error && error.code === 'SPEECH_CANCELLED')
+  || /^Speech cancelled\.?$/.test(messageOf(error));
 
 export async function narrateWithFallback(options: {
   /** Performs the online attempt; calls `onPlaybackStarted` once online audio actually starts. */

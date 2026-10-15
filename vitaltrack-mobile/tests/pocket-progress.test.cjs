@@ -19,8 +19,9 @@ const pack = { pocketVoiceStatus() {}, downloadPocketVoice() {}, removePocketVoi
 test('progress is scoped to one speech request and subscriptions are released', async () => {
   let listener; let removed = 0; const seen = [];
   const voice = bridge({ ...pack, addListener(name, fn) { assert.equal(name, 'pocketSpeechProgress'); listener = fn; return { remove() { removed++; } }; },
-    async speakPocketWithProgress(text, pace, id) {
+    async speakPocketWithProgress(text, pace, id, selectedVoice) {
       assert.equal(text, '32 active items'); assert.equal(pace, 0.9);
+      assert.equal(selectedVoice, 'alba');
       listener({ id: 'old-request', stage: 'playing' }); listener({ id, stage: 'unknown' });
       listener({ id, stage: 'cpu_retry' }); // the CPU-retry stage no longer exists
       listener({ id, stage: 'loading' }); listener({ id, stage: 'playing' });
@@ -102,5 +103,6 @@ test('diagnostics runs forward play/placement and need the diagnostics-capable A
   const voice = bridge({ ...pack, async speakPocketDiagnostic(...value) { args = value; return { output: 'none (synthesis only)' }; } });
   await voice.speakDiagnostic('Hello', false, 'lm_gpu');
   assert.equal(args[0], 'Hello'); assert.equal(args[1], 1); assert.match(args[2], /^diagnostic-/); assert.equal(args[3], false); assert.equal(args[4], 'lm_gpu');
+  assert.equal(args[5], 'alba', 'the required preset follows placement in the native bridge');
   assert.throws(() => bridge(pack).speakDiagnostic('Hello', true, 'default'), /latest test APK/);
 });

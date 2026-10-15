@@ -7,7 +7,7 @@ fails closed. It neither knows inventory nor permits a server mutation.
 
 import re
 
-from app.schemas.ai import Plan
+from app.schemas.ai import Intent, Plan, Specification
 
 NUMBER_WORDS = dict(zip(
     "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety".split(),
@@ -23,7 +23,14 @@ COMPARISONS = {
     "gt": (r"(?:more|greater) than (\d+)", r"(?:over|above) (\d+)"),
 }
 PRIORITY = r"\b(?:order priority|most urgent|order (?:now|immediately)|ordering (?:now|immediately)|should (?:i |we )?order|consider ordering)\b"
-MISSING_SUPPLIER = r"\b(?:(?:no|missing|without)(?: a| any| recorded)? supplier|supplier(?: is| has)? (?:not recorded|not set|missing|unrecorded))\b"
+SORT_CUES = {
+    "name": r"\b(?:alphabetically|alphabetical|a z|by name)\b",
+    "quantity_asc": r"\b(?:lowest (?:quantity|stock) first|ascending quantity|quantity ascending|(?:sort|sorted|order|ordered) by (?:stock|quantity)(?! (?:descending|highest|high)))\b",
+    "quantity_desc": r"\b(?:highest (?:quantity|stock)?\s*first|descending quantity|quantity descending|(?:sort|sorted|order|ordered) by (?:stock|quantity) (?:descending|highest first|high to low))\b",
+    "shortfall": r"\b(?:largest shortfall|shortfall)\b",
+    "priority": PRIORITY,
+}
+MISSING_SUPPLIER = r"\b(?:(?:no|missing|without)(?: a| any)?(?: recorded)? suppliers?|suppliers?(?: is| are| has)? (?:not recorded|not set|missing|unrecorded))\b"
 
 
 def words(value: str) -> str:
@@ -67,7 +74,7 @@ def stock_states(text: str) -> set[str]:
         (r"\b(?:out of stock|zero stock|0 stock)\b", {"out"}),
         (r"\bbelow (?:their |the |its )?(?:recorded )?minimum(?: stock)?(?: levels?)?\b", {"below_minimum"}),
         (r"\b(?:running low|low on stock|low in stock|low stock|low)\b", {"low"}),
-        (r"\b(?:in stock|well stocked)\b", {"in_stock"}),
+        (r"\b(?:in stock|(?:well )?stocked)\b", {"in_stock"}),
     )
     for pattern, states in patterns:
         if re.search(pattern, text):
@@ -122,10 +129,7 @@ def require_lexical_constraints(plan: Plan, question: str) -> None:
         return
     # _words() removes signs, decimal punctuation and fractions. Never let that
     # turn an unrepresentable quantity into a different positive integer.
-    names = [line.item_query for line in plan.draft.lines if line.item_query] if plan.draft else []
-    if plan.selection:
-        names += [name for group in [*plan.selection.any_of, *plan.selection.exclude]
-                  for name in [*group.item_queries, group.category, group.supplier, group.brand] if name]
+    names = _plan_names(plan)
     require_representable_numbers(question, names)
     text = words(numeric_text(question))
     opaque = " ".join(re.findall(r"\w+|[;,!?]", numeric_text(question)))
@@ -133,7 +137,7 @@ def require_lexical_constraints(plan: Plan, question: str) -> None:
         opaque = re.sub(rf"\b{re.escape(words(numeric_text(name)))}\b", "recorded_name", opaque)
     if re.search(r"\b(?:last (?:week|month|year)|next (?:week|month|year)|used (?:last|today|yesterday)|usage|forecast|expiry|expiration|expires|cheapest|prices?)\b", opaque):
         raise ValueError("Unsupported condition")
-    if re.search(r"\b(?:not|no) (?:low(?: (?:in|on))? stock|out of stock|below|under)\b", opaque):
+    if re.search(r"\b(?:not|no) (?:low(?: (?:in|on))? stock|out of stock|in stock|(?:well )?stocked|below|under)\b", opaque):
         raise ValueError("Unrepresented stock negation")
     if plan.draft is not None:
         if not re.search(r"\b(?:draft|order|purchase)\b", text) and not (
@@ -216,13 +220,213 @@ def require_lexical_constraints(plan: Plan, question: str) -> None:
                 if states and not gs & states or not amounts <= gq or not critical <= gc or missing and not gm:
                     raise ValueError("Conjoined conditions were split")
 
-    sort_cues = {
-        "name": r"\b(?:alphabetically|alphabetical|a z|by name)\b",
-        "quantity_asc": r"\b(?:lowest (?:quantity|stock) first|ascending quantity|quantity ascending)\b",
-        "quantity_desc": r"\b(?:highest (?:quantity|stock)?\s*first|descending quantity|quantity descending)\b",
-        "shortfall": r"\b(?:largest shortfall|shortfall)\b",
-        "priority": PRIORITY,
-    }
-    requested_sorts = {sort for sort, cue in sort_cues.items() if re.search(cue, opaque)}
+    requested_sorts = {sort for sort, cue in SORT_CUES.items() if re.search(cue, opaque)}
     if requested_sorts and requested_sorts != {plan.selection.sort} or plan.selection.sort != "none" and plan.selection.sort not in requested_sorts:
         raise ValueError("Sort not grounded")
+
+
+# --- Completeness (V-21): nothing the person asked for may be dropped or changed. ---------------------
+# The server cannot know recorded names, so every content word and number must be explained by the
+# plan: by a copied name, a recognised cue, or ordinary connecting words. Unexplained wording fails
+# closed and the phone asks the person to rephrase.
+FILLER_WORDS = frozenset("""
+a an the all any some every each everything anything of in on for to with from by at as about into within among
+is are was were be been being am do does did have has had having there here this that these those it its they them
+their we our us i me my you your please kindly could would can will shall should may might must let s t re ve ll d m
+just also plus then now today currently current right so and or but if whether which what who how many much number count
+total list show showing display displaying give get fetch find tell see view check pull up bring look know want need
+needs like hey hi hello ok okay thanks thank quick quickly item items thing things product products inventory stuff
+level levels status kind kinds type types ones both either too along well whose whichever supplies materials articles
+details presently
+""".split())
+CUE_WORDS = frozenset("""
+low out stock stocks below minimum running run short critical equipment non not marked flagged star starred quantity
+quantities qty less fewer lower than more greater higher most least exactly equal equals precisely only between under
+over above maximum remaining left hand stocked supplier suppliers supplied vendor vendors category categories brand
+brands no missing recorded unrecorded sorted sort sorting order ordered orders alphabetically alphabetical name names
+lowest highest first ascending descending largest biggest shortfall priority urgent urgently immediately consider
+considering ordering prepare create make build draft drafts purchase purchases put together add adding set change
+update replace increase reduce decrease remove delete take units unit pairs pair boxes box bottles bottle pieces piece packs
+pack packets packet rolls roll tubes tube excluding exclude except other apart including include leaving leave omit
+omitting skip skipping minus without results result shown previous earlier another extra saved unsaved new existing
+""".split())
+FIELD_CUES = {
+    "supplier": r"\b(?:supplier|suppliers|supplied|vendor|vendors)\b",
+    "category": r"\b(?:category|categories)\b",
+    "brand": r"\b(?:brand|brands)\b",
+}
+# These phrases describe presentation or courtesy, rather than a new filter. Keep
+# content words outside these bounded forms unexplained, so unknown names still fail.
+BENIGN_PHRASES = (
+    (r"\bwould you mind\b", "would you"),
+    (r"\b(?:once|sir|madam|na|itself)$", ""),
+    (r"\bin (?:our|my) store\b", "in inventory"),
+    (r"\bkeep only\b", "only"),
+    (r"\bfilter to\b", "only"),
+    (r"\blast list\b", "previous list"),
+    (r"\bthe following items\b", "items"),
+    (r"\bsecond is\b", "is"),
+    (r"\b(\d+(?: (?:units?|pairs?|boxes?|pieces?|packs?))?) available\b", r"\1"),
+)
+# "Supplier names for gloves" asks for displayed facts; "from supplier X"
+# specifies a filter. Remove only the former field wording, never its subject.
+DISPLAY_FIELDS = r"\b(?:suppliers?|vendors?|brands?)(?: names?)? (?:for|of)\b"
+ADD_CUE = r"\b(?:add|adding|more|extra|another|increase)\b"
+SET_CUE = r"\b(?:set|change|make|replace|update)\b"
+REMOVE_CUE = r"\b(?:remove|delete|take out|drop|leave out|leaving out)\b"
+REFERENCE_CUE = r"\b(?:those|these|them|they|that list|this list|the list|last list|the results|results|shown|previous|earlier|among|ones)\b"
+FOLLOW_UP_START = r"^(?:only|just|exclude|excluding|except|without|sort|sorted|filter|now|then|and|also)\b"
+
+
+def _plan_names(plan: Plan) -> list[str]:
+    names = []
+    if plan.selection:
+        for group in [*plan.selection.any_of, *plan.selection.exclude]:
+            names += [name for name in [*group.item_queries, group.category, group.supplier, group.brand] if name]
+    if plan.draft:
+        names += [value for line in plan.draft.lines for value in (line.item_query, line.unit) if value]
+    return names
+
+
+def _occurs(name: str, tokens: list[str]) -> list[int]:
+    parts = words(numeric_text(name)).split()
+    return [i for i in range(len(tokens) - len(parts) + 1) if parts and tokens[i:i + len(parts)] == parts]
+
+
+def require_draft_operations(lines, question: str, names=()) -> None:
+    """Keep each explicit operation with its own item, with copied names opaque."""
+    operation_text = " ".join(re.findall(r"\w+|[;,!?]", numeric_text(question)))
+    copied = {*names, *(value for line in lines for value in (line.item_query, line.unit) if value)}
+    anchors = {}
+    # Mask before splitting, too: a copied name may itself contain "and".
+    for index, name in enumerate(sorted(copied, key=len, reverse=True)):
+        anchors[name] = f"recorded_name_{index}"
+        operation_text = re.sub(rf"\b{re.escape(words(numeric_text(name)))}\b", anchors[name], operation_text)
+    cues, last = [], ""
+    for part in clauses(operation_text):
+        found = "remove" if re.search(REMOVE_CUE, part) else "add" if re.search(ADD_CUE, part) else "set" if re.search(SET_CUE, part) else ""
+        last = found or last
+        cues.append((part, found, last))
+    for line in lines:
+        if getattr(line, "target", "named") != "named" or not line.item_query:
+            continue
+        clause = next(((part, found, inherited) for part, found, inherited in cues if anchors[line.item_query] in part.split()), None)
+        if clause is None:
+            continue
+        part, found, inherited = clause
+        cue = found or inherited
+        if line.operation == "set" and re.search(ADD_CUE, part):
+            raise ValueError("Adding more was planned as replacing the quantity")
+        if line.operation == "add" and cue != "add":
+            raise ValueError("Add was not requested for this item")
+        if line.operation == "remove" and cue != "remove":
+            raise ValueError("Removal was not requested for this item")
+        if line.operation in ("set", "add") and found == "remove":
+            raise ValueError("A removal was planned as an order quantity")
+
+
+def require_complete_plan(plan: Plan, question: str, has_previous: bool) -> None:
+    """Every content word, number, field filter and draft operation the person said must be in the plan."""
+    if plan.intent not in {"inventory_query", "draft_order"}:
+        return
+    tokens = words(numeric_text(question)).split()
+    covered = [False] * len(tokens)
+    for name in sorted(set(_plan_names(plan)), key=lambda value: len(words(numeric_text(value))), reverse=True):
+        length = len(words(numeric_text(name)).split())
+        for start in _occurs(name, tokens):
+            covered[start:start + length] = [True] * length
+    used = {str(c.value) for group in ([*plan.selection.any_of, *plan.selection.exclude] if plan.selection else []) for c in group.quantity}
+    used |= {str(line.quantity) for line in (plan.draft.lines if plan.draft else []) if line.quantity is not None}
+    coverage = " ".join("recorded_name" if copied else token for token, copied in zip(tokens, covered, strict=True))
+    for pattern, replacement in BENIGN_PHRASES:
+        coverage = re.sub(pattern, replacement, coverage)
+    coverage_tokens = coverage.split()
+    for index, token in enumerate(coverage_tokens):
+        if token == "recorded_name":
+            continue
+        if token.isdigit():
+            # "zero stock" names a stock state, not a quantity.
+            if token in used or token == "0" and coverage_tokens[index + 1:index + 2] == ["stock"]:
+                continue
+            raise ValueError("A number in the request is not in the plan")
+        if token not in FILLER_WORDS and token not in CUE_WORDS:
+            raise ValueError("Part of the request is not in the plan")
+
+    opaque = " ".join(tokens)
+    for name in sorted(set(_plan_names(plan)), key=len, reverse=True):
+        opaque = re.sub(rf"\b{re.escape(words(numeric_text(name)))}\b", "recorded_name", opaque)
+    groups = [*plan.selection.any_of, *plan.selection.exclude] if plan.selection else []
+    filters = re.sub(DISPLAY_FIELDS, " ", opaque)
+    for field, cue in FIELD_CUES.items():
+        if not re.search(cue, filters):
+            continue
+        if field == "supplier" and (re.search(MISSING_SUPPLIER, opaque) or any(group.missing_supplier for group in groups)):
+            continue
+        if not any(getattr(group, field) for group in groups):
+            raise ValueError(f"The requested {field} filter is not in the plan")
+
+    if plan.selection and re.search(rf"\b{EXCLUSION}\b", opaque):
+        # A name the person wants included must come before the exclusion wording.
+        included_tokens = scoped_text(" ".join(tokens))[0].split()
+        for group in plan.selection.any_of:
+            for name in [*group.item_queries, group.category, group.supplier, group.brand]:
+                if name and not _occurs(name, included_tokens):
+                    raise ValueError("An excluded name was selected")
+
+    text = " ".join(tokens)
+    if plan.selection and plan.selection.scope == "previous" and not (re.search(REFERENCE_CUE, text) or re.match(FOLLOW_UP_START, text)):
+        raise ValueError("A follow-up to the previous list was not requested")
+
+    if plan.draft:
+        require_draft_operations(plan.draft.lines, question, _plan_names(plan))
+
+
+# --- Older phones (V-22): contracts 1 and 2 keep their shapes but may not add or drop conditions. -----
+STATUS_STATES = {"any": set(), "low": {"low"}, "out": {"out"}, "attention": {"low", "out"}, "below_minimum": {"below_minimum"}}
+V1_LOW = r"\b(?:low|running low|running out|run out|short|restock|restocking|reorder|re order|need ordering|need to order|order soon)\b"
+OUT_ALIASES = r"\b(?:run out|ran out|none left|nothing left|no stock|sold out|(?:are|is|anything) (?:empty|finished|depleted)|(?:empty|finished|depleted) (?:items?|products?|supplies|stock))\b"
+V1_OUT = rf"(?:\b(?:out of stock|zero stock|0 stock|none left|no stock|sold out|run out|ran out|running out|empty)\b|{OUT_ALIASES})"
+ATTENTION_ALIASES = r"\b(?:restock(?:ing)?|reorder(?:ing)?|re order(?:ing)?|need(?:s)?(?: to)? order(?:ing)?|order soon)\b"
+
+
+def require_v2_conditions(spec: Specification, question: str) -> None:
+    """Contract 2: stock states, missing supplier and representable sorting must match the request both ways."""
+    if spec.intent not in {"inventory_query", "draft_order"}:
+        return
+    names = [line.item_query for line in spec.lines]
+    if spec.query:
+        names += [name for name in [*spec.query.item_queries, spec.query.category, spec.query.supplier, spec.query.brand] if name]
+    opaque = words(numeric_text(question))
+    for name in sorted(set(names), key=len, reverse=True):
+        opaque = re.sub(rf"\b{re.escape(words(numeric_text(name)))}\b", "recorded_name", opaque)
+    expected = stock_states(opaque)
+    if re.search(OUT_ALIASES, opaque):
+        expected.add("out")
+    if re.search(r"\brunning short\b", opaque):
+        expected.add("low")
+    if not expected and re.search(ATTENTION_ALIASES, opaque):
+        expected = {"low", "out"}
+    if "in_stock" in expected:
+        raise ValueError("In-stock filtering needs a newer contract")
+    if spec.intent == "inventory_query":
+        actual = STATUS_STATES[spec.query.status]
+        if spec.query.missing_supplier != bool(re.search(MISSING_SUPPLIER, opaque)):
+            raise ValueError("Missing-supplier filter does not match the request")
+        requested_sorts = {sort for sort, cue in SORT_CUES.items() if re.search(cue, opaque)}
+        actual_sort = {"stock": "quantity_asc"}.get(spec.query.sort, spec.query.sort)
+        if requested_sorts != (set() if actual_sort == "none" else {actual_sort}):
+            raise ValueError("Sorting does not match the request")
+    else:
+        actual = ({"low"} if spec.include_low else set()) | ({"out"} if spec.include_out else set())
+        require_draft_operations(spec.lines, question, names)
+    if actual != expected:
+        raise ValueError("Stock condition does not match the request")
+
+
+def require_v1_conditions(intent: Intent, question: str) -> None:
+    """Contract 1: a low-stock or out-of-stock answer needs that wording."""
+    text = words(numeric_text(question))
+    if intent.intent == "low_stock" and not re.search(V1_LOW, text):
+        raise ValueError("Low stock was not requested")
+    if intent.intent == "out_of_stock" and not re.search(V1_OUT, text):
+        raise ValueError("Out of stock was not requested")

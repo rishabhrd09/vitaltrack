@@ -21,7 +21,7 @@ from pydantic import SecretStr, ValidationError
 from app.core.config import settings
 from app.schemas.ai import Intent, Plan, Specification
 from app.services import sarvam_speech
-from app.services.ai_plan_grounding import numeric_text, require_lexical_constraints, require_representable_numbers
+from app.services.ai_plan_grounding import numeric_text, require_complete_plan, require_lexical_constraints, require_representable_numbers, require_v1_conditions, require_v2_conditions
 
 SYSTEM = """Convert a CareKosh inventory question into exactly one allowed intent.
 You have NO inventory and must NEVER answer with facts. No tool calls.
@@ -90,6 +90,50 @@ async def bounded_call(url: str, headers: dict, *, limit: int = 4_000_000, failu
 
 def groq_headers():
     return {"Authorization": f"Bearer {settings.GROQ_API_KEY.get_secret_value()}"}
+
+
+# Groq's strict structured outputs document objects, arrays, enums, anyOf (with null), $defs/$ref and the
+# required/additionalProperties rules, not length, size or range keywords (console.groq.com/docs/
+# structured-outputs, checked 15 Oct 2026). Those are dropped from what Groq sees; Pydantic still
+# enforces every one of them on the reply, so a violating reply fails closed.
+GROQ_SCHEMA_KEYWORDS = frozenset({"type", "properties", "required", "additionalProperties", "items", "enum", "anyOf", "$defs", "$ref", "description", "title"})
+
+
+def portable_schema(node):
+    """The strict schema sent to Groq, using only documented features; `const` becomes a one-value enum."""
+    if isinstance(node, list):
+        return [portable_schema(item) for item in node]
+    if not isinstance(node, dict):
+        return node
+    out = {}
+    for key, value in node.items():
+        if key == "const":
+            out["enum"] = [value]
+        elif key in ("properties", "$defs"):
+            out[key] = {name: portable_schema(child) for name, child in value.items()}
+        elif key in GROQ_SCHEMA_KEYWORDS:
+            out[key] = portable_schema(value)
+    return out
+
+
+def groq_failure(status: int, body: bytes) -> HTTPException | None:
+    """Groq errors are {"error": {"message", "type", "code"}}. Only the status, type and code are logged."""
+    try:
+        error = json.loads(body).get("error") or {}
+        kind = error.get("type") if isinstance(error.get("type"), str) else ""
+        code = error.get("code") if isinstance(error.get("code"), str) else ""
+    except (ValueError, AttributeError):
+        kind, code = "", ""
+    kind = kind if re.fullmatch(r"[a-z_]{1,64}", kind or "") else "unknown"
+    code = code if re.fullmatch(r"[a-z_]{1,64}", code or "") else "none"
+    logger.warning("Groq request failed: status=%s type=%s code=%s", status, kind, code)
+    if status in (401, 403):
+        return HTTPException(503, "Groq rejected the CareKosh key. Basic commands remain available; the operator must check the key.")
+    if status == 429:
+        return HTTPException(429, "Groq is busy. Try again shortly, or use a basic command. No automatic retry was made.", headers={"Retry-After": "30"})
+    if status in (400, 413, 422):
+        return HTTPException(502, "Groq did not accept this request. Rephrase or use a basic command. No automatic retry was made.")
+    return None
 
 
 SYSTEM_V2 = """Interpret a CareKosh request as a version=2 specification ONLY. You have no
@@ -231,9 +275,27 @@ def _comparison_grounded(comparison, group, numeric_words: str) -> bool:
     return any(re.search(rf"\b{cue.format(n=comparison.value)}\b", numeric_words) for cue in _COMPARISON_CUES[comparison.op])
 
 
+def _draft_quantity_grounded(line, numeric_words: str) -> bool:
+    """Bind the amount/unit to this name across only bounded grammatical connectors."""
+    amount = str(line.quantity)
+    name = re.escape(_words(numeric_text(line.item_query)))
+    unit = re.escape(_words(numeric_text(line.unit or "")))
+    more = r"(?: more| extra)?" if line.operation == "add" else ""
+    before = rf"\b{amount}{more}" + (rf" {unit}(?: of)?" if unit else "(?: of)?") + rf"(?: the)? {name}\b"
+    draft_context = r"(?: in (?:the |my |this )?(?:order )?draft(?: order)?)?"
+    ending = rf" {unit}\b" if unit else r"\b(?! (?:pairs?|boxes?|bottles?|pieces?|units?|packs?)\b)"
+    after = rf"\b{name}{draft_context}{_BRIDGE} {amount}" + ending
+    # "By" means an increment here only when an explicit add/increase directive
+    # introduces this same item. It cannot bridge another item, amount or clause.
+    increase = rf"\b(?:increase|add)(?: (?:the|draft|order|quantity|of|for)){{0,6}} {name} by {amount}" + ending
+    return bool(re.search(before, numeric_words) or re.search(after, numeric_words)
+                or line.operation == "add" and re.search(increase, numeric_words))
+
+
 def ground_plan(plan: Plan, question: str, has_previous: bool) -> None:
-    """Every name, number, comparison and exclusion must come from the reviewed text."""
+    """Every name, number, comparison and exclusion must come from the reviewed text, and nothing said may be dropped."""
     require_lexical_constraints(plan, question)
+    require_complete_plan(plan, question, has_previous)
     text = _words(question)
     numeric = re.sub(_NUMBER_PATTERN, lambda m: str(sum(_NUMBER_WORDS[w] for w in re.split(r"[ -]", m.group()))), question.casefold())
     numeric_words = _words(numeric)
@@ -271,12 +333,8 @@ def ground_plan(plan: Plan, question: str, has_previous: bool) -> None:
             continue
         if line.quantity not in mentioned:
             raise ValueError()
-        if line.target == "named":
-            amount, name, unit = str(line.quantity), re.escape(_words(numeric_text(line.item_query))), re.escape(_words(numeric_text(line.unit or "")))
-            before = rf"\b{amount}(?: more)?" + (rf" {unit}(?: of)?" if unit else "(?: of)?") + rf"(?: the)? {name}\b"
-            after = rf"\b{name}{_BRIDGE} {amount}" + (rf" {unit}\b" if unit else r"\b(?! (?:pairs?|boxes?|bottles?|pieces?|units?|packs?)\b)")
-            if not re.search(before, numeric_words) and not re.search(after, numeric_words):
-                raise ValueError()
+        if line.target == "named" and not _draft_quantity_grounded(line, numeric_words):
+            raise ValueError()
 
 
 async def interpret(question: str, has_previous: bool, contract_version: int = 1):
@@ -284,6 +342,7 @@ async def interpret(question: str, has_previous: bool, contract_version: int = 1
     raw = await bounded_call(
         "https://api.groq.com/openai/v1/chat/completions",
         groq_headers(),
+        failure=groq_failure,
         json={
             "model": settings.GROQ_INTENT_MODEL,
             "temperature": 0,
@@ -304,7 +363,7 @@ async def interpret(question: str, has_previous: bool, contract_version: int = 1
                 "json_schema": {
                     "name": "inventory_intent",
                     "strict": True,
-                    "schema": model.model_json_schema(),
+                    "schema": portable_schema(model.model_json_schema()),
                 },
             },
         },
@@ -319,6 +378,8 @@ async def interpret(question: str, has_previous: bool, contract_version: int = 1
             ground_plan(intent, question, has_previous)
         if isinstance(intent, Intent) and intent.reference == "previous" and not has_previous:
             raise ValueError()
+        if isinstance(intent, Intent):
+            require_v1_conditions(intent, question)
         # A schema-valid model must not invent a different item to look up.
         if isinstance(intent, Intent) and intent.reference == "named":
 
@@ -331,6 +392,7 @@ async def interpret(question: str, has_previous: bool, contract_version: int = 1
             ):
                 raise ValueError()
         if isinstance(intent, Specification):
+            require_v2_conditions(intent, question)
             copied_names = [line.item_query for line in intent.lines]
             if intent.query:
                 copied_names += [name for name in [*intent.query.item_queries, intent.query.category, intent.query.supplier, intent.query.brand] if name]
@@ -360,18 +422,8 @@ async def interpret(question: str, has_previous: bool, contract_version: int = 1
                         raise ValueError()
                     # Bind each number to its spoken item, not merely any number
                     # elsewhere in a multi-item request. Unclear phrasing fails closed.
-                    item_words = " ".join(re.findall(r"\w+", line.item_query.casefold()))
                     numeric_words = " ".join(re.findall(r"\w+", numeric))
-                    amount = str(line.quantity)
-                    name = re.escape(item_words)
-                    unit_words = " ".join(re.findall(r"\w+", (line.unit or "").casefold()))
-                    unit = re.escape(unit_words)
-                    before = rf"\b{amount}(?: more)?" + (rf" {unit}(?: of)?" if unit else "(?: of)?") + rf"(?: the)? {name}\b"
-                    # Bound grammatical connectors; they cannot cross another item,
-                    # a different number, a stock/history clause, or an arbitrary phrase.
-                    bridge = r"(?: (?:to|at|for|is|i|we|would|will|need|want|require|like|please|make|it|put|add|order|quantity|should|be)){0,8}"
-                    after = rf"\b{name}{bridge} {amount}" + (rf" {unit}\b" if unit else r"\b(?! (?:pairs?|boxes?|bottles?|pieces?|units?|packs?)\b)")
-                    if not re.search(before, numeric_words) and not re.search(after, numeric_words):
+                    if not _draft_quantity_grounded(line, numeric_words):
                         raise ValueError()
                 if line.unit is not None and not grounded(line.unit):
                     raise ValueError()
@@ -554,6 +606,7 @@ async def transcribe(content: bytes, extension: str):
     raw = await bounded_call(
         "https://api.groq.com/openai/v1/audio/transcriptions",
         groq_headers(),
+        failure=groq_failure,
         files={
             "file": (
                 f"question.{extension}",
@@ -603,8 +656,10 @@ async def sarvam_transcribe(content: bytes) -> str:
         files={"file": ("question.wav", content, "audio/wav")},
         data={
             "model": settings.SARVAM_STT_MODEL,
-            "mode": "transcribe",
             "language_code": "en-IN",
+            # REST labels mode v3-only; the model guide also documents v4. Omitting
+            # it for v4 preserves the documented default, transcribe (15 Oct 2026).
+            **({"mode": "transcribe"} if settings.SARVAM_STT_MODEL == "saaras:v3" else {}),
         },
     )
     try:
@@ -635,7 +690,7 @@ def sarvam_failure(personal: bool):
         request_id = request_id if re.fullmatch(r"[A-Za-z0-9_-]{1,128}", request_id or "") else "none"
         logger.warning("Sarvam speech failed: status=%s code=%s request_id=%s key=%s", status, code, request_id, "personal" if personal else "application")
         owner = "your personal Sarvam key" if personal else "the CareKosh Sarvam account"
-        if status == 403 or code == "invalid_api_key_error":
+        if status in (401, 403) or code in ("invalid_api_key_error", "authentication_error"):
             return HTTPException(409 if personal else 503, f"Sarvam rejected {owner}. " + (
                 "It may have been revoked or rotated. Replace it in Voice setup, or choose another voice. Shared credits were not used." if personal
                 else "Use device voice for now; the operator must check the key."))

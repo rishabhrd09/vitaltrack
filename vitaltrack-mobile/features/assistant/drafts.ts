@@ -31,6 +31,12 @@ export function writeDraft(session: Session, rows: CartItem[], initialized = tru
   draft = { session: { ...session }, rows: rows.map(r => ({ ...r, item: { ...r.item } })), revision: (current?.revision || 0) + 1, initialized, origin };
   emit(); return draft;
 }
+/** Removes an unsaved, unsubmitted draft, for example after its last line was removed by voice. */
+export function clearDraft(session: Session) {
+  const current = getDraft(session);
+  if (current?.attempt) throw new Error('This submission may already be saved. Retry the same submission or review Recent Orders before starting another.');
+  if (current) { draft = null; emit(); }
+}
 export function changeDraft(update: (rows: CartItem[]) => CartItem[]) {
   const session = captureSession(); const current = getDraft(session);
   writeDraft(session, update(current?.rows || []));

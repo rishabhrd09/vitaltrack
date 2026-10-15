@@ -32,6 +32,20 @@ def get_real_client_ip(request: Request) -> str:
     return "unknown"
 
 
+def authenticated_ai_rate_key(request: Request) -> str:
+    """AI limits follow the validated account, never caller-supplied proxy headers.
+
+    FastAPI resolves the principal dependency before invoking the limited route.
+    The fallback is for nonauthenticated/test callers and trusts only the socket.
+    Counters remain per endpoint and process; shared AI budget/concurrency guards
+    are enforced separately in PostgreSQL.
+    """
+    user_id = getattr(request.state, "ai_user_id", None)
+    if user_id:
+        return f"ai-account:{user_id}"
+    return f"ai-peer:{request.client.host if request.client else 'unknown'}"
+
+
 # Create limiter instance using real client IP (proxy-aware)
 # swallow_errors=True prevents 500 errors if rate limiter storage fails
 # in_memory_fallback_enabled=True uses memory if primary storage is unavailable

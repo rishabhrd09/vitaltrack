@@ -1,4 +1,5 @@
 """Contract version 3 (bounded selection plans). Providers are mocked at the HTTP transport; data is synthetic."""
+import asyncio
 import json
 
 import httpx
@@ -270,3 +271,66 @@ async def test_bounded_call_rejects_oversized_streams(monkeypatch):
     with pytest.raises(HTTPException) as caught:
         await ai_provider.bounded_call("https://api.groq.com/openai/v1/chat/completions", {}, json={})
     assert caught.value.status_code == 502 and "oversized" in caught.value.detail
+
+
+GROQ_ALLOWED = {"type", "properties", "required", "additionalProperties", "items", "enum", "anyOf", "$defs", "$ref", "description", "title"}
+
+
+def schema_keywords(node, found=None):
+    found = set() if found is None else found
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key in ("properties", "$defs"):
+                for child in value.values():
+                    schema_keywords(child, found)
+            else:
+                found.add(key)
+                schema_keywords(value, found)
+    elif isinstance(node, list):
+        for item in node:
+            schema_keywords(item, found)
+    return found
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("version", [1, 2, 3])
+async def test_v42_groq_receives_only_documented_schema_keywords(monkeypatch, version):
+    sent = {}
+
+    async def fake(url, headers, **kwargs):
+        sent.update(kwargs)
+        raise HTTPException(502, "stop here")
+
+    monkeypatch.setattr(ai_provider, "bounded_call", fake)
+    with pytest.raises(HTTPException):
+        await ai_provider.interpret("Show low stock items", False, version)
+    schema = sent["json"]["response_format"]["json_schema"]["schema"]
+    assert schema_keywords(schema) <= GROQ_ALLOWED, schema_keywords(schema) - GROQ_ALLOWED
+    assert sent["json"]["response_format"]["json_schema"]["strict"] is True
+    assert sent["failure"] is ai_provider.groq_failure
+    if version >= 2:
+        assert schema["properties"]["version"]["enum"] == [version], "const becomes a one-value enum"
+
+
+@pytest.mark.asyncio
+async def test_v42_constraints_dropped_for_groq_are_still_enforced_on_the_reply(monkeypatch):
+    too_many = query_plan(group(stock=["low"], quantity=[{"op": "lt", "value": 1_000_000}]))
+    monkeypatch.setattr(ai_provider, "bounded_call", lambda *args, **kwargs: asyncio.sleep(0, groq_reply(too_many)))
+    with pytest.raises(HTTPException) as caught:
+        await ai_provider.interpret("Show low stock items below 1000000", False, 3)
+    assert caught.value.status_code == 502
+
+
+@pytest.mark.parametrize("status,body,expected", [
+    (401, b'{"error":{"message":"Invalid API Key","type":"invalid_request_error","code":"invalid_api_key"}}', 503),
+    (429, b'{"error":{"message":"Rate limit","type":"tokens","code":"rate_limit_exceeded"}}', 429),
+    (400, b'{"error":{"message":"schema keyword maxItems is not supported for gloves","type":"invalid_request_error","code":"invalid_schema"}}', 502),
+    (500, b"not json", None),
+])
+def test_v42_groq_errors_map_to_clear_messages_and_log_no_content(caplog, status, body, expected):
+    with caplog.at_level("WARNING", logger="carekosh.ai"):
+        mapped = ai_provider.groq_failure(status, body)
+    assert (mapped.status_code if mapped else None) == expected
+    logged = " ".join(record.getMessage() for record in caplog.records)
+    assert f"status={status}" in logged
+    assert "gloves" not in logged and "Invalid API Key" not in logged, "messages may echo user text; only type and code are logged"

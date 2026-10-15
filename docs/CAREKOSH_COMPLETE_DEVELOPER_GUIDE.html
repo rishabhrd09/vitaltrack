@@ -503,9 +503,9 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <p><strong>The order in this codebase</strong> (verified in <code>app/main.py</code>; Starlette inserts each new middleware at the front, so the last one added is the outermost):</p>
 <ol>
 <li>Starlette <code>ServerErrorMiddleware</code> (always outermost; runs the generic 500 handler).</li>
-<li><code>AIBodyLimit</code> (<code>app/services/ai_body_limit.py</code>) reads the <strong>whole body</strong> before anything else: ≤ 2 MB for normal routes, ≤ 12 KB for AI JSON, ≤ 900 KB for <code>/ai/transcribe</code>; AI routes without a bearer header get 401 before the body is read; AI uploads must finish in 10 s (408).</li>
+<li><code>AIBodyLimit</code> reads the <strong>whole body</strong> before parsing: ≤2 MB normally, ≤12 KB for AI JSON, ≤900 KB for <code>/ai/transcribe</code>. AI requests without a bearer header get 401 before reading the body. Transcription uploads get 30 s, AI JSON 10 s; an expired upload gets 408. Early refusals include security headers and a sanitized request ID.</li>
 <li><code>add_security_headers</code> (nosniff, frame deny, referrer policy, <code>Cache-Control: no-store</code>, HSTS in production).</li>
-<li><code>add_request_id</code> (echo <code>X-Request-ID</code> or create one; it is <strong>not</strong> written into logs).</li>
+<li><code>add_request_id</code> preserves a short ASCII <code>X-Request-ID</code> containing letters, numbers, dot, underscore, colon or hyphen; controls, whitespace or oversized input get a generated ID. The same validator serves early body-limit refusals. This middleware does <strong>not</strong> write IDs into logs.</li>
 <li><code>CORSMiddleware</code>.</li>
 <li>Starlette <code>ExceptionMiddleware</code> (validation, <code>IntegrityError</code>, rate-limit and <code>HTTPException</code> handlers), then the router.</li>
 </ol>
@@ -514,7 +514,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <li><strong>Body parsing.</strong> If the route takes a JSON body, it is parsed first. Malformed JSON → 422 <code>json_invalid</code> before any dependency runs: no token check, no SQL.</li>
 <li><strong>Dependencies</strong> (<code>Depends</code>) run in order. <code>get_db</code> creates one <code>AsyncSession</code> (pool: 5 connections plus 10 overflow per worker; no SQL yet). <code>get_current_user</code> checks the bearer token (a bad token → 401 with no SQL), then loads the user with one <code>SELECT</code>.</li>
 <li><strong>Validation.</strong> Path, query and body fields are validated. A failure → 422, after the user <code>SELECT</code> has already run; the handler never runs.</li>
-<li><strong>Handler.</strong> It executes SQL through the session. On the five rate-limited auth routes the limit is checked here, after validation. Every write handler calls <code>await db.commit()</code> itself; any SQL after that (usually <code>db.refresh(...)</code>) starts a new transaction.</li>
+<li><strong>Handler.</strong> It executes SQL through the session. Decorated rate limits are checked after dependencies and validation. AI limits use the validated account ID, rather than forwarded headers, and remain per route/per worker; PostgreSQL separately enforces shared AI budgets/concurrency. Every write handler commits explicitly; later SQL starts a new transaction.</li>
 <li><strong>Response.</strong> The return value is validated against <code>response_model</code> and serialised with field aliases (camelCase).</li>
 <li><strong>Clean-up.</strong> <code>get_db</code> (a dependency with <code>yield</code>) commits whatever is still open, rolls back if an exception is propagating, and closes the session. A 422 leaves it normally. Then the response is sent; <code>BackgroundTasks</code> (emails) run after that.</li>
 </ol>
@@ -1639,7 +1639,7 @@ URLS                   repo   https://github.com/rishabhrd09/vitaltrack
 <li><strong>Rewrite (7 Oct 2026)</strong>: expanded into the onboarding guide (product rules, request lifecycle, data model, auth, concurrency, orders, mobile data layer, the voice assistant, concepts, testing, release), updated to migration head <code>0010</code>, 47 routes, 242 + 121 tests, the Groq text-only assistant, the real CI/ruleset behaviour and the mobile caller facts. Every earlier section's useful content was kept and corrected in Parts F and G.</li>
 <li><strong>Re-check (8 Oct 2026)</strong>: every section re-read against the working tree and the 8 Oct re-runs. Corrected the request order (JSON parsing, dependencies, then validation; one session but not one transaction per request), <code>localId</code> replays with a changed payload, the conditional nature of "merge = deploy", the release gate (both deploy triggers, preserved staging data, isolated fresh and legacy databases), Expo <code>development</code> builds (need <code>expo-dev-client</code>), local Docker exposure and <code>down -v</code>, CI trigger details, cache age after restart, book editions, and diagram captions.</li>
 </ul>
-<footer>Generated 2026-10-13 by <code>docs/tools/build_docs.py</code> from <code>docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md</code>.</footer>
+<footer>Generated 2026-10-15 by <code>docs/tools/build_docs.py</code> from <code>docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md</code>.</footer>
 </main>
 </div>
 <script>

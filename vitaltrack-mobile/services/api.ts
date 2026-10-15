@@ -112,6 +112,24 @@ export const tokenStorage = {
 };
 
 // Error handling
+/** Seconds from a Retry-After header (seconds or an HTTP date); null when absent or unusable. */
+export function retryAfterSeconds(value: string | null | undefined, now = Date.now()): number | null {
+    if (!value) return null;
+    const seconds = Number(value);
+    if (value.trim() !== '' && Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds);
+    const date = Date.parse(value);
+    return Number.isFinite(date) ? Math.max(0, Math.ceil((date - now) / 1000)) : null;
+}
+
+/** The server's own wording plus when to retry: a short wait in seconds, a long one as a local clock time. */
+export function rateLimitMessage(detail: string, retryAfter: number | null, now = Date.now()): string {
+    const base = detail.trim() || 'Too many requests right now.';
+    if (retryAfter === null) return base;
+    if (retryAfter <= 90) return `${base} Try again in ${retryAfter} second${retryAfter === 1 ? '' : 's'}.`;
+    const at = new Date(now + retryAfter * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return `${base} Try again after ${at}.`;
+}
+
 class ApiClientError extends Error {
     status: number;
     data: unknown;
@@ -408,13 +426,19 @@ class ApiClient {
             }
         }
 
-        // Handle rate limiting
+        // Rate limits keep the server's explanation (busy versus a daily allowance) and its retry time.
         if (response.status === 429) {
-            const retryAfter = response.headers.get('Retry-After') || '60';
-            throw new ApiClientError(
-                `Rate limit exceeded. Please wait ${retryAfter} seconds.`,
-                429
-            );
+            const retryAfter = retryAfterSeconds(response.headers.get('Retry-After'));
+            let detail = '';
+            if (response.headers.get('content-type')?.includes('application/json')) {
+                try {
+                    const body = (await response.json()) as ApiError | null;
+                    if (typeof body?.detail === 'string') detail = body.detail;
+                    else if (typeof body?.error === 'string') detail = body.error;
+                } catch { /* The generic wording below still applies. */ }
+            }
+            const errorCode = response.headers.get('X-AI-Error');
+            throw new ApiClientError(rateLimitMessage(detail, retryAfter), 429, { retryAfter, ...(errorCode ? { errorCode } : {}) });
         }
 
         assertCurrent();
@@ -500,7 +524,10 @@ class ApiClient {
                 logger[level]('API', `${method} request failed with ${response.status}`);
             }
 
-            throw new ApiClientError(message, response.status, data);
+            const errorCode = response.headers.get('X-AI-Error');
+            throw new ApiClientError(message, response.status, errorCode
+                ? { ...(typeof data === 'object' && data !== null ? data : {}), errorCode }
+                : data);
         }
 
         // Reaching here means a 2xx — the server is alive and responding. Clear
@@ -525,14 +552,19 @@ class ApiClient {
         const cancel = () => controller.abort();
         options.signal?.addEventListener('abort', cancel, { once: true });
         if (options.signal?.aborted) cancel();
-        // Above the server's worst case for transcription (10 s upload + 8 s decode
+        let timedOut = false;
+        // Above the server's worst case for transcription (30 s upload + 8 s decode
         // + 25 s provider), so the app does not give up on a request still running.
-        const timer = setTimeout(cancel, 50_000);
+        const timer = setTimeout(() => { timedOut = true; cancel(); }, 70_000);
         try {
             const result = await this.request<T>(endpoint, { ...options, signal: controller.signal }, true, responseType, assertCurrent);
             assertCurrent();
-            if (controller.signal.aborted) throw new Error('Request cancelled or timed out.');
+            if (controller.signal.aborted) throw new Error(timedOut ? 'Request timed out.' : 'Request cancelled.');
             return result;
+        } catch (error) {
+            // A deadline is not a user cancellation: say so, so the screen shows it instead of staying silent.
+            if (timedOut && !options.signal?.aborted) throw new ApiClientError('The server took too long to answer (it may be starting up). Please try again.', 0, { originalError: 'request_timeout' });
+            throw error;
         } finally {
             clearTimeout(timer);
             options.signal?.removeEventListener('abort', cancel);

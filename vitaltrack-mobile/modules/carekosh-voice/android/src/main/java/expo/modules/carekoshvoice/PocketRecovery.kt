@@ -36,7 +36,7 @@ internal data class PocketPlacement(
 }
 
 /** The vocoder could not be compiled for this phone's GPU. A CPU attempt would need several GB. */
-internal class PocketVocoderUnavailable(cause: Throwable) : IllegalStateException(
+internal class PocketVocoderUnavailable(cause: Throwable) : VoiceError("ENGINE_UNAVAILABLE",
     "This phone's graphics processor could not run Alba's audio decoder, so Alba cannot speak on this phone. " +
         "Your answer is still on screen; select Device voice in Voice setup.", cause)
 

@@ -1,6 +1,10 @@
 package expo.modules.carekoshvoice
 
 import ai.moonshine.voice.Transcriber
+import android.app.ActivityManager
+import android.content.ComponentCallbacks2
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -11,8 +15,6 @@ import android.util.Log
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -20,20 +22,23 @@ import java.util.concurrent.atomic.AtomicLong
 
 class CareKoshVoiceModule : Module() {
     /** One serial worker per native engine. A slow or stuck Alba GPU call never blocks the microphone. */
-    private class Lane(name: String) {
-        val executor: ExecutorService = Executors.newSingleThreadExecutor { Thread(it, name) }
-        val pending = AtomicInteger(0)
-    }
-    private val speechLane = Lane("carekosh-moonshine")
-    private val albaLane = Lane("carekosh-alba")
+    private val speechLane = VoiceWorkLane("carekosh-moonshine")
+    /** Offline voice lane: Alba and the Kokoro test voice, so their syntheses never overlap. */
+    private val albaLane = VoiceWorkLane("carekosh-alba")
+    private val downloadLane = VoiceWorkLane("carekosh-downloads")
     private val executor = speechLane.executor
     private val main = Handler(Looper.getMainLooper())
+    /** Speech, recording and recognition: stopped by Stop, a new question or leaving the screen. */
     private val generation = AtomicInteger(0)
+    /** Pack downloads: only an explicit cancel stops them, never backgrounding or another action. */
+    private val downloadGeneration = AtomicInteger(0)
+    private val backgroundStamp = AtomicLong(0)
     private val cleanupQueued = AtomicBoolean(false)
-    // Alba state is touched only on the Alba lane (GPU context affinity).
+    // Alba and Kokoro state is touched only on the offline voice lane (Alba's GPU context affinity).
     private var albaEngine: PocketSynthesizer? = null
     private var albaVocoderFailure: String? = null
-    private val albaUse = AtomicLong(0)
+    private var kokoroEngine: KokoroEngine? = null
+    private val offlineVoiceUse = AtomicLong(0)
     private var transcriber: Transcriber? = null // touched only by executor
     @Volatile private var recording: StreamingRecording? = null
     private var tts: TextToSpeech? = null // touched only on main thread
@@ -47,12 +52,14 @@ class CareKoshVoiceModule : Module() {
 
     private val pack by lazy { ModelPack(context) }
     private val pocketPack by lazy { PocketPack(context) }
+    private val kokoroPack by lazy { KokoroPack(context) }
     private val playback = lazy { PocketPlayback(context) }
     private val pocketPlayback by playback
     @Volatile private var pocketDiagnostic = "No audio check has run in this app session."
 
-    private fun work(promise: Promise, cancellable: Boolean = true, lane: Lane = speechLane, task: (() -> Unit) -> Any?) {
-        val expected = generation.get()
+    /** [cancelledBy] is the counter whose change cancels this task; null runs it to completion. */
+    private fun work(promise: Promise, cancelledBy: AtomicInteger? = generation, lane: VoiceWorkLane = speechLane, task: (() -> Unit) -> Any?) {
+        val expected = cancelledBy?.get()
         if (lane.pending.incrementAndGet() > 4) {
             lane.pending.decrementAndGet()
             promise.reject("VOICE_BUSY", "Offline speech is busy. Please try again shortly.", null)
@@ -61,11 +68,7 @@ class CareKoshVoiceModule : Module() {
         try {
             lane.executor.execute {
                 try {
-                    val check = {
-                        check(!cancellable || expected == generation.get()) {
-                            "Voice operation cancelled"
-                        }
-                    }
+                    val check = { if (cancelledBy != null && expected != cancelledBy.get()) throw VoiceCancelled() }
                     check()
                     val result = task(check)
                     check()
@@ -78,6 +81,8 @@ class CareKoshVoiceModule : Module() {
                     )
                 } catch (_: OutOfMemoryError) {
                     promise.reject("VOICE_MEMORY", "Not enough memory for offline speech. Your answer is still on screen.", null)
+                } catch (e: VoiceError) {
+                    promise.reject(e.code, e.message ?: "Offline voice unavailable", null)
                 } catch (e: Exception) {
                     promise.reject("VOICE_OPERATION", e.message ?: "Offline voice unavailable", e)
                 } catch (e: Throwable) {
@@ -99,15 +104,48 @@ class CareKoshVoiceModule : Module() {
         try { albaLane.executor.execute { try { task() } catch (_: Throwable) { } } } catch (_: RejectedExecutionException) { }
     }
 
-    private fun releaseAlba() { // Alba lane only
+    private fun releaseAlba() { // offline voice lane only
         albaEngine?.close()
         albaEngine = null
     }
+    private fun releaseKokoro() { // offline voice lane only
+        kokoroEngine?.close()
+        kokoroEngine = null
+    }
+    private fun releaseOfflineVoices() { releaseAlba(); releaseKokoro() }
 
-    /** Compiled models stay warm between replies, then free about 1 GB after 90 s of no use. */
-    private fun scheduleAlbaRelease() {
-        val stamp = albaUse.incrementAndGet()
-        main.postDelayed({ if (albaUse.get() == stamp) onAlbaLane { if (albaUse.get() == stamp) releaseAlba() } }, 90_000)
+    /**
+     * Expo reports "background" on every Activity pause, including permission dialogs and the share
+     * sheet. Warm engines are released only if CareKosh stays hidden for 30 s.
+     */
+    private fun releaseVoicesIfStillHidden() {
+        val stamp = backgroundStamp.incrementAndGet()
+        main.postDelayed({ if (backgroundStamp.get() == stamp) onAlbaLane { if (backgroundStamp.get() == stamp) releaseOfflineVoices() } }, 30_000)
+    }
+
+    /** Android asks for memory back: drop the warm Alba (about 1 GB) and Kokoro engines; they load again when needed. */
+    private val memoryCallbacks = object : ComponentCallbacks2 {
+        override fun onTrimMemory(level: Int) {
+            @Suppress("DEPRECATION")
+            if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW && level != ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) onAlbaLane { releaseOfflineVoices() }
+        }
+        override fun onConfigurationChanged(newConfig: Configuration) {}
+        @Deprecated("Deprecated in Java")
+        override fun onLowMemory() { onAlbaLane { releaseOfflineVoices() } }
+    }
+    @Volatile private var memoryRegistered: Context? = null
+
+    /** Phones with little memory get a warning before the Alba download; nothing is blocked. */
+    private fun lowMemoryDevice(): Boolean {
+        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val info = ActivityManager.MemoryInfo().also { manager.getMemoryInfo(it) }
+        return manager.isLowRamDevice || info.totalMem < 6L * 1024 * 1024 * 1024
+    }
+
+    /** Loaded models stay warm between replies, then free their memory after 90 s of no use. */
+    private fun scheduleOfflineRelease() {
+        val stamp = offlineVoiceUse.incrementAndGet()
+        main.postDelayed({ if (offlineVoiceUse.get() == stamp) onAlbaLane { if (offlineVoiceUse.get() == stamp) releaseOfflineVoices() } }, 90_000)
     }
 
     private fun cancel() {
@@ -149,7 +187,7 @@ class CareKoshVoiceModule : Module() {
         main.post {
             val complete: (TextToSpeech?) -> Unit = { engine ->
                 try {
-                    check(!cancellable || expected == generation.get()) { "Speech cancelled" }
+                    if (cancellable && expected != generation.get()) throw VoiceCancelled()
                     requireNotNull(engine) {
                         "Install an offline English voice in Android Text-to-speech settings"
                     }
@@ -160,7 +198,7 @@ class CareKoshVoiceModule : Module() {
                         activeSpeech = null
                         activeSpeechId = null
                     }
-                    promise.reject("DEVICE_SPEECH", e.message, e)
+                    if (e is VoiceError) promise.reject(e.code, e.message, null) else promise.reject("DEVICE_SPEECH", e.message, e)
                 }
             }
             if (ttsReady) complete(tts)
@@ -226,15 +264,20 @@ class CareKoshVoiceModule : Module() {
         return diagnostics
     }
 
-    /** Alba lane: reuse the compiled engine, or build it once for this placement. */
-    private fun albaEngineFor(placement: PocketPlacement, check: () -> Unit, diagnostics: PocketDiagnostics, report: (String, Int?) -> Unit): PocketSynthesizer {
+    /** Alba lane: reuse the compiled engine (switching only the voice state), or build it once for this placement. */
+    private fun albaEngineFor(placement: PocketPlacement, voiceFile: String, check: () -> Unit, diagnostics: PocketDiagnostics, report: (String, Int?) -> Unit): PocketSynthesizer {
         albaEngine?.let { engine ->
-            if (engine.placement == placement) { diagnostics.note("engine warm (reused) · ${engine.placements}"); return engine }
+            if (engine.placement == placement) {
+                engine.useVoice(voiceFile)
+                diagnostics.note("engine warm (reused) · ${engine.placements}")
+                return engine
+            }
             releaseAlba()
         }
-        albaVocoderFailure?.let { error(it) } // remembered for this process: no repeated multi-second compiles
+        albaVocoderFailure?.let { throw VoiceError("ENGINE_UNAVAILABLE", it) } // remembered for this process: no repeated multi-second compiles
         report("loading", null)
-        val engine = PocketSynthesizer(pocketPack.root, placement)
+        releaseKokoro() // one offline voice in memory at a time
+        val engine = PocketSynthesizer(pocketPack.root, placement, voiceFile)
         try {
             engine.initialize(check)
         } catch (e: PocketVocoderUnavailable) {
@@ -251,32 +294,36 @@ class CareKoshVoiceModule : Module() {
      * Generates Alba speech chunk by chunk and (unless [play] is false) streams each chunk as soon as
      * it is decoded. Records a bounded diagnostic for this utterance; no text or audio is retained.
      */
-    private fun speakPocket(text: String, pace: Double, id: String?, promise: Promise, play: Boolean = true, placementName: String = "default") {
+    private fun speakPocket(text: String, pace: Double, id: String?, promise: Promise, play: Boolean = true, placementName: String = "default", voice: String = "alba") {
         work(promise, lane = albaLane) { check ->
-            require(text.isNotBlank() && text.length <= 640 && pace in 0.85..1.1)
-            require(id == null || id.matches(Regex("[a-zA-Z0-9-]{1,80}")))
-            albaUse.incrementAndGet() // cancels a pending idle release
+            require(text.isNotBlank() && text.length <= 640 && pace in 0.85..1.1) { "Invalid speech request" }
+            require(id == null || id.matches(Regex("[a-zA-Z0-9-]{1,80}"))) { "Invalid speech request" }
+            offlineVoiceUse.incrementAndGet() // cancels a pending idle release
             val placement = PocketPlacement.named(placementName)
+            val voiceFile = pocketPack.voiceFile(voice)
             val deadline = System.nanoTime() + 180_000_000_000L
             val requestStart = System.nanoTime()
             val diagnostics = diagnosticsFor(id)
-            diagnostics.note("Alba · LiteRT 2.1.6 · ${placement.label} · 24 kHz mono PCM16 · media route · ${if (play) "speak" else "synthesis only"}")
+            diagnostics.note("Pocket TTS voice $voice · LiteRT 2.1.6 · ${placement.label} · 24 kHz mono PCM16 · media route · pace $pace as pauses · ${if (play) "speak" else "synthesis only"}")
             diagnostics.note("text: ${text.length} characters (content not recorded)")
             pocketDiagnostic = diagnostics.text()
-            val boundedCheck = { check(); kotlin.check(System.nanoTime() < deadline) { "Alba took too long. Try a shorter reply or select Device voice in Voice setup" } }
+            val boundedCheck = { check(); if (System.nanoTime() >= deadline) throw VoiceTimedOut("Alba took too long. Try a shorter reply or select Device voice in Voice setup") }
             var stage = ""
             var playing = false
             val report: (String, Int?) -> Unit = { next, frames ->
                 boundedCheck()
                 if (next != stage) { diagnostics.note("stage $next"); stage = next }
                 // Once audio is playing, later generation stages would only confuse the status line.
-                if (id != null && (!playing || next == "playing")) sendEvent("pocketSpeechProgress", mapOf("id" to id, "stage" to next, "frames" to frames))
+                if (id != null && (!playing || next == "playing")) sendEvent("pocketSpeechProgress",
+                    if (frames == null) mapOf("id" to id, "stage" to next) else mapOf("id" to id, "stage" to next, "frames" to frames))
             }
             var firstChunkMs = -1L
             try {
                 report("verifying", null)
-                require(pocketPack.ready(boundedCheck)) { "Download Alba in Voice setup first" }
-                val engine = albaEngineFor(placement, boundedCheck, diagnostics, report)
+                require(pocketPack.ready(voice, boundedCheck)) { "Download this Alba voice in Voice setup first" }
+                // A muted phone or an active call fails here, before compiling about 1 GB of models.
+                if (play) pocketPlayback.preflight()
+                val engine = albaEngineFor(placement, voiceFile, boundedCheck, diagnostics, report)
                 report("generating", null)
                 var index = 0
                 fun deliver(audio: FloatArray, push: ((FloatArray) -> Unit)?) {
@@ -290,8 +337,8 @@ class CareKoshVoiceModule : Module() {
                 }
                 val result = if (play) {
                     var synthesis: PocketSynthesizer.Result? = null
-                    val playbackReport = pocketPlayback.stream(pace.toFloat(), boundedCheck) { push ->
-                        synthesis = engine.synthesize(text, boundedCheck, report) { deliver(it, push) }
+                    val playbackReport = pocketPlayback.stream(boundedCheck) { push ->
+                        synthesis = engine.synthesize(text, boundedCheck, report, pace.toFloat()) { deliver(it, push) }
                     }
                     synthesis?.chunks?.forEachIndexed { i, chunk -> diagnostics.note(chunk.describe(i + 1)) }
                     diagnostics.note(playbackReport.describe())
@@ -299,74 +346,211 @@ class CareKoshVoiceModule : Module() {
                     diagnostics.note("completed in ${(System.nanoTime() - requestStart) / 1_000_000} ms · first audible frame about $firstAudio ms after the request")
                     playbackReport.asMap()
                 } else {
-                    val synthesis = engine.synthesize(text, boundedCheck, report) { deliver(it, null) }
+                    val synthesis = engine.synthesize(text, boundedCheck, report, pace.toFloat()) { deliver(it, null) }
                     synthesis.chunks.forEachIndexed { i, chunk -> diagnostics.note(chunk.describe(i + 1)) }
                     diagnostics.note("synthesis only: ${synthesis.samples} samples (${"%.2f".format(synthesis.samples / 24000.0)} s) in ${synthesis.ms} ms; nothing played")
                     mapOf("output" to "none (synthesis only)", "volumePercent" to 0, "audioSeconds" to synthesis.samples / 24000.0, "frames" to synthesis.samples)
                 }
                 result
             } catch (e: Throwable) {
-                val cancelled = e is IllegalStateException && e.message == "Voice operation cancelled"
+                val cancelled = e is VoiceCancelled
                 diagnostics.note("${if (cancelled) "cancelled" else "failed"} at stage '$stage': ${e.javaClass.simpleName}${if (cancelled) "" else ": " + e.message.orEmpty().take(200)}")
-                // A failed engine may hold inconsistent native state; rebuild it next time. Cancellation keeps it warm.
-                if (!cancelled) releaseAlba()
+                // Only an inference or compile failure may leave inconsistent native state. Cancellation,
+                // interruptions, muted audio and timeouts keep the engine warm for the next reply.
+                if (!pocketKeepsEngine(e)) releaseAlba()
                 throw e
             } finally {
                 pocketDiagnostic = diagnostics.text()
-                scheduleAlbaRelease()
+                scheduleOfflineRelease()
+            }
+        }
+    }
+
+    /** Offline voice lane: reuse the loaded Kokoro voice, or load it once (Alba is released first). */
+    private fun kokoroEngineFor(voice: String, check: () -> Unit, diagnostics: PocketDiagnostics, report: (String) -> Unit): KokoroEngine {
+        kokoroEngine?.let { engine ->
+            if (engine.voice == voice) { diagnostics.note("Kokoro warm (reused)"); return engine }
+            releaseKokoro()
+        }
+        report("loading")
+        releaseAlba() // one offline voice in memory at a time
+        check()
+        val engine = KokoroEngine(context, kokoroPack.root, voice)
+        diagnostics.note("Kokoro cold, loaded in ${engine.loadMs} ms")
+        kokoroEngine = engine
+        return engine
+    }
+
+    /**
+     * Diagnostics builds only. Kokoro speech sentence group by sentence group, each played (unless [play]
+     * is false) as soon as it is ready, through the same focus-aware AudioTrack path as Alba. Records
+     * time to first audio, real-time factor, total time and native heap; never the text or audio.
+     */
+    private fun speakKokoro(text: String, pace: Double, id: String?, voice: String, play: Boolean, promise: Promise) {
+        work(promise, lane = albaLane) { check ->
+            require(text.isNotBlank() && text.length <= 640) { "Invalid speech request" }
+            require(id == null || id.matches(Regex("[a-zA-Z0-9-]{1,80}"))) { "Invalid speech request" }
+            kokoroSpeed(pace)
+            kokoroPack.requireVoice(voice)
+            offlineVoiceUse.incrementAndGet() // cancels a pending idle release
+            val deadline = System.nanoTime() + 180_000_000_000L
+            val requestStart = System.nanoTime()
+            val diagnostics = diagnosticsFor(id)
+            diagnostics.note("Kokoro-82M voice $voice · moonshine-voice 0.1.5 (ONNX Runtime, CPU) · 24 kHz mono PCM16 · media route · speed $pace · ${if (play) "speak" else "synthesis only"}")
+            diagnostics.note("text: ${text.length} characters (content not recorded)")
+            pocketDiagnostic = diagnostics.text()
+            val boundedCheck = { check(); if (System.nanoTime() >= deadline) throw VoiceTimedOut("Kokoro took too long. Try a shorter reply or select Device voice in Voice setup") }
+            var stage = ""
+            var playing = false
+            val report: (String) -> Unit = { next ->
+                boundedCheck()
+                if (next != stage) { diagnostics.note("stage $next"); stage = next }
+                if (id != null && (!playing || next == "playing")) sendEvent("kokoroSpeechProgress", mapOf("id" to id, "stage" to next))
+            }
+            var peakNative = android.os.Debug.getNativeHeapAllocatedSize()
+            try {
+                report("verifying")
+                require(kokoroPack.ready(voice, boundedCheck)) { "Download this Kokoro voice in Voice setup first" }
+                if (play) pocketPlayback.preflight()
+                val engine = kokoroEngineFor(voice, boundedCheck, diagnostics, report)
+                peakNative = maxOf(peakNative, android.os.Debug.getNativeHeapAllocatedSize())
+                report("generating")
+                val chunks = engine.chunks(text)
+                var synthesisMs = 0L
+                var samples = 0L
+                var firstChunkMs = -1L
+                fun produce(push: ((FloatArray) -> Unit)?) {
+                    for ((index, chunk) in chunks.withIndex()) {
+                        boundedCheck()
+                        val started = System.nanoTime()
+                        val raw = engine.synthesize(chunk, pace)
+                        val ms = (System.nanoTime() - started) / 1_000_000
+                        boundedCheck() // a long native call may outlive cancellation
+                        peakNative = maxOf(peakNative, android.os.Debug.getNativeHeapAllocatedSize())
+                        pocketAudioLevels(raw, "Kokoro")
+                        val audio = kokoroHeadroom(pocketEvenLoudness(raw))
+                        synthesisMs += ms; samples += raw.size
+                        diagnostics.note("chunk ${index + 1}: ${chunk.length} characters → %.2f s audio in %d ms (real-time factor %.2f) · %s"
+                            .format(raw.size / 24000.0, ms, ms / 1000.0 / maxOf(0.001, raw.size / 24000.0), pocketMeasure(audio).describe()))
+                        if (firstChunkMs < 0) firstChunkMs = (System.nanoTime() - requestStart) / 1_000_000
+                        if (push != null) {
+                            if (!playing) { playing = true; report("playing") }
+                            push(audio)
+                        }
+                    }
+                }
+                val result = if (play) {
+                    val playbackReport = pocketPlayback.stream(boundedCheck) { push -> produce(push) }
+                    diagnostics.note(playbackReport.describe())
+                    val firstAudio = if (playbackReport.firstAudioMs >= 0 && firstChunkMs >= 0) firstChunkMs + playbackReport.firstAudioMs else -1
+                    diagnostics.note("first audible frame about $firstAudio ms after the request")
+                    playbackReport.asMap()
+                } else {
+                    produce(null)
+                    mapOf("output" to "none (synthesis only)", "volumePercent" to 0, "audioSeconds" to samples / 24000.0, "frames" to samples)
+                }
+                diagnostics.note("Kokoro: ${chunks.size} chunk(s), first chunk ready $firstChunkMs ms after the request, synthesis real-time factor %.2f, total %d ms, peak native heap %d MB"
+                    .format(synthesisMs / 1000.0 / maxOf(0.001, samples / 24000.0), (System.nanoTime() - requestStart) / 1_000_000, peakNative / 1_048_576))
+                result
+            } catch (e: Throwable) {
+                val cancelled = e is VoiceCancelled
+                diagnostics.note("${if (cancelled) "cancelled" else "failed"} at stage '$stage': ${e.javaClass.simpleName}${if (cancelled) "" else ": " + e.message.orEmpty().take(200)}")
+                if (!pocketKeepsEngine(e)) releaseKokoro()
+                throw e
+            } finally {
+                pocketDiagnostic = diagnostics.text()
+                scheduleOfflineRelease()
             }
         }
     }
 
     override fun definition() = ModuleDefinition {
         Name("CareKoshVoice")
-        Events("modelDownloadProgress", "liveTranscript", "pocketDownloadProgress", "pocketSpeechProgress")
+        Events("modelDownloadProgress", "liveTranscript", "pocketDownloadProgress", "pocketSpeechProgress", "kokoroDownloadProgress", "kokoroSpeechProgress")
 
         AsyncFunction("pocketVoiceStatus") { promise: Promise ->
-            work(promise, cancellable = false, lane = albaLane) { check ->
+            work(promise, cancelledBy = null, lane = albaLane) { check ->
                 val supported = android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" || it == "x86_64" }
-                mapOf("supported" to supported, "ready" to (supported && pocketPack.ready(check)),
-                    "bytes" to pocketPack.bytes, "name" to "Alba · Pocket TTS · English")
+                val ready = if (supported) pocketPack.readyVoices(check) else emptyList()
+                mapOf("supported" to supported, "ready" to ("alba" in ready), "readyVoices" to ready,
+                    "voices" to pocketPack.voices.map { mapOf("id" to it.id, "label" to it.label) },
+                    "bytes" to pocketPack.bytes(), "lowMemory" to lowMemoryDevice(), "name" to "Alba · Pocket TTS · English")
             }
         }
-        AsyncFunction("downloadPocketVoice") { promise: Promise ->
-            work(promise, lane = albaLane) { check ->
+        AsyncFunction("downloadPocketVoice") { voice: String, promise: Promise ->
+            work(promise, cancelledBy = downloadGeneration, lane = downloadLane) { check ->
                 require(android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" || it == "x86_64" }) { "Alba needs a 64-bit Android device" }
-                releaseAlba(); albaVocoderFailure = null
+                pocketPack.voiceFile(voice)
+                onAlbaLane { albaVocoderFailure = null }
                 var lastEvent = 0L
-                pocketPack.install(check) { done, total ->
+                pocketPack.install(voice, check) { done, total ->
                     val now = System.nanoTime()
                     if (now - lastEvent > 250_000_000 || done == total) {
                         lastEvent = now
                         sendEvent("pocketDownloadProgress", mapOf("downloaded" to done, "total" to total))
                     }
                 }
-                mapOf("ready" to true, "supported" to true, "bytes" to pocketPack.bytes, "name" to "Alba · Pocket TTS · English")
+                mapOf("ready" to true, "supported" to true, "readyVoices" to pocketPack.readyVoices(check), "bytes" to pocketPack.bytes(voice), "name" to "Alba · Pocket TTS · English")
             }
         }
         AsyncFunction("removePocketVoice") { promise: Promise ->
             // Only the Alba folder: Moonshine recognition, inventory, drafts and orders are untouched.
-            work(promise, lane = albaLane) { _ -> releaseAlba(); albaVocoderFailure = null; pocketPack.remove(); null }
+            downloadGeneration.incrementAndGet()
+            work(promise, cancelledBy = null, lane = albaLane) { _ -> releaseAlba(); albaVocoderFailure = null; pocketPack.remove(); null }
         }
-        AsyncFunction("speakPocket") { text: String, pace: Double, promise: Promise ->
-            speakPocket(text, pace, null, promise)
+        AsyncFunction("speakPocket") { text: String, pace: Double, voice: String, promise: Promise ->
+            speakPocket(text, pace, null, promise, voice = voice)
         }
-        AsyncFunction("speakPocketWithProgress") { text: String, pace: Double, id: String, promise: Promise ->
-            speakPocket(text, pace, id, promise)
+        AsyncFunction("speakPocketWithProgress") { text: String, pace: Double, id: String, voice: String, promise: Promise ->
+            speakPocket(text, pace, id, promise, voice = voice)
         }
         // Diagnostics builds only: synthesis without playback and named placement experiments.
-        AsyncFunction("speakPocketDiagnostic") { text: String, pace: Double, id: String, play: Boolean, placement: String, promise: Promise ->
-            speakPocket(text, pace, id, promise, play, placement)
+        AsyncFunction("speakPocketDiagnostic") { text: String, pace: Double, id: String, play: Boolean, placement: String, voice: String, promise: Promise ->
+            speakPocket(text, pace, id, promise, play, placement, voice)
+        }
+        // Kokoro test voice (diagnostics builds only; the app never offers it otherwise).
+        AsyncFunction("kokoroVoiceStatus") { promise: Promise ->
+            work(promise, cancelledBy = null, lane = albaLane) { check ->
+                val supported = android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" || it == "x86_64" }
+                mapOf("supported" to supported, "readyVoices" to (if (supported) kokoroPack.readyVoices(check) else emptyList()),
+                    "voices" to kokoroPack.voices.map { mapOf("id" to it.id, "label" to it.label) },
+                    "bytes" to kokoroPack.bytes(), "lowMemory" to lowMemoryDevice(), "name" to "Kokoro-82M · English (test)")
+            }
+        }
+        AsyncFunction("downloadKokoroVoice") { voice: String, promise: Promise ->
+            work(promise, cancelledBy = downloadGeneration, lane = downloadLane) { check ->
+                require(android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" || it == "x86_64" }) { "Kokoro needs a 64-bit Android device" }
+                kokoroPack.requireVoice(voice)
+                var lastEvent = 0L
+                kokoroPack.install(voice, check) { done, total ->
+                    val now = System.nanoTime()
+                    if (now - lastEvent > 250_000_000 || done == total) {
+                        lastEvent = now
+                        sendEvent("kokoroDownloadProgress", mapOf("downloaded" to done, "total" to total))
+                    }
+                }
+                mapOf("supported" to true, "readyVoices" to kokoroPack.readyVoices(check),
+                    "voices" to kokoroPack.voices.map { mapOf("id" to it.id, "label" to it.label) },
+                    "bytes" to kokoroPack.bytes(voice), "lowMemory" to lowMemoryDevice(), "name" to "Kokoro-82M · English (test)")
+            }
+        }
+        AsyncFunction("removeKokoroVoice") { promise: Promise ->
+            // Only the Kokoro folder: Alba, Moonshine recognition, inventory, drafts and orders are untouched.
+            downloadGeneration.incrementAndGet()
+            work(promise, cancelledBy = null, lane = albaLane) { _ -> releaseKokoro(); kokoroPack.remove(); null }
+        }
+        AsyncFunction("speakKokoro") { text: String, pace: Double, id: String, voice: String, play: Boolean, promise: Promise ->
+            speakKokoro(text, pace, id, voice, play, promise)
         }
         AsyncFunction("pocketAudioDiagnostic") { promise: Promise -> promise.resolve(pocketDiagnostic) }
         AsyncFunction("checkPocketAudioOutput") { promise: Promise ->
             work(promise, lane = albaLane) { check ->
                 val deadline = System.nanoTime() + 10_000_000_000L
-                val boundedCheck = { check(); kotlin.check(System.nanoTime() < deadline) { "Audio output check timed out" } }
+                val boundedCheck = { check(); if (System.nanoTime() >= deadline) throw VoiceTimedOut("Audio output check timed out") }
                 val diagnostics = diagnosticsFor("output-check-${System.currentTimeMillis()}")
                 diagnostics.note("output check · no model generation · 0.5 s 440 Hz tone · 24 kHz mono PCM16 · media route")
                 try {
-                    val result = pocketPlayback.play(pocketOutputTone(), 1f, boundedCheck)
+                    val result = pocketPlayback.play(pocketOutputTone(), boundedCheck)
                     diagnostics.note(result.describe())
                     result.asMap()
                 } catch (e: Throwable) {
@@ -380,7 +564,7 @@ class CareKoshVoiceModule : Module() {
                 java.util.zip.ZipOutputStream(file.outputStream().buffered()).use { zip ->
                     for (name in requireNotNull(context.assets.list("pocket-licences"))) {
                         check()
-                        require(name.matches(Regex("[A-Za-z0-9_.-]+")))
+                        require(name.matches(Regex("[A-Za-z0-9_.-]+"))) { "Invalid licence file" }
                         zip.putNextEntry(java.util.zip.ZipEntry(name.removeSuffix(".gz")))
                         context.assets.open("pocket-licences/$name").use { input ->
                             if (name.endsWith(".gz")) java.util.zip.GZIPInputStream(input).use { it.copyTo(zip) }
@@ -395,7 +579,7 @@ class CareKoshVoiceModule : Module() {
 
         AsyncFunction("prepareCapture") { id: String, preview: Boolean, promise: Promise ->
             work(promise) { check ->
-                require(id.matches(Regex("[a-zA-Z0-9-]{1,80}")))
+                require(id.matches(Regex("[a-zA-Z0-9-]{1,80}"))) { "Invalid recording request" }
                 check(recording == null) { "Microphone is still stopping" }
                 transcriber?.close()
                 transcriber = null
@@ -403,11 +587,12 @@ class CareKoshVoiceModule : Module() {
                 var take: StreamingRecording? = null
                 try {
                     if (preview) {
-                        require(pack.ready(check)) {
+                        require(pack.ready(check, refresh = true)) {
                             "Download the English speech pack for live words"
                         }
                         engine = Transcriber()
-                        engine.loadFromFiles(pack.root.path, pack.architecture)
+                        try { engine.loadFromFiles(pack.root.path, pack.architecture) }
+                        catch (error: Throwable) { pack.forget(); throw error }
                         engine.setUpdateInterval(0.5)
                     }
                     check()
@@ -432,7 +617,7 @@ class CareKoshVoiceModule : Module() {
         AsyncFunction("startCapture") { id: String, promise: Promise ->
             work(promise) { check ->
                 val take = requireNotNull(recording) { "Microphone was not prepared" }
-                require(take.id == id)
+                require(take.id == id) { "This recording is no longer current" }
                 check()
                 take.start()
                 true
@@ -442,7 +627,7 @@ class CareKoshVoiceModule : Module() {
             recording?.takeIf { it.id == id }?.requestStop()
             work(promise) { _ ->
                 val take = requireNotNull(recording) { "Recording is no longer available" }
-                require(take.id == id)
+                require(take.id == id) { "This recording is no longer current" }
                 try {
                     mapOf("uri" to take.finish())
                 } catch (error: Throwable) {
@@ -455,7 +640,7 @@ class CareKoshVoiceModule : Module() {
         }
 
         AsyncFunction("modelStatus") { promise: Promise ->
-            work(promise, cancellable = false) { check ->
+            work(promise, cancelledBy = null) { check ->
                 mapOf(
                     "ready" to pack.ready(check),
                     "bytes" to pack.bytes,
@@ -464,9 +649,7 @@ class CareKoshVoiceModule : Module() {
             }
         }
         AsyncFunction("downloadModel") { promise: Promise ->
-            work(promise) { check ->
-                transcriber?.close()
-                transcriber = null
+            work(promise, cancelledBy = downloadGeneration, lane = downloadLane) { check ->
                 var lastEvent = 0L
                 pack.install(check) { done, total ->
                     val now = System.nanoTime()
@@ -482,6 +665,7 @@ class CareKoshVoiceModule : Module() {
             }
         }
         AsyncFunction("removeModel") { promise: Promise ->
+            downloadGeneration.incrementAndGet()
             work(promise) { _ ->
                 transcriber?.close()
                 transcriber = null
@@ -493,15 +677,16 @@ class CareKoshVoiceModule : Module() {
             work(promise) { check ->
                 val (samples, rate) = decodeRecording(context, uri, check)
                 if (transcriber == null) {
-                    require(pack.ready(check)) {
+                    require(pack.ready(check, refresh = true)) {
                         "Download the English offline speech pack in AI & Voice settings first"
                     }
                     val engine = Transcriber()
                     try {
                         engine.loadFromFiles(pack.root.path, pack.architecture)
                         transcriber = engine
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         engine.close()
+                        pack.forget() // a file may have changed: hash the pack again next time
                         throw e
                     }
                 }
@@ -531,7 +716,7 @@ class CareKoshVoiceModule : Module() {
             // Resolve when speech finishes, not when it is merely queued. The UI
             // can then give the user a full reading window without cutting speech.
             withSpeech(promise, resolveImmediately = false) { engine ->
-                require(text.isNotBlank() && text.length <= 640)
+                require(text.isNotBlank() && text.length <= 640) { "Invalid speech request" }
                 val voice =
                     requireNotNull(localVoice(engine)) {
                         "Install an offline English voice in Android Text-to-speech settings"
@@ -599,13 +784,26 @@ class CareKoshVoiceModule : Module() {
             }
         }
         Function("cancel") { cancel() }
-        OnActivityEntersBackground {
-            cancel()
-            onAlbaLane { releaseAlba() } // free ~1 GB of compiled models while CareKosh is hidden
+        // Only explicit Cancel or Remove stops a pack download; partial files are kept for resuming.
+        Function("cancelDownloads") { downloadGeneration.incrementAndGet() }
+        OnCreate {
+            appContext.reactContext?.applicationContext?.let { app ->
+                app.registerComponentCallbacks(memoryCallbacks)
+                memoryRegistered = app
+            }
         }
+        OnActivityEntersBackground {
+            cancel() // the microphone and speech stop while CareKosh is hidden; downloads continue
+            releaseVoicesIfStillHidden()
+        }
+        OnActivityEntersForeground { backgroundStamp.incrementAndGet() }
         OnDestroy {
+            memoryRegistered?.unregisterComponentCallbacks(memoryCallbacks)
+            memoryRegistered = null
+            downloadGeneration.incrementAndGet()
+            downloadLane.executor.shutdown()
             cancel()
-            onAlbaLane { releaseAlba() }
+            onAlbaLane { releaseOfflineVoices() }
             albaLane.executor.shutdown()
             main.post {
                 speechInit++

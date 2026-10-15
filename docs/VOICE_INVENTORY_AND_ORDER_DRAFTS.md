@@ -5,6 +5,8 @@
 > - **Voice setup.** It now has three independent stages: Listening, Understanding and Spoken replies.
 > - **Sarvam errors** now name the cause.
 >
+> **Update — 15 October 2026 (working tree).** Clarifications, proposals and draft reviews are now read aloud. Spoken text is prepared for speech, and the server checks Groq's plans more strictly. See [Spoken answers and stricter checks](#spoken-answers-and-stricter-checks--15-october-2026).
+>
 > Read the [end-to-end review](AI_VOICE_END_TO_END_REVIEW.md) first. The sections below describe the 11 October state, with dated notes where the behaviour changed.
 
 Current local implementation: **11 October 2026**, on `feature/backend-hardening-ai-voice-agent-foundation`, following `4bd1dff`. Alba selection/new downloads are paused after failed OnePlus acceptance; its code is retained. Optional Sarvam English narration now has a separate consented backend and playback path. Microphone, Moonshine/Groq listening, Groq interpretation, local drafts and touch-confirmed order saving retain their existing wiring. A matching backend deployment and new preview APK are required. No Sarvam account or physical phone sound has been verified by this source review. [Activation, key configuration, costs and device checks](SARVAM_ENGLISH_VOICE.md).
@@ -341,3 +343,53 @@ Voice setup now has an **Assistant** card (on/off) and three sections: **1 Liste
 The **Selected** line states whether the saved choice can run now. For example: "Selected: Sarvam English · online · Needs your consent". A choice that cannot run is never shown as working, and it is never swapped silently.
 
 Choices are saved per account. Old saved choices load with no online opt-in. "Use on-phone understanding only" turns off Groq for this account without withdrawing server consent; "Withdraw all cloud consent" remains separate. Alba shows as Paused outside the diagnostics test build.
+
+## Spoken answers and stricter checks — 15 October 2026
+
+Item numbers refer to [§14 of the end-to-end review](AI_VOICE_END_TO_END_REVIEW.md#14-october-follow-up-audit-and-fixes). This is the working tree, not yet committed.
+
+### What is read aloud
+
+Earlier (13 October 2026), only plain answers were spoken. A question back to you, a draft proposal or a draft review was shown silently, which broke eyes-free use (V-9). Current behaviour:
+
+- **Clarifications** read the question, then up to three choices: "Which item did you mean? Choices: Hand gloves, or Surgical gloves." With more choices, the third is followed by "or another choice on screen".
+- **Draft proposals** read a short summary. Merge, Replace and Cancel results, and the draft review, are read as well.
+- **Spoken replies off.** Nothing is spoken. TalkBack users still hear a one-line summary of each answer, expanded row details and the final transcript (V-17).
+- **A tap during speech** stops the old speech and reads the new answer once (V-8).
+
+### Drafts and follow-ups
+
+- **Last line removed (V-15).** The draft is cleared: "The draft is now empty. Nothing was saved." Earlier, an empty draft still showed "Confirm order" instructions.
+- **One choice resolves the chain (V-18).** A choice made for an ambiguous name applies to every later step, including Refresh and Export. Earlier, a follow-up could ask the same question again and again.
+- **Refresh keeps the answer (V-13).** A failed refresh, such as one made offline, keeps the answer on screen and marks it "Last known".
+
+### Text prepared for speech (V-20)
+
+Screen text never changes. The spoken copy is prepared for every voice by `speechFriendly` in `features/assistant/core.ts`, before the 640-character limit is applied:
+
+| On screen | Spoken |
+|---|---|
+| Syringe 5ml | Syringe 5 millilitres |
+| Saline 0.9% 500 ml | Saline 0.9 percent 500 millilitres |
+| Gloves (Large): 20 pairs | Gloves, Large: 20 pairs |
+| Suture 3/0 | Suture 3 oh |
+| Dressing 10x10 cm | Dressing 10 by 10 centimetres |
+| IV Cannula 20G | IV Cannula 20 gauge |
+| Foley catheter 16Fr | Foley catheter 16 French |
+| Gauze 20 pcs, 1 pc spare | Gauze 20 pieces, 1 piece spare |
+
+Rupees, degrees, "+" and "#" are handled too. Unknown slash expressions stay unchanged: `100mg/dL`, `IU/ml`, `w/v`, `AB/CD` and fractional quantities must not become alternatives. The suture rule applies only to a whole integer size after “suture”, not a decimal denominator. `PRONUNCIATIONS` is an empty map for reviewed item spellings. Kokoro separately prepares standalone decimals and British spellings; dates, versions and item codes are protected ([details](POCKET_TTS_ALBA.md#kokoro-test-voice-v-41)).
+
+### Stricter checks on Groq's plans
+
+- **Contract 3 (V-21).** `require_complete_plan` in `app/services/ai_plan_grounding.py` rejects a plan that drops or changes what was asked:
+  - words must fit bounded grammar, recorded names or supported conditions; courteous wrappers and common stock synonyms are accepted;
+  - every number must be used; asking to display supplier/brand details is distinguished from filtering by a named supplier/brand;
+  - "add", "set" and "remove" must match their clause after copied item names and units are masked, so names such as “More Gauze” do not become commands;
+  - a follow-up needs a reference such as "those" or "only".
+- **Contracts 1 and 2 (V-22).** Older APKs retain stock synonyms such as “running short”, “run out”, “depleted” and “nothing left”. Stock conditions, missing-supplier filters and sorting must still match the request both ways. Unsupported meanings require clarification, rather than silently losing a condition.
+- **Schema sent to Groq (V-42).** Groq documents only part of JSON Schema for strict mode. So the server sends a portable copy: a fixed value becomes a one-value list, and undocumented keywords are left out. The server still enforces every rule on the reply. Groq errors are mapped to clear answers (401/403 → 503, 429 → 429, 400/413/422 → 502) and logged without any request or reply text.
+
+Lexical checks still cannot prove every interpretation; the answer keeps showing "Filters understood" for review.
+
+**Evidence.** The initial 15 October implementation passed 378 mobile and 521 backend tests, but independent review found regressions those tests missed. The fixes and new results are recorded in [the verification follow-up](AI_VOICE_END_TO_END_REVIEW.md#15-independent-verification-follow-up). The original review is preserved as a dated record. Live Groq replies, actual narration and TalkBack still need phone/provider acceptance.

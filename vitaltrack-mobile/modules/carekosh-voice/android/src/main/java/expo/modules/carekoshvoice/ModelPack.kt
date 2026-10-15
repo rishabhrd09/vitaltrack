@@ -110,64 +110,74 @@ internal class ModelPack(context: Context) {
         return MessageDigest.isEqual(actual, Base64.decode(asset.checksum, Base64.DEFAULT))
     }
 
-    fun ready(check: () -> Unit = {}): Boolean = assets.all {
-        valid(File(root, it.name), it, check)
+    /**
+     * Status checks reuse an unchanged size/time fingerprint. A fresh native engine load passes
+     * refresh=true, so changed bytes cannot be trusted solely because that metadata was preserved.
+     */
+    @Volatile private var verified: List<Pair<Long, Long>>? = null
+    private fun fingerprint() = assets.map { File(root, it.name).let { f -> f.length() to f.lastModified() } }
+
+    @Synchronized
+    fun ready(check: () -> Unit = {}, refresh: Boolean = false): Boolean {
+        check()
+        val state = fingerprint()
+        if (!refresh && verified == state) return true
+        val result = assets.all { valid(File(root, it.name), it, check) }
+        verified = if (result) state else null
+        return result
     }
 
-    fun install(check: () -> Unit, progress: (Long, Long) -> Unit) {
-        root.mkdirs()
-        require(root.usableSpace > bytes + 64_000_000) {
-            "Not enough storage for the offline speech pack"
+    /** A load failure means a file changed underneath us: the next check hashes everything again. */
+    @Synchronized fun forget() { verified = null }
+
+    private fun connect(asset: Asset, rangeStart: Long): HttpURLConnection =
+        (URL(asset.url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 15000
+            readTimeout = 15000
+            instanceFollowRedirects = false
+            if (rangeStart > 0) setRequestProperty("Range", "bytes=$rangeStart-")
+            if (responseCode != 200 && responseCode != 206) {
+                disconnect()
+                throw VoiceDownloadFailed("Speech pack download unavailable. Please retry later")
+            }
         }
-        var completed = 0L
+
+    /** Resumes partial files kept from an interrupted download; a failed check deletes only that file. */
+    fun install(check: () -> Unit, progress: (Long, Long) -> Unit) {
+        synchronized(this) { check(); root.mkdirs() }
+        verified = null
         val deadline = System.nanoTime() + 600_000_000_000L
         val boundedCheck = {
             check()
-            kotlin.check(System.nanoTime() < deadline) { "Speech pack download timed out" }
+            if (System.nanoTime() >= deadline) throw VoiceDownloadFailed("Speech pack download timed out. Please retry; finished parts are kept")
         }
-        for (asset in assets) {
+        val missing = assets.filterNot { valid(File(root, it.name), it, boundedCheck) }
+        val needed = missingBytes(missing.map { it.size to File(root, it.name + ".part").let { part -> if (part.isFile) part.length() else 0L } })
+        if (root.usableSpace <= needed + 64_000_000) throw VoiceDownloadFailed("Not enough storage for the offline speech pack")
+        var completed = bytes - missing.sumOf { it.size }
+        progress(completed, bytes)
+        for (asset in missing) {
             boundedCheck()
-            val target = File(root, asset.name)
-            if (valid(target, asset, boundedCheck)) {
-                completed += asset.size
-                progress(completed, bytes)
-                continue
-            }
             val partial = File(root, asset.name + ".part")
-            val connection = URL(asset.url).openConnection() as HttpURLConnection
-            connection.connectTimeout = 15000
-            connection.readTimeout = 15000
-            connection.instanceFollowRedirects = false
-            try {
-                require(connection.responseCode == 200) { "Speech pack download unavailable" }
-                connection.inputStream.buffered().use { input ->
-                    partial.outputStream().buffered().use { output ->
-                        val buffer = ByteArray(65536)
-                        var received = 0L
-                        while (true) {
-                            boundedCheck()
-                            val count = input.read(buffer)
-                            if (count == -1) break
-                            received += count
-                            require(received <= asset.size) { "Invalid speech pack size" }
-                            output.write(buffer, 0, count)
-                            progress(completed + received, bytes)
-                        }
-                    }
-                }
-                require(valid(partial, asset, boundedCheck)) {
-                    "Speech pack integrity check failed; please retry"
-                }
-                require(partial.renameTo(target)) { "Could not install speech pack" }
-                completed += asset.size
-            } finally {
-                connection.disconnect()
+            downloadResumable(partial, asset.size, boundedCheck, { start -> connect(asset, start) }) { received -> progress(completed + received, bytes) }
+            boundedCheck()
+            if (!valid(partial, asset, boundedCheck)) {
                 partial.delete()
+                throw VoiceDownloadFailed("Speech pack integrity check failed; please retry")
             }
+            synchronized(this) {
+                boundedCheck() // removal cancels this generation before taking the same publication lock
+                val target = File(root, asset.name)
+                target.delete()
+                if (!partial.renameTo(target)) throw VoiceDownloadFailed("Could not install speech pack")
+                verified = null
+            }
+            completed += asset.size
         }
     }
 
-    fun remove() {
+    @Synchronized fun remove() {
+        verified = null
         // Exact app-owned model directory, never a caller-supplied path.
         if (root.exists()) check(root.deleteRecursively()) { "Could not remove speech pack" }
     }

@@ -8,13 +8,23 @@
 - **Test build:** the `preview-voice-diagnostics` EAS profile shows a diagnostics panel and allows Alba for testing. Normal `preview` and `production` builds do not.
 - **Optional fallback:** an offline fallback for failed Sarvam replies now exists. It is off by default; see [the Sarvam guide](SARVAM_ENGLISH_VOICE.md#optional-offline-fallback--13-october-2026).
 
+**Update — 15 October 2026 (working tree, not yet committed).** The owner heard Alba on the phone, but it did not sound good. The changes in [Sound quality, voices and Kokoro — 15 October 2026](#sound-quality-voices-and-kokoro--15-october-2026) address that. Alba is still paused in normal builds.
+
+- **Longer chunks:** 50 tokens instead of 32, with upstream's end-punctuation fix, trimmed joins and even loudness.
+- **Pace:** changes the pauses, never the voice speed.
+- **More voices:** five more commercial-use preset voices, and "Alba (updated)", Kyutai's corrected Alba state.
+- **Kokoro test voice:** Kokoro-82M through Moonshine, offered only in the diagnostics build.
+- **Robustness:** audio ducking, resumable downloads and memory handling.
+
 Older dated sections below are kept as evidence. They describe earlier code, including a GPU-to-CPU retry that has since been removed.
 
 ## What it does
 
 CareKosh can download **Kyutai Pocket TTS with the fixed Alba English preset** and generate spoken assistant summaries on the phone. No extra Android application, hosted speech service, API key or per-answer provider fee is needed. This does not make Groq understanding offline: optional online interpretation and transcription retain their own consent and internet requirements.
 
-This is Pocket TTS Alba, not the Piper Alba/Lyra model used by some other projects. Identical timbre is not promised. “Relaxed” changes playback speed to 0.9× while keeping pitch at 1×; it does not select a different trained emotional voice.
+This is Pocket TTS Alba, not the Piper Alba/Lyra model used by some other projects. Identical timbre is not promised.
+
+**Pace.** Earlier (13 October 2026), "Relaxed" played Alba at 0.9× speed through Android's time-stretch, which can sound metallic. Current (15 October 2026): Alba always plays at 1×. Relaxed lengthens the pauses between sentences and Brisk shortens them. Neither selects a different trained voice.
 
 ## Historical user setup — unavailable while paused
 
@@ -24,6 +34,8 @@ This is Pocket TTS Alba, not the Piper Alba/Lyra model used by some other projec
 4. Downloading selects Alba. **Read answers aloud** remains a separate user choice; **Use Alba & read answers aloud** explicitly enables both. Choose **Relaxed**, **Natural** or **Brisk** pace and press **Preview voice**. **Hear answer** can speak an answer on demand even with automatic replies off. Preparation/playback progress and **Stop voice preview** appear during preview; repeated preview taps are blocked. Check media volume and speaker/Bluetooth output when playback starts.
 5. If preview is silent, use **Check audio output**. It plays a half-second faded tone through the same PCM16 media playback path without loading a model. Results show the actual output category and media volume; Android rendering frames does **not** prove that you heard them. Expand **Audio check details** and copy the selectable text if needed. Diagnostics stay in app-session memory and contain timings, stages, counts and waveform levels, not question text, inventory names or recordings. This check neither changes the selected voice nor enables any cloud service.
 6. Use **Remove Alba voice pack** to reclaim storage. It does not remove inventory, orders or the microphone recognition pack. A failed download removes its partial file and can reuse already verified completed files on retry. Leaving the app or pressing Cancel stops the download.
+
+*Current (15 October 2026), diagnostics build:* downloads resume from the bytes already received (HTTP Range) and continue while the screen is locked or CareKosh is in the background. Only **Cancel Alba download** stops them; finished parts are kept.
 
 ## Data flow and safety
 
@@ -38,12 +50,13 @@ Validated answer → concise `speechText` → native `speakPocket` (its own Alba
   - If the GPU cannot compile the vocoder, Alba stops with a clear message. That failure is remembered until the pack is reinstalled or the app restarts.
   - There is no CPU retry and no automatic cloud or device-voice substitution.
   - Two placement experiments exist only in the diagnostics build: the flow LM on the GPU, and an FP32 vocoder.
-- **Lifecycle.** Models compile once and stay warm between replies on a dedicated Alba thread, so a slow or stuck GPU call cannot block the microphone thread.
-  - Models are freed after 90 seconds unused, when CareKosh goes to the background, when the pack is removed or reinstalled, and after a failed reply.
-  - Cancellation keeps the warm models; each chunk starts again from the voice state.
+- **Lifecycle.** Models compile once and stay warm between replies on a dedicated offline-voice thread, so a slow or stuck GPU call cannot block the microphone thread. The Kokoro test voice uses the same thread, so the two never run at once, and only one is kept in memory.
+  - Models are freed after 90 seconds unused or 30 seconds in the background. They are also freed on memory pressure, removal and failed replies that invalidate the engine. Downloading an additional preset reuses the warm engine; it does not always reload it. Earlier (13 October 2026) any background event freed models, including a permission dialog.
+  - Cancellation, an interruption, muted audio and a timeout keep the warm models; each chunk starts again from the voice state.
   - First-reply compile time must be measured on target phones.
 - **Generation bounds.**
-  - Text is limited to 640 characters, and prepared chunks to **32 tokens** without dropping words.
+  - Text is limited to 640 characters. Earlier (13 October 2026) chunks were at most 32 tokens, often one per list item. Current (15 October 2026): up to **50 tokens**, as upstream pocket-tts uses, and up to 32 for the first chunk so speech starts sooner. Text splits at sentence ends, then commas; it splits between words only for a single over-long clause.
+  - Each chunk ends with a full stop where needed, as in [pocket-tts PR #296](https://github.com/kyutai-labs/pocket-tts). Without one, the last word is often mispronounced or repeated.
   - A decimal point between digits ("0.9%") is not treated as a sentence end ([pocket-tts PR #217](https://github.com/kyutai-labs/pocket-tts)).
   - Each chunk may use at most 256 audio frames (20.48 s), also bounded by the remaining KV space, and must reach EOS plus its tail.
   - EOS is ignored for the first 6 frames, as in [pocket-tts PR #319](https://github.com/kyutai-labs/pocket-tts). On short texts the EOS logit can cross the threshold during the leading pause.
@@ -54,7 +67,10 @@ Validated answer → concise `speechText` → native `speakPocket` (its own Alba
   - The old −80 dBFS floor accepted near-silence.
   - Healthy Alba speech measured about −20 dBFS with 0.7–0.8 active windows.
   - Unusable output is rejected, never amplified.
-- **Playback.** Speech starts as soon as the first sentence is decoded; later sentences keep generating while it plays. The format is **PCM16, 24 kHz mono**, `USAGE_MEDIA` with speech content, track gain 1.0 and Android audio focus.
+- **Joins and loudness (15 October 2026).** Each chunk's own leading and trailing silence is trimmed to the pace's pause (RMS over 10 ms windows, −55 dBFS). A checked chunk is then evened towards −18 dBFS, with at most +4 dB of gain and a peak of at most 0.9, so nothing clips.
+- **Playback.** Speech starts as soon as the first sentence is decoded; later sentences keep generating while it plays. The format is **PCM16, 24 kHz mono**, `USAGE_MEDIA` with speech content and Android audio focus.
+  - Current (15 October 2026): a short notification ducks the voice to 30 % instead of stopping it. A call or another app's audio stops it calmly, as an interruption rather than an error. Unplugging headphones or a Bluetooth drop stops it, so it never moves to the loudspeaker.
+  - At the end, completion is measured while the track is playing, before `AudioTrack.stop()` resets its playback-head counter. Rendered frames are captured before stopping. The JVM fake now models that reset; a clip that has completed must not become a timeout. Earlier code checked the reset counter after stop.
   - A 120 ms lead-in lets the audio route settle.
   - On Android 12 and later, playback starts after 200 ms of buffered audio. On older versions a short clip is padded past the buffer, so it always starts.
   - Completion waits for rendered frames within the clip length plus 5 s, never indefinitely.
@@ -62,10 +78,16 @@ Validated answer → concise `speechText` → native `speakPocket` (its own Alba
   - Muted media, rejected focus, failed start, write errors and stalled completion produce a visible message. Completion reports rendered frames, route category and media volume; that is not acoustic proof.
 - **Cancellation.** Cancel, another question, leaving the screen, backgrounding, logout or changing accounts invalidates speech. Playback is flushed at once.
   - An in-flight native model call may finish before it is noticed.
-  - Stale results cannot start playback, and audio-focus loss stops it.
+  - Stale results cannot start playback. A lasting audio-focus loss stops it; a short one lowers the volume.
   - An aborted turn stops waiting immediately and never cancels a later question's recording.
 - Synthesis failure keeps the factual answer visible. Neither this voice nor Groq interpretation gains inventory/order-save authority. Touch confirmation remains required to save an order.
 - Device speech remains a selectable fallback controlled by the user. While paused, withdrawing cloud consent returns narration to device voice.
+
+**Independent-review repairs — 15 October 2026.** Downloads now use their own worker, separate from microphone preparation/transcription and offline synthesis. App-wide progress and Cancel remain available after closing and reopening Voice setup. Pack publication/removal uses short synchronized sections; removal cancels a pending install before deleting files. Network waits do not hold an engine worker.
+
+Listening-pack status may cache unchanged size/time metadata. Every fresh capture or transcription engine load re-verifies the embedded catalog checksums, even when metadata matches; either load failure invalidates the cache. This protects inference from a same-size/timestamp mutation without repeatedly hashing the pack for status-only UI checks.
+
+Readiness follows the selected Alba voice. Any installed preset keeps Remove and the catalog available, even if the original Alba preset was removed. The first chunk is split to at most 32 tokens, including an overlong initial clause; later chunks retain the 50-token bound. Kokoro protects dates, versions and item codes before formatting standalone decimals. These changes are tested on the host, not yet certified on the phone. Current results are in [the verification follow-up](AI_VOICE_END_TO_END_REVIEW.md#15-independent-verification-follow-up).
 
 ## Models, attribution and notices
 
@@ -76,6 +98,10 @@ Validated answer → concise `speechText` → native `speakPocket` (its own Alba
 | Original Pocket TTS code | [Kyutai Pocket TTS](https://github.com/kyutai-labs/pocket-tts); MIT |
 | Adapted Android host/tokenizer example | [LiteRT-Models/pockettts](https://github.com/john-rocky/LiteRT-Models/tree/310464b5988f59c03de9283c3d7451e51d9f0260/pockettts); MIT, Daisuke Majima |
 | Android inference runtime | [Google LiteRT](https://developers.google.com/edge/litert/android), `2.1.6`; Apache 2.0 and SDK third-party notices |
+| Preset voices Charles, Eve and Mary (15 October 2026) | Same Pocket-TTS-LiteRT revision; recordings from the [CSTR VCTK Corpus](https://huggingface.co/kyutai/tts-voices/tree/main/vctk) (p254, p361, p333); CC BY 4.0 |
+| Preset voices Javert and Marius (15 October 2026) | Same revision; [Unmute voice donations](https://huggingface.co/kyutai/tts-voices/tree/main/voice-donations); CC0 |
+| "Alba (updated)" voice state (15 October 2026) | [`kyutai/pocket-tts-without-voice-cloning`](https://huggingface.co/kyutai/pocket-tts-without-voice-cloning) revision `069025daa1d6a8a9640bd52581e2a2252f8bede4`, `languages/english_2026-04/embeddings/alba.safetensors`; CC BY 4.0; converted to float16 and repacked on the phone |
+| Kokoro test voice (15 October 2026, diagnostics builds) | See [the Kokoro section](#kokoro-test-voice-v-41); Apache 2.0 model and voices, BSD-style CMUdict data |
 
 Voice setup shows attribution and offers **Export complete Alba licence notices**. Full MIT, CC BY 4.0, Apache 2.0 and complete SDK third-party notices are bundled under `modules/carekosh-voice/android/src/main/assets/pocket-licences`. The SDK notice is compressed in the APK and expanded in the exported ZIP. Notices identify upstream changes and do not imply creator endorsement. The full SDK notice also covers build tooling; listing a tool does not establish that it is linked into the app. Review the final packaged dependency inventory before public distribution.
 
@@ -97,11 +123,118 @@ Under `vitaltrack-mobile/`:
 - `PocketPlayback.kt`: streaming writer, start-threshold handling, focus, route and volume, cancellation and playback reports.
 - `PocketDiagnostics.kt`: bounded, path-redacted record for each operation, mirrored to logcat tag `CareKoshVoice`.
 - `CareKoshVoiceModule.kt`: separate Moonshine and Alba worker lanes, the warm engine and the Expo native API.
-- `modules/carekosh-voice/android/src/main/assets/pocket-alba-manifest.json`: exact file sizes/checksums; model weights are not committed.
+- `modules/carekosh-voice/android/src/main/assets/pocket-alba-manifest.json`: exact file sizes/checksums; model weights are not committed. Since 15 October 2026 it lists the shared graphs under `assets` and each preset under `voices`. A voice with `voiceState` is downloaded from Kyutai and packed on the phone.
+- *Added 15 October 2026:* `VoiceErrors.kt` (stable error codes), `PackDownload.kt` (resumable pinned downloads, shared by every pack), `PocketVoiceState.kt` (voice-state packing), `KokoroPack.kt` and `KokoroSpeech.kt` (the Kokoro test voice), and `assets/kokoro-manifest.json`.
 - `scripts/check-pocket-recovery.kt`: pure-JVM checks, including the streaming writer against a fake AudioTrack.
-- `scripts/pocket-host-check/`: the actual Kotlin synthesizer with real LiteRT 2.1.6 numerics on a desktop host, plus a per-graph memory probe.
+- `scripts/pocket-host-check/`: the actual Kotlin synthesizer with real LiteRT 2.1.6 numerics on a desktop host, plus a per-graph memory probe. Since 15 October 2026 it also has `pack_voice.py` and a `COMPARE` mode for voice states.
+- `scripts/kokoro-host-check.py` (15 October 2026): the pinned Kokoro files through moonshine-voice 0.1.5 on a desktop host.
 
 ## Verification and release gate
+
+### Sound quality, voices and Kokoro — 15 October 2026
+
+**Status.** Working tree, not yet committed. Host checks pass; the phone checks below are still open. Normal builds keep Alba and Kokoro off. Item numbers refer to [§14 of the end-to-end review](AI_VOICE_END_TO_END_REVIEW.md#14-october-follow-up-audit-and-fixes).
+
+#### Why Alba did not sound good
+
+| Cause | Effect on the phone | Change |
+|---|---|---|
+| Chunks were at most 32 tokens (V-36). | A list reply became many short chunks. Each restarts from the voice state and adds about 0.7 s of silence, so speech sounded choppy. | Up to 50 tokens, the first up to 32. Joins are trimmed to the pace's pause. |
+| A chunk without final punctuation (V-36). | Upstream reports the last word is often mispronounced or repeated. | Pocket TTS PR #296 rule: soft endings become a full stop. |
+| Pace used Android's time-stretch (V-37). | Relaxed and Brisk could sound metallic. | Pace changes the pauses only. |
+| Uneven, quiet level (V-39). | Replies measured −18.9 to −22.3 dBFS. | Evened to −18 dBFS, at most +4 dB, peak ≤ 0.9. |
+| The Alba voice state ends mid-word (V-40). | Out-of-place sounds at chunk starts; wrong or repeated one-word replies. | "Alba (updated)" voice (below). |
+| Text written for the screen (V-20). | Symbols, units and sizes read oddly. | Shared `speechFriendly` text for every voice. |
+
+**Host evidence (same four replies, real LiteRT 2.1.6).** Loudness is now −18.0 dBFS for every reply. Time to the first chunk is unchanged: about 0.8–0.9 s on the host.
+
+#### Voices (diagnostics build)
+
+Voice setup lists **Alba** (the default), **Alba (updated)**, **Charles**, **Eve**, **Mary**, **Javert** and **Marius**. Each extra voice downloads 3–6 MB once; the shared graphs are reused. Use **Preview voice** to compare.
+
+- **Licences.** Charles, Eve and Mary come from the VCTK corpus (CC BY 4.0). Javert and Marius come from voice donations (CC0). Expresso and EARS voices are non-commercial, so they are not offered.
+- **"Alba (updated)".** Kyutai regenerated its voice states on 27 September 2026 so that each prompt ends on an 80 ms pause ([pocket-tts PR #334](https://github.com/kyutai-labs/pocket-tts/pull/334)). On `english_2026-04`, the model our graphs come from, Kyutai measured:
+  - word errors from 2.05 % to 1.66 %;
+  - chunk-start bursts from 17 to 0 in 400;
+  - correct one-word replies from 425 to 451 of 480.
+- **Why Kyutai's current files are old again.** An upload on 1 October for other languages put the old English files back. That PR does not mention English. Kyutai's PR #351 (10 October) still names the old state as the cause of the bursts. So the revert was not a quality decision.
+- **How it reaches the phone.** The repository is public (not gated) and CC BY 4.0. The phone downloads the pinned 6.2 MB file, checks its SHA-256 and packs it into the app's layout. The packed file (127 frames, 3,121,156 bytes) must match a second pinned SHA-256. No binary is committed.
+- **Packing is exact.** `pack_voice.py` (host) and `PocketVoiceState.kt` (phone) reproduce the pinned `pt_voice_alba.bin` byte for byte from Kyutai's original state. Their float16 rounding matched numpy on 5.1 million test values.
+- **Bounds.** The 127-frame state fits: 127 + 50 tokens + 1 is well under the 512-frame KV cache, and generation keeps the full 256-frame decoder window.
+- **Host comparison**, per state: 72 short replies of one to three words and 24 multi-sentence replies.
+  - Both spoke everything at the same speed (real-time factor 0.20 on the host).
+  - The updated state starts each chunk after a natural pause: a median of 80 ms against 40 ms.
+  - Whisper `base.en` heard all 72 short replies correctly, against 70 of 72 for the original (one was "Done. Done.").
+  - The default stays **Alba** until the owner compares both on the phone.
+
+#### Kokoro test voice (V-41)
+
+A calmer offline voice to compare with Alba, offered **only in the diagnostics build** (`KOKORO_SELECTION_ENABLED` follows `VOICE_DIAGNOSTICS_ENABLED`). It uses `ai.moonshine.voice.TextToSpeech` from moonshine-voice 0.1.5, which the app already ships for listening. No native library is added.
+
+- **Voices.** Heart (default) and Bella (US), Emma (UK). Emma needs the `en_gb` profile, which uses the same English files. The library does not offer her under `en_us`.
+- **Files.** Exactly the moonshine-voice 0.1.5 set, pinned in `kokoro-manifest.json`:
+  - `kokoro/config.json`, plus the prosody and decoder stages, each as `.model.ort` and `.weights.ort`;
+  - the English pronunciation dictionary, its config, and the out-of-vocabulary model with its config.
+
+  They total 108.5 MB, plus about 0.5 MB per voice. They come from Moonshine's Hugging Face mirror at commit `0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae`. Their MD5 values matched Moonshine's v0.1.5 list (`FILES.tsv`), and each is checked by size and SHA-256.
+  - The single `kokoro/model.ort` shown in Moonshine's older transfer report is not part of the 0.1.5 set.
+  - `modelsFrom(folder)` means the library never downloads on its own.
+- **Engine.**
+  - **Sentences.** The library's sentence splitter runs first. Sentences under four words join a neighbour, because Kokoro is weak on very short inputs.
+  - **Synthesis.** `synthesize(text, speed)` runs per chunk at 24 kHz. Pace uses Kokoro's own speed: 0.9, 1.0 or 1.1.
+  - **Playback.** Through CareKosh's own audio path, with the same level check, ducking, interruption, cancellation and diagnostics as Alba. Kokoro normalises to full scale, so peaks are limited to 0.9. No cloning API is ever called.
+- **Pronunciation.** Moonshine's dictionary misread decimals ("12.5" as "12 up 5") and guessed British spellings ("litres" heard as "lighters"). For Kokoro only, CareKosh says "12 point 5" and uses US spellings of litre, metre and their compounds. Whisper's word error rate on CareKosh replies fell from 27–35 % to 10–14 %. Remaining misses are item names such as "Ambu" and "Paracetamol", which need the owner's phone check.
+- **Host results** (moonshine-voice 0.1.5 on a Mac, same native core): each voice loads in about 0.2 s and runs at a real-time factor of about 0.10. Phone figures are not published and are NOT VERIFIED.
+- **Licences.**
+  - The Kokoro-82M model and voices (hexgrad) and the ONNX export are Apache 2.0, with no NOTICE files.
+  - The English dictionary comes from CMUdict (BSD-style; full text in `KOKORO-ATTRIBUTION.txt`).
+  - Moonshine's asset page says its pronunciation data "follow the terms of the projects they come from". Its own out-of-vocabulary model has no separate licence text. **Owner review** is needed before any wider release.
+- **Diagnostics.** **Generate Kokoro without playing** and **Generate and play Kokoro** report the first chunk's time, the synthesis real-time factor, the total time and the peak native heap.
+- **Release criteria (owner, on the Nord 4).** First audio within 1.5 s, real-time factor below 1, no crash in 20 replies, and acceptable item names.
+
+#### Checks run (15 October)
+
+These are the initial implementation's results, before the independent-review repairs. Current follow-up results are recorded in [§15 of the end-to-end review](AI_VOICE_END_TO_END_REVIEW.md#15-independent-verification-follow-up). Passing these initial checks did not expose the playback-counter or download-lifetime defects.
+
+- **Mobile:** 378/378 tests, TypeScript clean, lint 0 errors.
+- **JVM (`scripts/check-pocket-recovery.kt`):** adds focus and engine policy, end punctuation, chunking, join trimming, loudness, resumable downloads, voice-state packing and Kokoro text. Two deliberately broken packers were caught.
+- **Native compile:** all 72 module classes against the Android API, LiteRT 2.1.6 (`litert` and `litert-api`) and moonshine-voice 0.1.5 jars with Expo stubs, Kotlin language/API 2.2. This is not the real Gradle build.
+- **Host checks:** `run.sh`, its `COMPARE` mode and `kokoro-host-check.py` pass.
+- **Android JavaScript export** of `preview` and `preview-voice-diagnostics` with `--clear`: both build. In `preview`, the diagnostics, Alba and Kokoro flags compile to `false`. Without `--clear`, Metro reused the first export's transforms and the two bundles were byte-identical. Always pass `--clear` for this check.
+
+#### How to rerun the checks (15 October)
+
+```bash
+cd vitaltrack-mobile
+K=modules/carekosh-voice/android/src/main/java/expo/modules/carekoshvoice
+# JVM checks: android.jar and the moonshine-voice 0.1.5 classes on the classpath
+kotlinc -cp /path/to/android.jar:/path/to/moonshine-classes.jar \
+  $K/{PocketAudio,PocketRecovery,PocketPlayback,PocketDiagnostics,VoiceErrors,PocketText,PocketTokenizer,PackDownload,PocketVoiceState,KokoroSpeech}.kt \
+  scripts/check-pocket-recovery.kt -include-runtime -d /tmp/pocket-native-check.jar
+java -cp /tmp/pocket-native-check.jar:/path/to/android.jar:/path/to/moonshine-classes.jar expo.modules.carekoshvoice.Check_pocket_recoveryKt
+# Actual listening-pack integrity/lane/removal regression: tiny synthetic files, no network/models.
+# This test needs android-all at runtime, not Android SDK's throwing android.jar stubs.
+kotlinc -cp /path/to/android-all.jar:/path/to/moonshine-classes.jar \
+  $K/{ModelPack,PackDownload,VoiceErrors}.kt scripts/check-model-pack.kt \
+  -include-runtime -d /tmp/model-pack-check.jar
+java -Djava.io.tmpdir=/tmp -cp /tmp/model-pack-check.jar:/path/to/android-all.jar:/path/to/moonshine-classes.jar expo.modules.carekoshvoice.Check_model_packKt
+# Alba host check, then a voice-state comparison (see scripts/pocket-host-check/README.md)
+ASSETS=/path/to/verified/alba PYTHON=/path/to/python-with-ai-edge-litert-2.1.6 KOTLINC=$(command -v kotlinc) scripts/pocket-host-check/run.sh
+# Kokoro host check (pinned files downloaded outside Git)
+/path/to/venv-with-moonshine-voice-0.1.5/bin/python -I scripts/kokoro-host-check.py /path/to/kokoro /tmp/kokoro-wav modules/carekosh-voice/android/src/main/assets/kokoro-manifest.json
+# Flag folding: always clear Metro's cache
+EAS_BUILD_PROFILE=preview EXPO_PUBLIC_API_URL=https://staging-api.carekosh.com npx expo export --clear --platform android --no-bytecode --output-dir /tmp/export-preview
+```
+
+#### Phone acceptance additions (diagnostics build)
+
+Run these after the steps under [Phone acceptance](#phone-acceptance--diagnostics-build).
+
+1. **Alba voices.** Preview **Alba**, then **Alba (updated)**, on the same reply. Note which sounds better, and any odd sounds at sentence starts. Then try the other voices.
+2. **Pace.** Relaxed and Brisk should change only the pauses; the voice should never sound stretched.
+3. **Interruptions.** A notification during speech should lower the voice, not stop it. Unplugging headphones should stop it. A call should stop it without an error.
+4. **Downloads.** Lock the screen during a download: it should continue. Cancel should stop it, and a retry should resume.
+5. **Kokoro.** Download it, preview Heart, Bella and Emma, and run both Kokoro diagnostics. Record the time to first audio, the real-time factor and the peak native heap. Listen for the owner's item names.
 
 ### Offline voice investigation — 13 October 2026
 
@@ -166,6 +299,7 @@ Switch to plan B only if the diagnostics build shows a vocoder GPU compile failu
 
 - Weights and the fixed Alba preset are CC BY 4.0; the code notices are MIT and Apache 2.0. All are bundled and exportable. No GPL or eSpeak component was added.
 - Kyutai's original Hugging Face repository is gated behind prohibited-use terms. CareKosh downloads the CC BY 4.0 LiteRT conversion instead. **Owner review:** confirm whether those use terms apply to this use.
+- *Correction, 15 October 2026:* `kyutai/pocket-tts` (with voice cloning) is gated. `kyutai/pocket-tts-without-voice-cloning` is public (`gated: false`, CC BY 4.0), and its card lists prohibited uses such as impersonation and deception. CareKosh uses fixed preset voices for synthetic assistant speech only. The owner review above still applies.
 
 #### Checks run (13 October)
 
@@ -184,6 +318,8 @@ Switch to plan B only if the diagnostics build shows a vocoder GPU compile failu
 - a real Gradle release build. EAS needs the owner's authorization; a local build needs an Android SDK, which is not installed here.
 
 #### How to rerun the host checks
+
+*Superseded on 15 October 2026 by [the newer commands](#how-to-rerun-the-checks-15-october): the JVM check now needs more source files and the moonshine-voice classes.*
 
 ```bash
 cd vitaltrack-mobile

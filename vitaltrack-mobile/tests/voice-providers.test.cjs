@@ -79,3 +79,38 @@ test('old or unknown preferences migrate locally with no online opt-in', async (
   await prefs.loadPreferences('account-a'); await prefs.loadPreferences('account-b');
   assert.deepEqual(keys, ['carekosh-voice-settings-v2:account-a', 'carekosh-voice-settings-v2:account-b']);
 });
+
+test('V-10: pending, failed and mismatched capability answers are never shown as "not configured"', () => {
+  const sarvamOn = caps({ speech_providers: ['sarvam'], sarvam_application_available: true, interpret: true, transcription_providers: ['groq'] });
+  const status = state => {
+    const e = env({ caps: sarvamOn, server: state });
+    return { listen: registry.listeners(e)[1], understand: registry.interpreters(e)[1], speak: registry.speakers(e, defaults)[2] };
+  };
+  const checking = status({ state: 'checking' });
+  for (const provider of Object.values(checking)) { assert.equal(provider.readiness, 'checking'); assert.equal(provider.detail, 'Checking the CareKosh server…'); }
+  const failed = status({ state: 'failed', reason: 'no internet connection' });
+  for (const provider of Object.values(failed)) {
+    assert.equal(provider.readiness, 'unavailable');
+    assert.equal(provider.detail, 'Could not reach the CareKosh server (no internet connection). Tap Recheck.');
+  }
+  // Only a successful answer that lacks a provider says "not configured".
+  assert.match(registry.speakers(env({ server: { state: 'loaded' } }), defaults)[2].detail, /not configured on this server/);
+  assert.match(registry.speakers(env({ caps: caps({ consent_mismatch: true }) }), defaults)[2].detail, /different consent versions/);
+  assert.equal(status({ state: 'loaded' }).speak.readiness, 'needs_consent');
+});
+
+test('V-10: the device voice is "checking" until Android text-to-speech answers', () => {
+  assert.equal(byId(registry.speakers(env({ deviceVoice: { ready: false, checked: false } }), defaults)).device, 'checking');
+  assert.equal(byId(registry.speakers(env({ deviceVoice: { ready: false, checked: true } }), defaults)).device, 'unavailable');
+  assert.equal(byId(registry.speakers(env({ deviceVoice: { ready: true } }), defaults)).device, 'ready');
+});
+
+test('V-10: capability failures get short, specific reasons', () => {
+  const error = (status, data) => Object.assign(new Error('x'), { status, data });
+  assert.equal(registry.serverFailureReason(error(0, { originalError: 'network_request_failed' }), true), 'no internet connection');
+  assert.equal(registry.serverFailureReason(error(0, { originalError: 'request_timeout' })), 'the server took too long to answer');
+  assert.equal(registry.serverFailureReason(error(0, { originalError: 'network_request_failed' })), 'the server did not respond; it may be starting up');
+  assert.equal(registry.serverFailureReason(error(401)), 'your sign-in needs renewing');
+  assert.equal(registry.serverFailureReason(error(503)), 'server error 503');
+  assert.equal(registry.serverFailureReason(new Error('Cold start')), 'the server did not respond');
+});

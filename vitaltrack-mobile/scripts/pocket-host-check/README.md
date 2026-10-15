@@ -18,8 +18,9 @@ The shim forwards each model call to a local Python LiteRT process. CPU calls ru
 | `run.sh` | Compiles the module sources with the shim and runs `HostDriver.kt`, once normally and once with the vocoder's GPU compile forced to fail. |
 | `LiteRtShim.kt`, `AndroidHalf.kt` | Host-only stand-ins for the LiteRT Kotlin API and `android.util.Half`. They are never part of the Android build. |
 | `server.py` | Local LiteRT 2.1.6 model server for the shim. |
-| `HostDriver.kt` | Replies, levels, timings, decimal chunking, cancellation and reuse checks. |
+| `HostDriver.kt` | Replies, levels, timings, decimal chunking, cancellation and reuse checks. With `COMPARE`, it compares voice states instead (see below). |
 | `probe_graphs.py` | Peak memory and time of each graph on CPU and GPU, plus the total size of every intermediate output. This is where the vocoder's ~10 GB CPU requirement is measured. |
+| `pack_voice.py` | Packs a pocket-tts voice-state `.safetensors` file into the app's `pt_voice_<id>.bin` layout, like `pack_voice` in john-rocky/LiteRT-Models. `PocketVoiceState.kt` does the same on the phone. Both reproduce the pinned `pt_voice_alba.bin` byte for byte from Kyutai's original Alba state. |
 
 **Requirements:**
 - a JDK 17 or newer;
@@ -31,3 +32,22 @@ The shim forwards each model call to a local Python LiteRT process. CPU calls ru
 ASSETS=/path/to/verified/alba PYTHON=/path/to/python KOTLINC=$(command -v kotlinc) ./run.sh
 /path/to/python probe_graphs.py /path/to/verified/alba
 ```
+
+**Comparing voice states** (for example the original Alba against Kyutai's updated state):
+
+1. Download the pinned `alba.safetensors` named in the manifest's `voiceState`, outside Git, and check its SHA-256.
+2. Pack it into the assets folder:
+
+   ```bash
+   /path/to/python -I pack_voice.py /path/to/alba.safetensors /path/to/verified/alba/pt_voice_albapause.bin
+   ```
+
+   The printed SHA-256 must match the manifest entry.
+3. Run the comparison. `REPS` sets the runs per text (default 3):
+
+   ```bash
+   COMPARE="pt_voice_alba.bin pt_voice_albapause.bin" WAV_OUT=/path/outside/git REPS=6 \
+     ASSETS=/path/to/verified/alba PYTHON=/path/to/python KOTLINC=$(command -v kotlinc) ./run.sh
+   ```
+
+For each voice it prints one-word results, chunk-start bursts, time to the first chunk, the real-time factor and the median speech onset. It also writes the WAVs and an `index.tsv` (file name and text) for an optional speech-recognition check.

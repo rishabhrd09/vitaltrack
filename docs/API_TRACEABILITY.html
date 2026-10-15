@@ -2182,7 +2182,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Guards</td>
-<td><code>reserve()</code> (<code>ai_guard.py:95-181</code>): flags enabled; consent version and the <code>groq_text</code> scope; under a global advisory lock, daily limits (50 per user, 500 overall), a conservative cost budget (default 5,000 micro-USD per attempt → at most 20 attempts per user per day), at most 4 calls in flight overall and 1 per user (429 with <code>Retry-After</code>). A "day" starts at 00:00 UTC (05:30 IST). Inserts an <code>ai_usage</code> row with status <code>reserved</code>.</td>
+<td><code>reserve()</code> checks flags, consent version and <code>groq_text</code>. A shared PostgreSQL advisory lock protects daily limits (50/account, 500/global), budgets (100,000/account, 1,000,000/global micro-USD), global concurrency 4 and one active call per account <strong>per kind</strong>. Understanding reserves 5,000 units before the call; success settles at a bounded token estimate, so a fixed 20-call allowance is no longer correct. A day starts at 00:00 UTC (05:30 IST). Soft route limits use the authenticated account and remain per worker; they are not distributed counters.</td>
 </tr>
 <tr>
 <td>Provider call</td>
@@ -2194,7 +2194,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Settle</td>
-<td><code>ai_usage</code> updated to <code>complete</code> or <code>failed</code> with token counts; failed reserved attempts still count against limits. Settlement errors are logged and leave the row reserved until its in-flight expiry; they do not replace an otherwise successful answer with a 500.</td>
+<td><code>ai_usage</code> becomes <code>complete</code> or <code>failed</code>. Successful estimates can lower, never raise, a reservation. Missing usage, failure and cancellation retain the full reservation. Settlement errors leave it counted against daily limits; the in-flight expiry defaults to 55 seconds from reservation. No pooled DB connection remains held during provider work.</td>
 </tr>
 <tr>
 <td>Response</td>
@@ -2221,7 +2221,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Caller</td>
-<td><code>AssistantExperience.stopRecording</code>: optional Groq listening after explicit <code>groq_audio</code> consent, fresh local <code>audioOptIn</code>, and provider checks. Otherwise Moonshine runs on the phone. The 9 October local module supplies streaming local captions and a temporary PCM16/16 kHz WAV; new uploads declare <code>audio/wav</code>. Older-module AAC/M4A uploads declare <code>audio/mp4</code>. Captions alone never trigger interpretation or drafting. <code>CLOUD_TRANSCRIPTION_ENABLED=true</code>; cloud speech remains disabled.</td>
+<td><code>AssistantExperience.stopRecording</code>: optional Groq listening after explicit <code>groq_audio</code> consent, fresh local <code>audioOptIn</code>, and provider checks. Otherwise Moonshine runs on the phone. Live captions use a temporary PCM16/16 kHz WAV; older AAC/M4A uploads retain <code>audio/mp4</code>. Captions never trigger interpretation/drafting. Listening is independent of separately consented Sarvam narration.</td>
 </tr>
 <tr>
 <td>Gating</td>
@@ -2229,7 +2229,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Details</td>
-<td>Multipart upload ≤ 900 KB; mono WAV or M4A 0.3–30 s; decoded by <code>ffmpeg</code> with an 8 s limit; flat-line audio rejected; Groq transcripts are checked with segment quality metrics; Sarvam uses its separate response checks. These checks do not prove recognition accuracy.</td>
+<td>Multipart upload ≤900 KB, received within 30 s; mono WAV/M4A 0.3–30 s; ffmpeg normalization bounded at 8 s. Consent precedes audio inspection/decoding/provider upload, while FastAPI parses multipart framing earlier. Disconnect cancels normalization/provider work and preserves the reservation. Flat-line/segment checks do not prove recognition accuracy.</td>
 </tr>
 <tr>
 <td>Status</td>
@@ -2269,6 +2269,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tbody>
 </table></div>
 <p>The English narration body is <code>{text, provider:"sarvam", pace, credential_source:"application"|"personal"}</code>; pace is optional (default 1), with allowed values 0.9/1/1.1. The backend chooses model/speaker/language, decodes/validates mono PCM16 WAV and rejects effectively silent output, then returns <code>audio/wav</code> with <code>Cache-Control: no-store</code>. Client limits/cancellation/player cleanup are in <a href="SARVAM_ENGLISH_VOICE.html">the Sarvam integration guide</a>. No inventory/order authority is added.</p>
+<p><strong>15 October follow-up:</strong> only pre-provider in-flight 429s carry <code>X-AI-Error: busy</code>; understanding/listening can retry one short marked wait. Daily limits, generic throttles and narration do not automatically retry. Response request IDs use a shared bounded ASCII validator. See <a href="AI_VOICE_END_TO_END_REVIEW.html#15-independent-verification-follow-up">the repair evidence</a> for the faithful/hostile query corpus, native worker separation and remaining device/provider checks.</p>
 <h3 id="get-apiv1aisarvam-key"><code>GET /api/v1/ai/sarvam-key</code><a class="anchor" href="#get-apiv1aisarvam-key" aria-label="Link to this section">#</a></h3>
 <p>Owner-authenticated encrypted-key metadata, also included in capabilities. Returns only <code>setup_available,configured,usable,updated_at</code>; never key/ciphertext/prefix/suffix. <code>usable</code> checks configuration and decryption, not live provider validity or credits.</p>
 <h3 id="put-apiv1aisarvam-key"><code>PUT /api/v1/ai/sarvam-key</code><a class="anchor" href="#put-apiv1aisarvam-key" aria-label="Link to this section">#</a></h3>
@@ -2851,7 +2852,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <li>About ten concurrency tests start requests together without forcing the overlap, so a pass does not prove the race was exercised.</li>
 <li>Mobile tests cover the API client, logout and order-creation services, item paging, the sanitising helpers, the query provider, assistant logic and assistant UI; screens, stores and the category service are not loaded by any test.</li>
 </ul>
-<footer>Generated 2026-10-13 by <code>docs/tools/build_docs.py</code> from <code>docs/API_TRACEABILITY.md</code>.</footer>
+<footer>Generated 2026-10-15 by <code>docs/tools/build_docs.py</code> from <code>docs/API_TRACEABILITY.md</code>.</footer>
 </main>
 </div>
 <script>

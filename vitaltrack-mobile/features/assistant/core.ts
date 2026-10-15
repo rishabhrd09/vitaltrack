@@ -14,6 +14,8 @@ export type Answer = { title: string; text: string; items: Item[]; choices: Item
   notes?: string[];
   /** Non-item choices for a clarification, such as a category or supplier. */
   options?: { id: string; label: string }[];
+  /** Shorter wording for speech when the screen text is long or lists choices. Never shown. */
+  spoken?: string;
   kind?: 'list' | 'draft' | 'proposal' | 'clarify' };
 export const command = (intent: IntentName): Intent => ({ intent, item_query: null, reference: 'none', fields: [] });
 // Lower-case, unify apostrophes and drop the sentence punctuation that speech transcripts add.
@@ -240,7 +242,80 @@ export function answerIntent(intent: Intent, source: Item[], timestamp: number, 
     statistics: [{ label: 'Active items', value: items.length, tone: 'neutral' }, { label: 'Low stock', value: low.length, tone: 'low' }, { label: 'Out of stock', value: out.length, tone: 'out' }] };
 }
 
+/** Item words a voice says badly, mapped to a spoken form. Whole words, any case. Extend with care. */
+export const PRONUNCIATIONS: Record<string, string> = {};
+type UnitRule = { pattern: string; singular: string; plural: string; caseSensitive?: boolean };
+const UNIT_RULES: UnitRule[] = [
+  { pattern: 'pcs|pc', singular: 'piece', plural: 'pieces' },
+  { pattern: 'nos', singular: 'unit', plural: 'units' },
+  { pattern: 'mcg|µg', singular: 'microgram', plural: 'micrograms' },
+  { pattern: 'mg', singular: 'milligram', plural: 'milligrams' },
+  { pattern: 'kgs|kg', singular: 'kilogram', plural: 'kilograms' },
+  { pattern: 'gms|gm|g', singular: 'gram', plural: 'grams', caseSensitive: true },
+  { pattern: 'ml', singular: 'millilitre', plural: 'millilitres' },
+  { pattern: 'ltrs|ltr|l', singular: 'litre', plural: 'litres' },
+  { pattern: 'mm', singular: 'millimetre', plural: 'millimetres' },
+  { pattern: 'cm', singular: 'centimetre', plural: 'centimetres' },
+  { pattern: 'pkts|pkt', singular: 'packet', plural: 'packets' },
+];
+const UNIT_WORD: Record<string, string> = { ml: 'millilitres', mg: 'milligrams', mcg: 'micrograms', g: 'grams', kg: 'kilograms', unit: 'units', units: 'units' };
+const PER_WORD: Record<string, string> = { hr: 'hour', h: 'hour', hour: 'hour', min: 'minute', day: 'day', ml: 'millilitre', kg: 'kilogram', dose: 'dose' };
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Speech-only wording, used for every voice: symbols and unit abbreviations become words.
+ * Screen text never changes. Unknown words are left as they are.
+ */
+export function speechFriendly(text: string, pronunciations: Record<string, string> = PRONUNCIATIONS): string {
+  let out = text
+    .replace(/[\u00A0\u202F]/g, ' ')
+    .replace(/[‘’‚‛′]/g, "'").replace(/[“”„‟″]/g, '"')
+    .replace(/…/g, '.')
+    .replace(/\s*[·•]\s*/g, ', ')
+    .replace(/\s*[([{]\s*/g, ', ').replace(/\s*[)\]}]\s*/g, ', ')
+    .replace(/\s*&\s*/g, ' and ')
+    .replace(/₹\s*(\d[\d,]*(?:\.\d+)?)/g, '$1 rupees').replace(/₹/g, ' rupees ')
+    .replace(/\bRs\.?\s*(\d[\d,]*(?:\.\d+)?)/g, '$1 rupees')
+    .replace(/(\d)\s*°\s*C\b/g, '$1 degrees Celsius').replace(/(\d)\s*°\s*F\b/g, '$1 degrees Fahrenheit').replace(/\s*°/g, ' degrees')
+    .replace(/(\d)\s*%/g, '$1 percent')
+    .replace(/(\d)\s*[xX×]\s*(?=\d)/g, '$1 by ')
+    // Medical sizes: suture "3/0" is said "3 oh"; cannula gauge and catheter French sizes.
+    .replace(/(\bsutures?\s+)(\d{1,2})\s*\/\s*0\b(?!\.\d)/gi, '$1$2 oh')
+    .replace(/\b(1[4-9]|2\d|3[0-2])\s?G\b/g, '$1 gauge')
+    .replace(/\b(\d{1,2})\s?(?:Fr|FR)\b/g, '$1 French')
+    .replace(/(^|[^\w./-])(\d+(?:\.\d+)?)\s?(ml|mg|mcg|g|kg|units?)\s?\/\s?(hr|h|hour|min|day|ml|kg|dose)\b/gi,
+      (_, prefix: string, amount: string, unit: string, per: string) => `${prefix}${amount} ${UNIT_WORD[unit.toLowerCase()]} per ${PER_WORD[per.toLowerCase()]}`);
+  for (const rule of UNIT_RULES) {
+    out = out.replace(new RegExp(`(^|[^\\w./-])(\\d+(?:\\.\\d+)?)\\s?(?:${rule.pattern})(?![\\w/])`, rule.caseSensitive ? 'g' : 'gi'),
+      (_, prefix: string, amount: string) => `${prefix}${amount} ${amount === '1' ? rule.singular : rule.plural}`);
+  }
+  out = out
+    .replace(/(\d)\s*\+(?=\s|$|[.,;:!?])/g, '$1 plus').replace(/\s\+\s/g, ' plus ')
+    .replace(/#\s*(\d)/g, 'number $1');
+  // A slash can be a concentration, fraction or recorded item code. Only the
+  // explicitly recognised per-unit expressions above may change its meaning.
+  for (const [word, spoken] of Object.entries(pronunciations)) {
+    out = out.replace(new RegExp(`\\b${escapeRegExp(word)}\\b`, 'gi'), spoken);
+  }
+  return out
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/,(\s*,)+/g, ',')
+    .replace(/,\s*([.;:!?])/g, '$1')
+    .replace(/^[\s,]+|[\s,]+$/g, '')
+    .trim();
+}
+
 export function speechText(answer: Answer): string {
-  const text = `${answer.stale ? 'Last known information. Stock may have changed since the last sync. ' : ''}${answer.text}`;
+  const text = speechFriendly(`${answer.stale ? 'Last known information. Stock may have changed since the last sync. ' : ''}${answer.spoken ?? answer.text}`);
   return text.length <= 640 ? text : 'Your answer is ready on screen. It is too long to read in one reply.';
+}
+
+/** A clarification read aloud: the question, then at most three choices; the rest stay on screen. */
+export function clarificationSpeech(message: string, labels: string[]): string {
+  const names = [...new Set(labels.map(label => label.trim()).filter(Boolean))];
+  if (!names.length) return message;
+  const listed = names.slice(0, 3);
+  const choices = names.length > 3 ? `${listed.join(', ')}, or another choice on screen` : listed.length > 1 ? `${listed.slice(0, -1).join(', ')}, or ${listed[listed.length - 1]}` : listed[0];
+  return `${message} Choices: ${choices}.`;
 }

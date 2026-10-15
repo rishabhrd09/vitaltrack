@@ -15,8 +15,68 @@ private fun writeWav(file: File, pcm: FloatArray) {
     file.writeBytes(data.array())
 }
 
+/**
+ * Speech onset (ms) and the chunk-start burst pocket-tts PR #334 removes: sound above −45 dBFS that
+ * stops at least 50 ms before the speech proper (the first 100 ms run above −35 dBFS). 10 ms RMS windows.
+ */
+private fun chunkStart(samples: FloatArray): Pair<Int, Boolean> {
+    val db = DoubleArray(samples.size / 240) { w ->
+        var energy = 0.0
+        for (i in w * 240 until (w + 1) * 240) energy += samples[i].toDouble() * samples[i]
+        10 * Math.log10(energy / 240 + 1e-12)
+    }
+    val onset = (0..db.size - 10).firstOrNull { s -> (s until s + 10).all { db[it] > -35 } } ?: return -1 to false
+    val burst = (0 until onset).any { w -> db[w] > -45 && w + 5 < onset && (w + 1..w + 5).all { db[it] <= -45 } }
+    return onset * 10 to burst
+}
+
+/** Old against new voice states: chunk-start bursts, one-word replies and timings, plus WAVs for an ASR check. */
+private fun compare(dir: File, out: File, voices: List<String>, reps: Int) {
+    val short = listOf("Yes.", "No.", "Done.", "Twelve.", "Saved.", "Gloves.", "Syringes.", "Okay.", "Cancelled.",
+        "Three boxes.", "Out of stock.", "Draft cleared.")
+    val long = listOf(
+        "Low stock: 1 item. Surgical Mask: 3 boxes.",
+        "Saline 0.9% bottles: 12.5 litres remaining. Recorded supplier: MedPlus.",
+        "Stock summary: 42 active items. 3 low-stock items. 1 out-of-stock items. Counts reflect the last successful refresh.",
+        "I added 2 items to the draft order. Gloves, 4 boxes. Syringes, 10 pieces. Review the draft before sending it.",
+    )
+    val index = StringBuilder()
+    for (voice in voices) {
+        val engine = PocketSynthesizer(dir, voiceFile = voice)
+        engine.initialize {}
+        var shortBursts = 0; var shortFailures = 0; var shortSeconds = 0.0; var shortCount = 0
+        var chunkBursts = 0; var chunkCount = 0; var firstChunkMs = 0L; var totalMs = 0L; var audioSeconds = 0.0; var longFailures = 0
+        val onsets = ArrayList<Int>()
+        for ((t, text) in (short + long).withIndex()) repeat(reps) { rep ->
+            val chunks = ArrayList<FloatArray>()
+            val started = System.nanoTime()
+            var first = -1L
+            val result = try {
+                engine.synthesize(text, {}, { _, _ -> }) { chunks.add(it); if (first < 0) first = (System.nanoTime() - started) / 1_000_000 }
+            } catch (e: IllegalArgumentException) { if (t < short.size) shortFailures++ else longFailures++; return@repeat }
+            val all = FloatArray(chunks.sumOf { it.size }).also { var o = 0; chunks.forEach { c -> System.arraycopy(c, 0, it, o, c.size); o += c.size } }
+            val name = "${voice.removeSuffix(".bin")}-$t-$rep.wav"
+            writeWav(File(out, name), all)
+            index.append(name).append('\t').append(text).append('\n')
+            val starts = chunks.map { chunkStart(it) }
+            val bursts = starts.count { it.second }
+            starts.filter { it.first >= 0 }.forEach { onsets.add(it.first) }
+            if (t < short.size) { shortBursts += bursts; shortSeconds += all.size / 24000.0; shortCount++ }
+            else { chunkBursts += bursts; chunkCount += chunks.size; firstChunkMs += first; totalMs += result.ms; audioSeconds += all.size / 24000.0 }
+        }
+        engine.close()
+        val longRuns = long.size * reps - longFailures
+        println("$voice: one-word/short ${shortCount}/${short.size * reps} spoken, mean %.2f s, bursts $shortBursts; ".format(shortSeconds / maxOf(1, shortCount)) +
+            "replies $longRuns/${long.size * reps}, chunk-start bursts $chunkBursts/$chunkCount, first chunk %d ms, real-time factor %.2f; "
+                .format(firstChunkMs / maxOf(1, longRuns), totalMs / 1000.0 / maxOf(0.001, audioSeconds)) +
+            "speech onset after chunk start: median ${onsets.sorted().getOrElse(onsets.size / 2) { -1 }} ms")
+    }
+    File(out, "index.tsv").writeText(index.toString())
+}
+
 fun main(args: Array<String>) {
     val dir = File(args[0]); val out = File(args[1]); val mode = args.getOrElse(2) { "speak" }
+    if (mode == "compare") return compare(dir, out, args.drop(3), (System.getenv("REPS") ?: "3").toInt())
     if (mode == "vocoder-gpu-fails") {
         val engine = PocketSynthesizer(dir)
         try { engine.initialize {}; error("initialized without a vocoder") }

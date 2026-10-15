@@ -7,8 +7,24 @@ https://huggingface.co/kyutai/tts-voices/tree/main/alba-mackenna
 Model conversion / preset repacking by Daisuke Majima: CC BY 4.0.
 https://huggingface.co/mlboydaisuke/Pocket-TTS-LiteRT
 Pinned model revision: e0e68d4fb79feb529d7d0f8d0bbfad8d15a18a1e
-Modifications: float16 LiteRT graphs, exported tokenizer and repacked fixed Alba KV prompt.
+Modifications: float16 LiteRT graphs, exported tokenizer and repacked fixed preset KV prompts.
 Synthetic assistant speech; no endorsement or identity impersonation is implied.
+
+Alba (updated): Kyutai's english_2026-04 Alba voice state regenerated to end on a
+short pause (pocket-tts #334), CC BY 4.0.
+https://huggingface.co/kyutai/pocket-tts-without-voice-cloning
+Pinned revision: 069025daa1d6a8a9640bd52581e2a2252f8bede4
+(languages/english_2026-04/embeddings/alba.safetensors)
+Modifications: converted to float16 and repacked into the preset layout on the phone
+by CareKosh; the packed file is checked against a pinned SHA-256.
+
+Optional preset voices from the Pocket-TTS-LiteRT revision above (kyutai/tts-voices sources):
+- Charles (vctk/p254), Eve (vctk/p361), Mary (vctk/p333): CSTR VCTK Corpus,
+  Centre for Speech Technology Research, University of Edinburgh; CC BY 4.0.
+  https://huggingface.co/kyutai/tts-voices/tree/main/vctk
+- Javert (voice-donations/Butter), Marius (voice-donations/Selfie): Unmute Voice
+  Donation Project, CC0. https://huggingface.co/kyutai/tts-voices/tree/main/voice-donations
+Non-commercial presets (Expresso, EARS) are not offered.
 
 Original Pocket TTS code: Kyutai (MIT).
 Android host orchestration/tokenizer: Copyright (c) 2026 Daisuke Majima (MIT).

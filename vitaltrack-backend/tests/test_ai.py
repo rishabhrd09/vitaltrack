@@ -215,7 +215,8 @@ async def test_sarvam_narration_route_preserves_stock_and_listening(
             and usage.kind == "speak"
             and usage.status == "complete"
         )
-        assert usage.reserved_microusd == settings.AI_SARVAM_SPEAK_RESERVE_MICROUSD
+        # Settled at the per-character estimate (V-23), not the whole 25,000 reservation.
+        assert usage.reserved_microusd == len(payload["text"]) * settings.AI_SARVAM_SPEAK_MICROUSD_PER_CHAR
 
 
 async def test_sarvam_rest_contract_and_kokoro_speech(monkeypatch):
@@ -231,10 +232,10 @@ async def test_sarvam_rest_contract_and_kokoro_speech(monkeypatch):
 
     monkeypatch.setattr(ai_provider, "bounded_call", call)
     assert "gloves" in await ai_provider.sarvam_transcribe(wav())
+    # The REST reference labels `mode` v3-only; v4 defaults to transcription.
     assert called[-1][2]["data"] == {
         "model": "saaras:v4",
         "language_code": "en-IN",
-        "mode": "transcribe",
     }
     assert "api-subscription-key" in called[-1][1]
     assert "keyterms" not in called[-1][2]["data"]
@@ -910,3 +911,239 @@ async def test_cloud_voice_off_writes_nothing(client, monkeypatch):
         json={"version": CONSENT_VERSION, "accepted": False},
     )
     assert revoked.status_code == 200
+
+
+def enable_sarvam_speech(monkeypatch):
+    for key, value in {
+        "AI_ENABLED": True, "AI_SPEECH_ENABLED": True, "AI_SARVAM_ENABLED": True,
+        "AI_SARVAM_DATA_CONTROLS_REVIEWED": True, "SARVAM_API_KEY": SecretStr("synthetic-sarvam-key"),
+        "SARVAM_TTS_MODEL": "bulbul:v3", "SARVAM_SPEAKER": "ritu",
+    }.items():
+        monkeypatch.setattr(settings, key, value)
+
+
+async def sarvam_consent(client, headers):
+    response = await client.put("/api/v1/ai/consent", headers=headers,
+                                json={"version": CONSENT_VERSION, "accepted": True, "scopes": ["sarvam_speech"]})
+    assert response.status_code == 200
+
+
+async def test_v23_successful_replies_settle_their_estimate_so_more_than_four_fit_the_daily_budget(client, monkeypatch):
+    enable_sarvam_speech(monkeypatch)
+    _, headers = await register_and_auth(client)
+    await sarvam_consent(client, headers)
+
+    async def transport(url, outbound_headers, **kwargs):
+        return json.dumps({"audios": [base64.b64encode(wav()).decode()]}).encode()
+
+    monkeypatch.setattr(ai_provider, "bounded_call", transport)
+    text = "Low stock: 3 items. " * 7  # 140 characters, a typical spoken answer
+    for _ in range(10):
+        response = await client.post("/api/v1/ai/speak", headers=headers, json={"text": text, "provider": "sarvam", "pace": 1})
+        assert response.status_code == 200, response.text
+    async with TestSession() as db:
+        rows = (await db.scalars(select(AIUsage))).all()
+    assert len(rows) == 10
+    assert all(row.reserved_microusd == len(text.strip()) * settings.AI_SARVAM_SPEAK_MICROUSD_PER_CHAR for row in rows)
+    assert sum(row.reserved_microusd for row in rows) < settings.AI_USER_DAILY_BUDGET_MICROUSD
+
+
+async def test_v23_a_failed_reply_keeps_the_whole_reservation(client, monkeypatch):
+    enable_sarvam_speech(monkeypatch)
+    _, headers = await register_and_auth(client)
+    await sarvam_consent(client, headers)
+
+    async def failing(url, outbound_headers, **kwargs):
+        raise ai.HTTPException(504, "Voice processing timed out.")
+
+    monkeypatch.setattr(ai_provider, "bounded_call", failing)
+    response = await client.post("/api/v1/ai/speak", headers=headers, json={"text": "Short answer.", "provider": "sarvam", "pace": 1})
+    assert response.status_code == 504
+    async with TestSession() as db:
+        row = (await db.scalars(select(AIUsage))).one()
+    assert row.status == "failed" and row.reserved_microusd == settings.AI_SARVAM_SPEAK_RESERVE_MICROUSD
+
+
+def test_v23_estimates_use_published_prices_and_never_guess():
+    estimate = ai_guard.estimated_cost
+    assert estimate("speak", "sarvam", {"characters": 100}) == 100 * settings.AI_SARVAM_SPEAK_MICROUSD_PER_CHAR
+    assert estimate("interpret", "groq", {"prompt_tokens": 2000, "completion_tokens": 300}) == math.ceil((2000 * 75 + 300 * 300) / 1000)
+    assert estimate("interpret", "groq", {"prompt_tokens": 0, "completion_tokens": 0}) is None, "missing usage keeps the reservation"
+    assert estimate("transcribe", "groq", {"audio_seconds": 4}) == 10 * settings.AI_GROQ_STT_MICROUSD_PER_SECOND, "Groq bills at least 10 seconds"
+    assert estimate("transcribe", "sarvam", {"audio_seconds": 4}) is None
+    assert estimate("speak", "kokoro", {"characters": 100}) is None
+    assert estimate("speak", "sarvam", {"characters": "100"}) is None
+    assert 640 * settings.AI_SARVAM_SPEAK_MICROUSD_PER_CHAR <= settings.AI_SARVAM_SPEAK_RESERVE_MICROUSD, "the reservation covers the longest reply"
+
+
+async def test_v24_daily_limits_name_the_utc_midnight_reset(client, monkeypatch):
+    from datetime import datetime as real_datetime, timezone as tz
+
+    class Frozen(real_datetime):
+        @classmethod
+        def now(cls, tzinfo=None):
+            return real_datetime(2026, 10, 15, 18, 30, tzinfo=tz.utc)
+
+    enable_sarvam_speech(monkeypatch)
+    _, headers = await register_and_auth(client)
+    await sarvam_consent(client, headers)
+    monkeypatch.setattr(ai_guard, "datetime", Frozen)
+    monkeypatch.setattr(settings, "AI_USER_DAILY_REQUESTS", 0)
+    response = await client.post("/api/v1/ai/speak", headers=headers, json={"text": "Short answer.", "provider": "sarvam", "pace": 1})
+    assert response.status_code == 429
+    assert response.headers["retry-after"] == str(5 * 3600 + 30 * 60), "05:30 left until 00:00 UTC"
+    assert "It resets at 00:00 UTC" in response.json()["detail"]
+    monkeypatch.setattr(settings, "AI_USER_DAILY_REQUESTS", 50)
+    monkeypatch.setattr(settings, "AI_USER_DAILY_BUDGET_MICROUSD", 0)
+    response = await client.post("/api/v1/ai/speak", headers=headers, json={"text": "Short answer.", "provider": "sarvam", "pace": 1})
+    assert response.status_code == 429 and response.headers["retry-after"] == "19800"
+    assert response.json()["detail"].startswith("Today's AI processing budget is used. It resets at 00:00 UTC.")
+
+
+async def test_v25_a_question_is_understood_while_an_answer_is_still_spoken(client, monkeypatch):
+    enable_sarvam_speech(monkeypatch)
+    monkeypatch.setattr(settings, "AI_DATA_CONTROLS_REVIEWED", True)
+    monkeypatch.setattr(settings, "GROQ_API_KEY", SecretStr("synthetic-groq-key"))
+    data, headers = await register_and_auth(client)
+    response = await client.put("/api/v1/ai/consent", headers=headers,
+                                json={"version": CONSENT_VERSION, "accepted": True, "scopes": ["sarvam_speech", "groq_text"]})
+    assert response.status_code == 200
+    user_id = data["user"]["id"]
+    speaking = await ai_guard.reserve(user_id, "speak", provider="sarvam")
+    understanding = await ai_guard.reserve(user_id, "interpret")  # a different kind is not blocked
+    with pytest.raises(ai.HTTPException) as busy:
+        await ai_guard.reserve(user_id, "speak", provider="sarvam")
+    assert busy.value.status_code == 429 and busy.value.headers["Retry-After"] == "5"
+    await ai_guard.settle(speaking, False)
+    await ai_guard.settle(understanding, True, {"prompt_tokens": 10, "completion_tokens": 5})
+
+
+async def test_v25_a_disconnected_phone_cancels_the_provider_call(client, monkeypatch):
+    from app.main import app
+
+    enable_sarvam_speech(monkeypatch)
+    _, headers = await register_and_auth(client)
+    await sarvam_consent(client, headers)
+    state = {"cancelled": False}
+
+    async def slow(url, outbound_headers, **kwargs):
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            state["cancelled"] = True
+            raise
+
+    monkeypatch.setattr(ai_provider, "bounded_call", slow)
+    body = json.dumps({"text": "Short answer.", "provider": "sarvam", "pace": 1}).encode()
+    scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": "POST", "scheme": "http",
+             "path": "/api/v1/ai/speak", "raw_path": b"/api/v1/ai/speak", "root_path": "", "query_string": b"",
+             "headers": [(b"host", b"test"), (b"content-type", b"application/json"), (b"content-length", str(len(body)).encode()),
+                         (b"authorization", headers["Authorization"].encode())],
+             "client": ("127.0.0.1", 1), "server": ("test", 80)}
+    received = 0
+
+    async def receive():
+        nonlocal received
+        received += 1
+        if received == 1:
+            return {"type": "http.request", "body": body, "more_body": False}
+        await asyncio.sleep(0.2)  # The phone stops the reply shortly after sending it.
+        return {"type": "http.disconnect"}
+
+    async def send(message):
+        pass
+
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    await asyncio.wait_for(app(scope, receive, send), 5)
+    assert state["cancelled"], "the provider call was cancelled"
+    assert loop.time() - started < 3
+    async with TestSession() as db:
+        row = (await db.scalars(select(AIUsage))).one()
+    assert row.status == "failed" and row.reserved_microusd == settings.AI_SARVAM_SPEAK_RESERVE_MICROUSD
+
+
+async def test_v26_ai_routes_are_rate_limited_per_account(client, monkeypatch):
+    from app.main import app
+
+    _, headers = await register_and_auth(client)
+    monkeypatch.setattr(app.state.limiter, "enabled", True)
+    app.state.limiter.reset()
+    try:
+        codes = [(await client.put("/api/v1/ai/sarvam-key", headers=headers, json={"api_key": "synthetic-key-123", "storage_consent": True})).status_code
+                 for _ in range(11)]
+        assert codes[:10] == [503] * 10, "personal keys are off here; the limiter still counts"
+        assert codes[10] == 429
+    finally:
+        app.state.limiter.reset()
+
+
+async def test_v26_a_long_budget_lock_wait_is_busy_not_a_server_error(client, monkeypatch):
+    from sqlalchemy import text as sql
+
+    enable_sarvam_speech(monkeypatch)
+    monkeypatch.setattr(settings, "AI_BUDGET_LOCK_TIMEOUT_MS", 200)
+    data, headers = await register_and_auth(client)
+    await sarvam_consent(client, headers)
+    async with test_engine.connect() as holder:
+        await holder.execute(sql("SELECT pg_advisory_lock(72401931)"))
+        try:
+            with pytest.raises(ai.HTTPException) as busy:
+                await ai_guard.reserve(data["user"]["id"], "speak", provider="sarvam")
+            assert busy.value.status_code == 503 and busy.value.headers["Retry-After"] == "5"
+        finally:
+            await holder.execute(sql("SELECT pg_advisory_unlock(72401931)"))
+
+
+async def test_v26_consent_is_checked_before_audio_inspection(client, monkeypatch):
+    for key, value in {"AI_ENABLED": True, "AI_TRANSCRIBE_ENABLED": True, "AI_DATA_CONTROLS_REVIEWED": True,
+                       "GROQ_API_KEY": SecretStr("synthetic-groq-key")}.items():
+        monkeypatch.setattr(settings, key, value)
+    parsed = []
+    monkeypatch.setattr(ai_provider, "audio_info", lambda content: parsed.append(len(content)) or ("wav", 1.0))
+    _, headers = await register_and_auth(client)
+    response = await client.post("/api/v1/ai/transcribe", headers=headers, files={"file": ("question.wav", wav(), "audio/wav")}, data={"provider": "groq"})
+    assert response.status_code == 403
+    assert parsed == [], "no audio inspection or decoding before consent; multipart framing is already parsed"
+
+
+async def test_v26_middleware_refusals_carry_security_headers_and_a_request_id(client):
+    response = await client.get("/api/v1/ai/capabilities")
+    assert response.status_code == 401
+    for name, value in {"x-content-type-options": "nosniff", "x-frame-options": "DENY", "cache-control": "no-store"}.items():
+        assert response.headers[name] == value
+    assert response.headers["x-request-id"]
+    echoed = await client.get("/api/v1/ai/capabilities", headers={"X-Request-ID": "synthetic-trace-1"})
+    assert echoed.headers["x-request-id"] == "synthetic-trace-1"
+
+
+async def test_v26_recording_uploads_get_thirty_seconds_and_json_ten(monkeypatch):
+    from app.services import ai_body_limit
+
+    seen = []
+    real_timeout = ai_body_limit.asyncio.timeout
+
+    def recording_timeout(delay):
+        seen.append(delay)
+        return real_timeout(delay)
+
+    monkeypatch.setattr(ai_body_limit.asyncio, "timeout", recording_timeout)
+
+    async def app(scope, receive, send):
+        await receive()
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    middleware = ai_body_limit.AIBodyLimit(app)
+    for path in ("/api/v1/ai/transcribe", "/api/v1/ai/interpret"):
+        messages = iter([{"type": "http.request", "body": b"{}", "more_body": False}])
+
+        async def receive():
+            return next(messages, {"type": "http.disconnect"})
+
+        async def send(message):
+            pass
+
+        scope = {"type": "http", "method": "POST", "path": path, "headers": [(b"authorization", b"Bearer synthetic"), (b"content-length", b"2")]}
+        await middleware(scope, receive, send)
+    assert seen == [30, 10]
