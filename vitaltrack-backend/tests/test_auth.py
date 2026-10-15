@@ -16,6 +16,7 @@ import asyncio
 import hashlib
 import html
 import logging
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -300,6 +301,34 @@ class TestLogin:
             "identifier": "ghost", "password": "TestPass1",
         })
         assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("identifier", ["ghost", "ghost@test.com"])
+    @pytest.mark.parametrize("verification_result", [False, True])
+    async def test_missing_user_verifies_password_in_worker(
+        self, client: AsyncClient, monkeypatch, identifier, verification_result,
+    ):
+        calls = []
+        request_thread = threading.get_ident()
+
+        def counted_verify(password, password_hash):
+            calls.append((password, password_hash, threading.get_ident()))
+            return verification_result
+
+        monkeypatch.setattr(auth_routes, "verify_password", counted_verify)
+        resp = await client.post("/api/v1/auth/login", json={
+            "identifier": identifier, "password": "TestPass1",
+        })
+
+        assert resp.status_code == 401
+        assert resp.json() == {"detail": "Incorrect email/username or password"}
+        assert resp.headers["WWW-Authenticate"] == "Bearer"
+        assert len(calls) == 1
+        password, password_hash, worker_thread = calls[0]
+        assert password == "TestPass1"
+        assert password_hash == auth_routes._DUMMY_PASSWORD_HASH
+        assert auth_routes.pwd_context.identify(password_hash) == "argon2"
+        assert worker_thread != request_thread
 
     @pytest.mark.asyncio
     async def test_case_insensitive_login(self, client: AsyncClient):

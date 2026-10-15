@@ -21,6 +21,7 @@ from app.core.security import (
     create_token_pair,
     decode_token,
     hash_password,
+    pwd_context,
     verify_password,
     verify_refresh_token,
 )
@@ -56,6 +57,9 @@ from app.utils.rate_limiter import limiter
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 logger = logging.getLogger("carekosh.auth")
+
+# Reuse the configured password cost for missing accounts without hashing per request.
+_DUMMY_PASSWORD_HASH = pwd_context.hash("carekosh-login-dummy-password")
 
 
 async def _lock_current_user(db: DB, current_user: User) -> User:
@@ -242,9 +246,11 @@ async def login(
     
     user = result.scalar_one_or_none()
     
-    if not user or not await anyio.to_thread.run_sync(
-        verify_password, data.password, user.hashed_password
-    ):
+    password_hash = user.hashed_password if user is not None else _DUMMY_PASSWORD_HASH
+    password_valid = await anyio.to_thread.run_sync(
+        verify_password, data.password, password_hash
+    )
+    if user is None or not password_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email/username or password",
