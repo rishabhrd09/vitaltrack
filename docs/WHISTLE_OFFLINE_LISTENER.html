@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="docs/tools/build_docs.py from docs/WHISTLE_OFFLINE_LISTENER.md">
+<title>Whistle — experimental offline listener</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d2328;--muted:#56606b;--card:#ffffff;--border:#d6dbe0;--accent:#0b5a73;
+--accent-bg:#e5f1f5;--code-bg:#f1f3f5;--code-fg:#1d2328;--warn-bg:#fff4d6;--warn-border:#9a6a00;--mark:#fff1a8}
+@media (prefers-color-scheme:dark){:root{--bg:#14181c;--fg:#e8ecef;--muted:#a9b3bc;--card:#1c2228;--border:#36404a;
+--accent:#7cc7df;--accent-bg:#17303a;--code-bg:#0f1316;--code-fg:#e8ecef;--warn-bg:#3a2f12;--warn-border:#d9a93a;--mark:#5b4e10}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+a{color:var(--accent);text-underline-offset:3px}a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:0}.skip:focus{left:12px;top:12px;background:var(--card);padding:8px 12px;z-index:9}
+header.site{border-bottom:1px solid var(--border);background:var(--card)}
+header.site .inner{max-width:1180px;margin:auto;padding:14px 20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;min-width:0}
+header.site .meta{min-width:0;overflow-wrap:anywhere}
+header.site .brand{font-weight:700}
+.layout{max-width:1180px;margin:auto;padding:0 20px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:36px}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:24px 0;font-size:14.5px;line-height:1.45}
+nav.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}nav.toc ul{list-style:none;padding-left:0;margin:0}nav.toc ul ul{padding-left:14px}nav.toc li{margin:5px 0}
+nav.toc a{color:var(--fg);text-decoration:none}nav.toc a:hover{text-decoration:underline}
+main{min-width:0;padding:28px 0 80px;max-width:78ch;overflow-wrap:break-word}
+:not(pre)>code{overflow-wrap:anywhere;word-break:break-word}
+h1{font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.15;margin:.2em 0 .4em}
+h2{font-size:1.6rem;margin-top:2.6rem;padding-top:.6rem;border-top:1px solid var(--border)}
+h3{font-size:1.25rem;margin-top:2rem}h4{font-size:1.05rem;margin-top:1.6rem}
+h2,h3,h4{scroll-margin-top:12px}.anchor{margin-left:.35em;font-size:.8em;text-decoration:none;opacity:.45}
+.anchor:hover,.anchor:focus{opacity:1}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--warn-border);background:var(--warn-bg)}
+blockquote p{margin:.4em 0}
+code{font:0.9em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code-bg);padding:.1em .3em;border-radius:4px}
+.codewrap{position:relative;margin:1.1em 0}
+pre{background:var(--code-bg);color:var(--code-fg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow:auto;line-height:1.5}
+pre code{background:none;padding:0;font-size:.86em}
+button.copy{position:absolute;top:8px;right:8px;font:600 12.5px system-ui,sans-serif;padding:4px 10px;border-radius:6px;
+border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer}
+.tablewrap{overflow-x:auto;margin:1.1em 0;border:1px solid var(--border);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.94em;background:var(--card)}
+th,td{border-bottom:1px solid var(--border);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--accent-bg);position:sticky;top:0}
+figure.diagram{margin:1.6em 0}figure.diagram .scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:#fff}
+figure.diagram img{display:block;width:100%;min-width:680px;height:auto}
+figcaption{font-size:.92em;color:var(--muted);margin-top:.5em}
+.meta{color:var(--muted);font-size:.92em}
+footer{color:var(--muted);font-size:.9em;border-top:1px solid var(--border);margin-top:3rem;padding-top:1rem}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.toc{position:static;max-height:none;border-bottom:1px solid var(--border)}
+main{max-width:none}}
+@media print{header.site,nav.toc,button.copy,.skip,.anchor{display:none!important}body{background:#fff;color:#000;font-size:11.5pt}
+.layout{display:block;max-width:none;padding:0}main{max-width:none;padding:0}a{color:#000}
+pre{white-space:pre-wrap;border:1px solid #999}.tablewrap{overflow:visible;border:none}th{position:static}
+figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{break-after:avoid}pre,figure,tr{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="site"><div class="inner"><span class="brand">CareKosh docs</span>
+<a href="INDEX.html">Documentation home</a>
+<span class="meta">Generated from <code>docs/WHISTLE_OFFLINE_LISTENER.md</code> — edit the Markdown, not this file.</span></div></header>
+<div class="layout">
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#1-where-it-fits">1. Where it fits</a></li><li><a href="#2-install-and-select">2. Install and select</a></li><li><a href="#3-native-runtime-and-privacy">3. Native runtime and privacy</a><ul><li><a href="#pinned-artifacts">Pinned artifacts</a></li><li><a href="#model-integrity-and-lifecycle">Model integrity and lifecycle</a></li></ul></li><li><a href="#4-configuration-and-builds">4. Configuration and builds</a></li><li><a href="#5-phone-acceptance">5. Phone acceptance</a></li><li><a href="#6-verification-and-remaining-limits">6. Verification and remaining limits</a></li><li><a href="#official-references">Official references</a></li></ul></details></nav>
+<main id="content">
+<h1 id="whistle--experimental-offline-listener">Whistle — experimental offline listener</h1>
+<p><strong>Status — 23 October 2026.</strong> Whistle is an optional speech-to-text listener in the <code>preview-voice-diagnostics</code> APK. Moonshine remains the default. Normal preview and production builds do not offer Whistle. This is a local implementation, not a deployment or a claim of phone acceptance.</p>
+<p>Whistle transcribes a finished recording. It does not read answers aloud, interpret inventory requests, or save orders. Sarvam, device speech, Alba and Kokoro keep their separate narration settings.</p>
+<h2 id="1-where-it-fits">1. Where it fits<a class="anchor" href="#1-where-it-fits" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Capture</td>
+<td>Existing Android microphone permission and bounded capture; 16 kHz mono PCM16, at most 28 seconds.</td>
+</tr>
+<tr>
+<td>Whistle listening</td>
+<td>Convert the completed recording to a reviewed English transcript on this phone. No Moonshine model is required for this choice.</td>
+</tr>
+<tr>
+<td>Review</td>
+<td>Edit the transcript and tap Send. Recording or transcription alone never executes a request.</td>
+</tr>
+<tr>
+<td>Understanding</td>
+<td>Existing local parser, or separately consented Groq interpretation when needed.</td>
+</tr>
+<tr>
+<td>Results</td>
+<td>Existing validated inventory selection, tables and unsaved order drafts. Only touch confirmation saves an order.</td>
+</tr>
+<tr>
+<td>Narration</td>
+<td>Independently selected device voice, Sarvam, or the existing experimental offline voices.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The initial integration does not provide Whistle live captions. Moonshine retains its existing live captions. Whistle is a separate saved preference; missing files or a failed transcription produce a clear error, without switching to Groq or another listener.</p>
+<p>Whistle's stock model supports English, German, French, Spanish, Italian, Dutch and Polish. CareKosh forces <strong>English</strong> for this experiment. Hindi and Hinglish are not supported or promised. Indian English, product names, quantities and negation still need testing.</p>
+<h2 id="2-install-and-select">2. Install and select<a class="anchor" href="#2-install-and-select" aria-label="Link to this section">#</a></h2>
+<ol>
+<li>Build and install <code>preview-voice-diagnostics</code>; Expo Go cannot load the native adapter.</li>
+<li>Open Voice setup and enable the assistant and microphone as usual.</li>
+<li>Under <strong>Listening</strong>, download the Whistle pack, then explicitly select Whistle. Downloading does not grant cloud consent or change the understanding or narration provider.</li>
+<li>Record, stop, wait for the transcript, review it and tap Send.</li>
+<li>To compare the existing listener, explicitly select Moonshine. Its recognition pack and voice settings are retained.</li>
+</ol>
+<p>The model download is about 16.9 MB. That is model data, not total APK size, peak RAM or a promised performance figure. Native executable code is linked into the APK at build time; the phone downloads only pinned model data. Removing Whistle removes its pack, not Moonshine, inventory, orders or narration packs.</p>
+<h2 id="3-native-runtime-and-privacy">3. Native runtime and privacy<a class="anchor" href="#3-native-runtime-and-privacy" aria-label="Link to this section">#</a></h2>
+<p>CareKosh calls the Cactus C API directly through a JNI adapter. It does not embed the Python package, its automatic fetching code, its telemetry wrapper, Needle's text agent, or an automatic tool executor.</p>
+<p>Before the native library loads, the adapter sets <code>NEEDLE_TELEMETRY=0</code> and <code>DO_NOT_TRACK=1</code>. Failure to apply the controls blocks Whistle. Symbol and string inspection of the pinned Android static archive found no networking or telemetry imports. This is inspection of the distributed artifact, not an audit of all upstream C++ source or proof from a phone packet capture. Verify airplane-mode operation on the target phone.</p>
+<p>Build configuration gates the native adapter as well as the settings UI. Normal builds cannot invoke the experimental listener through a native method. Updating only JavaScript cannot enable a normal APK's Whistle adapter.</p>
+<h3 id="pinned-artifacts">Pinned artifacts<a class="anchor" href="#pinned-artifacts" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Artifact</th>
+<th>Immutable upstream revision</th>
+<th>Size / SHA-256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Whistle model (<code>whistle.cact</code>)</td>
+<td><code>741118687e1f008f06d1351a402a731274789790</code></td>
+<td>16,919,407 bytes; <code>b6e02f048568ac5d01a2042556c658061e699acbc0aa2a1439f52f3d461dffeb</code></td>
+</tr>
+<tr>
+<td>Android ARM64 runtime (<code>libneedle.a</code>)</td>
+<td><code>d6c7d6a2e9655505e0f8e23339356dd1705900eb</code></td>
+<td>2,177,676 bytes; <code>7aa6de6132a22bf45f5e903425feb66f159ad46f47fa558921bc4fd02c3a2fa0</code></td>
+</tr>
+<tr>
+<td>C API header (<code>needle.h</code>)</td>
+<td>Same runtime revision</td>
+<td>4,528 bytes; <code>a27dac4b3239eead91d124b7f7dbce5495c13019903fd817b68c16d39b055a99</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>WhistlePack.kt</code> pins model data; <code>modules/carekosh-voice/android/build.gradle</code> pins the build-time runtime and header. A checksum mismatch blocks installation or the build. Do not replace those values with a floating <code>main</code> URL.</p>
+<h3 id="model-integrity-and-lifecycle">Model integrity and lifecycle<a class="anchor" href="#model-integrity-and-lifecycle" aria-label="Link to this section">#</a></h3>
+<ul>
+<li>Pin both model data and build-time runtime files to immutable revisions and SHA-256 checksums.</li>
+<li>Keep the model in app-private, non-backup storage. Validate it before a fresh engine load.</li>
+<li>Reuse resumable, bounded downloads with explicit cancellation and generation checks. Removal cannot be undone by a late download completion.</li>
+<li>Accept only the app's temporary, bounded microphone recording. Do not accept arbitrary URLs or paths into transcription.</li>
+<li>Serialize Whistle calls on its own worker lane. A slow Whistle call must not occupy Moonshine's recording or inference lane.</li>
+<li>Discard cancelled or stale results. The reviewed transcript is scoped to the current assistant session.</li>
+</ul>
+<p>The upstream C API has <strong>no cancellation or unload function</strong>. The native watchdog stops the UI wait after 45 seconds; JavaScript also has a 60-second backstop. Both suppress late results and neither can interrupt the running native call. Do not start another native call while the first is still active. Loaded runtime/model memory may remain until Android ends the process. Removing the downloaded pack does not promise immediate memory release.</p>
+<p>The model and engine are distributed under Apache 2.0. The private static C++ runtime also carries LLVM and Android sysroot notices. These are bundled with the app and included in Voice setup → Offline speech licence → Export complete offline voice notices. Only model data is downloaded after installation; runtime code is not downloaded or executed from writable app storage.</p>
+<h2 id="4-configuration-and-builds">4. Configuration and builds<a class="anchor" href="#4-configuration-and-builds" aria-label="Link to this section">#</a></h2>
+<p>No Render variable, database migration, Sarvam key, or paid Cactus account is required for this listener. Existing Groq/Sarvam configuration remains relevant only to those independently selected services.</p>
+<p>The existing diagnostic EAS profile sets <code>EXPO_PUBLIC_VOICE_DIAGNOSTICS=1</code> and the HTTPS staging API. Whistle follows that gate. The normal preview and production profiles do not enable it. Production config rejects the diagnostics flag.</p>
+<p>From the repository root:</p>
+<pre><code class="language-bash">cd vitaltrack-mobile
+eas build --profile preview-voice-diagnostics --platform android --clear-cache
+</code></pre>
+<p>A new native APK is required. This document does not start a build or deployment. Build-time retrieval of the pinned Android runtime requires internet; the subsequent installed listener does not require it once its pack is ready.</p>
+<h2 id="5-phone-acceptance">5. Phone acceptance<a class="anchor" href="#5-phone-acceptance" aria-label="Link to this section">#</a></h2>
+<p>Use the OnePlus Nord 4 before considering wider availability:</p>
+<ol>
+<li>Select Whistle, download its pack and transcribe a simple English request with internet disabled. Review and Send only when ready. Restore internet for Sarvam or Groq tests.</li>
+<li>Test quantities and exclusions: “Show items with quantity less than three” and “Show low-stock items excluding gloves.” Check the words before assessing the resulting action.</li>
+<li>Test actual item names, short and long requests, Indian English, silence and background noise. Do not treat an empty or incorrect transcript as an action.</li>
+<li>Cancel recording and cancel transcription. Start another question; confirm that an earlier result cannot replace its text.</li>
+<li>Test permission denial, backgrounding, logout, pack removal and interrupted/resumed downloads.</li>
+<li>Switch explicitly to Moonshine. Verify its live captions, final transcript and second question. Test Sarvam preview and narration separately.</li>
+<li>Compare cold/warm transcription time, memory, battery and accuracy on the same recordings. Vendor timings on an Apple M4 Pro are not Nord 4 measurements.</li>
+</ol>
+<p>If it fails, share the APK build ID, selected listener, exact error/status and elapsed time, whether the pack was ready, whether internet was disabled, and whether Moonshine still works. Share only synthetic example text; do not include keys or private recordings.</p>
+<h2 id="6-verification-and-remaining-limits">6. Verification and remaining limits<a class="anchor" href="#6-verification-and-remaining-limits" aria-label="Link to this section">#</a></h2>
+<p>Local checks on 23 October 2026:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mobile tests</td>
+<td>409 passed, including diagnostic selection, no-Moonshine capture, transcript review, cancellation, second question and independent Sarvam narration.</td>
+</tr>
+<tr>
+<td>TypeScript / ESLint</td>
+<td>TypeScript clean; lint has zero errors and the existing builder warning.</td>
+</tr>
+<tr>
+<td>Android JavaScript exports</td>
+<td>Normal and diagnostic exports passed with fresh Metro caches. Normal flags are false; diagnostic flags are true. Production rejects diagnostics.</td>
+</tr>
+<tr>
+<td>Backend tests, Python 3.12 / disposable PostgreSQL 16</td>
+<td>644 passed with model-created schemas and 644 passed through Alembic migrations. No backend code changed.</td>
+</tr>
+<tr>
+<td>Backend lint / route gate</td>
+<td>Ruff clean; 47 API route objects.</td>
+</tr>
+<tr>
+<td>Native Kotlin</td>
+<td>Full module compiled against Android, LiteRT and Moonshine jars with Expo/BuildConfig test stubs. Existing deprecation warnings remain; this is not a Gradle APK build.</td>
+</tr>
+<tr>
+<td>Native regression harnesses</td>
+<td>Existing Pocket recovery and model-pack checks passed; four new Whistle groups cover strict result parsing, corruption, worker independence and cancelled publication.</td>
+</tr>
+<tr>
+<td>Android JNI</td>
+<td>Official NDK r27b cross-link for ARM64/API 26 passed. ELF LOAD alignment and RELRO support 16 KB pages; only JNI is exported, with no shared C++ runtime dependency. APK ZIP alignment is not tested by this check.</td>
+</tr>
+<tr>
+<td>Actual model on host</td>
+<td>The pinned model and same-revision Mac runtime transcribed a public speech fixture twice, and returned empty transcripts for two silent inputs. These are host results, not Android accuracy or latency measurements.</td>
+</tr>
+<tr>
+<td>Documentation</td>
+<td>Strict current-guide check passes. Two pre-existing interview-fragment anchor warnings are outside current guides and were preserved.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The new JVM regression can be rerun from <code>vitaltrack-mobile</code> with Kotlin 2.2.20 and an Android-all jar (the check used <code>org.robolectric:android-all:14-robolectric-10818077</code>). It uses synthetic model bytes and makes no real download:</p>
+<pre><code class="language-bash">K=modules/carekosh-voice/android/src/main/java/expo/modules/carekoshvoice
+kotlinc -cp &quot;$ANDROID_ALL_JAR&quot; \
+  &quot;$K/WhistlePack.kt&quot; &quot;$K/WhistleResult.kt&quot; &quot;$K/PackDownload.kt&quot; &quot;$K/VoiceErrors.kt&quot; \
+  scripts/check-whistle-pack.kt -include-runtime -d /tmp/carekosh-whistle-check.jar
+java -cp &quot;/tmp/carekosh-whistle-check.jar:$ANDROID_ALL_JAR&quot; \
+  expo.modules.carekoshvoice.Check_whistle_packKt
+</code></pre>
+<p>Host transcription, JNI cross-linking and JavaScript exports do not prove physical microphone quality, audible narration, packaged APK compatibility or privacy on the installed phone. Those remain device acceptance checks. No production enablement is implied.</p>
+<h2 id="official-references">Official references<a class="anchor" href="#official-references" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><a href="https://huggingface.co/Cactus-Compute/whistle">Whistle model and language support</a></li>
+<li><a href="https://cactuscompute.com/blog/whistle-best-practices">Whistle usage and streaming behavior</a></li>
+<li><a href="https://huggingface.co/Cactus-Compute/needle3/tree/main/android-arm64">Android ARM64 engine and C API</a></li>
+<li><a href="https://github.com/cactus-compute/needle#deploy">Cactus runtime configuration</a></li>
+<li><a href="https://huggingface.co/Cactus-Compute/whistle/raw/main/LICENSE">Whistle model licence</a></li>
+<li><a href="https://huggingface.co/Cactus-Compute/needle3/raw/main/LICENSE">Engine licence</a></li>
+</ul>
+<p>Related: <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">complete assistant flow</a>, <a href="SARVAM_ENGLISH_VOICE.html">Sarvam narration</a>, <a href="POCKET_TTS_ALBA.html">Alba and Kokoro investigation</a>.</p>
+<footer>Generated 2026-10-23 by <code>docs/tools/build_docs.py</code> from <code>docs/WHISTLE_OFFLINE_LISTENER.md</code>.</footer>
+</main>
+</div>
+<script>
+var tocDetails = document.getElementById('toc-details');
+if (tocDetails && window.matchMedia('(min-width: 901px)').matches) { tocDetails.open = true; }
+document.querySelectorAll('pre > code').forEach(function (code) {
+  var pre = code.parentElement, wrap = document.createElement('div');
+  wrap.className = 'codewrap'; pre.parentNode.insertBefore(wrap, pre); wrap.appendChild(pre);
+  var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+  b.setAttribute('aria-label', 'Copy this code block');
+  b.addEventListener('click', function () {
+    var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(code.innerText).then(done, function () { b.textContent = 'Select and copy'; }); }
+    else { b.textContent = 'Select and copy'; }
+  });
+  wrap.appendChild(b);
+});
+</script>
+</body>
+</html>

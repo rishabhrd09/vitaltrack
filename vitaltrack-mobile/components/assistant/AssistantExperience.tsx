@@ -11,7 +11,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { captureSession, assertSession, type Session } from '@/services/assistantSession';
 import * as assistant from '@/services/assistant';
 import { answerIntent, clarificationSpeech, command, commandExamples, speechText, type Answer, type Intent } from '@/features/assistant/core';
-import { defaults, loadPreferences, permittedSpeechProvider, savePreferences, type AlbaVoice, type KokoroVoice, type OfflineFallbackVoice, type Preferences } from '@/features/assistant/preferences';
+import { defaults, loadPreferences, permittedInputProvider, permittedSpeechProvider, savePreferences, type AlbaVoice, type KokoroVoice, type OfflineFallbackVoice, type Preferences } from '@/features/assistant/preferences';
 import { playSarvamSpeech } from '@/features/assistant/cloudSpeech';
 import { fallbackVoiceLabel, narrateWithFallback } from '@/features/assistant/narration';
 import { sarvamSourceAvailable } from '@/features/assistant/sarvam';
@@ -19,8 +19,8 @@ import { cachedCategoryNames, cachedItemNames, inventorySnapshot, categorySnapsh
 import { discardAudio, rememberAudio } from '@/features/assistant/audioFiles';
 import { downloadPack, downloadSnapshot, removePack, subscribeDownloads } from '@/features/assistant/downloads';
 import { MicrophoneCapture, type CapturePhase } from '@/features/assistant/capture';
-import { createLiveRecorder, kokoroVoice, kokoroVoiceSupported, liveCaptureSupported, offlineVoice, offlineSupported, pocketVoice, pocketVoiceSupported, pocketOutputCheckSupported, voiceErrorCode, type KokoroVoiceStatus, type PocketPlacementName, type PocketVoiceStatus } from '@/features/assistant/offlineVoice';
-import { ALBA_SELECTION_ENABLED, CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, CLOUD_VOICE_ENABLED, KOKORO_SELECTION_ENABLED, SARVAM_SPEECH_ENABLED, VOICE_DIAGNOSTICS_ENABLED } from '@/features/assistant/policy';
+import { createLiveRecorder, kokoroVoice, kokoroVoiceSupported, liveCaptureSupported, offlineVoice, offlineSupported, pocketVoice, pocketVoiceSupported, pocketOutputCheckSupported, whistleSupported, whistleVoice, voiceErrorCode, type KokoroVoiceStatus, type PocketPlacementName, type PocketVoiceStatus, type WhistleStatus } from '@/features/assistant/offlineVoice';
+import { ALBA_SELECTION_ENABLED, CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, CLOUD_VOICE_ENABLED, KOKORO_SELECTION_ENABLED, SARVAM_SPEECH_ENABLED, VOICE_DIAGNOSTICS_ENABLED, WHISTLE_LISTENING_ENABLED } from '@/features/assistant/policy';
 import { minimumInterpretContract, serverFailureReason, type ServerStatus } from '@/features/assistant/providers';
 import { ANSWER_VISIBLE_MS, canDismissAnswer, microphoneReadiness } from '@/features/assistant/readiness';
 import AnswerList from '@/components/assistant/AnswerList';
@@ -134,6 +134,9 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const [capturePhase, setCapturePhase] = useState<CapturePhase>('idle');
   const [model, setModel] = useState({ ready: false, bytes: 0 });
   const [modelChecked, setModelChecked] = useState(!offlineSupported);
+  const whistleOffered = WHISTLE_LISTENING_ENABLED && whistleSupported;
+  const [whistle, setWhistle] = useState<WhistleStatus>({ ready: false, supported: whistleOffered, bytes: 0, telemetryDisabled: false });
+  const [whistleChecked, setWhistleChecked] = useState(!whistleOffered);
   const [deviceVoice, setDeviceVoice] = useState<{ ready: boolean; name: string; checked: boolean }>({ ready: false, name: 'Checking device voice…', checked: !offlineSupported });
   const [alba, setAlba] = useState<PocketVoiceStatus>({ ready: false, supported: pocketVoiceSupported, bytes: 0, name: 'Alba · Pocket TTS · English' });
   const [albaChecked, setAlbaChecked] = useState(!pocketVoiceSupported);
@@ -145,6 +148,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const download = useSyncExternalStore(subscribeDownloads, downloadSnapshot, () => null);
   const downloading = download?.kind ?? null;
   const downloadProgress = downloading === 'speech' ? download!.percent : 0;
+  const whistleProgress = downloading === 'whistle' ? download!.percent : 0;
   const albaProgress = downloading === 'alba' ? download!.percent : 0;
   const kokoroProgress = downloading === 'kokoro' ? download!.percent : 0;
   const [helpOpen, setHelpOpen] = useState(false);
@@ -235,7 +239,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     if (session) {
       // Local setup is never held hostage by a slow/unavailable cloud server.
       void loadPreferences(session.owner)
-        .then(preferences => { if (currentScreen) { assertSession(session); setPrefs({ ...preferences, speechProvider: permittedSpeechProvider(preferences.speechProvider, preferences.sarvamSpeechOptIn) }); setLoaded(true); } })
+        .then(preferences => { if (currentScreen) { assertSession(session); setPrefs({ ...preferences, inputProvider: permittedInputProvider(preferences.inputProvider, preferences.audioOptIn), speechProvider: permittedSpeechProvider(preferences.speechProvider, preferences.sarvamSpeechOptIn) }); setLoaded(true); } })
         .catch(() => { if (currentScreen) setError('Session changed. Reopen the assistant.'); });
       // This reads availability only; no question is sent until opt-in and Send.
       if (CLOUD_TEXT_ENABLED || CLOUD_TRANSCRIPTION_ENABLED || SARVAM_SPEECH_ENABLED || CLOUD_VOICE_ENABLED) {
@@ -257,6 +261,12 @@ export default function AssistantExperience({ embedded = false, active = true, s
     if (session && kokoroOffered) {
       setKokoroChecked(false);
       void kokoroVoice.status().then(value => { if (currentScreen) setKokoro(value); }).catch(() => { if (currentScreen) setKokoro(value => ({ ...value, readyVoices: [] })); }).finally(() => { if (currentScreen) setKokoroChecked(true); });
+    }
+    if (session && whistleOffered) {
+      setWhistleChecked(false);
+      void whistleVoice.status().then(value => { if (currentScreen) setWhistle(value); })
+        .catch(() => { if (currentScreen) setWhistle(value => ({ ...value, ready: false, supported: false, reason: 'Whistle could not be checked. Tap Recheck.' })); })
+        .finally(() => { if (currentScreen) setWhistleChecked(true); });
     }
     const auth = useAuthStore.subscribe((state, previous) => {
       if (state.user?.id !== previous.user?.id || state.isAuthenticated !== previous.isAuthenticated) { cancel(); setAnswer(null); previousItem.current = undefined; }
@@ -293,18 +303,19 @@ export default function AssistantExperience({ embedded = false, active = true, s
     try { session = captureSession(); } catch { return; }
     let current = true;
     const ready = () => { if (!current || !mounted.current) return false; try { assertSession(session); return true; } catch { return false; } };
+    if (previous.kind === 'whistle' && whistleOffered) void whistleVoice.status().then(value => { if (ready()) { setWhistle(value); setWhistleChecked(true); } }).catch(() => {});
     if (previous.kind === 'speech') void offlineVoice.status().then(value => { if (ready()) { setModel(value); setModelChecked(true); } }).catch(() => {});
     if (previous.kind === 'alba') void pocketVoice.status().then(value => { if (ready()) { setAlba(value); setAlbaChecked(true); } }).catch(() => {});
     if (previous.kind === 'kokoro' && kokoroOffered) void kokoroVoice.status().then(value => { if (ready()) { setKokoro(value); setKokoroChecked(true); } }).catch(() => {});
     return () => { current = false; };
-  }, [download, active, userId, kokoroOffered]);
+  }, [download, active, userId, kokoroOffered, whistleOffered]);
 
   async function update(next: Preferences) {
     if (!userId || !active || !mounted.current) return;
     const session = captureSession();
     // A callback from a previous render must never change the next account's preferences.
     if (session.owner !== userId) return;
-    next = { ...next, speechProvider: permittedSpeechProvider(next.speechProvider, next.sarvamSpeechOptIn) };
+    next = { ...next, inputProvider: permittedInputProvider(next.inputProvider, next.audioOptIn), speechProvider: permittedSpeechProvider(next.speechProvider, next.sarvamSpeechOptIn) };
     cancel(); setError('');
     setPrefs(next); // Disabling must take effect even if storage/network is unavailable.
     try { await savePreferences(session.owner, next); assertSession(session); }
@@ -394,7 +405,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     setCaps(value => ({ ...value, scopes: [], consented: false }));
     // update() cancels synchronously, then awaits account-scoped preference storage. Bind
     // that new turn before the await: a slow save must not withdraw the next user's consent.
-    const saving = update({ ...prefs, cloud: false, audioOptIn: false, sarvamSpeechOptIn: false, inputProvider: 'offline', speechProvider: ALBA_SELECTION_ENABLED && prefs.speechProvider === 'pocket' ? 'pocket' : 'device' });
+    const saving = update({ ...prefs, cloud: false, audioOptIn: false, sarvamSpeechOptIn: false, inputProvider: WHISTLE_LISTENING_ENABLED && prefs.inputProvider === 'whistle' ? 'whistle' : 'offline', speechProvider: ALBA_SELECTION_ENABLED && prefs.speechProvider === 'pocket' ? 'pocket' : 'device' });
     const current = turn.current;
     await saving;
     if (!mounted.current || !active || current !== turn.current) return;
@@ -414,6 +425,26 @@ export default function AssistantExperience({ embedded = false, active = true, s
     } catch (e) {
       if (!mounted.current || current !== turn.current) return;
       setError(voiceErrorCode(e) === 'SPEECH_CANCELLED' ? 'Speech pack download cancelled. Finished parts are kept for next time.' : failureMessage(e, 'Speech pack setup failed. Please retry; finished parts are kept.'));
+    }
+  }
+  /** Whistle packs have app-wide ownership just like the other voice downloads. */
+  async function setupWhistle(remove: boolean) {
+    if (!loaded || !whistleOffered || downloadSnapshot()) return;
+    const session = captureSession();
+    cancel(); setError('');
+    const current = turn.current;
+    try {
+      if (remove) await removePack('whistle', whistleVoice.remove);
+      else await downloadPack('whistle', whistleVoice.download, whistleVoice.progress);
+      const status = await whistleVoice.status();
+      if (!mounted.current || current !== turn.current) return;
+      assertSession(session); setWhistle(status); setWhistleChecked(true);
+      // A download never selects a listener or grants cloud permission. Removal leaves the chosen
+      // listener visible as needing a download; it never switches to a different service.
+    } catch (e) {
+      if (!mounted.current || current !== turn.current) return;
+      try { assertSession(session); } catch { return; }
+      setError(voiceErrorCode(e) === 'SPEECH_CANCELLED' ? 'Whistle download cancelled. Finished parts are kept for next time.' : failureMessage(e, 'Whistle setup failed. Please retry; no other listener was selected.'));
     }
   }
   async function setupAlba(remove: boolean, voice: AlbaVoice = prefs.albaVoice ?? 'alba') {
@@ -885,7 +916,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
       if (current !== turn.current || !uri) return;
       const session = captureSession();
       online = CLOUD_TRANSCRIPTION_ENABLED && prefs.inputProvider === 'groq' && prefs.audioOptIn;
-      setBusy(online ? 'Groq Whisper is transcribing — review before sending…' : 'Recognizing on this phone — review before sending…');
+      setBusy(online ? 'Groq Whisper is transcribing — review before sending…' : prefs.inputProvider === 'whistle' ? 'Recognizing on this phone with Whistle — review before sending…' : 'Recognizing on this phone — review before sending…');
       const abort = new AbortController(); controller.current = abort;
       if (online) {
         const available = await assistant.capabilities(session, abort.signal);
@@ -894,7 +925,9 @@ export default function AssistantExperience({ embedded = false, active = true, s
         acceptCaps(available);
         if (!available.scopes.includes('groq_audio') || !available.transcription_providers.includes('groq')) throw new Error('Online listening is unavailable or its consent was withdrawn. Recheck Voice setup, or choose Offline listening. No offline transcript was substituted.');
       }
-      const result = !CLOUD_TRANSCRIPTION_ENABLED || !online ? await offlineVoice.transcribe(uri) : await assistant.transcribe(session, uri, abort.signal, 'groq');
+      const useWhistle = WHISTLE_LISTENING_ENABLED && prefs.inputProvider === 'whistle';
+      if (useWhistle && (!whistle.ready || !whistle.supported || !whistle.telemetryDisabled)) throw new Error('Whistle is not ready. Recheck or download it in Voice setup; no other listener was selected.');
+      const result = useWhistle ? await whistleVoice.transcribe(uri, abort.signal) : !CLOUD_TRANSCRIPTION_ENABLED || !online ? await offlineVoice.transcribe(uri) : await assistant.transcribe(session, uri, abort.signal, 'groq');
       if (current === turn.current) {
         assertSession(session);
         setReviewOpen(true);
@@ -938,7 +971,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     if (readiness) { setError(readiness); return; }
     Keyboard.dismiss();
     cancel(); setError(''); setQuestion(''); setAnswer(null); setReviewOpen(false); pendingIntent.current = undefined;
-    liveRecorder.current?.configure(model.ready);
+    liveRecorder.current?.configure(model.ready && prefs.inputProvider !== 'whistle');
     const current = turn.current;
     const abort = new AbortController(); controller.current = abort;
     const assertCanRecord = () => {
@@ -962,7 +995,10 @@ export default function AssistantExperience({ embedded = false, active = true, s
     if (message) { cancel(); setError(message); }
     else if (capture.phase === 'recording') void stopRecording();
   };
-  const readiness = microphoneReadiness({ loaded, supported: offlineSupported, modelChecked, modelReady: model.ready, enabled: prefs.enabled, microphone: prefs.microphone, cloudListening: CLOUD_TRANSCRIPTION_ENABLED && prefs.audioOptIn && prefs.inputProvider === 'groq' });
+  const useWhistle = WHISTLE_LISTENING_ENABLED && prefs.inputProvider === 'whistle';
+  const readiness = useWhistle && whistleChecked && (!whistle.supported || !whistle.telemetryDisabled) ? whistle.reason || 'Whistle is unavailable on this phone. Choose Moonshine or recheck Voice setup.'
+    : useWhistle && whistleChecked && !whistle.ready ? 'Download the Whistle listener in Voice setup before using it.'
+    : microphoneReadiness({ loaded, supported: useWhistle ? whistleSupported : offlineSupported, modelChecked: useWhistle ? whistleChecked : modelChecked, modelReady: useWhistle ? whistle.ready : model.ready, enabled: prefs.enabled, microphone: prefs.microphone, cloudListening: CLOUD_TRANSCRIPTION_ENABLED && prefs.audioOptIn && prefs.inputProvider === 'groq' });
 
   const textStyle = { color: colors.textPrimary };
   const microphoneBusy = capturePhase !== 'idle';
@@ -971,7 +1007,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const button = (label: string, action: () => void, disabled = false) => <VoiceButton label={label} onPress={action} disabled={disabled} secondary />;
   const iconButton = (name: React.ComponentProps<typeof Ionicons>['name'], label: string, action: () => void) =>
     <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} onPress={action} style={[styles.iconButton, { backgroundColor: colors.bgTertiary }]}><Ionicons name={name} size={22} color={colors.textSecondary} /></TouchableOpacity>;
-  const downloadFeedback = download && (!settingsOpen || download.removing) && <View style={[styles.card, { backgroundColor: colors.accentBlueBg }]}><Text accessibilityLiveRegion="polite" style={[styles.body, textStyle]}>{download.removing ? 'Removing' : 'Downloading'} {downloading === 'speech' ? 'speech pack' : downloading === 'alba' ? 'Alba voice' : 'Kokoro voice'}{!download.removing && ` · ${download.percent}%`}</Text>{!download.removing && button('Cancel voice download', () => offlineVoice.cancelDownloads())}</View>;
+  const downloadFeedback = download && (!settingsOpen || download.removing) && <View style={[styles.card, { backgroundColor: colors.accentBlueBg }]}><Text accessibilityLiveRegion="polite" style={[styles.body, textStyle]}>{download.removing ? 'Removing' : 'Downloading'} {downloading === 'speech' ? 'speech pack' : downloading === 'alba' ? 'Alba voice' : downloading === 'whistle' ? 'Whistle listener' : 'Kokoro voice'}{!download.removing && ` · ${download.percent}%`}</Text>{!download.removing && button('Cancel voice download', () => offlineVoice.cancelDownloads())}</View>;
   const feedback = <>
     {settingsOpen && !!busy && <View style={styles.row}><ActivityIndicator color={colors.accentBlue} /><Text accessibilityLiveRegion="polite" style={[styles.body, textStyle, { flex: 1 }]}>{busy}</Text></View>}
     {downloadFeedback}
@@ -983,8 +1019,21 @@ export default function AssistantExperience({ embedded = false, active = true, s
       </>}</View>}
   </>;
   const setup = <VoiceSetup prefs={prefs} loaded={loaded} supported={offlineSupported} busy={busy || (download?.removing ? 'Removing voice pack…' : '')} model={model} modelChecked={modelChecked} progress={downloadProgress} deviceVoice={deviceVoice}
+    whistle={whistleOffered ? whistle : undefined} whistleChecked={whistleChecked} whistleProgress={whistleProgress}
+    manageWhistle={() => {
+      if (!whistleOffered) return;
+      const session = captureSession(), current = turn.current;
+      Alert.alert(whistle.ready ? 'Remove Whistle listener?' : 'Download Whistle listener?', whistle.ready
+        ? 'Remove only the Whistle files. Moonshine, answer voices, inventory, drafts and orders remain unchanged.'
+        : 'Download the English experimental model once. The runtime is included in this APK. Audio stays on this phone; telemetry is disabled. Hindi and Hinglish are not supported. No listener is selected until you choose it.',
+        [{ text: 'Cancel', style: 'cancel' }, { text: whistle.ready ? 'Remove' : 'Download', onPress: () => {
+          if (!mounted.current || current !== turn.current || AppState.currentState !== 'active') return;
+          try { assertSession(session); } catch { return; }
+          void setupWhistle(whistle.ready);
+        } }]);
+    }}
     caps={caps} server={server}
-    chooseListening={id => { if (id === 'groq') chooseCloud('groq_audio', { ...prefs, inputProvider: 'groq', audioOptIn: true }); else void update({ ...prefs, inputProvider: 'offline', audioOptIn: false }); }}
+    chooseListening={id => { if (id === 'groq') chooseCloud('groq_audio', { ...prefs, inputProvider: 'groq', audioOptIn: true }); else if (id === 'whistle') { if (whistleOffered && whistle.ready && whistle.telemetryDisabled) void update({ ...prefs, inputProvider: 'whistle', audioOptIn: false }); } else void update({ ...prefs, inputProvider: 'offline', audioOptIn: false }); }}
     chooseUnderstanding={id => { if (id === 'groq') chooseCloud('groq_text', { ...prefs, cloud: true }); else void update({ ...prefs, cloud: false }); }}
     withdrawCloud={() => { void revokeCloud(); }}
     selectSarvam={() => chooseCloud('sarvam_speech', { ...prefs, speechProvider: 'sarvam', sarvamSpeechOptIn: true })}
@@ -1060,6 +1109,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
       }
       if (!offlineSupported) { setModelChecked(true); return; }
       void offlineVoice.status().then(value => { if (mounted.current) setModel(value); }).catch(() => { if (mounted.current) setError('Speech pack check failed. Please retry.'); }).finally(() => { if (mounted.current) setModelChecked(true); });
+      if (whistleOffered) { setWhistleChecked(false); void whistleVoice.status().then(value => { if (mounted.current) setWhistle(value); }).catch(() => { if (mounted.current) setWhistle(value => ({ ...value, ready: false })); }).finally(() => { if (mounted.current) setWhistleChecked(true); }); }
       if (pocketVoiceSupported) { setAlbaChecked(false); void pocketVoice.status().then(value => { if (mounted.current) setAlba(value); }).catch(() => { if (mounted.current) setAlba(value => ({ ...value, ready: false })); }).finally(() => { if (mounted.current) setAlbaChecked(true); }); }
       if (kokoroOffered) { setKokoroChecked(false); void kokoroVoice.status().then(value => { if (mounted.current) setKokoro(value); }).catch(() => { if (mounted.current) setKokoro(value => ({ ...value, readyVoices: [] })); }).finally(() => { if (mounted.current) setKokoroChecked(true); }); }
       setDeviceVoice(voice => ({ ...voice, checked: false }));

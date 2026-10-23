@@ -1,7 +1,10 @@
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { Platform } from 'react-native';
+import { WHISTLE_LISTENING_ENABLED } from './policy';
 
 type ModelStatus = { ready: boolean; bytes: number; model?: string };
+/** The native bridge fails closed unless both the diagnostic flag and telemetry controls are active. */
+export type WhistleStatus = { ready: boolean; supported: boolean; bytes: number; model?: string; telemetryDisabled: boolean; reason?: string };
 type DeviceVoice = { ready: boolean; name: string };
 export type PocketVoiceOption = { id: string; label: string };
 /** `ready` is the default Alba voice; `readyVoices` lists every preset voice that can speak now. */
@@ -15,6 +18,10 @@ type NativeVoice = {
   downloadModel(): Promise<ModelStatus>;
   removeModel(): Promise<void>;
   transcribe(uri: string): Promise<{ transcript: string }>;
+  whistleStatus?(): Promise<WhistleStatus>;
+  downloadWhistleModel?(): Promise<WhistleStatus>;
+  removeWhistleModel?(): Promise<void>;
+  transcribeWhistle?(uri: string): Promise<{ transcript: string; requires_confirmation?: boolean }>;
   deviceVoiceStatus(): Promise<DeviceVoice>;
   speakOffline(text: string): Promise<void>;
   pocketVoiceStatus?(): Promise<PocketVoiceStatus>;
@@ -44,6 +51,7 @@ export const liveCaptureSupported = !!native?.prepareCapture && !!native?.startC
 export const pocketVoiceSupported = !!native?.pocketVoiceStatus && !!native?.downloadPocketVoice && !!native?.removePocketVoice && !!native?.speakPocket;
 export const pocketOutputCheckSupported = !!native?.checkPocketAudioOutput;
 export const kokoroVoiceSupported = !!native?.kokoroVoiceStatus && !!native?.downloadKokoroVoice && !!native?.removeKokoroVoice && !!native?.speakKokoro;
+export const whistleSupported = WHISTLE_LISTENING_ENABLED && liveCaptureSupported && !!native?.whistleStatus && !!native?.downloadWhistleModel && !!native?.removeWhistleModel && !!native?.transcribeWhistle;
 export type LiveWords = { id: string; transcript?: string; finished?: boolean; error?: string; previewError?: boolean };
 /** Native rejections carry a stable code (SPEECH_CANCELLED, SPEECH_INTERRUPTED, AUDIO_UNAVAILABLE, …). */
 export function voiceErrorCode(error: unknown): string | undefined {
@@ -191,4 +199,38 @@ export const kokoroVoice = {
     finally { sub.remove(); }
   },
   progress: (listener: (event: { downloaded: number; total: number }) => void) => kokoroVoiceSupported ? native?.addListener('kokoroDownloadProgress', listener) : undefined,
+};
+
+function whistleEngine() {
+  if (!whistleSupported) throw new Error('Whistle needs the latest Android ARM64 diagnostic APK. Moonshine is still available.');
+  return engine();
+}
+/** Bounds the JS wait; a cancelled turn cannot later cancel a different question's microphone. */
+export function withWhistleBackstop<T>(operation: Promise<T>, signal?: AbortSignal): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
+  const backstop = new Promise<never>((_, reject) => {
+    if (signal?.aborted) { reject(new Error('Whistle recognition cancelled.')); return; }
+    onAbort = () => reject(new Error('Whistle recognition cancelled.'));
+    signal?.addEventListener('abort', onAbort, { once: true });
+    timer = setTimeout(() => {
+      native?.cancel();
+      reject(new Error('Whistle recognition did not finish within 60 seconds. Try a shorter recording or choose Moonshine. No recording was uploaded.'));
+    }, 60_000);
+  });
+  return Promise.race([operation, backstop]).finally(() => {
+    clearTimeout(timer);
+    if (onAbort) signal?.removeEventListener('abort', onAbort);
+  });
+}
+/** Completed-WAV transcription only. Never uploads audio, switches listener or sends the question. */
+export const whistleVoice = {
+  status: () => whistleEngine().whistleStatus!(),
+  download: () => whistleEngine().downloadWhistleModel!(),
+  remove: () => whistleEngine().removeWhistleModel!(),
+  transcribe: (uri: string, signal?: AbortSignal) => {
+    if (signal?.aborted) return Promise.reject(new Error('Whistle recognition cancelled.'));
+    return withWhistleBackstop(whistleEngine().transcribeWhistle!(uri), signal);
+  },
+  progress: (listener: (event: { downloaded: number; total: number }) => void) => whistleSupported ? native?.addListener('whistleDownloadProgress', listener) : undefined,
 };

@@ -1,5 +1,5 @@
 /** Pack operations belong to the app, so closing a screen cannot hide a download or race a removal. */
-export type DownloadKind = 'speech' | 'alba' | 'kokoro';
+export type DownloadKind = 'speech' | 'alba' | 'kokoro' | 'whistle';
 export type VoiceDownload = { id: number; kind: DownloadKind; percent: number; removing: boolean };
 let nextId = 0;
 let current: VoiceDownload | null = null;

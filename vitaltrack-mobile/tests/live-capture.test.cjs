@@ -21,7 +21,7 @@ test('native adapter delivers only the current take and waits for asynchronous m
   const native = { prepareCapture: async (take, preview) => { id = take; assert.equal(preview, true); return { uri: 'file:///capture.wav' }; },
     startCapture: async () => { await starting; return true; }, finishCapture: async () => ({ uri: 'file:///capture.wav' }),
     addListener: (_, fn) => { listener = fn; return { remove() {} }; } };
-  const voice = load('features/assistant/offlineVoice.ts', { 'expo-modules-core': { requireOptionalNativeModule: () => native }, 'react-native': { Platform: { OS: 'android' } } });
+  const voice = load('features/assistant/offlineVoice.ts', { './policy': { WHISTLE_LISTENING_ENABLED: false }, 'expo-modules-core': { requireOptionalNativeModule: () => native }, 'react-native': { Platform: { OS: 'android' } } });
   const recorder = voice.createLiveRecorder(); const seen = [];
   recorder.configure(true); recorder.subscribe(e => seen.push(e.transcript));
   await recorder.prepareToRecordAsync();

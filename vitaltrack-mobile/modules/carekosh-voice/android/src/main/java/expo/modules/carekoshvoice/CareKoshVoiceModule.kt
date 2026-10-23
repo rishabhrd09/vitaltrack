@@ -26,6 +26,9 @@ class CareKoshVoiceModule : Module() {
     /** Offline voice lane: Alba and the Kokoro test voice, so their syntheses never overlap. */
     private val albaLane = VoiceWorkLane("carekosh-alba")
     private val downloadLane = VoiceWorkLane("carekosh-downloads")
+    // Whistle's C API is synchronous and cannot be interrupted. It must never occupy capture's lane.
+    private val whistleLane = VoiceWorkLane("carekosh-whistle")
+    private val whistleRunning = AtomicBoolean(false)
     private val executor = speechLane.executor
     private val main = Handler(Looper.getMainLooper())
     /** Speech, recording and recognition: stopped by Stop, a new question or leaving the screen. */
@@ -53,9 +56,87 @@ class CareKoshVoiceModule : Module() {
     private val pack by lazy { ModelPack(context) }
     private val pocketPack by lazy { PocketPack(context) }
     private val kokoroPack by lazy { KokoroPack(context) }
+    private val whistlePack by lazy { WhistlePack(context) }
     private val playback = lazy { PocketPlayback(context) }
     private val pocketPlayback by playback
     @Volatile private var pocketDiagnostic = "No audio check has run in this app session."
+
+    private fun whistleStatus(check: () -> Unit): Map<String, Any> {
+        val supported = WhistleRuntime.supported
+        return mapOf(
+            "supported" to supported,
+            "ready" to (supported && whistlePack.ready(check)),
+            "bytes" to whistlePack.bytes,
+            "model" to WhistleRuntime.name,
+            "telemetryDisabled" to (supported && WhistleRuntime.configureTelemetry()),
+            "busy" to whistleRunning.get(),
+            "reason" to (if (supported) "" else "Whistle needs the ARM64 diagnostic APK"),
+        )
+    }
+
+    /**
+     * One active C call, an independent worker, and exactly one promise settlement. The watchdog
+     * bounds the screen wait but cannot abort C inference. Busy remains true until C returns, and
+     * a late result is discarded without cancelling a newer microphone session.
+     */
+    private fun transcribeWhistle(uri: String, promise: Promise) {
+        if (!WhistleRuntime.supported) {
+            promise.reject("WHISTLE_UNAVAILABLE", "Whistle needs the ARM64 diagnostic APK", null)
+            return
+        }
+        if (!whistleRunning.compareAndSet(false, true)) {
+            promise.reject("WHISTLE_BUSY", "Whistle is still finishing its previous recording. Choose Moonshine or try again shortly", null)
+            return
+        }
+        val expected = generation.get()
+        val settled = AtomicBoolean(false)
+        val deadline = System.nanoTime() + 45_000_000_000L
+        val watchdog = Runnable {
+            if (settled.compareAndSet(false, true)) {
+                if (generation.get() != expected) promise.reject("SPEECH_CANCELLED", "Speech cancelled", null)
+                else promise.reject("WHISTLE_TIMEOUT", "Whistle took too long. Choose Moonshine or try a shorter question", null)
+            }
+        }
+        main.postDelayed(watchdog, 45_000)
+        try {
+            whistleLane.executor.execute {
+                try {
+                    val check = {
+                        if (generation.get() != expected) throw VoiceCancelled()
+                        if (System.nanoTime() >= deadline) throw VoiceTimedOut("Whistle took too long. Try a shorter question")
+                    }
+                    check()
+                    // Whistle accepts only the finalized PCM16 WAV produced by our capture, not AAC
+                    // or a caller-supplied remote/content URI. decodeRecording validates app ownership.
+                    val captureName = android.net.Uri.parse(uri).lastPathSegment.orEmpty()
+                    require(captureName.startsWith("carekosh-capture-") && captureName.endsWith(".wav")) { "Whistle needs a completed microphone recording" }
+                    val (samples, rate) = decodeRecording(context, uri, check)
+                    require(rate == 16000 && samples.size <= 448000) { "Whistle needs a mono 16 kHz recording up to 28 seconds" }
+                    require(whistlePack.ready(check, refresh = true)) { "Download Whistle in Voice setup first" }
+                    val text = WhistleRuntime.transcribe(whistlePack.model, samples, check)
+                    check()
+                    if (settled.compareAndSet(false, true)) promise.resolve(mapOf("transcript" to text, "requires_confirmation" to true))
+                } catch (error: Throwable) {
+                    if (settled.compareAndSet(false, true)) {
+                        when (error) {
+                            is VoiceCancelled -> promise.reject(error.code, error.message, null)
+                            is VoiceTimedOut -> promise.reject("WHISTLE_TIMEOUT", error.message, null)
+                            is LinkageError -> promise.reject("WHISTLE_UNAVAILABLE", "Whistle is unavailable in this build or CPU architecture", null)
+                            is OutOfMemoryError -> promise.reject("VOICE_MEMORY", "Not enough memory for Whistle. Choose Moonshine or type", null)
+                            else -> promise.reject("WHISTLE_FAILED", "Whistle could not transcribe this recording. Try again, choose Moonshine or type", null)
+                        }
+                    }
+                } finally {
+                    main.removeCallbacks(watchdog)
+                    whistleRunning.set(false)
+                }
+            }
+        } catch (_: RejectedExecutionException) {
+            main.removeCallbacks(watchdog)
+            whistleRunning.set(false)
+            if (settled.compareAndSet(false, true)) promise.reject("VOICE_CLOSED", "Voice screen closed", null)
+        }
+    }
 
     /** [cancelledBy] is the counter whose change cancels this task; null runs it to completion. */
     private fun work(promise: Promise, cancelledBy: AtomicInteger? = generation, lane: VoiceWorkLane = speechLane, task: (() -> Unit) -> Any?) {
@@ -466,7 +547,42 @@ class CareKoshVoiceModule : Module() {
 
     override fun definition() = ModuleDefinition {
         Name("CareKoshVoice")
-        Events("modelDownloadProgress", "liveTranscript", "pocketDownloadProgress", "pocketSpeechProgress", "kokoroDownloadProgress", "kokoroSpeechProgress")
+        Events("modelDownloadProgress", "liveTranscript", "pocketDownloadProgress", "pocketSpeechProgress", "kokoroDownloadProgress", "kokoroSpeechProgress", "whistleDownloadProgress")
+
+        AsyncFunction("whistleStatus") { promise: Promise ->
+            // No native load and no wait behind inference, even after a C API timeout.
+            work(promise, cancelledBy = null, lane = downloadLane) { check -> whistleStatus(check) }
+        }
+        AsyncFunction("downloadWhistleModel") { promise: Promise ->
+            work(promise, cancelledBy = downloadGeneration, lane = downloadLane) { check ->
+                require(WhistleRuntime.supported) { "Whistle needs the ARM64 diagnostic APK" }
+                var lastEvent = 0L
+                whistlePack.install(check) { done, total ->
+                    val now = System.nanoTime()
+                    if (now - lastEvent > 250_000_000 || done == total) {
+                        lastEvent = now
+                        sendEvent("whistleDownloadProgress", mapOf("downloaded" to done, "total" to total))
+                    }
+                }
+                whistleStatus(check)
+            }
+        }
+        AsyncFunction("removeWhistleModel") { promise: Promise ->
+            if (!WhistleRuntime.supported) promise.reject("WHISTLE_UNAVAILABLE", "Whistle needs the ARM64 diagnostic APK", null)
+            else if (!whistleRunning.compareAndSet(false, true)) promise.reject("WHISTLE_BUSY", "Stop and wait for Whistle to finish before removing it", null)
+            else try {
+                downloadGeneration.incrementAndGet()
+                downloadLane.executor.execute {
+                    try { whistlePack.remove(); promise.resolve(null) }
+                    catch (_: Throwable) { promise.reject("WHISTLE_FAILED", "Could not remove Whistle. Please retry", null) }
+                    finally { whistleRunning.set(false) }
+                }
+            } catch (_: RejectedExecutionException) {
+                whistleRunning.set(false)
+                promise.reject("VOICE_CLOSED", "Voice screen closed", null)
+            }
+        }
+        AsyncFunction("transcribeWhistle") { uri: String, promise: Promise -> transcribeWhistle(uri, promise) }
 
         AsyncFunction("pocketVoiceStatus") { promise: Promise ->
             work(promise, cancelledBy = null, lane = albaLane) { check ->
@@ -562,15 +678,18 @@ class CareKoshVoiceModule : Module() {
             work(promise, lane = albaLane) { check ->
                 val file = java.io.File(context.cacheDir, "carekosh-pocket-licences.zip")
                 java.util.zip.ZipOutputStream(file.outputStream().buffered()).use { zip ->
-                    for (name in requireNotNull(context.assets.list("pocket-licences"))) {
-                        check()
-                        require(name.matches(Regex("[A-Za-z0-9_.-]+"))) { "Invalid licence file" }
-                        zip.putNextEntry(java.util.zip.ZipEntry(name.removeSuffix(".gz")))
-                        context.assets.open("pocket-licences/$name").use { input ->
-                            if (name.endsWith(".gz")) java.util.zip.GZIPInputStream(input).use { it.copyTo(zip) }
-                            else input.copyTo(zip)
+                    for (folder in listOf("pocket-licences", "whistle-licences")) {
+                        for (name in requireNotNull(context.assets.list(folder))) {
+                            check()
+                            require(name.matches(Regex("[A-Za-z0-9_.-]+"))) { "Invalid licence file" }
+                            val exported = if (folder == "pocket-licences") name.removeSuffix(".gz") else "whistle/$name"
+                            zip.putNextEntry(java.util.zip.ZipEntry(exported))
+                            context.assets.open("$folder/$name").use { input ->
+                                if (name.endsWith(".gz")) java.util.zip.GZIPInputStream(input).use { it.copyTo(zip) }
+                                else input.copyTo(zip)
+                            }
+                            zip.closeEntry()
                         }
-                        zip.closeEntry()
                     }
                 }
                 android.net.Uri.fromFile(file).toString()
@@ -802,6 +921,8 @@ class CareKoshVoiceModule : Module() {
             memoryRegistered = null
             downloadGeneration.incrementAndGet()
             downloadLane.executor.shutdown()
+            // shutdown() lets an in-flight C call finish safely; never free its buffers concurrently.
+            whistleLane.executor.shutdown()
             cancel()
             onAlbaLane { releaseOfflineVoices() }
             albaLane.executor.shutdown()

@@ -9,6 +9,7 @@ function bridge(native, timers = { setTimeout, clearTimeout }) {
   const module = { exports: {} };
   const code = ts.transpileModule(fs.readFileSync(path.join(__dirname, '../features/assistant/offlineVoice.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   vm.runInNewContext(code, { module, exports: module.exports, require(name) {
+    if (name === './policy') return { WHISTLE_LISTENING_ENABLED: false };
     if (name === 'react-native') return { Platform: { OS: 'android' } };
     if (name === 'expo-modules-core') return { requireOptionalNativeModule: () => native };
     throw new Error(name);

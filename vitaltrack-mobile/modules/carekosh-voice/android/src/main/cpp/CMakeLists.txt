@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(carekosh_whistle LANGUAGES CXX)
+if(NOT ANDROID_ABI STREQUAL "arm64-v8a")
+  message(FATAL_ERROR "Whistle diagnostics supports Android ARM64 only")
+endif()
+add_library(needle STATIC IMPORTED)
+set_target_properties(needle PROPERTIES IMPORTED_LOCATION "${WHISTLE_RUNTIME_DIR}/libneedle.a")
+add_library(carekosh_whistle SHARED WhistleJni.cpp)
+target_include_directories(carekosh_whistle PRIVATE "${WHISTLE_RUNTIME_DIR}")
+target_compile_features(carekosh_whistle PRIVATE cxx_std_17)
+target_compile_options(carekosh_whistle PRIVATE -fvisibility=hidden -Wall -Wextra -Werror)
+# Keep the static STL private to this DSO: only the JNI C entry point crosses the boundary.
+# No C++ objects or exceptions cross into Moonshine, LiteRT or React Native.
+target_link_options(carekosh_whistle PRIVATE -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 -Wl,--exclude-libs,ALL -Wl,--no-undefined)
+target_link_libraries(carekosh_whistle PRIVATE needle)

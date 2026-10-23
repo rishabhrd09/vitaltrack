@@ -6,12 +6,76 @@ plugins {
 group = 'expo.modules.carekoshvoice'
 version = '1.0.0'
 
+// This optional native listener ships only in the explicitly requested diagnostics APK.
+// Runtime CODE is pinned and fetched at BUILD time; the app downloads model DATA only.
+def whistleEnabled = System.getenv('EXPO_PUBLIC_VOICE_DIAGNOSTICS') == '1'
+def whistleRuntimeDir = layout.buildDirectory.dir('whistle-runtime').get().asFile
+def whistleRuntimeRevision = 'd6c7d6a2e9655505e0f8e23339356dd1705900eb'
+def whistleRuntimeFiles = [
+  'libneedle.a': [2177676L, '7aa6de6132a22bf45f5e903425feb66f159ad46f47fa558921bc4fd02c3a2fa0'],
+  'needle.h': [4528L, 'a27dac4b3239eead91d124b7f7dbce5495c13019903fd817b68c16d39b055a99'],
+]
+def prepareWhistleRuntime = tasks.register('prepareWhistleRuntime') {
+  onlyIf { whistleEnabled }
+  outputs.files(whistleRuntimeFiles.keySet().collect { new File(whistleRuntimeDir, it) })
+  // Validate cached bytes as well as new downloads; a mutated cache must never become executable.
+  outputs.upToDateWhen { false }
+  doLast {
+    whistleRuntimeDir.mkdirs()
+    whistleRuntimeFiles.each { name, spec ->
+      def target = new File(whistleRuntimeDir, name)
+      def valid = { File file ->
+        file.isFile() && file.length() == spec[0] &&
+          java.security.MessageDigest.getInstance('SHA-256').digest(file.bytes).encodeHex().toString() == spec[1]
+      }
+      if (!valid(target)) {
+        def partial = new File(whistleRuntimeDir, name + '.part')
+        def connection = new URL("https://huggingface.co/Cactus-Compute/needle3/resolve/${whistleRuntimeRevision}/android-arm64/${name}").openConnection()
+        connection.connectTimeout = 30000
+        connection.readTimeout = 30000
+        connection.inputStream.withCloseable { input ->
+          partial.withOutputStream { output ->
+            def buffer = new byte[65536]
+            long received = 0
+            int count
+            while ((count = input.read(buffer)) != -1) {
+              received += count
+              if (received > spec[0]) throw new GradleException('Whistle runtime download exceeds pinned size')
+              output.write(buffer, 0, count)
+            }
+          }
+        }
+        if (!valid(partial)) throw new GradleException('Whistle runtime integrity check failed')
+        java.nio.file.Files.move(partial.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+      }
+    }
+  }
+}
+
 android {
   namespace 'expo.modules.carekoshvoice'
+  buildFeatures { buildConfig true }
   defaultConfig {
     minSdkVersion 26
     versionCode 1
     versionName '1.0.0'
+    consumerProguardFiles 'consumer-rules.pro'
+    buildConfigField 'boolean', 'WHISTLE_ENABLED', whistleEnabled.toString()
+    if (whistleEnabled) {
+      ndk { abiFilters 'arm64-v8a' }
+      externalNativeBuild {
+        cmake { arguments "-DWHISTLE_RUNTIME_DIR=${whistleRuntimeDir.absolutePath}", '-DANDROID_STL=c++_static' }
+      }
+    }
+  }
+  if (whistleEnabled) {
+    externalNativeBuild { cmake { path file('src/main/cpp/CMakeLists.txt'); version '3.22.1' } }
+  }
+}
+
+tasks.configureEach { task ->
+  if (whistleEnabled && (task.name.startsWith('configureCMake') || task.name.startsWith('buildCMake'))) {
+    task.dependsOn(prepareWhistleRuntime)
   }
 }
 

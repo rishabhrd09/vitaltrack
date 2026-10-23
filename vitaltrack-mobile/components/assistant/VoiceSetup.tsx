@@ -5,8 +5,8 @@ import { useTheme } from '@/theme/ThemeContext';
 import type { Capabilities } from '@/services/assistant';
 import type { AlbaVoice, KokoroVoice, OfflineFallbackVoice, Preferences } from '@/features/assistant/preferences';
 import { commandExamples } from '@/features/assistant/core';
-import { kokoroSpeechNotice, offlineSpeechNotice, pocketSpeechNotice } from '@/features/assistant/notices';
-import type { KokoroVoiceStatus, PocketPlacementName, PocketVoiceStatus } from '@/features/assistant/offlineVoice';
+import { kokoroSpeechNotice, offlineSpeechNotice, pocketSpeechNotice, whistleSpeechNotice } from '@/features/assistant/notices';
+import type { KokoroVoiceStatus, PocketPlacementName, PocketVoiceStatus, WhistleStatus } from '@/features/assistant/offlineVoice';
 import { fallbackVoiceLabel } from '@/features/assistant/narration';
 import { ALBA_SELECTION_ENABLED, SARVAM_SPEECH_ENABLED } from '@/features/assistant/policy';
 import { choicesFrom, inUse, interpreters, listeners, READINESS_LABEL, speakers, type InterpreterId, type ListenerId, type Provider, type Readiness, type ServerStatus } from '@/features/assistant/providers';
@@ -17,7 +17,8 @@ type Props = {
   deviceVoice: { ready: boolean; name: string; checked?: boolean };
   alba: PocketVoiceStatus; albaChecked: boolean; albaProgress: number;
   /** A pack download in progress; it continues while the screen is locked and has its own Cancel. */
-  downloading: 'speech' | 'alba' | 'kokoro' | null;
+  downloading: 'speech' | 'alba' | 'kokoro' | 'whistle' | null;
+  whistle?: WhistleStatus; whistleChecked?: boolean; whistleProgress?: number; manageWhistle?: () => void;
   chooseAlbaVoice: (voice: AlbaVoice) => void;
   /** Kokoro test voice, diagnostics builds only; undefined = not offered. */
   kokoro?: KokoroVoiceStatus; kokoroChecked: boolean; kokoroProgress: number;
@@ -70,6 +71,7 @@ export default function VoiceSetup(p: Props) {
   const env = { supported: p.supported, model: { checked: p.modelChecked, ready: p.model.ready }, deviceVoice: p.deviceVoice,
     alba: { checked: p.albaChecked, ready: albaReady, supported: p.alba.supported },
     kokoro: p.kokoro && { checked: p.kokoroChecked, ready: p.kokoro.readyVoices.includes(kokoroVoice), supported: p.kokoro.supported },
+    whistle: p.whistle && { ...p.whistle, checked: p.whistleChecked === true },
     caps: p.caps, server: p.server };
   const choices = choicesFrom(p.prefs);
   const listening = listeners(env), understanding = interpreters(env), speaking = speakers(env, p.prefs);
@@ -144,7 +146,16 @@ export default function VoiceSetup(p: Props) {
         <Text style={body}>{!p.supported ? '' : p.model.ready ? 'English speech pack downloaded and verified.' : `${p.model.bytes ? Math.ceil(p.model.bytes / 1_000_000) + ' MB' : 'Up to 300 MB'} · Wi-Fi recommended.`}{choices.listening === 'groq' && p.model.ready ? ' It also shows live words while Groq makes the final transcript.' : ''}</Text>
         {p.downloading === 'speech' && downloadProgress('Downloading and verifying the speech pack…', p.progress, 'Cancel speech download')}
         <VoiceButton label={p.model.ready ? 'Remove speech pack' : 'Download speech pack'} secondary={p.model.ready} onPress={p.manageModel} disabled={locked || !p.supported || !p.modelChecked} />
-        {groqListener && <VoiceButton label="Use offline listening" secondary onPress={() => p.chooseListening('offline')} disabled={locked || choices.listening === 'offline'} />}
+        {listening.length > 1 && <VoiceButton label="Use offline listening" secondary onPress={() => p.chooseListening('offline')} disabled={locked || choices.listening === 'offline'} />}
+      </>)}
+      {p.whistle && row(find(listening, 'whistle'), choices.listening === 'whistle', <>
+        <Text style={body}>English only in CareKosh. This experiment does not support Hindi or Hinglish. Transcription starts after you stop recording; there are no live words. Audio stays on this phone, telemetry is disabled, and no online listener is used instead.</Text>
+        <Text style={body}>{p.whistle.ready ? 'Whistle files downloaded and verified.' : `${p.whistle.bytes ? Math.ceil(p.whistle.bytes / 1_000_000) + ' MB' : 'Whistle model'} · download once over Wi-Fi.`} Listening does not change understanding or the answer voice.</Text>
+        {p.downloading === 'whistle' && downloadProgress('Downloading and verifying Whistle…', p.whistleProgress ?? 0, 'Cancel Whistle download')}
+        <VoiceButton label={p.whistle.ready ? 'Remove Whistle listener' : 'Download Whistle listener'} secondary onPress={() => p.manageWhistle?.()}
+          disabled={locked || !p.whistle.supported || !p.whistle.telemetryDisabled || !p.whistleChecked} />
+        <VoiceButton label="Use Whistle offline listening" secondary onPress={() => p.chooseListening('whistle')}
+          disabled={locked || !p.whistle.ready || !p.whistle.telemetryDisabled || choices.listening === 'whistle'} />
       </>)}
       {row(groqListener, choices.listening === 'groq', <VoiceButton label="Enable Groq online listening" secondary onPress={() => p.chooseListening('groq')}
         disabled={locked || blocked(groqListener) || choices.listening === 'groq' && heard.ready} />)}
@@ -269,7 +280,7 @@ export default function VoiceSetup(p: Props) {
     </View>
     <VoiceButton label="Recheck voice & online understanding" secondary onPress={p.recheck} disabled={locked} />
     <VoiceButton label={licence ? 'Hide speech licence' : 'Offline speech licence'} secondary onPress={() => setLicence(!licence)} />
-    {licence && <><Text selectable style={body}>{offlineSpeechNotice}{'\n\n'}{pocketSpeechNotice}{p.kokoro ? `\n\n${kokoroSpeechNotice}` : ''}</Text><VoiceButton label="Export complete Alba licence notices" secondary onPress={p.exportLicences} disabled={locked || !p.alba.supported} /></>}
+    {licence && <><Text selectable style={body}>{offlineSpeechNotice}{'\n\n'}{pocketSpeechNotice}{p.kokoro ? `\n\n${kokoroSpeechNotice}` : ''}{p.whistle ? `\n\n${whistleSpeechNotice}` : ''}</Text><VoiceButton label={p.whistle ? 'Export complete offline voice notices' : 'Export complete Alba licence notices'} secondary onPress={p.exportLicences} disabled={locked || !p.alba.supported} /></>}
   </>;
 }
 

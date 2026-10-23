@@ -24,7 +24,7 @@ function load(file, dependencies = {}) {
 const host = name => function Host({ children, ...props }) { return React.createElement(name, props, children); };
 const VoiceButton = ({ label, onPress, disabled }) => React.createElement('Button', { label, onPress, disabled }, label);
 
-async function harness({ personalSetup = false, personalConfigured = false, personalUsable = false, personalSource = false, keyWait, sarvamAvailable = false, sarvamConsented = false, selectedSarvam = false, sarvamPlayback, inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketOutput, pocketDiagnostics = 'Native audio details', pocketDownloadWait, speechFallback, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, cloudV3Response, categories = [], firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false, width = 390, fontScale = 1, preferenceSaveWait, deviceSpeechWait, offline = false, refreshFailure = false, screenReaderOn = false, categoryFailures = 0, diagnostics = false, modelDownloadWait, transcribeWait, pocketVoices = ['alba'], kokoroBuild = false, kokoroVoices = [], selectedKokoro = false, downloadStore, pocketRemovalWait } = {}) {
+async function harness({ personalSetup = false, personalConfigured = false, personalUsable = false, personalSource = false, keyWait, sarvamAvailable = false, sarvamConsented = false, selectedSarvam = false, sarvamPlayback, inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketOutput, pocketDiagnostics = 'Native audio details', pocketDownloadWait, speechFallback, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, cloudV3Response, categories = [], firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false, width = 390, fontScale = 1, preferenceSaveWait, deviceSpeechWait, offline = false, refreshFailure = false, screenReaderOn = false, categoryFailures = 0, diagnostics = false, modelDownloadWait, transcribeWait, pocketVoices = ['alba'], kokoroBuild = false, kokoroVoices = [], selectedKokoro = false, downloadStore, pocketRemovalWait, whistleBuild = false, whistleReady = false, selectedWhistle = false, whistleTranscript, whistleFailure, whistleTranscribeWait, whistleDownloadWait } = {}) {
   const downloads = downloadStore || load('features/assistant/downloads.ts');
   const calls = { navigation: [], stock: 0, transcribe: 0, stop: 0, record: 0, permission: 0, interpret: [], consent: [], cloudAudio: 0 };
   const listeners = new Set();
@@ -35,14 +35,14 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
   let pendingAlert;
   const unavailable = { interpret: false, scopes: [], consented: false, transcription_providers: [], speech_providers: [] };
   let scopes = [...(cloudConsented ? ['groq_text'] : []), ...(audioConsented ? ['groq_audio'] : []), ...(sarvamConsented ? ['sarvam_speech'] : [])];
-  const prefs = { enabled: true, microphone: true, spokenReplies, audioOptIn: onlineListening, sarvamSpeechOptIn: selectedSarvam, sarvamKeySource: personalSource ? 'personal' : undefined, inputProvider: onlineListening ? 'groq' : 'offline', speechProvider: selectedSarvam ? 'sarvam' : selectedPocket ? 'pocket' : selectedKokoro ? 'kokoro_offline' : 'device', cloud: cloudConsented, ...(speechFallback ? { speechFallback } : {}) };
+  const prefs = { enabled: true, microphone: true, spokenReplies, audioOptIn: onlineListening, sarvamSpeechOptIn: selectedSarvam, sarvamKeySource: personalSource ? 'personal' : undefined, inputProvider: selectedWhistle ? 'whistle' : onlineListening ? 'groq' : 'offline', speechProvider: selectedSarvam ? 'sarvam' : selectedPocket ? 'pocket' : selectedKokoro ? 'kokoro_offline' : 'device', cloud: cloudConsented, ...(speechFallback ? { speechFallback } : {}) };
   const recorder = { uri: 'file:///cache/test.m4a', isRecording: false,
     prepareToRecordAsync: async () => {}, record() { this.isRecording = true; calls.record++; },
     async stop() { this.isRecording = false; calls.stop++; },
   };
   // Diagnostics builds (EXPO_PUBLIC_VOICE_DIAGNOSTICS=1) offer Alba selection and the diagnostics card.
-  const policy = diagnostics ? { ...load('features/assistant/policy.ts'), VOICE_DIAGNOSTICS_ENABLED: true, ALBA_SELECTION_ENABLED: true, KOKORO_SELECTION_ENABLED: true } : load('features/assistant/policy.ts');
-  const permittedSpeechProvider = load('features/assistant/preferences.ts', { '@react-native-async-storage/async-storage': {}, './policy': policy }).permittedSpeechProvider;
+  const policy = diagnostics ? { ...load('features/assistant/policy.ts'), VOICE_DIAGNOSTICS_ENABLED: true, ALBA_SELECTION_ENABLED: true, KOKORO_SELECTION_ENABLED: true, WHISTLE_LISTENING_ENABLED: true } : load('features/assistant/policy.ts');
+  const { permittedInputProvider, permittedSpeechProvider } = load('features/assistant/preferences.ts', { '@react-native-async-storage/async-storage': {}, './policy': policy });
   const appState = { currentState: 'active', addEventListener: (_, fn) => { listeners.add(fn); return { remove() { listeners.delete(fn); } }; } };
   const rn = Object.fromEntries(['ActivityIndicator', 'KeyboardAvoidingView', 'Pressable', 'Text', 'TextInput', 'TouchableOpacity', 'View', 'ScrollView', 'Switch'].map(name => [name, host(name)]));
   rn.Modal = ({ visible, children }) => visible ? React.createElement('Modal', {}, children) : null;
@@ -93,12 +93,18 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
     '@/components/assistant/AnswerList': table, '@/components/assistant/AssistantDock': dock, '@/components/assistant/AssistantLayer': layer, '@/utils/inventoryPdfExport': { exportInventoryPdf: async () => { calls.inventoryPdf = (calls.inventoryPdf || 0) + 1; return { shared: true }; } },
     '@/features/assistant/cloudSpeech': { playSarvamSpeech: async (session, text, pace, signal, onStatus, source, onPlaybackStarted) => { (calls.sarvamSpeech ||= []).push({ text, pace, signal, source }); onStatus('Reading aloud with Sarvam…'); if (sarvamPlayback) await sarvamPlayback(signal, onPlaybackStarted); } },
     '@/features/assistant/narration': load('features/assistant/narration.ts'),
-    '@/features/assistant/preferences': { permittedSpeechProvider, defaults: { ...prefs, enabled: false }, loadPreferences: async () => ({ ...prefs }), savePreferences: async (owner, next) => { (calls.preferenceSaveOwners ||= []).push(owner); if (preferenceSaveWait) await preferenceSaveWait; Object.assign(prefs, next); } },
+    '@/features/assistant/preferences': { permittedInputProvider, permittedSpeechProvider, defaults: { ...prefs, enabled: false }, loadPreferences: async () => ({ ...prefs }), savePreferences: async (owner, next) => { (calls.preferenceSaveOwners ||= []).push(owner); if (preferenceSaveWait) await preferenceSaveWait; Object.assign(prefs, next); } },
     '@/features/assistant/snapshot': { cachedCategoryNames: () => [], cachedItemNames: () => inventoryItems ? inventoryItems.filter(i=>i.isActive).map(i=>i.name) : [inventoryName], categorySnapshot: async () => { calls.categories = (calls.categories || 0) + 1; if (categoryFailures-- > 0) throw new Error('Categories unavailable offline'); return categories; }, inventorySnapshot: async (_, __, force) => { calls.stock++; if (force && refreshFailure) throw new Error('Offline: a new refresh needs internet. Ask again without Refresh to see last-known stock.'); return { items: inventoryItems || [{ id: 'g', name: inventoryName, quantity: 18, minimumStock: 5, unit: 'pairs', isActive: true }], timestamp: Date.now(), stale: false }; } },
     '@/features/assistant/downloads': downloads,
     '@/features/assistant/audioFiles': { rememberAudio: async () => { if (rememberBackground) { appState.currentState = 'background'; lifecycle('background'); } }, discardAudio: async uri => { if (uri) (calls.discarded ||= []).push(uri); } },
     '@/features/assistant/capture': load('features/assistant/capture.ts'),
-    '@/features/assistant/offlineVoice': { pocketVoiceSupported: pocketBuild, pocketOutputCheckSupported: pocketBuild, pocketVoice: {
+    '@/features/assistant/offlineVoice': { whistleSupported: whistleBuild, whistleVoice: {
+      status: async () => ({ ready: whistleReady, supported: whistleBuild, bytes: 17300000, telemetryDisabled: true, model: 'whistle-q-int8-en' }),
+      download: async () => { calls.whistleDownloads = (calls.whistleDownloads || 0) + 1; if (whistleDownloadWait) await whistleDownloadWait; whistleReady = true; },
+      remove: async () => { calls.whistleRemoved = (calls.whistleRemoved || 0) + 1; whistleReady = false; },
+      transcribe: async uri => { (calls.whistleTranscriptions ||= []).push(uri); if (whistleTranscribeWait) await whistleTranscribeWait; if (whistleFailure) throw new Error('Whistle recognition failed'); return { transcript: whistleTranscript ?? transcript, requires_confirmation: true }; },
+      progress: () => ({ remove() {} }),
+    }, pocketVoiceSupported: pocketBuild, pocketOutputCheckSupported: pocketBuild, pocketVoice: {
       status: async () => ({ ready: pocketReady && pocketVoices.includes('alba'), supported: pocketBuild, bytes: 208767942, name: 'Alba',
         readyVoices: pocketReady ? [...pocketVoices] : [], voices: [{ id: 'alba', label: 'Alba' }, { id: 'albapause', label: 'Alba (updated)' }, { id: 'charles', label: 'Charles' }, { id: 'eve', label: 'Eve' }], lowMemory: false }),
       download: async voice => { calls.pocketDownloads = (calls.pocketDownloads || 0) + 1; (calls.pocketVoiceDownloads ||= []).push(voice); if (pocketDownloadWait) await pocketDownloadWait; pocketReady = true; if (!pocketVoices.includes(voice)) pocketVoices = [...pocketVoices, voice]; },
@@ -112,7 +118,7 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
       remove: async () => { calls.kokoroRemoved = (calls.kokoroRemoved || 0) + 1; kokoroVoices = []; },
       speak: async (text, pace, progress, signal, voice, play = true) => { (calls.kokoroSpeech ||= []).push({ text, pace, voice, play }); return { output: 'Phone speaker', volumePercent: 60, audioSeconds: 2, frames: 48000 }; },
       progress: () => ({ remove() {} }),
-    }, voiceErrorCode: e => (e && typeof e === 'object' && typeof e.code === 'string' ? e.code : undefined), offlineSupported: true, liveCaptureSupported: liveCapture, createLiveRecorder: () => Object.assign(recorder, { configure() {}, subscribe(listener) { liveListener = listener; return { remove() { liveListener = null; } }; } }), offlineVoice: { status: async () => ({ ready, bytes: 100 }),
+    }, voiceErrorCode: e => (e && typeof e === 'object' && typeof e.code === 'string' ? e.code : undefined), offlineSupported: true, liveCaptureSupported: liveCapture, createLiveRecorder: () => Object.assign(recorder, { configure(value) { (calls.capturePreview ||= []).push(value); }, subscribe(listener) { liveListener = listener; return { remove() { liveListener = null; } }; } }), offlineVoice: { status: async () => ({ ready, bytes: 100 }),
       download: async () => { calls.modelDownloads = (calls.modelDownloads || 0) + 1; if (modelDownloadWait) await modelDownloadWait; ready = true; }, remove: async () => { ready = false; }, deviceStatus: async () => ({ ready: deviceReady, name: 'English' }), progress: () => ({ remove() {} }), cancel() {}, cancelDownloads() { calls.cancelledDownloads = (calls.cancelledDownloads || 0) + 1; },
       transcribe: async () => { calls.transcribe++; if (transcribeWait) await transcribeWait; return { transcript }; }, speak: async text => { calls.deviceSpeech = (calls.deviceSpeech || 0) + 1; (calls.deviceTexts ||= []).push(text); if (deviceSpeechWait) await deviceSpeechWait(text); } } },
     '@/features/assistant/policy': policy, '@/features/assistant/readiness': load('features/assistant/readiness.ts'),
@@ -120,7 +126,7 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
     '@/components/assistant/VoiceSetup': mode ? load('components/assistant/VoiceSetup.tsx', {
       react: React, 'react/jsx-runtime': require('react/jsx-runtime'), 'react-native': rn,
       '@expo/vector-icons': { Ionicons: host('Icon') }, '@/theme/ThemeContext': { useTheme: () => ({ colors }) },
-      '@/features/assistant/policy': policy, '@/features/assistant/core': core, '@/features/assistant/notices': { offlineSpeechNotice: 'Offline model licence', pocketSpeechNotice: 'Pocket model licence', kokoroSpeechNotice: 'Kokoro model licence' },
+      '@/features/assistant/policy': policy, '@/features/assistant/core': core, '@/features/assistant/notices': { offlineSpeechNotice: 'Offline model licence', pocketSpeechNotice: 'Pocket model licence', kokoroSpeechNotice: 'Kokoro model licence', whistleSpeechNotice: 'Whistle and Needle · Cactus Compute · Apache License 2.0' },
       '@/features/assistant/narration': load('features/assistant/narration.ts'),
       '@/features/assistant/providers': load('features/assistant/providers.ts', { './policy': policy, './sarvam': load('features/assistant/sarvam.ts') }),
     }) : { default: host('VoiceSetup'), VoiceButton },
@@ -1573,4 +1579,126 @@ for (const action of ['account', 'background', 'unmount']) test('kept recording 
     if (action === 'unmount') { await h.dispose(); disposed = true; }
     assert.deepEqual(h.calls.discarded, ['file:///cache/test.m4a']);
   } finally { if (!disposed) await h.dispose(); }
+});
+
+test('Whistle finalized-WAV listening needs no Moonshine pack, no cloud audio and no action before review', async () => {
+  const h = await harness({ diagnostics: true, whistleBuild: true, whistleReady: true, selectedWhistle: true, ready: false, liveCapture: true });
+  try {
+    await h.press('Start voice recording');
+    assert.deepEqual(h.calls.capturePreview, [false], 'Whistle never starts Moonshine live inference');
+    await h.press('Stop recording and review transcript');
+    assert.equal(h.calls.whistleTranscriptions.length, 1); assert.equal(h.calls.transcribe, 0); assert.equal(h.calls.cloudAudio, 0);
+    assert.equal(h.calls.stock, 0); assert.equal(h.calls.interpret.length, 0); assert.ok(h.find('Send question'));
+    await h.press('Send question'); assert.equal(h.calls.stock, 1);
+  } finally { await h.dispose(); }
+});
+
+test('Whistle failure does not substitute Moonshine or upload audio even when both are available', async () => {
+  const h = await harness({ diagnostics: true, whistleBuild: true, whistleReady: true, selectedWhistle: true, liveCapture: true, whistleFailure: true, cloudAvailable: true, audioConsented: true });
+  try {
+    await h.press('Start voice recording'); await h.press('Stop recording and review transcript');
+    assert.equal(h.calls.whistleTranscriptions.length, 1); assert.equal(h.calls.transcribe, 0); assert.equal(h.calls.cloudAudio, 0);
+    assert.equal(h.find('Send question'), undefined); assert.equal(h.calls.stock, 0); assert.ok(hasText(h, 'Whistle recognition failed'));
+  } finally { await h.dispose(); }
+});
+
+test('Whistle supports a second reviewed question with Sarvam narration unchanged', async () => {
+  const h = await harness({ diagnostics: true, whistleBuild: true, whistleReady: true, selectedWhistle: true, ready: false, liveCapture: true, selectedSarvam: true, sarvamAvailable: true, sarvamConsented: true, spokenReplies: true });
+  try {
+    await h.press('Start voice recording'); await h.press('Stop recording and review transcript'); await h.press('Send question');
+    await h.press('Ask another question');
+    await h.press('Start voice recording'); await h.press('Stop recording and review transcript'); await h.press('Send question');
+    assert.equal(h.calls.record, 2); assert.equal(h.calls.whistleTranscriptions.length, 2); assert.equal(h.calls.stock, 2);
+    assert.equal(h.calls.sarvamSpeech.length, 2); assert.equal(h.calls.cloudAudio, 0); assert.equal(h.calls.transcribe, 0);
+  } finally { await h.dispose(); }
+});
+
+for (const action of ['background', 'account', 'unmount']) test('Whistle late recognition cannot restore a cancelled ' + action + ' turn', async () => {
+  let finish; const waiting = new Promise(resolve => { finish = resolve; });
+  const h = await harness({ diagnostics: true, whistleBuild: true, whistleReady: true, selectedWhistle: true, liveCapture: true, whistleTranscribeWait: waiting });
+  let disposed = false;
+  try {
+    await h.press('Start voice recording'); await h.press('Stop recording and review transcript');
+    assert.equal(h.recorder.isRecording, false, 'microphone is released while recognition is pending');
+    if (action === 'background') { await h.background(); assert.ok(hasText(h, 'Recognition stopped because CareKosh went to the background.')); }
+    if (action === 'account') await h.switchAccount();
+    if (action === 'unmount') { await h.dispose(); disposed = true; }
+    await act(async () => { finish(); await waiting; });
+    assert.equal(h.calls.stock, 0); assert.equal(h.calls.cloudAudio, 0);
+    if (!disposed) assert.equal(h.find('Send question'), undefined);
+  } finally { finish(); if (!disposed) await h.dispose(); }
+});
+
+test('diagnostic setup selects Whistle explicitly and preserves Sarvam and Groq text preferences', async () => {
+  const h = await harness({ mode: 'settings', diagnostics: true, whistleBuild: true, whistleReady: true, liveCapture: true, selectedSarvam: true, sarvamAvailable: true, sarvamConsented: true, cloudAvailable: true, cloudConsented: true });
+  try {
+    assert.ok(hasText(h, 'does not support Hindi or Hinglish'));
+    await h.press('Use Whistle offline listening');
+    assert.equal(h.prefs.inputProvider, 'whistle'); assert.equal(h.prefs.audioOptIn, false);
+    assert.equal(h.prefs.speechProvider, 'sarvam'); assert.equal(h.prefs.cloud, true); assert.deepEqual(h.calls.consent, []);
+    await h.press('Use offline listening'); assert.equal(h.prefs.inputProvider, 'offline');
+  } finally { await h.dispose(); }
+});
+
+test('normal setup hides Whistle and a saved experimental listener safely returns to Moonshine', async () => {
+  const h = await harness({ mode: 'settings', whistleBuild: true, whistleReady: true, selectedWhistle: true, liveCapture: true });
+  try { assert.equal(h.find('Use Whistle offline listening'), undefined); assert.ok(hasText(h, 'Selected: Offline · Moonshine')); }
+  finally { await h.dispose(); }
+});
+
+test('Whistle download survives screen replacement and does not select a listener after settling', async () => {
+  const downloadStore = load('features/assistant/downloads.ts');
+  let finish; const waiting = new Promise(resolve => { finish = resolve; });
+  const h = await harness({ mode: 'settings', diagnostics: true, whistleBuild: true, liveCapture: true, downloadStore, whistleDownloadWait: waiting }); let next;
+  try {
+    await h.press('Download Whistle listener'); await h.confirm();
+    assert.equal(downloadStore.downloadSnapshot().kind, 'whistle'); await h.dispose();
+    next = await harness({ mode: 'settings', diagnostics: true, whistleBuild: true, liveCapture: true, downloadStore });
+    assert.ok(next.find('Cancel Whistle download')); await next.press('Cancel Whistle download'); assert.equal(next.calls.cancelledDownloads, 1);
+    await act(async () => { finish(); await waiting; });
+    assert.equal(downloadStore.downloadSnapshot(), null); assert.equal(next.prefs.inputProvider, 'offline');
+  } finally { finish(); if (next) await next.dispose(); }
+});
+
+test('Whistle complex draft transcript keeps the existing executor and touch-only order confirmation', async () => {
+  const h = await harness({ diagnostics: true, whistleBuild: true, whistleReady: true, selectedWhistle: true, liveCapture: true, inventoryItems: planInventory,
+    whistleTranscript: 'Two units of Ambu Bag, plus the other low-stock and out-of-stock items; prepare an order draft.' });
+  try {
+    await h.press('Start voice recording'); await h.press('Stop recording and review transcript');
+    assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()), null, 'recognition only fills the review field');
+    assert.equal(h.calls.stock, 0);
+    await h.press('Send question');
+    const draft = h.drafts.getDraft(h.sessionTools.captureSession());
+    assert.deepEqual(JSON.parse(JSON.stringify(draft.rows.map(r => [r.item.id, r.quantity, r.source]))), [['a', 2, 'spoken'], ['g', 3, 'suggested'], ['m', 4, 'suggested']]);
+    assert.equal(draft.attempt, undefined); assert.deepEqual(h.calls.navigation, []); assert.equal(h.calls.cloudAudio, 0);
+  } finally { await h.dispose(); }
+});
+
+test('withdrawing cloud consent preserves the independently selected Whistle offline listener', async () => {
+  const h = await harness({ mode: 'settings', diagnostics: true, whistleBuild: true, whistleReady: true, selectedWhistle: true, liveCapture: true,
+    selectedSarvam: true, sarvamAvailable: true, sarvamConsented: true, cloudAvailable: true, cloudConsented: true });
+  try {
+    await h.press('Withdraw all cloud consent');
+    assert.equal(h.prefs.inputProvider, 'whistle'); assert.equal(h.prefs.audioOptIn, false); assert.equal(h.prefs.cloud, false); assert.equal(h.prefs.speechProvider, 'device');
+    assert.deepEqual(h.calls.consent.at(-1), []);
+  } finally { await h.dispose(); }
+});
+
+test('removing the selected Whistle pack leaves a truthful needs-download state without switching providers', async () => {
+  const h = await harness({ mode: 'settings', diagnostics: true, whistleBuild: true, whistleReady: true, selectedWhistle: true, liveCapture: true, selectedSarvam: true, sarvamAvailable: true, sarvamConsented: true });
+  try {
+    await h.press('Remove Whistle listener'); await h.confirm();
+    assert.equal(h.calls.whistleRemoved, 1); assert.equal(h.prefs.inputProvider, 'whistle'); assert.equal(h.prefs.speechProvider, 'sarvam');
+    assert.equal(h.find('Use Whistle offline listening').props.disabled, true); assert.ok(hasText(h, 'Needs download'));
+  } finally { await h.dispose(); }
+});
+
+
+test('diagnostic offline licence panel includes Whistle attribution and the complete export control', async () => {
+  const h = await harness({ mode: 'settings', diagnostics: true, whistleBuild: true, liveCapture: true, pocketBuild: true });
+  try {
+    await h.press('Offline speech licence');
+    assert.ok(hasText(h, 'Whistle and Needle · Cactus Compute · Apache License 2.0'));
+    assert.ok(h.find('Export complete offline voice notices'));
+  } finally { await h.dispose(); }
 });

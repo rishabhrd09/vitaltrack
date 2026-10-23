@@ -65,7 +65,7 @@ LiteRT Android 2.1.6: Apache License 2.0, with bundled third-party notices.
 This integration uses LiteRT, not the eSpeak-containing Sherpa/Piper runtime.
 
 Complete licence texts and SDK notices are bundled in the APK's
-assets/pocket-licences. Use “Export complete Alba licence notices” to read them.
+assets/pocket-licences. Use the licence export button to read them.
 Attribution does not imply endorsement by the original creators.`;
 
 /** Diagnostics builds only: the Kokoro test voice and the files it downloads. */
@@ -81,3 +81,16 @@ plus Moonshine's out-of-vocabulary model; Moonshine states that its
 pronunciation data follow the terms of their dictionary sources.
 moonshine-voice library: Copyright (c) 2025 Useful Sensors, Inc. (dba Moonshine AI), MIT.
 No voice cloning is used. Full texts: assets/pocket-licences (KOKORO-ATTRIBUTION.txt).`;
+
+
+/** Diagnostics builds only: the model and CPU engine used by the experimental listener. */
+export const whistleSpeechNotice = `Whistle speech recognition and Needle CPU engine · Cactus Compute, Inc.
+Apache License 2.0. English experimental listener in this diagnostic APK.
+https://huggingface.co/Cactus-Compute/whistle
+https://huggingface.co/Cactus-Compute/needle3
+The pinned Whistle model is 16,919,407 bytes (16.9 MB); the Android ARM64 runtime
+is included in the APK. CareKosh calls the C API directly, without the Python
+wrapper or its automatic runtime downloader. Telemetry opt-outs are applied
+before runtime use. Whistle recognizes speech; it does not speak answers.
+Full licence and revision notices are bundled in assets/whistle-licences and
+included in the offline voice licence export. Attribution does not imply endorsement.`;

@@ -1,5 +1,7 @@
 # Inventory answers and voice-prepared order drafts
 
+> **23 October 2026 — diagnostic listener experiment.** Whistle is a separately selected, English-only offline transcription option in the diagnostic APK. Moonshine remains the default; understanding and narration retain their existing settings. See [Whistle setup, privacy controls and device checks](WHISTLE_OFFLINE_LISTENER.md). Earlier dated evidence below retains its original scope.
+
 > **Update — 13 October 2026.**
 > - **Contract 3.** Multi-part requests now use a negotiated contract version 3. It covers quantity comparisons, critical equipment, exclusions, sorting, follow-ups and drafts from a filtered list. Every row in an answer gives its reason. The phone runs these requests itself, without Groq, whenever its grammar covers them.
 > - **Voice setup.** It now has three independent stages: Listening, Understanding and Spoken replies.

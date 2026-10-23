@@ -63,6 +63,9 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#what-it-does">What it does</a></li><li><a href="#historical-user-setup--unavailable-while-paused">Historical user setup — unavailable while paused</a></li><li><a href="#data-flow-and-safety">Data flow and safety</a></li><li><a href="#models-attribution-and-notices">Models, attribution and notices</a></li><li><a href="#source-map">Source map</a></li><li><a href="#verification-and-release-gate">Verification and release gate</a><ul><li><a href="#sound-quality-voices-and-kokoro--15-october-2026">Sound quality, voices and Kokoro — 15 October 2026</a></li><li><a href="#offline-voice-investigation--13-october-2026">Offline voice investigation — 13 October 2026</a></li><li><a href="#silent-preview-after-cpu-recovery--11-october-2026">Silent preview after CPU recovery — 11 October 2026</a></li><li><a href="#reported-silent-replies--eos-failure--10-october-2026">Reported silent replies / EOS failure — 10 October 2026</a></li><li><a href="#android-build-compatibility--10-october-2026">Android build compatibility — 10 October 2026</a></li></ul></li></ul></details></nav>
 <main id="content">
 <h1 id="pocket-tts--alba--paused-implementation-and-investigation">Pocket TTS / Alba — paused implementation and investigation</h1>
+<blockquote>
+<p><strong>23 October 2026 — diagnostic listener experiment.</strong> Whistle is a separately selected, English-only offline transcription option in the diagnostic APK. Moonshine remains the default; understanding and narration retain their existing settings. See <a href="WHISTLE_OFFLINE_LISTENER.html">Whistle setup, privacy controls and device checks</a>. Earlier dated evidence below retains its original scope.</p>
+</blockquote>
 <p><strong>Current status — 13 October 2026: PAUSED in normal builds; repaired implementation awaiting phone acceptance.</strong></p>
 <ul>
 <li><strong>Normal builds:</strong> Alba selection and new downloads stay disabled. <code>ALBA_SELECTION_ENABLED</code> is false unless the separate test profile is used. Device voice remains the default and is audible on the owner's phone.</li>
@@ -561,7 +564,7 @@ java -jar /tmp/carekosh-pocket-text-check.jar /absolute/path/to/pt_tokenizer.tsv
 <li>Repeat manifest, native-library alignment and notice checks for each release artifact. These package checks passed for the preview APK above; they do not replace the device checks.</li>
 </ol>
 <p>No backend migration, new environment variable, Render deployment or database operation is needed for this speech-output feature.</p>
-<footer>Generated 2026-10-15 by <code>docs/tools/build_docs.py</code> from <code>docs/POCKET_TTS_ALBA.md</code>.</footer>
+<footer>Generated 2026-10-23 by <code>docs/tools/build_docs.py</code> from <code>docs/POCKET_TTS_ALBA.md</code>.</footer>
 </main>
 </div>
 <script>

@@ -1,5 +1,5 @@
 import type { Capabilities } from '@/services/assistant';
-import { ALBA_SELECTION_ENABLED, CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, KOKORO_SELECTION_ENABLED, SARVAM_SPEECH_ENABLED } from './policy';
+import { ALBA_SELECTION_ENABLED, CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, KOKORO_SELECTION_ENABLED, SARVAM_SPEECH_ENABLED, WHISTLE_LISTENING_ENABLED } from './policy';
 import type { OfflineFallbackVoice, Preferences } from './preferences';
 import { sarvamSourceAvailable } from './sarvam';
 
@@ -12,7 +12,7 @@ import { sarvamSourceAvailable } from './sarvam';
  * Transient UI state (busy, speaking, progress) stays in the screen.
  */
 export type Stage = 'listening' | 'understanding' | 'speaking';
-export type ListenerId = 'offline' | 'groq';
+export type ListenerId = 'offline' | 'groq' | 'whistle';
 export type InterpreterId = 'local' | 'groq';
 export type SpeakerId = 'device' | 'pocket' | 'kokoro_offline' | 'sarvam';
 export type Readiness = 'ready' | 'checking' | 'needs_download' | 'needs_consent' | 'needs_key' | 'unavailable' | 'paused';
@@ -22,6 +22,8 @@ export type ServerStatus = { state: 'checking' | 'loaded' | 'failed'; reason?: s
 export type Environment = {
   supported: boolean;
   model: { checked: boolean; ready: boolean };
+  /** Experimental listener, diagnostics builds only. Never changes the chosen speaker. */
+  whistle?: { checked: boolean; ready: boolean; supported: boolean; telemetryDisabled: boolean; reason?: string };
   /** `checked: false` while Android text-to-speech is still starting. */
   deviceVoice: { ready: boolean; checked?: boolean };
   alba: { checked: boolean; ready: boolean; supported: boolean };
@@ -67,7 +69,7 @@ export function serverFailureReason(error: unknown, offline = false): string {
 /** The saved choices, read from preferences that loadPreferences has already sanitised. */
 export function choicesFrom(prefs: Preferences): Choices {
   return {
-    listening: CLOUD_TRANSCRIPTION_ENABLED && prefs.inputProvider === 'groq' && prefs.audioOptIn ? 'groq' : 'offline',
+    listening: WHISTLE_LISTENING_ENABLED && prefs.inputProvider === 'whistle' ? 'whistle' : CLOUD_TRANSCRIPTION_ENABLED && prefs.inputProvider === 'groq' && prefs.audioOptIn ? 'groq' : 'offline',
     understanding: CLOUD_TEXT_ENABLED && prefs.cloud ? 'groq' : 'local',
     speaking: prefs.speechProvider === 'sarvam' && SARVAM_SPEECH_ENABLED && prefs.sarvamSpeechOptIn ? 'sarvam'
       : prefs.speechProvider === 'pocket' && ALBA_SELECTION_ENABLED ? 'pocket'
@@ -82,13 +84,21 @@ export function listeners(env: Environment): Provider<ListenerId>[] {
       : !env.model.checked ? { readiness: 'checking', detail: 'Checking the speech pack…' }
       : env.model.ready ? { readiness: 'ready', detail: 'Recordings stay on this phone; live words appear while you speak.' }
       : { readiness: 'needs_download', detail: 'Download the English speech pack once.' }) };
-  if (!CLOUD_TRANSCRIPTION_ENABLED) return [offline];
+  const whistleEnv = env.whistle;
+  const whistle: Provider<ListenerId> = { id: 'whistle', label: 'Whistle · experimental offline', online: false,
+    ...(!env.supported || !whistleEnv?.supported ? { readiness: 'unavailable', detail: whistleEnv?.reason || 'Needs the latest Android ARM64 diagnostic APK.' }
+      : !whistleEnv.checked ? { readiness: 'checking', detail: 'Checking Whistle and its telemetry controls…' }
+      : !whistleEnv.telemetryDisabled ? { readiness: 'unavailable', detail: 'Whistle is blocked because telemetry could not be disabled.' }
+      : whistleEnv.ready ? { readiness: 'ready', detail: 'Recognizes the finished recording on this phone. Review the transcript before Send.' }
+      : { readiness: 'needs_download', detail: 'Download Whistle once. English experimental listener; Hindi and Hinglish are not supported.' }) };
+  const local = WHISTLE_LISTENING_ENABLED ? [offline, whistle] : [offline];
+  if (!CLOUD_TRANSCRIPTION_ENABLED) return local;
   const groq: Provider<ListenerId> = { id: 'groq', label: 'Groq Whisper · online', online: true,
     ...(!env.supported ? { readiness: 'unavailable', detail: 'Recording needs the Android app. You can still type.' }
       : serverGate(env) ?? (!env.caps.transcription_providers.includes('groq') ? { readiness: 'unavailable', detail: 'Not configured on this server.' }
       : !env.caps.scopes.includes('groq_audio') ? { readiness: 'needs_consent', detail: 'Uploads the finished recording for its transcript.' }
       : { readiness: 'ready', detail: 'The finished recording is uploaded; review the words before Send.' })) };
-  return [offline, groq];
+  return [...local, groq];
 }
 
 export function interpreters(env: Environment): Provider<InterpreterId>[] {

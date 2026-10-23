@@ -1,5 +1,7 @@
 # Pocket TTS / Alba — paused implementation and investigation
 
+> **23 October 2026 — diagnostic listener experiment.** Whistle is a separately selected, English-only offline transcription option in the diagnostic APK. Moonshine remains the default; understanding and narration retain their existing settings. See [Whistle setup, privacy controls and device checks](WHISTLE_OFFLINE_LISTENER.md). Earlier dated evidence below retains its original scope.
+
 **Current status — 13 October 2026: PAUSED in normal builds; repaired implementation awaiting phone acceptance.**
 
 - **Normal builds:** Alba selection and new downloads stay disabled. `ALBA_SELECTION_ENABLED` is false unless the separate test profile is used. Device voice remains the default and is audible on the owner's phone.

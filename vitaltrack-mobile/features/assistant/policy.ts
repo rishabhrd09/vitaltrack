@@ -23,3 +23,6 @@ export const ALBA_SELECTION_ENABLED = VOICE_DIAGNOSTICS_ENABLED;
  * diagnostics build until it passes the phone release criteria. Normal builds constant-fold it off.
  */
 export const KOKORO_SELECTION_ENABLED = VOICE_DIAGNOSTICS_ENABLED;
+
+/** Whistle is a diagnostics-only offline listener; normal builds retain Moonshine. */
+export const WHISTLE_LISTENING_ENABLED = VOICE_DIAGNOSTICS_ENABLED;
