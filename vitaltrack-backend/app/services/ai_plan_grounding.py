@@ -41,6 +41,16 @@ def numeric_text(question: str) -> str:
     return re.sub(NUMBER_PATTERN, lambda m: str(sum(NUMBER_WORDS[w] for w in re.split(r"[ -]", m.group()))), question.casefold())
 
 
+# Correct only this small reported filter-word vocabulary, after copied names have
+# been masked. These aliases never spell-correct item/supplier/category values.
+FILTER_TYPOS = {"cheyck": "check", "imprtant": "important", "tha": "that", "atatntion": "attention"}
+CRITICAL_CUE = r"(?:critical|important|essential|life support)"
+
+
+def canonical_filter_words(text: str) -> str:
+    return re.sub(r"\b(?:cheyck|imprtant|tha|atatntion)\b", lambda match: FILTER_TYPOS[match[0]], text)
+
+
 def require_representable_numbers(question: str, names=()) -> None:
     """Reject lossy numeric normalization, allowing opaque copied recorded names."""
     raw = question.casefold()
@@ -66,7 +76,14 @@ def comparisons(text: str) -> set[tuple[str, int]]:
     return result
 
 
-def stock_states(text: str) -> set[str]:
+def stock_states(text: str, *, priority_default: bool = True) -> set[str]:
+    text = canonical_filter_words(text)
+    parts = clauses(text)
+    if len(parts) > 1:
+        result = set().union(*(stock_states(part, priority_default=False) for part in parts))
+        if not result and priority_default and re.search(PRIORITY, text):
+            result.update({"low", "out"})
+        return result
     result = set()
     # Consume phrases before detecting in_stock, which must not match low in stock.
     patterns = (
@@ -80,18 +97,23 @@ def stock_states(text: str) -> set[str]:
         if re.search(pattern, text):
             result.update(states)
             text = re.sub(pattern, " ", text)
-    if re.search(PRIORITY, text):
+    attention = re.search(r"\bneed(?:s|ing)? (?:attention|reordering|restocking)\b", text)
+    if attention and result and not result <= {"low", "out", "below_minimum"}:
+        raise ValueError("Conflicting stock conditions")
+    # 'needs attention and is low' narrows attention to low, not low OR out.
+    if not result and (attention or priority_default and re.search(PRIORITY, text)):
         result.update({"low", "out"})
     return result
 
 
 def critical_values(text: str) -> set[bool]:
+    text = canonical_filter_words(text)
     result = set()
-    negative = r"\b(?:non critical|not critical|not marked critical|not flagged critical)\b"
+    negative = rf"\b(?:non {CRITICAL_CUE}|not {CRITICAL_CUE}|not marked {CRITICAL_CUE}|not flagged {CRITICAL_CUE})\b"
     if re.search(negative, text):
         result.add(False)
         text = re.sub(negative, " ", text)
-    if re.search(r"\bcritical\b", text):
+    if re.search(rf"\b{CRITICAL_CUE}\b", text):
         result.add(True)
     return result
 
@@ -104,6 +126,9 @@ def clauses(text: str) -> list[str]:
     protected = re.sub(r"\b(low (?:in )?stock|running low) (and|or) (out of stock)\b", r"\1 __stock_\2__ \3", protected)
     # '3 or more/fewer' is a comparison, not an additional selection group.
     protected = re.sub(r"\b(\d+) or (more|fewer|less|below|under|above|over|greater)\b", r"\1 __quantity_or__ \2", protected)
+    # A repeated predicate refers to the same noun, rather than a second list:
+    # 'critical items ... and are low' is AND; 'critical items and low items' is OR.
+    protected = re.sub(r"\band (?=(?:(?:that|which) )?(?:is|are|has|have|needs?|requires?) )", " ", protected)
     values = re.split(r"\b(?:and|or|plus|also)\b|[;,!?]", protected)
     return [re.sub(r"__(?:range_and|stock_and)__", "and", re.sub(r"__(?:stock_or|quantity_or)__", "or", part)).strip() for part in values if part.strip()]
 
@@ -135,6 +160,7 @@ def require_lexical_constraints(plan: Plan, question: str) -> None:
     opaque = " ".join(re.findall(r"\w+|[;,!?]", numeric_text(question)))
     for name in names:
         opaque = re.sub(rf"\b{re.escape(words(numeric_text(name)))}\b", "recorded_name", opaque)
+    opaque = canonical_filter_words(opaque)
     if re.search(r"\b(?:last (?:week|month|year)|next (?:week|month|year)|used (?:last|today|yesterday)|usage|forecast|expiry|expiration|expires|cheapest|prices?)\b", opaque):
         raise ValueError("Unsupported condition")
     if re.search(r"\b(?:not|no) (?:low(?: (?:in|on))? stock|out of stock|in stock|(?:well )?stocked|below|under)\b", opaque):
@@ -240,7 +266,7 @@ level levels status kind kinds type types ones both either too along well whose 
 details presently
 """.split())
 CUE_WORDS = frozenset("""
-low out stock stocks below minimum running run short critical equipment non not marked flagged star starred quantity
+low out stock stocks below minimum running run short critical important essential life support attention equipment non not marked flagged star starred quantity
 quantities qty less fewer lower than more greater higher most least exactly equal equals precisely only between under
 over above maximum remaining left hand stocked supplier suppliers supplied vendor vendors category categories brand
 brands no missing recorded unrecorded sorted sort sorting order ordered orders alphabetically alphabetical name names
@@ -259,6 +285,7 @@ FIELD_CUES = {
 # content words outside these bounded forms unexplained, so unknown names still fail.
 BENIGN_PHRASES = (
     (r"\bwould you mind\b", "would you"),
+    (r"\bhelp me (?:in )?(?:find|finding)(?: out)? (?:the )?(?:potential )?(?=(?:stocks?|items?|products?|supplies) (?:which|that) (?:i|we) should order\b)", "show "),
     (r"\b(?:once|sir|madam|na|itself)$", ""),
     (r"\bin (?:our|my) store\b", "in inventory"),
     (r"\bkeep only\b", "only"),
@@ -338,6 +365,7 @@ def require_complete_plan(plan: Plan, question: str, has_previous: bool) -> None
     used = {str(c.value) for group in ([*plan.selection.any_of, *plan.selection.exclude] if plan.selection else []) for c in group.quantity}
     used |= {str(line.quantity) for line in (plan.draft.lines if plan.draft else []) if line.quantity is not None}
     coverage = " ".join("recorded_name" if copied else token for token, copied in zip(tokens, covered, strict=True))
+    coverage = canonical_filter_words(coverage)
     for pattern, replacement in BENIGN_PHRASES:
         coverage = re.sub(pattern, replacement, coverage)
     coverage_tokens = coverage.split()
@@ -355,6 +383,7 @@ def require_complete_plan(plan: Plan, question: str, has_previous: bool) -> None
     opaque = " ".join(tokens)
     for name in sorted(set(_plan_names(plan)), key=len, reverse=True):
         opaque = re.sub(rf"\b{re.escape(words(numeric_text(name)))}\b", "recorded_name", opaque)
+    opaque = canonical_filter_words(opaque)
     groups = [*plan.selection.any_of, *plan.selection.exclude] if plan.selection else []
     filters = re.sub(DISPLAY_FIELDS, " ", opaque)
     for field, cue in FIELD_CUES.items():

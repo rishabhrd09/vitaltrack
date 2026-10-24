@@ -1052,6 +1052,9 @@ test('a mixed draft shows explicit and suggested quantities and saves nothing', 
     const draft = h.drafts.getDraft(h.sessionTools.captureSession());
     assert.deepEqual(JSON.parse(JSON.stringify(draft.rows.map(r => [r.item.id, r.quantity, r.source]))), [['a', 2, 'spoken'], ['g', 3, 'suggested'], ['m', 4, 'suggested']]);
     assert.equal(draft.attempt, undefined, 'no submission was started');
+    assert.ok(hasText(h, '1 requested · 2 suggested · 0 edited'));
+    assert.ok(hasText(h, 'Nothing has been saved.'));
+    await h.press('Show answer details');
     assert.ok(hasText(h, '3 lines ready · 1 from your request, 2 suggested. Nothing has been saved.'));
     assert.ok(hasText(h, 'Explicit · Your request'));
     assert.ok(hasText(h, 'Suggested · brings stock from 2 to its minimum of 5'));
@@ -1727,5 +1730,32 @@ test('regular preview primary Whistle records without Moonshine, reviews both qu
     assert.deepEqual(h.calls.capturePreview, [false, false]);
     assert.equal(h.calls.whistleTranscriptions.length, 2); assert.equal(h.calls.sarvamSpeech.length, 2);
     assert.equal(h.calls.transcribe, 0); assert.equal(h.calls.cloudAudio, 0); assert.equal(h.calls.stock, 2);
+  } finally { await h.dispose(); }
+});
+
+for (const spoken of [false, true]) test(`important equipment and low-stock conditions stay together through ${spoken ? 'reviewed online transcription' : 'typed input'}`, async () => {
+  const question = spoken ? 'please cheyck if there is any imprtant item tha needs atatntion and is low in stock ?' : 'Please check if there is any important item that needs attention and is low in stock?';
+  const h = await harness({ embedded: !spoken ? false : true, inventoryItems: planInventory, cloudAvailable: true, cloudConsented: true, onlineListening: spoken, audioConsented: spoken, transcript: question });
+  try {
+    if (spoken) { await h.press('Start voice recording'); await h.press('Stop recording and review transcript'); assert.equal(h.calls.stock, 0); await h.press('Send question'); }
+    else { await h.typeQuestion(question); await h.press('Show answer'); }
+    const rows = h.tree.root.findAllByType('TouchableOpacity').filter(node => /^\d+\. /.test(node.props.accessibilityLabel || ''));
+    assert.equal(rows.length, 1); assert.match(rows[0].props.accessibilityLabel, /Ambu Bag.*Low stock.*Critical equipment/);
+    assert.ok(hasText(h, 'critical equipment')); assert.ok(hasText(h, 'low stock')); assert.ok(hasText(h, 'CareKosh'));
+    assert.equal(h.calls.interpret.length, 0); assert.equal(h.calls.stock, 1);
+    assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()), null); assert.deepEqual(h.calls.navigation, []);
+  } finally { await h.dispose(); }
+});
+
+for (const saved of [false, true]) test(`order review never labels a ${saved ? 'saved' : 'possibly saved'} submission as unsaved`, async () => {
+  const h = await harness({ embedded: false, inventoryItems: twoGloves });
+  try {
+    const session = h.sessionTools.captureSession(), rows = [{ item: twoGloves[0], quantity: 3, source: 'manual' }];
+    h.drafts.writeDraft(session, rows); h.drafts.beginSubmission(session, rows);
+    if (saved) h.drafts.markSaved(session, { id: 'server-order', orderId: 'ORD-SYNTHETIC', items: [] });
+    await h.typeQuestion('Show my draft'); await h.press('Show answer');
+    assert.ok(hasText(h, saved ? 'This order is already saved.' : 'The server may already have saved this order.'));
+    assert.ok(!hasText(h, 'Nothing has been saved')); assert.ok(h.find('Open order review'));
+    assert.equal(h.calls.stock, 0); assert.deepEqual(h.calls.navigation, []);
   } finally { await h.dispose(); }
 });

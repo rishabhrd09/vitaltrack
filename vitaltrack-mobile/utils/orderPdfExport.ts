@@ -19,6 +19,35 @@ interface ExportableOrder {
   createdAt?: string;
 }
 
+export type OrderPdfStage = 'preparing' | 'rendering' | 'sharing';
+type ExportOptions = { signal?: AbortSignal; onStage?: (stage: OrderPdfStage) => void };
+
+/** Native PDF preparation has no built-in deadline. Never continue to sharing
+ * after a timeout, cancellation or account change, even if native work finishes later.
+ * The interactive share sheet is cancellable by the caller but has no short timer.
+ */
+async function exportStep<T>(run: () => Promise<T>, timeoutMs: number | null, message: string, assertReady: () => void, signal?: AbortSignal): Promise<T> {
+  assertReady();
+  if (signal?.aborted) throw new Error('PDF export cancelled. The saved order is retained.');
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let cancel = () => {};
+  const stopped = new Promise<never>((_, reject) => {
+    cancel = () => reject(new Error('PDF export cancelled. The saved order is retained.'));
+    signal?.addEventListener('abort', cancel, { once: true });
+    if (timeoutMs !== null) timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  try {
+    return await Promise.race([Promise.resolve().then(() => {
+      assertReady();
+      if (signal?.aborted) throw new Error('PDF export cancelled. The saved order is retained.');
+      return run();
+    }), stopped]);
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', cancel);
+  }
+}
+
 /**
  * Convert local image URI to base64 data URL for PDF embedding
  */
@@ -45,8 +74,9 @@ async function getBase64Image(uri: string): Promise<string> {
 /**
  * Generate combined Table + Image Reference PDF and share
  */
-export async function exportOrderPdf(order: ExportableOrder, includePhotos: boolean, assertReady: () => void = () => {}): Promise<{ uri: string; shared: boolean }> {
+export async function exportOrderPdf(order: ExportableOrder, includePhotos: boolean, assertReady: () => void = () => {}, { signal, onStage }: ExportOptions = {}): Promise<{ uri: string; shared: boolean }> {
   assertReady();
+  onStage?.('preparing');
   const { id: orderId, items } = order;
   const currentDate = order.createdAt || formatDate(now());
   const totalItems = items.length;
@@ -54,12 +84,12 @@ export async function exportOrderPdf(order: ExportableOrder, includePhotos: bool
 
   // Only process images if user wants photos
   const itemsWithImages = includePhotos
-    ? await Promise.all(
+    ? await exportStep(() => Promise.all(
         items.map(async (item) => ({
           ...item,
           imageBase64: item.imageUri ? await getBase64Image(item.imageUri) : '',
         }))
-      )
+      ), 30_000, 'Preparing PDF photos timed out. Re-export the saved order without photos.', assertReady, signal)
     : items.map(item => ({ ...item, imageBase64: '' }));
 
   const html = `<!DOCTYPE html>
@@ -221,17 +251,26 @@ export async function exportOrderPdf(order: ExportableOrder, includePhotos: bool
 </html>`;
 
   assertReady();
-  const { uri } = await Print.printToFileAsync({ html });
+  onStage?.('rendering');
+  const { uri } = await exportStep(() => Print.printToFileAsync({ html }), 45_000, 'Creating the PDF timed out. Your order is saved; re-export it from Recent Orders.', assertReady, signal);
   assertReady();
   let shareUri = uri;
   if (documentDirectory) {
     const dest = `${documentDirectory}CareKosh-${orderId.replace(/[^a-zA-Z0-9_-]/g, '_')}-${Date.now()}.pdf`;
-    try { await copyAsync({ from: uri, to: dest }); shareUri = dest; } catch { /* valid original URI remains available */ }
+    try {
+      await exportStep(() => copyAsync({ from: uri, to: dest }), 8_000, 'Saving the PDF file timed out.', assertReady, signal);
+      shareUri = dest;
+    } catch {
+      // A failed rename can use the generated file; cancellation still blocks sharing below.
+    }
   }
   assertReady();
-  const shared = await Sharing.isAvailableAsync();
+  const shared = await exportStep(() => Sharing.isAvailableAsync(), 5_000, 'Checking PDF sharing timed out. Re-export the saved order from Recent Orders.', assertReady, signal);
   assertReady();
-  if (shared) await Sharing.shareAsync(shareUri, { UTI: 'com.adobe.pdf', mimeType: 'application/pdf', dialogTitle: `Order ${orderId}` });
+  if (shared) {
+    onStage?.('sharing');
+    await exportStep(() => Sharing.shareAsync(shareUri, { UTI: 'com.adobe.pdf', mimeType: 'application/pdf', dialogTitle: `Order ${orderId}` }), null, '', assertReady, signal);
+  }
   return { uri: shareUri, shared };
 }
 

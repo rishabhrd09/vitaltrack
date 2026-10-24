@@ -1126,6 +1126,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     </ScrollView>
   </SafeAreaView>;
 
+  const reviewingExistingDraft = pendingIntent.current?.intent === 'review_draft';
   const content = <>
           {feedback}
           {!embedded && readiness && <View style={[styles.card, { backgroundColor: colors.accentBlueBg }]}>
@@ -1148,28 +1149,43 @@ export default function AssistantExperience({ embedded = false, active = true, s
             </View>
             {!!fallbackNotice && <Text accessibilityLiveRegion="polite" style={[styles.caption, { color: colors.textSecondary }]}>{fallbackNotice}</Text>}
             <View style={styles.answerCard}>
-              <Text accessibilityRole="header" style={[styles.answerTitle, textStyle]}>{answer.title}</Text>
+              <View style={[styles.answerHero, { backgroundColor: colors.accentBlueBg, borderColor: colors.accentBlueBorder }]}>
+                <View style={styles.heroLabel}>
+                  <Ionicons name={draftRows ? 'receipt-outline' : 'sparkles-outline'} size={15} color={colors.accentBlue} />
+                  <Text style={[styles.overline, { color: colors.accentBlue }]}>{draftRows ? 'ORDER REVIEW' : answer.kind === 'clarify' ? 'LET’S CLARIFY' : 'INVENTORY ANSWER'}</Text>
+                </View>
+                <Text accessibilityRole="header" style={[styles.answerTitle, textStyle]}>{answer.title}</Text>
+              </View>
+              {!!answer.statistics?.length && <View style={styles.statistics}>
+                {answer.statistics.map(stat => <View key={stat.label} style={[styles.stat, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary, borderTopColor: stat.tone === 'out' ? colors.statusRed : stat.tone === 'low' ? colors.statusOrange : colors.accentBlue }]}>
+                  <Text style={[styles.statValue, { color: stat.tone === 'out' ? colors.statusRed : stat.tone === 'low' ? colors.statusOrange : colors.accentBlue }]}>{stat.value}</Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{stat.label}</Text>
+                </View>)}
+              </View>}
               {!!answer.filters && <View style={[styles.filters, { backgroundColor: colors.bgTertiary }]}>
                 <Ionicons name="funnel-outline" size={14} color={colors.textSecondary} />
                 <Text selectable style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>Filters understood: {answer.filters}</Text>
               </View>}
-              {!!answer.statistics?.length && <View style={styles.statistics}>
-                {answer.statistics.map(stat => <View key={stat.label} style={[styles.stat, { backgroundColor: stat.tone === 'out' ? colors.statusRedBg : stat.tone === 'low' ? colors.statusOrangeBg : colors.accentBlueBg }]}>
-                  <Text style={[styles.statValue, { color: stat.tone === 'out' ? colors.statusRed : stat.tone === 'low' ? colors.statusOrange : colors.accentBlue }]}>{stat.value}</Text>
-                  <Text style={[styles.caption, { color: colors.textSecondary }]}>{stat.label}</Text>
-                </View>)}
+              {!!draftRows && !reviewingExistingDraft && <View style={[styles.draftNotice, { borderColor: colors.accentBlueBorder }]}>
+                <Ionicons name="shield-checkmark-outline" size={18} color={colors.accentBlue} />
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={[styles.caption, { color: colors.textPrimary, fontWeight: '600' }]}>{draftRows.filter(row => row.source === 'spoken').length} requested · {draftRows.filter(row => row.source === 'suggested').length} suggested · {draftRows.filter(row => row.source === 'manual').length} edited</Text>
+                  <Text style={[styles.caption, { color: colors.textSecondary }]}>Nothing has been saved.</Text>
+                </View>
               </View>}
-              {(!answer.statistics?.length || detailsOpen || !!draftRows || !!proposalChoice || answer.kind === 'list' && !answer.items.length) && <Text selectable accessibilityLiveRegion="polite" style={[styles.answer, textStyle]} onPress={() => setKeptOpen(true)}>{answer.text}</Text>}
+              {(!answer.statistics?.length || detailsOpen || reviewingExistingDraft || !!proposalChoice || answer.kind === 'list' && !answer.items.length) && <Text selectable accessibilityLiveRegion="polite" style={[styles.answer, textStyle]} onPress={() => setKeptOpen(true)}>{answer.text}</Text>}
               {!!answer.excluded?.length && <Text selectable style={[styles.caption, { color: colors.textSecondary }]}>Excluded by your request: {answer.excluded.map(e => e.name).join(', ')}</Text>}
               {answer.notes?.map(note => <Text key={note} style={[styles.caption, { color: colors.statusOrange }]}>{note}</Text>)}
-              {<TouchableOpacity accessibilityRole="button" accessibilityLabel="Show answer details" accessibilityState={{ expanded: detailsOpen }} onPress={() => { setDetailsOpen(!detailsOpen); setKeptOpen(true); }} style={{ minHeight: 44, justifyContent: 'center' }}>
-                <Text style={[styles.caption, { color: colors.textSecondary }]}>Filters & question {detailsOpen ? '−' : '+'}</Text>
-              </TouchableOpacity>}
-              {detailsOpen && <Text selectable style={[styles.caption, { color: colors.textSecondary }]}>{understandingSource.current} · “{answeredQuestion.current}”</Text>}
+              <View style={styles.metaRow}>
               {pendingIntent.current && ['read_item', 'summary', 'low_stock', 'out_of_stock', 'inventory_query', 'draft_order', 'inventory_export'].includes(pendingIntent.current.intent) && <View style={[styles.freshness, { backgroundColor: answer.stale ? colors.statusOrangeBg : colors.statusGreenBg }]}>
                 <Ionicons name={answer.stale ? 'time-outline' : 'checkmark-circle-outline'} size={16} color={answer.stale ? colors.statusOrange : colors.statusGreen} />
                 <Text style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>{answer.stale ? 'Last known stock' : 'Last synced'} · {answer.stale ? new Date(answer.timestamp).toLocaleString() : new Date(answer.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
               </View>}
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Show answer details" accessibilityState={{ expanded: detailsOpen }} onPress={() => { setDetailsOpen(!detailsOpen); setKeptOpen(true); }} style={styles.detailsButton}>
+                  <Text style={[styles.caption, { color: colors.textSecondary }]}>Details {detailsOpen ? '−' : '+'}</Text>
+                </TouchableOpacity>
+              </View>
+              {detailsOpen && <Text selectable style={[styles.caption, { color: colors.textSecondary }]}>{understandingSource.current} · “{answeredQuestion.current}”</Text>}
               {answer.choices.map(item => <View key={item.id}>{button(item.name + ' · ' + item.unit + ' · ' + item.id.slice(-6), () => {
                 const intent = pendingIntent.current || command('clarify');
                 if ('version' in intent) { selections.current[choiceQuery.current] = item.id; void ask(answeredQuestion.current, intent); }
@@ -1180,11 +1196,11 @@ export default function AssistantExperience({ embedded = false, active = true, s
                 if (pendingIntent.current) void ask(answeredQuestion.current, pendingIntent.current);
               }, locked)}</View>)}
             </View>
-            <View style={styles.chips}>
-              {answer.kind === 'list' && !draftRows && !!resultChain.current.length && <>
+            {answer.kind === 'list' && !draftRows && !!resultChain.current.length && <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.chips, { flexWrap: 'nowrap' }]}>
                 {refinements(answer.items).map(r => <View key={r.label}>{button(r.label, () => { void ask(r.spoken, r.plan); }, locked)}</View>)}
                 {!!answer.items.length && button('Draft these items', () => { void ask('Create a draft from those', plan('draft_order', { selection: selection([condition()], { scope: 'previous' }), draft: { mode: 'new', lines: [], include_selection: true } })); }, locked)}
-              </>}
+            </ScrollView>}
+            <View style={styles.chips}>
               {!!proposalChoice && <>
                 {pendingIntent.current && 'version' in pendingIntent.current && toPlan(pendingIntent.current).draft?.mode === 'new' && button('Merge with existing draft', () => proposalChoice(true), locked)}
                 {button('Replace existing draft with this proposal', () => proposalChoice(false), locked)}
@@ -1198,7 +1214,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={action}
       style={[styles.iconButton, { opacity: disabled ? 0.35 : 1, backgroundColor: colors.bgTertiary }]}><Ionicons name={name} size={20} color={colors.textSecondary} /></TouchableOpacity>;
   const footer = answer && <View style={[styles.answerFooter, { borderColor: colors.borderPrimary, backgroundColor: colors.bgPrimary }]}>
-    {!!draftRows && !proposalChoice && <VoiceButton label="Review unsaved order draft" onPress={() => { cancel(); setAnswer(null); router.navigate('/order/create'); }} disabled={locked} />}
+    {!!draftRows && !proposalChoice && <VoiceButton label={reviewingExistingDraft ? 'Open order review' : 'Review unsaved order draft'} onPress={() => { cancel(); setAnswer(null); router.navigate('/order/create'); }} disabled={locked} />}
     <View style={[styles.row, { flexWrap: 'wrap', gap: 8 }]}>
       {speaking ? answerAction('stop', 'Cancel / stop speech', () => { cancel(); setKeptOpen(true); }) : answerAction('volume-medium-outline', 'Hear answer', () => { setKeptOpen(true); const abort = new AbortController(); controller.current = abort; void playAnswer(answer, turn.current, abort.signal, true); }, locked || !(prefs.speechProvider === 'sarvam' ? SARVAM_SPEECH_ENABLED && caps.speech_providers.includes('sarvam') && caps.scopes.includes('sarvam_speech') : prefs.speechProvider === 'pocket' ? ALBA_SELECTION_ENABLED && albaVoiceReady : prefs.speechProvider === 'kokoro_offline' ? kokoroOffered && kokoroVoiceReady : deviceVoice.ready))}
       {!draftRows && answerAction('refresh-outline', 'Refresh answer', () => { void ask(answeredQuestion.current, pendingIntent.current, true); }, locked || pendingIntent.current?.intent === 'inventory_export')}
@@ -1212,11 +1228,14 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const overlay = <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.screen, { backgroundColor: colors.overlayDark }]}>
     <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Dismiss voice assistant" accessibilityRole="button" />
     <SafeAreaView style={styles.overlay} pointerEvents="box-none">
-      <View accessibilityViewIsModal style={[styles.sheet, answer && { height: Math.min(windowHeight * 0.86, (300 + sheetRows * 70) * Math.max(1, Math.min(fontScale, 2))) }, { backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary }]}>
+      <View accessibilityViewIsModal style={[styles.sheet, answer && { height: answer.items.length ? windowHeight * 0.90 : Math.min(windowHeight * 0.90, Math.max(420, (300 + sheetRows * 70) * Math.max(1, Math.min(fontScale, 2)))) }, { backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary, shadowColor: '#000000' }]}>
         <View style={[styles.handle, { backgroundColor: colors.borderSecondary }]} />
         <View style={styles.header}>
-          <View style={{ flex: 1 }}><Text accessibilityRole="header" style={[styles.heading, textStyle]}>Care Coach</Text><Text style={[styles.caption, { color: colors.textSecondary }]}>{draftRows ? 'Unsaved draft · review to continue' : 'Your inventory, at a glance'}</Text></View>
           {iconButton('settings-outline', 'Voice setup', openSetup)}
+          <View style={styles.assistantBrand}>
+            <Text accessibilityRole="header" style={[styles.heading, textStyle, { textAlign: 'center' }]}>CareKosh</Text>
+            <Text style={[styles.brandCaption, { color: colors.textSecondary }]}>Your inventory assistant</Text>
+          </View>
           {iconButton('close', 'Close assistant', close)}
         </View>
         {answer ? <AnswerList items={answer.items} draftRows={draftRows} reasons={answer.reasons} header={content} /> : <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>{content}</ScrollView>}
@@ -1238,19 +1257,28 @@ export default function AssistantExperience({ embedded = false, active = true, s
 
 const styles = StyleSheet.create({
   answerFooter: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 14, gap: 10, borderTopWidth: StyleSheet.hairlineWidth },
-  statistics: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, stat: { flexGrow: 1, flexBasis: 75, padding: 10, borderRadius: 12, gap: 2 }, statValue: { fontSize: 25, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  statistics: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, stat: { flexGrow: 1, flexBasis: 75, padding: 12, borderWidth: 1, borderTopWidth: 3, borderRadius: 14, gap: 3 }, statValue: { fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  statLabel: { fontSize: 11, lineHeight: 17 },
+  answerHero: { padding: 14, borderRadius: 18, borderWidth: 1, gap: 8 },
+  heroLabel: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  overline: { fontSize: 10, lineHeight: 16, letterSpacing: 1, fontWeight: '700' },
+  draftNotice: { flexDirection: 'row', alignItems: 'flex-start', padding: 12, gap: 9, borderWidth: 1, borderRadius: 12 },
+  assistantBrand: { flex: 1, minWidth: 0, alignItems: 'center', gap: 2 },
+  brandCaption: { fontSize: 11, lineHeight: 16, textAlign: 'center' },
   dockContent: { paddingHorizontal: 14, paddingBottom: 12, gap: 10 },
   screen: { flex: 1 }, overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { maxHeight: '94%', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, overflow: 'hidden' },
+  sheet: { width: '100%', maxWidth: 680, alignSelf: 'center', maxHeight: '94%', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, overflow: 'hidden', elevation: 18, shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.12, shadowRadius: 18 },
   handle: { width: 36, height: 4, borderRadius: 4, alignSelf: 'center', marginTop: 10 },
   header: { paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
   content: { padding: 18, gap: 12, paddingBottom: 20 }, heading: { fontSize: 20, fontWeight: '700' }, body: { fontSize: 15, lineHeight: 23 },
   caption: { fontSize: 13, lineHeight: 20 }, label: { fontSize: 16, fontWeight: '600' }, answer: { fontSize: 15, lineHeight: 23 },
-  answerTitle: { fontSize: 23, lineHeight: 29, fontWeight: '700' },
+  answerTitle: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
   card: { padding: 18, borderRadius: 18, gap: 12 }, answerCard: { padding: 0, gap: 12 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   iconButton: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  freshness: { paddingVertical: 6, borderRadius: 8, flexDirection: 'row', gap: 8, alignItems: 'center' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  detailsButton: { minHeight: 44, minWidth: 80, paddingHorizontal: 8, justifyContent: 'center' },
+  freshness: { flexGrow: 1, flexBasis: 160, paddingVertical: 7, paddingHorizontal: 9, borderRadius: 8, flexDirection: 'row', gap: 8, alignItems: 'center' },
   filters: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   feedback: { padding: 14, borderRadius: 14, gap: 12 },
 });

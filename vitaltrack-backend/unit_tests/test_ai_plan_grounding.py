@@ -472,3 +472,65 @@ async def test_review_provider_does_not_borrow_another_item_or_clause_quantity(m
     with pytest.raises(HTTPException) as refused:
         await ai_provider.interpret(question, False, version)
     assert refused.value.status_code == 502
+
+
+# Current-stock predicate aliases do not create a new action or permission.
+IMPORTANT_LOW = "Please check if there is any important item that needs attention and is low in stock?"
+IMPORTANT_LOW_TYPED = "please cheyck if there is any imprtant item tha needs atatntion and is low in stock ?"
+
+
+@pytest.mark.parametrize("question,faithful", [
+    (IMPORTANT_LOW, query(group(critical=True, stock=["low"]))),
+    (IMPORTANT_LOW_TYPED, query(group(critical=True, stock=["low"]))),
+    ("Show essential items that need attention and are low in stock", query(group(critical=True, stock=["low"]))),
+    (IMPORTANT_LOW + " Most urgent first.", query(group(critical=True, stock=["low"]), sort="priority")),
+    ("Show life-support items that are low in stock", query(group(critical=True, stock=["low"]))),
+    ("Show critical items that are low and have quantity less than 3", query(group(critical=True, stock=["low"], quantity=[amount(3)]))),
+    ("Show important items and low-stock items", query(group(critical=True), group(stock=["low"]))),
+    ("Show items that need attention", query(group(stock=["low", "out"]))),
+    ("Show items that need attention and are low in stock", query(group(stock=["low"]))),
+    ("Show items that need attention and all in-stock items", query(group(stock=["low", "out"]), group(stock=["in_stock"]))),
+    ("Show all in-stock items", query(group(stock=["in_stock"]))),
+    ("Show imprtant", query(group(item_queries=["imprtant"]))),
+    ("Show items from supplier imprtant supplies", query(group(supplier="imprtant supplies"))),
+    ("Please help me in finding out potential stocks which I should order now immediately", query(group(stock=["low", "out"]), sort="priority")),
+])
+def test_important_attention_shared_predicates_and_opaque_names(question, faithful):
+    ground_plan(faithful, question, False)
+
+
+@pytest.mark.parametrize("question,wrong", [
+    (IMPORTANT_LOW, query(group(stock=["low"]))),  # important was dropped
+    (IMPORTANT_LOW, query(group(critical=True))),  # low was dropped
+    (IMPORTANT_LOW, query(group(critical=True, stock=["low", "out"]))),  # attention must be narrowed
+    (IMPORTANT_LOW, query(group(critical=True), group(stock=["low"]))),  # wrong union
+    (IMPORTANT_LOW_TYPED, query(group(stock=["low"]))),
+    ("Show important items and low-stock items", query(group(critical=True, stock=["low"]))),
+    ("Show important items that need attention and are in stock", query(group(critical=True, stock=["in_stock"]))),
+    ("Show impotrant items that are low in stock", query(group(critical=True, stock=["low"]))),  # not a supported spelling correction
+    ("Show all in-stock items", query(group())),
+    ("Show items from supplier imprtant supplies", query(group(supplier="important supplies"))),  # never rewrite a name
+    ("Show items from supplier important supplies", query(group(supplier="important supplies", critical=True))),
+])
+def test_important_attention_filters_cannot_be_omitted_broadened_or_invented(question, wrong):
+    with pytest.raises(ValueError):
+        ground_plan(wrong, question, False)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("question", [IMPORTANT_LOW, IMPORTANT_LOW_TYPED])
+async def test_online_important_query_uses_original_reviewed_text_and_the_strict_v3_plan(monkeypatch, question):
+    faithful = query(group(critical=True, stock=["low"]))
+    calls = []
+
+    async def fake(url, headers, **kwargs):
+        payload = kwargs["json"]
+        calls.append(payload)
+        assert json.loads(payload["messages"][1]["content"]) == {"question": question, "has_previous_item": False}
+        assert payload["response_format"]["json_schema"]["strict"] is True
+        return json.dumps({"choices": [{"finish_reason": "stop", "message": {"content": faithful.model_dump_json()}}], "usage": {}}).encode()
+
+    monkeypatch.setattr(ai_provider, "bounded_call", fake)
+    result, _ = await ai_provider.interpret(question, False, 3)
+    assert result == faithful
+    assert len(calls) == 1  # no automatic second paid attempt

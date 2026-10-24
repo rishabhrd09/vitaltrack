@@ -40,7 +40,7 @@ test('readiness is derived from the phone and server, never from a saved choice'
 });
 
 test('unmatched advanced wording requires a contract that can express every condition', () => {
-  for (const text of ['fewer than three units', 'less than 3', 'at most five', 'critical supplies', 'apart from gloves', 'excluding masks', 'order priority', 'a draft for those', 'order items supplied by Supplier A']) assert.equal(registry.minimumInterpretContract(text), 3, text);
+  for (const text of ['fewer than three units', 'less than 3', 'at most five', 'critical supplies', 'important items that are low in stock', 'essential equipment', 'life-support items', 'imprtant items that are low', 'apart from gloves', 'excluding masks', 'order priority', 'a draft for those', 'order items supplied by Supplier A']) assert.equal(registry.minimumInterpretContract(text), 3, text);
   assert.equal(registry.minimumInterpretContract('find stock supplied by Supplier A'), 2);
   assert.equal(registry.minimumInterpretContract('Prepare an order with 5 boxes of masks'), 2);
   assert.equal(registry.minimumInterpretContract('Could you tell me how many gloves we have?'), 1);

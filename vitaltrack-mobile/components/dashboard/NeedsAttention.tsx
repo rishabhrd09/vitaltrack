@@ -42,6 +42,7 @@ export default function NeedsAttention({
   const [isOutOfStockExpanded, setIsOutOfStockExpanded] = useState(true);
   const [showAllOutOfStock, setShowAllOutOfStock] = useState(false);
   const [showAllLowStock, setShowAllLowStock] = useState(false);
+  const [showAllEmergency, setShowAllEmergency] = useState(false);
   const pendingItemIds = usePendingItemIds();
 
   const totalCount = outOfStockItems.length + lowStockItems.length;
@@ -52,8 +53,9 @@ export default function NeedsAttention({
   const outOfStockCriticalItems = outOfStockItems.filter((item) => isCriticalEquipment(item));
   
   // Combine both: critical items at qty=0 or qty=1 need emergency backup
-  const emergencyBackupItems = [...lowStockEmergencyItems, ...outOfStockCriticalItems];
+  const emergencyBackupItems = [...outOfStockCriticalItems, ...lowStockEmergencyItems];
   const showEmergencyBackup = emergencyBackupItems.length > 0;
+  const emergencyDisplayItems = showAllEmergency ? emergencyBackupItems : emergencyBackupItems.slice(0, 3);
 
   // Sort all items: critical first
   const sortedOutOfStock = [...outOfStockItems].sort(sortByCriticalFirst);
@@ -82,6 +84,9 @@ export default function NeedsAttention({
         style={styles.sectionHeader}
         onPress={() => setIsExpanded(!isExpanded)}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isExpanded }}
+        accessibilityLabel="Needs attention"
       >
         <View style={styles.headerLeft}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Needs Attention</Text>
@@ -89,9 +94,10 @@ export default function NeedsAttention({
             <Text style={[styles.countBadgeText, { color: colors.statusRed }]}>{totalCount}</Text>
           </View>
         </View>
-        <Text style={[styles.collapseText, { color: colors.textTertiary }]}>
-          {isExpanded ? 'Collapse' : 'Expand'} ^
-        </Text>
+        <View style={styles.collapseControl}>
+          <Text style={[styles.collapseText, { color: colors.textSecondary }]}>{isExpanded ? 'Collapse' : 'Expand'}</Text>
+          <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textSecondary} />
+        </View>
       </TouchableOpacity>
 
       {isExpanded && (
@@ -117,7 +123,7 @@ export default function NeedsAttention({
                         color={colors.statusRed}
                       />
                     </View>
-                    <Text style={[styles.cardSubtitle, { color: colors.textTertiary }]}>Critical items</Text>
+                    <Text style={[styles.cardSubtitle, { color: colors.textTertiary }]}>No stock available</Text>
                   </View>
                 </View>
                 <View style={[styles.cardCount, { backgroundColor: colors.bgTertiary }]}>
@@ -178,27 +184,80 @@ export default function NeedsAttention({
 
           {/* EMERGENCY BACKUP CARD */}
           {showEmergencyBackup && (
-            <View style={[styles.emergencyCard, { backgroundColor: colors.statusYellowBg, borderColor: colors.statusOrangeBorder }]}>
+            <View style={[styles.emergencyCard, { backgroundColor: colors.bgCard, borderColor: colors.statusOrangeBorder }]}>
               <View style={styles.emergencyHeader}>
-                <Ionicons name="warning" size={20} color={colors.statusOrange} />
+                <View style={[styles.emergencyIcon, { backgroundColor: colors.statusOrangeBg }]}>
+                  <Ionicons name="shield-outline" size={22} color={colors.statusOrange} />
+                </View>
                 <View style={styles.emergencyText}>
-                  <Text style={[styles.emergencyTitle, { color: colors.statusOrange }]}>
-                    ⚠️ Emergency Backup Required ({emergencyBackupItems.length})
-                  </Text>
+                  <Text style={[styles.emergencyTitle, { color: colors.textPrimary }]}>Emergency backup</Text>
                   <Text style={[styles.emergencySubtitle, { color: colors.textSecondary }]}>
-                    {emergencyBackupItems.map(item => {
-                      const status = item.quantity === 0 ? 'OUT OF STOCK' : 'only 1 unit';
-                      return `${item.name} (${status})`;
-                    }).join(', ')}. These are critical life-support items - having backup is essential!
+                    Critical equipment with limited reserve
                   </Text>
                 </View>
+                <View style={[styles.emergencyCount, { backgroundColor: colors.statusOrangeBg }]}>
+                  <Text style={[styles.emergencyCountValue, { color: colors.statusOrange }]}>{emergencyBackupItems.length}</Text>
+                  <Text style={[styles.emergencyCountLabel, { color: colors.textSecondary }]}>{emergencyBackupItems.length === 1 ? 'item' : 'items'}</Text>
+                </View>
               </View>
+
+              <View style={styles.emergencySummary}>
+                {outOfStockCriticalItems.length > 0 && (
+                  <View style={[styles.reserveBadge, { backgroundColor: colors.statusRedBg }]}>
+                    <Ionicons name="alert-circle-outline" size={14} color={colors.statusRed} />
+                    <Text style={[styles.reserveBadgeText, { color: colors.statusRed }]}>{outOfStockCriticalItems.length} out of stock</Text>
+                  </View>
+                )}
+                {lowStockEmergencyItems.length > 0 && (
+                  <View style={[styles.reserveBadge, { backgroundColor: colors.statusOrangeBg }]}>
+                    <Ionicons name="layers-outline" size={14} color={colors.statusOrange} />
+                    <Text style={[styles.reserveBadgeText, { color: colors.statusOrange }]}>{lowStockEmergencyItems.length} low reserve</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={[styles.emergencyItems, { borderColor: colors.borderPrimary }]}>
+                {emergencyDisplayItems.map((item, index) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.emergencyItem, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderPrimary }]}
+                    onPress={() => onEditItem(item.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Review ${item.name}, ${item.quantity} ${item.unit}, ${item.quantity <= 0 ? 'out of stock' : 'low stock'}`}
+                  >
+                    <View style={styles.emergencyItemNameColumn}>
+                      <Text style={[styles.emergencyItemName, { color: colors.textPrimary }]}>{item.name}</Text>
+                      {pendingItemIds.has(item.id) && <Text style={[styles.pendingText, { color: colors.textSecondary }]}>Updating…</Text>}
+                    </View>
+                    <View style={styles.emergencyQuantity}>
+                      <Text style={[styles.emergencyQuantityValue, { color: item.quantity <= 0 ? colors.statusRed : colors.statusOrange }]}>{item.quantity} <Text style={styles.emergencyQuantityUnit}>{item.unit}</Text></Text>
+                      <Text style={[styles.emergencyQuantityLabel, { color: colors.textSecondary }]}>{item.quantity <= 0 ? 'Out of stock' : 'Low stock'}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {emergencyBackupItems.length > 3 && (
+                <TouchableOpacity
+                  style={styles.emergencyExpand}
+                  onPress={() => setShowAllEmergency(!showAllEmergency)}
+                  accessibilityRole="button"
+                  accessibilityLabel={showAllEmergency ? 'Show fewer emergency backup items' : 'Show all emergency backup items'}
+                  accessibilityState={{ expanded: showAllEmergency }}
+                >
+                  <Text style={[styles.viewAllText, { color: colors.accentBlue }]}>{showAllEmergency ? 'Show fewer items' : `View all ${emergencyBackupItems.length} items`}</Text>
+                  <Ionicons name={showAllEmergency ? 'chevron-up' : 'chevron-down'} size={16} color={colors.accentBlue} />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.emergencyButton, { backgroundColor: colors.statusOrange }]}
                 onPress={onEmergencyOrder || onOrderNow}
+                accessibilityRole="button"
+                accessibilityLabel="Review emergency order"
               >
-                <Ionicons name="cart" size={18} color={colors.white} />
-                <Text style={styles.emergencyButtonText}>Emergency Order</Text>
+                <Ionicons name="cart-outline" size={18} color={colors.white} />
+                <Text style={styles.emergencyButtonText}>Review emergency order</Text>
+                <Ionicons name="arrow-forward" size={16} color={colors.white} />
               </TouchableOpacity>
             </View>
           )}
@@ -293,8 +352,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, flexShrink: 1, minWidth: 0, gap: spacing.sm },
+  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, flexShrink: 1 },
   countBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
@@ -304,6 +363,7 @@ const styles = StyleSheet.create({
   },
   countBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
   collapseText: { fontSize: fontSize.sm },
+  collapseControl: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginLeft: spacing.sm, flexShrink: 0 },
   content: { gap: spacing.md },
   card: { borderRadius: borderRadius.lg, borderWidth: 1, overflow: 'hidden' },
   cardHeader: {
@@ -365,14 +425,31 @@ const styles = StyleSheet.create({
   },
   orderNowText: { color: '#FFFFFF', fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
   emergencyCard: {
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
-    padding: spacing.md,
+    padding: spacing.lg,
+    borderTopWidth: 3,
   },
-  emergencyHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, marginBottom: spacing.md },
-  emergencyText: { flex: 1 },
-  emergencyTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold },
-  emergencySubtitle: { fontSize: fontSize.sm, marginTop: 4, lineHeight: 20 },
+  emergencyHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  emergencyIcon: { width: 40, height: 40, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' },
+  emergencyText: { flex: 1, minWidth: 0 },
+  emergencyTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
+  emergencySubtitle: { fontSize: fontSize.sm, marginTop: spacing.xs, lineHeight: 18 },
+  emergencyCount: { minWidth: 44, borderRadius: borderRadius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, alignItems: 'center' },
+  emergencyCountValue: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, fontVariant: ['tabular-nums'] },
+  emergencyCountLabel: { fontSize: fontSize.xs },
+  emergencySummary: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.md },
+  reserveBadge: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderRadius: borderRadius.full, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  reserveBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.medium, flexShrink: 1 },
+  emergencyItems: { borderWidth: 1, borderRadius: borderRadius.md, overflow: 'hidden' },
+  emergencyItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.sm, minHeight: 52 },
+  emergencyItemNameColumn: { flex: 1, minWidth: 0 },
+  emergencyItemName: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
+  emergencyQuantity: { flexShrink: 1, maxWidth: '42%', alignItems: 'flex-end' },
+  emergencyQuantityValue: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  emergencyQuantityUnit: { fontSize: fontSize.xs, fontWeight: fontWeight.normal },
+  emergencyQuantityLabel: { fontSize: fontSize.xs, textAlign: 'right', marginTop: 2 },
+  emergencyExpand: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, minHeight: 44, paddingVertical: spacing.sm },
   emergencyButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -380,8 +457,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.sm,
+    minHeight: 48,
   },
-  emergencyButtonText: { color: '#FFFFFF', fontSize: fontSize.md, fontWeight: fontWeight.semibold },
+  emergencyButtonText: { color: '#FFFFFF', fontSize: fontSize.md, fontWeight: fontWeight.semibold, flexShrink: 1, textAlign: 'center' },
   emptyContainer: {
     alignItems: 'center',
     padding: spacing.xl,

@@ -3,7 +3,7 @@
  * List of orders with status tracking — server-first
  */
 
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, RefreshControl, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -22,6 +22,8 @@ export default function OrdersScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { isOnline } = useNetworkStatus();
+  const { width, fontScale } = useWindowDimensions();
+  const stackHeader = width < 360 || fontScale > 1.3;
 
   const { data: savedOrders = [], isLoading, refetch, isRefetching } = useOrders();
   const updateOrderStatus = useUpdateOrderStatus();
@@ -83,11 +85,20 @@ export default function OrdersScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
-        <View>
+      <View style={[styles.header, stackHeader && styles.headerStacked]}>
+        <View style={[styles.headerInfo, stackHeader && styles.headerInfoStacked]}>
           <Text style={[styles.title, { color: colors.textPrimary }]}>Recent Orders</Text>
           <Text style={[styles.subtitle, { color: colors.textTertiary }]}>Track your orders and stock updates</Text>
         </View>
+        {savedOrders.length > 0 && <TouchableOpacity
+          style={[styles.createButton, stackHeader && styles.createButtonWide, { backgroundColor: colors.accentBlueBg, borderColor: colors.accentBlueBorder }]}
+          onPress={() => router.push('/order/create')}
+          accessibilityRole="button"
+          accessibilityLabel="Create order"
+        >
+          <Ionicons name="add" size={20} color={colors.accentBlue} />
+          <Text style={[styles.createButtonText, { color: colors.accentBlue }]}>New order</Text>
+        </TouchableOpacity>}
       </View>
 
       <StatusPill />
@@ -138,22 +149,19 @@ export default function OrdersScreen() {
         </>
       )}
 
-      {/* FAB */}
-      {savedOrders.length > 0 && (
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: colors.accentBlue }]}
-          onPress={() => router.push('/order/create')}
-        >
-          <Ionicons name="add" size={24} color={colors.white} />
-        </TouchableOpacity>
-      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { padding: spacing.lg },
+  header: { padding: spacing.lg, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  headerStacked: { flexDirection: 'column' },
+  headerInfo: { flex: 1, minWidth: 0 },
+  headerInfoStacked: { flex: 0, alignSelf: 'stretch' },
+  createButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minHeight: 44 },
+  createButtonWide: { alignSelf: 'stretch' },
+  createButtonText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, flexShrink: 1 },
   title: {
     fontSize: fontSize.title,
     fontWeight: fontWeight.bold,
@@ -200,22 +208,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: 130,
+    paddingBottom: spacing.xl,
     gap: spacing.md,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 90,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
   },
 });

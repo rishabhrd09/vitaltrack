@@ -172,8 +172,10 @@ function draftFollowUp(text: string, hasDraft: boolean): Plan | null {
   return null;
 }
 
-// Words that carry no condition of their own. Any other leftover word sends the request to
-// online understanding (or a clarification) instead of being silently ignored.
+// A small reported filter-word vocabulary only. Recorded names are fenced off before correction.
+const FILTER_TYPOS: Record<string, string> = { cheyck: 'check', imprtant: 'important', tha: 'that', atatntion: 'attention' };
+const canonicalFilterWords = (value: string) => value.replace(/\b(?:cheyck|imprtant|tha|atatntion)\b/g, word => FILTER_TYPOS[word]);
+// Any leftover word outside this grammar goes to interpretation or clarification, never omission.
 const FILLER = new Set(('show list display find give get tell me us all the a an any every everything anything items item ones one products product stock stocks ' +
   'supplies inventory entries entry equipment which what that those these them they are is were be with have has having do does we i there of in on for our my ' +
   'currently now right how many much count number total quantity quantities qty level levels remaining left hand units unit status their its also please just whose ' +
@@ -182,6 +184,7 @@ const HEAD = /\b(?:items?|ones|stocks?|products?|supplies|equipment|entries|ever
 const REFERENCE = /^(?:(?:all )?(?:of )?(?:them|these|those|it)|(?:these|those|the) (?:items|results|rows)|(?:the|this|that) list|the above|everything (?:listed|above|shown))$/;
 const DRAFT_DIRECTIVE = /^(?:(?:please|can you|could you|then|and|now|so) )*(?:prepare|create|make|build|put together|start|generate|draft)(?: me| us)?(?: (?:an?|the|my|one))?(?: (?:new|unsaved|saved|local))*(?: (?:purchase|reorder))?(?: (?:order|draft))+(?: list)?(?: (?:for|of|with|from|including|containing|covering|out of) (.+))?$/;
 const ORDER_NOW = [
+  /^help me (?:in )?(?:find|finding)(?: out)? (?:the )?(?:potential )?(?:stocks?|items?|products?|supplies) (?:which|that) (?:i|we) should (?:order|reorder|restock)(?: (?:now|today|immediately|urgently|first|right now))*$/,
   /^(?:which|what) (?:(?:stocks?|items?|products|supplies|things) )?(?:should|do|must|need to|ought to) (?:i|we) (?:consider |think about )?(?:order|ordering|reorder|reordering|restock|restocking)(?: (?:now|today|soon|first|next|right now))?$/,
   /^what (?:needs|need) (?:to be )?(?:ordering|ordered|reordering|reordered|restocking|restocked)(?: (?:now|today|soon|first))?$/,
   /^(?:what|which items?) (?:is|are) (?:most )?urgent(?: to (?:order|reorder|restock))?$/,
@@ -214,11 +217,11 @@ const COMPARISONS: [RegExp, (m: RegExpExecArray) => Condition['quantity']][] = [
 ];
 const STATES: [RegExp, StockState[]][] = [
   [/ lowout /, ['low', 'out']],
-  [/ need(?:s|ing)? (?:attention|reordering|restocking) /, ['low', 'out']],
   [/ (?:that are |which are |is |are )?below (?:their |the |its )?(?:recorded )?minimum(?: stock)?(?: levels?)? /, ['below_minimum']],
   [/ (?:that are |which are |is |are )?out of stock /, ['out']],
   [/ (?:that have |which have |that |which )?(?:run|ran) out /, ['out']],
   [/ (?:that are |which are |is |are )?(?:running low|low on stock|low in stock|low stock|low) /, ['low']],
+  [/ (?:that are |which are |is |are )?(?:in stock|well stocked) /, ['in_stock']],
 ];
 
 type Hints = { names?: readonly string[]; categories?: readonly string[] };
@@ -245,9 +248,13 @@ function parseCondition(clause: string, hints: Hints, restore: (s: string) => st
   if (found.length) s = `${s.slice(0, found[0].index)} `;
   if (take(/ (?:with |that have |which have )?(?:no|missing(?: a)?|without(?: a)?) (?:recorded )?supplier(?: recorded| name| set)? /)) c.missing_supplier = true;
   for (const [re, quantity] of COMPARISONS) for (let m = take(re); m; m = take(re)) c.quantity.push(...quantity(m));
+  const attention = !!take(/ need(?:s|ing)? (?:attention|reordering|restocking) /);
   for (const [re, states] of STATES) for (let m = take(re); m; m = take(re)) for (const state of states) if (!c.stock.includes(state)) c.stock.push(state);
-  if (take(/ non critical(?: equipment)? /)) c.critical = false;
-  if (take(/ (?:marked |flagged )?critical(?: equipment)? /)) { if (c.critical === false) return null; c.critical = true; }
+  // Attention is a low/out union only without a more specific stock predicate.
+  if (attention && c.stock.includes('in_stock')) return null;
+  if (attention && !c.stock.length) c.stock.push('low', 'out');
+  if (take(/ non (?:critical|important|essential|life support)(?: equipment)? /)) c.critical = false;
+  if (take(/ (?:marked |flagged )?(?:critical|important|essential|life support)(?: equipment)? /)) { if (c.critical === false) return null; c.critical = true; }
   if (!c.category) for (const name of [...(hints.categories || [])].sort((a, b) => b.length - a.length)) {
     // "wound-care items": a recorded category name used as an adjective before a head noun.
     const found = new RegExp(` (?:in |from )?(?:the )?${looseName(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} (?=(?:category |section )?(?:items?|supplies|products|stock|equipment|ones) )`).exec(s);
@@ -277,20 +284,29 @@ export function parsePlan(text: string, hints: Hints = {}): Plan | null {
   const declaredNames = [...q.matchAll(/ (?:(?:that are |which are )?supplied by|(?:from|by|with) (?:the )?(?:supplier|vendor)(?: named| called)?|(?:with|of|from) (?:the )?brand(?: name)?|(?:in|from|under) (?:the )?category(?: of| called| named)?) (.+?)(?= \| |$)/g)]
     .map(match => match[1].trim()).filter(value => !/\b(?:and|or|plus|also|that are|which are|with quantity|having quantity)\b/.test(value));
   const protectedNames = [...new Set([...(hints.names || []), ...(hints.categories || []), ...declaredNames].map(looseName))]
-    .filter(n => /\b(?:and|or|plus)\b/.test(n) || numberWord.test(n)).sort((a, b) => b.length - a.length);
+    .filter(n => /\b(?:and|or|plus|cheyck|imprtant|tha|atatntion)\b/.test(n) || numberWord.test(n)).sort((a, b) => b.length - a.length);
   protectedNames.forEach((name, index) => { q = q.split(` ${name} `).join(` zzname${index}zz `); });
   const restore = (value: string) => value.replace(/zzname(\d+)zz/g, (_, i) => protectedNames[Number(i)]).trim();
-  q = spokenNumbers(q);
+  q = spokenNumbers(canonicalFilterWords(q));
   // Courtesy belongs to the whole utterance, not to one list condition. Strip
   // only complete leading wrappers so an understood union cannot fall through
   // to the v2 suffix grammar and become an intersection.
   q = q.replace(/^ (?:(?:please|can you|could you|would you)(?: please)? )+/, ' ');
+  q = q.replace(/^ (?:check|see|find out) (?:if|whether) there (?:is|are) /, ' show ');
   if (/\b(?:yesterday|tomorrow|last (?:week|month|year|time)|next (?:week|month|year)|history|historical|bought|sold|used|usage|consumption|forecast|expir\w*|prescribe|dosage|price|cost|spend|budget|apply|receive|received|send|delete|save|persist|commit|confirm)\b/.test(q)) return null;
   if (/\b(?:not|never|don't|dont|isn't|aren't|cannot|can't|instead|unless|if)\b/.test(q.replace(/\b(?:not including|but not|not more than|not less than)\b/g, ' '))) return null;
   // Protect names that contain a separator, compound stock states and ranges before splitting.
   q = q.replace(/ (?:running )?low(?: on| in)?(?: stock)? (?:or|and|and or) out of stock /g, ' lowout ').replace(/ out of stock (?:or|and|and or) (?:running )?low(?: on| in)?(?: stock)? /g, ' lowout ')
     .replace(/ between (\d+) and (\d+) /g, ' between $1 to $2 ')
     .replace(/ (?=(?:excluding|except|other than|apart from|but not|not including|sorted|sort by|(?:prepare|create|make|put together|draft) (?:(?:an?|the|my) )?(?:purchase |unsaved |new )?(?:order|draft))\b)/g, ' | ');
+  // A shared predicate keeps the same item set: 'critical items ... and are low'
+  // is an intersection; 'critical items and low-stock items' stays a list union.
+  // Do not rewrite a possibly opaque supplier/brand/category or spoken item name.
+  // Leave those tails unchanged for name resolution or strict online interpretation.
+  if (!/\b(?:supplier|vendor|brand|category|supplied by)\b/.test(q) &&
+      !new RegExp(`\\b\\d+ (?:${UNIT_WORDS})\\b`).test(q)) {
+    q = q.replace(/ and (?=(?:(?:that|which) )?(?:is|are|has|have|needs?|requires?) )/g, ' ');
+  }
   const segments: { text: string; cue: 'include' | 'and' | 'start' }[] = [];
   for (const part of q.split('|')) {
     part.split(/ (?=(?:and also|plus|as well as|along with|and|or) )/).forEach((piece, index) => {

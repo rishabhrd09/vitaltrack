@@ -43,6 +43,7 @@ export default function AssistantDock(p: Props) {
       </TouchableOpacity>
     </View>}
     <View style={styles.row}>
+      <View style={styles.sideSlot} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
       <TouchableOpacity accessibilityRole="button" accessibilityLabel={p.recording ? (p.standalone ? 'Finish recording' : 'Stop recording and review transcript') : (p.standalone ? 'Start recording' : 'Start voice recording')}
         accessibilityHint="Tap to start; tap again to finish and review."
         accessibilityState={{ disabled: p.disabled, selected: p.recording }} disabled={p.disabled} onPress={p.onMic} style={styles.entry}>
@@ -52,34 +53,38 @@ export default function AssistantDock(p: Props) {
             <Ionicons name="mic" size={22} color={p.recording ? colors.white : colors.accentBlue} />
           </View>
         </View>
-        <Text style={[styles.name, { color: colors.textSecondary }]}>Ask Care Coach</Text>
+        <Text style={[styles.name, { color: colors.textPrimary }]}>Ask CareKosh</Text>
       </TouchableOpacity>
+      <View style={styles.sideSlot}>
+        {!p.recording && !p.busy && !p.review && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Type a question here" onPress={p.onType} style={styles.smallButton}>
+          <Ionicons name="create-outline" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>}
+        {(p.recording || !!p.busy || p.review) && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Dismiss voice input" onPress={p.onClose} style={styles.smallButton}>
+          <Ionicons name="close" size={19} color={colors.textSecondary} />
+        </TouchableOpacity>}
+      </View>
+    </View>
       {(p.recording || !!p.busy) ? <View style={styles.live}>
         {!!p.busy && <ActivityIndicator size="small" color={colors.accentBlue} />}
         <ScrollView ref={liveScroll} style={{ maxHeight: 100 }} onContentSizeChange={() => liveScroll.current?.scrollToEnd({ animated: !reduceMotion })}>
           {/* No live announcements while the microphone records: TalkBack speech would be recorded too. */}
           <Text accessibilityLiveRegion={p.recording ? 'none' : 'polite'} style={[styles.words, { color: p.live && p.recording ? colors.textPrimary : colors.textSecondary }]}>{p.recording && p.live ? p.live : status}</Text>
         </ScrollView>
-      </View> : <View style={{ flex: 1 }} />}
-      {!p.recording && !p.busy && !p.review && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Type a question here" onPress={p.onType} style={styles.smallButton}>
-        <Ionicons name="create-outline" size={20} color={colors.textTertiary} />
-      </TouchableOpacity>}
-      {(p.recording || !!p.busy || p.review) && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Dismiss voice input" onPress={p.onClose} style={styles.smallButton}>
-        <Ionicons name="close" size={19} color={colors.textSecondary} />
-      </TouchableOpacity>}
-    </View>
+      </View> : null}
   </View>;
 }
 
 const styles = StyleSheet.create({
-  dock: { paddingHorizontal: 14, paddingVertical: 8, gap: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  dock: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, borderTopWidth: StyleSheet.hairlineWidth },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  entry: { alignItems: 'center', justifyContent: 'center', minWidth: 72, gap: 2 },
-  micWrap: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  mic: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  halo: { position: 'absolute', width: 48, height: 48, borderRadius: 24 },
-  name: { fontSize: 10, fontWeight: '500' }, live: { flex: 1, minWidth: 0, flexDirection: 'row', gap: 8, alignItems: 'center' },
-  words: { fontSize: 15, lineHeight: 22 }, smallButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  sideSlot: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  entry: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  micWrap: { width: 60, height: 60, alignItems: 'center', justifyContent: 'center' },
+  mic: { width: 50, height: 50, borderRadius: 25, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  halo: { position: 'absolute', width: 60, height: 60, borderRadius: 30 },
+  name: { fontSize: 12, lineHeight: 17, fontWeight: '600', textAlign: 'center' },
+  live: { minWidth: 0, flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 8 },
+  words: { fontSize: 15, lineHeight: 22, textAlign: 'center' }, smallButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   composer: { flexDirection: 'row', alignItems: 'flex-end', borderWidth: 1, borderRadius: 18, padding: 8, gap: 8 },
   input: { flex: 1, minWidth: 0, minHeight: 40, maxHeight: 132, fontSize: 16, lineHeight: 23, paddingHorizontal: 5, paddingVertical: 8, textAlignVertical: 'top' },
   send: { minWidth: 44, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },

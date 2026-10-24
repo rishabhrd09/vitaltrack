@@ -20,7 +20,7 @@ It also records what was changed on 13 October 2026, the evidence for each chang
 
 | Question | Decision | Why |
 |---|---|---|
-| Ready for **staging testing**? | **Use the current follow-up results in §15 before deployment.** | Earlier 458-backend/344-mobile results describe the 13 October candidate. The 15 October implementation and independent-review repairs remain uncommitted. Use an operator-owned Sarvam key for the pilot; deploy the reviewed backend before testing its cloud changes. Contract 3 adds no route/migration; the earlier Sarvam implementation still requires migration 0011. |
+| Ready for **staging testing**? | **Use the current follow-up results in §16 before deployment.** | Earlier dated counts describe their original candidates. Section 16 records the current reviewed follow-up after `973d2e9`. Deploy the reviewed backend and new APK for staging acceptance; Sarvam retains its existing key/consent configuration. No route or migration is added by this follow-up. |
 | Ready for **production**? | **No, pending live acceptance and operator setup.** | Verify the new APK on the OnePlus, real Groq interpretation and real Sarvam decoding/playback, plus the production deployment/privacy controls. Public third-party personal-key use needs a permitted provider arrangement (§4.3). Alba remains a separate experimental gate; keeping it paused does not block verified device/Sarvam speech. |
 
 **Status note (15 October 2026).** The first implementation of V-8 … V-45 is recorded in [§14](#14-october-follow-up-audit-and-fixes). Independent verification then found regressions despite passing suites. The repairs, remaining limits and fresh checks are in [§15](#15-independent-verification-follow-up). Nothing has been committed, pushed or deployed. Alba and Kokoro remain diagnostics-only; Sarvam still needs the operator's staging configuration.
@@ -621,3 +621,53 @@ The first scratch-only backend run lacked the copied mobile source and skipped i
 - Alba/Kokoro host generation is narrower evidence than audible Android playback. Keep both diagnostic gates off for normal users until device acceptance.
 - Moonshine's English OOV pronunciation-model licence still needs an applicable rights decision before broader Kokoro distribution. The report did not establish a separate grant. No model, voice or licence was silently replaced.
 - Per-worker soft rate counters and configured provider estimates are not a distributed abuse-control guarantee or a provider invoice cap. Render's actual proxy/header/deployment settings were not accessed.
+
+## 16. Query, presentation and order recovery follow-up — 24 October 2026
+
+**24 October 2026 — reviewed for feature-branch publication after `973d2e9`.** This follow-up addresses the owner's Nord 4 screenshots and reviewed query. Publishing the source does not deploy the backend or build an APK. Earlier dated measurements keep their original scope.
+
+### 16.1 Reported query and faithful interpretation
+
+“Please check if there is any important item that needs attention and is low in stock?” now produces one group: **critical equipment AND low stock**. “Important”, “essential” and “life-support” use the existing item rule: marked critical or a matching equipment name. Applied filters expose that meaning; the assistant does not invent a medical importance score.
+
+The local parser and Groq prompt/grounding now agree on repeated predicates such as “and is low”. “Needs attention” alone means low or out of stock; an explicit low-stock predicate narrows it to low only. Separate lists remain unions. The reported `cheyck`, `imprtant`, `tha` and `atatntion` spellings have four bounded filter-word aliases. Copied item, supplier, brand and category names are protected; this is not general autocorrection.
+
+An additional regression fixed “all in-stock items” losing its stock condition. Natural order-priority wording uses current stock and recorded minimums; it does not forecast demand. Unsupported conditions still require clarification or interpretation. Server checks refuse dropped conditions, broadened stock states, incorrect grouping and rewritten names. No contract version, model, mutation tool or endpoint was added.
+
+### 16.2 Presentation and data consistency
+
+- **Brand and entry:** the dock says **Ask CareKosh**, with equal side slots centering the microphone. The answer header says **CareKosh**. It remains an ordinary view inside the app window, with existing microphone consent, transcript review, cancellation and narration callbacks.
+- **Answers:** a distinct summary panel, compact metric cards, applied filters, responsive item cards and explicitly labelled stock/order quantities replace the dense presentation. Item details expand in place. Short draft counts are shown first; the complete explanation is still available. Known-saved and uncertain submissions keep their truthful status.
+- **Create Order:** item identity, supplier/brand, current/minimum stock and editable quantity have separate rows. Long names and units wrap. Suggested/requested/edited provenance is separate from stock. Editing and add/remove actions lock while submitting or retaining an uncertain request.
+- **Emergency backup:** rows and count use the existing critical/stock criteria. The dashboard now opens `mode=emergency`; its initialization selects active critical equipment with quantity at most one, rather than including unrelated out-of-stock items. Existing drafts require an explicit Keep, Replace or Add missing choice; submitted attempts cannot be overwritten.
+- **Order history:** readable status and item rows, responsive actions and a header New order action replace the floating button that could cover another action. Existing receive, stock-update, export and removal confirmations retain their callbacks.
+
+### 16.3 “Checking / saving…”: evidence and recovery
+
+The screenshots show an order later present in Recent Orders and a Re-export saved order button. They establish that saving succeeded in that attempt; they do **not** identify the exact native operation that stalled on the phone.
+
+The code had one busy message across capability checks, fresh stock retrieval, saving, PDF generation and sharing. Native photo preparation, printing and file-copy waits were unbounded. A slow-save global success dialog could also overlap the subsequent native PDF/share flow.
+
+The screen now owns its feedback and exposes each stage separately. PDF photo preparation is bounded at 30 seconds, rendering at 45 seconds, file copy at eight seconds and sharing availability at five seconds. A failed copy can use the original generated file. The interactive share chooser has no short timeout. Leaving cancels the app's wait; underlying native work may finish later, but late results cannot start a new share step.
+
+An uncertain save retains the original request and submission ID through retries, including a later rejection. Only a definitive rejection of a newly started first submission can unlock it. Save and PDF completions must still belong to the exact captured request before publishing a saved result, starting another export step or clearing a draft. A late response from an earlier order cannot mark or remove a newer draft. A saved order remains available for re-export without another POST. An explicit Done action clears only the confirmed-saved local draft and returns to Orders; an unknown outcome is never cleared by that action. Stock is not increased by creating an order or exporting its PDF.
+
+### 16.4 Verification and remaining acceptance
+
+Fresh checks use synthetic data and mocked providers. The backend runs against two disposable PostgreSQL 16 databases with Python 3.12 and `ENVIRONMENT=testing`; external network connections are blocked. No live business database, provider credits, EAS build or deployment is used.
+
+| Check | Result |
+|---|---|
+| Mobile full suite | **453 passed**, no failures or skips; includes typed/reviewed exact-query, draft, listener, Sarvam, microphone, second-question, order and PDF regressions. |
+| Mobile TypeScript / ESLint | Clean types; zero lint errors, one existing `app/builder.tsx:118` hook warning. |
+| Backend, model-created schema | **671 passed** on disposable PostgreSQL 16 with Python 3.12.13. |
+| Backend, all Alembic migrations | **671 passed** on a separate disposable PostgreSQL 16 database. The test cluster is stopped. |
+| Backend Ruff / route gate | Clean `app/ tests/ unit_tests/`; **47** API route objects, unchanged. |
+| Regular-preview Android JS export | Fresh Metro/Hermes export passed with staging API and Whistle enabled. No EAS/Gradle APK build was run. |
+| Independent order review | Focused order, API and mutation checks pass, including late abandoned-request rejection, saved-only Done, and exact-request checks on late save/PDF completion. The final full-suite results include these regressions. |
+| Browser layout check | Nine synthetic component previews; no horizontal page overflow at tested 393px and 320px/large-text widths. Mic center: **196.5px** in a **393px** view. |
+| Documentation | Four HTML companions regenerated; strict current-guide check passes. The full working-tree scan also reports unrelated non-guide HTML warnings; that unpublished work is excluded from this change. |
+
+Browser previews use the actual component render trees and styles with synthetic data through React Native Web. Icons and native input/share surfaces are approximated; these are layout checks, not Android screenshots or proof of native PDF/audio behavior. The microphone's center measured exactly half the 393-pixel preview width. Narrow 320-pixel and large-text layouts are checked alongside light/dark answer presentation.
+
+No Render variable, API key, database migration or native listener change is needed. Deploy the reviewed backend for the updated cloud interpretation checks and build the ordinary `preview` APK for app changes. Live Groq accuracy, Sarvam playback, the native Android PDF/share chooser and Nord 4 behavior remain device/staging acceptance checks. Test the exact reported query, emergency count/action agreement, an existing draft conflict, PDF failure/re-export, a saved-order Done action, and a second microphone question before release.

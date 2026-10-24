@@ -21,7 +21,7 @@ from pydantic import SecretStr, ValidationError
 from app.core.config import settings
 from app.schemas.ai import Intent, Plan, Specification
 from app.services import sarvam_speech
-from app.services.ai_plan_grounding import numeric_text, require_complete_plan, require_lexical_constraints, require_representable_numbers, require_v1_conditions, require_v2_conditions
+from app.services.ai_plan_grounding import critical_values, numeric_text, require_complete_plan, require_lexical_constraints, require_representable_numbers, require_v1_conditions, require_v2_conditions
 
 SYSTEM = """Convert a CareKosh inventory question into exactly one allowed intent.
 You have NO inventory and must NEVER answer with facts. No tool calls.
@@ -201,17 +201,25 @@ below_minimum); quantity (0-2 comparisons forming one range, values copied from 
 'less than 3'/'below 3'/'under 3' => lt 3; 'at most 3'/'3 or fewer'/'up to 3' => lte 3;
 'exactly 3'/'with 3 left' => eq 3; 'at least 3'/'3 or more' => gte 3; 'more than 3'/'over 3'
 => gt 3; 'between 2 and 5' => gte 2 and lte 5); critical (true for critical items or critical
-equipment, false for non-critical, else null); category, supplier, brand (recorded names
+equipment; 'important', 'essential' and 'life-support' items use that same critical-equipment
+filter (the phone labels its existing marked/name-based rule); false for non-critical, else
+null); category, supplier, brand (recorded names
 copied verbatim); missing_supplier. Unused fields are [] / null / false.
 'and', 'plus' or 'also' joining two lists means two groups (union). 'that are'/'which are'
-inside one noun phrase means one group (AND): 'critical items that are low or out of stock'
+inside one noun phrase, including repeated predicates ('and are', 'and have'), means one
+group (AND): 'critical items that are low or out of stock'
 => one group critical=true, stock=[low,out]. 'Low or out of stock' => stock=[low,out].
+'Important items that need attention and are low in stock' => critical=true, stock=[low];
+the explicit low-stock predicate narrows attention. 'Needs attention' alone means low/out.
+Obvious filter-word typos cheyck/check, imprtant/important, tha/that and atatntion/attention
+are supported. Never correct a copied item/category/supplier/brand name.
 Exclusions ('excluding X', 'except X', 'other than X', 'not including X') go only in
 exclude groups. scope=previous only for a follow-up about the list just shown ('only the
 critical ones', 'exclude masks', 'sort them', 'create a draft from those'); else inventory.
 sort: 'alphabetically'/'by name' => name; 'lowest quantity first' => quantity_asc; 'highest
 first' => quantity_desc; 'largest shortfall' => shortfall; 'what should I order now', 'most
-urgent' or 'order priority' => stock=[low,out] with sort=priority; otherwise none.
+urgent' or 'order priority' => sort=priority and stock=[low,out] only if no explicit stock
+filter was supplied. Keep explicit low/out/in-stock filters unchanged when sorting; else none.
 inventory_query: selection set, draft=null. draft_order prepares a LOCAL UNSAVED draft:
 draft.mode new (fresh draft) or edit (change an explicitly existing draft). draft.lines are
 explicit quantities (set replaces a draft quantity, add adds more, remove deletes a line);
@@ -315,7 +323,7 @@ def ground_plan(plan: Plan, question: str, has_previous: bool) -> None:
             names = [n for n in [*group.item_queries, group.category, group.supplier, group.brand] if n is not None]
             if any(not grounded(name) for name in names):
                 raise ValueError()
-            if group.critical is not None and not re.search(r"\bcritical\b", text):
+            if group.critical is not None and group.critical not in critical_values(text):
                 raise ValueError()
             if group.missing_supplier and not re.search(r"\b(?:supplier|suppliers|vendor)\b", text):
                 raise ValueError()

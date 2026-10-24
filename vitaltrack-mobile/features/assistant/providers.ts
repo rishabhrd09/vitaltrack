@@ -160,7 +160,7 @@ export function minimumInterpretContract(question: string): 1 | 2 | 3 {
   const q = question.toLowerCase().replace(/[–—-]/g, ' ');
   const draft = /\b(?:draft|order)\b/.test(q);
   const comparison = /[<>≤≥]|\b(?:less|fewer|greater|more|lower|higher) than\b|\b(?:at (?:least|most)|no (?:more|less) than|not (?:more|less) than|exactly|equal(?:s| to)?|between|under|above|over)\b|\bbelow\b(?! (?:their |the )?minimum)/.test(q);
-  const advanced = comparison || /\b(?:critical|priority|urgent|urgently|immediately|shortfall|excluding|exclude|except|apart from|other than|leave out|leaving out|omit|skip|not|never|don't)\b/.test(q);
+  const advanced = comparison || /\b(?:critical|important|imprtant|essential|life support|priority|urgent|urgently|immediately|shortfall|excluding|exclude|except|apart from|other than|leave out|leaving out|omit|skip|not|never|don't)\b/.test(q);
   const filteredDraft = draft && /\b(?:category|categories|supplier|supplied|brand|wound care|(?:from|for|with) (?:those|these|them|the list|the results)|previous|shown|results)\b/.test(q);
   const groupedFilters = /\b(?:and|or|plus|also|as well as)\b/.test(q) && /\b(?:category|categories|supplier|brand)\b/.test(q);
   if (advanced || filteredDraft || groupedFilters) return 3;

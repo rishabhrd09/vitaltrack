@@ -64,6 +64,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <main id="content">
 <h1 id="inventory-answers-and-voice-prepared-order-drafts">Inventory answers and voice-prepared order drafts</h1>
 <blockquote>
+<p><strong>24 October 2026 — query, UI and order recovery follow-up.</strong> The centered <strong>Ask CareKosh</strong> entry, responsive answer/order cards and emergency selection are updated. Important equipment and low-stock predicates remain one intersection; save/PDF progress and recovery are separate. These changes are reviewed for staging; deployment and phone acceptance remain separate. See <a href="AI_VOICE_END_TO_END_REVIEW.html#16-query-presentation-and-order-recovery-follow-up--24-october-2026">verification and remaining phone checks</a>. Earlier dated evidence retains its original scope.</p>
 <p><strong>24 October 2026 — Whistle in regular preview.</strong> Whistle is a separately selected, English-only offline transcription option in the regular <code>preview</code> APK and the diagnostic APK. Moonshine remains the default; understanding and narration retain their existing settings. Regular preview keeps Alba and Kokoro paused. See <a href="WHISTLE_OFFLINE_LISTENER.html">Whistle setup, privacy controls and device checks</a>. Earlier dated evidence below retains its original scope.</p>
 <p><strong>Update — 13 October 2026.</strong>
 - <strong>Contract 3.</strong> Multi-part requests now use a negotiated contract version 3. It covers quantity comparisons, critical equipment, exclusions, sorting, follow-ups and drafts from a filtered list. Every row in an answer gives its reason. The phone runs these requests itself, without Groq, whenever its grammar covers them.
@@ -88,7 +89,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <tr>
 <td>Application</td>
 <td>React Native 0.81.5, Expo SDK 54, TypeScript, Expo Router</td>
-<td>Native assistant dock, editable transcript, answer layer and Voice setup. Other app screens keep their existing design.</td>
+<td>Native assistant dock, editable transcript, answer layer and Voice setup. Order review and emergency cards use the same responsive stock data presentation.</td>
 </tr>
 <tr>
 <td>Permission/audio mode</td>
@@ -107,7 +108,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Final recognition</td>
-<td>Moonshine by default; optionally Groq <code>whisper-large-v3</code></td>
+<td>Moonshine by default; experimental Whistle in preview; optionally Groq <code>whisper-large-v3</code></td>
 <td>Offline mode decodes/transcribes locally. Online mode uploads the finished take through CareKosh after separate audio opt-in. Recognition produces words, not an inventory action.</td>
 </tr>
 <tr>
@@ -147,7 +148,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 </tbody>
 </table></div>
-<p>Sarvam English narration is selectable after backend configuration and separate answer-text consent. Sarvam transcription, hosted Kokoro and legacy Piper/Alba remain unselected alternatives; downloaded Pocket/Alba selection is paused. Listening remains offline Moonshine or opted-in Groq. This runtime does not use LangChain, LangGraph, a vector database, RAG, EmbeddingGemma, a multi-agent system or an autonomous planning loop. Sarvam now generates optional speech; it does not recognize or interpret the user's request.</p>
+<p>Sarvam English narration is selectable after backend configuration and separate answer-text consent. Sarvam transcription, hosted Kokoro and legacy Piper/Alba remain unselected alternatives; downloaded Pocket/Alba selection is paused. Listening remains Moonshine by default, explicitly selected Whistle in preview, or opted-in Groq. This runtime does not use LangChain, LangGraph, a vector database, RAG, EmbeddingGemma, a multi-agent system or an autonomous planning loop. Sarvam now generates optional speech; it does not recognize or interpret the user's request.</p>
 <h3 id="spoken-output--sarvam-integration-11-october">Spoken output — Sarvam integration, 11 October<a class="anchor" href="#spoken-output--sarvam-integration-11-october" aria-label="Link to this section">#</a></h3>
 <p>The default remains Android device English TTS. Optional Sarvam narration sends at most 640 characters of verified answer text to the authenticated backend, which owns the private API key, model and English speaker. Default: <code>bulbul:v3</code> / <code>ritu</code>; optional latest <code>bulbul:v4-flash</code> / <code>aparna_en_companion</code> after account pricing/access review. The phone waits for complete WAV generation and actual player completion.
 - <strong>Fallback (13 October update):</strong> no provider is switched automatically. Instead there is an <a href="SARVAM_ENGLISH_VOICE.html#optional-offline-fallback--13-october-2026">optional offline fallback</a>, off by default. If the user chose and previewed an offline voice, a Sarvam failure before any audio leads that voice to read the same answer once. It never sends a second request and never switches key source. See the <a href="SARVAM_ENGLISH_VOICE.html">complete Sarvam setup and live acceptance checklist</a>.
@@ -319,7 +320,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <p>Optional cloud interpretation still writes consent/usage metadata (<code>ai_consents</code>, <code>ai_usage</code>). “No inventory/order writes from voice” does not mean zero database writes of every kind.</p>
 <h2 id="end-to-end-flow">End-to-end flow<a class="anchor" href="#end-to-end-flow" aria-label="Link to this section">#</a></h2>
 <ol>
-<li>Tap the small <strong>Ask Care Coach</strong> microphone on the current tab. It glows while recording. The new Android module uses one <code>AudioRecord</code> (mono PCM16, 16 kHz, voice-recognition source) to feed a temporary WAV and local Moonshine streaming captions. Words beside the mic are genuine provisional recognition results and may be revised; they are not simulated typing. Tap again to finish (28-second native sample/wall-clock limit).</li>
+<li>Tap the centered <strong>Ask CareKosh</strong> microphone on the current tab. It glows while recording. The new Android module uses one <code>AudioRecord</code> (mono PCM16, 16 kHz, voice-recognition source) to feed a temporary WAV and local Moonshine streaming captions. Words beside the mic are genuine provisional recognition results and may be revised; they are not simulated typing. Tap again to finish (28-second native sample/wall-clock limit).</li>
 <li>With the downloaded speech pack, Moonshine Small Streaming English supplies live captions and the final offline transcript by default. Without the pack, selected/consented online listening can still record, but live words are unavailable and only the final online transcript appears after stopping. Older native modules retain the Expo AAC/M4A capture path until a new APK is installed. Separately opted-in Groq online listening sends the finished recording through <code>/ai/transcribe</code> to Whisper. The temporary audio is deleted on completion/failure; no interpretation or draft is started automatically. Narration is independently selected: Android device TTS by default, or consented online Sarvam English. Alba selection is paused.</li>
 <li>Review/edit the transcript, then tap <strong>Send</strong>. No question is interpreted or drafted before Send.</li>
 <li>Familiar wording uses the local parsers. Otherwise, explicitly consented Groq understanding sends reviewed text through authenticated <code>/ai/interpret</code>. Text understanding uploads no inventory list or recording. Online listening is a separate option requiring <code>groq_audio</code> consent and a fresh local <code>audioOptIn</code> choice.</li>

@@ -353,3 +353,61 @@ test('courteous draft endings cannot become an unresolved partial item name', ()
   assert.equal(exact.draft.lines[0].quantity, 20);
   assert.deepEqual(plain(drafts.prepareDraft(exact, [item('named', 'Gloves for me', 2)], []).map(row => [row.item.id, row.quantity])), [['named', 20]]);
 });
+
+
+test('important-equipment questions retain low-stock AND semantics, including the reported filter typos', () => {
+  for (const question of [
+    'Please check if there is any important item that needs attention and is low in stock?',
+    'please cheyck if there is any imprtant item tha needs atatntion and is low in stock ?',
+    'Show essential items that need attention and are low in stock',
+    'Show life-support items that are low in stock',
+  ]) {
+    const p = route(question);
+    assert.equal(p.version, 3, question);
+    assert.equal(p.selection.any_of.length, 1, question);
+    assert.equal(p.selection.any_of[0].critical, true, question);
+    assert.deepEqual(plain(p.selection.any_of[0].stock), ['low'], question);
+    assert.deepEqual(ids(run(p.selection).rows), ['a'], question);
+    assert.match(selection.describeSelection(p.selection), /critical equipment/);
+  }
+  const both = route('Show critical items that are low and have quantity less than 3');
+  assert.equal(both.selection.any_of.length, 1);
+  assert.deepEqual(plain(both.selection.any_of[0].quantity), [{ op: 'lt', value: 3 }]);
+  assert.deepEqual(ids(run(both.selection).rows), ['a']);
+  const union = route('Show important items and low-stock items');
+  assert.equal(union.selection.any_of.length, 2);
+  assert.deepEqual(ids(run(union.selection).rows), ['g', 'a', 'v', 'y']);
+});
+
+test('attention is narrowed by a specific stock predicate; in-stock wording is never discarded', () => {
+  assert.deepEqual(ids(run(route('Show items that need attention').selection).rows), ['g', 'm', 'a', 'y']);
+  assert.deepEqual(ids(run(route('Show all in-stock items').selection).rows), ['s', 'v', 'z']);
+  assert.deepEqual(ids(run(route('Show all well-stocked items').selection).rows), ['s', 'v', 'z']);
+  for (const text of ['Show important items that need attention and are in stock',
+    'Show important items that are low in stock and expiring next month',
+    'Show impotrant items that are low in stock']) {
+    const p = route(text);
+    assert.ok(!p || ['clarify', 'unsupported_action'].includes(p.intent), text);
+  }
+});
+
+test('filter-word correction never rewrites an exact copied name', () => {
+  assert.equal(queries.routeLocally('Show imprtant', ['imprtant']).item_query, 'imprtant');
+  const named = queries.routeLocally('Prepare an order draft for two units of imprtant', ['imprtant']);
+  const upgraded = contracts.toPlan(named);
+  assert.equal(upgraded.draft.lines[0].item_query, 'imprtant');
+  const supplier = route('Show all items from supplier imprtant supplies');
+  assert.equal(supplier.selection.any_of[0].supplier, 'imprtant supplies');
+  assert.equal(supplier.selection.any_of[0].critical, null);
+  const opaqueSupplier = queries.routeLocally('Show all items from supplier Smith and Are Co', []);
+  assert.equal(contracts.toPlan(opaqueSupplier).selection.any_of[0].supplier, 'smith and are co');
+  const opaque = queries.routeLocally('Prepare an order draft for two units of Filter and Are Co', ['Filter and Are Co', 'Filter Are Co']);
+  assert.equal(contracts.toPlan(opaque).draft.lines[0].item_query, 'filter and are co');
+});
+
+test('a natural order-priority request uses transparent current-stock rules and never saves', () => {
+  const p = route('Please help me in finding out potential stocks which I should order now immediately');
+  assert.equal(p.intent, 'inventory_query'); assert.equal(p.selection.sort, 'priority');
+  assert.deepEqual(ids(run(p.selection).rows), ['m', 'a', 'g', 'y']);
+  assert.equal(p.draft, null);
+});

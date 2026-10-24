@@ -288,7 +288,7 @@ export function useDeleteCategory() {
 
 // ─── Orders ───
 
-export function useCreateOrder() {
+export function useCreateOrder({ feedback = 'default' }: { feedback?: 'default' | 'screen' } = {}) {
   const qc = useQueryClient();
   return useMutation<SavedOrder, unknown, CreateOrderRequest, MutationContext>({
     mutationKey: ['order-create'],
@@ -298,6 +298,9 @@ export function useCreateOrder() {
     onSuccess: (data, _variables, context) => {
       qc.invalidateQueries({ queryKey: queryKeys.orders });
       qc.invalidateQueries({ queryKey: queryKeys.activities });
+      // The review screen owns save + PDF progress. A second native dialog here
+      // can cover its export/share sheet immediately after a slow save.
+      if (feedback === 'screen') return;
       const orderId =
         (data as any).orderId ||
         (data as any).order_id ||
@@ -310,6 +313,7 @@ export function useCreateOrder() {
       });
     },
     onError: (error, variables, context) => {
+      if (feedback === 'screen') return;
       dispatchMutationFailure({
         name: 'Order',
         action: 'create',
