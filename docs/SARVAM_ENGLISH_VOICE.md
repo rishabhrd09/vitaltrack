@@ -1,6 +1,6 @@
 # Sarvam English narration in CareKosh
 
-> **23 October 2026 — diagnostic listener experiment.** Whistle is a separately selected, English-only offline transcription option in the diagnostic APK. Moonshine remains the default; understanding and narration retain their existing settings. See [Whistle setup, privacy controls and device checks](WHISTLE_OFFLINE_LISTENER.md). Earlier dated evidence below retains its original scope.
+> **24 October 2026 — Whistle in regular preview.** Whistle is a separately selected, English-only offline transcription option in the regular `preview` APK and the diagnostic APK. Moonshine remains the default; understanding and narration retain their existing settings. Regular preview keeps Alba and Kokoro paused. See [Whistle setup, privacy controls and device checks](WHISTLE_OFFLINE_LISTENER.md). Earlier dated evidence below retains its original scope.
 
 Source/configuration review: **13 October 2026**, rechecking the 11 October implementation. This guide describes the current local implementation, not a completed Render deployment or a passed OnePlus audio test. No real Sarvam key or paid inference was used in the automated checks.
 

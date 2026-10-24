@@ -64,7 +64,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <main id="content">
 <h1 id="sarvam-english-narration-in-carekosh">Sarvam English narration in CareKosh</h1>
 <blockquote>
-<p><strong>23 October 2026 — diagnostic listener experiment.</strong> Whistle is a separately selected, English-only offline transcription option in the diagnostic APK. Moonshine remains the default; understanding and narration retain their existing settings. See <a href="WHISTLE_OFFLINE_LISTENER.html">Whistle setup, privacy controls and device checks</a>. Earlier dated evidence below retains its original scope.</p>
+<p><strong>24 October 2026 — Whistle in regular preview.</strong> Whistle is a separately selected, English-only offline transcription option in the regular <code>preview</code> APK and the diagnostic APK. Moonshine remains the default; understanding and narration retain their existing settings. Regular preview keeps Alba and Kokoro paused. See <a href="WHISTLE_OFFLINE_LISTENER.html">Whistle setup, privacy controls and device checks</a>. Earlier dated evidence below retains its original scope.</p>
 </blockquote>
 <p>Source/configuration review: <strong>13 October 2026</strong>, rechecking the 11 October implementation. This guide describes the current local implementation, not a completed Render deployment or a passed OnePlus audio test. No real Sarvam key or paid inference was used in the automated checks.</p>
 <h2 id="current-choices">Current choices<a class="anchor" href="#current-choices" aria-label="Link to this section">#</a></h2>
@@ -477,7 +477,7 @@ eas build --profile preview --platform android
 </tbody>
 </table></div>
 <p>Microphone capture, Moonshine native inference, Groq interpretation, draft construction, order confirmation and PDF utilities are separate existing modules. No new native library or Python speech-generation server is introduced. Migration 0011 adds encrypted personal-key storage and usage billing-source metadata; no mobile API-key storage is introduced. Registered routes now total 50 operations (47 under /api/v1), and there are 12 application tables plus alembic_version.</p>
-<footer>Generated 2026-10-23 by <code>docs/tools/build_docs.py</code> from <code>docs/SARVAM_ENGLISH_VOICE.md</code>.</footer>
+<footer>Generated 2026-10-24 by <code>docs/tools/build_docs.py</code> from <code>docs/SARVAM_ENGLISH_VOICE.md</code>.</footer>
 </main>
 </div>
 <script>

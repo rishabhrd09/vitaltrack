@@ -22,7 +22,7 @@ export type ServerStatus = { state: 'checking' | 'loaded' | 'failed'; reason?: s
 export type Environment = {
   supported: boolean;
   model: { checked: boolean; ready: boolean };
-  /** Experimental listener, diagnostics builds only. Never changes the chosen speaker. */
+  /** Experimental listener, preview builds only. Never changes the chosen speaker. */
   whistle?: { checked: boolean; ready: boolean; supported: boolean; telemetryDisabled: boolean; reason?: string };
   /** `checked: false` while Android text-to-speech is still starting. */
   deviceVoice: { ready: boolean; checked?: boolean };
@@ -86,7 +86,7 @@ export function listeners(env: Environment): Provider<ListenerId>[] {
       : { readiness: 'needs_download', detail: 'Download the English speech pack once.' }) };
   const whistleEnv = env.whistle;
   const whistle: Provider<ListenerId> = { id: 'whistle', label: 'Whistle · experimental offline', online: false,
-    ...(!env.supported || !whistleEnv?.supported ? { readiness: 'unavailable', detail: whistleEnv?.reason || 'Needs the latest Android ARM64 diagnostic APK.' }
+    ...(!env.supported || !whistleEnv?.supported ? { readiness: 'unavailable', detail: whistleEnv?.reason || 'Needs the latest Android ARM64 preview APK.' }
       : !whistleEnv.checked ? { readiness: 'checking', detail: 'Checking Whistle and its telemetry controls…' }
       : !whistleEnv.telemetryDisabled ? { readiness: 'unavailable', detail: 'Whistle is blocked because telemetry could not be disabled.' }
       : whistleEnv.ready ? { readiness: 'ready', detail: 'Recognizes the finished recording on this phone. Review the transcript before Send.' }

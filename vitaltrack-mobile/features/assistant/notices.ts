@@ -83,9 +83,9 @@ moonshine-voice library: Copyright (c) 2025 Useful Sensors, Inc. (dba Moonshine 
 No voice cloning is used. Full texts: assets/pocket-licences (KOKORO-ATTRIBUTION.txt).`;
 
 
-/** Diagnostics builds only: the model and CPU engine used by the experimental listener. */
+/** Preview builds only: the model and CPU engine used by the experimental listener. */
 export const whistleSpeechNotice = `Whistle speech recognition and Needle CPU engine · Cactus Compute, Inc.
-Apache License 2.0. English experimental listener in this diagnostic APK.
+Apache License 2.0. English experimental listener in this preview APK.
 https://huggingface.co/Cactus-Compute/whistle
 https://huggingface.co/Cactus-Compute/needle3
 The pinned Whistle model is 16,919,407 bytes (16.9 MB); the Android ARM64 runtime

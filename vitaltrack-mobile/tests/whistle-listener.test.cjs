@@ -11,11 +11,11 @@ function load(file, dependencies = {}, globals = {}) {
   vm.runInNewContext(code, { module, exports: module.exports, JSON, Date, setTimeout, clearTimeout, process: { env: {} }, ...globals, require(name) { if (name in dependencies) return dependencies[name]; throw new Error('Unexpected import ' + name); } });
   return module.exports;
 }
-const policy = diagnostic => load('features/assistant/policy.ts', {}, { process: { env: diagnostic ? { EXPO_PUBLIC_VOICE_DIAGNOSTICS: '1' } : {} } });
+const policy = mode => load('features/assistant/policy.ts', {}, { process: { env: mode === 'preview' ? { EXPO_PUBLIC_WHISTLE_LISTENING: '1' } : mode === true ? { EXPO_PUBLIC_VOICE_DIAGNOSTICS: '1' } : {} } });
 const storage = value => ({ value: JSON.stringify(value), async getItem() { return this.value; }, async setItem(_, next) { this.value = next; } });
 const preferences = (stored, diagnostic) => load('features/assistant/preferences.ts', { '@react-native-async-storage/async-storage': stored, './policy': policy(diagnostic) });
 
-test('Whistle selection is diagnostic-only; loading or saving a normal build never enables online audio', async () => {
+test('Whistle selection is enabled only by preview or diagnostic flags; production never enables online audio', async () => {
   assert.equal(policy(false).WHISTLE_LISTENING_ENABLED, false);
   assert.equal(policy(true).WHISTLE_LISTENING_ENABLED, true);
   const stored = storage({ enabled: true, microphone: true, inputProvider: 'whistle', audioOptIn: false, cloud: true, speechProvider: 'sarvam', sarvamSpeechOptIn: true });
@@ -46,7 +46,7 @@ test('Whistle bridge only transcribes completed local WAV and never substitutes 
   const calls = [];
   const native = { ...pack, async transcribeWhistle(uri) { calls.push(uri); return { transcript: 'Two Ambu bags', requires_confirmation: true }; }, cancel() {} };
   assert.equal(bridge(false, native).whistleSupported, false);
-  assert.throws(() => bridge(false, native).whistleVoice.transcribe('file:///take.wav'), /diagnostic APK/);
+  assert.throws(() => bridge(false, native).whistleVoice.transcribe('file:///take.wav'), /preview APK/);
   const voice = bridge(true, native); assert.equal(voice.whistleSupported, true);
   assert.equal((await voice.whistleVoice.transcribe('file:///take.wav')).requires_confirmation, true);
   assert.deepEqual(calls, ['file:///take.wav']);
@@ -76,4 +76,36 @@ test('Whistle pack operations use the app-wide lock shared with Moonshine and na
   progress({ downloaded: 10, total: 100 }); assert.equal(downloads.downloadSnapshot().kind, 'whistle'); assert.equal(downloads.downloadSnapshot().percent, 10);
   await assert.rejects(downloads.removePack('speech', async () => {}), /already running/);
   finish(); await operation; assert.equal(downloads.downloadSnapshot(), null);
+});
+
+
+test('regular preview enables only Whistle, while diagnostic compatibility and production gates stay independent', () => {
+  const preview = policy('preview');
+  assert.equal(preview.WHISTLE_LISTENING_ENABLED, true);
+  for (const key of ['VOICE_DIAGNOSTICS_ENABLED', 'ALBA_SELECTION_ENABLED', 'KOKORO_SELECTION_ENABLED']) assert.equal(preview[key], false, key);
+  for (const key of ['WHISTLE_LISTENING_ENABLED', 'VOICE_DIAGNOSTICS_ENABLED', 'ALBA_SELECTION_ENABLED', 'KOKORO_SELECTION_ENABLED']) assert.equal(policy(true)[key], true, key);
+  assert.equal(policy(false).WHISTLE_LISTENING_ENABLED, false);
+  assert.equal(load('features/assistant/policy.ts', {}, { process: { env: { EXPO_PUBLIC_WHISTLE_LISTENING: '0' } } }).WHISTLE_LISTENING_ENABLED, false);
+});
+
+test('regular preview keeps a saved Whistle listener without changing cloud understanding, Sarvam or consent', async () => {
+  const stored = storage({ enabled: true, microphone: true, inputProvider: 'whistle', audioOptIn: false, cloud: true, speechProvider: 'sarvam', sarvamSpeechOptIn: true });
+  const prefs = preferences(stored, 'preview');
+  const loaded = await prefs.loadPreferences('owner');
+  assert.equal(loaded.inputProvider, 'whistle'); assert.equal(loaded.audioOptIn, false); assert.equal(loaded.cloud, true);
+  assert.equal(loaded.speechProvider, 'sarvam'); assert.equal(loaded.sarvamSpeechOptIn, true);
+  await prefs.savePreferences('owner', loaded);
+  const reloaded = await prefs.loadPreferences('owner'); assert.equal(reloaded.inputProvider, 'whistle');
+  assert.equal(reloaded.speechProvider, 'sarvam'); assert.equal(reloaded.audioOptIn, false);
+});
+
+test('regular preview bridge transcribes Whistle while Alba and Kokoro stay unavailable for selection', async () => {
+  let takes = 0;
+  const native = { ...pack, async transcribeWhistle() { takes++; return { transcript: 'Show low stock', requires_confirmation: true }; }, cancel() {} };
+  const voice = bridge('preview', native);
+  assert.equal(voice.whistleSupported, true); assert.equal((await voice.whistleVoice.transcribe('file:///take.wav')).requires_confirmation, true); assert.equal(takes, 1);
+  const stored = storage({ inputProvider: 'whistle', speechProvider: 'pocket' });
+  const prefs = preferences(stored, 'preview'); assert.equal((await prefs.loadPreferences('owner')).speechProvider, 'device');
+  stored.value = JSON.stringify({ inputProvider: 'whistle', speechProvider: 'kokoro_offline' });
+  assert.equal((await prefs.loadPreferences('owner')).speechProvider, 'device');
 });

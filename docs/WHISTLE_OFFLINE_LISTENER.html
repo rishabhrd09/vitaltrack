@@ -60,10 +60,10 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <a href="INDEX.html">Documentation home</a>
 <span class="meta">Generated from <code>docs/WHISTLE_OFFLINE_LISTENER.md</code> — edit the Markdown, not this file.</span></div></header>
 <div class="layout">
-<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#1-where-it-fits">1. Where it fits</a></li><li><a href="#2-install-and-select">2. Install and select</a></li><li><a href="#3-native-runtime-and-privacy">3. Native runtime and privacy</a><ul><li><a href="#pinned-artifacts">Pinned artifacts</a></li><li><a href="#model-integrity-and-lifecycle">Model integrity and lifecycle</a></li></ul></li><li><a href="#4-configuration-and-builds">4. Configuration and builds</a></li><li><a href="#5-phone-acceptance">5. Phone acceptance</a></li><li><a href="#6-verification-and-remaining-limits">6. Verification and remaining limits</a></li><li><a href="#official-references">Official references</a></li></ul></details></nav>
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#1-where-it-fits">1. Where it fits</a></li><li><a href="#2-install-and-select">2. Install and select</a></li><li><a href="#3-native-runtime-and-privacy">3. Native runtime and privacy</a><ul><li><a href="#pinned-artifacts">Pinned artifacts</a></li><li><a href="#model-integrity-and-lifecycle">Model integrity and lifecycle</a></li></ul></li><li><a href="#4-configuration-and-builds">4. Configuration and builds</a></li><li><a href="#5-phone-acceptance">5. Phone acceptance</a></li><li><a href="#6-verification-and-remaining-limits">6. Verification and remaining limits</a><ul><li><a href="#regular-preview-verification--24-october-2026">Regular preview verification — 24 October 2026</a></li></ul></li><li><a href="#official-references">Official references</a></li></ul></details></nav>
 <main id="content">
 <h1 id="whistle--experimental-offline-listener">Whistle — experimental offline listener</h1>
-<p><strong>Status — 23 October 2026.</strong> Whistle is an optional speech-to-text listener in the <code>preview-voice-diagnostics</code> APK. Moonshine remains the default. Normal preview and production builds do not offer Whistle. This is a local implementation, not a deployment or a claim of phone acceptance.</p>
+<p><strong>Status — 24 October 2026.</strong> Whistle is an optional, experimental speech-to-text listener in the regular <code>preview</code> APK and the <code>preview-voice-diagnostics</code> APK. Moonshine remains the default. Production does not offer Whistle. The regular preview exposes Whistle independently; Alba, Kokoro and their diagnostics panel remain paused there. Phone acceptance is still required.</p>
 <p>Whistle transcribes a finished recording. It does not read answers aloud, interpret inventory requests, or save orders. Sarvam, device speech, Alba and Kokoro keep their separate narration settings.</p>
 <h2 id="1-where-it-fits">1. Where it fits<a class="anchor" href="#1-where-it-fits" aria-label="Link to this section">#</a></h2>
 <div class="tablewrap"><table>
@@ -104,7 +104,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <p>Whistle's stock model supports English, German, French, Spanish, Italian, Dutch and Polish. CareKosh forces <strong>English</strong> for this experiment. Hindi and Hinglish are not supported or promised. Indian English, product names, quantities and negation still need testing.</p>
 <h2 id="2-install-and-select">2. Install and select<a class="anchor" href="#2-install-and-select" aria-label="Link to this section">#</a></h2>
 <ol>
-<li>Build and install <code>preview-voice-diagnostics</code>; Expo Go cannot load the native adapter.</li>
+<li>Build and install the regular <code>preview</code> APK on an ARM64 Android phone; Expo Go cannot load the native adapter. The existing diagnostic profile also includes Whistle.</li>
 <li>Open Voice setup and enable the assistant and microphone as usual.</li>
 <li>Under <strong>Listening</strong>, download the Whistle pack, then explicitly select Whistle. Downloading does not grant cloud consent or change the understanding or narration provider.</li>
 <li>Record, stop, wait for the transcript, review it and tap Send.</li>
@@ -114,7 +114,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <h2 id="3-native-runtime-and-privacy">3. Native runtime and privacy<a class="anchor" href="#3-native-runtime-and-privacy" aria-label="Link to this section">#</a></h2>
 <p>CareKosh calls the Cactus C API directly through a JNI adapter. It does not embed the Python package, its automatic fetching code, its telemetry wrapper, Needle's text agent, or an automatic tool executor.</p>
 <p>Before the native library loads, the adapter sets <code>NEEDLE_TELEMETRY=0</code> and <code>DO_NOT_TRACK=1</code>. Failure to apply the controls blocks Whistle. Symbol and string inspection of the pinned Android static archive found no networking or telemetry imports. This is inspection of the distributed artifact, not an audit of all upstream C++ source or proof from a phone packet capture. Verify airplane-mode operation on the target phone.</p>
-<p>Build configuration gates the native adapter as well as the settings UI. Normal builds cannot invoke the experimental listener through a native method. Updating only JavaScript cannot enable a normal APK's Whistle adapter.</p>
+<p>Build configuration gates the native adapter as well as the settings UI. Preview APKs include the adapter; production builds cannot invoke it through a native method. Updating only JavaScript cannot enable an APK built without the native Whistle flag.</p>
 <h3 id="pinned-artifacts">Pinned artifacts<a class="anchor" href="#pinned-artifacts" aria-label="Link to this section">#</a></h3>
 <div class="tablewrap"><table>
 <thead>
@@ -156,10 +156,42 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <p>The model and engine are distributed under Apache 2.0. The private static C++ runtime also carries LLVM and Android sysroot notices. These are bundled with the app and included in Voice setup → Offline speech licence → Export complete offline voice notices. Only model data is downloaded after installation; runtime code is not downloaded or executed from writable app storage.</p>
 <h2 id="4-configuration-and-builds">4. Configuration and builds<a class="anchor" href="#4-configuration-and-builds" aria-label="Link to this section">#</a></h2>
 <p>No Render variable, database migration, Sarvam key, or paid Cactus account is required for this listener. Existing Groq/Sarvam configuration remains relevant only to those independently selected services.</p>
-<p>The existing diagnostic EAS profile sets <code>EXPO_PUBLIC_VOICE_DIAGNOSTICS=1</code> and the HTTPS staging API. Whistle follows that gate. The normal preview and production profiles do not enable it. Production config rejects the diagnostics flag.</p>
+<p>The regular preview explicitly sets <code>EXPO_PUBLIC_WHISTLE_LISTENING=1</code> and uses the HTTPS staging API. This flag enables only Whistle. JavaScript and native Gradle use the same gate: this flag or the existing diagnostics flag must equal <code>1</code>. App config and native Gradle reject Whistle in production and require the exact HTTPS staging API when it is enabled.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>EAS profile</th>
+<th>Whistle listener</th>
+<th>Alba / Kokoro / diagnostics panel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>development</code></td>
+<td>Off by default</td>
+<td>Off by default</td>
+</tr>
+<tr>
+<td><code>preview</code></td>
+<td>Experimental, explicitly selectable</td>
+<td>Paused / hidden</td>
+</tr>
+<tr>
+<td><code>preview-voice-diagnostics</code></td>
+<td>Experimental, explicitly selectable</td>
+<td>Available for investigation</td>
+</tr>
+<tr>
+<td><code>production</code></td>
+<td>Disabled; experimental flags rejected</td>
+<td>Paused / hidden</td>
+</tr>
+</tbody>
+</table></div>
+<p>The diagnostic profile remains for offline narration investigations. You do not need it to test Whistle. Keep these public build flags in the EAS profiles; do not add them as shared production environment variables.</p>
 <p>From the repository root:</p>
 <pre><code class="language-bash">cd vitaltrack-mobile
-eas build --profile preview-voice-diagnostics --platform android --clear-cache
+eas build --profile preview --platform android --clear-cache
 </code></pre>
 <p>A new native APK is required. This document does not start a build or deployment. Build-time retrieval of the pinned Android runtime requires internet; the subsequent installed listener does not require it once its pack is ready.</p>
 <h2 id="5-phone-acceptance">5. Phone acceptance<a class="anchor" href="#5-phone-acceptance" aria-label="Link to this section">#</a></h2>
@@ -175,7 +207,8 @@ eas build --profile preview-voice-diagnostics --platform android --clear-cache
 </ol>
 <p>If it fails, share the APK build ID, selected listener, exact error/status and elapsed time, whether the pack was ready, whether internet was disabled, and whether Moonshine still works. Share only synthetic example text; do not include keys or private recordings.</p>
 <h2 id="6-verification-and-remaining-limits">6. Verification and remaining limits<a class="anchor" href="#6-verification-and-remaining-limits" aria-label="Link to this section">#</a></h2>
-<p>Local checks on 23 October 2026:</p>
+<p>The 24 October follow-up changes availability gates and Whistle-only wording. Capture, model validation, inference, telemetry controls, Sarvam and the understanding executor remain unchanged. Fresh verification results for this follow-up are recorded below after the historical implementation checks.</p>
+<p>Implementation checks on 23 October 2026 (the original diagnostic-only gate):</p>
 <div class="tablewrap"><table>
 <thead>
 <tr>
@@ -226,6 +259,42 @@ eas build --profile preview-voice-diagnostics --platform android --clear-cache
 </tr>
 </tbody>
 </table></div>
+<h3 id="regular-preview-verification--24-october-2026">Regular preview verification — 24 October 2026<a class="anchor" href="#regular-preview-verification--24-october-2026" aria-label="Link to this section">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mobile tests</td>
+<td>416 passed after the final guard change. Regular preview coverage includes explicit Whistle selection, saved preference reload, transcription without a Moonshine pack, two reviewed questions and independent Sarvam narration.</td>
+</tr>
+<tr>
+<td>TypeScript / ESLint</td>
+<td>TypeScript clean; lint has zero errors and one existing warning in <code>app/builder.tsx</code>.</td>
+</tr>
+<tr>
+<td>Build gates</td>
+<td>Preview enables Whistle alone; diagnostics retain the old gate; production enables neither. App config and native Gradle reject experimental production flags and require HTTPS staging for enabled Whistle. Tests cover missing profiles, empty flags and invalid endpoints.</td>
+</tr>
+<tr>
+<td>Android JavaScript exports</td>
+<td>Fresh preview, diagnostic and production Hermes exports passed. Exported policy gates were inspected separately from the config guard tests. No full Gradle APK build was run.</td>
+</tr>
+<tr>
+<td>Native checks</td>
+<td>Full Kotlin compilation plus Whistle, Pocket recovery and Moonshine pack JVM checks passed. CMake regenerated and built the ARM64 JNI target using the pinned NDK/runtime. The five Kotlin changes are unsupported-build labels; capture and inference are unchanged.</td>
+</tr>
+<tr>
+<td>Documentation</td>
+<td>Strict current-guide check: 39 files, zero problems. The full scan retains the two existing interview-fragment anchor warnings outside current guides.</td>
+</tr>
+</tbody>
+</table></div>
+<p>No backend source, database schema, cloud consent or Sarvam configuration changes are needed for this follow-up. No paid API request or deployment was made. The OnePlus acceptance checks in section 5 remain required before treating Whistle as a validated replacement for Moonshine.</p>
 <p>The new JVM regression can be rerun from <code>vitaltrack-mobile</code> with Kotlin 2.2.20 and an Android-all jar (the check used <code>org.robolectric:android-all:14-robolectric-10818077</code>). It uses synthetic model bytes and makes no real download:</p>
 <pre><code class="language-bash">K=modules/carekosh-voice/android/src/main/java/expo/modules/carekoshvoice
 kotlinc -cp &quot;$ANDROID_ALL_JAR&quot; \
@@ -245,7 +314,7 @@ java -cp &quot;/tmp/carekosh-whistle-check.jar:$ANDROID_ALL_JAR&quot; \
 <li><a href="https://huggingface.co/Cactus-Compute/needle3/raw/main/LICENSE">Engine licence</a></li>
 </ul>
 <p>Related: <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">complete assistant flow</a>, <a href="SARVAM_ENGLISH_VOICE.html">Sarvam narration</a>, <a href="POCKET_TTS_ALBA.html">Alba and Kokoro investigation</a>.</p>
-<footer>Generated 2026-10-23 by <code>docs/tools/build_docs.py</code> from <code>docs/WHISTLE_OFFLINE_LISTENER.md</code>.</footer>
+<footer>Generated 2026-10-24 by <code>docs/tools/build_docs.py</code> from <code>docs/WHISTLE_OFFLINE_LISTENER.md</code>.</footer>
 </main>
 </div>
 <script>

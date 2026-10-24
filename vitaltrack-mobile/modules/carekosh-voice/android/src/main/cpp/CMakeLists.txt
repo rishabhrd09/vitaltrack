@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(carekosh_whistle LANGUAGES CXX)
 if(NOT ANDROID_ABI STREQUAL "arm64-v8a")
-  message(FATAL_ERROR "Whistle diagnostics supports Android ARM64 only")
+  message(FATAL_ERROR "Whistle preview supports Android ARM64 only")
 endif()
 add_library(needle STATIC IMPORTED)
 set_target_properties(needle PROPERTIES IMPORTED_LOCATION "${WHISTLE_RUNTIME_DIR}/libneedle.a")

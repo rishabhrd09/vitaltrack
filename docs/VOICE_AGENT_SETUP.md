@@ -1,6 +1,6 @@
 # CareKosh voice assistant — implementation and setup
 
-> **23 October 2026 — diagnostic listener experiment.** Whistle is a separately selected, English-only offline transcription option in the diagnostic APK. Moonshine remains the default; understanding and narration retain their existing settings. See [Whistle setup, privacy controls and device checks](WHISTLE_OFFLINE_LISTENER.md). Earlier dated evidence below retains its original scope.
+> **24 October 2026 — Whistle in regular preview.** Whistle is a separately selected, English-only offline transcription option in the regular `preview` APK and the diagnostic APK. Moonshine remains the default; understanding and narration retain their existing settings. Regular preview keeps Alba and Kokoro paused. See [Whistle setup, privacy controls and device checks](WHISTLE_OFFLINE_LISTENER.md). Earlier dated evidence below retains its original scope.
 
 > **15 October verification repairs:** download/removal state survives screen changes; network downloads no longer occupy microphone/synthesis workers. Selected Alba preset readiness, playback completion, spoken units/codes, complex-query grounding and cancellation were corrected after independent review. Alba/Kokoro remain diagnostics-only; device and Sarvam choices retain separate consent and billing controls. No new Render secret is required by these repairs. Use [the latest checks and remaining acceptance](AI_VOICE_END_TO_END_REVIEW.md#15-independent-verification-follow-up), rather than historical test counts below.
 

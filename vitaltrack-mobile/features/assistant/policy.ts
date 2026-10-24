@@ -24,5 +24,10 @@ export const ALBA_SELECTION_ENABLED = VOICE_DIAGNOSTICS_ENABLED;
  */
 export const KOKORO_SELECTION_ENABLED = VOICE_DIAGNOSTICS_ENABLED;
 
-/** Whistle is a diagnostics-only offline listener; normal builds retain Moonshine. */
-export const WHISTLE_LISTENING_ENABLED = VOICE_DIAGNOSTICS_ENABLED;
+/**
+ * Whistle is an experimental offline listener in preview APKs. The separate flag does not enable
+ * Alba, Kokoro or their diagnostics panel. Existing diagnostics builds retain Whistle support.
+ * Production leaves both flags unset and rejects either flag in app.config.js.
+ */
+const whistleListeningFlag = typeof process === 'undefined' ? undefined : process.env.EXPO_PUBLIC_WHISTLE_LISTENING;
+export const WHISTLE_LISTENING_ENABLED = whistleListeningFlag === '1' || VOICE_DIAGNOSTICS_ENABLED;

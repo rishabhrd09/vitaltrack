@@ -22,13 +22,15 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://staging-api.carekosh.com"
+        "EXPO_PUBLIC_API_URL": "https://staging-api.carekosh.com",
+        "EXPO_PUBLIC_WHISTLE_LISTENING": "1"
       }
     },
     "preview-voice-diagnostics": {
       "extends": "preview",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://staging-api.carekosh.com",
+        "EXPO_PUBLIC_WHISTLE_LISTENING": "1",
         "EXPO_PUBLIC_VOICE_DIAGNOSTICS": "1"
       }
     },

@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import { WHISTLE_LISTENING_ENABLED } from './policy';
 
 type ModelStatus = { ready: boolean; bytes: number; model?: string };
-/** The native bridge fails closed unless both the diagnostic flag and telemetry controls are active. */
+/** The native bridge fails closed unless both the Whistle build gate and telemetry controls are active. */
 export type WhistleStatus = { ready: boolean; supported: boolean; bytes: number; model?: string; telemetryDisabled: boolean; reason?: string };
 type DeviceVoice = { ready: boolean; name: string };
 export type PocketVoiceOption = { id: string; label: string };
@@ -202,7 +202,7 @@ export const kokoroVoice = {
 };
 
 function whistleEngine() {
-  if (!whistleSupported) throw new Error('Whistle needs the latest Android ARM64 diagnostic APK. Moonshine is still available.');
+  if (!whistleSupported) throw new Error('Whistle needs the latest Android ARM64 preview APK. Moonshine is still available.');
   return engine();
 }
 /** Bounds the JS wait; a cancelled turn cannot later cancel a different question's microphone. */

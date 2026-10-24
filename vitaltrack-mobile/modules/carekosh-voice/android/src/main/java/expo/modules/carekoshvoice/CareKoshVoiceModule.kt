@@ -70,7 +70,7 @@ class CareKoshVoiceModule : Module() {
             "model" to WhistleRuntime.name,
             "telemetryDisabled" to (supported && WhistleRuntime.configureTelemetry()),
             "busy" to whistleRunning.get(),
-            "reason" to (if (supported) "" else "Whistle needs the ARM64 diagnostic APK"),
+            "reason" to (if (supported) "" else "Whistle needs the ARM64 preview APK"),
         )
     }
 
@@ -81,7 +81,7 @@ class CareKoshVoiceModule : Module() {
      */
     private fun transcribeWhistle(uri: String, promise: Promise) {
         if (!WhistleRuntime.supported) {
-            promise.reject("WHISTLE_UNAVAILABLE", "Whistle needs the ARM64 diagnostic APK", null)
+            promise.reject("WHISTLE_UNAVAILABLE", "Whistle needs the ARM64 preview APK", null)
             return
         }
         if (!whistleRunning.compareAndSet(false, true)) {
@@ -555,7 +555,7 @@ class CareKoshVoiceModule : Module() {
         }
         AsyncFunction("downloadWhistleModel") { promise: Promise ->
             work(promise, cancelledBy = downloadGeneration, lane = downloadLane) { check ->
-                require(WhistleRuntime.supported) { "Whistle needs the ARM64 diagnostic APK" }
+                require(WhistleRuntime.supported) { "Whistle needs the ARM64 preview APK" }
                 var lastEvent = 0L
                 whistlePack.install(check) { done, total ->
                     val now = System.nanoTime()
@@ -568,7 +568,7 @@ class CareKoshVoiceModule : Module() {
             }
         }
         AsyncFunction("removeWhistleModel") { promise: Promise ->
-            if (!WhistleRuntime.supported) promise.reject("WHISTLE_UNAVAILABLE", "Whistle needs the ARM64 diagnostic APK", null)
+            if (!WhistleRuntime.supported) promise.reject("WHISTLE_UNAVAILABLE", "Whistle needs the ARM64 preview APK", null)
             else if (!whistleRunning.compareAndSet(false, true)) promise.reject("WHISTLE_BUSY", "Stop and wait for Whistle to finish before removing it", null)
             else try {
                 downloadGeneration.incrementAndGet()

@@ -6,9 +6,17 @@ plugins {
 group = 'expo.modules.carekoshvoice'
 version = '1.0.0'
 
-// This optional native listener ships only in the explicitly requested diagnostics APK.
+// Whistle is optional in staging preview APKs, independently of paused speech diagnostics.
 // Runtime CODE is pinned and fetched at BUILD time; the app downloads model DATA only.
-def whistleEnabled = System.getenv('EXPO_PUBLIC_VOICE_DIAGNOSTICS') == '1'
+def whistleFlag = System.getenv('EXPO_PUBLIC_WHISTLE_LISTENING')
+def voiceDiagnosticsFlag = System.getenv('EXPO_PUBLIC_VOICE_DIAGNOSTICS')
+if (System.getenv('EAS_BUILD_PROFILE') == 'production' && (whistleFlag != null || voiceDiagnosticsFlag)) {
+  throw new GradleException('Production builds must not enable experimental Whistle listening or offline voice diagnostics.')
+}
+def whistleEnabled = whistleFlag == '1' || voiceDiagnosticsFlag == '1'
+if (whistleEnabled && System.getenv('EXPO_PUBLIC_API_URL') != 'https://staging-api.carekosh.com') {
+  throw new GradleException('Whistle preview builds must use the HTTPS staging API URL.')
+}
 def whistleRuntimeDir = layout.buildDirectory.dir('whistle-runtime').get().asFile
 def whistleRuntimeRevision = 'd6c7d6a2e9655505e0f8e23339356dd1705900eb'
 def whistleRuntimeFiles = [

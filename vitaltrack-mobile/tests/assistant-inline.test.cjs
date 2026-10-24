@@ -24,7 +24,7 @@ function load(file, dependencies = {}) {
 const host = name => function Host({ children, ...props }) { return React.createElement(name, props, children); };
 const VoiceButton = ({ label, onPress, disabled }) => React.createElement('Button', { label, onPress, disabled }, label);
 
-async function harness({ personalSetup = false, personalConfigured = false, personalUsable = false, personalSource = false, keyWait, sarvamAvailable = false, sarvamConsented = false, selectedSarvam = false, sarvamPlayback, inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketOutput, pocketDiagnostics = 'Native audio details', pocketDownloadWait, speechFallback, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, cloudV3Response, categories = [], firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false, width = 390, fontScale = 1, preferenceSaveWait, deviceSpeechWait, offline = false, refreshFailure = false, screenReaderOn = false, categoryFailures = 0, diagnostics = false, modelDownloadWait, transcribeWait, pocketVoices = ['alba'], kokoroBuild = false, kokoroVoices = [], selectedKokoro = false, downloadStore, pocketRemovalWait, whistleBuild = false, whistleReady = false, selectedWhistle = false, whistleTranscript, whistleFailure, whistleTranscribeWait, whistleDownloadWait } = {}) {
+async function harness({ personalSetup = false, personalConfigured = false, personalUsable = false, personalSource = false, keyWait, sarvamAvailable = false, sarvamConsented = false, selectedSarvam = false, sarvamPlayback, inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketOutput, pocketDiagnostics = 'Native audio details', pocketDownloadWait, speechFallback, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, cloudV3Response, categories = [], firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false, width = 390, fontScale = 1, preferenceSaveWait, deviceSpeechWait, offline = false, refreshFailure = false, screenReaderOn = false, categoryFailures = 0, diagnostics = false, modelDownloadWait, transcribeWait, pocketVoices = ['alba'], kokoroBuild = false, kokoroVoices = [], selectedKokoro = false, downloadStore, pocketRemovalWait, whistleBuild = false, whistleReady = false, selectedWhistle = false, whistleTranscript, whistleFailure, whistleTranscribeWait, whistleDownloadWait, whistlePreview = false } = {}) {
   const downloads = downloadStore || load('features/assistant/downloads.ts');
   const calls = { navigation: [], stock: 0, transcribe: 0, stop: 0, record: 0, permission: 0, interpret: [], consent: [], cloudAudio: 0 };
   const listeners = new Set();
@@ -41,7 +41,7 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
     async stop() { this.isRecording = false; calls.stop++; },
   };
   // Diagnostics builds (EXPO_PUBLIC_VOICE_DIAGNOSTICS=1) offer Alba selection and the diagnostics card.
-  const policy = diagnostics ? { ...load('features/assistant/policy.ts'), VOICE_DIAGNOSTICS_ENABLED: true, ALBA_SELECTION_ENABLED: true, KOKORO_SELECTION_ENABLED: true, WHISTLE_LISTENING_ENABLED: true } : load('features/assistant/policy.ts');
+  const policy = diagnostics ? { ...load('features/assistant/policy.ts'), VOICE_DIAGNOSTICS_ENABLED: true, ALBA_SELECTION_ENABLED: true, KOKORO_SELECTION_ENABLED: true, WHISTLE_LISTENING_ENABLED: true } : whistlePreview ? { ...load('features/assistant/policy.ts'), WHISTLE_LISTENING_ENABLED: true } : load('features/assistant/policy.ts');
   const { permittedInputProvider, permittedSpeechProvider } = load('features/assistant/preferences.ts', { '@react-native-async-storage/async-storage': {}, './policy': policy });
   const appState = { currentState: 'active', addEventListener: (_, fn) => { listeners.add(fn); return { remove() { listeners.delete(fn); } }; } };
   const rn = Object.fromEntries(['ActivityIndicator', 'KeyboardAvoidingView', 'Pressable', 'Text', 'TextInput', 'TouchableOpacity', 'View', 'ScrollView', 'Switch'].map(name => [name, host(name)]));
@@ -1640,7 +1640,7 @@ test('diagnostic setup selects Whistle explicitly and preserves Sarvam and Groq 
   } finally { await h.dispose(); }
 });
 
-test('normal setup hides Whistle and a saved experimental listener safely returns to Moonshine', async () => {
+test('production or unflagged setup hides Whistle and a saved experimental listener safely returns to Moonshine', async () => {
   const h = await harness({ mode: 'settings', whistleBuild: true, whistleReady: true, selectedWhistle: true, liveCapture: true });
   try { assert.equal(h.find('Use Whistle offline listening'), undefined); assert.ok(hasText(h, 'Selected: Offline · Moonshine')); }
   finally { await h.dispose(); }
@@ -1700,5 +1700,32 @@ test('diagnostic offline licence panel includes Whistle attribution and the comp
     await h.press('Offline speech licence');
     assert.ok(hasText(h, 'Whistle and Needle · Cactus Compute · Apache License 2.0'));
     assert.ok(h.find('Export complete offline voice notices'));
+  } finally { await h.dispose(); }
+});
+
+
+test('regular preview offers Whistle and keeps Alba, Kokoro and native speech diagnostics paused', async () => {
+  const h = await harness({ mode: 'settings', whistlePreview: true, whistleBuild: true, whistleReady: true, liveCapture: true, pocketBuild: true, pocketReady: true, kokoroBuild: true, kokoroVoices: ['af_heart'], selectedSarvam: true, sarvamAvailable: true, sarvamConsented: true });
+  try {
+    await h.press('Use Whistle offline listening');
+    assert.equal(h.prefs.inputProvider, 'whistle'); assert.equal(h.prefs.speechProvider, 'sarvam'); assert.equal(h.prefs.audioOptIn, false);
+    assert.equal(h.find('Use Alba voice'), undefined); assert.equal(h.find('Use Kokoro voice'), undefined);
+    assert.equal(h.find('Generate Alba without playing'), undefined);
+    assert.equal(h.find('Generate and play Alba'), undefined);
+  } finally { await h.dispose(); }
+});
+
+test('regular preview primary Whistle records without Moonshine, reviews both questions and preserves Sarvam narration', async () => {
+  const h = await harness({ whistlePreview: true, whistleBuild: true, whistleReady: true, selectedWhistle: true, ready: false, liveCapture: true, selectedSarvam: true, sarvamAvailable: true, sarvamConsented: true, spokenReplies: true });
+  try {
+    for (let i = 0; i < 2; i++) {
+      if (i) await h.press('Ask another question');
+      await h.press('Start voice recording'); await h.press('Stop recording and review transcript');
+      assert.equal(h.calls.stock, i); assert.equal(h.calls.sarvamSpeech?.length || 0, i);
+      await h.press('Send question');
+    }
+    assert.deepEqual(h.calls.capturePreview, [false, false]);
+    assert.equal(h.calls.whistleTranscriptions.length, 2); assert.equal(h.calls.sarvamSpeech.length, 2);
+    assert.equal(h.calls.transcribe, 0); assert.equal(h.calls.cloudAudio, 0); assert.equal(h.calls.stock, 2);
   } finally { await h.dispose(); }
 });

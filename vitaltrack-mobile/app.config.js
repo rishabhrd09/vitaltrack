@@ -30,6 +30,14 @@ module.exports = ({ config }) => {
     throw new Error('Production builds must not enable offline voice diagnostics.');
   }
 
+  // Whistle can be tested in regular preview without enabling paused speech experiments.
+  if (profile === 'production' && process.env.EXPO_PUBLIC_WHISTLE_LISTENING !== undefined) {
+    throw new Error('Production builds must not enable experimental Whistle listening.');
+  }
+  if ((process.env.EXPO_PUBLIC_WHISTLE_LISTENING === '1' || process.env.EXPO_PUBLIC_VOICE_DIAGNOSTICS === '1') && apiUrl !== PREVIEW_API_URL) {
+    throw new Error('Whistle preview builds must use the HTTPS staging API URL.');
+  }
+
   return {
     ...config,
     ...appJson.expo,

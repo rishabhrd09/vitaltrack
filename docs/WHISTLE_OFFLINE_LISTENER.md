@@ -1,6 +1,6 @@
 # Whistle — experimental offline listener
 
-**Status — 23 October 2026.** Whistle is an optional speech-to-text listener in the `preview-voice-diagnostics` APK. Moonshine remains the default. Normal preview and production builds do not offer Whistle. This is a local implementation, not a deployment or a claim of phone acceptance.
+**Status — 24 October 2026.** Whistle is an optional, experimental speech-to-text listener in the regular `preview` APK and the `preview-voice-diagnostics` APK. Moonshine remains the default. Production does not offer Whistle. The regular preview exposes Whistle independently; Alba, Kokoro and their diagnostics panel remain paused there. Phone acceptance is still required.
 
 Whistle transcribes a finished recording. It does not read answers aloud, interpret inventory requests, or save orders. Sarvam, device speech, Alba and Kokoro keep their separate narration settings.
 
@@ -21,7 +21,7 @@ Whistle's stock model supports English, German, French, Spanish, Italian, Dutch 
 
 ## 2. Install and select
 
-1. Build and install `preview-voice-diagnostics`; Expo Go cannot load the native adapter.
+1. Build and install the regular `preview` APK on an ARM64 Android phone; Expo Go cannot load the native adapter. The existing diagnostic profile also includes Whistle.
 2. Open Voice setup and enable the assistant and microphone as usual.
 3. Under **Listening**, download the Whistle pack, then explicitly select Whistle. Downloading does not grant cloud consent or change the understanding or narration provider.
 4. Record, stop, wait for the transcript, review it and tap Send.
@@ -35,7 +35,7 @@ CareKosh calls the Cactus C API directly through a JNI adapter. It does not embe
 
 Before the native library loads, the adapter sets `NEEDLE_TELEMETRY=0` and `DO_NOT_TRACK=1`. Failure to apply the controls blocks Whistle. Symbol and string inspection of the pinned Android static archive found no networking or telemetry imports. This is inspection of the distributed artifact, not an audit of all upstream C++ source or proof from a phone packet capture. Verify airplane-mode operation on the target phone.
 
-Build configuration gates the native adapter as well as the settings UI. Normal builds cannot invoke the experimental listener through a native method. Updating only JavaScript cannot enable a normal APK's Whistle adapter.
+Build configuration gates the native adapter as well as the settings UI. Preview APKs include the adapter; production builds cannot invoke it through a native method. Updating only JavaScript cannot enable an APK built without the native Whistle flag.
 
 ### Pinned artifacts
 
@@ -64,13 +64,22 @@ The model and engine are distributed under Apache 2.0. The private static C++ ru
 
 No Render variable, database migration, Sarvam key, or paid Cactus account is required for this listener. Existing Groq/Sarvam configuration remains relevant only to those independently selected services.
 
-The existing diagnostic EAS profile sets `EXPO_PUBLIC_VOICE_DIAGNOSTICS=1` and the HTTPS staging API. Whistle follows that gate. The normal preview and production profiles do not enable it. Production config rejects the diagnostics flag.
+The regular preview explicitly sets `EXPO_PUBLIC_WHISTLE_LISTENING=1` and uses the HTTPS staging API. This flag enables only Whistle. JavaScript and native Gradle use the same gate: this flag or the existing diagnostics flag must equal `1`. App config and native Gradle reject Whistle in production and require the exact HTTPS staging API when it is enabled.
+
+| EAS profile | Whistle listener | Alba / Kokoro / diagnostics panel |
+|---|---|---|
+| `development` | Off by default | Off by default |
+| `preview` | Experimental, explicitly selectable | Paused / hidden |
+| `preview-voice-diagnostics` | Experimental, explicitly selectable | Available for investigation |
+| `production` | Disabled; experimental flags rejected | Paused / hidden |
+
+The diagnostic profile remains for offline narration investigations. You do not need it to test Whistle. Keep these public build flags in the EAS profiles; do not add them as shared production environment variables.
 
 From the repository root:
 
 ```bash
 cd vitaltrack-mobile
-eas build --profile preview-voice-diagnostics --platform android --clear-cache
+eas build --profile preview --platform android --clear-cache
 ```
 
 A new native APK is required. This document does not start a build or deployment. Build-time retrieval of the pinned Android runtime requires internet; the subsequent installed listener does not require it once its pack is ready.
@@ -91,7 +100,9 @@ If it fails, share the APK build ID, selected listener, exact error/status and e
 
 ## 6. Verification and remaining limits
 
-Local checks on 23 October 2026:
+The 24 October follow-up changes availability gates and Whistle-only wording. Capture, model validation, inference, telemetry controls, Sarvam and the understanding executor remain unchanged. Fresh verification results for this follow-up are recorded below after the historical implementation checks.
+
+Implementation checks on 23 October 2026 (the original diagnostic-only gate):
 
 | Check | Result |
 |---|---|
@@ -105,6 +116,19 @@ Local checks on 23 October 2026:
 | Android JNI | Official NDK r27b cross-link for ARM64/API 26 passed. ELF LOAD alignment and RELRO support 16 KB pages; only JNI is exported, with no shared C++ runtime dependency. APK ZIP alignment is not tested by this check. |
 | Actual model on host | The pinned model and same-revision Mac runtime transcribed a public speech fixture twice, and returned empty transcripts for two silent inputs. These are host results, not Android accuracy or latency measurements. |
 | Documentation | Strict current-guide check passes. Two pre-existing interview-fragment anchor warnings are outside current guides and were preserved. |
+
+### Regular preview verification — 24 October 2026
+
+| Check | Result |
+|---|---|
+| Mobile tests | 416 passed after the final guard change. Regular preview coverage includes explicit Whistle selection, saved preference reload, transcription without a Moonshine pack, two reviewed questions and independent Sarvam narration. |
+| TypeScript / ESLint | TypeScript clean; lint has zero errors and one existing warning in `app/builder.tsx`. |
+| Build gates | Preview enables Whistle alone; diagnostics retain the old gate; production enables neither. App config and native Gradle reject experimental production flags and require HTTPS staging for enabled Whistle. Tests cover missing profiles, empty flags and invalid endpoints. |
+| Android JavaScript exports | Fresh preview, diagnostic and production Hermes exports passed. Exported policy gates were inspected separately from the config guard tests. No full Gradle APK build was run. |
+| Native checks | Full Kotlin compilation plus Whistle, Pocket recovery and Moonshine pack JVM checks passed. CMake regenerated and built the ARM64 JNI target using the pinned NDK/runtime. The five Kotlin changes are unsupported-build labels; capture and inference are unchanged. |
+| Documentation | Strict current-guide check: 39 files, zero problems. The full scan retains the two existing interview-fragment anchor warnings outside current guides. |
+
+No backend source, database schema, cloud consent or Sarvam configuration changes are needed for this follow-up. No paid API request or deployment was made. The OnePlus acceptance checks in section 5 remain required before treating Whistle as a validated replacement for Moonshine.
 
 The new JVM regression can be rerun from `vitaltrack-mobile` with Kotlin 2.2.20 and an Android-all jar (the check used `org.robolectric:android-all:14-robolectric-10818077`). It uses synthetic model bytes and makes no real download:
 

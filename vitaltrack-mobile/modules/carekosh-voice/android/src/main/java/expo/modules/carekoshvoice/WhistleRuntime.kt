@@ -12,7 +12,7 @@ internal object WhistleRuntime {
 
     /** Set BOTH upstream opt-outs before dlopen/static initializers, and refuse to load if they fail. */
     fun configureTelemetry(): Boolean {
-        require(supported) { "Whistle is available only in the ARM64 diagnostic APK" }
+        require(supported) { "Whistle is available only in the ARM64 preview APK" }
         Os.setenv("NEEDLE_TELEMETRY", "0", true)
         Os.setenv("DO_NOT_TRACK", "1", true)
         check(Os.getenv("NEEDLE_TELEMETRY") == "0" && Os.getenv("DO_NOT_TRACK") == "1") { "Could not disable Whistle telemetry" }

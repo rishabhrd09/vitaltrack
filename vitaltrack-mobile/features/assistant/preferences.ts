@@ -32,7 +32,7 @@ export function permittedSpeechProvider(provider: SpeechProvider, sarvamOptIn = 
   if (provider === 'sarvam') return SARVAM_SPEECH_ENABLED && sarvamOptIn ? 'sarvam' : 'device';
   return CLOUD_VOICE_ENABLED ? provider : 'device';
 }
-/** Disabled diagnostic choices migrate only to Moonshine; they never enable cloud upload. */
+/** Disabled experimental choices migrate only to Moonshine; they never enable cloud upload. */
 export function permittedInputProvider(provider: InputProvider, audioOptIn = false): InputProvider {
   if (provider === 'whistle') return WHISTLE_LISTENING_ENABLED ? 'whistle' : 'offline';
   return CLOUD_TRANSCRIPTION_ENABLED && audioOptIn && provider === 'groq' ? 'groq' : 'offline';
