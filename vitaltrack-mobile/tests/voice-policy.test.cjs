@@ -38,7 +38,7 @@ test('existing text opt-in never restores old cloud audio providers', async () =
   });
   // Spread copies the sandbox object into this realm for a strict comparison.
   assert.deepEqual({ ...(await loadPreferences('owner')) }, {
-    enabled: true, cloud: true, microphone: true, spokenReplies: true, audioOptIn: false, inputProvider: 'offline', speechProvider: 'device',
+    enabled: true, cloud: true, microphone: true, spokenReplies: true, audioOptIn: false, inputProvider: 'offline', speechProvider: 'device', understandingProvider: 'groq',
   });
 });
 

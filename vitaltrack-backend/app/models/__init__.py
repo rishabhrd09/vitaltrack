@@ -1,7 +1,7 @@
 """VitalTrack Backend - Database Models"""
 
 from app.models.activity import ActivityActionType, ActivityLog
-from app.models.ai import AIConsent, AIUsage, SarvamCredential
+from app.models.ai import AIConsent, AIUsage, OpenAICredential, SarvamCredential
 from app.models.audit_log import AuditLog
 from app.models.category import Category
 from app.models.item import Item
@@ -10,7 +10,7 @@ from app.models.refresh_token import RefreshToken
 from app.models.user import User
 
 __all__ = [
-    "AIConsent", "AIUsage", "SarvamCredential",
+    "AIConsent", "AIUsage", "OpenAICredential", "SarvamCredential",
     # User & Auth
     "User",
     "RefreshToken",

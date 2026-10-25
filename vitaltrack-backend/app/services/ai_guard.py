@@ -14,7 +14,7 @@ from sqlalchemy.exc import DBAPIError
 from app.api.deps import get_current_user, security
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
-from app.models.ai import AIConsent, AIUsage, SarvamCredential
+from app.models.ai import AIConsent, AIUsage, OpenAICredential, SarvamCredential
 from app.schemas.ai import CONSENT_VERSION
 
 logger = logging.getLogger("carekosh.ai")
@@ -38,6 +38,7 @@ async def principal(
 def consent_scope(kind: str, provider: str) -> str:
     allowed = {
         ("interpret", "groq"): "groq_text",
+        ("interpret", "openai"): "openai_text",
         ("transcribe", "groq"): "groq_audio",
         ("transcribe", "sarvam"): "sarvam_audio",
         ("speak", "sarvam"): "sarvam_speech",
@@ -57,7 +58,8 @@ def require_enabled(
     if (
         credential_source not in ("application", "personal")
         or credential_source == "personal"
-        and (kind != "speak" or provider != "sarvam")
+        and (kind, provider) not in {("speak", "sarvam"), ("interpret", "openai")}
+        or provider == "openai" and credential_source != "personal"
     ):
         raise HTTPException(422, "Unsupported credential source.")
     available = settings.AI_ENABLED
@@ -71,6 +73,10 @@ def require_enabled(
             and settings.AI_DATA_CONTROLS_REVIEWED
             and bool(settings.GROQ_API_KEY.get_secret_value())
         )
+    elif provider == "openai":
+        from app.services.openai_credentials import require_personal_setup
+
+        require_personal_setup()
     elif provider == "sarvam":
         available = (
             available
@@ -166,6 +172,8 @@ async def reserve(
             if kind == "transcribe"
             else settings.AI_SARVAM_SPEAK_RESERVE_MICROUSD
         )
+    elif provider == "openai":
+        credit = max(50_000, settings.AI_OPENAI_INTERPRET_RESERVE_MICROUSD)
     with busy_when_locked():
         async with AsyncSessionLocal.begin() as db:
             # All API workers share the same budget lock. Transaction ends before inference.
@@ -183,12 +191,19 @@ async def reserve(
                     403, "Enable cloud processing in AI & Voice settings first."
                 )
             if credential_source == "personal":
-                from app.services.sarvam_credentials import decrypt_key
+                if provider == "openai":
+                    from app.services.openai_credentials import decrypt_key
 
-                credential = await db.get(SarvamCredential, user_id)
+                    credential = await db.get(OpenAICredential, user_id)
+                else:
+                    from app.services.sarvam_credentials import decrypt_key
+
+                    credential = await db.get(SarvamCredential, user_id)
                 if credential is None:
                     raise HTTPException(
                         409,
+                        "No personal OpenAI key is saved. Add your key or choose on-phone understanding."
+                        if provider == "openai" else
                         "No personal Sarvam key is saved. Add your key or explicitly choose another voice.",
                     )
                 decrypt_key(user_id, credential.ciphertext)
@@ -264,6 +279,12 @@ def estimated_cost(kind: str, provider: str, usage: dict) -> int | None:
         if type(prompt) is int and type(completion) is int and prompt >= 0 and completion >= 0 and prompt + completion > 0:
             return max(1, math.ceil((prompt * settings.AI_GROQ_INPUT_MICROUSD_PER_1K_TOKENS
                                      + completion * settings.AI_GROQ_OUTPUT_MICROUSD_PER_1K_TOKENS) / 1000))
+    elif kind == "interpret" and provider == "openai":
+        prompt, completion = usage.get("prompt_tokens"), usage.get("completion_tokens")
+        if type(prompt) is int and type(completion) is int and prompt >= 0 and completion > 0:
+            # Standard GPT-5.4 mini rates, checked 25 October 2026. Reasoning is
+            # already included in output_tokens; cached input is overestimated.
+            return max(1, math.ceil((prompt * 750 + completion * 4500) / 1000))
     elif kind == "transcribe" and provider == "groq":
         seconds = usage.get("audio_seconds")
         if type(seconds) in (int, float) and math.isfinite(seconds) and seconds > 0:

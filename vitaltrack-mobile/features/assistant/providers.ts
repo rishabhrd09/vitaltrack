@@ -13,7 +13,7 @@ import { sarvamSourceAvailable } from './sarvam';
  */
 export type Stage = 'listening' | 'understanding' | 'speaking';
 export type ListenerId = 'offline' | 'groq' | 'whistle';
-export type InterpreterId = 'local' | 'groq';
+export type InterpreterId = 'local' | 'groq' | 'openai';
 export type SpeakerId = 'device' | 'pocket' | 'kokoro_offline' | 'sarvam';
 export type Readiness = 'ready' | 'checking' | 'needs_download' | 'needs_consent' | 'needs_key' | 'unavailable' | 'paused';
 export type Provider<Id extends string> = { id: Id; label: string; online: boolean; readiness: Readiness; detail: string };
@@ -70,7 +70,7 @@ export function serverFailureReason(error: unknown, offline = false): string {
 export function choicesFrom(prefs: Preferences): Choices {
   return {
     listening: WHISTLE_LISTENING_ENABLED && prefs.inputProvider === 'whistle' ? 'whistle' : CLOUD_TRANSCRIPTION_ENABLED && prefs.inputProvider === 'groq' && prefs.audioOptIn ? 'groq' : 'offline',
-    understanding: CLOUD_TEXT_ENABLED && prefs.cloud ? 'groq' : 'local',
+    understanding: CLOUD_TEXT_ENABLED && prefs.cloud ? prefs.understandingProvider === 'openai' ? 'openai' : prefs.understandingProvider === 'local' ? 'local' : 'groq' : 'local',
     speaking: prefs.speechProvider === 'sarvam' && SARVAM_SPEECH_ENABLED && prefs.sarvamSpeechOptIn ? 'sarvam'
       : prefs.speechProvider === 'pocket' && ALBA_SELECTION_ENABLED ? 'pocket'
       : prefs.speechProvider === 'kokoro_offline' && KOKORO_SELECTION_ENABLED ? 'kokoro_offline' : 'device',
@@ -112,7 +112,14 @@ export function interpreters(env: Environment): Provider<InterpreterId>[] {
       : { readiness: 'ready', detail: contracts.includes(3) ? 'Ready for multi-part requests (contract 3).' : contracts.includes(2)
         ? 'Ready, but this server is older (contract 2): some multi-part requests will ask you to rephrase.'
         : 'Ready for basic requests only (contract 1). Update the backend for filters and drafts.' })) };
-  return [local, groq];
+  const key = env.caps.openai_personal_key;
+  const openai: Provider<InterpreterId> = { id: 'openai', label: 'OpenAI · your API key', online: true,
+    ...(serverGate(env) ?? (!key?.setup_available ? { readiness: 'unavailable', detail: 'Personal OpenAI understanding is not configured on this server. Your other choices still work.' }
+      : !key.usable ? { readiness: 'needs_key', detail: 'Save your personal OpenAI key below. CareKosh never uses another account if it fails.' }
+      : !env.caps.interpretation_providers?.includes('openai') || !contracts.includes(3) || !env.caps.openai_model ? { readiness: 'unavailable', detail: 'This server cannot offer the configured OpenAI model safely. Tap Recheck.' }
+      : !env.caps.scopes.includes('openai_text') ? { readiness: 'needs_consent', detail: 'Sends only unfamiliar reviewed question text using your key, after Send.' }
+      : { readiness: 'ready', detail: `${env.caps.openai_model.label}. Uses your API credits; key validity, model access and credits may still fail when requested.` })) };
+  return [local, groq, openai];
 }
 
 export function speakers(env: Environment, prefs: Preferences): Provider<SpeakerId>[] {

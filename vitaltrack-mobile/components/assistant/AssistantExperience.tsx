@@ -11,7 +11,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { captureSession, assertSession, type Session } from '@/services/assistantSession';
 import * as assistant from '@/services/assistant';
 import { answerIntent, clarificationSpeech, command, commandExamples, speechText, type Answer, type Intent } from '@/features/assistant/core';
-import { defaults, loadPreferences, permittedInputProvider, permittedSpeechProvider, savePreferences, type AlbaVoice, type KokoroVoice, type OfflineFallbackVoice, type Preferences } from '@/features/assistant/preferences';
+import { defaults, loadPreferences, permittedInputProvider, permittedSpeechProvider, permittedUnderstandingProvider, savePreferences, type AlbaVoice, type KokoroVoice, type OfflineFallbackVoice, type Preferences } from '@/features/assistant/preferences';
 import { playSarvamSpeech } from '@/features/assistant/cloudSpeech';
 import { fallbackVoiceLabel, narrateWithFallback } from '@/features/assistant/narration';
 import { sarvamSourceAvailable } from '@/features/assistant/sarvam';
@@ -34,6 +34,7 @@ import { isCriticalEquipment, isLowStock, isOutOfStock, type Category, type Item
 import { exportInventoryPdf } from '@/utils/inventoryPdfExport';
 import VoiceSetup, { VoiceButton } from '@/components/assistant/VoiceSetup';
 import SarvamKeySettings from '@/components/assistant/SarvamKeySettings';
+import OpenAIKeySettings from '@/components/assistant/OpenAIKeySettings';
 
 const recordingOptions = { ...RecordingPresets.HIGH_QUALITY, sampleRate: 44100, numberOfChannels: 1, bitRate: 128000, isMeteringEnabled: true,
   android: { ...RecordingPresets.HIGH_QUALITY.android, audioSource: 'voice_recognition' as const } };
@@ -55,7 +56,7 @@ function waitForMicrophoneForeground(signal: AbortSignal): Promise<void> {
   });
 }
 function scopeEnabled(scope: assistant.ConsentScope) {
-  if (scope === 'groq_text') return CLOUD_TEXT_ENABLED;
+  if (scope === 'groq_text' || scope === 'openai_text') return CLOUD_TEXT_ENABLED;
   if (scope === 'groq_audio') return CLOUD_TRANSCRIPTION_ENABLED;
   if (scope === 'sarvam_speech') return SARVAM_SPEECH_ENABLED;
   return false;
@@ -316,6 +317,8 @@ export default function AssistantExperience({ embedded = false, active = true, s
     // A callback from a previous render must never change the next account's preferences.
     if (session.owner !== userId) return;
     next = { ...next, inputProvider: permittedInputProvider(next.inputProvider, next.audioOptIn), speechProvider: permittedSpeechProvider(next.speechProvider, next.sarvamSpeechOptIn) };
+    const understandingProvider = permittedUnderstandingProvider(next);
+    next = { ...next, understandingProvider, cloud: understandingProvider !== 'local' };
     cancel(); setError('');
     setPrefs(next); // Disabling must take effect even if storage/network is unavailable.
     try { await savePreferences(session.owner, next); assertSession(session); }
@@ -386,12 +389,13 @@ export default function AssistantExperience({ embedded = false, active = true, s
     if (caps.scopes.includes(scope)) { void update(next); return; }
     const disclosure = {
       groq_text: 'After you tap Send, unfamiliar typed questions or reviewed transcripts go through CareKosh to Groq for understanding. This text option uploads no recording or inventory list. Words and item names you include in your question are sent. CareKosh saves your consent and usage counts; this cannot change your stock.',
+      openai_text: 'After you tap Send, unfamiliar typed questions or reviewed transcripts go through CareKosh to OpenAI using your personal API key. Only the question text and whether it is a follow-up are sent, not a recording or inventory list. Item names you include in the question are sent. Requests use your OpenAI API billing or credits. A failure never switches to Groq or an application key; stock and order saving still require touch confirmation.',
       groq_audio: 'Recordings go through CareKosh to Groq (US) for Whisper transcription. This is an online, potentially paid service.',
       sarvam_audio: 'Recordings go through CareKosh to Sarvam for Saaras transcription. This is an online, potentially paid service, not an offline model.',
       kokoro_speech: 'The answer text, including quantities and recorded suppliers, goes to our hosted Kokoro speech service. Hosting has a cost; no audio is uploaded for this speaking option.',
       sarvam_speech: 'The short answer text, which may include item names, quantities and recorded suppliers, goes through CareKosh to Sarvam to create English speech. Internet and API credits are required. This choice does not enable microphone uploads or change your stock.',
     }[scope];
-    const retention = scope.startsWith('groq_') ? ' Groq may retain request content for reliability or abuse monitoring unless the service account has Zero Data Retention enabled.' : ' Answer text is processed by the selected speech service under its data policy.';
+    const retention = scope === 'openai_text' ? ' CareKosh requests no stored response, but OpenAI may retain request content for abuse monitoring under your account’s data controls. This is not a promise of Zero Data Retention.' : scope.startsWith('groq_') ? ' Groq may retain request content for reliability or abuse monitoring unless the service account has Zero Data Retention enabled.' : ' Answer text is processed by the selected speech service under its data policy.';
     Alert.alert('Optional cloud processing — adult pilot', disclosure + ' Avoid patient identifiers.' + retention + ' Continue only if you are 18+ and agree. Use “Withdraw all cloud consent” below to turn it off.',
       [{ text: 'Cancel', style: 'cancel' }, { text: 'I am 18+ and agree', onPress: () => { if (canConfirm()) void cloudConsent(scope, next, session); } }]);
   }
@@ -405,7 +409,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     setCaps(value => ({ ...value, scopes: [], consented: false }));
     // update() cancels synchronously, then awaits account-scoped preference storage. Bind
     // that new turn before the await: a slow save must not withdraw the next user's consent.
-    const saving = update({ ...prefs, cloud: false, audioOptIn: false, sarvamSpeechOptIn: false, inputProvider: WHISTLE_LISTENING_ENABLED && prefs.inputProvider === 'whistle' ? 'whistle' : 'offline', speechProvider: ALBA_SELECTION_ENABLED && prefs.speechProvider === 'pocket' ? 'pocket' : 'device' });
+    const saving = update({ ...prefs, cloud: false, understandingProvider: 'local', audioOptIn: false, sarvamSpeechOptIn: false, inputProvider: WHISTLE_LISTENING_ENABLED && prefs.inputProvider === 'whistle' ? 'whistle' : 'offline', speechProvider: ALBA_SELECTION_ENABLED && prefs.speechProvider === 'pocket' ? 'pocket' : 'device' });
     const current = turn.current;
     await saving;
     if (!mounted.current || !active || current !== turn.current) return;
@@ -612,6 +616,40 @@ export default function AssistantExperience({ embedded = false, active = true, s
       if (current === turn.current && mounted.current) setBusy('');
     }
   }
+  async function changeOpenAIKey(key?: string) {
+    if (!loaded || busy || speakingRef.current || capture.phase !== 'idle') throw new Error('Voice setup is busy. Please retry.');
+    const session = captureSession();
+    cancel(); setError(''); setBusy(key ? 'Saving OpenAI key securely…' : 'Removing OpenAI key…');
+    const abort = new AbortController(); controller.current = abort;
+    const current = turn.current;
+    try {
+      if (key) await assistant.saveOpenAIKey(session, key, abort.signal);
+      else await assistant.removeOpenAIKey(session, abort.signal);
+      const available = await assistant.capabilities(session, abort.signal);
+      assertSession(session);
+      if (!active || current !== turn.current || abort.signal.aborted || !mounted.current) throw new Error('Key change cancelled.');
+      acceptCaps(available);
+      // Enrollment never selects a provider, changes audio, or grants text consent.
+      // A removed selected key stays visibly unavailable; no other billing source is used.
+    } catch {
+      const message = 'OpenAI key changes could not be confirmed. Recheck before retrying; the server may have saved the change.';
+      if (current === turn.current && mounted.current) setError(message);
+      throw new Error(message);
+    } finally { if (current === turn.current && mounted.current) setBusy(''); }
+  }
+  async function checkPersonalOpenAIKey() {
+    if (!loaded || busy || speakingRef.current || capture.phase !== 'idle') throw new Error('Voice setup is busy. Please retry.');
+    const session = captureSession();
+    cancel(); setError(''); setBusy('Checking OpenAI key & model access…');
+    const abort = new AbortController(); controller.current = abort;
+    const current = turn.current;
+    try {
+      const result = await assistant.checkOpenAIKey(session, abort.signal);
+      assertSession(session);
+      if (!active || !mounted.current || current !== turn.current || abort.signal.aborted || AppState.currentState !== 'active') throw new Error('Key check cancelled.');
+      return result;
+    } finally { if (current === turn.current && mounted.current) setBusy(''); }
+  }
   async function checkAudioOutput() {
     cancel(); setError(''); setSpeechFeedback(null);
     const abort = new AbortController(); controller.current = abort;
@@ -713,28 +751,38 @@ export default function AssistantExperience({ embedded = false, active = true, s
       const hasDraft = !!getDraft(session)?.rows.length;
       let intent = chosen || routeLocally(text, names, hasDraft, cachedCategoryNames(session));
       if (!intent) {
-        if (!CLOUD_TEXT_ENABLED || !prefs.cloud) throw new Error('That wording needs online understanding. Enable Groq understanding in Voice setup, or use an example while offline.');
-        // A cold start or a new staging deployment must not leave availability stale for this screen.
+        const interpreter = permittedUnderstandingProvider(prefs);
+        if (!CLOUD_TEXT_ENABLED || interpreter === 'local') throw new Error('That wording needs online understanding. Choose Groq or OpenAI in Voice setup, or use an example while offline.');
+        const provider = interpreter === 'openai' ? 'openai' : 'groq';
+        const providerName = provider === 'openai' ? 'OpenAI' : 'Groq';
+        // Recheck capabilities and scope before each cloud question. A blocked choice
+        // cannot borrow another provider or key, even if that provider is available.
         const available = await assistant.capabilities(session, abort.signal);
         assertSession(session);
         if (current !== turn.current || abort.signal.aborted) return;
         acceptCaps(available);
-        if (!available.interpret) throw new Error('Groq understanding is unavailable on this backend. Recheck the staging deployment and AI settings in Voice setup.');
-        if (!available.scopes.includes('groq_text')) throw new Error('Enable Groq understanding in Voice setup to confirm text-processing consent for this account.');
+        if (provider === 'openai') {
+          if (!available.interpretation_providers?.includes('openai') || !available.openai_personal_key?.usable) throw new Error('Your OpenAI key or model is unavailable. Recheck Voice setup or replace your key. No other provider was used.');
+          if (!available.scopes.includes('openai_text')) throw new Error('Select OpenAI understanding in Voice setup and accept its question-text consent.');
+        } else {
+          if (!available.interpret) throw new Error('Groq understanding is unavailable on this backend. Recheck the staging deployment and AI settings in Voice setup.');
+          if (!available.scopes.includes('groq_text')) throw new Error('Enable Groq understanding in Voice setup to confirm text-processing consent for this account.');
+        }
         const contracts = available.interpret_contracts || [];
         const required = minimumInterpretContract(text);
+        if (provider === 'openai' && !contracts.includes(3)) throw new Error('OpenAI understanding needs the updated backend and contract 3. No other provider was used.');
         if (required === 3 && !contracts.includes(3) || required === 2 && !contracts.includes(2) && !contracts.includes(3)) {
           throw new Error(`This request needs interpretation contract ${required}, which this backend does not offer. Deploy the latest feature branch to staging and recheck Voice setup. No filters were dropped and no draft was changed.`);
         }
         if (!contracts.includes(2) && !contracts.includes(3) && /\b(?:draft|order)\b/i.test(text)) throw new Error('This backend does not support voice order drafts yet. Deploy the latest feature branch to staging, then recheck Voice setup.');
         const context = resultChain.current.length > 0 || !!previousItem.current || hasDraft;
-        try { intent = contracts.includes(3) ? await assistant.interpretPlan(session, text.trim(), context, abort.signal)
+        try { intent = contracts.includes(3) ? await assistant.interpretPlan(session, text.trim(), context, abort.signal, provider)
           : contracts.includes(2) ? await assistant.interpretExpanded(session, text.trim(), context, abort.signal)
           : await assistant.interpret(session, text.trim(), !!previousItem.current, abort.signal);
-          understandingSource.current = 'Understood with Groq'; }
+          understandingSource.current = `Understood with ${providerName}`; }
         catch (e) {
           if (abort.signal.aborted) throw e;
-          throw new Error(`Online understanding could not complete this question. ${e instanceof Error ? e.message : 'Please retry later.'} Nothing was saved. You can edit the question or use a basic command.`);
+          throw new Error(`${providerName} understanding could not complete this question. ${e instanceof Error ? e.message : 'Please retry later.'} Nothing was saved. You can edit the question or use a basic command.`);
         }
       }
       const assertReady = () => { assertSession(session); if (!active || !mounted.current || current !== turn.current || abort.signal.aborted) throw new Error('Question cancelled.'); };
@@ -1034,7 +1082,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
     }}
     caps={caps} server={server}
     chooseListening={id => { if (id === 'groq') chooseCloud('groq_audio', { ...prefs, inputProvider: 'groq', audioOptIn: true }); else if (id === 'whistle') { if (whistleOffered && whistle.ready && whistle.telemetryDisabled) void update({ ...prefs, inputProvider: 'whistle', audioOptIn: false }); } else void update({ ...prefs, inputProvider: 'offline', audioOptIn: false }); }}
-    chooseUnderstanding={id => { if (id === 'groq') chooseCloud('groq_text', { ...prefs, cloud: true }); else void update({ ...prefs, cloud: false }); }}
+    chooseUnderstanding={id => { if (id === 'openai') chooseCloud('openai_text', { ...prefs, cloud: true, understandingProvider: 'openai' }); else if (id === 'groq') chooseCloud('groq_text', { ...prefs, cloud: true, understandingProvider: 'groq' }); else void update({ ...prefs, cloud: false, understandingProvider: 'local' }); }}
     withdrawCloud={() => { void revokeCloud(); }}
     selectSarvam={() => chooseCloud('sarvam_speech', { ...prefs, speechProvider: 'sarvam', sarvamSpeechOptIn: true })}
     sarvamKeyControls={<SarvamKeySettings key={userId} status={caps.sarvam_personal_key} source={prefs.sarvamKeySource ?? 'application'}
@@ -1045,6 +1093,8 @@ export default function AssistantExperience({ embedded = false, active = true, s
         cancel(); setError(''); const abort = new AbortController(); controller.current = abort;
         void playAnswer({ title: 'Personal voice test', text: 'Hello. Your personal Sarvam voice is ready.', items: [], choices: [], timestamp: Date.now(), stale: false }, turn.current, abort.signal, true, true);
       }} />}
+    openaiKeyControls={<OpenAIKeySettings key={userId} status={caps.openai_personal_key} model={caps.openai_model} limits={caps.openai_limits} active={settingsOpen && active}
+      locked={locked || speaking} saveKey={key => changeOpenAIKey(key)} removeKey={() => changeOpenAIKey()} checkKey={checkPersonalOpenAIKey} />}
     speechStatus={speechStatus} stopSpeech={cancel}
     speechFeedback={speechFeedback} outputCheckSupported={pocketOutputCheckSupported} checkAudioOutput={() => { void checkAudioOutput(); }}
     chooseFallback={voice => { void chooseFallback(voice); }}

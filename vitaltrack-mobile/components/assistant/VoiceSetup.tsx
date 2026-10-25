@@ -35,6 +35,7 @@ type Props = {
   chooseListening: (id: ListenerId) => void; chooseUnderstanding: (id: InterpreterId) => void; withdrawCloud: () => void;
   selectSarvam: () => void;
   sarvamKeyControls?: ReactNode;
+  openaiKeyControls?: ReactNode;
   speechStatus: string; stopSpeech: () => void;
   outputCheckSupported: boolean; checkAudioOutput: () => void;
   speechFeedback: { message: string; details: string; failed: boolean } | null;
@@ -81,16 +82,16 @@ export default function VoiceSetup(p: Props) {
   const body = { color: colors.textSecondary, fontSize: 14, lineHeight: 21 };
   const card = [styles.card, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary }];
   const tone = (readiness: Readiness) => readiness === 'ready' ? colors.statusGreen : readiness === 'checking' ? colors.textSecondary : readiness === 'paused' || readiness === 'unavailable' ? colors.textTertiary : colors.statusOrange;
-  const step = (number: string, title: string, complete: boolean, optional = false) => <View style={styles.row}>
+  const step = (number: string, title: string, complete: boolean, optional = false) => <View style={{ gap: 6 }}><View style={styles.row}>
     <View style={[styles.step, { backgroundColor: complete ? colors.statusGreenBg : colors.accentBlueBg }]}>
       {complete ? <Ionicons name="checkmark" size={19} color={colors.statusGreen} /> : <Text style={{ color: colors.accentBlue, fontWeight: '700' }}>{number}</Text>}
     </View><Text accessibilityRole="header" style={[styles.title, { color: colors.textPrimary, flex: 1 }]}>{title}</Text>
-    {optional && <Text style={[styles.optional, { color: colors.textSecondary }]}>Optional</Text>}
-  </View>;
+    {optional && !compactProviders && <Text style={[styles.optional, { color: colors.textSecondary }]}>Optional</Text>}
+  </View>{optional && compactProviders && <Text style={[styles.optional, { color: colors.textSecondary }]}>Optional</Text>}</View>;
   // The saved choice and whether it can run now. A blocked choice says why; nothing is swapped silently.
-  const selected = (label: string, state: { ready: boolean; reason: string }, configuredOnly = false) => <Text accessibilityLiveRegion="polite" style={[body, { color: state.ready ? colors.textSecondary : colors.statusOrange }]}>
-    Selected: {label}{state.ready ? configuredOnly ? ' · Configured · preview to verify' : ' · Ready' : ` · ${state.reason}`}</Text>;
-  const readinessText = (provider: Provider<string>) => provider.id === 'sarvam' && provider.readiness === 'ready' ? 'Configured' : READINESS_LABEL[provider.readiness];
+  const selected = (label: string, state: { ready: boolean; reason: string }, verification?: string) => <Text accessibilityLiveRegion="polite" style={[body, { color: state.ready ? colors.textSecondary : colors.statusOrange }]}>
+    Selected: {label}{state.ready ? verification ? ` · Configured · ${verification}` : ' · Ready' : ` · ${state.reason}`}</Text>;
+  const readinessText = (provider: Provider<string>) => (provider.id === 'sarvam' || provider.id === 'openai') && provider.readiness === 'ready' ? 'Configured' : READINESS_LABEL[provider.readiness];
   const row = (provider: Provider<string> | undefined, chosen: boolean, actions?: ReactNode) => provider && <View key={provider.id}
     style={[styles.provider, { borderColor: chosen ? colors.accentBlue : colors.borderPrimary }]}>
     <View accessible accessibilityLabel={`${provider.label}. ${chosen ? 'Selected. ' : ''}${readinessText(provider)}. ${provider.detail}`} style={styles.row}>
@@ -107,7 +108,7 @@ export default function VoiceSetup(p: Props) {
   const toggle = (title: string, description: string, value: boolean, onValueChange: (v: boolean) => void, disabled = false) =>
     <View style={styles.row}><View style={{ flex: 1, gap: 4 }}><Text style={[styles.label, { color: colors.textPrimary }]}>{title}</Text><Text style={body}>{description}</Text></View>
       <Switch accessibilityLabel={title} value={value} onValueChange={onValueChange} disabled={locked || disabled} trackColor={{ true: colors.accentBlue }} /></View>;
-  const groqListener = find(listening, 'groq'), groqInterpreter = find(understanding, 'groq'), sarvam = find(speaking, 'sarvam');
+  const groqListener = find(listening, 'groq'), groqInterpreter = find(understanding, 'groq'), openaiInterpreter = find(understanding, 'openai'), sarvam = find(speaking, 'sarvam');
   const paceControl = (note?: string) => <View style={{ gap: 8 }}>
     <Text style={body}>Speaking pace · {(p.prefs.speechPace ?? 1) === 0.9 ? 'Relaxed' : (p.prefs.speechPace ?? 1) === 1.1 ? 'Brisk' : 'Natural'}{note ? `. ${note}` : ''}</Text>
     <View style={styles.paceRow}>{([['Relaxed', 0.9], ['Natural', 1], ['Brisk', 1.1]] as const).map(([label, pace]) => <View key={label} style={styles.paceOption}>
@@ -163,10 +164,16 @@ export default function VoiceSetup(p: Props) {
     <View style={card}>
       {step('2', 'Understanding · text to task', understood.ready, true)}
       <Text style={body}>Requests are understood on this phone first. Online understanding is used only for wording the phone cannot follow, after you tap Send. Either way, stock changes and order saving are not possible by voice.</Text>
-      {selected(choices.understanding === 'groq' ? 'On this phone, then Groq online' : 'On this phone only', understood)}
+      {selected(choices.understanding === 'local' ? 'On this phone only' : `On this phone, then ${choices.understanding === 'openai' ? 'OpenAI with your key' : 'Groq online'}`, understood, choices.understanding === 'openai' ? 'send a question to verify' : undefined)}
       {row(find(understanding, 'local'), choices.understanding === 'local', groqInterpreter && <VoiceButton label="Use on-phone understanding only" secondary onPress={() => p.chooseUnderstanding('local')} disabled={locked || choices.understanding === 'local'} />)}
       {row(groqInterpreter, choices.understanding === 'groq', <VoiceButton label="Enable Groq understanding" secondary onPress={() => p.chooseUnderstanding('groq')}
         disabled={locked || blocked(groqInterpreter) || choices.understanding === 'groq' && understood.ready} />)}
+      {row(openaiInterpreter, choices.understanding === 'openai', <>
+        <Text style={body}>Save your key below, then select OpenAI and accept its text consent. You can check key & model access separately. Listening and spoken replies keep their own selections.</Text>
+        <VoiceButton label="Use OpenAI understanding" secondary onPress={() => p.chooseUnderstanding('openai')}
+          disabled={locked || blocked(openaiInterpreter) || openaiInterpreter?.readiness === 'needs_key' || choices.understanding === 'openai' && understood.ready} />
+        {p.openaiKeyControls}
+      </>)}
       {(groqListener || groqInterpreter || sarvam) && <View style={[styles.divider, { borderTopColor: colors.borderPrimary }]}>
         <VoiceButton label="Withdraw all cloud consent" secondary onPress={p.withdrawCloud} disabled={locked} />
         <Text style={[styles.caption, { color: colors.textSecondary }]}>Withdrawal turns off online understanding, online listening and Sarvam speech for this account. Device voice and on-phone understanding remain.</Text>
@@ -175,7 +182,7 @@ export default function VoiceSetup(p: Props) {
     <View style={card}>
       {step('3', 'Spoken replies', p.prefs.spokenReplies && spoken.ready, true)}
       {toggle('Read answers aloud', 'Optional. Preview voice and Hear answer also work when automatic reading is off.', p.prefs.spokenReplies, v => p.update({ ...p.prefs, spokenReplies: v }), !spoken.ready && !p.prefs.spokenReplies)}
-      {selected(find(speaking, choices.speaking)?.label || 'Device voice', spoken, choices.speaking === 'sarvam')}
+      {selected(find(speaking, choices.speaking)?.label || 'Device voice', spoken, choices.speaking === 'sarvam' ? 'preview to verify' : undefined)}
       {row(find(speaking, 'device'), choices.speaking === 'device', <>
         <Text style={body}>{p.deviceVoice.checked === false ? 'Checking Android text-to-speech…' : p.deviceVoice.ready ? `Available · ${p.deviceVoice.name}` : 'An English device voice is unavailable on this phone.'}</Text>
         <VoiceButton label="Use device voice" secondary onPress={() => p.update({ ...p.prefs, speechProvider: 'device' })} disabled={locked || !p.deviceVoice.ready || choices.speaking === 'device'} />

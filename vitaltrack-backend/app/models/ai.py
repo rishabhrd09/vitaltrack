@@ -46,3 +46,14 @@ class SarvamCredential(Base):
     )
     ciphertext: Mapped[str] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class OpenAICredential(Base):
+    """Encrypted personal text-understanding key. Never serialize this model."""
+
+    __tablename__ = "ai_openai_credentials"
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    ciphertext: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

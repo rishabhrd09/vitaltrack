@@ -12,6 +12,7 @@ ConsentScope = Literal[
     "sarvam_speech",
     "kokoro_speech",
     "alba_speech",
+    "openai_text",
 ]
 CONSENT_SCOPES = {
     "groq_text",
@@ -20,6 +21,7 @@ CONSENT_SCOPES = {
     "sarvam_speech",
     "kokoro_speech",
     "alba_speech",
+    "openai_text",
 }
 
 
@@ -66,6 +68,13 @@ class InterpretRequest(StrictModel):
     question: str = Field(min_length=1, max_length=600)
     has_previous_item: bool = False
     contract_version: Literal[1, 2, 3] = 1
+    provider: Literal["groq", "openai"] = "groq"
+
+    @model_validator(mode="after")
+    def supported_provider_contract(self):
+        if self.provider == "openai" and self.contract_version != 3:
+            raise ValueError("OpenAI understanding requires contract version 3")
+        return self
 
 
 class SpeakRequest(StrictModel):
@@ -107,11 +116,15 @@ class SarvamKeyRequest(StrictModel):
         return value
 
 
+class OpenAIKeyRequest(SarvamKeyRequest):
+    """The same bounded secret enrollment, with a separate provider purpose."""
+
+
 class ConsentRequest(StrictModel):
     # One source of truth: a new consent text changes CONSENT_VERSION only.
     version: Literal[CONSENT_VERSION]  # type: ignore[valid-type]
     accepted: bool
-    scopes: list[ConsentScope] = Field(default_factory=list, max_length=6)
+    scopes: list[ConsentScope] = Field(default_factory=list, max_length=7)
 
     @model_validator(mode="after")
     def explicit_scopes(self):

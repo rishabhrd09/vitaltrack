@@ -1,5 +1,7 @@
 # Sarvam English narration in CareKosh
 
+> **25 October 2026 — independent OpenAI understanding.** Sarvam narration keeps its existing key, consent, billing source and playback path. Users may pair it with [personal-key OpenAI understanding](OPENAI_UNDERSTANDING.md). The two providers have separate encrypted rows and owner/provider-bound envelopes; removing an OpenAI key preserves Sarvam. Keep the shared encryption master secret stable when enabling either provider. Migration 0012 only adds the OpenAI credential table.
+
 > **24 October 2026 — query, UI and order recovery follow-up.** The centered **Ask CareKosh** entry, responsive answer/order cards and emergency selection are updated. Important equipment and low-stock predicates remain one intersection; save/PDF progress and recovery are separate. These changes are reviewed for staging; deployment and phone acceptance remain separate. See [verification and remaining phone checks](AI_VOICE_END_TO_END_REVIEW.md#16-query-presentation-and-order-recovery-follow-up--24-october-2026). Earlier dated evidence retains its original scope.
 
 > **24 October 2026 — Whistle in regular preview.** Whistle is a separately selected, English-only offline transcription option in the regular `preview` APK and the diagnostic APK. Moonshine remains the default; understanding and narration retain their existing settings. Regular preview keeps Alba and Kokoro paused. See [Whistle setup, privacy controls and device checks](WHISTLE_OFFLINE_LISTENER.md). Earlier dated evidence below retains its original scope.

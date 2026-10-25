@@ -106,7 +106,7 @@ jobs:
           ENVIRONMENT: testing
         run: |
           cd vitaltrack-backend
-          python scripts/check_api_routes.py --expected 47
+          python scripts/check_api_routes.py --expected 51
 
       - name: Verify item/order coverage floors
         run: |

@@ -1024,14 +1024,14 @@ class TestHealthDiagnostics:
         assert body["health"] == "/health"
         assert body["live"] == "/live"
 
-    def test_api_v1_route_count_remains_47(self):
+    def test_api_v1_route_count_includes_openai_keys(self):
         api_v1_routes = [
             route
             for route in main_module.app.routes
             if getattr(route, "path", "").startswith("/api/v1")
         ]
 
-        assert len(api_v1_routes) == 47
+        assert len(api_v1_routes) == 51
         assert all(route.path not in {"/api/v1/health", "/api/v1/live"} for route in api_v1_routes)
 
     def test_render_health_check_uses_liveness_endpoint(self):

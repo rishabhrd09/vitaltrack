@@ -35,6 +35,7 @@ GUIDES = [
     "docs/WHISTLE_OFFLINE_LISTENER.md",
     "docs/POCKET_TTS_ALBA.md",
     "docs/SARVAM_ENGLISH_VOICE.md",
+    "docs/OPENAI_UNDERSTANDING.md",
     "docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md",
     "docs/API_TRACEABILITY.md",
     "docs/AI_VOICE_END_TO_END_REVIEW.md",

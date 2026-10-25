@@ -22,7 +22,7 @@ from app.schemas.ai import (
     SpeakRequest,
     Specification,
 )
-from app.services import ai_provider, sarvam_credentials
+from app.services import ai_provider, openai_credentials, openai_interpreter, sarvam_credentials
 from app.services.ai_body_limit import DISCONNECTED
 from app.services.sarvam_speech import english_voice
 from app.services.ai_guard import (
@@ -92,6 +92,11 @@ async def capabilities(request: Request, user: Principal):
             return False
 
     personal = await sarvam_credentials.personal_status(user.user_id)
+    openai_personal = await openai_credentials.personal_status(user.user_id)
+    try:
+        openai_model = {"id": openai_interpreter.configured_model(), "label": "GPT-5.4 mini"}
+    except HTTPException:
+        openai_model = None
     shared_sarvam = enabled("speak", "sarvam")
     speech_providers = [
         p
@@ -100,6 +105,17 @@ async def capabilities(request: Request, user: Principal):
     ]
     return {
         "interpret": enabled("interpret"),
+        # Legacy boolean retains its Groq meaning for existing APKs/web clients.
+        "interpretation_providers": [p for p, available in (
+            ("groq", enabled("interpret")), ("openai", openai_personal["usable"]),
+        ) if available],
+        "openai_personal_key": openai_personal,
+        "openai_model": openai_model,
+        "openai_limits": {
+            "daily_requests": settings.AI_USER_DAILY_REQUESTS,
+            "daily_budget_microusd": settings.AI_USER_DAILY_BUDGET_MICROUSD,
+            "max_output_tokens": 3072,
+        },
         "interpret_contracts": [1, 2, 3],
         "order_review_guard": True,
         "transcribe": enabled("transcribe"),
@@ -154,10 +170,18 @@ async def consent(request: Request, body: ConsentRequest, user: Principal):
 @router.post("/interpret", response_model=Intent | Specification | Plan)
 @limiter.limit(AI_RATE, key_func=authenticated_ai_rate_key)
 async def interpret(request: Request, body: InterpretRequest, user: Principal):
-    ticket = await reserve(user.user_id, "interpret")
+    # Existing requests retain their exact Groq default and contracts. OpenAI
+    # accepts only v3 and always uses this authenticated account's personal key.
+    ticket = await reserve(user.user_id, "interpret", provider="openai", credential_source="personal") \
+        if body.provider == "openai" else await reserve(user.user_id, "interpret")
     success, usage = False, {}
     try:
-        if body.contract_version in (2, 3):
+        if body.provider == "openai":
+            key = await openai_credentials.load_key(user.user_id)
+            result, usage = await until_disconnected(request, openai_interpreter.interpret(
+                body.question, body.has_previous_item, key,
+            ))
+        elif body.contract_version in (2, 3):
             result, usage = await until_disconnected(request, ai_provider.interpret(
                 body.question, body.has_previous_item, body.contract_version
             ))

@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     # Conservative credits, millionths of USD. Not a provider billing cap.
     AI_USER_DAILY_BUDGET_MICROUSD: int = Field(default=100_000, ge=0)
     AI_GLOBAL_DAILY_BUDGET_MICROUSD: int = Field(default=1_000_000, ge=0)
+    # Optional personal-key TEXT understanding only. There is no operator OpenAI
+    # key or implicit fallback to another provider/account.
+    AI_OPENAI_ENABLED: bool = False
+    AI_OPENAI_DATA_CONTROLS_REVIEWED: bool = False
+    OPENAI_INTENT_MODEL: str = "gpt-5.4-mini-2026-03-17"
+    # Conservative per-call allowance for the bounded prompt and 3,072 output
+    # tokens. Standard GPT-5.4 mini rates; the adapter fixes the service tier.
+    AI_OPENAI_INTERPRET_RESERVE_MICROUSD: int = Field(default=50_000, ge=50_000)
     AI_INTERPRET_RESERVE_MICROUSD: int = Field(default=5_000, ge=1)
     AI_TRANSCRIBE_RESERVE_MICROUSD: int = Field(default=1_000, ge=1)
     AI_SPEAK_RESERVE_MICROUSD: int = Field(default=1_000, ge=1)

@@ -671,3 +671,57 @@ Fresh checks use synthetic data and mocked providers. The backend runs against t
 Browser previews use the actual component render trees and styles with synthetic data through React Native Web. Icons and native input/share surfaces are approximated; these are layout checks, not Android screenshots or proof of native PDF/audio behavior. The microphone's center measured exactly half the 393-pixel preview width. Narrow 320-pixel and large-text layouts are checked alongside light/dark answer presentation.
 
 No Render variable, API key, database migration or native listener change is needed. Deploy the reviewed backend for the updated cloud interpretation checks and build the ordinary `preview` APK for app changes. Live Groq accuracy, Sarvam playback, the native Android PDF/share chooser and Nord 4 behavior remain device/staging acceptance checks. Test the exact reported query, emergency count/action agreement, an existing draft conflict, PDF failure/re-export, a saved-order Done action, and a second microphone question before release.
+
+## 17. OpenAI personal-key understanding — 25 October 2026
+
+This section records the later local OpenAI implementation; it does not replace earlier dated evidence or imply deployment. The initial checks in §17.2 used the combined local tree, including separate unpublished browser/ingress work. Final checks of the isolated OpenAI-only publication are recorded in §17.4. [Architecture, security boundaries and exact setup](OPENAI_UNDERSTANDING.md).
+
+### 17.1 Scope and safety
+
+- OpenAI is an independent Understanding option. Existing listener/narrator selections, microphone/native code and Sarvam narration remain unchanged.
+- Enrollment uses authenticated encrypted per-account storage and separate storage confirmation. OpenAI has a separate owner/provider-bound credential envelope/table; Sarvam keys remain intact.
+- A separate `openai_text` consent is required. Saving/checking a key neither grants it nor selects the provider. The unsaved field clears on background/exit/account change.
+- Responses uses the pinned GPT-5.4 mini model, strict contract 3, existing semantic grounding, fixed HTTPS endpoints and no tools/automatic retries/fallback credentials. `store:false` is not a Zero Data Retention promise.
+- The validated plan is executed against authorized local inventory. The model cannot write business records; orders and stock retain explicit touch confirmation and backend checks.
+- Existing shared daily limits/concurrency apply. The minimum reservation is 50000 microUSD ($0.05); it exceeds the checked bounded-request estimate of 30063 microUSD at current standard prices. This is an allowance guard, not the provider's balance or guaranteed bill cap.
+- Model/key metadata checking is separate from enrollment and inference. Rejected provider keys do not expire the CareKosh login; quota/rate/timeout errors are sanitized. No application OpenAI key is supported.
+
+### 17.2 Checks actually run
+
+| Check | Result |
+|---|---|
+| Full backend suite, Python 3.12 / disposable PostgreSQL 16, model-created schema | **831 passed** (`python -m pytest tests/ unit_tests/ -q`) |
+| Same suite through actual migrations | **831 passed** (`--migrated-schema`) |
+| Isolated Redis/CI-style subprocess | Included in both runs, without inherited `PYTHONPATH`; non-loopback network blocked |
+| Backend Ruff | `ruff check app/ tests/ unit_tests/`: clean |
+| Mobile full suite | **465 passed**, including independent provider combinations, consent, key clearing, no fallback and second-question routing |
+| TypeScript and mobile lint | Clean types; 0 lint errors, one existing `app/builder.tsx:118` warning |
+| Preview Android JavaScript export | Offline Metro/Hermes export passed from a clean temporary copy with the new component included. This is not an APK/native build or phone test. |
+| Settings visual checks | Actual RN-web components: no horizontal overflow at 393 px light/dark or 320 px with 1.6 font scaling; compact stage label corrected |
+| Independent security review | 111 focused backend checks and 12 focused mobile checks passed. Found/fixed deep JSON `RecursionError`; no remaining blocker identified in that review. |
+| Web compatibility | 53 unit tests passed; TypeScript and lint clean. Existing Groq capability meaning/default requests remain compatible. |
+| Route gate in the initial combined local tree | 55 `/api/v1` route objects; passed. The isolated OpenAI-only publication has 51; unpublished browser routes account for the other four. |
+| Documentation | Six affected HTML companions regenerated. Strict current-guide check: 41 files, 0 problems. The full scan also reports 57 unrelated noncurrent links in website artifacts, preview routes and interview content; those files were not changed by this task. |
+
+Migration coverage upgrades a populated 0011 database and compares old business records, consent and Sarvam credentials before/after. Integration tests prove interpretation adds usage metadata while leaving items, categories, orders, lines, activity and audit counts unchanged. Hostile/malformed model responses never reach execution. Key ownership, provider isolation, rotation, paused deletion, account cascade and cancellation are covered.
+
+All credentials/data are synthetic and all provider transports mocked. No paid call, live database change, EAS build, commit, push or deployment was performed for this implementation.
+
+### 17.3 Deployment and remaining acceptance
+
+Review/apply migration `0012_openai_personal_keys` through the intended deployment procedure. Configure OpenAI feature/review flags and the pinned model in Render, preserving the existing encryption master key. Enroll a personal key in Android settings; do not add it to EAS or as an operator backend key. The [setup guide](OPENAI_UNDERSTANDING.md#manual-backend-configuration) lists exact values and limits.
+
+Still required: an explicitly authorized live OpenAI key/model request, complex-query quality checks, and Nord 4 microphone/narration/second-question acceptance with a matching new preview APK. Mocked/host RN-web checks do not prove real provider schema acceptance or physical Android behavior. Existing Alba/Kokoro acceptance gates remain in place. Production readiness also depends on the deployment's ingress, logging, dependency, privacy and operational controls; passing these tests alone is not a production certification.
+
+### 17.4 Final OpenAI-only publication verification — 25 October 2026
+
+The owner requested publication of only the reviewed OpenAI work. An isolated snapshot was built from feature-branch HEAD `08e292e` plus that change. Unpublished browser/ingress edits, private folders and unrelated documentation were excluded. Shared files retain those owner edits locally; only the OpenAI delta is included in this publication.
+
+- Full backend suites on disposable PostgreSQL 16: **771 passed** with model-created schema and **771 passed** with `--migrated-schema`. The earlier 831 results describe the combined local tree; the 60-test difference is unrelated unpublished browser/ingress coverage.
+- This snapshot has **51** `/api/v1` route objects (47 existing plus four OpenAI key routes). Local browser work adds four more; it remains unpublished. Route-count checks for the committed snapshot use 51.
+- Backend Ruff passes for `app/`, `tests/`, `scripts/` and `unit_tests/`. Strict public-guide checks pass for 34 files with zero problems; the local tree's seven additional private guides are not published.
+- Mobile rerun: **465 passed**; TypeScript clean; lint has zero errors and the one existing builder warning. Mobile runtime sources match the earlier successful preview Android JavaScript export. No native source or listener/narrator integration was changed.
+- The new endpoint rate limits are per authenticated account and worker in this scope. PostgreSQL retains the shared interpretation allowance and concurrency guards. No unpublished Redis/ingress hardening is claimed by this commit.
+- Existing Sarvam, microphone, stock/order, key-isolation, consent, hostile-output, no-fallback and second-question regressions pass. Real OpenAI/provider availability and physical Nord 4 behavior remain acceptance work after deployment.
+
+Publishing this source does not perform a Render deployment, database migration or EAS build. To use OpenAI in the next preview, deploy the same reviewed backend revision, apply migration 0012, configure the documented flags with the stable encryption master key, and enroll the user's key in settings. Other local owner edits remain outside this publication.

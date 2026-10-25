@@ -4,10 +4,14 @@ import { validatePlan, validateSpecification } from '@/features/assistant/contra
 import { validateIntent } from '@/features/assistant/core';
 
 export const CONSENT_VERSION = 'voice-2026-10-06';
-export type ConsentScope = 'groq_text' | 'groq_audio' | 'sarvam_audio' | 'kokoro_speech' | 'sarvam_speech';
+export type ConsentScope = 'groq_text' | 'groq_audio' | 'sarvam_audio' | 'kokoro_speech' | 'sarvam_speech' | 'openai_text';
 export type SarvamKeySource = 'application' | 'personal';
 export type SarvamKeyStatus = { setup_available: boolean; configured: boolean; usable: boolean; updated_at: string | null };
+export type OpenAIKeyStatus = { setup_available: boolean; configured: boolean; usable: boolean; updated_at: string | null };
+export type OpenAIModel = { id: string; label: string };
+export type OpenAILimits = { daily_requests: number; daily_budget_microusd: number; max_output_tokens: number };
 export type Capabilities = { interpret: boolean; interpret_contracts?: number[]; order_review_guard?: boolean; transcribe: boolean; speak: boolean; consented: boolean; consent_version: string; voice: string; scopes: ConsentScope[]; transcription_providers: string[]; speech_providers: string[]; sarvam_english_voice?: { model: string; speaker: string; language_code: string } | null; sarvam_personal_key?: SarvamKeyStatus; sarvam_application_available?: boolean;
+  interpretation_providers?: ('groq' | 'openai')[]; openai_personal_key?: OpenAIKeyStatus; openai_model?: OpenAIModel | null; openai_limits?: OpenAILimits;
   /** Set by the phone when the server's consent version differs; every online choice is then unavailable. */
   consent_mismatch?: boolean };
 export const unavailable: Capabilities = { interpret: false, transcribe: false, speak: false, consented: false, consent_version: CONSENT_VERSION, voice: '', scopes: [], transcription_providers: [], speech_providers: [] };
@@ -63,6 +67,18 @@ export async function removeSarvamKey(session: Session, signal: AbortSignal) {
   return api.assistantRequest<SarvamKeyStatus>('/ai/sarvam-key', { method: 'DELETE', signal }, () => assertSession(session));
 }
 
+/** Credentials only travel to these authenticated enrollment routes; never to preferences. */
+export async function saveOpenAIKey(session: Session, key: string, signal: AbortSignal) {
+  return api.assistantRequest<OpenAIKeyStatus>('/ai/openai-key', { method: 'PUT', body: JSON.stringify({ api_key: key, storage_consent: true }), signal }, () => assertSession(session));
+}
+export async function removeOpenAIKey(session: Session, signal: AbortSignal) {
+  return api.assistantRequest<OpenAIKeyStatus>('/ai/openai-key', { method: 'DELETE', signal }, () => assertSession(session));
+}
+/** Explicit model-access check. No question, recording or inventory is sent. */
+export async function checkOpenAIKey(session: Session, signal: AbortSignal) {
+  return api.assistantRequest<{ available: boolean; model: string }>('/ai/openai-key/check', { method: 'POST', signal }, () => assertSession(session));
+}
+
 /** Older servers are detected before sending the versioned request. */
 export async function interpretExpanded(session: Session, question: string, hasPrevious: boolean, signal: AbortSignal) {
   return validateSpecification(await retryOnceWhenBusy(() => api.assistantRequest('/ai/interpret', { method: 'POST', signal,
@@ -70,7 +86,7 @@ export async function interpretExpanded(session: Session, question: string, hasP
 }
 
 /** Version 3 (bounded selection plan). Sent only after capabilities list contract 3; older servers keep version 2. */
-export async function interpretPlan(session: Session, question: string, hasPrevious: boolean, signal: AbortSignal) {
+export async function interpretPlan(session: Session, question: string, hasPrevious: boolean, signal: AbortSignal, provider: 'groq' | 'openai' = 'groq') {
   return validatePlan(await retryOnceWhenBusy(() => api.assistantRequest('/ai/interpret', { method: 'POST', signal,
-    body: JSON.stringify({ question, has_previous_item: hasPrevious, contract_version: 3 }) }, () => assertSession(session)), signal));
+    body: JSON.stringify({ question, has_previous_item: hasPrevious, contract_version: 3, ...(provider === 'openai' ? { provider } : {}) }) }, () => assertSession(session)), signal));
 }

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ALBA_SELECTION_ENABLED, CLOUD_TEXT_ENABLED, CLOUD_TRANSCRIPTION_ENABLED, CLOUD_VOICE_ENABLED, KOKORO_SELECTION_ENABLED, SARVAM_SPEECH_ENABLED, WHISTLE_LISTENING_ENABLED } from './policy';
 
 export type InputProvider = 'offline' | 'groq' | 'sarvam' | 'whistle';
+export type UnderstandingProvider = 'local' | 'groq' | 'openai';
 /** 'kokoro' is the retired hosted service (always migrates to the device voice); 'kokoro_offline' is the on-phone test voice. */
 export type SpeechProvider = 'device' | 'pocket' | 'kokoro' | 'kokoro_offline' | 'sarvam';
 export type OfflineFallbackVoice = 'device' | 'pocket';
@@ -15,6 +16,8 @@ export type AlbaVoice = typeof ALBA_VOICES[number];
 export const KOKORO_VOICES = ['af_heart', 'af_bella', 'bf_emma'] as const;
 export type KokoroVoice = typeof KOKORO_VOICES[number];
 export type Preferences = { enabled: boolean; cloud: boolean; microphone: boolean; spokenReplies: boolean; audioOptIn: boolean; inputProvider: InputProvider; speechProvider: SpeechProvider; speechPace?: number; sarvamSpeechOptIn?: boolean; sarvamKeySource?: 'application' | 'personal';
+  /** Explicit text provider. Absent on older installations: cloud=true means Groq only. */
+  understandingProvider?: UnderstandingProvider;
   /** Offline voice used only when online speech fails; absent = off. Set after a successful preview. */
   speechFallback?: OfflineFallbackVoice;
   /** Pocket TTS preset for Alba-family speech; absent = the original Alba voice. */
@@ -37,6 +40,12 @@ export function permittedInputProvider(provider: InputProvider, audioOptIn = fal
   if (provider === 'whistle') return WHISTLE_LISTENING_ENABLED ? 'whistle' : 'offline';
   return CLOUD_TRANSCRIPTION_ENABLED && audioOptIn && provider === 'groq' ? 'groq' : 'offline';
 }
+/** A legacy cloud preference never grants OpenAI consent or changes audio choices. */
+export function permittedUnderstandingProvider(preferences: Pick<Preferences, 'cloud' | 'understandingProvider'>): UnderstandingProvider {
+  if (!CLOUD_TEXT_ENABLED || !preferences.cloud) return 'local';
+  return preferences.understandingProvider === 'openai' ? 'openai'
+    : preferences.understandingProvider === 'local' ? 'local' : 'groq';
+}
 /** A paused or unknown fallback voice reads as "off"; it is never swapped for another voice. */
 export function permittedFallback(voice: unknown): OfflineFallbackVoice | undefined {
   return voice === 'device' || (voice === 'pocket' && ALBA_SELECTION_ENABLED) ? voice : undefined;
@@ -52,6 +61,7 @@ export async function loadPreferences(owner: string): Promise<Preferences> {
     const stored: Preferences = { enabled: value.enabled === true, cloud: value.cloud === true, microphone: value.microphone === true, spokenReplies: value.spokenReplies === true, audioOptIn: value.audioOptIn === true,
       inputProvider: ['offline', 'groq', 'sarvam', 'whistle'].includes(value.inputProvider) ? value.inputProvider : 'offline',
       speechProvider: ['device', 'pocket', 'kokoro', 'kokoro_offline', 'sarvam'].includes(value.speechProvider) ? value.speechProvider : 'device',
+      ...(value.understandingProvider !== undefined ? { understandingProvider: ['local', 'groq', 'openai'].includes(value.understandingProvider) ? value.understandingProvider : 'local' } : {}),
       ...(value.sarvamSpeechOptIn === true ? { sarvamSpeechOptIn: true } : {}),
       ...(value.sarvamKeySource === 'personal' ? { sarvamKeySource: 'personal' as const } : {}),
       ...(typeof value.speechPace === 'number' && [0.9, 1, 1.1].includes(value.speechPace) ? { speechPace: value.speechPace } : {}),
@@ -59,11 +69,13 @@ export async function loadPreferences(owner: string): Promise<Preferences> {
       ...((KOKORO_VOICES as readonly string[]).includes(value.kokoroVoice) ? { kokoroVoice: value.kokoroVoice as KokoroVoice } : {}),
       ...(permittedFallback(value.speechFallback) ? { speechFallback: permittedFallback(value.speechFallback) } : {}) };
     // Text opt-in never enables audio upload or cloud speech, including old settings.
-    return { ...stored, cloud: !!(CLOUD_TEXT_ENABLED || CLOUD_VOICE_ENABLED) && stored.cloud,
+    const understandingProvider = permittedUnderstandingProvider(stored);
+    return { ...stored, cloud: understandingProvider !== 'local', understandingProvider,
       inputProvider: permittedInputProvider(stored.inputProvider, stored.audioOptIn),
       speechProvider: permittedSpeechProvider(stored.speechProvider, stored.sarvamSpeechOptIn) };
   } catch { return { ...defaults }; }
 }
 export async function savePreferences(owner: string, preferences: Preferences) {
-  await AsyncStorage.setItem(key(owner), JSON.stringify(withFallback({ ...preferences, inputProvider: permittedInputProvider(preferences.inputProvider, preferences.audioOptIn), speechProvider: permittedSpeechProvider(preferences.speechProvider, preferences.sarvamSpeechOptIn) })));
+  const understandingProvider = permittedUnderstandingProvider(preferences);
+  await AsyncStorage.setItem(key(owner), JSON.stringify(withFallback({ ...preferences, cloud: understandingProvider !== 'local', understandingProvider, inputProvider: permittedInputProvider(preferences.inputProvider, preferences.audioOptIn), speechProvider: permittedSpeechProvider(preferences.speechProvider, preferences.sarvamSpeechOptIn) })));
 }

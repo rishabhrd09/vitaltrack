@@ -24,7 +24,7 @@ function load(file, dependencies = {}) {
 const host = name => function Host({ children, ...props }) { return React.createElement(name, props, children); };
 const VoiceButton = ({ label, onPress, disabled }) => React.createElement('Button', { label, onPress, disabled }, label);
 
-async function harness({ personalSetup = false, personalConfigured = false, personalUsable = false, personalSource = false, keyWait, sarvamAvailable = false, sarvamConsented = false, selectedSarvam = false, sarvamPlayback, inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketOutput, pocketDiagnostics = 'Native audio details', pocketDownloadWait, speechFallback, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, cloudV3Response, categories = [], firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false, width = 390, fontScale = 1, preferenceSaveWait, deviceSpeechWait, offline = false, refreshFailure = false, screenReaderOn = false, categoryFailures = 0, diagnostics = false, modelDownloadWait, transcribeWait, pocketVoices = ['alba'], kokoroBuild = false, kokoroVoices = [], selectedKokoro = false, downloadStore, pocketRemovalWait, whistleBuild = false, whistleReady = false, selectedWhistle = false, whistleTranscript, whistleFailure, whistleTranscribeWait, whistleDownloadWait, whistlePreview = false } = {}) {
+async function harness({ personalSetup = false, personalConfigured = false, personalUsable = false, personalSource = false, keyWait, sarvamAvailable = false, sarvamConsented = false, selectedSarvam = false, sarvamPlayback, inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketOutput, pocketDiagnostics = 'Native audio details', pocketDownloadWait, speechFallback, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, cloudV3Response, categories = [], firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false, width = 390, fontScale = 1, preferenceSaveWait, deviceSpeechWait, offline = false, refreshFailure = false, screenReaderOn = false, categoryFailures = 0, diagnostics = false, modelDownloadWait, transcribeWait, pocketVoices = ['alba'], kokoroBuild = false, kokoroVoices = [], selectedKokoro = false, downloadStore, pocketRemovalWait, whistleBuild = false, whistleReady = false, selectedWhistle = false, whistleTranscript, whistleFailure, whistleTranscribeWait, whistleDownloadWait, whistlePreview = false, openaiSetup = false, openaiConfigured = false, openaiUsable = false, openaiConsented = false, selectedOpenAI = false, openaiFailure = false, openaiCheckWait, openaiKeyWait } = {}) {
   const downloads = downloadStore || load('features/assistant/downloads.ts');
   const calls = { navigation: [], stock: 0, transcribe: 0, stop: 0, record: 0, permission: 0, interpret: [], consent: [], cloudAudio: 0 };
   const listeners = new Set();
@@ -34,15 +34,15 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
   let capabilityCalls = 0;
   let pendingAlert;
   const unavailable = { interpret: false, scopes: [], consented: false, transcription_providers: [], speech_providers: [] };
-  let scopes = [...(cloudConsented ? ['groq_text'] : []), ...(audioConsented ? ['groq_audio'] : []), ...(sarvamConsented ? ['sarvam_speech'] : [])];
-  const prefs = { enabled: true, microphone: true, spokenReplies, audioOptIn: onlineListening, sarvamSpeechOptIn: selectedSarvam, sarvamKeySource: personalSource ? 'personal' : undefined, inputProvider: selectedWhistle ? 'whistle' : onlineListening ? 'groq' : 'offline', speechProvider: selectedSarvam ? 'sarvam' : selectedPocket ? 'pocket' : selectedKokoro ? 'kokoro_offline' : 'device', cloud: cloudConsented, ...(speechFallback ? { speechFallback } : {}) };
+  let scopes = [...(cloudConsented ? ['groq_text'] : []), ...(audioConsented ? ['groq_audio'] : []), ...(sarvamConsented ? ['sarvam_speech'] : []), ...(openaiConsented ? ['openai_text'] : [])];
+  const prefs = { enabled: true, microphone: true, spokenReplies, audioOptIn: onlineListening, sarvamSpeechOptIn: selectedSarvam, sarvamKeySource: personalSource ? 'personal' : undefined, inputProvider: selectedWhistle ? 'whistle' : onlineListening ? 'groq' : 'offline', speechProvider: selectedSarvam ? 'sarvam' : selectedPocket ? 'pocket' : selectedKokoro ? 'kokoro_offline' : 'device', cloud: selectedOpenAI || cloudConsented, ...(selectedOpenAI ? { understandingProvider: 'openai' } : {}), ...(speechFallback ? { speechFallback } : {}) };
   const recorder = { uri: 'file:///cache/test.m4a', isRecording: false,
     prepareToRecordAsync: async () => {}, record() { this.isRecording = true; calls.record++; },
     async stop() { this.isRecording = false; calls.stop++; },
   };
   // Diagnostics builds (EXPO_PUBLIC_VOICE_DIAGNOSTICS=1) offer Alba selection and the diagnostics card.
   const policy = diagnostics ? { ...load('features/assistant/policy.ts'), VOICE_DIAGNOSTICS_ENABLED: true, ALBA_SELECTION_ENABLED: true, KOKORO_SELECTION_ENABLED: true, WHISTLE_LISTENING_ENABLED: true } : whistlePreview ? { ...load('features/assistant/policy.ts'), WHISTLE_LISTENING_ENABLED: true } : load('features/assistant/policy.ts');
-  const { permittedInputProvider, permittedSpeechProvider } = load('features/assistant/preferences.ts', { '@react-native-async-storage/async-storage': {}, './policy': policy });
+  const { permittedInputProvider, permittedSpeechProvider, permittedUnderstandingProvider } = load('features/assistant/preferences.ts', { '@react-native-async-storage/async-storage': {}, './policy': policy });
   const appState = { currentState: 'active', addEventListener: (_, fn) => { listeners.add(fn); return { remove() { listeners.delete(fn); } }; } };
   const rn = Object.fromEntries(['ActivityIndicator', 'KeyboardAvoidingView', 'Pressable', 'Text', 'TextInput', 'TouchableOpacity', 'View', 'ScrollView', 'Switch'].map(name => [name, host(name)]));
   rn.Modal = ({ visible, children }) => visible ? React.createElement('Modal', {}, children) : null;
@@ -77,23 +77,27 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
     'expo-file-system/legacy': {}, 'expo-sharing': { isAvailableAsync: async () => true, shareAsync: async () => {} }, '@react-native-community/netinfo': { fetch: async () => ({ isConnected: !offline }) }, '@/store/useAuthStore': { useAuthStore: auth }, '@/theme/ThemeContext': { useTheme: () => ({ colors }) },
     '@/services/assistantSession': sessionTools,
     '@/services/assistant': { unavailable,
-      capabilities: async () => { if (++capabilityCalls === 1 && firstCapabilityFailure) throw new Error('Cold start'); return { ...unavailable, interpret: cloudAvailable, interpret_contracts: cloudV3Response ? [1,2,3] : cloudV2Response ? [1,2] : [1], scopes, consented: scopes.length > 0, transcription_providers: cloudAvailable ? ['groq'] : [], speech_providers: sarvamAvailable || personalUsable ? ['sarvam'] : [], sarvam_application_available: sarvamAvailable, sarvam_personal_key: { setup_available: personalSetup, configured: personalConfigured, usable: personalUsable, updated_at: null } }; },
+      capabilities: async () => { if (++capabilityCalls === 1 && firstCapabilityFailure) throw new Error('Cold start'); return { ...unavailable, interpret: cloudAvailable, interpret_contracts: cloudV3Response || openaiSetup ? [1,2,3] : cloudV2Response ? [1,2] : [1], scopes, consented: scopes.length > 0, transcription_providers: cloudAvailable ? ['groq'] : [], interpretation_providers: [...(cloudAvailable ? ['groq'] : []), ...(openaiUsable ? ['openai'] : [])], openai_personal_key: { setup_available: openaiSetup, configured: openaiConfigured, usable: openaiUsable, updated_at: openaiConfigured ? '2026-10-25T00:00:00Z' : null }, openai_model: openaiSetup ? {id:'gpt-5.4-mini-2026-03-17',label:'GPT-5.4 mini'} : null, openai_limits: {daily_requests:40,daily_budget_microusd:100000,max_output_tokens:3072}, speech_providers: sarvamAvailable || personalUsable ? ['sarvam'] : [], sarvam_application_available: sarvamAvailable, sarvam_personal_key: { setup_available: personalSetup, configured: personalConfigured, usable: personalUsable, updated_at: null } }; },
       saveSarvamKey: async (_, key, signal) => { calls.savedKey = key; calls.keySignal = signal; if (keyWait) await keyWait; personalConfigured = true; personalUsable = true; },
       removeSarvamKey: async () => { calls.removedKey = (calls.removedKey || 0) + 1; personalConfigured = false; personalUsable = false; },
+      saveOpenAIKey: async (_, key, signal) => { calls.savedOpenAIKey = key; calls.openaiKeySignal = signal; if (openaiKeyWait) await openaiKeyWait; openaiConfigured = true; openaiUsable = true; },
+      removeOpenAIKey: async () => { calls.removedOpenAIKey = (calls.removedOpenAIKey || 0) + 1; openaiConfigured = false; openaiUsable = false; },
+      checkOpenAIKey: async () => { calls.openaiChecks = (calls.openaiChecks || 0) + 1; if (openaiCheckWait) await openaiCheckWait; return {available:true, model:'gpt-5.4-mini-2026-03-17'}; },
       setConsent: async (session, next) => { (calls.consentOwners ||= []).push(session.owner); calls.consent.push([...next]); if (consentFailure) throw new Error('Unavailable'); scopes = [...next]; },
       interpret: async (_, text) => { calls.interpret.push(text); if (cloudFailure) throw new Error('Quota or network unavailable'); return core.command('low_stock'); },
       interpretExpanded: async (_,text) => { calls.interpret.push(text); return contracts.validateSpecification(cloudV2Response); },
-      interpretPlan: async (_,text,previous) => { calls.interpret.push(text); (calls.planRequests ||= []).push({ text, previous }); return contracts.validatePlan(cloudV3Response); },
+      interpretPlan: async (_,text,previous,signal,provider = 'groq') => { calls.interpret.push(text); (calls.planRequests ||= []).push({ text, previous, ...(provider === 'openai' ? {provider} : {}) }); if (provider === 'openai' && openaiFailure) throw new Error('OpenAI rejected your key. Replace it in Voice setup.'); return contracts.validatePlan(cloudV3Response); },
       transcribe: async () => { calls.cloudAudio++; if (audioFailure) throw new Error('Online transcription unavailable'); return { transcript }; },
       speak: async () => { calls.cloudAudio++; throw new Error('Speech must stay local'); },
     }, '@/features/assistant/sarvam': load('features/assistant/sarvam.ts'),
     '@/components/assistant/SarvamKeySettings': load('components/assistant/SarvamKeySettings.tsx', { ...uiDeps, './VoiceSetup': { VoiceButton } }),
+    '@/components/assistant/OpenAIKeySettings': load('components/assistant/OpenAIKeySettings.tsx', { ...uiDeps, './VoiceSetup': { VoiceButton } }),
     '@/features/assistant/core': core,
     '@/features/assistant/contracts': contracts, '@/features/assistant/queries': queries, '@/features/assistant/drafts': drafts, '@/features/assistant/selection': selection, '@/types': types,
     '@/components/assistant/AnswerList': table, '@/components/assistant/AssistantDock': dock, '@/components/assistant/AssistantLayer': layer, '@/utils/inventoryPdfExport': { exportInventoryPdf: async () => { calls.inventoryPdf = (calls.inventoryPdf || 0) + 1; return { shared: true }; } },
     '@/features/assistant/cloudSpeech': { playSarvamSpeech: async (session, text, pace, signal, onStatus, source, onPlaybackStarted) => { (calls.sarvamSpeech ||= []).push({ text, pace, signal, source }); onStatus('Reading aloud with Sarvam…'); if (sarvamPlayback) await sarvamPlayback(signal, onPlaybackStarted); } },
     '@/features/assistant/narration': load('features/assistant/narration.ts'),
-    '@/features/assistant/preferences': { permittedInputProvider, permittedSpeechProvider, defaults: { ...prefs, enabled: false }, loadPreferences: async () => ({ ...prefs }), savePreferences: async (owner, next) => { (calls.preferenceSaveOwners ||= []).push(owner); if (preferenceSaveWait) await preferenceSaveWait; Object.assign(prefs, next); } },
+    '@/features/assistant/preferences': { permittedInputProvider, permittedSpeechProvider, permittedUnderstandingProvider, defaults: { ...prefs, enabled: false }, loadPreferences: async () => ({ ...prefs }), savePreferences: async (owner, next) => { (calls.preferenceSaveOwners ||= []).push(owner); if (preferenceSaveWait) await preferenceSaveWait; Object.assign(prefs, next); } },
     '@/features/assistant/snapshot': { cachedCategoryNames: () => [], cachedItemNames: () => inventoryItems ? inventoryItems.filter(i=>i.isActive).map(i=>i.name) : [inventoryName], categorySnapshot: async () => { calls.categories = (calls.categories || 0) + 1; if (categoryFailures-- > 0) throw new Error('Categories unavailable offline'); return categories; }, inventorySnapshot: async (_, __, force) => { calls.stock++; if (force && refreshFailure) throw new Error('Offline: a new refresh needs internet. Ask again without Refresh to see last-known stock.'); return { items: inventoryItems || [{ id: 'g', name: inventoryName, quantity: 18, minimumStock: 5, unit: 'pairs', isActive: true }], timestamp: Date.now(), stale: false }; } },
     '@/features/assistant/downloads': downloads,
     '@/features/assistant/audioFiles': { rememberAudio: async () => { if (rememberBackground) { appState.currentState = 'background'; lifecycle('background'); } }, discardAudio: async uri => { if (uri) (calls.discarded ||= []).push(uri); } },
@@ -139,6 +143,7 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
     switchAccount: async () => { await act(async () => { const old = owner; owner = 'other-user'; epoch++; scopes = []; for (const listener of [...authListeners]) listener({ isAuthenticated:true, user:{ id:owner } }, { isAuthenticated:true, user:{ id:old } }); tree.update(render({ embedded, active:true, screenKey:'dashboard' })); }); },
     withdrawRemotely: () => { scopes = []; },
     confirm: async () => { await act(async () => { await pendingAlert.at(-1).onPress(); }); },
+    editOpenAIKey: async value => { await act(async () => { find('Personal OpenAI API key').props.onChangeText(value); }); },
     editKey: async value => { await act(async () => { find('Personal Sarvam API key').props.onChangeText(value); }); },
     editTranscript: async value => { await act(async () => { find('Review voice transcript').props.onChangeText(value); }); },
     typeQuestion: async value => { await act(async () => { find('Question or editable transcript').props.onChangeText(value); }); },
@@ -1757,5 +1762,108 @@ for (const saved of [false, true]) test(`order review never labels a ${saved ? '
     assert.ok(hasText(h, saved ? 'This order is already saved.' : 'The server may already have saved this order.'));
     assert.ok(!hasText(h, 'Nothing has been saved')); assert.ok(h.find('Open order review'));
     assert.equal(h.calls.stock, 0); assert.deepEqual(h.calls.navigation, []);
+  } finally { await h.dispose(); }
+});
+
+test('OpenAI selection and separate consent preserve Whistle, Groq audio scope and Sarvam narration', async () => {
+  const h = await harness({ mode: 'settings', whistlePreview: true, whistleBuild: true, whistleReady: true, selectedWhistle: true,
+    selectedSarvam: true, sarvamAvailable: true, sarvamConsented: true, cloudAvailable: true, cloudConsented: true, audioConsented: true,
+    openaiSetup: true, openaiConfigured: true, openaiUsable: true });
+  try {
+    await h.press('Use OpenAI understanding');
+    assert.equal(h.prefs.understandingProvider, undefined, 'disclosure has not granted a choice');
+    assert.deepEqual(h.calls.consent, []);
+    await h.confirm();
+    assert.equal(h.prefs.understandingProvider, 'openai'); assert.equal(h.prefs.inputProvider, 'whistle'); assert.equal(h.prefs.speechProvider, 'sarvam');
+    assert.deepEqual(h.calls.consent, [['groq_text', 'groq_audio', 'sarvam_speech', 'openai_text']]);
+    assert.ok(hasText(h, 'On this phone, then OpenAI with your key'));
+    await h.press('Enable Groq understanding');
+    assert.equal(h.prefs.understandingProvider, 'groq'); assert.equal(h.calls.consent.length, 1);
+    await h.press('Use OpenAI understanding');
+    await h.press('Withdraw all cloud consent');
+    assert.equal(h.prefs.understandingProvider, 'local'); assert.equal(h.prefs.cloud, false);
+    assert.equal(h.prefs.inputProvider, 'whistle'); assert.deepEqual(h.calls.consent.at(-1), []);
+  } finally { await h.dispose(); }
+});
+
+test('OpenAI enrollment and explicit access check never select a provider, grant consent or fetch inventory', async () => {
+  const h = await harness({ mode: 'settings', openaiSetup: true, cloudAvailable: true, cloudConsented: true,
+    selectedSarvam: true, sarvamAvailable: true, sarvamConsented: true });
+  try {
+    await h.editOpenAIKey('synthetic-personal-key');
+    await h.press('Save OpenAI key'); assert.equal(h.calls.savedOpenAIKey, undefined);
+    await h.confirm();
+    assert.equal(h.calls.savedOpenAIKey, 'synthetic-personal-key');
+    assert.equal(h.find('Personal OpenAI API key').props.value, '');
+    assert.equal(JSON.stringify(h.prefs).includes('synthetic-personal-key'), false);
+    assert.equal(h.prefs.speechProvider, 'sarvam'); assert.equal(h.prefs.cloud, true); assert.equal(h.prefs.understandingProvider, undefined);
+    assert.deepEqual(h.calls.consent, []); assert.equal(h.calls.stock, 0); assert.deepEqual(h.calls.interpret, []);
+    await h.press('Check OpenAI key & model');
+    assert.equal(h.calls.openaiChecks, 1); assert.deepEqual(h.calls.consent, []); assert.equal(h.calls.stock, 0);
+    assert.ok(hasText(h, 'does not prove available credits'));
+    assert.ok(hasText(h, '40 shared AI requests and $0.10 estimated allowance'));
+    assert.ok(hasText(h, 'not your OpenAI balance or a provider spending cap'));
+    await h.editOpenAIKey('another-unsaved-key'); await h.background();
+    assert.equal(h.find('Personal OpenAI API key').props.value, '');
+  } finally { await h.dispose(); }
+});
+
+for (const stale of ['account change', 'background', 'leave setup']) test(`OpenAI key storage confirmation after ${stale} cannot enroll a stale key`, async () => {
+  const h = await harness({ mode: 'settings', openaiSetup: true });
+  try {
+    await h.editOpenAIKey('synthetic-personal-key'); await h.press('Save OpenAI key');
+    if (stale === 'account change') await h.switchAccount();
+    else if (stale === 'background') { await h.background(); await h.foreground(); }
+    else await h.focus(false);
+    await h.confirm();
+    assert.equal(h.calls.savedOpenAIKey, undefined); assert.deepEqual(h.calls.consent, []);
+  } finally { await h.dispose(); }
+});
+
+test('removing a selected OpenAI key leaves the choice visibly blocked and never selects Groq', async () => {
+  const h = await harness({ mode: 'settings', openaiSetup: true, openaiConfigured: true, openaiUsable: true, selectedOpenAI: true,
+    openaiConsented: true, cloudAvailable: true, cloudConsented: true });
+  try {
+    await h.press('Remove OpenAI key'); await h.confirm();
+    assert.equal(h.calls.removedOpenAIKey, 1); assert.equal(h.prefs.understandingProvider, 'openai');
+    assert.ok(hasText(h, 'Needs a configured key')); assert.deepEqual(h.calls.interpret, []);
+    assert.equal(h.find('Use OpenAI understanding').props.disabled, true);
+  } finally { await h.dispose(); }
+});
+
+const openaiSelectionPlan = { version: 3, intent: 'inventory_query', selection: { scope: 'inventory', sort: 'priority',
+  any_of: [{ item_queries: [], stock: ['low', 'out'], quantity: [], critical: null, category: null, supplier: null, brand: null, missing_supplier: false }],
+  exclude: [{ item_queries: ['gloves'], stock: [], quantity: [], critical: null, category: null, supplier: null, brand: null, missing_supplier: false }] }, draft: null, clarify_reason: null };
+
+test('Whistle review → OpenAI understanding → local stock results → Sarvam supports a second question', async () => {
+  const question = 'Which supplies are getting short, apart from the gloves?';
+  const h = await harness({ whistlePreview: true, whistleBuild: true, whistleReady: true, selectedWhistle: true, ready: false,
+    transcript: question, inventoryItems: planInventory, selectedSarvam: true, sarvamAvailable: true, sarvamConsented: true, spokenReplies: true,
+    selectedOpenAI: true, openaiSetup: true, openaiConfigured: true, openaiUsable: true, openaiConsented: true, cloudV3Response: openaiSelectionPlan });
+  try {
+    for (let i = 0; i < 2; i++) {
+      if (i) await h.press('Ask another question');
+      await h.press('Start voice recording'); await h.press('Stop recording and review transcript');
+      assert.equal(h.calls.interpret.length, i); assert.equal(h.calls.stock, i);
+      await h.press('Send question');
+    }
+    assert.equal(h.calls.planRequests.length, 2);
+    assert.equal(h.calls.planRequests.every(r => r.provider === 'openai'), true);
+    assert.equal(h.calls.whistleTranscriptions.length, 2); assert.equal(h.calls.sarvamSpeech.length, 2);
+    assert.equal(h.calls.stock, 2); assert.equal(h.calls.cloudAudio, 0); assert.equal(h.calls.transcribe, 0);
+    assert.ok(hasText(h, 'Excluded by your request: Hand gloves')); assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()), null);
+    assert.deepEqual(h.calls.navigation, []);
+  } finally { await h.dispose(); }
+});
+
+for (const unavailable of ['key', 'provider failure']) test(`OpenAI ${unavailable} cannot fail over to an available consented Groq account`, async () => {
+  const h = await harness({ embedded: false, selectedOpenAI: true, openaiSetup: true, openaiConfigured: unavailable !== 'key',
+    openaiUsable: unavailable !== 'key', openaiConsented: true, openaiFailure: unavailable === 'provider failure', cloudAvailable: true, cloudConsented: true,
+    cloudV3Response: openaiSelectionPlan, inventoryItems: planInventory });
+  try {
+    await h.typeQuestion('Which supplies are getting short, apart from the gloves?'); await h.press('Show answer');
+    assert.equal(h.calls.interpret.length, unavailable === 'key' ? 0 : 1);
+    assert.equal((h.calls.planRequests || []).every(r => r.provider === 'openai'), true);
+    assert.equal(h.calls.stock, 0); assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()), null);
   } finally { await h.dispose(); }
 });

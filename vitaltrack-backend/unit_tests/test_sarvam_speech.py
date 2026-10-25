@@ -162,9 +162,10 @@ async def test_capabilities_advertise_sarvam_without_legacy_alba(monkeypatch):
             return None
 
     monkeypatch.setattr(ai, "AsyncSessionLocal", FakeDb)
-    from app.services import sarvam_credentials
+    from app.services import openai_credentials, sarvam_credentials
 
     monkeypatch.setattr(sarvam_credentials, "AsyncSessionLocal", FakeDb)
+    monkeypatch.setattr(openai_credentials, "AsyncSessionLocal", FakeDb)
     # The undecorated route: rate limiting needs a real HTTP request and is covered elsewhere.
     available = await ai.capabilities.__wrapped__(SimpleNamespace(scope={}), ai_guard.AIPrincipal("synthetic-user"))
     assert available["speak"] is True

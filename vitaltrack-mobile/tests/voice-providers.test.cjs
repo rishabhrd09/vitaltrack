@@ -29,7 +29,7 @@ test('readiness is derived from the phone and server, never from a saved choice'
   assert.deepEqual(byId(registry.listeners(env({ model: { checked: true, ready: false }, caps: caps({ transcription_providers: ['groq'] }) }))), { offline: 'needs_download', groq: 'needs_consent' });
   assert.deepEqual(byId(registry.listeners(env({ supported: false }))).offline, 'unavailable');
   assert.equal(byId(registry.listeners(env({ supported:false, caps:caps({transcription_providers:['groq'],scopes:['groq_audio']}) }))).groq, 'unavailable');
-  assert.deepEqual(byId(registry.interpreters(env({ caps: caps({ interpret: true, scopes: ['groq_text'], interpret_contracts: [1, 2, 3] }) }))), { local: 'ready', groq: 'ready' });
+  assert.deepEqual(byId(registry.interpreters(env({ caps: caps({ interpret: true, scopes: ['groq_text'], interpret_contracts: [1, 2, 3] }) }))), { local: 'ready', groq: 'ready', openai: 'unavailable' });
   assert.match(registry.interpreters(env({ caps: caps({ interpret: true, scopes: ['groq_text'], interpret_contracts: [1, 2] }) }))[1].detail, /older \(contract 2\)/);
   assert.match(registry.interpreters(env({ caps: caps({ interpret:true, scopes:['groq_text'], interpret_contracts:[1] }) }))[1].detail, /basic requests only \(contract 1\)/);
   assert.deepEqual(byId(registry.speakers(env(), defaults)), { device: 'ready', pocket: 'paused', sarvam: 'unavailable' });
