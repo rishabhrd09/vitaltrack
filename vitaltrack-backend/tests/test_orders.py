@@ -2,13 +2,14 @@
 
 import asyncio
 import uuid
+from datetime import datetime, timezone
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
 from app.api.v1 import orders as orders_api
-from app.models import OrderNumberCounter
+from app.models import Order, OrderNumberCounter, OrderStatus
 from tests.conftest import (
     TestSession,
     create_category,
@@ -431,7 +432,7 @@ async def test_order_apply_concurrent_requests_update_stock_once(
     )
 
     status_codes = sorted(resp.status_code for resp in responses)
-    assert status_codes == [200, 400], [resp.text for resp in responses]
+    assert status_codes == [200, 200], [resp.text for resp in responses]
 
     item_resp = await client.get(f"/api/v1/items/{item['id']}", headers=headers)
     assert item_resp.status_code == 200
@@ -501,7 +502,7 @@ async def test_order_apply_rejects_pending_and_second_apply_is_noop(
         f"/api/v1/orders/{order['id']}/apply",
         headers=headers,
     )
-    assert second_apply.status_code == 400
+    assert second_apply.status_code == 200
 
     after_second_apply = await client.get(
         f"/api/v1/items/{item['id']}",
@@ -715,13 +716,83 @@ async def test_order_status_transition_is_atomic_under_concurrency(client: Async
     )
 
     codes = [received.status_code, declined.status_code]
-    # Exactly one transition wins; the loser is a 4xx (conflict or illegal-from-new-state).
-    assert codes.count(200) == 1, [received.text, declined.text]
+    # Decline may legally follow received; concurrent stale snapshots can still conflict.
+    assert codes.count(200) >= 1, [received.text, declined.text]
     assert all(code == 200 or code in (400, 409) for code in codes), codes
 
     final = await client.get(f"/api/v1/orders/{order['id']}", headers=headers)
     assert final.status_code == 200
     assert final.json()["status"] in ("received", "declined")
+
+
+async def _received_order(client: AsyncClient, headers: dict, line: dict) -> dict:
+    order = await create_order(client, headers, items=[line])
+    for status in ("ordered", "received"):
+        resp = await client.patch(
+            f"/api/v1/orders/{order['id']}/status", headers=headers, json={"status": status}
+        )
+        assert resp.status_code == 200, resp.text
+    return order
+
+
+async def test_order_apply_refuses_a_unit_changed_since_ordering(client: AsyncClient):
+    """Two "boxes" must never be added to a count now kept in "pieces"."""
+    _, headers = await register_and_auth(
+        client, name="Unit Change Owner", email="unit-change-owner@test.com"
+    )
+    item = await _inventory_item(client, headers, item_name="Unit Gauze", quantity=0)
+    item = (
+        await client.put(
+            f"/api/v1/items/{item['id']}",
+            headers=headers,
+            json={"unit": "boxes", "version": item["version"]},
+        )
+    ).json()
+    order = await _received_order(client, headers, order_item_payload(item, quantity=2))
+    edited = await client.put(
+        f"/api/v1/items/{item['id']}",
+        headers=headers,
+        json={"unit": "pieces", "quantity": 200, "version": item["version"]},
+    )
+    assert edited.status_code == 200, edited.text
+
+    applied = await client.post(f"/api/v1/orders/{order['id']}/apply", headers=headers)
+
+    assert applied.status_code == 409, applied.text
+    assert "units changed since ordering" in applied.json()["detail"]
+    after = (await client.get(f"/api/v1/items/{item['id']}", headers=headers)).json()
+    assert (after["quantity"], after["unit"], after["version"]) == (
+        200,
+        "pieces",
+        edited.json()["version"],
+    )
+    current = (await client.get(f"/api/v1/orders/{order['id']}", headers=headers)).json()
+    assert current["status"] == "received"
+
+
+async def test_order_apply_treats_unit_case_and_spacing_as_the_same_unit(
+    client: AsyncClient,
+):
+    _, headers = await register_and_auth(
+        client, name="Unit Case Owner", email="unit-case-owner@test.com"
+    )
+    item = await _inventory_item(client, headers, item_name="Unit Case Gloves", quantity=1)
+    item = (
+        await client.put(
+            f"/api/v1/items/{item['id']}",
+            headers=headers,
+            json={"unit": "Boxes", "version": item["version"]},
+        )
+    ).json()
+    order = await _received_order(
+        client, headers, order_item_payload(item, quantity=3, unit="boxes ")
+    )
+
+    applied = await client.post(f"/api/v1/orders/{order['id']}/apply", headers=headers)
+
+    assert applied.status_code == 200, applied.text
+    after = (await client.get(f"/api/v1/items/{item['id']}", headers=headers)).json()
+    assert after["quantity"] == 4
 
 
 async def _allocated_order_numbers() -> int:
@@ -863,7 +934,7 @@ async def test_order_create_concurrent_replays_create_one_order(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
-    """Replays that all miss the lookup race on the unique index; losers re-read."""
+    """Concurrent same-owner replays serialize, then re-read the stable submission."""
     _, headers = await register_and_auth(
         client,
         name="Replay Race Owner",
@@ -876,19 +947,19 @@ async def test_order_create_concurrent_replays_create_one_order(
         "items": [order_item_payload(item, quantity=1)],
     }
 
-    original_allocate = orders_api.allocate_order_id
+    original_create = orders_api.create_order_uncommitted
     arrived = 0
-    all_looked_up = asyncio.Event()
+    all_started = asyncio.Event()
 
-    async def allocate_after_every_lookup(db, now):
+    async def create_after_every_request_started(*args, **kwargs):
         nonlocal arrived
         arrived += 1
         if arrived == 3:
-            all_looked_up.set()
-        await asyncio.wait_for(all_looked_up.wait(), timeout=5)
-        return await original_allocate(db, now)
+            all_started.set()
+        await asyncio.wait_for(all_started.wait(), timeout=5)
+        return await original_create(*args, **kwargs)
 
-    monkeypatch.setattr(orders_api, "allocate_order_id", allocate_after_every_lookup)
+    monkeypatch.setattr(orders_api, "create_order_uncommitted", create_after_every_request_started)
 
     responses = await asyncio.gather(
         *(client.post("/api/v1/orders", headers=headers, json=payload) for _ in range(3))
@@ -933,6 +1004,60 @@ async def test_order_create_other_integrity_errors_are_not_treated_as_replays(
     assert resp.status_code == 409, resp.text
     list_resp = await client.get("/api/v1/orders", headers=headers)
     assert list_resp.json()["total"] == 1
+
+
+async def _store_order_outside_counter(user_id: str, order_id: str) -> None:
+    # What an older deployment's count-based generator, or a restore, writes.
+    async with TestSession() as db:
+        db.add(
+            Order(
+                user_id=user_id,
+                order_id=order_id,
+                total_items=1,
+                total_units=1,
+                status=OrderStatus.PENDING,
+                exported_at=datetime.now(timezone.utc),
+            )
+        )
+        await db.commit()
+
+
+async def test_order_numbers_skip_ids_written_outside_the_counter(client: AsyncClient):
+    """One externally written next number must not block every later create."""
+    owner, headers = await register_and_auth(
+        client, name="Cutover Owner", email="cutover-owner@test.com"
+    )
+    _, other_headers = await register_and_auth(
+        client, name="Cutover Other", email="cutover-other@test.com"
+    )
+    item = await _inventory_item(client, headers, item_name="Cutover Gauze")
+    other_item = await _inventory_item(
+        client, other_headers, category_name="Other Items", item_name="Cutover Masks"
+    )
+    first = await create_order(client, headers, items=[order_item_payload(item, quantity=1)])
+    day = first["orderId"].split("-")[1]
+    await _store_order_outside_counter(owner["user"]["id"], f"ORD-{day}-0002")
+
+    second = await create_order(client, headers, items=[order_item_payload(item, quantity=1)])
+    third = await create_order(
+        client, other_headers, items=[order_item_payload(other_item, quantity=1)]
+    )
+
+    assert [second["orderId"], third["orderId"]] == [f"ORD-{day}-0003", f"ORD-{day}-0004"]
+
+
+async def test_order_numbers_resync_when_todays_counter_row_is_missing(client: AsyncClient):
+    """A restore can bring back today's orders without today's counter row."""
+    owner, headers = await register_and_auth(
+        client, name="Restore Owner", email="restore-owner@test.com"
+    )
+    item = await _inventory_item(client, headers, item_name="Restore Gauze")
+    day = datetime.now(timezone.utc).strftime("%Y%m%d")
+    await _store_order_outside_counter(owner["user"]["id"], f"ORD-{day}-0001")
+
+    created = await create_order(client, headers, items=[order_item_payload(item, quantity=1)])
+
+    assert created["orderId"] == f"ORD-{day}-0002"
 
 async def test_order_create_rejects_blank_or_oversized_local_id(client: AsyncClient):
     _, headers = await register_and_auth(

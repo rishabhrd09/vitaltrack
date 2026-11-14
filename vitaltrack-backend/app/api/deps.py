@@ -23,12 +23,19 @@ from app.utils.email import is_email_configured
 # =============================================================================
 security = HTTPBearer(auto_error=False)
 
+# scope="function" commits and releases the session before the response is
+# sent; FastAPI's default "request" scope would run get_db's commit after the
+# client already saw success. Every dependant must use this one alias: the
+# scope is part of FastAPI's cache key, and the user and the endpoint must
+# share one session.
+DB = Annotated[AsyncSession, Depends(get_db, scope="function")]
+
 
 # =============================================================================
 # AUTHENTICATION DEPENDENCIES
 # =============================================================================
 async def get_current_user(
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: DB,
     credentials: Annotated[
         Optional[HTTPAuthorizationCredentials],
         Depends(security),
@@ -135,7 +142,7 @@ async def get_current_superuser(
 # OPTIONAL AUTHENTICATION
 # =============================================================================
 async def get_optional_user(
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: DB,
     credentials: Annotated[
         Optional[HTTPAuthorizationCredentials],
         Depends(security),
@@ -191,5 +198,4 @@ ActiveUser = Annotated[User, Depends(get_current_active_user)]
 VerifiedUser = Annotated[User, Depends(get_current_verified_user)]
 SuperUser = Annotated[User, Depends(get_current_superuser)]
 OptionalUser = Annotated[Optional[User], Depends(get_optional_user)]
-DB = Annotated[AsyncSession, Depends(get_db)]
 Pagination = Annotated[PaginationParams, Depends()]

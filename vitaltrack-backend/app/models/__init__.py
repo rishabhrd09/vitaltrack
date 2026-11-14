@@ -8,8 +8,10 @@ from app.models.item import Item
 from app.models.order import Order, OrderItem, OrderNumberCounter, OrderStatus
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
+from app.models.supply_review import ClosedOrderSubmission, SupplyRevision, SupplyReviewRun, SupplyReviewProposal, SupplyReviewConfirmation
 
 __all__ = [
+    "ClosedOrderSubmission", "SupplyRevision", "SupplyReviewRun", "SupplyReviewProposal", "SupplyReviewConfirmation",
     "AIConsent", "AIUsage", "OpenAICredential", "SarvamCredential",
     # User & Auth
     "User",

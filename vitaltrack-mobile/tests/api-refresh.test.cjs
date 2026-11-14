@@ -158,6 +158,18 @@ for (const status of [200, 401]) test(`a late refresh ${status} cannot restore o
   assert.equal(h.stored.get('vitaltrack_refresh_token'), 'another-refresh');
 });
 
+test('a delayed guarded profile retry cannot expire the newer login', async () => {
+  let finish, active = true, requests = 0;
+  const pending = new Promise(resolve => { finish = resolve; });
+  const h = harness(async () => response(200, tokens), { protectedFetch: async () => ++requests === 1 ? response(401) : pending });
+  const guard = () => { if (!active) throw new Error('Session changed'); };
+  const request = h.api.get('/auth/me', true, undefined, guard);
+  await tick(); assert.equal(requests, 2);
+  active = false; await h.tokenStorage.setTokens('next-access', 'next-refresh'); finish(response(401));
+  await assert.rejects(request, /Session changed/);
+  assert.equal(h.stored.get('vitaltrack_access_token'), 'next-access'); assert.equal(h.stored.get('vitaltrack_refresh_token'), 'next-refresh');
+});
+
 function orderHarness(get) {
   const source = fs.readFileSync(path.join(__dirname, '../services/orders.ts'), 'utf8');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;

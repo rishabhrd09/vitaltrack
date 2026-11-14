@@ -11,6 +11,7 @@ from sqlalchemy.orm import noload
 
 from app.services.audit import log_audit
 from app.services.inventory_lock import lock_inventory_names
+from app.services.supply_revision import advance_supply_revision, lock_supply_revision
 from app.api.deps import DB, CurrentUser
 from app.models import ActivityActionType, ActivityLog, Category, Item
 from app.schemas import (
@@ -154,6 +155,7 @@ async def create_category(
     - **display_order**: Order in the list (default: 0)
     - **is_default**: Whether this is a default category
     """
+    await lock_supply_revision(db, current_user.id)
     await lock_inventory_names(db, current_user.id, "category")
 
     # Check for duplicate name
@@ -190,6 +192,7 @@ async def create_category(
     )
     db.add(activity)
     
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
     await db.refresh(category)
     
@@ -215,6 +218,7 @@ async def update_category(
     
     All fields are optional - only provided fields will be updated.
     """
+    await lock_supply_revision(db, current_user.id)
     if data.name is not None:
         await lock_inventory_names(db, current_user.id, "category")
 
@@ -257,6 +261,7 @@ async def update_category(
     if data.is_default is not None:
         category.is_default = data.is_default
     
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
     await db.refresh(category)
     
@@ -283,6 +288,7 @@ async def delete_category(
     
     **Warning**: This will also delete all items in the category!
     """
+    await lock_supply_revision(db, current_user.id)
     query = select(Category).where(
         Category.id == category_id, Category.user_id == current_user.id,
     )
@@ -344,6 +350,7 @@ async def delete_category(
         )
 
     await db.delete(category)
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
     
     return SuccessResponse(message=f"Category '{category_name}' deleted")

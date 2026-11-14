@@ -1,5 +1,7 @@
 # CareKosh AI voice assistant — end-to-end review (13 October 2026)
 
+> **5 November 2026 — server-owned Supply Review (local source).** Web and Android now share an optional Python-calculated replenishment review with durable run/proposal versions, explicit confirmation, stale-source checks and recovery. Migration `0013` is required before the new backend; `SUPPLY_REVIEW_ENABLED` defaults to false. This workflow makes no model or supplier call and does not change independent listener/understanding/narration choices. Deployment, live providers and physical Android acceptance remain separate. [Architecture, API, status rules, rollout and limits](SUPPLY_REVIEW.md) · [learning and evidence](SUPPLY_REVIEW_LEARNING.md). Earlier dated results remain historical.
+
 **Scope.** This review covers the whole assistant path:
 
 - voice and typed questions, through understanding and the stock answer;

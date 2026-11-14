@@ -1,5 +1,7 @@
 # CareKosh Backend, Byte by Byte — 12 visual-poster prompts
 
+> **Status (7 October 2026):** image-generation prompts, not project documentation; kept as written and not re-verified. Their "current" facts are from the 5 August 2026 check against `main` (8 application tables, 39 `/api/v1` routes, Alembic head `0006`, 132 backend tests run on `create_all`). Branch `feature/backend-hardening-ai-voice-agent-foundation` (`03cfebb`) now has 11 application tables, 44 `/api/v1` routes, head `0010_order_local_id_unique`, and 242 backend tests run against the migrated schema in CI. Regenerate posters only after updating the facts. Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) and [API traceability](API_TRACEABILITY.md).
+
 This pack is a code-verified visual curriculum for learning CareKosh end to end and explaining it in backend/full-stack interviews. Generate one poster at a time. Do not ask an image model to combine all 12 into one image.
 
 Every fenced block is deliberately self-contained. Copy one complete block—from `BEGIN STANDALONE POSTER PROMPT` through `END STANDALONE POSTER PROMPT`—into a new image-generation request. The image model does not need this repository, an uploaded PDF, another poster, or any earlier chat context. A prompt's `SOURCE MAP` is text to print as provenance on the poster; it is not an instruction to open those files.

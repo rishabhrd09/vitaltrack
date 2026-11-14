@@ -15,8 +15,8 @@ function load(file, deps={}) {
   return module.exports;
 }
 const item={id:'g',name:'Hand gloves',quantity:2,minimumStock:5,unit:'pairs',isActive:true,isCritical:false,version:2};
-async function harness({loaded=true,offline=false,saveFails=0,pdfFails=0,oldBackend=false,saveWait,pdfWait,mode,inventoryRows,initialRows,submitted=false,saveErrors=[],saveFirstOnly=false,pdfFirstOnly=false,pdfUncancellable=false}={}) {
-  const calls={posts:[],pdfs:[],back:0,snapshots:0,navigation:[]};let alert,inventory=inventoryRows||[item,{...item,id:'hidden',name:'Hidden',isActive:false}],fresh=inventoryRows||[item],isSuccess=loaded;
+async function harness({loaded=true,offline=false,saveFails=0,pdfFails=0,oldBackend=false,saveWait,pdfWait,mode,inventoryRows,initialRows,submitted=false,saveErrors=[],saveFirstOnly=false,pdfFirstOnly=false,pdfUncancellable=false,lookupAvailable=false,resolutionAvailable=false,resolutionFails=false,pendingId,savedPending,rememberFails=0}={}) {
+  const calls={posts:[],pdfs:[],back:0,snapshots:0,navigation:[],recovery:[]};let alert,inventory=inventoryRows||[item,{...item,id:'hidden',name:'Hidden',isActive:false}],fresh=inventoryRows||[item],isSuccess=loaded;
   const types=load('types/index.ts');const core=load('features/assistant/core.ts',{'../../types':types});const contracts=load('features/assistant/contracts.ts');const selection=load('features/assistant/selection.ts',{'@/types':types,'./core':core,'./contracts':contracts});const queries=load('features/assistant/queries.ts',{'@/types':types,'./core':core,'./contracts':contracts,'./selection':selection});
   const session={owner:'a',epoch:0};let valid=true,epoch=0;
   const sessions={captureSession:()=>{if(!valid)throw new Error('Signed out');return {...session,epoch};},assertSession:s=>{if(!valid || s.epoch!==epoch)throw new Error('Session changed');},ownsSnapshot:()=>true};
@@ -32,7 +32,13 @@ async function harness({loaded=true,offline=false,saveFails=0,pdfFails=0,oldBack
     '@/theme/ThemeContext':{useTheme:()=>({colors:load('theme/colors.ts').colors})},'@/theme/spacing':load('theme/spacing.ts'),'@/types':types,
     '@/utils/orderPdfExport':{exportOrderPdf:async(order,_photos,assertReady,options)=>{const pdfIndex=calls.pdfs.length;calls.pdfs.push(order);calls.exportOptions=options;options?.onStage('rendering');if(pdfWait&&(!pdfFirstOnly||pdfIndex===0)){if(pdfUncancellable)await pdfWait;else{let cancel;try{await Promise.race([pdfWait,new Promise((_,reject)=>{cancel=()=>reject(new Error('Export cancelled'));options.signal.addEventListener('abort',cancel,{once:true});})]);}finally{options.signal.removeEventListener('abort',cancel);}}}if(!pdfUncancellable)assertReady();if(pdfFails-->0)throw new Error('Printer failed');return {shared:true};}},
     '@/store/useAuthStore':{useAuthStore:auth},'@/services/assistantSession':sessions,'@/features/assistant/snapshot':{inventorySnapshot:async()=>{calls.snapshots++;return {items:fresh,timestamp:100,stale:false};}},
-    '@/features/assistant/drafts':drafts,'@/services/assistant':{capabilities:async()=>({order_review_guard:!oldBackend})},'@/services/api':{ApiClientError},
+    '@/features/assistant/drafts':drafts,'@/features/supplyReview/submissionRecovery':{
+      pendingSubmission:async()=>{calls.recovery.push('read');return pendingId?{local_id:pendingId}:null;},
+      rememberSubmission:async(_s,id)=>{calls.recovery.push(['remember',id]);if(rememberFails-->0)throw new Error('Storage unavailable');},
+      forgetSubmission:async(_s,id)=>{calls.recovery.push(['forget',id]);pendingId=undefined;},
+      findSubmission:async(_s,id)=>{calls.recovery.push(['lookup',id]);return savedPending||null;},
+      resolveSubmission:async(_s,id)=>{calls.recovery.push(['resolve',id]);if(resolutionFails)throw new Error('Response lost');return {state:'closed',order:null};}
+    },'@/services/assistant':{capabilities:async()=>({order_review_guard:!oldBackend,order_submission_lookup:lookupAvailable,order_submission_resolution:resolutionAvailable})},'@/services/api':{ApiClientError},
     '@/hooks/useServerData':{useItems:()=>({data:inventory,isSuccess,isFetching:false})},'@/hooks/useServerMutations':{useCreateOrder:options=>{calls.feedback=options;return {mutateAsync:async request=>{const attemptIndex=calls.posts.length;calls.posts.push(request);if(saveWait&&(!saveFirstOnly||attemptIndex===0))await saveWait;if(saveErrors[attemptIndex]!==undefined)throw new ApiClientError(saveErrors[attemptIndex]);if(saveFails-->0)throw new ApiClientError(0);return {id:'saved',orderId:'ORD-1',items:request.items};}};}},
     '@/hooks/useNetworkStatus':{useNetworkStatus:()=>({isOnline:!offline})},'@/utils/navigation':{safeBack:()=>{calls.back++;}},};
   const Screen=load('app/order/create.tsx',deps).default;let tree;
@@ -53,6 +59,63 @@ test('manual form waits for verified loaded inventory, excludes inactive items a
 test('only a touch confirmation saves, and saved response rows feed the shared PDF',async()=>{const h=await harness();try{assert.equal(h.calls.posts.length,0);await h.press('Confirm order & export PDF');assert.equal(h.calls.posts.length,0);await h.confirm();assert.equal(h.calls.posts.length,1);assert.equal(h.calls.posts[0].items[0].expectedVersion,2);assert.equal(h.calls.pdfs[0].id,'ORD-1');assert.equal(h.calls.back,1);}finally{await h.dispose();}});
 test('changed stock requires another review and never rewrites the spoken/manual quantity',async()=>{const h=await harness();try{await h.edit('20');h.fresh([{...item,quantity:4,version:3}]);await h.press('Confirm order & export PDF');await h.confirm();assert.equal(h.calls.posts.length,0);assert.match(h.alert().title,/review again/);assert.equal(h.drafts.getDraft(h.session).rows[0].quantity,20);await h.press('Confirm order & export PDF');await h.confirm();assert.equal(h.calls.posts[0].items[0].quantity,20);assert.equal(h.calls.posts[0].items[0].expectedVersion,3);}finally{await h.dispose();}});
 test('unknown save failure retains draft and request identity on another touch retry',async()=>{const h=await harness({saveFails:1});try{await h.press('Confirm order & export PDF');await h.confirm();assert.equal(h.calls.back,0);assert.equal(h.calls.pdfs.length,0);await h.press('Retry same submission');await h.confirm();assert.equal(h.calls.posts.length,2);assert.equal(h.calls.posts[0],h.calls.posts[1]);assert.equal(h.calls.back,1);}finally{await h.dispose();}});
+
+test('process-death recovery checks the original submission and never creates a replacement order', async () => {
+  const pendingId = '00000000-0000-4000-8000-000000000123';
+  for (const savedPending of [undefined, { id: 'original', orderId: 'ORD-ORIGINAL' }]) {
+    const h = await harness({ lookupAvailable: true, pendingId, savedPending });
+    try {
+      await h.press('Confirm order & export PDF'); await h.confirm();
+      assert.equal(h.calls.posts.length, 0); assert.equal(h.calls.pdfs.length, 0);
+      assert.ok(h.calls.recovery.some(c => Array.isArray(c) && c[0] === 'lookup' && c[1] === pendingId));
+      if (savedPending) {
+        assert.equal(h.alert().title, 'Original order found');
+        assert.ok(h.calls.recovery.some(c => Array.isArray(c) && c[0] === 'forget' && c[1] === pendingId));
+      } else {
+        assert.match(h.alert().message, /missing result does not prove/);
+        assert.equal(h.calls.recovery.some(c => Array.isArray(c) && c[0] === 'forget'), false);
+      }
+    } finally { await h.dispose(); }
+  }
+});
+
+test('an order cannot post before its recovery pointer is stored, including an explicit retry', async () => {
+  const h = await harness({ lookupAvailable: true, rememberFails: 1 });
+  try {
+    await h.press('Confirm order & export PDF'); await h.confirm();
+    assert.equal(h.calls.posts.length, 0);
+    const attempt = h.drafts.getDraft(h.session).attempt;
+    assert.equal(attempt.recoveryRequired, true);
+    await h.press('Retry same submission'); await h.confirm();
+    assert.equal(h.calls.posts.length, 1); assert.equal(h.calls.posts[0], attempt.request);
+    assert.equal(h.calls.recovery.filter(c => Array.isArray(c) && c[0] === 'remember').length, 2);
+  } finally { await h.dispose(); }
+});
+
+test('interrupted submission closure needs explicit touch, and a new order needs a fresh review', async () => {
+  const h = await harness({ lookupAvailable: true, resolutionAvailable: true, pendingId: '00000000-0000-4000-8000-000000000123' });
+  try {
+    await h.press('Confirm order & export PDF'); await h.confirm();
+    assert.equal(h.calls.posts.length, 0);
+    await h.press('Resolve interrupted submission'); assert.equal(h.calls.recovery.some(c => Array.isArray(c) && c[0] === 'resolve'), false);
+    await h.choose('Resolve submission'); assert.equal(h.calls.posts.length, 0); assert.equal(h.alert().title, 'Interrupted submission closed');
+    assert.ok(h.calls.recovery.some(c => Array.isArray(c) && c[0] === 'forget'));
+    await h.press('Confirm order & export PDF'); await h.confirm(); assert.equal(h.calls.posts.length, 1);
+  } finally { await h.dispose(); }
+});
+
+test('uncertain closure keeps the original pointer, and a background closure dialog cannot post', async () => {
+  for (const background of [true, false]) {
+    const h = await harness({ lookupAvailable: true, resolutionAvailable: true, resolutionFails: true, pendingId: '00000000-0000-4000-8000-000000000123' });
+    try {
+      await h.press('Confirm order & export PDF'); await h.confirm(); await h.press('Resolve interrupted submission');
+      if (background) h.background();
+      await h.choose('Resolve submission'); assert.equal(h.calls.posts.length, 0);
+      assert.equal(h.calls.recovery.some(c => Array.isArray(c) && c[0] === 'forget'), false);
+      assert.equal(h.calls.recovery.filter(c => Array.isArray(c) && c[0] === 'resolve').length, background ? 0 : 1);
+    } finally { await h.dispose(); }
+  }
+});
 test('PDF failure retains saved order and re-export never posts another order',async()=>{const h=await harness({pdfFails:1});try{await h.press('Confirm order & export PDF');await h.confirm();assert.equal(h.calls.posts.length,1);assert.match(h.alert().title,/Order saved/);assert.equal(h.calls.back,0);await h.press('Re-export saved order');await h.confirm();assert.equal(h.calls.posts.length,1);assert.equal(h.calls.pdfs.length,2);assert.equal(h.calls.pdfs[0].id,h.calls.pdfs[1].id);}finally{await h.dispose();}});
 for(const [label,opts] of [['offline',{offline:true}],['old backend',{oldBackend:true}]])test(label+' cannot commit a reviewed draft',async()=>{const h=await harness(opts);try{await h.press('Confirm order & export PDF');await h.confirm();assert.equal(h.calls.posts.length,0);assert.ok(h.drafts.getDraft(h.session));}finally{await h.dispose();}});
 test('leaving before the touch confirmation prevents the late callback from saving',async()=>{const h=await harness();await h.press('Confirm order & export PDF');await h.dispose();await h.confirm();assert.equal(h.calls.posts.length,0);assert.equal(h.calls.pdfs.length,0);});

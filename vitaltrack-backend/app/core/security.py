@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
-from jose import JWTError, jwt
+import jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 
@@ -173,13 +173,15 @@ def decode_token(token: str) -> Optional[TokenPayload]:
         TokenPayload if valid, None if invalid
     """
     try:
+        # Same compact HS256 tokens python-jose issued, so existing sessions stay
+        # valid. PyJWT also refuses asymmetric keys as HMAC secrets.
         payload = jwt.decode(
             token,
             settings.secret_key_value,
             algorithms=[settings.JWT_ALGORITHM],
         )
         return TokenPayload(**payload)
-    except (JWTError, ValueError):
+    except (jwt.PyJWTError, ValueError):
         return None
 
 

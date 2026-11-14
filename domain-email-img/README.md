@@ -1,8 +1,13 @@
 # Screenshots for CAREKOSH_DOMAIN_AND_EMAIL_GUIDE.html
 
-Drop the setup screenshots here using these exact filenames. The guide
-references each one at the step it belongs to; missing files show a labelled
-placeholder instead, so the guide always reads correctly.
+> **Status (8 October 2026):** this folder contains no screenshots. The guide displays 15 historical screenshot notes naming the files below; it currently has no `<img>` elements for them. These notes do not verify today's dashboard settings. Before adding screenshots, remove personal email addresses, account IDs and tokens: the repository is public.
+
+Save a redacted screenshot here using the matching filename. In
+`../CAREKOSH_DOMAIN_AND_EMAIL_GUIDE.html`, replace that figure's
+`<p class="screenshot-note">…</p>` with an image such as
+`<img src="domain-email-img/cloudflare-00-domain.png" alt="Redacted domain setup screenshot">`.
+Keep its caption, add the capture date, and check the layout on desktop and phone widths.
+Adding a file alone will not make an image appear. The older `.ph` placeholders are hidden by CSS.
 
 | Filename | Screenshot |
 |---|---|

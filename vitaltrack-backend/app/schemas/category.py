@@ -30,9 +30,15 @@ class CategoryCreate(BaseModel):
             return v
         # Remove HTML tags
         v = re.sub(r"<[^>]*>", "", v)
-        # Remove dangerous characters
-        v = re.sub(r"[<>'\";]", "", v)
         return v.strip()
+
+
+    @field_validator("name")
+    @classmethod
+    def nonempty_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("Name must contain visible text")
+        return v
 
 
 class CategoryUpdate(BaseModel):
@@ -50,8 +56,15 @@ class CategoryUpdate(BaseModel):
         if v is None:
             return v
         v = re.sub(r"<[^>]*>", "", v)
-        v = re.sub(r"[<>'\";]", "", v)
         return v.strip()
+
+
+    @field_validator("name")
+    @classmethod
+    def nonempty_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("Name must contain visible text")
+        return v
 
 
 # =============================================================================

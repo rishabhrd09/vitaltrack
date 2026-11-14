@@ -9,9 +9,10 @@ Replace your app/schemas/order.py with this file.
 """
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 from pydantic import BaseModel, Field, field_validator
+from app.schemas.item import ItemCreate
 
 INT32_MAX = 2_147_483_647
 
@@ -46,6 +47,7 @@ class OrderItemCreate(OrderItemBase):
     500. They apply to requests only: rows already stored must still serialise.
     """
     expected_version: Optional[int] = Field(None, ge=1, alias="expectedVersion")
+    quantity: int = Field(..., gt=0, le=999999)
     id: Optional[str] = None
     order_id: Optional[str] = Field(None, alias="orderId")
     item_id: str = Field(alias="itemId", min_length=1, max_length=36)
@@ -57,6 +59,14 @@ class OrderItemCreate(OrderItemBase):
     image_uri: Optional[str] = Field(None, max_length=500, alias="imageUri")
     supplier_name: Optional[str] = Field(None, max_length=255, alias="supplierName")
     purchase_link: Optional[str] = Field(None, max_length=500, alias="purchaseLink")
+
+    @field_validator("name")
+    @classmethod
+    def nonempty_name(cls, v: str) -> str:
+        value = ItemCreate.sanitize_string(v)
+        if not value:
+            raise ValueError("Name must contain visible text")
+        return value
 
     @field_validator("purchase_link")
     @classmethod
@@ -158,6 +168,16 @@ class OrderListResponse(BaseModel):
     has_more: bool = Field(default=False, serialization_alias="hasMore")
 
     model_config = {"populate_by_name": True}
+
+
+class SavedSubmissionResolution(BaseModel):
+    state: Literal["saved"] = "saved"
+    order: OrderResponse
+
+
+class ClosedSubmissionResolution(BaseModel):
+    state: Literal["closed"] = "closed"
+    order: None = None
 
 
 class OrderBrief(BaseModel):

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>CareKosh app responsive preview</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 15px;
+        background: #e9edf3;
+        color: #233045;
+        font: 13px system-ui;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+      button {
+        padding: 9px 12px;
+        background: white;
+        border: 1px solid #c6d2e3;
+        border-radius: 6px;
+        color: #233045;
+        cursor: pointer;
+      }
+      button[aria-pressed="true"] {
+        background: #3675d0;
+        color: white;
+      }
+      output {
+        display: block;
+        width: 100%;
+        margin-top: 5px;
+        font-size: 12px;
+      }
+      #stage {
+        position: relative;
+        margin: auto;
+      }
+      iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        transform-origin: top left;
+        border: 0;
+        background: white;
+        box-shadow: 0 3px 20px #22324a1a;
+      }
+      a {
+        color: #2862b4;
+        margin-left: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <button data-width="1440" aria-pressed="true">Desktop 1440</button
+      ><button data-width="768" aria-pressed="false">Tablet 768</button
+      ><button data-width="1024" aria-pressed="false">Laptop 1024</button
+      ><button data-width="390" aria-pressed="false">Mobile 390</button
+      ><button data-width="320" aria-pressed="false">Compact 320</button
+      ><button data-route="/login">Sign in</button
+      ><button data-route="/register">Registration</button
+      ><button data-route="/">Dashboard</button
+      ><button data-route="/inventory">Inventory</button
+      ><button data-route="/orders">Orders</button
+      ><button data-route="/builder">Build Inventory</button
+      ><button data-route="/profile">Profile</button
+      ><button data-route="/help">Help &amp; Support</button>
+      <div id="more-screens" style="display: contents">
+        <button data-route="/activity" aria-label="Activity">Activity</button>
+        <button data-route="/item/new" aria-label="Add item">Add item</button>
+        <button data-route="/item/item-3" aria-label="Item details">
+          Item details
+        </button>
+        <button data-route="/orders/create" aria-label="Create order">
+          Create order
+        </button>
+        <button data-route="/orders/demo-order-0" aria-label="Order details">
+          Order details
+        </button>
+        <button data-route="/forgot-password" aria-label="Forgot password">
+          Forgot password
+        </button>
+        <button data-route="/reset-password" aria-label="Reset password">
+          Reset password
+        </button>
+        <button data-route="/verify-email" aria-label="Verify email">
+          Verify email
+        </button>
+        <button
+          data-route="/resend-verification"
+          aria-label="Resend verification"
+        >
+          Resend verification
+        </button>
+        <button data-route="/missing-page" aria-label="Not found">
+          Not found
+        </button>
+      </div>
+      <a href="/">Open web app</a>
+      <output id="result" aria-live="polite">Loading preview…</output>
+    </header>
+    <div id="stage">
+      <iframe
+        title="Responsive CareKosh app"
+        src="/login"
+        width="1440"
+        height="1000"
+      ></iframe>
+    </div>
+    <script>
+      const frame = document.querySelector("iframe"),
+        stage = document.querySelector("#stage"),
+        result = document.querySelector("#result");
+      let width = 1440;
+      function layout() {
+        const scale = Math.min(
+          1,
+          (document.documentElement.clientWidth - 30) / width,
+        );
+        const height = Math.max(
+          480,
+          Math.floor(
+            (window.innerHeight -
+              document.querySelector("header").offsetHeight -
+              45) /
+              scale,
+          ),
+        );
+        frame.style.width = width + "px";
+        frame.style.height = height + "px";
+        frame.style.transform = `scale(${scale})`;
+        stage.style.width = width * scale + "px";
+        stage.style.height = height * scale + "px";
+      }
+      function check() {
+        const doc = frame.contentDocument;
+        if (!doc) return;
+        const measured = doc.documentElement.scrollWidth;
+        const dialogs = [...doc.querySelectorAll("dialog[open]")];
+        const dialogOverflow = dialogs.some(
+          (dialog) => dialog.scrollWidth > dialog.clientWidth + 1,
+        );
+        result.textContent = `Viewport ${frame.contentWindow.innerWidth}px · document ${measured}px · ${measured <= width && !dialogOverflow ? "No horizontal overflow" : "OVERFLOW DETECTED"}${dialogs.length ? ` · ${dialogs.length} open dialog(s) checked` : ""}`;
+      }
+      frame.addEventListener("load", () => {
+        layout();
+        requestAnimationFrame(() => requestAnimationFrame(check));
+        frame.contentDocument.fonts.ready.then(check);
+        new frame.contentWindow.ResizeObserver(check).observe(
+          frame.contentDocument.documentElement,
+        );
+        new frame.contentWindow.MutationObserver(check).observe(
+          frame.contentDocument.body,
+          { childList: true, subtree: true, attributes: true },
+        );
+      });
+      document.querySelectorAll("button[data-width]").forEach((button) =>
+        button.addEventListener("click", () => {
+          width = Number(button.dataset.width);
+          document
+            .querySelectorAll("button[data-width]")
+            .forEach((b) =>
+              b.setAttribute("aria-pressed", String(b === button)),
+            );
+          layout();
+          requestAnimationFrame(() => requestAnimationFrame(check));
+        }),
+      );
+      document.querySelectorAll("button[data-route]").forEach((button) =>
+        button.addEventListener("click", () => {
+          frame.src = button.dataset.route;
+        }),
+      );
+      window.addEventListener("resize", () => {
+        layout();
+        check();
+      });
+      layout();
+    </script>
+  </body>
+</html>

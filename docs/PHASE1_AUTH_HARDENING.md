@@ -5,6 +5,8 @@
 **Author:** rishabhrd09
 **Status:** Shipped — currently running on staging + production
 
+> **Status (7 October 2026):** historical record of PR #12 (April 2026, last reviewed June 2026); kept as evidence and not re-verified. The "currently running on staging + production" line above dates from then and is NOT VERIFIED now. Later changes on the feature branch (for example `session_version`, which also invalidates access tokens on a password change, and a `SECRET_KEY` placeholder check outside development/testing) are not described here. Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) and [API traceability](API_TRACEABILITY.md).
+
 ---
 
 ## Overview

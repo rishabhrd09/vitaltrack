@@ -85,13 +85,13 @@ The `local_id` / `localId` fields remain in item, category, and order models/sch
 | Cache persistence | `@tanstack/react-query-persist-client` + `@tanstack/query-async-storage-persister` | AsyncStorage-backed; `staleTime: 30s`, `gcTime: 24h`; kill switch in `QueryProvider.tsx`; buster tied to app version |
 | UI and session state | `zustand` ^4.5 | UI state in memory; the auth store persists the signed-in user in SecureStore |
 | Secure storage | `expo-secure-store` | refresh + access tokens |
-| Backend runtime | Python 3.12 + FastAPI 0.115 | `gunicorn` + `uvicorn.workers.UvicornWorker`, 2 workers |
+| Backend runtime | Python 3.12 + FastAPI 0.162 / Starlette 1.10 | `gunicorn` + `app.worker.CareKoshUvicornWorker` (keeps the real socket peer), 2 workers; `DB` sessions commit before the response (`scope="function"`) |
 | ORM | SQLAlchemy 2.0 (async) + `asyncpg` | |
 | Migrations | Alembic 1.14 | auto-run at container start |
 | Database | PostgreSQL 16 | CI and local Docker use 16; Neon (managed, branchable) hosts staging and production, and its server version is NOT VERIFIED |
-| Auth | JWT (HS256) + refresh token rotation | `python-jose`, `passlib[argon2]`, `bcrypt` |
-| Rate limiting | `slowapi` | Rate limiting is best effort: five auth routes, counters in memory per worker process, reset on restart; an open finding about how clients are identified is tracked privately. |
-| Email | Brevo v3 HTTP API via `httpx` | `MAIL_PASSWORD` stores the Brevo API key; SMTP-era config keys/deps remain but are not the active send path |
+| Auth | JWT (HS256) + refresh token rotation | `PyJWT` (replaced `python-jose` on 27 Oct 2026; existing tokens stay valid), `passlib[argon2]`, `bcrypt` |
+| Rate limiting | `slowapi` + `limits` on shared Redis | Hosted environments require Redis (`RATE_LIMIT_STORAGE_URI`); counters are shared across workers and instances and keyed by the verified client address (IPv6 per /64). Limited routes fail closed (503) if Redis is unavailable, except the read-only `GET /ai/capabilities`. See `vitaltrack-backend/docs/BACKEND_INGRESS_SECURITY.txt`. |
+| Email | Brevo v3 HTTP API via `httpx` | `MAIL_PASSWORD` stores the Brevo API key; the unused SMTP packages were removed |
 | Hosting (backend) | **Render** | Docker web service. `vitaltrack-backend/render.yaml` describes the production service only (branch `main`, plan `starter`, health check `/live`, no `autoDeploy` key); the staging service exists only in the dashboard. Whether Render applies the file, and the auto-deploy settings, are NOT VERIFIED. |
 | Hosting (DB) | **Neon** | separate staging and production databases (local development uses Docker Postgres); live Neon setup NOT VERIFIED |
 | Hosting (mobile) | **EAS Build** | profiles: `development` (needs `expo-dev-client`, not installed), `preview`, `production` |

@@ -1,6 +1,13 @@
 # CareKosh API Testing Guide
 
-> curl recipes for the CareKosh backend. Same endpoints work against local, staging, and production — only the base URL changes.
+> **8 October 2026 local feature update:** richer inventory tables, bounded queries and unsaved voice-prepared drafts are implemented locally. Only touch confirmation saves an order; saving does not change stock. Matching backend/mobile deployment and phone acceptance remain pending. [Current flow, code map and verification limits](../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md). Earlier dated results remain historical.
+
+
+> 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](../docs/BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
+
+> **Status (7 October 2026):** request bodies and error formats re-checked against the schemas and handlers on branch `feature/backend-hardening-ai-voice-agent-foundation` (`03cfebb`); corrected examples are marked "(corrected 7 Oct 2026)". Re-checked on 8 October 2026 against the working tree (`03cfebb` plus uncommitted documentation); further notes are dated 8 Oct 2026. Every endpoint with its handler and tests is listed in [API traceability](../docs/API_TRACEABILITY.md); the main onboarding entry is the [complete developer guide](../docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md). Which commit staging and production run is NOT VERIFIED, so features added on the feature branch (for example `/api/v1/ai/*` and order `localId`) may be missing there.
+
+> curl recipes for the CareKosh backend. The same endpoints work against local, staging, and production — only the base URL changes. Do not create test accounts or data in production; use local Docker or staging.
 
 | Environment | Base URL |
 |---|---|
@@ -20,8 +27,12 @@ cd vitaltrack-backend
 docker compose -f docker-compose.dev.yml up --build -d
 ```
 
+*(8 Oct 2026)* This compose file publishes PostgreSQL (user and password `postgres`) on port 5432 of every network interface, so use it only on a trusted network. Its development image starts the server even if `alembic upgrade head` failed, so check the container log for a migration error (`docker compose -f docker-compose.dev.yml logs api`).
+
 ### 2. Access Swagger UI
 Open: http://localhost:8000/docs
+
+Swagger, ReDoc and `/openapi.json` exist only when `DEBUG=true`. `docker-compose.dev.yml` sets it; staging and production should not, so `/docs` returns 404 there.
 
 ### 3. Get Auth Token
 ```bash
@@ -46,7 +57,7 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
   }'
 ```
 
-**Response:**
+**Response (201, abridged — `user` has more fields):**
 ```json
 {
   "access_token": "eyJhbGci...",
@@ -60,6 +71,8 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
   }
 }
 ```
+
+Password rules: 8–128 characters with at least one upper-case letter, one lower-case letter and one digit. Email is required; `username` is optional (3–50 characters, `a-z`, `0-9`, `_`; upper case is rejected with 422, not converted). Register is limited to 3 requests per hour (best-effort, per worker process). The verification email is sent only when `MAIL_PASSWORD` is configured. The mobile app discards these tokens and sends the user to "Check your email"; when email verification is enforced (feature branch), they cannot be used for other requests until the email is verified.
 
 ### Login
 ```bash
@@ -105,6 +118,8 @@ curl -X POST http://localhost:8000/api/v1/auth/logout \
   }'
 ```
 
+Logout revokes that refresh token. The access token keeps working until it expires (at most 30 minutes). Refreshing with an already-used refresh token returns 401.
+
 ---
 
 ## Categories Endpoints
@@ -125,6 +140,8 @@ curl -X POST http://localhost:8000/api/v1/categories \
     "description": "All medications and pills"
   }'
 ```
+
+Category bodies use snake_case keys (`display_order`, `is_default`); camelCase keys are silently ignored. A name that matches an existing one case-insensitively returns 409. *(8 Oct 2026)* A name made only of spaces or HTML tags is currently accepted and stored empty (known issue A-24 in [API traceability](../docs/API_TRACEABILITY.md#known-application-issues-found-while-tracing)).
 
 ### Get Single Category
 ```bash
@@ -149,6 +166,8 @@ curl -X DELETE http://localhost:8000/api/v1/categories/CATEGORY_ID \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
+This also deletes **every item in the category**. The mobile app refuses to delete a category that still has items; the API does not. Only categories with `is_default=true` are protected (409).
+
 ---
 
 ## Items Endpoints
@@ -171,6 +190,8 @@ curl "http://localhost:8000/api/v1/items?lowStockOnly=true" \
 curl "http://localhost:8000/api/v1/items?isCritical=true&outOfStockOnly=false&isActive=true&search=mask" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
+
+Each call returns one page: `page` 1 and `pageSize` 50 by default (maximum 100), plus `total`. Without `isActive`, inactive items are included.
 
 ### Create Item
 ```bash
@@ -200,9 +221,12 @@ curl -X PUT http://localhost:8000/api/v1/items/ITEM_ID \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Updated Name",
-    "quantity": 15
+    "quantity": 15,
+    "version": 1
   }'
 ```
+
+(Corrected 7 Oct 2026: `version` is required; without it the request fails with 422.) Send the `version` you last read. New items start at version 1, and every successful update adds 1. A stale version returns 409 with `server_version` and `server_quantity`. Optional fields you send as `null` are cleared; fields you leave out are unchanged; required fields such as `name` or `quantity` ignore `null`.
 
 ### Update Stock Only
 ```bash
@@ -214,6 +238,8 @@ curl -X PATCH http://localhost:8000/api/v1/items/ITEM_ID/stock \
     "version": 1
   }'
 ```
+
+`quantity` is the new absolute value, not a change. The mobile app never calls this route; it changes quantities through `PUT`.
 
 ### Delete Item
 ```bash
@@ -239,6 +265,8 @@ curl http://localhost:8000/api/v1/items/stats \
 }
 ```
 
+`pendingOrdersCount` counts orders in `pending` or `received` only. The mobile dashboard does not call this route; it computes its own counts on the phone with slightly different rules, so the numbers can differ from the app.
+
 ---
 
 ## Orders Endpoints
@@ -249,30 +277,44 @@ curl http://localhost:8000/api/v1/orders \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
+Returns one page, newest first (`pageSize` 20 by default, maximum 100), with `total`, `page`, `pageSize` and `hasMore`.
+
 ### Create Order
 ```bash
 curl -X POST http://localhost:8000/api/v1/orders \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
+    "orderId": "client-ref-1",
+    "localId": "save-press-0001",
     "items": [
       {
-        "item_id": "ITEM_ID_1",
+        "itemId": "ITEM_ID_1",
+        "name": "Oxygen Mask",
         "quantity": 10
       },
       {
-        "item_id": "ITEM_ID_2",
+        "itemId": "ITEM_ID_2",
+        "name": "Suction Catheter",
         "quantity": 5
       }
     ]
   }'
 ```
 
+(Corrected 7 Oct 2026: the earlier example omitted `orderId` and each line's `name`, which the schema requires, so it returned 422.) Notes:
+- `orderId` must be present but is ignored; the server assigns the public number `ORD-YYYYMMDD-NNNN`. Client totals, `status` and timestamps are ignored too; the server computes totals.
+- Each line needs `itemId` (an item you own, else 400), `name` and `quantity` (1–999,999); 1–1,000 lines. Snapshot fields (`brand`, `unit`, `currentStock`, `minimumStock`, `supplierName`, `purchaseLink`, `imageUri`) are stored as sent. `categoryName`, `isEssential` and line `notes` are accepted but not stored.
+- `localId` (feature branch, optional, 1–36 characters) makes the request idempotent: repeating it returns 200 with the existing order instead of creating a duplicate. The repeated body is ignored, even if it differs (*8 Oct 2026, reproduced*). Without `localId` every request creates a new order.
+- Order numbers use the UTC date and one daily counter shared by all accounts, so one account's numbers have gaps.
+
 ### Get Single Order
 ```bash
 curl http://localhost:8000/api/v1/orders/ORDER_ID \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
+
+`ORDER_ID` can be the UUID or the public `ORD-YYYYMMDD-NNNN` id.
 
 ### Update Order Status
 ```bash
@@ -298,17 +340,23 @@ Status flow:
 - `partially_received → received`
 - `received → stock_updated` only through `POST /orders/{id}/apply`
 
+Setting the same status again returns 200 and changes nothing; an illegal transition returns 400; a concurrent change returns 409. `partially_received` stores no per-line quantities. The mobile app offers only pending → received and "Update Stock" (apply); the other transitions are API-only.
+
 ### Apply Order to Stock
 ```bash
 curl -X POST http://localhost:8000/api/v1/orders/ORDER_ID/apply \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
+Only a `received` order can be applied. Each line adds its full ordered quantity to the item and bumps the item's `version`, all in one transaction. If any referenced item was deleted, the response is 409 listing the missing names and nothing changes. Applying the same order again returns 400.
+
 ### Delete Order
 ```bash
 curl -X DELETE http://localhost:8000/api/v1/orders/ORDER_ID \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
+
+Only `pending` and `declined` orders can be deleted; other statuses return 400. On the feature branch order numbers come from a per-day counter table, so deleting an order does not free its number (`main` derives the number from a count of existing orders).
 
 ---
 
@@ -321,7 +369,7 @@ Play Store–compliant two-step deletion flow.
 curl -X DELETE http://localhost:8000/api/v1/auth/me \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
-Response: `{"message": "A confirmation email has been sent. Please check your inbox and open the link to review and confirm account deletion. The link expires in 24 hours."}`. Server generates `deletion_token` (24 h TTL) and emails a confirmation link.
+Response: `{"message": "A confirmation email has been sent. Please check your inbox and open the link to review and confirm account deletion. The link expires in 24 hours.", "success": true}`. Server generates a random token, stores only its SHA-256 digest in `deletion_token` (24 h TTL) and emails a confirmation link. Returns 400 if the account has no email and 503 if email is not configured (`MAIL_PASSWORD` empty), so this flow cannot be completed on a local stack without a Brevo key.
 
 ### Step 2a: Open email confirmation page
 ```bash
@@ -333,13 +381,15 @@ HTML confirmation page rendered. No data is deleted on GET.
 ```bash
 curl -X POST http://localhost:8000/api/v1/auth/confirm-delete/DELETION_TOKEN
 ```
-HTML success page rendered. User row is deleted; CASCADE unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_log.
+HTML success page rendered. User row is deleted; CASCADE unwinds categories, items, orders, order_items, activity_logs, refresh_tokens, audit_log (feature branch: also ai_consents and ai_usage). `order_number_counters` are kept.
 
 ### Step 2c (alternative): Cancel pending deletion
 ```bash
 curl -X POST http://localhost:8000/api/v1/auth/cancel-delete \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
+
+The mobile app has no cancel button, so this curl call is the way to test cancellation.
 
 ---
 
@@ -368,11 +418,13 @@ curl http://localhost:8000/health
 }
 ```
 
-`/health` is the DB-backed readiness endpoint and returns 503 when the database probe fails. `/live` is the process-only liveness endpoint used by Render and returns `"database": "not_checked"`.
+`/health` is the DB-backed readiness endpoint and returns 503 when the database probe fails. `/live` is the process-only liveness endpoint (the health-check path in `render.yaml`; the live Render setting is NOT VERIFIED) and returns `"database": "not_checked"`. Neither reports the deployed commit: `version` is the `APP_VERSION` setting (default 1.0.0).
 
 ---
 
 ## Error Responses
+
+(Corrected 7 Oct 2026 against `app/main.py`, `app/api/deps.py` and slowapi 0.1.9: the earlier 403, 422 and 429 examples did not match the code.)
 
 ### 400 Bad Request
 ```json
@@ -388,12 +440,16 @@ curl http://localhost:8000/health
 }
 ```
 
+Other 401 details include `"Not authenticated"` (no token) and `"Incorrect email/username or password"` (login).
+
 ### 403 Forbidden
 ```json
 {
-  "detail": "Not enough permissions"
+  "detail": "EMAIL_NOT_VERIFIED"
 }
 ```
+
+Also `"User account is disabled"` for an inactive account. No route uses roles, so a "not enough permissions" style 403 does not occur. Another user's record returns 404, not 403.
 
 ### 404 Not Found
 ```json
@@ -402,25 +458,59 @@ curl http://localhost:8000/health
 }
 ```
 
-### 422 Validation Error
+### 409 Conflict
+Item version conflict (`PUT /items/{id}`, `PATCH /items/{id}/stock`):
 ```json
 {
-  "detail": [
+  "error": "Version conflict",
+  "message": "…",
+  "server_version": 3,
+  "server_quantity": 12
+}
+```
+
+A database uniqueness race (for example two simultaneous registrations with the same email) is answered by a generic handler:
+```json
+{
+  "detail": "A conflict occurred. Please try again.",
+  "timestamp": "2026-..."
+}
+```
+
+### 422 Validation Error
+The app replaces FastAPI's default body with this shape:
+```json
+{
+  "error": "Validation Error",
+  "message": "Request validation failed",
+  "details": [
     {
-      "loc": ["body", "email"],
-      "msg": "value is not a valid email address",
-      "type": "value_error.email"
+      "field": "body.email",
+      "message": "value is not a valid email address: …",
+      "code": "value_error"
     }
-  ]
+  ],
+  "timestamp": "2026-..."
 }
 ```
 
 ### 429 Rate Limit
+Produced by slowapi; the text names the limit that was hit. No `Retry-After` header is sent.
 ```json
 {
-  "detail": "Rate limit exceeded. Try again in 60 seconds."
+  "error": "Rate limit exceeded: 5 per 1 minute"
 }
 ```
+
+### 500 Internal Server Error
+```json
+{
+  "detail": "An unexpected error occurred. Please try again.",
+  "timestamp": "2026-..."
+}
+```
+
+These 500 responses are produced outside the app's middleware, so they come without `X-Request-ID` and the security headers.
 
 ---
 
@@ -463,17 +553,19 @@ curl http://localhost:8000/api/v1/items/stats \
   -H "Authorization: Bearer $TOKEN"
 
 # 7. Fetch activity log
-curl http://localhost:8000/api/v1/activities?limit=10 \
+curl "http://localhost:8000/api/v1/activities?limit=10" \
   -H "Authorization: Bearer $TOKEN"
 
-echo "All tests passed!"
+echo "Sequence finished - check each response above (curl does not fail on HTTP errors)"
 ```
+
+This flow uses the token returned by `/register`. That works on a local stack without `MAIL_PASSWORD`. Running it a second time needs a different email (the same one returns 400 and `TOKEN` becomes `null`), and registration is limited to 3 per hour per worker process. If email verification is enforced (feature branch, with `REQUIRE_EMAIL_VERIFICATION=true` and `MAIL_PASSWORD` set), verify the email and log in first. (The earlier ending, `echo "All tests passed!"`, printed success regardless of the responses.)
 
 ---
 
 ## Postman Collection
 
-Import this JSON into Postman for a complete collection:
+Import this JSON into Postman as a starter collection (URLs only: add the `Authorization: Bearer {{token}}` header and request bodies yourself; it covers only some endpoints):
 
 ```json
 {
@@ -521,7 +613,11 @@ Import this JSON into Postman for a complete collection:
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| 401 on all requests | Token expired | Login again to get new token |
+| 401 on all requests | Access token expired (30 min), `SECRET_KEY` rotated, or (feature branch) password changed/reset, which invalidates existing tokens. Logout alone does not invalidate the access token | Login again to get new token |
+| 403 `EMAIL_NOT_VERIFIED` | Verification enforced and email not verified | Verify via the emailed link, or test locally without `MAIL_PASSWORD` |
 | Connection refused | Backend not running | Start Docker containers |
-| 422 Validation error | Invalid request body | Check required fields |
-| Rate limit exceeded | Too many requests | Wait and retry |
+| 422 Validation error | Invalid request body | Check required fields (`version` on item updates; `orderId` and line `name` on orders) and the `details` list |
+| 409 on item update | Stale `version` | Re-read the item and send the new `version` |
+| 413 | Body too large (feature branch only: 2 MB cap for normal routes, 12 KB for AI JSON routes) | Send a smaller request |
+| 429 Rate limit exceeded | Too many auth requests | Wait for the window to pass; limits are per worker process and reset on restart |
+| 503 on forgot-password / resend / delete account | Email not configured (`MAIL_PASSWORD` empty) | Expected locally without a Brevo key |

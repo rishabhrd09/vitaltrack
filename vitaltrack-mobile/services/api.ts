@@ -412,6 +412,8 @@ class ApiClient {
                 if (options.signal?.aborted) throw new Error('Request cancelled.');
                 response = await fetch(url, { ...options, headers });
             } catch (error) {
+                assertCurrent();
+                if (options.signal?.aborted) throw new Error('Request cancelled.');
                 if (error instanceof ApiClientError && error.status === 401) {
                     await triggerAutoLogout(endpoint);
                 }
@@ -420,6 +422,8 @@ class ApiClient {
 
             // Retry may still return 401 if the refreshed token was immediately
             // invalidated (e.g. account deleted between refresh and retry).
+            assertCurrent();
+            if (options.signal?.aborted) throw new Error('Request cancelled.');
             if (response.status === 401) {
                 await triggerAutoLogout(endpoint);
                 throw new ApiClientError('Session expired. Please log in again.', 401);
@@ -541,8 +545,8 @@ class ApiClient {
     }
 
     // Public methods
-    async get<T>(endpoint: string, requiresAuth = true, signal?: AbortSignal): Promise<T> {
-        return this.request<T>(endpoint, { method: 'GET', signal }, requiresAuth);
+    async get<T>(endpoint: string, requiresAuth = true, signal?: AbortSignal, assertCurrent?: () => void): Promise<T> {
+        return this.request<T>(endpoint, { method: 'GET', signal }, requiresAuth, 'json', assertCurrent);
     }
 
     /** Bounded transport for opt-in AI, including multipart and binary replies. */

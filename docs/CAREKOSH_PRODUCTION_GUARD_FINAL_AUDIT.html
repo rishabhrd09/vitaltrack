@@ -377,6 +377,7 @@
       table { min-width: 560px; }
     }
   </style>
+<style id="doc-review-style">.doc-review{display:block!important;position:static!important;box-sizing:border-box!important;width:auto!important;max-width:1000px;margin:24px auto!important;padding:18px 22px!important;border:1px solid #aab8ac!important;border-left:5px solid #286258!important;border-radius:8px;background:#f0f6ef!important;color:#1b352c!important;font:15px/1.6 system-ui,sans-serif!important}.doc-review p{margin:6px 0!important;color:inherit!important;font:inherit!important}.doc-review a{color:#075d70!important;text-decoration:underline!important}.doc-review strong{color:#173f34!important}.doc-review code{color:inherit!important;background:transparent!important}@media print{.doc-review{break-inside:avoid}}</style>
 </head>
 <body>
   <main class="page">
@@ -406,6 +407,7 @@
         <a href="#acceptance-gate"><span>10</span>Acceptance Gate</a>
       </nav>
     </header>
+<aside class="doc-review" aria-label="Documentation status"><strong>Historical June audit and goal sequence · reviewed 23 September 2026 · status refreshed 7 October 2026</strong><p>The old goals and findings are retained as history, not a current launch approval or an instruction to rerun them. The September audit and hardening notes supersede claims that all verified defects are closed. Live backup/monitoring evidence and remaining code work are still required.</p><p><strong>7 October 2026 status.</strong> Findings and goal text below are unchanged. Figures that have moved since June: the route gate expects 39 routes under <code>/api/v1</code> on <code>main</code> (<code>835fad3</code>) and 44 on the unmerged feature branch (<code>03cfebb</code>, which adds five <code>/api/v1/ai</code> routes); the feature branch also adds migrations <code>0007</code>–<code>0010</code> (0007 cannot be downgraded). On that branch a local run on 7 Oct passed 242 backend tests (88% coverage) and 121 mobile tests; mypy (23 errors) and Trivy remain advisory, and expo-doctor's failure is suppressed in CI. GitHub's <code>protect-main</code> ruleset requires a pull request but no status checks, so “blocking” below means blocking inside the workflow, not a merge block. Production CORS is still <code>["*"]</code> in <code>render.yaml</code> (browser-only control, credentials disabled). The parked rate-limit row is no longer “no defect claimed”: rate limiting is best-effort, and an open security finding affects how clients are identified — details are kept out of this public repository. Live backup, monitoring, Render and Play state were NOT VERIFIED.</p><p><a href="INDEX.html">Documentation home and source status</a> · <a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide (current onboarding)</a> · <a href="API_TRACEABILITY.md">API traceability</a> · <a href="documentation-audit-2026-10-07/README.md">Documentation audit, 7 Oct 2026</a> · <a href="BACKEND_HARDENING.md">Local hardening and remaining work</a></p></aside>
     <section id="final-verdict">
       <p class="section-number">01</p>
       <h2>Final Verdict</h2>

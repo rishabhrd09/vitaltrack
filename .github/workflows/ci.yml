@@ -53,6 +53,15 @@ jobs:
     runs-on: ubuntu-latest
     
     services:
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
       postgres:
         image: postgres:16
         env:
@@ -88,16 +97,28 @@ jobs:
       - name: Run linting (Ruff)
         run: |
           cd vitaltrack-backend
-          ruff check app/ tests/ scripts/ --output-format=github
+          ruff check app/ tests/ unit_tests/ scripts/ --output-format=github
       
       - name: Run tests
         env:
+          # Python 3.12 monitoring records resumed async handlers reliably.
+          # The legacy tracer undercounted code after awaits in local checks.
+          COVERAGE_CORE: sysmon
+          TEST_REDIS_URL: redis://127.0.0.1:6379/0
+          RATE_LIMIT_STORAGE_URI: memory://
           DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
           SECRET_KEY: test-secret-key-for-ci-testing-minimum-32-chars-long
           ENVIRONMENT: testing
         run: |
           cd vitaltrack-backend
+          python -m pytest tests/ unit_tests/ -q
           python -m pytest tests/ unit_tests/ -q --migrated-schema --cov=app --cov-report=term-missing --cov-report=json
+
+      - name: Verify deterministic supply rules and timing comparison
+        run: |
+          cd vitaltrack-backend
+          python scripts/evaluate_supply_review.py scripts/fixtures/supply_review_eval.json --run-rules
+          python scripts/compare_benchmarks.py scripts/fixtures/timing_baseline.json scripts/fixtures/timing_baseline.json
       
       - name: Verify API route count
         env:
@@ -106,14 +127,18 @@ jobs:
           ENVIRONMENT: testing
         run: |
           cd vitaltrack-backend
-          python scripts/check_api_routes.py --expected 51
+          python scripts/check_api_routes.py --expected 65
 
       - name: Verify item/order coverage floors
         run: |
           cd vitaltrack-backend
           python scripts/check_file_coverage.py coverage.json --threshold 70 \
             --file app/api/v1/items.py \
-            --file app/api/v1/orders.py
+            --file app/api/v1/orders.py \
+            --file app/services/orders.py \
+            --file app/services/supply_review.py \
+            --file app/services/supply_revision.py \
+            --file app/services/supply_rules.py
 
   # =============================================================================
   # BACKEND TYPE CHECK (Advisory until the existing mypy baseline is green)

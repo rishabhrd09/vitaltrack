@@ -40,7 +40,7 @@ RUN echo '#!/bin/sh' > /entrypoint.sh && \
     echo 'echo "Database ready! Running migrations..."' >> /entrypoint.sh && \
     echo 'alembic upgrade head' >> /entrypoint.sh && \
     echo 'echo "Starting server..."' >> /entrypoint.sh && \
-    echo 'exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload' >> /entrypoint.sh && \
+    echo 'exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --no-proxy-headers' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

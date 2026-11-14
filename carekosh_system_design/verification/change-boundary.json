@@ -1,0 +1,8 @@
+{
+  "generator_idempotence": true,
+  "generated_files": 26,
+  "runtime_files_compared": 145,
+  "runtime_files_changed": [],
+  "head": "03cfebb8709f0396844c4585814f9fcb3abf9108",
+  "branch": "feature/backend-hardening-ai-voice-agent-foundation"
+}

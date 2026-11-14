@@ -62,3 +62,8 @@ test('Whistle flags outside a named EAS profile still require the exact HTTPS st
     assert.equal(withEnv({ EXPO_PUBLIC_API_URL: STAGING, ...flag }, () => configure({ config: {} })).android.package, 'com.carekosh.mobile');
   }
 });
+
+
+test('production refuses the development cleartext override', () => {
+  assert.throws(() => withEnv({ EAS_BUILD_PROFILE: 'production', EXPO_PUBLIC_API_URL: 'https://api.carekosh.com', CAREKOSH_ALLOW_ANDROID_CLEARTEXT: 'true' }, () => configure({ config: {} })), /cleartext/);
+});

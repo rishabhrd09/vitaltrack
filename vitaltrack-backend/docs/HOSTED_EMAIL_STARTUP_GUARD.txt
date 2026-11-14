@@ -1,0 +1,67 @@
+CareKosh — hosted email-verification startup guard
+27 October 2026; local implementation only
+
+BEHAVIOR
+
+app/main.py checks the configuration while constructing the ASGI application.
+When REQUIRE_EMAIL_VERIFICATION=true, hosted startup raises a clear RuntimeError
+if MAIL_PASSWORD is unset, empty or whitespace-only. MAIL_PASSWORD is the Brevo
+API credential already used by the email sender, not an SMTP username/password
+pair. The message names the setting without printing credential values.
+
+The hosted/local boundary matches existing ingress and rate-limit validation:
+only ENVIRONMENT=development or testing are local exceptions. Staging and
+production, and any other non-local environment name, receive the guard.
+
+  Hosted + verification required + missing/blank key -> refuse app startup.
+  Hosted + verification required + nonblank key      -> pass this check.
+  Hosted + verification disabled                    -> no email-key requirement.
+  Development/testing                               -> existing local policy.
+
+Other startup checks (Redis, ingress, origins, etc.) still apply independently.
+The check applies whether WEB_AUTH_ENABLED is true or false. No provider, Redis
+or database call is necessary for this check. A nonblank key can still be invalid
+or revoked; actual email delivery is a separate acceptance requirement.
+
+ANDROID AND OPERATIONAL SCOPE
+
+No Android source, auth endpoint, response schema, JWT logic, verification
+default or runtime sign-in rule changed. A correctly configured hosted API
+continues using its existing verification/login policy. Local/testing mode can
+still exercise registration and sign-in without an email provider.
+
+A misconfigured hosted worker intentionally cannot start, so it cannot serve
+Android or web requests. Validate configuration before a later deployment;
+do not switch verification off merely to bypass the guard. The guard is at
+application construction, not a replacement for deployment preflight: the
+existing container entrypoint runs migrations before starting the worker.
+This change does not roll migrations back or prove hosted health/availability.
+
+No staging/production configuration, database, DNS, Android build, commit,
+push or deployment was performed. Only synthetic local settings are used in
+the new tests. No email was sent and no provider credentials were validated.
+
+REGRESSION COVERAGE
+
+unit_tests/test_email_startup_guard.py covers both hosted environments with
+empty/whitespace keys, browser auth enabled/disabled, configured hosted success,
+explicitly disabled verification and local exceptions. Fresh Python worker
+imports also test unset/whitespace/present credentials in a clean environment;
+network connections are blocked and output is checked for synthetic secrets.
+
+The existing local no-email registration test remains, with its comment updated
+to distinguish local behavior from the hosted startup guard.
+
+LOCAL RESULTS
+
+  20 focused startup-guard cases passed, including fresh worker import checks.
+  895 backend tests passed, zero skipped, using Alembic-migrated disposable
+  PostgreSQL and real disposable Redis. Existing native/browser auth, refresh,
+  inventory/order, ingress and migration regressions remain in this suite.
+  465 Android/mobile repository tests passed, zero skipped.
+  Ruff, the 55-route gate, item/order coverage floors and git diff --check passed.
+
+Raw local logs: /private/tmp/carekosh-email-guard.k9xE2U
+No physical APK, hosted email delivery or hosted deployment was tested. Web UI
+code and dependencies did not change, so browser/build/dependency results in
+the earlier independent review were not rerun or relabelled as new results.

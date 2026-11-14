@@ -176,15 +176,21 @@ async def test_delete_cannot_erase_an_order_applied_after_its_precheck(client, m
     _, headers, _, item = await seed(client)
     order = await create_order(client, headers, items=[order_item_payload(item, quantity=4)])
     reached, release = asyncio.Event(), asyncio.Event()
-    original = AsyncSession.execute
+    original = orders.lock_supply_revision
+    held = False
 
-    async def hold_delete(session, statement, *args, **kwargs):
-        if getattr(statement, 'is_delete', False) and statement.table.name == 'orders':
+    async def hold_delete(session, owner):
+        nonlocal held
+        # The owner lock now serializes normal mutations before their precheck.
+        # Pause the delete before that lock, allowing receive/apply to win and
+        # proving the resumed delete rechecks the committed stock-updated state.
+        if not held:
+            held = True
             reached.set()
             await asyncio.wait_for(release.wait(), 5)
-        return await original(session, statement, *args, **kwargs)
+        return await original(session, owner)
 
-    monkeypatch.setattr(AsyncSession, 'execute', hold_delete)
+    monkeypatch.setattr(orders, 'lock_supply_revision', hold_delete)
     deleting = asyncio.create_task(client.delete(f"/api/v1/orders/{order['id']}", headers=headers))
     await asyncio.wait_for(reached.wait(), 5)
     try:

@@ -75,7 +75,9 @@ async def until_disconnected(request: Request, work):
 
 
 @router.get("/capabilities")
-@limiter.limit("60/minute", key_func=authenticated_ai_rate_key)
+# Android and the web read order_review_guard here before confirming an order;
+# a limiter-store outage must not block order confirmation.
+@limiter.limit("60/minute", key_func=authenticated_ai_rate_key, fail_open=True)
 async def capabilities(request: Request, user: Principal):
     async with AsyncSessionLocal() as db:
         consent = await db.get(AIConsent, user.user_id)
@@ -118,6 +120,8 @@ async def capabilities(request: Request, user: Principal):
         },
         "interpret_contracts": [1, 2, 3],
         "order_review_guard": True,
+        "order_submission_lookup": True,
+        "order_submission_resolution": True,
         "transcribe": enabled("transcribe"),
         "speak": bool(speech_providers),
         "consent_version": CONSENT_VERSION,
@@ -174,7 +178,7 @@ async def interpret(request: Request, body: InterpretRequest, user: Principal):
     # accepts only v3 and always uses this authenticated account's personal key.
     ticket = await reserve(user.user_id, "interpret", provider="openai", credential_source="personal") \
         if body.provider == "openai" else await reserve(user.user_id, "interpret")
-    success, usage = False, {}
+    success, usage, unbilled = False, {}, False
     try:
         if body.provider == "openai":
             key = await openai_credentials.load_key(user.user_id)
@@ -191,8 +195,16 @@ async def interpret(request: Request, body: InterpretRequest, user: Principal):
             ))
         success = True
         return result
+    except HTTPException as exc:
+        # Provider-auth/quota/request rejections performed no billable inference.
+        # Timeouts, cancellation and unknown failures keep their reservation.
+        unbilled = body.provider == "openai" and (exc.headers or {}).get("X-AI-Error") in {
+            "openai_key_invalid", "openai_model_unavailable", "openai_quota",
+            "openai_rate_limited", "openai_request_rejected",
+        }
+        raise
     finally:
-        await asyncio.shield(settle(ticket, success, usage))
+        await asyncio.shield(settle(ticket, success, usage, unbilled=unbilled))
 
 
 @router.post("/transcribe")

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>CareKosh screenshot source</title>
+    <style>
+      body {
+        margin: 0;
+      }
+      iframe {
+        display: block;
+        border: 0;
+      }
+      p {
+        font: 14px system-ui;
+        margin: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe title="Live CareKosh demo screenshot source"></iframe>
+    <p id="capture-note">Loading the local demo…</p>
+    <script>
+      // Development-only framing. The iframe is the real app with its normal
+      // responsive CSS; screenshots never replace, hide, or fabricate its UI.
+      const params = new URLSearchParams(location.search);
+      const sizes = {
+        desktop: [1440, 1400],
+        portrait: [710, 988],
+        phone: [390, 844],
+      };
+      const routes = {
+        dashboard: "/",
+        inventory: "/inventory",
+        orders: "/orders",
+      };
+      const [width, height] = sizes[params.get("view")] || sizes.desktop;
+      const frame = document.querySelector("iframe");
+      frame.width = width;
+      frame.height = height;
+      frame.src = routes[params.get("screen")] || routes.dashboard;
+      frame.addEventListener("load", () => {
+        frame.contentDocument.fonts.ready.then(() => {
+          document.querySelector("#capture-note").textContent =
+            `Live demo · ${width} × ${height}px · capture rectangle 0, 0, ${width}, ${height}`;
+        });
+      });
+    </script>
+  </body>
+</html>

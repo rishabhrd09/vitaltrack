@@ -59,7 +59,14 @@ class ItemCreate(BaseModel):
         # preserve the value, and escape HTML where it is rendered/exported.
         v = re.sub(r"<[^>]*>", "", v)
         v = re.sub(r"javascript:", "", v, flags=re.IGNORECASE)
-        return v.strip()[:100]
+        return v.strip()
+
+    @field_validator("name")
+    @classmethod
+    def nonempty_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("Name must contain visible text")
+        return v
 
     @field_validator("purchase_link")
     @classmethod
@@ -68,7 +75,7 @@ class ItemCreate(BaseModel):
         if v is None or not v.strip():
             return None
         v = v.strip()
-        if not v.startswith(("http://", "https://")):
+        if not v.lower().startswith(("http://", "https://")):
             raise ValueError("URL must start with http:// or https://")
         return v
 
@@ -110,6 +117,13 @@ class ItemUpdate(BaseModel):
         v = re.sub(r"javascript:", "", v, flags=re.IGNORECASE)
         return v.strip()
 
+    @field_validator("name")
+    @classmethod
+    def nonempty_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("Name must contain visible text")
+        return v
+
     @field_validator("purchase_link")
     @classmethod
     def validate_url(cls, v: Optional[str]) -> Optional[str]:
@@ -117,7 +131,7 @@ class ItemUpdate(BaseModel):
         if v is None or not v.strip():
             return None
         v = v.strip()
-        if not v.startswith(("http://", "https://")):
+        if not v.lower().startswith(("http://", "https://")):
             raise ValueError("URL must start with http:// or https://")
         return v
 

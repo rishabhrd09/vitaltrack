@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="docs/tools/build_docs.py from docs/SUPPLY_REVIEW_LEARNING.md">
+<title>Supply Review: learning, evaluation and personal ownership</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d2328;--muted:#56606b;--card:#ffffff;--border:#d6dbe0;--accent:#0b5a73;
+--accent-bg:#e5f1f5;--code-bg:#f1f3f5;--code-fg:#1d2328;--warn-bg:#fff4d6;--warn-border:#9a6a00;--mark:#fff1a8}
+@media (prefers-color-scheme:dark){:root{--bg:#14181c;--fg:#e8ecef;--muted:#a9b3bc;--card:#1c2228;--border:#36404a;
+--accent:#7cc7df;--accent-bg:#17303a;--code-bg:#0f1316;--code-fg:#e8ecef;--warn-bg:#3a2f12;--warn-border:#d9a93a;--mark:#5b4e10}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+a{color:var(--accent);text-underline-offset:3px}a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:0}.skip:focus{left:12px;top:12px;background:var(--card);padding:8px 12px;z-index:9}
+header.site{border-bottom:1px solid var(--border);background:var(--card)}
+header.site .inner{max-width:1180px;margin:auto;padding:14px 20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;min-width:0}
+header.site .meta{min-width:0;overflow-wrap:anywhere}
+header.site .brand{font-weight:700}
+.layout{max-width:1180px;margin:auto;padding:0 20px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:36px}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:24px 0;font-size:14.5px;line-height:1.45}
+nav.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}nav.toc ul{list-style:none;padding-left:0;margin:0}nav.toc ul ul{padding-left:14px}nav.toc li{margin:5px 0}
+nav.toc a{color:var(--fg);text-decoration:none}nav.toc a:hover{text-decoration:underline}
+main{min-width:0;padding:28px 0 80px;max-width:78ch;overflow-wrap:break-word}
+:not(pre)>code{overflow-wrap:anywhere;word-break:break-word}
+h1{font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.15;margin:.2em 0 .4em}
+h2{font-size:1.6rem;margin-top:2.6rem;padding-top:.6rem;border-top:1px solid var(--border)}
+h3{font-size:1.25rem;margin-top:2rem}h4{font-size:1.05rem;margin-top:1.6rem}
+h2,h3,h4{scroll-margin-top:12px}.anchor{margin-left:.35em;font-size:.8em;text-decoration:none;opacity:.45}
+.anchor:hover,.anchor:focus{opacity:1}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--warn-border);background:var(--warn-bg)}
+blockquote p{margin:.4em 0}
+code{font:0.9em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code-bg);padding:.1em .3em;border-radius:4px}
+.codewrap{position:relative;margin:1.1em 0}
+pre{background:var(--code-bg);color:var(--code-fg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow:auto;line-height:1.5}
+pre code{background:none;padding:0;font-size:.86em}
+button.copy{position:absolute;top:8px;right:8px;font:600 12.5px system-ui,sans-serif;padding:4px 10px;border-radius:6px;
+border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer}
+.tablewrap{overflow-x:auto;margin:1.1em 0;border:1px solid var(--border);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.94em;background:var(--card)}
+th,td{border-bottom:1px solid var(--border);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--accent-bg);position:sticky;top:0}
+figure.diagram{margin:1.6em 0}figure.diagram .scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:#fff}
+figure.diagram img{display:block;width:100%;min-width:680px;height:auto}
+figcaption{font-size:.92em;color:var(--muted);margin-top:.5em}
+.meta{color:var(--muted);font-size:.92em}
+footer{color:var(--muted);font-size:.9em;border-top:1px solid var(--border);margin-top:3rem;padding-top:1rem}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.toc{position:static;max-height:none;border-bottom:1px solid var(--border)}
+main{max-width:none}}
+@media print{header.site,nav.toc,button.copy,.skip,.anchor{display:none!important}body{background:#fff;color:#000;font-size:11.5pt}
+.layout{display:block;max-width:none;padding:0}main{max-width:none;padding:0}a{color:#000}
+pre{white-space:pre-wrap;border:1px solid #999}.tablewrap{overflow:visible;border:none}th{position:static}
+figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{break-after:avoid}pre,figure,tr{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="site"><div class="inner"><span class="brand">CareKosh docs</span>
+<a href="INDEX.html">Documentation home</a>
+<span class="meta">Generated from <code>docs/SUPPLY_REVIEW_LEARNING.md</code> — edit the Markdown, not this file.</span></div></header>
+<div class="layout">
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#first-three-learning-sessions">First three learning sessions</a></li><li><a href="#ten-to-twelve-week-ownership-path">Ten-to-twelve-week ownership path</a></li><li><a href="#eight-pieces-to-own-and-demonstrate">Eight pieces to own and demonstrate</a></li><li><a href="#offline-evaluation-and-performance-tools">Offline evaluation and performance tools</a></li><li><a href="#optional-regression-analysis-assistant">Optional Regression Analysis Assistant</a></li><li><a href="#definition-of-done">Definition of done</a></li></ul></details></nav>
+<main id="content">
+<h1 id="supply-review-learning-evaluation-and-personal-ownership">Supply Review: learning, evaluation and personal ownership</h1>
+<p><strong>5 November 2026.</strong> This guide accompanies the <a href="SUPPLY_REVIEW.html">Supply Review implementation</a>. The source was AI-assisted. Generated code does not establish the owner's personal implementation experience, production operation or GPU/EDA verification experience.</p>
+<h2 id="first-three-learning-sessions">First three learning sessions<a class="anchor" href="#first-three-learning-sessions" aria-label="Link to this section">#</a></h2>
+<ol>
+<li>Trace one authenticated item read and one pending-order save. Draw the owner boundary, transaction, expected item version and original <code>localId</code>. Explain why a display cache cannot authorize a stock write.</li>
+<li>Reimplement <code>replenishment_quantity</code> in a scratch exercise and test zero, exact target, inbound coverage, invalid input and overflow. Compare it with the production function before proposing any change.</li>
+<li>Trace one Supply Review from start through clarification to explicit confirmation. Explain the immutable proposal version, source revision, expiry and order linkage. Then read the stale/duplicate tests.</li>
+</ol>
+<p>Use roughly three hours per session, five sessions a week, with room for caregiving. Treat the following as readiness gates, not guaranteed dates. Implementation can exist before you personally understand, demonstrate and operate it.</p>
+<h2 id="ten-to-twelve-week-ownership-path">Ten-to-twelve-week ownership path<a class="anchor" href="#ten-to-twelve-week-ownership-path" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Benefit and code to reuse</th>
+<th>Personal work and concepts</th>
+<th>Measurable gate and release consequence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Weeks 1–2: existing app baseline</td>
+<td>Preserve auth, inventory, order transactions, SecureStore and cookie sessions. Read <code>app/api/v1/items.py</code>, <code>orders.py</code>, both clients' API wrappers.</td>
+<td>Trace requests; explain SQL compare-and-swap, localId idempotency, refresh races, server-first caches and transaction rollback.</td>
+<td>Record synthetic manual/staging checks and exact API/APK/web revisions. No production claim until actual devices/hosting are verified.</td>
+</tr>
+<tr>
+<td>Weeks 3–4: Python facts and rules</td>
+<td>Reuse owner-scoped models and <code>supply_rules.py</code>.</td>
+<td>Personally implement a typed read-only owner tool and quantity exercise; defend inbound-state policy and unit refusal.</td>
+<td>Known-answer tests prove no stock write, no invented target and no wrong-user data. Additive code only; cloud context remains unchanged.</td>
+</tr>
+<tr>
+<td>Weeks 5–6: durable approval</td>
+<td>Reuse <code>supply_review.py</code>, <code>supply_revision.py</code> and noncommitting order service.</td>
+<td>Implement one idempotent transition and stale/duplicate regression yourself; explain locking, immutable snapshots and atomic result linkage.</td>
+<td>Two concurrent client confirmations yield one effect; changed stock/orders force new review; lost outcome recovers. Migration/rollback rehearsal passes on a disposable DB.</td>
+</tr>
+<tr>
+<td>Weeks 7–8: matching clients</td>
+<td>Reuse web <code>SupplyReview.tsx</code> and Android <code>ProposalReview.tsx</code>, existing sessions and dialogs.</td>
+<td>Personally build/review one accessible proposal component on each client; handle refresh, account switch and background recovery.</td>
+<td>Browser keyboard/320px/large-text checks and physical Nord 4 acceptance pass. Matching backend first; no automatic offline writes.</td>
+</tr>
+<tr>
+<td>Weeks 9–10: evaluation and operations</td>
+<td>Reuse pure fixture scoring, timing comparison, CI and current hosting.</td>
+<td>Own evaluation/performance scripts, a backup restore drill and a synthetic staging incident. Learn matched benchmarks, percentiles, logs and safe rollback.</td>
+<td>Reproduce a seeded slowdown and its regression test. Evidence distinguishes source, local test, hosted pilot and operated service.</td>
+</tr>
+<tr>
+<td>Weeks 11–12: hardening and explanation</td>
+<td>Keep the bounded design unless measured needs justify infrastructure.</td>
+<td>Review retention, privacy, old-client compatibility and limits. Demonstrate architecture/failure tradeoffs without memorizing generated answers.</td>
+<td>Short demo, failure drill and interview answers match actual authored/operated work. Production rollout remains a separate explicit action.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="eight-pieces-to-own-and-demonstrate">Eight pieces to own and demonstrate<a class="anchor" href="#eight-pieces-to-own-and-demonstrate" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Deliverable</th>
+<th>Learn and demonstrate</th>
+<th>Interview question</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Owner-scoped typed tool</td>
+<td>Restrict selected columns and owner in SQL; use synthetic second-account denial.</td>
+<td>Why is authenticated identity insufficient without resource-level authorization?</td>
+</tr>
+<tr>
+<td>Quantity function</td>
+<td>Derive the integer formula and prove status/unit boundaries without a model.</td>
+<td>Why is <code>pending</code> different from known inbound?</td>
+</tr>
+<tr>
+<td>Stale and duplicate tests</td>
+<td>Race two clients and change stock between review and confirm.</td>
+<td>Why are both item versions and an owner supply revision needed?</td>
+</tr>
+<tr>
+<td>Web and Android review</td>
+<td>Show identical server facts, accessible reason/quantity rows and renewed review.</td>
+<td>Which logic belongs in Python versus the UI?</td>
+</tr>
+<tr>
+<td>Idempotent transition</td>
+<td>Same approval after timeout returns the original saved result; a closed submission rejects delayed POSTs.</td>
+<td>Why does a 404 lookup not prove that the original request cannot still commit?</td>
+</tr>
+<tr>
+<td>Evaluation script</td>
+<td>Execute synthetic domain fixtures and require explicit safety outcomes.</td>
+<td>Can a high average score hide a dangerous failure?</td>
+</tr>
+<tr>
+<td>Performance script</td>
+<td>Compare matched workload/environment signatures, medians and p95.</td>
+<td>What makes a before/after benchmark incomparable?</td>
+</tr>
+<tr>
+<td>Staging incident</td>
+<td>Seed a safe failure, diagnose with evidence, fix and add a regression test.</td>
+<td>What was observed, what was inferred, and how did you prove the fix?</td>
+</tr>
+</tbody>
+</table></div>
+<p>Say honestly: “I used an AI coding assistant, reviewed the generated changes, and personally implemented and tested these specific parts.” Describe only work you can reproduce and explain. Do not claim you authored every generated line.</p>
+<h2 id="offline-evaluation-and-performance-tools">Offline evaluation and performance tools<a class="anchor" href="#offline-evaluation-and-performance-tools" aria-label="Link to this section">#</a></h2>
+<p>These commands use synthetic JSON fixtures and pure Python. They do not call a provider, database, browser or production system. Run from <code>vitaltrack-backend</code> with the project's Python 3.12 environment:</p>
+<pre><code class="language-bash">python scripts/evaluate_supply_review.py scripts/fixtures/supply_review_eval.json --run-rules
+python scripts/compare_benchmarks.py scripts/fixtures/timing_baseline.json scripts/fixtures/timing_slowdown.json
+python scripts/benchmark_supply_rules.py --help
+</code></pre>
+<p>The seeded slowdown comparison intentionally exits <strong>1</strong> when it flags investigation. Invalid or incomparable input exits <strong>2</strong>. Success exits <strong>0</strong>. The scoring script uses the actual pure rules for domain fixtures; explicit safety failures block its release gate even if other examples pass.</p>
+<p>Timing reports require identical fixture, environment, workload, concurrency, cold-start, device, dependency/provider/model and prompt signatures, plus matching sample IDs. Code revision/hash may differ. The comparator reports paired differences, median and p95, and flags changes beyond both its relative and absolute thresholds. It rejects mismatched, oversized or nonfinite input.</p>
+<p>The CPU benchmark is local and bounded at 500 synthetic items. Its optional seeded delay is for regression demonstrations. It is not an API load test or evidence about Android speech latency. Real API/browser/voice measurements must be sanitized and labelled by stage, device, network and warm/cold state.</p>
+<h2 id="optional-regression-analysis-assistant">Optional Regression Analysis Assistant<a class="anchor" href="#optional-regression-analysis-assistant" aria-label="Link to this section">#</a></h2>
+<p>The implemented first step is deterministic offline scoring and comparison. A later model may explain sanitized staging reports and suggest investigations, but must not calculate authoritative statistics, assert correlation as proven cause, execute tests or modify production.</p>
+<p>Before adding that model, define a separate minimized report contract and consent/data policy. Strip tokens, user records, transcripts, private paths and item/order contents. Preserve raw evidence references and clearly label hypotheses. Seed known failures/slowdowns and compare the explanation against known answers. No MCP, OAuth integration, code-edit tool or deployment tool is required.</p>
+<p>Do not call this GPU hardware verification. It demonstrates Python performance analysis and reproducible regression investigation relevant to automation work. It does not establish GPU/EDA experience or replace a role's required professional years.</p>
+<h2 id="definition-of-done">Definition of done<a class="anchor" href="#definition-of-done" aria-label="Link to this section">#</a></h2>
+<p>The local implementation is reviewable when both backend schema modes, unit/rule checks, contract tests, browser checks, Android source checks and documentation checks pass with dated evidence. All unrelated owner work remains preserved.</p>
+<p>A deployed pilot additionally needs verified backend/migration/flag, web and signed APK revisions; live session and provider checks where enabled; physical-device acceptance; and documented restore/rollback procedures.</p>
+<p>An operated production service additionally needs monitored real usage, proven failure recovery, backups and restore drills, supported old-client behavior and operational ownership. No local suite alone establishes this stage.</p>
+<p>Future Apple-oriented claim, after personal implementation and staging operation: “Implemented owner-scoped Python supply-review tools, deterministic business rules, idempotent approval transactions and shared web/Android recovery, with regression tests and cloud deployment evidence.”</p>
+<p>Future NVIDIA-oriented claim, after personally reproducing the benchmark/incident work: “Built Python tools to score known-answer outcomes, compare matched performance runs and investigate seeded regressions with reproducible evidence.”</p>
+<footer>Generated 2026-11-05 by <code>docs/tools/build_docs.py</code> from <code>docs/SUPPLY_REVIEW_LEARNING.md</code>.</footer>
+</main>
+</div>
+<script>
+var tocDetails = document.getElementById('toc-details');
+if (tocDetails && window.matchMedia('(min-width: 901px)').matches) { tocDetails.open = true; }
+document.querySelectorAll('pre > code').forEach(function (code) {
+  var pre = code.parentElement, wrap = document.createElement('div');
+  wrap.className = 'codewrap'; pre.parentNode.insertBefore(wrap, pre); wrap.appendChild(pre);
+  var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+  b.setAttribute('aria-label', 'Copy this code block');
+  b.addEventListener('click', function () {
+    var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(code.innerText).then(done, function () { b.textContent = 'Select and copy'; }); }
+    else { b.textContent = 'Select and copy'; }
+  });
+  wrap.appendChild(b);
+});
+</script>
+</body>
+</html>

@@ -66,7 +66,7 @@ async def test_upgrade_preserves_every_existing_record_and_seeds_highest_order_i
         assert await fingerprints(connection) == before
         assert await connection.scalar(text('SELECT session_version FROM users')) == 0
         assert await connection.scalar(text('SELECT last_value FROM order_number_counters')) == 9
-        assert await connection.scalar(text('SELECT version_num FROM alembic_version')) == '0012_openai_personal_keys'
+        assert await connection.scalar(text('SELECT version_num FROM alembic_version')) == '0013_supply_reviews'
     async with TestSession() as db:
         assert await allocate_order_id(db, now) == f'ORD-{day}-0010'
         await db.rollback()
@@ -92,6 +92,13 @@ async def test_local_id_index_keeps_existing_duplicate_orders_and_replays_the_ol
             {'id': f'order-{name}', 'user_id': 'retry-user', 'order_id': f'ORD-20260101-{i:04d}', 'local_id': key, 'total_items': 1, 'total_units': 1, 'status': 'PENDING', 'exported_at': now, 'created_at': now + timedelta(seconds=i), 'updated_at': now}
             for i, (name, key) in enumerate(keys.items(), start=1)
         ])
+        # A matching historical line remains replayable after migration; a
+        # different payload now correctly conflicts with this submission key.
+        await connection.execute(metadata.tables['order_items'].insert(), {
+            'id': 'retry-line', 'order_id': 'order-original', 'item_id': 'retry-item',
+            'name': 'Saline', 'unit': 'pieces', 'quantity': 1,
+            'current_stock': 10, 'minimum_stock': 5, **stamps,
+        })
         before = await fingerprints(connection)
         await connection.run_sync(lambda conn: migrate(conn, 'head'))
         assert await fingerprints(connection) == before
@@ -168,3 +175,40 @@ async def test_openai_key_upgrade_preserves_sarvam_credentials_and_existing_cons
         await connection.execute(text("INSERT INTO ai_openai_credentials VALUES ('prior-voice-owner', 'synthetic-encrypted-key', :now)"), {'now': now})
         await connection.execute(text("DELETE FROM users WHERE id='prior-voice-owner'"))
         assert await connection.scalar(text('SELECT count(*) FROM ai_openai_credentials')) == 0
+
+
+@pytest.mark.asyncio
+async def test_supply_review_upgrade_preserves_populated_prior_records():
+    now = datetime.now(timezone.utc)
+    async with test_engine.begin() as connection:
+        await connection.run_sync(Base.metadata.drop_all)
+        await connection.execute(text('DROP TABLE IF EXISTS alembic_version'))
+        await connection.run_sync(lambda conn: migrate(conn, '0012_openai_personal_keys'))
+        metadata = MetaData()
+        await connection.run_sync(metadata.reflect)
+        await connection.execute(metadata.tables['users'].insert(), {
+            'id': 'supply-prior-owner', 'email': 'supply-prior@example.com',
+            'hashed_password': 'synthetic', 'name': 'Synthetic Prior Owner',
+            'is_active': True, 'is_verified': False, 'is_superuser': False,
+            'is_email_verified': True, 'session_version': 0,
+            'created_at': now, 'updated_at': now,
+        })
+        await connection.execute(metadata.tables['categories'].insert(), {
+            'id': 'supply-prior-category', 'user_id': 'supply-prior-owner', 'name': 'Prior Supplies',
+            'display_order': 1, 'is_default': False, 'created_at': now, 'updated_at': now,
+        })
+        await connection.execute(metadata.tables['items'].insert(), {
+            'id': 'supply-prior-item', 'user_id': 'supply-prior-owner', 'category_id': 'supply-prior-category',
+            'name': 'Synthetic Prior Gloves', 'quantity': 7, 'minimum_stock': 3, 'unit': 'pieces',
+            'is_active': True, 'is_critical': False, 'version': 4, 'created_at': now, 'updated_at': now,
+        })
+        await connection.execute(metadata.tables['ai_openai_credentials'].insert(), {
+            'user_id': 'supply-prior-owner', 'ciphertext': 'synthetic-encrypted-openai', 'updated_at': now,
+        })
+        before = await fingerprints(connection)
+        credential = await connection.scalar(text('SELECT to_jsonb(t) FROM ai_openai_credentials t'))
+        await connection.run_sync(lambda conn: migrate(conn, 'head'))
+        assert await fingerprints(connection) == before
+        assert await connection.scalar(text('SELECT to_jsonb(t) FROM ai_openai_credentials t')) == credential
+        for table in ('closed_order_submissions', 'supply_revisions', 'supply_review_runs', 'supply_review_proposals', 'supply_review_confirmations'):
+            assert await connection.scalar(text(f'SELECT count(*) FROM {table}')) == 0

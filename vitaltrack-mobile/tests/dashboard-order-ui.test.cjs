@@ -62,6 +62,13 @@ test('emergency order retains the existing fallback and excludes noncritical low
   const ordinary = await render(NeedsAttention, { lowStockItems: [{ ...item('gauze', 'Gauze', 1), isCritical: false }], outOfStockItems: [], onOrderNow() {}, onEditItem() {} });
   try { assert.equal(ordinary.button('Review emergency order'), undefined); } finally { await ordinary.dispose(); }
 });
+
+test('backup-only attention stays visible when critical stock meets its minimum', async () => {
+  const NeedsAttention = load('components/dashboard/NeedsAttention.tsx', { ...environment({ width: 320, fontScale: 1.6 }), '@/hooks/usePendingItems': { usePendingItemIds: () => new Set() } }).default;
+  const h = await render(NeedsAttention, { lowStockItems: [], outOfStockItems: [], backupItems: [{ ...item('backup', 'Synthetic critical equipment', 1), minimumStock: 1 }], onOrderNow() {}, onEditItem() {} });
+  try { assert.ok(h.button('Review emergency order')); assert.match(h.text(), /1 low reserve/); assert.match(h.text(), /Needs Attention/); }
+  finally { await h.dispose(); }
+});
 const savedOrder = status => ({ id: 'server-1', orderId: 'ORD-20261024-0001', status, totalItems: 4, totalUnits: 10, exportedAt: '2026-10-24T10:00:00Z', items: Array.from({ length: 4 }, (_, i) => ({ id: 'row-' + i, name: 'Full item name ' + i, quantity: i + 1, unit: 'packets' })) });
 const orderDeps = (extra = {}, viewport) => ({ ...environment(viewport), '@/utils/helpers': { formatDate: value => value }, '@/utils/orderPdfExport': { showPdfExportDialog() {} }, ...extra });
 

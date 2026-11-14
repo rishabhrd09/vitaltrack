@@ -14,6 +14,7 @@ MAX_AUDIO_BODY = (
     900_000  # Includes multipart framing; below UploadFile's spool threshold.
 )
 MAX_AI_JSON_BODY = 12_000
+MAX_SUPPLY_JSON_BODY = 64_000
 # Scope key holding an asyncio.Event that is set when the client disconnects from an AI route.
 DISCONNECTED = "carekosh.ai.disconnected"
 # The largest legitimate request is an order with up to 1,000 lines (well under 1 MB).
@@ -44,19 +45,27 @@ def _has_bearer(scope) -> bool:
 
 
 class AIBodyLimit:
-    def __init__(self, app):
+    def __init__(self, app, api_timeout=60):
         self.app = app
+        self.api_timeout = api_timeout
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
+        if scope["path"] == "/live" and scope.get("method") in {"GET", "HEAD"}:
+            # Liveness bypasses admission control. It must never allocate an
+            # uncounted body buffer or wait on an attacker-controlled upload.
+            return await self.app(scope, receive, send)
         ai = scope["path"].startswith("/api/v1/ai/")
-        if ai and scope.get("method") != "OPTIONS" and not _has_bearer(scope):
+        supply = scope["path"] == "/api/v1/supply-reviews" or scope["path"].startswith("/api/v1/supply-reviews/")
+        if (ai or supply) and scope.get("method") != "OPTIONS" and not _has_bearer(scope):
             # Every AI route requires a bearer token: refuse before buffering anything.
             return await _refusal(scope, 401, "Not authenticated", {"WWW-Authenticate": "Bearer"})(scope, receive, send)
         upload = ai and scope["path"].rstrip("/").endswith("/transcribe")
         if ai:
             limit = MAX_AUDIO_BODY if upload else MAX_AI_JSON_BODY
+        elif supply:
+            limit = MAX_SUPPLY_JSON_BODY
         else:
             limit = MAX_API_BODY
         too_large = "AI request is too large." if ai else "Request is too large."
@@ -70,9 +79,9 @@ class AIBodyLimit:
         body = bytearray()
         try:
             # Uploads to AI routes must finish promptly: 30 s for a recording on a slow mobile
-            # connection, 10 s for JSON. Elsewhere slow phones on a cold-starting server keep the
-            # old behaviour (no read deadline).
-            async with asyncio.timeout((30 if upload else 10) if ai else None):
+            # connection, 10 s for JSON. Other routes allow a full minute for
+            # slow mobile uploads; this deadline excludes DB/handler processing.
+            async with asyncio.timeout((30 if upload else 10) if ai else self.api_timeout):
                 while True:
                     message = await receive()
                     if message["type"] == "http.disconnect":

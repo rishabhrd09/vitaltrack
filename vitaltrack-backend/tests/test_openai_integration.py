@@ -199,7 +199,7 @@ async def test_bad_contract_or_arbitrary_provider_configuration_is_rejected(clie
         assert await db.scalar(select(func.count()).select_from(AIUsage)) == 0
 
 
-async def test_failed_personal_call_retains_allowance_and_never_retries_another_provider(client, monkeypatch):
+async def test_rejected_personal_call_releases_money_keeps_request_limit_and_never_falls_back(client, monkeypatch):
     _, headers = await register_and_auth(client)
     await save(client, headers)
     await consent(client, headers)
@@ -212,8 +212,8 @@ async def test_failed_personal_call_retains_allowance_and_never_retries_another_
     assert response.status_code == 402 and len(calls) == 1
     async with TestSession() as db:
         row = (await db.scalars(select(AIUsage))).one()
-        assert row.status == "failed" and row.reserved_microusd == 50000
-    monkeypatch.setattr(settings, "AI_USER_DAILY_BUDGET_MICROUSD", 50000)
+        assert row.status == "failed" and row.reserved_microusd == 0
+    monkeypatch.setattr(settings, "AI_USER_DAILY_REQUESTS", 1)
     limited = await ask(client, headers)
     assert limited.status_code == 429 and len(calls) == 1
     assert limited.headers.get("x-ai-error") != "busy"
@@ -276,3 +276,46 @@ async def test_disconnection_cancels_inference_and_preserves_reservation(client,
     async with TestSession() as db:
         row = (await db.scalars(select(AIUsage))).one()
         assert row.status == "failed" and row.reserved_microusd == 50000
+
+async def test_personal_spending_cannot_consume_application_money_budget(client, monkeypatch):
+    account, headers = await register_and_auth(client)
+    await save(client, headers)
+    await consent(client, headers, ('openai_text', 'groq_text'))
+    monkeypatch.setattr(settings, 'AI_USER_DAILY_BUDGET_MICROUSD', 50000)
+    monkeypatch.setattr(settings, 'AI_GLOBAL_DAILY_BUDGET_MICROUSD', 50000)
+    monkeypatch.setattr(settings, 'AI_DATA_CONTROLS_REVIEWED', True)
+    monkeypatch.setattr(settings, 'GROQ_API_KEY', SecretStr('synthetic-key'))
+    user_id = account['user']['id']
+    personal = await ai_guard.reserve(user_id, 'interpret', provider='openai', credential_source='personal')
+    await ai_guard.settle(personal, False)  # Unknown outcome keeps its personal reservation.
+    with pytest.raises(HTTPException) as rejected:
+        await ai_guard.reserve(user_id, 'interpret', provider='openai', credential_source='personal')
+    assert rejected.value.status_code == 429
+    application = await ai_guard.reserve(user_id, 'interpret')
+    assert application
+    await ai_guard.settle(application, False)
+
+@pytest.mark.parametrize('code', ['openai_key_invalid', 'openai_model_unavailable', 'openai_quota', 'openai_rate_limited', 'openai_request_rejected'])
+async def test_explicit_personal_provider_rejection_releases_money_but_counts_request(client, monkeypatch, code):
+    _, headers = await register_and_auth(client)
+    await save(client, headers)
+    await consent(client, headers)
+    async def rejected(*args):
+        raise HTTPException(409, 'Synthetic provider refusal', headers={'X-AI-Error':code})
+    monkeypatch.setattr(openai_interpreter, 'interpret', rejected)
+    assert (await ask(client, headers)).status_code == 409
+    async with TestSession() as db:
+        row = (await db.scalars(select(AIUsage))).one()
+        assert row.status == 'failed' and row.reserved_microusd == 0
+
+async def test_unknown_personal_provider_failure_keeps_its_reservation(client, monkeypatch):
+    _, headers = await register_and_auth(client)
+    await save(client, headers)
+    await consent(client, headers)
+    async def failed(*args):
+        raise HTTPException(502, 'Synthetic timeout', headers={'X-AI-Error':'openai_unavailable'})
+    monkeypatch.setattr(openai_interpreter, 'interpret', failed)
+    assert (await ask(client, headers)).status_code == 502
+    async with TestSession() as db:
+        row = (await db.scalars(select(AIUsage))).one()
+        assert row.status == 'failed' and row.reserved_microusd == 50000

@@ -30,6 +30,7 @@ import { captureSession, assertSession, ownsSnapshot } from '@/services/assistan
 import { inventorySnapshot } from '@/features/assistant/snapshot';
 import { useOrderDraft, getDraft, changeDraft, writeDraft, suggestedQuantity, recheckDraft, beginSubmission, markSaved, releaseRejectedSubmission, clearSavedDraft, type CartItem } from '@/features/assistant/drafts';
 import { capabilities } from '@/services/assistant';
+import { pendingSubmission, rememberSubmission, forgetSubmission, findSubmission, resolveSubmission } from '@/features/supplyReview/submissionRecovery';
 import { ApiClientError } from '@/services/api';
 import { useItems } from '@/hooks/useServerData';
 import { useCreateOrder } from '@/hooks/useServerMutations';
@@ -73,11 +74,13 @@ export default function CreateOrderScreen() {
   const emergencyPrompted = useRef(false);
   const leavingSavedOrder = useRef(false);
   const [orderNotice, setOrderNotice] = useState<string>();
+  const [unresolved, setUnresolved] = useState<{ session: ReturnType<typeof captureSession>; id: string }>();
   useEffect(() => {
     mounted.current = true;
     emergencyPrompted.current = false;
     leavingSavedOrder.current = false;
     setOrderNotice(undefined);
+    setUnresolved(undefined);
     const lifecycle = AppState.addEventListener('change', state => {
       if (state !== 'active') { dialogEpoch.current++; preflight.current?.abort(); }
     });
@@ -96,7 +99,7 @@ export default function CreateOrderScreen() {
   useEffect(() => {
     if (leavingSavedOrder.current || !isSuccess || isFetching || !owner) return;
     if (isInitialized && (mode !== 'emergency' || emergencyPrompted.current)) return;
-    const session = captureSession();
+    let session; try { session = captureSession(); } catch { return; }
     if (!ownsSnapshot(items, session)) return;
     const activeItems = items.filter(item => item.isActive);
 
@@ -114,7 +117,7 @@ export default function CreateOrderScreen() {
     if (mode === 'emergency') {
       // Keep the card's count and its review action scoped to the same equipment.
       activeItems
-        .filter((item) => isCriticalEquipment(item) && item.quantity <= 1)
+        .filter((item) => item.isCritical && item.quantity <= 1)
         .forEach(addToCart);
     } else {
       // Regular Order: Out of stock first (critical at top)
@@ -125,7 +128,7 @@ export default function CreateOrderScreen() {
 
       // Then emergency backup items (critical with stock <= 1)
       activeItems
-        .filter((item) => isCriticalEquipment(item) && item.quantity === 1)
+        .filter((item) => item.isCritical && item.quantity === 1)
         .forEach(addToCart);
 
       // Then low stock items (critical at top)
@@ -309,17 +312,34 @@ export default function CreateOrderScreen() {
     try { session = captureSession(); } catch { saveLock.current = false; setSaveStage(null); return; }
     const abort = new AbortController(); preflight.current = abort;
     let firstRequest: ReturnType<typeof beginSubmission> | undefined;
+    let canRecover = false;
     let submissionRequest: ReturnType<typeof beginSubmission> | undefined;
     try {
       const current = getDraft(session);
       if (!current) throw new Error('Your draft is no longer available.');
       submissionRequest = current.attempt?.request;
+      canRecover = current.attempt?.recoveryRequired === true;
       let order = current.attempt?.saved;
       if (!order) {
         if (!isOnline) throw new Error('Connect to the internet to confirm an order. Your draft is retained.');
         if (!current.attempt) {
           setSaveStage('checking_backend');
           const backend = await capabilities(session, abort.signal);
+          canRecover = backend.order_submission_lookup === true;
+          if (canRecover) {
+            const pending = await pendingSubmission(session);
+            if (pending) {
+              const saved = await findSubmission(session, pending.local_id, abort.signal);
+              assertSession(session);
+              if (saved) {
+                await forgetSubmission(session, pending.local_id);
+                if (mounted.current && !abort.signal.aborted) Alert.alert('Original order found', `Order ${saved.orderId} was already saved. Open Recent Orders to view it. This draft has not been submitted.`, [{ text: 'OK' }, { text: 'Recent Orders', onPress: () => { try { assertSession(session); router.replace('/(tabs)/orders'); } catch { /* old session */ } } }]);
+                return;
+              }
+              if (mounted.current && !abort.signal.aborted && backend.order_submission_resolution === true) setUnresolved({ session, id: pending.local_id });
+              throw new Error('An earlier order submission is still unresolved. Check Recent Orders and check again after reconnecting. No new order will be submitted: a missing result does not prove the original request failed.');
+            }
+          }
           if (!backend.order_review_guard) throw new Error('This backend does not support reviewed-order checks yet. Deploy the matching backend before confirming this draft.');
           setSaveStage('checking_stock');
           const snapshot = await inventorySnapshot(session, abort.signal, true);
@@ -337,9 +357,10 @@ export default function CreateOrderScreen() {
         assertSession(session);
         if (!mounted.current || abort.signal.aborted) return;
         const alreadySubmitted = !!getDraft(session)?.attempt;
-        const request = beginSubmission(session, current.rows);
+        const request = beginSubmission(session, current.rows, canRecover);
         submissionRequest = request;
         if (!alreadySubmitted) firstRequest = request;
+        if (canRecover) await rememberSubmission(session, request.localId);
         // A retry's rejection cannot prove an earlier unknown request never
         // committed. Only this exact first request can unlock on a definitive 4xx.
         setSaveStage('saving_order');
@@ -350,6 +371,9 @@ export default function CreateOrderScreen() {
         // for its exact original request, never the current unrelated draft.
         if (getDraft(session)?.attempt?.request !== request) return;
         markSaved(session, order);
+        // Clearing is best effort after the known server result; a retained ID
+        // only causes a safe lookup on the next review.
+        await forgetSubmission(session, request.localId).catch(() => {});
       }
       if (!mounted.current || abort.signal.aborted) return;
       const confirmedOrder = order;
@@ -372,7 +396,10 @@ export default function CreateOrderScreen() {
       try {
         assertSession(session);
         if (submissionRequest && getDraft(session)?.attempt?.request !== submissionRequest) return;
-        if (mounted.current && AppState.currentState === 'active' && !abort.signal.aborted && firstRequest && getDraft(session)?.attempt?.request === firstRequest && e instanceof ApiClientError && [400,401,403,404,409,422].includes(e.status)) releaseRejectedSubmission(session);
+        if (mounted.current && AppState.currentState === 'active' && !abort.signal.aborted && firstRequest && getDraft(session)?.attempt?.request === firstRequest && e instanceof ApiClientError && [400,401,403,404,409,422].includes(e.status)) {
+          releaseRejectedSubmission(session);
+          if (canRecover) await forgetSubmission(session, firstRequest.localId).catch(() => {});
+        }
         const saved = getDraft(session)?.attempt?.saved;
         const unknown = !saved && !!getDraft(session)?.attempt;
         if (mounted.current && !abort.signal.aborted) Alert.alert(saved ? 'Order saved — PDF unavailable' : unknown ? 'Save status unknown' : 'Order not confirmed', saved
@@ -381,6 +408,33 @@ export default function CreateOrderScreen() {
       } catch { /* account changed; never show the previous account's details */ }
     } finally { if (preflight.current === abort) preflight.current = null; saveLock.current = false; if (mounted.current) setSaveStage(null); }
   }
+
+  const resolveInterrupted = () => {
+    if (!unresolved || saveLock.current || !isOnline) return;
+    const pending = unresolved, dialog = ++dialogEpoch.current;
+    try { assertSession(pending.session); } catch { return; }
+    Alert.alert('Resolve interrupted submission?', 'The server will find the original order or permanently close its submission ID so a delayed old request cannot save it. No new order is created. You must review again before starting a fresh submission.', [
+      { text: 'Cancel', style: 'cancel' }, { text: 'Resolve submission', onPress: () => {
+        try { assertSession(pending.session); } catch { return; }
+        if (!mounted.current || AppState.currentState !== 'active' || dialog !== dialogEpoch.current || saveLock.current) return;
+        saveLock.current = true; setSaveStage('checking_backend');
+        const abort = new AbortController(); preflight.current = abort;
+        void (async () => {
+          try {
+            const result = await resolveSubmission(pending.session, pending.id, abort.signal);
+            await forgetSubmission(pending.session, pending.id);
+            assertSession(pending.session);
+            if (!mounted.current || abort.signal.aborted) return;
+            setUnresolved(undefined);
+            setOrderNotice(result.state === 'saved' ? `Original order ${result.order.orderId} was saved. View it in Recent Orders before deciding whether another order is needed.` : 'The interrupted submission is safely closed. Review the current draft again before confirming a new order.');
+            Alert.alert(result.state === 'saved' ? 'Original order found' : 'Interrupted submission closed', result.state === 'saved' ? `Order ${result.order.orderId} is in Recent Orders. No new order was created.` : 'A delayed request with the old ID can no longer create an order. No stock was changed.');
+          } catch (error) {
+            try { assertSession(pending.session); if (mounted.current && !abort.signal.aborted) Alert.alert('Resolution not confirmed', `${error instanceof Error ? error.message : 'Reconnect and try again.'} The original reference is retained; no new order was submitted.`); } catch { /* old account */ }
+          } finally { if (preflight.current === abort) preflight.current = null; saveLock.current = false; if (mounted.current) setSaveStage(null); }
+        })();
+      } },
+    ]);
+  };
 
   // Keep item facts and editable quantities on separate full-width rows.
   // A long unit or supplier name must never squeeze the stock into a narrow column.
@@ -524,6 +578,9 @@ export default function CreateOrderScreen() {
 
       {/* The footer separates saving from native PDF and interactive sharing. */}
       <View style={[styles.footer, { backgroundColor: colors.bgCard, borderTopColor: colors.borderPrimary }]}>
+        {unresolved && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Resolve interrupted submission" disabled={saving || !isOnline} onPress={resolveInterrupted} style={{ padding: 14, minHeight: 48 }}>
+          <Text style={{ color: colors.accentBlue, fontSize: 16, lineHeight: 23, textAlign: 'center' }}>Resolve interrupted submission</Text>
+        </TouchableOpacity>}
         {(saveStage || draft?.attempt) && (
           <View accessibilityLiveRegion="polite" style={[styles.progressCard, { backgroundColor: draft?.attempt?.saved ? colors.statusGreenBg : colors.accentBlueBg }]}>
             {saving ? <ActivityIndicator size="small" color={colors.accentBlue} /> : <Ionicons name={draft?.attempt?.saved ? 'checkmark-circle-outline' : 'time-outline'} size={22} color={draft?.attempt?.saved ? colors.statusGreen : colors.accentBlue} />}
@@ -541,9 +598,9 @@ export default function CreateOrderScreen() {
             style={[styles.exportBtn, { backgroundColor: colors.accentBlue, opacity: totalItems === 0 || saving ? 0.6 : 1 }]}
             accessibilityRole="button"
             accessibilityLabel={draft?.attempt?.saved ? 'Re-export saved order' : draft?.attempt ? 'Retry same submission' : 'Confirm order & export PDF'}
-            accessibilityState={{ disabled: totalItems === 0 || saving || !isInitialized, busy: saving }}
+            accessibilityState={{ disabled: totalItems === 0 || saving || !isInitialized || !!unresolved, busy: saving }}
             onPress={generatePDF}
-            disabled={totalItems === 0 || saving || !isInitialized}
+            disabled={totalItems === 0 || saving || !isInitialized || !!unresolved}
           >
             {!saving && <Ionicons name={draft?.attempt?.saved ? 'document-text-outline' : 'cart-outline'} size={19} color="white" />}
             <Text style={styles.exportText}>{saveStage ? saveStage === 'checking_backend' ? 'Connecting…' : saveStage === 'checking_stock' ? 'Checking stock…' : saveStage === 'saving_order' ? 'Saving order…' : saveStage === 'sharing' ? 'Sharing PDF…' : 'Creating PDF…' : draft?.attempt?.saved ? 'Re-export saved order' : draft?.attempt ? 'Retry same submission' : 'Confirm & export PDF'}</Text>

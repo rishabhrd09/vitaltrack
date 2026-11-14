@@ -263,6 +263,7 @@ export default function DashboardScreen() {
           <NeedsAttention
             outOfStockItems={outOfStockItems}
             lowStockItems={lowStockItems}
+            backupItems={activeItems}
             onOrderNow={() => router.push('/order/create')}
             onEditItem={(itemId) => router.push(`/item/${itemId}`)}
             onViewAll={() => router.push('/inventory')}

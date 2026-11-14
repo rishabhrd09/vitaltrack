@@ -16,6 +16,7 @@ import asyncio
 import hashlib
 import html
 import logging
+import re
 import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -26,6 +27,7 @@ from httpx import AsyncClient
 
 import app.main as main_module
 from app.api.v1 import auth as auth_routes
+from app.api.v1 import declared_routes
 from app.models import User
 from tests.conftest import TestSession, register_user, login_user, auth_header
 
@@ -1024,15 +1026,20 @@ class TestHealthDiagnostics:
         assert body["health"] == "/health"
         assert body["live"] == "/live"
 
-    def test_api_v1_route_count_includes_openai_keys(self):
-        api_v1_routes = [
-            route
-            for route in main_module.app.routes
-            if getattr(route, "path", "").startswith("/api/v1")
-        ]
+    def test_api_v1_route_count_includes_browser_auth(self):
+        api_v1_paths = [path for path, _ in declared_routes()]
 
-        assert len(api_v1_routes) == 51
-        assert all(route.path not in {"/api/v1/health", "/api/v1/live"} for route in api_v1_routes)
+        assert len(api_v1_paths) == 65
+        assert not {"/api/v1/health", "/api/v1/live"} & set(api_v1_paths)
+
+    async def test_every_declared_api_route_is_mounted(self, client: AsyncClient):
+        # OPTIONS is never routed here: 405 proves the path exists in the app,
+        # while an unmounted router would answer 404.
+        for path, _ in declared_routes():
+            concrete = re.sub(r"\{[^}]+\}", "x", path)
+            response = await client.options(concrete)
+            assert response.status_code == 405, (path, response.status_code)
+        assert (await client.options("/api/v1/not-a-route")).status_code == 404
 
     def test_render_health_check_uses_liveness_endpoint(self):
         render_yaml = Path(__file__).resolve().parents[1] / "render.yaml"

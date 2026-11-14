@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import and_, func, or_, select, update
 
 from app.services.inventory_lock import lock_inventory_names
+from app.services.supply_revision import advance_supply_revision, lock_supply_revision
 from app.api.deps import DB, CurrentUser
 from app.models import ActivityActionType, ActivityLog, Category, Item
 from app.schemas import (
@@ -263,6 +264,7 @@ async def create_item(
     - **minimumStock**: Reorder threshold
     - **isCritical**: Mark as critical equipment
     """
+    await lock_supply_revision(db, current_user.id)
     await lock_inventory_names(db, current_user.id, "item")
 
     # Verify category exists and belongs to user
@@ -333,6 +335,7 @@ async def create_item(
         new_values={"name": item.name, "quantity": item.quantity, "unit": item.unit},
     )
 
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
     await db.refresh(item)
 
@@ -359,6 +362,7 @@ async def update_item(
     All fields are optional - only provided fields will be updated.
     An explicit null clears an optional field; it is ignored for required fields.
     """
+    await lock_supply_revision(db, current_user.id)
     if data.name is not None:
         await lock_inventory_names(db, current_user.id, "item")
 
@@ -516,6 +520,7 @@ async def update_item(
         new_values=new_values,
     )
 
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
     await db.refresh(item)
 
@@ -541,6 +546,7 @@ async def update_stock(
     
     Use this for simple stock adjustments.
     """
+    await lock_supply_revision(db, current_user.id)
     result = await db.execute(
         select(Item).where(
             Item.id == item_id,
@@ -604,6 +610,7 @@ async def update_stock(
         new_values={"quantity": data.quantity},
     )
 
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
     await db.refresh(item)
 
@@ -627,6 +634,7 @@ async def delete_item(
     """
     Delete an inventory item.
     """
+    await lock_supply_revision(db, current_user.id)
     # Reset operations opt into a version check against their saved backup.
     # Lock first so an update cannot slip between the check and deletion.
     query = select(Item).where(
@@ -671,6 +679,7 @@ async def delete_item(
     )
 
     await db.delete(item)
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
 
     return SuccessResponse(message=f"Item '{item_name}' deleted")

@@ -78,4 +78,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 ENTRYPOINT ["./docker-entrypoint.sh"]
 
 # The entrypoint expands PORT and execs Gunicorn directly so TERM reaches it.
-CMD ["gunicorn", "app.main:app", "--worker-class", "uvicorn.workers.UvicornWorker", "--workers", "2", "--access-logfile", "-", "--error-logfile", "-", "--capture-output"]
+CMD ["gunicorn", "app.main:app", "--worker-class", "app.worker.CareKoshUvicornWorker", "--workers", "2", "--access-logfile", "-", "--error-logfile", "-", "--capture-output"]

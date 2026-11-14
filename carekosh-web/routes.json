@@ -1,0 +1,25 @@
+{
+  "auth": [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+    "/resend-verification"
+  ],
+  "workspace": {
+    "dashboard": "/",
+    "inventory": "/inventory",
+    "item": "/item/:id",
+    "builder": "/builder",
+    "orders": "/orders",
+    "createOrder": "/orders/create",
+    "newOrder": "/orders/new",
+    "order": "/orders/:id",
+    "profile": "/profile",
+    "activity": "/activity",
+    "help": "/help",
+    "supplyReview": "/supply-review",
+    "supplyReviewRun": "/supply-review/:runId"
+  }
+}

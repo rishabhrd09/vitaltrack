@@ -17,6 +17,10 @@ module.exports = ({ config }) => {
   const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
   const usesCleartextTraffic = isCleartextDevelopmentBuild();
 
+  if (profile === 'production' && usesCleartextTraffic) {
+    throw new Error('Production Android builds must not allow cleartext traffic.');
+  }
+
   if ((profile === 'preview-voice-diagnostics' || (profile === 'preview' && apiUrl)) && apiUrl !== PREVIEW_API_URL) {
     throw new Error('Preview Android builds must use the HTTPS staging API URL.');
   }

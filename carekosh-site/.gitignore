@@ -1,0 +1,6 @@
+dist/
+dist-local/
+dist-staging/
+node_modules/
+*.log
+.DS_Store

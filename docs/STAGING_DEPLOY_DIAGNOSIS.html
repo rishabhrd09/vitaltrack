@@ -538,6 +538,7 @@
     letter-spacing: 0.08em;
   }
 </style>
+<style id="doc-review-style">.doc-review{display:block!important;position:static!important;box-sizing:border-box!important;width:auto!important;max-width:1000px;margin:24px auto!important;padding:18px 22px!important;border:1px solid #aab8ac!important;border-left:5px solid #286258!important;border-radius:8px;background:#f0f6ef!important;color:#1b352c!important;font:15px/1.6 system-ui,sans-serif!important}.doc-review p{margin:6px 0!important;color:inherit!important;font:inherit!important}.doc-review a{color:#075d70!important;text-decoration:underline!important}.doc-review strong{color:#173f34!important}.doc-review code{color:inherit!important;background:transparent!important}@media print{.doc-review{break-inside:avoid}}</style>
 </head>
 <body>
 <div class="wrap">
@@ -553,6 +554,7 @@
       <span><strong>Main HEAD:</strong> <code>7a9c652</code></span>
     </div>
   </header>
+<aside class="doc-review" aria-label="Documentation status"><strong>Historical deployment investigation (April 2026) · reviewed 23 September 2026 · status refreshed 7 October 2026</strong><p>This records an earlier observation of both services watching main with backend root-directory filters. It does not prove current dashboard state. For the new migration, test staging separately before a controlled production cutover; a preview APK does not deploy a backend.</p><p><strong>7 October 2026 status.</strong> The April findings are kept as recorded. What has changed since: the owner reports that on 7 Oct staging was switched to the feature branch and deployed <code>b1c8dd7</code> (later probes saw <code>/api/v1/ai/capabilities</code> answer 401, so that route exists there) — owner-reported, NOT independently verified, and it means the “both services watch <code>main</code>” observation below no longer holds. If staging ran that commit against its database, the database is at migration <code>0010</code>, which cannot be downgraded past <code>0007</code>; the staging database revision is NOT VERIFIED. Production is declared on <code>main</code> (<code>835fad3</code>, migrations up to <code>0006</code>) in <code>render.yaml</code>; its deployed commit, root-directory filter and auto-deploy setting are NOT VERIFIED. The CI hook step now uses <code>curl --fail</code> with a 30-second limit and runs only after both test jobs pass. The backend still returns tokens from <code>/auth/register</code>, as noted in section 04. <code>/health</code> reports a constant version, so confirm deployed commits in the Render dashboard.</p><p><a href="INDEX.html">Documentation home and source status</a> · <a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide (current onboarding)</a> · <a href="API_TRACEABILITY.md">API traceability</a> · <a href="documentation-audit-2026-10-07/README.md">Documentation audit, 7 Oct 2026</a> · <a href="BACKEND_HARDENING.md">Local hardening and remaining work</a></p></aside>
 
   <!-- ============================================================ -->
   <!-- TL;DR -->

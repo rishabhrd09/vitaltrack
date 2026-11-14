@@ -23,7 +23,7 @@ test('inventory PDF critical count and markers match the app flag-or-name rule w
   assert.match(html,/title="Critical equipment by name rule"/);
   assert.match(html,/using the recorded flag or the app's equipment-name rules/);
   assert.match(html,/Gauze[\s\S]*?sb-ok">OK/);
-  assert.match(html,/Ambu Bag[\s\S]*?sb-low">LOW/);
+  assert.match(html,/Ambu Bag[\s\S]*?sb-ok">OK/);
 });
 
 function clock() {

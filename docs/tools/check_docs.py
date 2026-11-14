@@ -31,6 +31,8 @@ ROOT = Path(__file__).resolve().parents[2]
 SKIP_DIRS = {"node_modules", ".git", ".claude", ".pytest_cache", ".ruff_cache", "__pycache__", "evidence",
              "evidence-after-fixes", "independent-verification", "android", "ios"}
 CURRENT = {
+    "docs/SUPPLY_REVIEW.md", "docs/SUPPLY_REVIEW.html",
+    "docs/SUPPLY_REVIEW_LEARNING.md", "docs/SUPPLY_REVIEW_LEARNING.html",
     "docs/OPENAI_UNDERSTANDING.md", "docs/OPENAI_UNDERSTANDING.html",
     "docs/WHISTLE_OFFLINE_LISTENER.md", "docs/WHISTLE_OFFLINE_LISTENER.html",
     "docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md", "docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html",

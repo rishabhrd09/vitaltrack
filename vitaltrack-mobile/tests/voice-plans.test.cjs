@@ -29,7 +29,7 @@ const inventory = [
   item('g', 'Hand gloves', 2, { supplierName: 'Good Supplier' }),
   item('m', 'Surgical masks', 0, { unit: 'boxes', minimumStock: 4, brand: 'MaskCo', supplierName: 'Good Supplier' }),
   item('s', 'Saline', 10, { unit: 'bottles', categoryId: 'f' }),
-  item('a', 'Ambu Bag', 1, { unit: 'units', minimumStock: 1, categoryId: 'e' }),
+  item('a', 'Ambu Bag', 1, { unit: 'units', minimumStock: 2, categoryId: 'e' }),
   item('v', 'Ventilator circuit', 3, { unit: 'units', minimumStock: 2, categoryId: 'e', isCritical: true }),
   item('z', 'Gauze rolls', 3, { unit: 'rolls', minimumStock: 2, supplierName: 'Good Supplier' }),
   item('y', 'Syringes', 5, { unit: 'pieces', minimumStock: 10, categoryId: 'f' }),
@@ -119,7 +119,7 @@ test('order-now list is transparent: rule, priority order and a reason for every
   const result = run(ask.selection);
   assert.deepEqual(ids(result.rows), ['m', 'a', 'g', 'y']); // out of stock, critical low, then largest share of minimum missing
   for (const row of result.rows) assert.ok(result.reasons[row.id].length, row.name);
-  assert.deepEqual(plain(result.reasons.a), ['Low stock · critical equipment with 1 left']);
+  assert.deepEqual(plain(result.reasons.a), ['Low stock · 1 of minimum 2 units']);
   const answer = selection.selectionAnswer(result, ask.selection, 100, false);
   assert.equal(answer.title, 'Consider ordering now');
   assert.match(answer.filters, /order priority: out of stock first, then critical equipment/);
@@ -187,7 +187,7 @@ test('a mixed draft keeps the explicit quantity and labels every suggested line'
   assert.deepEqual(plain(inventory), before);
   assert.equal(drafts.getDraft({ owner: 'a', epoch: 0 }), null, 'preparing a draft stores nothing');
   const backup = drafts.prepareDraft(route('Prepare a draft for critical items that are low or out of stock.'), inventory, []);
-  assert.equal(backup[0].basis, 'Suggested · 1 backup for critical equipment');
+  assert.equal(backup[0].basis, 'Suggested · brings stock from 1 to its minimum of 2');
 });
 
 test('draft follow-ups: add more versus set, the item in focus, and explicit choices', () => {

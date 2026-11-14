@@ -40,8 +40,8 @@ export const authService = {
     /**
      * Get current user profile
      */
-    async getProfile(): Promise<User> {
-        return api.get<User>('/auth/me');
+    async getProfile(signal?: AbortSignal, assertCurrent?: () => void): Promise<User> {
+        return api.get<User>('/auth/me', true, signal, assertCurrent);
     },
 
     /**

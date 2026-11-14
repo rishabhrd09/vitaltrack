@@ -103,7 +103,7 @@ export const isCriticalEquipment = (item: Item): boolean => {
 };
 
 export const needsEmergencyBackup = (item: Item): boolean => {
-  return isCriticalEquipment(item) && item.quantity <= 1 && item.quantity > 0;
+  return item.isCritical && item.quantity === 1;
 };
 
 export const getEmergencyBackupItems = (items: Item[]): Item[] => {
@@ -112,46 +112,10 @@ export const getEmergencyBackupItems = (items: Item[]): Item[] => {
 
 export const isOutOfStock = (item: Item): boolean => item.quantity <= 0;
 
-/**
- * FIXED: Check if item has low stock
- * 
- * An item is considered LOW STOCK if:
- * 1. quantity > 0 AND quantity < minimumStock (standard low stock)
- * 2. OR critical equipment with quantity === 1 (needs emergency backup!)
- * 3. OR any item with minStock >= 1 and qty === 1 (edge case for safety)
- * 
- * CRITICAL FIX: Critical items with qty=1 MUST appear in low stock list
- * so that the Emergency Backup alert (which filters from lowStockItems) works!
- * 
- * Before: BiPAP with qty=1, minStock=1 -> isLowStock = FALSE (broken!)
- * After:  BiPAP with qty=1, minStock=1 -> isLowStock = TRUE (correct!)
- */
-export const isLowStock = (item: Item): boolean => {
-  // Item must have at least 1 unit to be "low" (otherwise it's "out of stock")
-  if (item.quantity <= 0) {
-    return false;
-  }
+/** Standard low stock matches the authoritative API; backup attention is separate. */
+export const isLowStock = (item: Item): boolean => item.quantity > 0 && item.quantity < item.minimumStock;
 
-  // CRITICAL FIX: Critical equipment with only 1 unit = ALWAYS LOW STOCK
-  // This ensures Emergency Backup section shows these items
-  if (isCriticalEquipment(item) && item.quantity === 1) {
-    return true;
-  }
-
-  // Standard low stock: has stock but below minimum
-  if (item.quantity < item.minimumStock) {
-    return true;
-  }
-
-  // Edge case: any item with minStock >= 1 and qty === 1 is borderline
-  if (item.minimumStock >= 1 && item.quantity === 1) {
-    return true;
-  }
-
-  return false;
-};
-
-export const needsAttention = (item: Item): boolean => isOutOfStock(item) || isLowStock(item);
+export const needsAttention = (item: Item): boolean => isOutOfStock(item) || isLowStock(item) || needsEmergencyBackup(item);
 
 export const sortByCriticalFirst = (a: Item, b: Item): number => {
   const aCritical = isCriticalEquipment(a) ? 1 : 0;

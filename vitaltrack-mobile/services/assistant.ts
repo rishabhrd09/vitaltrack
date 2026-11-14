@@ -10,7 +10,7 @@ export type SarvamKeyStatus = { setup_available: boolean; configured: boolean; u
 export type OpenAIKeyStatus = { setup_available: boolean; configured: boolean; usable: boolean; updated_at: string | null };
 export type OpenAIModel = { id: string; label: string };
 export type OpenAILimits = { daily_requests: number; daily_budget_microusd: number; max_output_tokens: number };
-export type Capabilities = { interpret: boolean; interpret_contracts?: number[]; order_review_guard?: boolean; transcribe: boolean; speak: boolean; consented: boolean; consent_version: string; voice: string; scopes: ConsentScope[]; transcription_providers: string[]; speech_providers: string[]; sarvam_english_voice?: { model: string; speaker: string; language_code: string } | null; sarvam_personal_key?: SarvamKeyStatus; sarvam_application_available?: boolean;
+export type Capabilities = { interpret: boolean; interpret_contracts?: number[]; order_review_guard?: boolean; order_submission_lookup?: boolean; order_submission_resolution?: boolean; transcribe: boolean; speak: boolean; consented: boolean; consent_version: string; voice: string; scopes: ConsentScope[]; transcription_providers: string[]; speech_providers: string[]; sarvam_english_voice?: { model: string; speaker: string; language_code: string } | null; sarvam_personal_key?: SarvamKeyStatus; sarvam_application_available?: boolean;
   interpretation_providers?: ('groq' | 'openai')[]; openai_personal_key?: OpenAIKeyStatus; openai_model?: OpenAIModel | null; openai_limits?: OpenAILimits;
   /** Set by the phone when the server's consent version differs; every online choice is then unavailable. */
   consent_mismatch?: boolean };

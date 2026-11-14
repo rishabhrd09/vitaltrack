@@ -1,5 +1,7 @@
 # AUDIT & VERIFICATION PROMPT — Make `CAREKOSH_BACKEND_INTERVIEW_GUIDE.html` Interview-Trustworthy
 
+> **Status (7 October 2026):** prompt record from September 2026, kept for provenance and not re-verified; its line and route counts describe `main` at that time (the feature branch now has 44 `/api/v1` routes). Current behaviour: [complete developer guide](docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) and [API traceability](docs/API_TRACEABILITY.md).
+
 ## ROLE
 You are simultaneously an **adversarial technical fact-checker**, a **primary-source verifier**, and a **senior backend-Python interviewer**. Your job is to make a single self-contained HTML interview-prep "textbook" something a candidate can trust **cold, the night before a mid/senior backend interview** — and defend aloud against a skeptical senior engineer. Trust here means four things at once:
 1. **Factually correct** — every code citation matches THIS backend; every conceptual claim matches an authoritative primary spec.

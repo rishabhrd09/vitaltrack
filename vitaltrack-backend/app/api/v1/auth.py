@@ -74,6 +74,16 @@ async def _lock_current_user(db: DB, current_user: User) -> User:
     return user
 
 
+def email_verification_pending(user) -> bool:
+    """The rule sign-in enforces: verification applies only when email can be sent."""
+    return bool(
+        settings.REQUIRE_EMAIL_VERIFICATION
+        and is_email_configured()
+        and user.email
+        and not user.is_email_verified
+    )
+
+
 async def _consume_verification_token(token: str, db: DB) -> bool:
     result = await db.execute(
         update(User).where(
@@ -96,7 +106,7 @@ async def _consume_verification_token(token: str, db: DB) -> bool:
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
 )
-@limiter.limit("3/hour")
+@limiter.shared_limit("3/hour", scope="auth:register")
 async def register(
     request: Request,
     data: UserRegister,
@@ -114,6 +124,10 @@ async def register(
     
     Rate limited: 3 registrations per hour per IP.
     """
+    return await register_account(request, data, background_tasks, db)
+
+
+async def register_account(request: Request, data: UserRegister, background_tasks: BackgroundTasks, db: DB) -> AuthResponse:
     # Check if email exists (if provided)
     if data.email:
         result = await db.execute(
@@ -214,7 +228,7 @@ async def register(
     response_model=AuthResponse,
     summary="Login with email or username",
 )
-@limiter.limit("5/minute")
+@limiter.shared_limit("5/minute", scope="auth:login")
 async def login(
     request: Request,
     data: UserLogin,
@@ -229,6 +243,10 @@ async def login(
     Rate limited: 5 login attempts per minute per IP.
     Returns access and refresh tokens on success.
     """
+    return await authenticate_account(request, data, db)
+
+
+async def authenticate_account(request: Request, data: UserLogin, db: DB, *, browser_family: str | None = None) -> AuthResponse:
     identifier = data.identifier  # Schema validator already lowercased + stripped
 
     # Auto-detect: email contains @, username doesn't.
@@ -265,12 +283,7 @@ async def login(
     
     # Block login if email verification is required AND email service is configured
     # Don't enforce verification if MAIL_PASSWORD isn't set (user can't verify without email)
-    if (
-        settings.REQUIRE_EMAIL_VERIFICATION
-        and is_email_configured()
-        and user.email
-        and not user.is_email_verified
-    ):
+    if email_verification_pending(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="EMAIL_NOT_VERIFIED",
@@ -285,7 +298,8 @@ async def login(
         jti=jti,
         user_id=user.id,
         expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
-        device_name=request.headers.get("User-Agent", "Unknown")[:255],
+        device_name=browser_family or request.headers.get("User-Agent", "Unknown")[:255],
+        device_type="web" if browser_family else None,
         ip_address=request.client.host if request.client else None,
     )
     db.add(refresh_token)
@@ -756,6 +770,10 @@ async def refresh_token(
     
     Also rotates the refresh token for security.
     """
+    return await rotate_refresh_token(data, db, request)
+
+
+async def rotate_refresh_token(data: TokenRefresh, db: DB, request: Request, *, browser_only: bool = False) -> AuthResponse:
     payload = decode_token(data.refresh_token)
     if not payload or payload.type != "refresh" or not payload.jti:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token", headers={"WWW-Authenticate": "Bearer"})
@@ -780,11 +798,15 @@ async def refresh_token(
             RefreshToken.user_id == user_id,
             RefreshToken.is_revoked.is_(False),
             RefreshToken.expires_at > datetime.now(timezone.utc),
+            *([RefreshToken.device_type == "web", RefreshToken.device_name.like("web:%")] if browser_only else [
+                (RefreshToken.device_type.is_(None)) | (RefreshToken.device_type != "web")
+            ]),
         )
         .values(is_revoked=True)
-        .returning(RefreshToken.id)
+        .returning(RefreshToken.id, RefreshToken.device_name, RefreshToken.device_type)
     )
-    if claim_result.scalar_one_or_none() is None:
+    previous = claim_result.first()
+    if previous is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
@@ -800,7 +822,8 @@ async def refresh_token(
         jti=new_jti,
         user_id=user.id,
         expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
-        device_name=request.headers.get("User-Agent", "Unknown")[:255],
+        device_name=previous.device_name if previous and previous.device_type == "web" else request.headers.get("User-Agent", "Unknown")[:255],
+        device_type=previous.device_type if previous else None,
         ip_address=request.client.host if request.client else None,
     )
     db.add(new_refresh_token)

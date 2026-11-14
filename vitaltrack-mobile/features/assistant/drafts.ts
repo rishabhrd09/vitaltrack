@@ -10,7 +10,7 @@ import { condition, toPlan, type Plan, type Specification } from './contracts';
 /** source: 'spoken' = a quantity stated in the request (typed or said), 'suggested' = calculated, 'manual' = edited on Create Order. */
 export type CartItem = { item: Item; quantity: number; source: 'spoken' | 'suggested' | 'manual'; basis?: string };
 export type LocalDraft = { session: Session; rows: CartItem[]; revision: number; initialized: boolean; origin: 'manual' | 'voice';
-  attempt?: { request: CreateOrderRequest; saved?: SavedOrder }; };
+  attempt?: { request: CreateOrderRequest; saved?: SavedOrder; recoveryRequired?: boolean }; };
 let draft: LocalDraft | null = null;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach(f => f());
@@ -149,12 +149,12 @@ export function recheckDraft(rows: CartItem[], items: Item[]): { rows: CartItem[
   return { rows: checked, changes };
 }
 /** Invoked only from the review screen's touch handler, never the assistant. */
-export function beginSubmission(session: Session, rows: CartItem[]): CreateOrderRequest {
+export function beginSubmission(session: Session, rows: CartItem[], recoveryRequired = false): CreateOrderRequest {
   const current = getDraft(session);
   if (!current) throw new Error('The draft is no longer available.');
   if (current.attempt) return current.attempt.request;
   const request: CreateOrderRequest = { localId: generateId(), items: rows.map(({item,quantity}) => ({ itemId: item.id, name: item.name, quantity, expectedVersion: item.version, unit: item.unit, currentStock: item.quantity, minimumStock: item.minimumStock, brand: item.brand, supplierName: item.supplierName, imageUri: item.imageUri, purchaseLink: item.purchaseLink })) };
-  draft = { ...current, attempt: { request } }; emit(); return request;
+  draft = { ...current, attempt: { request, recoveryRequired } }; emit(); return request;
 }
 export function markSaved(session: Session, order: SavedOrder) {
   const current = getDraft(session);

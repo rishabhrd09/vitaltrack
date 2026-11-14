@@ -43,7 +43,7 @@ source venv/bin/activate                         # Windows: venv\Scripts\activat
 pip install -r requirements.txt
 cp .env.example .env                             # DATABASE_URL here points at localhost:5432/vitaltrack
 alembic upgrade head
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000 --no-proxy-headers
 ```
 
 With `ENVIRONMENT=development` the app also runs `create_tables()` at startup, which only creates missing tables; Alembic stays the schema authority.

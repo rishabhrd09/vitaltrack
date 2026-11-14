@@ -5,7 +5,7 @@ Uses pydantic-settings for type-safe environment variable handling
 
 import json
 from functools import lru_cache
-from typing import List, Union
+from typing import List, Literal, Union
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -32,6 +32,10 @@ class Settings(BaseSettings):
 
     # Server-owned AI credentials. All outbound processing is opt-in and off by default.
     AI_ENABLED: bool = False
+    # Deterministic server-owned review; independent of cloud providers.
+    SUPPLY_REVIEW_ENABLED: bool = False
+    SUPPLY_REVIEW_TTL_SECONDS: int = Field(default=900, ge=60, le=3600)
+    SUPPLY_REVIEW_MAX_ITEMS: int = Field(default=500, ge=1, le=500)
     AI_TRANSCRIBE_ENABLED: bool = False
     AI_SPEECH_ENABLED: bool = False
     AI_DATA_CONTROLS_REVIEWED: bool = False
@@ -97,6 +101,23 @@ class Settings(BaseSettings):
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
+
+    # Hosted deployments must explicitly configure their ingress boundary and
+    # shared store. Memory counters and direct ingress are local-only defaults.
+    INGRESS_MODE: Literal["direct", "trusted_proxy", "edge_secret"] = "direct"
+    ALLOWED_HOSTS: Union[List[str], str] = []
+    TRUSTED_PROXY_CIDRS: Union[List[str], str] = []
+    ORIGIN_VERIFY_SECRET: SecretStr = SecretStr("")
+    RATE_LIMIT_STORAGE_URI: SecretStr = SecretStr("memory://")
+    RATE_LIMIT_KEY_PREFIX: str = "carekosh"
+    RATE_LIMIT_STORAGE_TIMEOUT_SECONDS: float = Field(default=0.5, gt=0, le=2)
+    MAX_INFLIGHT_REQUESTS: int = Field(default=32, ge=1, le=256)
+    API_BODY_TIMEOUT_SECONDS: float = Field(default=60, gt=0, le=120)
+
+    @field_validator("ALLOWED_HOSTS", "TRUSTED_PROXY_CIDRS", mode="before")
+    @classmethod
+    def parse_ingress_list(cls, value):
+        return cls.parse_cors_origins(value) if value else []
 
     # Database
     DATABASE_URL: str = (
@@ -184,6 +205,23 @@ class Settings(BaseSettings):
             # Single value
             return [v]
         return v
+
+    # Browser sessions are opt-in. These exact origins must also be in CORS_ORIGINS.
+    WEB_AUTH_ENABLED: bool = False
+    WEB_APP_ORIGINS: Union[List[str], str] = []
+
+    @field_validator("WEB_APP_ORIGINS", mode="before")
+    @classmethod
+    def parse_web_origins(cls, value):
+        origins = cls.parse_cors_origins(value)
+        from urllib.parse import urlsplit
+        for origin in origins:
+            parsed = urlsplit(origin)
+            if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.path or parsed.query or parsed.fragment or parsed.username or parsed.password or "*" in origin:
+                raise ValueError("WEB_APP_ORIGINS must contain exact origins without paths or wildcards")
+            if parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1"}:
+                raise ValueError("Browser origins require HTTPS outside loopback development")
+        return origins
 
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60

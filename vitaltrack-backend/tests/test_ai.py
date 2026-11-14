@@ -1107,6 +1107,30 @@ async def test_v26_consent_is_checked_before_audio_inspection(client, monkeypatc
     assert parsed == [], "no audio inspection or decoding before consent; multipart framing is already parsed"
 
 
+async def test_order_review_capabilities_survive_a_limiter_store_outage(client, monkeypatch):
+    from limits.errors import StorageError
+
+    from app.utils.rate_limiter import limiter
+
+    _, headers = await register_and_auth(client, email="store-outage@test.com")
+    monkeypatch.setattr(limiter, "enabled", True)
+
+    def unavailable(*args, **kwargs):
+        raise StorageError(ConnectionError("limiter store down"))
+
+    monkeypatch.setattr(limiter._storage, "incr", unavailable)
+    # Both clients read order_review_guard here before confirming an order.
+    available = await client.get("/api/v1/ai/capabilities", headers=headers)
+    assert available.status_code == 200
+    assert available.json()["order_review_guard"] is True
+    # Credential routes still refuse while limits cannot be verified.
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "store-outage@test.com", "password": "TestPass1"},
+    )
+    assert login.status_code == 503 and login.headers["retry-after"] == "5"
+
+
 async def test_v26_middleware_refusals_carry_security_headers_and_a_request_id(client):
     response = await client.get("/api/v1/ai/capabilities")
     assert response.status_code == 401

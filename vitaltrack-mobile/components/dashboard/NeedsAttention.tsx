@@ -17,6 +17,7 @@ import { usePendingItemIds } from '@/hooks/usePendingItems';
 interface NeedsAttentionProps {
   outOfStockItems: Item[];
   lowStockItems: Item[];
+  backupItems?: Item[];
   onOrderNow: () => void;
   onEditItem: (itemId: string) => void;
   onEmergencyOrder?: () => void;
@@ -31,6 +32,7 @@ interface NeedsAttentionProps {
 export default function NeedsAttention({
   outOfStockItems,
   lowStockItems,
+  backupItems,
   onOrderNow,
   onEditItem,
   onEmergencyOrder,
@@ -45,15 +47,16 @@ export default function NeedsAttention({
   const [showAllEmergency, setShowAllEmergency] = useState(false);
   const pendingItemIds = usePendingItemIds();
 
-  const totalCount = outOfStockItems.length + lowStockItems.length;
+  // Backup attention includes items meeting their recorded minimum; it must
+  // not depend on the low-stock list or be counted twice in the section total.
+  const candidates = backupItems ?? lowStockItems;
+  const outOfStockCriticalItems = outOfStockItems.filter(item => item.isCritical);
+  const lowStockEmergencyItems = candidates.filter(needsEmergencyBackup);
+  const emergencyBackupItems = [...new Map([
+    ...outOfStockCriticalItems, ...lowStockEmergencyItems,
+  ].map(item => [item.id, item])).values()];
+  const totalCount = new Set([...outOfStockItems, ...lowStockItems, ...emergencyBackupItems].map(item => item.id)).size;
 
-  // FIXED: Find critical items that need emergency backup
-  // Include both: critical items with qty=1 (from lowStock) AND critical items with qty=0 (from outOfStock)
-  const lowStockEmergencyItems = lowStockItems.filter((item) => needsEmergencyBackup(item));
-  const outOfStockCriticalItems = outOfStockItems.filter((item) => isCriticalEquipment(item));
-  
-  // Combine both: critical items at qty=0 or qty=1 need emergency backup
-  const emergencyBackupItems = [...outOfStockCriticalItems, ...lowStockEmergencyItems];
   const showEmergencyBackup = emergencyBackupItems.length > 0;
   const emergencyDisplayItems = showAllEmergency ? emergencyBackupItems : emergencyBackupItems.slice(0, 3);
 

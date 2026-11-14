@@ -64,6 +64,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <main id="content">
 <h1 id="carekosh-api-traceability-every-endpoint-from-screen-to-database">CareKosh API traceability: every endpoint from screen to database</h1>
 <blockquote>
+<p><strong>5 November 2026 — server-owned Supply Review (local source).</strong> Web and Android now share an optional Python-calculated replenishment review with durable run/proposal versions, explicit confirmation, stale-source checks and recovery. Migration <code>0013</code> is required before the new backend; <code>SUPPLY_REVIEW_ENABLED</code> defaults to false. This workflow makes no model or supplier call and does not change independent listener/understanding/narration choices. Deployment, live providers and physical Android acceptance remain separate. <a href="SUPPLY_REVIEW.html">Architecture, API, status rules, rollout and limits</a> · <a href="SUPPLY_REVIEW_LEARNING.html">learning and evidence</a>. Earlier dated results remain historical.</p>
 <p><strong>25 October 2026 — OpenAI additions.</strong> <code>GET/PUT/DELETE /api/v1/ai/openai-key</code> manage authenticated owner-only encrypted credentials; <code>POST /api/v1/ai/openai-key/check</code> checks fixed model metadata. <code>/ai/interpret</code> accepts <code>provider:"openai"</code> only with contract 3 and separate <code>openai_text</code> consent; omission preserves Groq behavior. Capabilities add provider/key/model/limit metadata. Migration 0012 adds only the credential table. This OpenAI-only publication has <strong>51</strong> route objects under <code>/api/v1</code>; unpublished browser routes are excluded. <a href="OPENAI_UNDERSTANDING.html#api-and-code-map">Full request/data/write boundaries and setup</a>.</p>
 <p><strong>AI voice source update — 11 October 2026:</strong> Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, an explicit shared or encrypted per-account personal key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Personal-key migration 0011 adds encrypted credentials and billing-source metadata; the current local inventory is 50 HTTP operations (47 under /api/v1) and 12 application tables. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. <a href="SARVAM_ENGLISH_VOICE.html">Sarvam activation, costs and device checks</a> · <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete voice architecture</a>.</p>
 <p>8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. <a href="BACKEND_HARDENING.md#safety-follow-up-8-october-2026">Current changes and remaining scope</a>.</p>
@@ -2743,9 +2744,9 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>A-20</td>
-<td><strong>Fixed locally — 8 Oct 2026.</strong> Previously: python-jose 3.3.0 contained two published advisories.</td>
+<td><strong>Fixed locally — 8 Oct 2026; superseded 27 Oct 2026.</strong> python-jose 3.5.0 later gained an unfixed HMAC key-confusion advisory (and pulled in <code>ecdsa</code>), so it was replaced by PyJWT 2.15.1 with the same HS256 tokens; a python-jose-minted token still decodes (<code>tests/test_dependency_upgrade.py</code>). Previously: python-jose 3.3.0 contained two published advisories.</td>
 <td><code>vitaltrack-backend/requirements.txt</code>, auth/security suites</td>
-<td>Pinned 3.5.0, including the 3.4.0 security fixes and declared Python 3.12 support. Authentication regression tests pass; no signing-key or algorithm change. Device/live acceptance is not claimed.</td>
+<td>Historical (8 Oct 2026): pinned 3.5.0, including the 3.4.0 security fixes and declared Python 3.12 support. Authentication regression tests passed; no signing-key or algorithm change. Device/live acceptance is not claimed. Current: PyJWT 2.15.1 (see the status column).</td>
 </tr>
 <tr>
 <td>A-21</td>
@@ -2761,9 +2762,9 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>A-23</td>
-<td><strong>Upgrade hazard, not a current defect: FastAPI dependency timing.</strong> With FastAPI 0.115.6, <code>get_db</code>'s commit after <code>yield</code> runs after the response is serialised but before it is sent. FastAPI 0.118.0 moved it to after the response is sent, so a handler that relies on <code>get_db</code> to commit could report success before a failed commit. 0.121.0 added a dependency <code>scope</code> (<code>scope="function"</code> exits before the response). Separately, 0.132.0 rejects JSON bodies without a JSON <code>Content-Type</code> by default.</td>
+<td><strong>Resolved locally — 27 Oct 2026, with the FastAPI 0.162 / Starlette 1.10 upgrade.</strong> <code>DB</code> in <code>app/api/deps.py</code> now uses <code>Depends(get_db, scope="function")</code> for every dependant, so the commit finishes before the response starts (<code>tests/test_dependency_upgrade.py</code>); every Android and web JSON request was confirmed to send <code>Content-Type: application/json</code>. Original hazard: <strong>FastAPI dependency timing.</strong> With FastAPI 0.115.6, <code>get_db</code>'s commit after <code>yield</code> runs after the response is serialised but before it is sent. FastAPI 0.118.0 moved it to after the response is sent, so a handler that relies on <code>get_db</code> to commit could report success before a failed commit. 0.121.0 added a dependency <code>scope</code> (<code>scope="function"</code> exits before the response). Separately, 0.132.0 rejects JSON bodies without a JSON <code>Content-Type</code> by default.</td>
 <td><code>app/core/database.py:107-124</code>; <a href="https://fastapi.tiangolo.com/release-notes/">FastAPI release notes</a> (0.118.0, 0.121.0, 0.132.0; read 8 Oct 2026); SOURCES (local review reference; not published) row 1</td>
-<td>Before upgrading FastAPI, make every write handler commit explicitly (most already do) or give <code>get_db</code> the early-exit scope; check that every client sends <code>Content-Type: application/json</code>.</td>
+<td>Historical recommendation, done 27 Oct 2026: before upgrading FastAPI, make every write handler commit explicitly (most already do) or give <code>get_db</code> the early-exit scope; check that every client sends <code>Content-Type: application/json</code>. Both were done; new code should take its session from the <code>DB</code> alias in <code>app/api/deps.py</code>, never a bare <code>Depends(get_db)</code>.</td>
 </tr>
 <tr>
 <td>A-24</td>
@@ -2853,7 +2854,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <li>About ten concurrency tests start requests together without forcing the overlap, so a pass does not prove the race was exercised.</li>
 <li>Mobile tests cover the API client, logout and order-creation services, item paging, the sanitising helpers, the query provider, assistant logic and assistant UI; screens, stores and the category service are not loaded by any test.</li>
 </ul>
-<footer>Generated 2026-10-25 by <code>docs/tools/build_docs.py</code> from <code>docs/API_TRACEABILITY.md</code>.</footer>
+<footer>Generated 2026-11-05 by <code>docs/tools/build_docs.py</code> from <code>docs/API_TRACEABILITY.md</code>.</footer>
 </main>
 </div>
 <script>

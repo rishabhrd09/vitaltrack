@@ -6,11 +6,9 @@ VitalTrack — Test Configuration
 - Rate limiter disabled globally
 """
 
-import asyncio
 from pathlib import Path
 from typing import AsyncGenerator
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from alembic import command
@@ -68,6 +66,12 @@ def _assert_safe_test_database_url(database_url: str) -> str:
 
 TEST_DATABASE_URL = _assert_safe_test_database_url(settings.DATABASE_URL)
 
+# Some existing route tests call limiter.reset(). Never let those tests flush a
+# configured shared Redis. Dedicated integration tests use unique TTL keys via
+# TEST_REDIS_URL and never reset the whole store.
+if settings.RATE_LIMIT_STORAGE_URI.get_secret_value() != "memory://":
+    raise RuntimeError("Backend tests require RATE_LIMIT_STORAGE_URI=memory://; use TEST_REDIS_URL for isolated Redis tests")
+
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSession = async_sessionmaker(
     bind=test_engine, class_=AsyncSession, expire_on_commit=False
@@ -80,14 +84,9 @@ TestSession = async_sessionmaker(
 app.state.limiter.enabled = False
 
 
-# =============================================================================
-# EVENT LOOP — required for session-scoped async operations
-# =============================================================================
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+# The shared test engine needs one event loop for the whole session; pytest.ini
+# sets asyncio_default_{fixture,test}_loop_scope = session (pytest-asyncio 1.x
+# no longer supports overriding the event_loop fixture).
 
 
 # =============================================================================

@@ -215,11 +215,13 @@ async def reserve(
             total = await db.scalar(daily)
             user_total = await db.scalar(daily.where(AIUsage.user_id == user_id))
             spent = select(func.coalesce(func.sum(AIUsage.reserved_microusd), 0)).where(
-                AIUsage.created_at >= midnight
+                AIUsage.created_at >= midnight,
+                AIUsage.credential_source == credential_source,
             )
             if (
-                await db.scalar(spent)
-            ) + credit > settings.AI_GLOBAL_DAILY_BUDGET_MICROUSD or (
+                credential_source == "application" and
+                (await db.scalar(spent)) + credit > settings.AI_GLOBAL_DAILY_BUDGET_MICROUSD
+            ) or (
                 await db.scalar(spent.where(AIUsage.user_id == user_id))
             ) + credit > settings.AI_USER_DAILY_BUDGET_MICROUSD:
                 raise HTTPException(
@@ -293,11 +295,12 @@ def estimated_cost(kind: str, provider: str, usage: dict) -> int | None:
     return None
 
 
-async def settle(ticket: str, success: bool, usage: dict | None = None):
+async def settle(ticket: str, success: bool, usage: dict | None = None, *, unbilled: bool = False):
     """Record the outcome. A failure here must not replace the user's result.
 
     A successful call is charged its estimated cost, never more than its reservation. A failed or
     cancelled call keeps the whole reservation, because the provider may still have billed it.
+    Only an explicit provider rejection before processing can release a reservation.
     """
     usage = usage or {}
     try:
@@ -313,7 +316,9 @@ async def settle(ticket: str, success: bool, usage: dict | None = None):
                 output_tokens=max(0, int(usage.get("completion_tokens", 0))),
                 **audio_usage,
             )
-            if success:
+            if unbilled and not success:
+                values["reserved_microusd"] = 0
+            elif success:
                 row = await db.get(AIUsage, ticket)
                 estimate = estimated_cost(row.kind, row.provider, usage) if row is not None else None
                 if estimate is not None:

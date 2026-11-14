@@ -1,0 +1,48 @@
+name: CareKosh web checks
+on:
+  pull_request:
+    paths: ['carekosh-web/**', 'carekosh-site/**', '.github/workflows/carekosh-web.yml']
+  push:
+    paths: ['carekosh-web/**', 'carekosh-site/**', '.github/workflows/carekosh-web.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: carekosh-web-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: carekosh-web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: carekosh-web/package-lock.json
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run typecheck && npm run lint && npm test
+      - run: npm run test:build-guards
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm run build:staging && node scripts/verify-build.mjs staging
+      - run: npm run build && node scripts/verify-build.mjs production
+      - run: npm run check
+        working-directory: carekosh-site
+      - run: npm run test:hosting
+      - run: npx wrangler deploy --env production --dry-run
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: carekosh-web-browser-results
+          path: carekosh-web/test-results
+          retention-days: 7

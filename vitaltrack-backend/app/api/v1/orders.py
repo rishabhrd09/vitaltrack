@@ -4,15 +4,14 @@ CRUD operations for purchase orders
 """
 
 from datetime import datetime, timezone
-from typing import Optional, Union
+from typing import Annotated, Optional, Union
+from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import delete, func, select, update
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import DB, CurrentUser
-from app.models import ActivityActionType, ActivityLog, Item, Order, OrderItem, OrderNumberCounter, OrderStatus
+from app.models import ActivityActionType, ActivityLog, ClosedOrderSubmission, Item, Order, OrderStatus
 from app.schemas import (
     OrderCreate,
     OrderListResponse,
@@ -21,9 +20,21 @@ from app.schemas import (
     SuccessResponse,
 )
 from app.services.audit import log_audit
+from app.schemas.order import ClosedSubmissionResolution, SavedSubmissionResolution
+from app.services.orders import _find_order_by_local_id, _unit_key, allocate_order_id, create_order_uncommitted
+from app.services.supply_revision import advance_supply_revision, lock_supply_revision
+from app.utils.rate_limiter import authenticated_ai_rate_key, limiter
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
+
+
+async def submission_owner(request: Request, user: CurrentUser) -> str:
+    request.state.ai_user_id = user.id
+    return user.id
+
+
+SubmissionOwner = Annotated[str, Depends(submission_owner)]
 
 LEGAL_STATUS_TRANSITIONS = {
     OrderStatus.PENDING: frozenset(
@@ -37,26 +48,14 @@ LEGAL_STATUS_TRANSITIONS = {
         {
             OrderStatus.PARTIALLY_RECEIVED,
             OrderStatus.RECEIVED,
+            OrderStatus.DECLINED,
         }
     ),
-    OrderStatus.PARTIALLY_RECEIVED: frozenset({OrderStatus.RECEIVED}),
-    OrderStatus.RECEIVED: frozenset(),
+    OrderStatus.PARTIALLY_RECEIVED: frozenset({OrderStatus.RECEIVED, OrderStatus.DECLINED}),
+    OrderStatus.RECEIVED: frozenset({OrderStatus.DECLINED}),
     OrderStatus.DECLINED: frozenset(),
     OrderStatus.STOCK_UPDATED: frozenset(),
 }
-
-
-async def allocate_order_id(db: DB, now: datetime) -> str:
-    """Atomically allocate the existing public ID format, surviving deletions."""
-    day = now.strftime("%Y%m%d")
-    result = await db.execute(
-        insert(OrderNumberCounter).values(day=day, last_value=1)
-        .on_conflict_do_update(
-            index_elements=[OrderNumberCounter.day],
-            set_={"last_value": OrderNumberCounter.last_value + 1},
-        ).returning(OrderNumberCounter.last_value)
-    )
-    return f"ORD-{day}-{result.scalar_one():04d}"
 
 
 def _normalize_order_status(status_value: Optional[Union[str, OrderStatus]]) -> OrderStatus:
@@ -119,62 +118,6 @@ def _validate_status_transition(
         )
 
 
-async def _validate_order_items_belong_to_user(
-    db: DB,
-    user_id: str,
-    items: list,
-) -> None:
-    """Ensure an order cannot reference missing or another user's inventory."""
-    if not items:
-        return
-
-    requested_item_ids = {item.item_id for item in items}
-    query = select(Item).where(
-        Item.user_id == user_id,
-        Item.id.in_(requested_item_ids),
-    ).order_by(Item.id)
-    if any(line.expected_version is not None for line in items):
-        query = query.with_for_update()
-    result = await db.execute(query)
-    owned = {item.id: item for item in result.scalars().all()}
-    owned_item_ids = set(owned)
-    invalid_item_ids = [
-        item_id for item_id in requested_item_ids if item_id not in owned_item_ids
-    ]
-
-    if invalid_item_ids:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Order contains invalid inventory item IDs",
-        )
-
-    # Optional reviewed-snapshot guard. Old clients retain their existing contract.
-    for line in items:
-        if line.expected_version is not None:
-            current = owned[line.item_id]
-            if not current.is_active or current.version != line.expected_version:
-                raise HTTPException(409, "Inventory changed after review. Refresh and review the order quantities again.")
-
-
-async def _find_order_by_local_id(
-    db: DB,
-    user_id: str,
-    local_id: str,
-) -> Optional[Order]:
-    """Return the order an earlier submission with this localId created.
-
-    Oldest first: migration 0010 keeps any legacy duplicates as stored and
-    leaves the oldest row of each group under the unique index.
-    """
-    result = await db.execute(
-        select(Order)
-        .where(Order.user_id == user_id, Order.local_id == local_id)
-        .order_by(Order.created_at, Order.id)
-        .limit(1)
-    )
-    return result.scalar_one_or_none()
-
-
 # =============================================================================
 # LIST ORDERS
 # =============================================================================
@@ -226,6 +169,39 @@ async def list_orders(
         page_size=page_size,
         has_more=(offset + page_size) < total,
     )
+
+
+# =============================================================================
+# RECOVER A KNOWN SUBMISSION WITHOUT REPLAYING A WRITE
+# =============================================================================
+@router.get("/submission/{local_id}", response_model=OrderResponse)
+@limiter.limit("60/minute", key_func=authenticated_ai_rate_key, fail_open=True)
+async def get_order_submission(request: Request, local_id: UUID, db: DB, user: SubmissionOwner) -> OrderResponse:
+    order = await _find_order_by_local_id(db, user, str(local_id))
+    if order is None:
+        raise HTTPException(404, "Order submission not found")
+    return OrderResponse.model_validate(order)
+
+
+@router.post("/submission/{local_id}/resolve", response_model=SavedSubmissionResolution | ClosedSubmissionResolution)
+@limiter.limit("20/minute", key_func=authenticated_ai_rate_key)
+async def resolve_order_submission(request: Request, local_id: UUID, db: DB, user: SubmissionOwner):
+    """Explicitly recover a saved order or fence off a lost submission.
+
+    The owner lock makes this mutually exclusive with order creation. A closed
+    response means a delayed original POST can no longer create that order.
+    No payload is replayed and no stock/order is created by this endpoint.
+    """
+    await lock_supply_revision(db, user)
+    local_key = str(local_id)
+    order = await _find_order_by_local_id(db, user, local_key)
+    if order is not None:
+        return SavedSubmissionResolution(order=OrderResponse.model_validate(order))
+    if await db.get(ClosedOrderSubmission, (user, local_key)) is None:
+        db.add(ClosedOrderSubmission(user_id=user, local_id=local_key, created_at=datetime.now(timezone.utc)))
+        await log_audit(db, user, "order_submission", local_key, "close_interrupted", new_values={"state": "closed"})
+        await db.flush()
+    return ClosedSubmissionResolution()
 
 
 # =============================================================================
@@ -290,79 +266,11 @@ async def create_order(
     - **localId**: Optional per-submission key. Sending the same key again
       returns the order it created (200) instead of creating another one.
     """
-    # Read before the rollback below can expire the session's User instance.
-    user_id = current_user.id
-
-    if data.local_id is not None:
-        existing = await _find_order_by_local_id(db, user_id, data.local_id)
-        if existing is not None:
-            response.status_code = status.HTTP_200_OK
-            return OrderResponse.model_validate(existing)
-
-    await _validate_order_items_belong_to_user(db, user_id, data.items)
-
-    now = datetime.now(timezone.utc)
-    order_id = await allocate_order_id(db, now)
-    total_items = len(data.items)
-    total_units = sum(item.quantity for item in data.items)
-
-    # Create order
-    order = Order(
-        user_id=user_id,
-        order_id=order_id,
-        total_items=total_items,
-        total_units=total_units,
-        status=OrderStatus.PENDING,
-        exported_at=now,
-        notes=data.notes,
-        local_id=data.local_id,
-    )
-    db.add(order)
-
-    try:
-        await db.flush()
-    except IntegrityError:
-        if data.local_id is None:
-            raise
-        # A concurrent request with the same localId committed first. The
-        # rollback also releases the number allocated above; return its order.
-        await db.rollback()
-        existing = await _find_order_by_local_id(db, user_id, data.local_id)
-        if existing is None:
-            raise
+    order, replayed = await create_order_uncommitted(db, current_user.id, data, allocator=allocate_order_id)
+    if replayed:
         response.status_code = status.HTTP_200_OK
-        return OrderResponse.model_validate(existing)
-
-    # Create order items
-    for item_data in data.items:
-        order_item = OrderItem(
-            order_id=order.id,
-            item_id=item_data.item_id,
-            name=item_data.name,
-            brand=item_data.brand,
-            unit=item_data.unit,
-            quantity=item_data.quantity,
-            current_stock=item_data.current_stock,
-            minimum_stock=item_data.minimum_stock,
-            image_uri=item_data.image_uri,
-            supplier_name=item_data.supplier_name,
-            purchase_link=item_data.purchase_link,
-        )
-        db.add(order_item)
-
-    # Log activity
-    activity = ActivityLog(
-        user_id=user_id,
-        action=ActivityActionType.ORDER_CREATED,
-        item_name=f"Order {order_id}",
-        order_id=order_id,
-        details=f"{total_items} items, {total_units} units",
-    )
-    db.add(activity)
-
     await db.commit()
     await db.refresh(order)
-
     return OrderResponse.model_validate(order)
 
 
@@ -385,10 +293,12 @@ async def update_order_status(
     
     Valid status transitions:
     - pending → ordered, received, declined
-    - ordered → received, partially_received
-    - partially_received → received
+    - ordered → received, partially_received, declined
+    - partially_received → received, declined
+    - received → declined (only while its stock is not applied)
     - stock_updated is only reached through POST /orders/{id}/apply
     """
+    await lock_supply_revision(db, current_user.id)
     result = await db.execute(
         select(Order).where(
             Order.user_id == current_user.id,
@@ -456,6 +366,7 @@ async def update_order_status(
     )
     db.add(activity)
     
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
     await db.refresh(order)
     
@@ -482,6 +393,7 @@ async def apply_order_to_stock(
     1. Add order quantities to item stock levels
     2. Update order status to stock_updated
     """
+    await lock_supply_revision(db, current_user.id)
     result = await db.execute(
         select(Order).where(
             Order.user_id == current_user.id,
@@ -496,6 +408,8 @@ async def apply_order_to_stock(
             detail="Order not found",
         )
     
+    if _normalize_order_status(order.status) == OrderStatus.STOCK_UPDATED:
+        return OrderResponse.model_validate(order)
     if _normalize_order_status(order.status) != OrderStatus.RECEIVED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -511,17 +425,21 @@ async def apply_order_to_stock(
     # Resolve all inventory items before claiming so missing items don't change
     # order state or cause a partial stock application.
     missing_items = []
+    changed_units = []
     for order_item in order.items:
         item_result = await db.execute(
-            select(Item.id).where(
+            select(Item.id, Item.unit).where(
                 Item.id == order_item.item_id,
                 Item.user_id == current_user.id,
             )
         )
-        item_id = item_result.scalar_one_or_none()
+        current = item_result.one_or_none()
 
-        if not item_id:
+        if not current:
             missing_items.append(order_item.name)
+        elif _unit_key(current.unit) != _unit_key(order_item.unit):
+            # Adding 2 "boxes" to a count now kept in "pieces" corrupts stock.
+            changed_units.append(f"{order_item.name} ({order_item.unit} → {current.unit})")
 
     if missing_items:
         missing_preview = ", ".join(missing_items[:3])
@@ -530,6 +448,18 @@ async def apply_order_to_stock(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Cannot apply order because inventory items are missing: {missing_preview}",
+        )
+
+    if changed_units:
+        changed_preview = ", ".join(changed_units[:3])
+        if len(changed_units) > 3:
+            changed_preview += ", ..."
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Cannot apply order because units changed since ordering: {changed_preview}. "
+                "Update the item's stock manually."
+            ),
         )
 
     now = datetime.now(timezone.utc)
@@ -549,6 +479,9 @@ async def apply_order_to_stock(
     claimed_order_id = claim_result.scalar_one_or_none()
 
     if not claimed_order_id:
+        await db.refresh(order)
+        if _normalize_order_status(order.status) == OrderStatus.STOCK_UPDATED:
+            return OrderResponse.model_validate(order)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Order must be in 'received' status to apply to stock",
@@ -563,6 +496,8 @@ async def apply_order_to_stock(
             .where(
                 Item.id == order_item.item_id,
                 Item.user_id == current_user.id,
+                # Also guards a unit edit committed after the check above.
+                func.lower(func.trim(Item.unit)) == _unit_key(order_item.unit),
             )
             .values(
                 quantity=Item.quantity + order_item.quantity,
@@ -576,7 +511,7 @@ async def apply_order_to_stock(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
-                    "Cannot apply order because inventory items are missing: "
+                    "Cannot apply order because inventory items are missing or changed: "
                     f"{order_item.name}"
                 ),
             )
@@ -608,6 +543,7 @@ async def apply_order_to_stock(
     )
     db.add(activity)
 
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
     await db.refresh(order)
 
@@ -632,6 +568,7 @@ async def delete_order(
     
     **Note**: Orders can only be deleted if status is 'pending' or 'declined'.
     """
+    await lock_supply_revision(db, current_user.id)
     result = await db.execute(
         select(Order).where(
             Order.user_id == current_user.id,
@@ -690,6 +627,7 @@ async def delete_order(
         action="delete",
         old_values=deleted_values,
     )
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
 
     return SuccessResponse(message=f"Order '{order_display_id}' deleted")

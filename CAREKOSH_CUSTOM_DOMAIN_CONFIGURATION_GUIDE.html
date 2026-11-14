@@ -28,6 +28,7 @@
       background: #eef4f7;
       font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       line-height: 1.55;
+      overflow-wrap: anywhere;
     }
 
     header {
@@ -304,10 +305,13 @@
       }
     }
   </style>
+<style id="doc-review-style">.doc-review{display:block!important;position:static!important;box-sizing:border-box!important;width:auto!important;max-width:1000px;margin:24px auto!important;padding:18px 22px!important;border:1px solid #aab8ac!important;border-left:5px solid #286258!important;border-radius:8px;background:#f0f6ef!important;color:#1b352c!important;font:15px/1.6 system-ui,sans-serif!important}.doc-review p{margin:6px 0!important;color:inherit!important;font:inherit!important}.doc-review a{color:#075d70!important;text-decoration:underline!important}.doc-review strong{color:#173f34!important}.doc-review code{color:inherit!important;background:transparent!important}@media print{.doc-review{break-inside:avoid}}</style>
 </head>
 <body>
+<p data-voice-drafts-update style="padding:16px;margin:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><strong>8 October 2026 local feature update.</strong> Inventory tables and local voice-prepared drafts now supplement the earlier read-only queries. Only touch confirmation saves an order; stock remains unchanged. Matching deployment and phone acceptance are pending. <a href="docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Current flow, code map and limits</a>. Earlier dated results remain historical.</p>
   <header>
     <h1>CareKosh Custom Domain Configuration Guide</h1>
+<p><strong>8 October 2026 safety follow-up.</strong> Targeted fixes are local tested changes after the earlier audit. Deployment and device acceptance remain separate. <a href="docs/BACKEND_HARDENING.md#safety-follow-up-8-october-2026">Current changes and remaining scope</a>.</p>
     <p class="subtitle">
       End-to-end record of the move from direct Render URLs to
       <code>api.carekosh.com</code> and <code>staging-api.carekosh.com</code>,
@@ -321,6 +325,7 @@
       <span class="pill">No secrets printed</span>
     </div>
   </header>
+<aside class="doc-review" aria-label="Documentation status"><strong>Historical domain-migration record · reviewed 23 September 2026 · status refreshed 7 October 2026 · re-checked 8 October 2026</strong><p>The domain migration described below predates the current hardening. Branch completion and smoke results are historical reports, not fresh checks. Current code still uses these custom API URLs. Confirm provider configuration and actual installed artifacts separately.</p><p><strong>7 October 2026 status.</strong> The findings below are kept as recorded. Re-checked in the repository at <code>03cfebb</code>: <code>eas.json</code>, <code>app.config.js</code> (throws only when a preview/production build supplies a different non-empty URL), <code>render.yaml</code> (<code>FRONTEND_URL=https://api.carekosh.com/api/v1/auth</code>, production service only, branch <code>main</code>), the smoke scripts' host guard and the monitor template still use the custom domains. NOT VERIFIED in this review: live DNS records, Render custom domains and certificates, Render environment variables, auto-deploy settings and which branch each service tracks (the owner reports staging was switched to the feature branch on 7 Oct), GitHub secrets, and which binaries testers have installed. The “required gates” in the CI picture gate the deploy job only; GitHub's <code>protect-main</code> ruleset requires a pull request but no status checks. The route-count gate is 39 on <code>main</code> and 44 on the feature branch.</p><p><strong>8 October 2026 re-check.</strong> The same files were re-checked against the working tree (<code>03cfebb</code> plus uncommitted documentation). The domain branch <code>config/use-carekosh-custom-domains</code> was merged long ago (commit <code>55ecde6</code> is in <code>main</code>), so its “before commit” and “after this branch merges” steps are history. Corrected: the CI picture now says “blocking checks” (they fail the run and gate the deploy job, not the merge; ruleset as read on 7 Oct, not re-checked), the URL guard ignores an empty URL, and only the production <code>onrender.com</code> host is treated as production by the smoke scripts. Provider and dashboard state remain NOT VERIFIED.</p><p><a href="docs/INDEX.html">Documentation home and source status</a> · <a href="docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide (current onboarding)</a> · <a href="docs/API_TRACEABILITY.md">API traceability</a> · <a href="docs/documentation-audit-2026-10-07/README.md">Documentation audit, 7 Oct 2026</a> · <a href="docs/BACKEND_HARDENING.md">Local hardening and remaining work</a></p></aside>
 
   <main>
     <section class="card">
@@ -419,7 +424,7 @@
           <td>Cloudflare record</td>
           <td><code>CNAME api -> vitaltrack-api.onrender.com</code></td>
           <td><code>CNAME staging-api -> vitaltrack-api-staging.onrender.com</code></td>
-          <td>Use DNS-only while Render manages TLS. Cloudflare proxy can be revisited later.</td>
+          <td>Use DNS-only while Render manages TLS. Cloudflare proxy can be revisited later; Render's guide then says set Cloudflare SSL/TLS to Full, and Cloudflare recommends Full (strict). Current proxy state NOT VERIFIED.</td>
         </tr>
         <tr>
           <td>Render service</td>
@@ -477,12 +482,12 @@
         <rect class="node" x="315" y="55" width="220" height="92"></rect>
         <text class="label" x="338" y="86">staging-api.carekosh.com</text>
         <text class="small" x="338" y="112">Cloudflare CNAME</text>
-        <text class="small" x="338" y="132">DNS only</text>
+        <text class="small" x="338" y="132">DNS only (at setup)</text>
 
         <rect class="node" x="315" y="245" width="220" height="92"></rect>
         <text class="label" x="338" y="276">api.carekosh.com</text>
         <text class="small" x="338" y="302">Cloudflare CNAME</text>
-        <text class="small" x="338" y="322">DNS only</text>
+        <text class="small" x="338" y="322">DNS only (at setup)</text>
 
         <rect class="node soft" x="605" y="55" width="220" height="92"></rect>
         <text class="label" x="628" y="86">Render staging service</text>
@@ -548,7 +553,7 @@
         <rect class="node soft" x="510" y="75" width="210" height="100"></rect>
         <text class="label" x="532" y="108">app.config.js</text>
         <text class="small" x="532" y="132">validates profile URL</text>
-        <text class="small" x="532" y="152">blocks wrong backend</text>
+        <text class="small" x="532" y="152">blocks wrong URL (if set)</text>
 
         <rect class="node" x="770" y="75" width="210" height="100"></rect>
         <text class="label" x="792" y="108">services/api.ts</text>
@@ -587,6 +592,8 @@
           <td>
             Throws if a preview build is pointed at anything except staging, or
             if a production build is pointed at anything except production.
+            An empty URL is not caught; the app then falls back to
+            <code>http://localhost:8000</code>.
           </td>
         </tr>
         <tr>
@@ -602,7 +609,8 @@
           <td>Local Metro start helpers.</td>
           <td>
             <code>npm run start:staging</code> and <code>npm run start:prod</code>
-            now point local development sessions at the custom domains.
+            now point local development sessions at the custom domains
+            (<code>start:prod</code> uses production data).
           </td>
         </tr>
       </tbody>
@@ -696,7 +704,7 @@
         </tr>
         <tr>
           <td><code>vitaltrack-backend/render.yaml</code></td>
-          <td>Production Render blueprint/IaC reference.</td>
+          <td>Production Render blueprint/IaC reference (whether Render syncs from this file, which is not at the repository root, is NOT VERIFIED).</td>
           <td>
             Now documents production <code>FRONTEND_URL</code> as
             <code>https://api.carekosh.com/api/v1/auth</code>.
@@ -725,9 +733,9 @@
         <text class="small" x="58" y="144">frontend tests</text>
 
         <rect class="node blue" x="286" y="70" width="205" height="86"></rect>
-        <text class="label" x="308" y="102">Required gates</text>
-        <text class="small" x="308" y="126">pytest, route count</text>
-        <text class="small" x="308" y="144">tsc, lint</text>
+        <text class="label" x="308" y="102">Blocking checks</text>
+        <text class="small" x="308" y="126">pytest, Ruff, route count</text>
+        <text class="small" x="308" y="144">tsc, ESLint, npm test</text>
 
         <rect class="node soft" x="556" y="70" width="225" height="86"></rect>
         <text class="label" x="578" y="102">Optional preview APK</text>
@@ -752,7 +760,7 @@
         <rect class="node soft" x="556" y="245" width="225" height="86"></rect>
         <text class="label" x="578" y="277">Render auto-deploy</text>
         <text class="small" x="578" y="301">GitHub connected service</text>
-        <text class="small" x="578" y="319">main branch</text>
+        <text class="small" x="578" y="319">main (NOT VERIFIED)</text>
 
         <rect class="node blue" x="846" y="245" width="225" height="86"></rect>
         <text class="label" x="868" y="277">Production backend</text>
@@ -768,6 +776,7 @@
         <line class="arrow" x1="781" y1="288" x2="846" y2="288" marker-end="url(#arrow4)"></line>
       </svg>
     </div>
+    <p class="muted">Blocking checks fail the CI run and gate the deploy job; they do not block a merge (the ruleset had no required checks when read on 7 Oct 2026). The npm test step exists on the feature branch only. Render's auto-deploy setting and branch are NOT VERIFIED.</p>
 
     <table>
       <thead>
@@ -829,6 +838,18 @@
       <code>RENDER_DEPLOY_HOOK</code> call is a backup/explicit trigger. Neither
       changes which backend the mobile app calls; mobile routing comes from
       <code>EXPO_PUBLIC_API_URL</code> inside the built artifact.
+    </div>
+
+    <div class="warning callout">
+      <strong>7 Oct 2026:</strong> <code>render.yaml</code> has no <code>autoDeploy</code>
+      key, so whether either service auto-deploys is a dashboard setting that was
+      NOT VERIFIED. The CI <code>deploy-backend</code> job runs only on a push to
+      <code>main</code> after both test jobs pass, uses the GitHub
+      <code>production</code> environment, and calls the hook only when the secret
+      is set (with <code>curl --fail</code> and a 30-second limit on the feature branch;
+      <code>main</code>'s older workflow uses <code>curl -s</code>, which cannot fail the job). If staging now
+      tracks the feature branch, as the owner reports, a merge to <code>main</code>
+      no longer deploys staging.
     </div>
 
     <h2 id="files-changed">Files Changed For This Domain Migration</h2>
@@ -932,6 +953,8 @@
     <h2 id="verification">Verification and Next Gates</h2>
     <p>The domain work was verified at three levels: DNS/Render, app config, and smoke checks.</p>
 
+    <p><em>7 Oct 2026: the checks and smoke results in this section are the original branch report. They were not re-run in the September or October reviews, and the <code>/health</code> body reports a constant version (<code>1.0.0</code>), so it cannot show which commit is deployed.</em></p>
+
     <h3>Live endpoint checks already observed</h3>
     <pre><code>curl -fsS https://api.carekosh.com/health
 # expected: status=healthy, environment=production, database=connected
@@ -950,6 +973,7 @@ curl -fsS https://staging-api.carekosh.com/health
     </ul>
 
     <h3>Recommended next commands before commit</h3>
+    <p class="muted">Historical: the domain branch was merged as <code>55ecde6</code>. The smoke commands below still work; without <code>--include-authenticated</code> they only send <code>GET /live</code> and <code>GET /health</code>.</p>
     <pre><code>git status --short --branch
 git diff --check
 cd vitaltrack-mobile
@@ -965,8 +989,8 @@ python3 vitaltrack-backend/scripts/smoke_api.py --target production --allow-prod
       <li>Build a new preview APK from the merged code.</li>
       <li>Install the preview APK and test staging register, login, email verification, forgot password, inventory, orders, and PDF/bill paths.</li>
       <li>After preview is clean, build a new production AAB. That AAB will bake in <code>https://api.carekosh.com</code>.</li>
-      <li>Upload the AAB to Play internal testing first, then continue through closed/production tracks as required by the account.</li>
-      <li>Keep Render subdomains enabled during transition. They are useful fallback and are explicitly treated as production by the smoke-script guard.</li>
+      <li>Upload the AAB to Play internal testing first, then continue through closed/production tracks as required by the account. Every track runs the same AAB against <code>https://api.carekosh.com</code>, so internal and closed testers use production data.</li>
+      <li>Keep Render subdomains enabled during transition. They are useful fallback; the production one (<code>vitaltrack-api.onrender.com</code>) is explicitly treated as production by the smoke-script guard (earlier text implied both).</li>
     </ol>
 
     <div class="danger callout">

@@ -1,0 +1,444 @@
+/* Shared overlays keep the dashboard reading scale, including dialogs rendered
+   outside the main workspace. Native dialog focus and dismissal stay intact. */
+.dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 28px;
+  font-size: var(--read-body);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.dialog.wide {
+  width: min(800px, calc(100vw - 32px));
+}
+.dialog .dialog-heading {
+  position: sticky;
+  top: -28px;
+  z-index: 2;
+  background: var(--card);
+  align-items: flex-start;
+  gap: 16px;
+  margin: -28px -28px 24px;
+  padding: 28px 28px 0;
+}
+.dialog .dialog-heading h2 {
+  font-size: 24px;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+  padding-top: 5px;
+}
+.dialog .icon-button {
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+}
+.dialog .dialog-heading .icon-button {
+  margin: 0;
+}
+.dialog .dialog-copy {
+  font-size: 16px;
+  line-height: 1.75;
+  margin-bottom: 24px;
+}
+.dialog .button {
+  min-height: 48px;
+  padding: 12px 18px;
+  gap: 10px;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: normal;
+}
+.dialog .text-button {
+  min-height: 44px;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: normal;
+}
+.dialog .dialog-actions {
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+.dialog form > .field {
+  margin: 24px 0;
+}
+.dialog .field {
+  gap: 10px;
+}
+.dialog .field > span:first-child {
+  font-size: 15px;
+}
+.dialog .field small,
+.dialog .small-note {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.dialog input:not([type="checkbox"]):not([type="radio"]),
+.dialog textarea {
+  min-width: 0;
+  min-height: 52px;
+  padding: 13px 14px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+.dialog .field textarea {
+  min-height: 120px;
+}
+.dialog .error-box {
+  font-size: 14px;
+  line-height: 1.65;
+  padding: 16px;
+}
+.dialog .checkbox-line {
+  min-height: 48px;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-block: 12px;
+}
+.dialog input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex-shrink: 0;
+}
+.dialog .badge {
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 5px 10px;
+}
+
+/* Search, order item picker, and exports. */
+.dialog .search-input {
+  padding-inline: 14px;
+  gap: 10px;
+}
+.dialog .search-input > input {
+  padding-inline: 0;
+}
+.dialog .search-hint {
+  padding: 20px 0 12px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.dialog .search-results,
+.dialog .picker-list {
+  max-height: 48dvh;
+  overscroll-behavior: contain;
+}
+.dialog .search-result {
+  padding: 18px 4px;
+  gap: 14px;
+}
+.dialog .search-result > div,
+.dialog .export-option > div {
+  min-width: 0;
+}
+.dialog .search-result strong {
+  font-size: 15px;
+  line-height: 1.5;
+}
+.dialog .search-result small {
+  font-size: 13px;
+  line-height: 1.65;
+  margin-top: 6px;
+}
+.dialog .export-option {
+  padding: 20px;
+  gap: 16px;
+  margin-top: 16px;
+}
+.dialog .export-option strong {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.dialog .export-option p {
+  font-size: 14px;
+  line-height: 1.65;
+  margin-top: 6px;
+}
+
+/* CareKosh: readable prompts, answers, and a comfortable question field. */
+.coach-dialog .coach-dialog-intro {
+  gap: 18px;
+  align-items: flex-start;
+}
+.coach-dialog .coach-mark-large {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+}
+.coach-dialog .coach-mark-large svg {
+  width: 34px;
+  height: 34px;
+}
+.coach-dialog-intro strong {
+  font-size: 18px;
+  line-height: 1.5;
+}
+.coach-dialog-intro p {
+  font-size: 15px;
+  line-height: 1.7;
+  margin-top: 6px;
+}
+.coach-dialog .coach-mode {
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 24px 0 18px;
+}
+.coach-dialog .coach-mode .text-button {
+  font-size: 13px;
+}
+.coach-dialog .coach-conversation {
+  padding: 24px;
+  border-radius: 12px;
+  min-height: 220px;
+  max-height: 46dvh;
+}
+.coach-dialog .coach-conversation > h3 {
+  font-size: 20px;
+  line-height: 1.45;
+  margin-bottom: 20px;
+}
+.coach-dialog .prompt-chips {
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.coach-dialog .prompt-chips button {
+  min-height: 60px;
+  padding: 16px;
+  font-size: 15px;
+  line-height: 1.6;
+  gap: 12px;
+}
+.coach-dialog .user-question {
+  font-size: 15px;
+  line-height: 1.7;
+  padding: 14px 16px;
+  margin-left: 32px;
+  margin-bottom: 24px;
+}
+.coach-dialog .coach-thinking {
+  font-size: 15px;
+  gap: 12px;
+}
+.coach-dialog .coach-answer > h3 {
+  font-size: 18px;
+  line-height: 1.5;
+  align-items: flex-start;
+  gap: 10px;
+}
+.coach-dialog .coach-answer > h3 svg {
+  margin-top: 5px;
+}
+.coach-dialog .coach-answer > p {
+  font-size: 16px;
+  line-height: 1.75;
+  margin: 14px 0 20px;
+}
+.coach-dialog .coach-answer > small {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.coach-dialog .coach-results {
+  gap: 12px;
+  margin-block: 20px;
+}
+.coach-dialog .coach-results > a {
+  padding: 16px;
+  gap: 16px;
+}
+.coach-dialog .coach-results > a > span:first-child {
+  min-width: 0;
+}
+.coach-dialog .coach-results strong {
+  font-size: 15px;
+  line-height: 1.5;
+}
+.coach-dialog .coach-results small {
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 6px;
+}
+.coach-dialog .answer-actions {
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-top: 20px;
+}
+.coach-dialog .coach-input {
+  padding: 12px;
+  gap: 12px;
+  margin-top: 20px;
+}
+.coach-dialog .coach-input textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+  padding: 4px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+.coach-dialog .coach-input .button {
+  min-width: 48px;
+  min-height: 48px;
+  padding: 12px;
+  flex-shrink: 0;
+}
+.coach-dialog .coach-footnote {
+  font-size: 13px;
+  line-height: 1.65;
+  gap: 10px;
+  margin-top: 16px;
+}
+.coach-dialog .coach-footnote > span {
+  flex: 1;
+  min-width: 0;
+}
+.coach-dialog .voice-note {
+  font-size: 14px;
+  line-height: 1.7;
+  margin-top: 12px;
+}
+.coach-dialog .voice-note summary {
+  min-height: 44px;
+  padding-block: 10px;
+}
+.coach-dialog .voice-note p {
+  margin-top: 8px;
+  line-height: 1.75;
+}
+
+/* Help uses the same page headings and buttons as the operational screens. */
+.workspace-page .help-grid {
+  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.workspace-page .help-card {
+  padding: 28px;
+}
+.workspace-page .help-card > svg {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 20px;
+}
+.workspace-page .help-card p {
+  font-size: 16px;
+  line-height: 1.75;
+  max-width: 58ch;
+  margin-top: 14px;
+}
+.workspace-page .support-card {
+  flex-wrap: wrap;
+  gap: 20px 16px;
+  padding: 28px;
+  margin-top: 28px;
+}
+.workspace-page .support-card > div {
+  flex: 1 1 320px;
+}
+.workspace-page .support-card p {
+  font-size: 16px;
+  line-height: 1.7;
+  margin-top: 10px;
+}
+.workspace-page .about-line {
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.toast {
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.65;
+  gap: 12px;
+  overflow-wrap: anywhere;
+}
+.toast > button {
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  font-size: 24px;
+  margin-left: 0;
+}
+
+@media (max-width: 1000px) {
+  .workspace-page .help-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .dialog,
+  .workspace-page .dialog {
+    padding: 20px;
+  }
+  .dialog .dialog-heading h2 {
+    font-size: 22px;
+  }
+  .dialog .dialog-heading {
+    top: -20px;
+    margin: -20px -20px 24px;
+    padding: 20px 20px 0;
+  }
+  .dialog .dialog-actions > .button {
+    flex: 1 1 180px;
+  }
+  .dialog .export-option {
+    padding: 16px;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .dialog .export-option > svg {
+    display: none;
+  }
+  .dialog .search-result:has(> .item-symbol) {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 8px 12px;
+  }
+  .dialog .search-result > .badge,
+  .dialog .search-result > .item-symbol ~ svg {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .coach-dialog .coach-dialog-intro {
+    gap: 14px;
+  }
+  .coach-dialog .coach-mark-large {
+    width: 52px;
+    height: 52px;
+  }
+  .coach-dialog .coach-mode .text-button {
+    flex-basis: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+  .coach-dialog .coach-conversation {
+    padding: 16px;
+  }
+  .coach-dialog .prompt-chips {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .coach-dialog .user-question {
+    margin-left: 12px;
+  }
+  .coach-dialog .coach-results > a {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .workspace-page .help-card,
+  .workspace-page .support-card {
+    padding: 22px;
+  }
+  .workspace-page .support-card > .button {
+    width: 100%;
+  }
+  .toast {
+    bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+    width: calc(100vw - 32px);
+  }
+}

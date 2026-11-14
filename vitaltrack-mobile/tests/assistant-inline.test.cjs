@@ -999,7 +999,7 @@ test('choosing a fallback previews that voice first, saves it only afterwards, a
 });
 
 const planInventory = [
-  { id:'a', name:'Ambu Bag', quantity:1, minimumStock:1, unit:'units', isActive:true, isCritical:false, version:2, categoryId:'e' },
+  { id:'a', name:'Ambu Bag', quantity:1, minimumStock:2, unit:'units', isActive:true, isCritical:false, version:2, categoryId:'e' },
   { id:'g', name:'Hand gloves', quantity:2, minimumStock:5, unit:'pairs', isActive:true, isCritical:false, version:3, categoryId:'w', supplierName:'Good Supplier' },
   { id:'m', name:'Masks', quantity:0, minimumStock:4, unit:'boxes', isActive:true, isCritical:false, version:1, categoryId:'w', supplierName:'Good Supplier' },
   { id:'s', name:'Saline', quantity:10, minimumStock:5, unit:'bottles', isActive:true, isCritical:false, version:1, categoryId:'f' },
@@ -1085,7 +1085,7 @@ test('critical is clarified when a category is named critical, then answered fro
     await h.press('Critical equipment · marked ★ or named like a ventilator');
     const draft = h.drafts.getDraft(h.sessionTools.captureSession());
     assert.deepEqual(JSON.parse(JSON.stringify(draft.rows.map(r => [r.item.id, r.quantity, r.source]))), [['a', 1, 'suggested']]);
-    assert.ok(hasText(h, 'Suggested · 1 backup for critical equipment'));
+    assert.ok(hasText(h, 'Suggested · brings stock from 1 to its minimum of 2'));
   } finally { await h.dispose(); }
 });
 
