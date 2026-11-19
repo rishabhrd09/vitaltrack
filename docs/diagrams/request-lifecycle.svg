@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1632" width="1500" height="1632" role="img" aria-labelledby="t d">
+<title id="t">Lifecycle of a successful stock update</title>
+<desc id="d">Sequence for PATCH /api/v1/items/{id}/stock: an API client sends the new quantity and the version it last saw; the middleware buffers the body, FastAPI parses the JSON, the dependencies authenticate, then the schema fields are validated. The handler commits the stock, activity and audit changes, and db.refresh reads the row in a new transaction. The response is serialized before pinned FastAPI 0.115.6 runs get_db&#x27;s exit (commit of that read, close) and sends it. This endpoint is API-only; the UI uses PUT.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2B3138"/></marker><marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="#2B3138"/></marker></defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<text x="40.0" y="52.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#16191D" text-anchor="start">A successful request: PATCH /api/v1/items/{id}/stock</text>
+<text x="40.0" y="84.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#4A5260" text-anchor="start">API-only stock endpoint; the UI uses PUT. One session can span transactions; a later failure cannot undo an earlier commit.</text>
+<rect x="52.0" y="120.0" width="260.0" height="70.0" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="182.0" y="150.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#1F5FA8" text-anchor="middle">API test client (stock</text>
+<text x="182.0" y="171.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#1F5FA8" text-anchor="middle">PATCH)</text>
+<rect x="336.0" y="120.0" width="260.0" height="70.0" rx="12" fill="#E3F3EF" stroke="#1B7563" stroke-width="2"/>
+<text x="466.0" y="150.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#1B7563" text-anchor="middle">Middleware (outer → inner)</text>
+<rect x="620.0" y="120.0" width="260.0" height="70.0" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="750.0" y="150.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#1F5FA8" text-anchor="middle">FastAPI: validation +</text>
+<text x="750.0" y="171.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#1F5FA8" text-anchor="middle">Depends</text>
+<rect x="904.0" y="120.0" width="260.0" height="70.0" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="1034.0" y="150.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#1F5FA8" text-anchor="middle">Handler items.update_stock</text>
+<rect x="1188.0" y="120.0" width="260.0" height="70.0" rx="12" fill="#FFF3DB" stroke="#8F5B00" stroke-width="2"/>
+<text x="1318.0" y="150.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#8F5B00" text-anchor="middle">PostgreSQL</text>
+<line x1="182.0" y1="190.0" x2="182.0" y2="1592.7" stroke="#9AA2AE" stroke-width="1.6" stroke-dasharray="6 6"/>
+<line x1="466.0" y1="190.0" x2="466.0" y2="1592.7" stroke="#9AA2AE" stroke-width="1.6" stroke-dasharray="6 6"/>
+<line x1="750.0" y1="190.0" x2="750.0" y2="1592.7" stroke="#9AA2AE" stroke-width="1.6" stroke-dasharray="6 6"/>
+<line x1="1034.0" y1="190.0" x2="1034.0" y2="1592.7" stroke="#9AA2AE" stroke-width="1.6" stroke-dasharray="6 6"/>
+<line x1="1318.0" y1="190.0" x2="1318.0" y2="1592.7" stroke="#9AA2AE" stroke-width="1.6" stroke-dasharray="6 6"/>
+<path d="M 182.0 242.8 L 458.0 242.8" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="324.0" y="214.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">1. PATCH …/stock  {&quot;quantity&quot;:38,&quot;version&quot;:3}</text>
+<text x="324.0" y="232.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">Authorization: Bearer &lt;access&gt;</text>
+<rect x="346.7" y="282.8" width="238.6" height="79.4" rx="8" fill="#E3F3EF" stroke="#1B7563" stroke-width="1.6"/>
+<text x="356.7" y="307.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">AIBodyLimit buffers the body</text>
+<text x="356.7" y="327.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">(≤2 MB) → security headers →</text>
+<text x="356.7" y="347.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">X-Request-ID → CORS</text>
+<path d="M 466.0 406.1 L 742.0 406.1" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="608.0" y="396.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">2. route match /api/v1/items/{item_id}/stock</text>
+<rect x="630.7" y="446.1" width="238.6" height="79.4" rx="8" fill="#FFF8D6" stroke="#7A6A00" stroke-width="1.6"/>
+<text x="640.7" y="471.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Parse JSON first; malformed</text>
+<text x="640.7" y="490.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">JSON → 422 before</text>
+<text x="640.7" y="510.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">dependencies</text>
+<path d="M 750.0 559.5 L 810.0 559.5 L 810.0 583.5 L 756.0 583.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="820.0" y="565.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="start" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">3. get_db: create AsyncSession; connection acquired on first SQL</text>
+<path d="M 750.0 637.5 L 1310.0 637.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1034.0" y="627.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">4. get_current_user: SELECT user (noload)</text>
+<path d="M 1318.0 695.5 L 758.0 695.5" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<text x="1034.0" y="685.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">5. user row → session_version matches token</text>
+<rect x="630.7" y="735.5" width="238.6" height="99.2" rx="8" fill="#FFF8D6" stroke="#7A6A00" stroke-width="1.6"/>
+<text x="640.7" y="760.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">StockUpdate field</text>
+<text x="640.7" y="780.3" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">validation: quantity</text>
+<text x="640.7" y="800.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">0–999999; version required →</text>
+<text x="640.7" y="819.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">else 422</text>
+<path d="M 750.0 878.8 L 1026.0 878.8" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="892.0" y="868.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">6. call update_stock(item_id, data, db, user)</text>
+<path d="M 1034.0 936.8 L 1310.0 936.8" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1176.0" y="926.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">7. SELECT item WHERE id AND user_id (ownership)</text>
+<path d="M 1034.0 1013.5 L 1310.0 1013.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1176.0" y="984.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">8. UPDATE items SET quantity=38, version=version+1</text>
+<text x="1176.0" y="1003.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">WHERE id AND user_id AND version=3 RETURNING</text>
+<path d="M 1318.0 1071.5 L 1042.0 1071.5" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<text x="1176.0" y="1061.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">9. 1 row (another writer would make it 0 rows → 409)</text>
+<path d="M 1034.0 1129.5 L 1310.0 1129.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1176.0" y="1119.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">10. INSERT activity_logs (stock_update) · INSERT audit_log</text>
+<path d="M 1034.0 1187.5 L 1310.0 1187.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1176.0" y="1177.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">11. COMMIT — the UPDATE and both INSERTs land together</text>
+<path d="M 1034.0 1245.5 L 1310.0 1245.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1176.0" y="1235.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">12. db.refresh: SELECT the saved row (a new transaction)</text>
+<path d="M 1034.0 1303.5 L 758.0 1303.5" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<text x="892.0" y="1293.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">13. ItemResponse (camelCase aliases)</text>
+<path d="M 750.0 1361.5 L 474.0 1361.5" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<text x="608.0" y="1351.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">14. serialize → get_db exit: COMMIT that read, close → 200 JSON (FastAPI 0.115.6)</text>
+<path d="M 466.0 1419.5 L 190.0 1419.5" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<text x="324.0" y="1409.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">15. 200 + X-Request-ID + no-store</text>
+<rect x="62.7" y="1459.5" width="238.6" height="99.2" rx="8" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="1.6"/>
+<text x="72.7" y="1484.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Test verifies</text>
+<text x="72.7" y="1504.3" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">quantity/version. UI PUT</text>
+<text x="72.7" y="1524.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">success invalidates queries</text>
+<text x="72.7" y="1543.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">→ refetch.</text>
+</svg>

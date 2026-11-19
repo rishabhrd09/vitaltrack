@@ -1,938 +1,697 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CareKosh — System Architecture Diagrams</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
-<style>
-:root{
-  --bg:#0a0e1a;
-  --panel:#0f1524;
-  --panel2:#131a2e;
-  --border:#1f2942;
-  --border2:#2a3654;
-  --text:#e4e8f2;
-  --text2:#a8b0c4;
-  --muted:#6b7490;
-  --teal:#5eead4;
-  --teal-dim:#2dd4bf;
-  --teal-bg:#0d2626;
-  --amber:#d4a574;
-  --amber-bg:#1c1810;
-  --rose:#f87171;
-  --rose-bg:#1c1010;
-  --violet:#a78bfa;
-  --violet-bg:#18142a;
-  --code-bg:#0c1220;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.7;font-size:15px;-webkit-font-smoothing:antialiased}
-.page{max-width:960px;margin:0 auto;padding:48px 28px 100px}
-
-/* Cover */
-.cover{text-align:center;padding:60px 0 48px;border-bottom:1px solid var(--border);margin-bottom:56px}
-.cover .eyebrow{font-family:'Sora',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--teal);margin-bottom:18px}
-.cover h1{font-family:'Cormorant Garamond',serif;font-size:3.2rem;font-weight:600;letter-spacing:-.02em;line-height:1.05;margin-bottom:10px}
-.cover h1 em{font-style:italic;color:var(--teal);font-weight:700}
-.cover .sub{color:var(--text2);font-size:1rem;max-width:600px;margin:0 auto 12px}
-.cover .meta{color:var(--muted);font-size:.78rem;letter-spacing:.08em}
-
-/* TOC */
-.toc{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:28px 32px;margin-bottom:56px}
-.toc h2{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);margin-bottom:18px}
-.toc ol{list-style:none;padding:0;counter-reset:diag}
-.toc li{counter-increment:diag;border-bottom:1px solid var(--border);padding:14px 0}
-.toc li:last-child{border-bottom:none;padding-bottom:0}
-.toc li:first-child{padding-top:0}
-.toc a{display:flex;align-items:baseline;gap:16px;text-decoration:none;color:var(--text)}
-.toc a::before{content:counter(diag,decimal-leading-zero);font-family:'JetBrains Mono',monospace;font-size:.8rem;font-weight:600;color:var(--teal);flex-shrink:0}
-.toc a .title{font-family:'Sora',sans-serif;font-weight:700;font-size:1rem}
-.toc a .desc{color:var(--muted);font-size:.82rem;margin-left:auto;text-align:right}
-.toc a:hover .title{color:var(--teal)}
-@media(max-width:640px){.toc a{flex-wrap:wrap}.toc a .desc{margin-left:38px;text-align:left;width:100%;margin-top:4px}}
-
-/* Diagram section */
-.diagram{margin-bottom:80px;scroll-margin-top:20px}
-.diag-header{border-top:2px solid var(--teal);padding-top:24px;margin-bottom:24px}
-.diag-num{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:700;color:var(--teal);background:var(--teal-bg);padding:3px 10px;border-radius:4px;margin-bottom:10px;letter-spacing:.08em}
-.diag-header h2{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:600;letter-spacing:-.01em;line-height:1.1;margin-bottom:8px}
-.diag-header h2 em{font-style:italic;color:var(--teal);font-weight:700}
-.diag-header p{color:var(--text2);font-size:.95rem;max-width:700px}
-
-.svg-wrap{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:auto;margin:20px 0;padding:24px}
-.svg-wrap svg{display:block;width:100%;height:auto;min-width:600px}
-
-/* Callout */
-.callout{border-radius:10px;padding:16px 20px;margin:20px 0;border-left:3px solid}
-.callout-label{font-family:'Sora',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;display:block}
-.callout p{font-size:.9rem;color:var(--text2);margin-bottom:6px}.callout p:last-child{margin-bottom:0}
-.callout.teal{background:var(--teal-bg);border-color:var(--teal)}.callout.teal .callout-label{color:var(--teal)}
-.callout.amber{background:var(--amber-bg);border-color:var(--amber)}.callout.amber .callout-label{color:var(--amber)}
-.callout.rose{background:var(--rose-bg);border-color:var(--rose)}.callout.rose .callout-label{color:var(--rose)}
-.callout.violet{background:var(--violet-bg);border-color:var(--violet)}.callout.violet .callout-label{color:var(--violet)}
-
-/* Compare boxes (before/after) */
-.compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
-.compare-card{border-radius:10px;padding:16px 20px;border:1px solid}
-.compare-card h4{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
-.compare-card p,.compare-card li{font-size:.86rem;color:var(--text2)}
-.compare-card ul{list-style:none;padding:0}
-.compare-card li{padding:3px 0}
-.compare-card.bad{background:var(--rose-bg);border-color:var(--rose)}.compare-card.bad h4{color:var(--rose)}
-.compare-card.good{background:var(--teal-bg);border-color:var(--teal)}.compare-card.good h4{color:var(--teal)}
-@media(max-width:640px){.compare{grid-template-columns:1fr}}
-
-/* Table */
-table{width:100%;border-collapse:collapse;margin:18px 0;font-size:.85rem;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-th{text-align:left;font-family:'Sora',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);padding:10px 14px;background:var(--panel2);border-bottom:1px solid var(--border)}
-td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text2)}
-td:first-child{color:var(--text);font-weight:500}
-tr:last-child td{border-bottom:none}
-
-/* Code */
-code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--code-bg);padding:2px 6px;border-radius:4px;color:var(--teal)}
-
-/* Legend */
-.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;padding:12px 16px;background:var(--panel2);border-radius:8px;font-size:.78rem}
-.legend-item{display:flex;align-items:center;gap:6px;color:var(--text2)}
-.legend-swatch{width:14px;height:14px;border-radius:3px;flex-shrink:0}
-
-/* PR list */
-.pr-list{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin:28px 0}
-.pr-list h3{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);margin-bottom:16px}
-.pr-list ul{list-style:none;padding:0}
-.pr-list li{padding:8px 0;border-bottom:1px solid var(--border);display:grid;grid-template-columns:60px 1fr;gap:14px;font-size:.86rem}
-.pr-list li:last-child{border-bottom:none}
-.pr-list .pr-num{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--teal)}
-.pr-list .pr-what{color:var(--text2)}
-
-.footer{text-align:center;padding:36px 0 0;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;margin-top:60px}
-.footer em{color:var(--teal);font-style:normal}
-</style>
-</head>
-<body>
-<div class="page">
-
-<!-- COVER -->
-<div class="cover">
-  <div class="eyebrow">System Architecture · v2.0</div>
-  <h1>CareKosh<br><em>Architecture Diagrams</em></h1>
-  <p class="sub">Five diagrams that together document how a server-first home-ICU inventory app is wired. Originally written after PR #13; updated through PRs #14–#34 with the cold-start UX track on top of the same server-first foundation.</p>
-  <p class="meta">Home ICU Inventory · React Native + FastAPI + PostgreSQL · April–May 2026</p>
-</div>
-
-<div class="callout amber">
-  <p class="callout-label">Update — May 2026 cold-start UX track (PRs #17–#34)</p>
-  <p>The five diagrams below remain accurate for the load-bearing architecture (server-first · TanStack Query · OCC · audit log · cascade-on-deletion). Diagram 1 has been updated to reflect that there are now three Zustand UI-only stores (<code>useAppStore</code> 61 lines, <code>useAuthStore</code> 422 lines, <code>useResultDialogStore</code> 50 lines) rather than just one. The mobile tier also gained, but is not yet drawn in: <code>MutationResultDialog</code> overlay; consolidated <code>StatusPill</code> (replaces <code>ConnectionStatusPill</code> + <code>SavingStatusPill</code>); <code>usePendingItems</code> for per-row "Updating…" indicators; <code>mutationFeedback</code> dispatcher; <code>safeBack</code>; <code>formatStock</code>; <code>react-native-toast-message</code>; full-screen <code>app/search.tsx</code>; fire-and-forget save via <code>mutateAsync().then()</code>; hook-level mutation feedback dispatch; retry-via-<code>Mutation.execute()</code>; auto-clear of <code>isBackendColdStarting</code>. Backend Alembic head remains <code>0005_account_deletion_token</code>. The old backend <code>/sync/*</code> router has since been removed; current <code>/api/v1</code> routes are auth, categories, items, orders, and activities only.</p>
-</div>
-
-<!-- TOC -->
-<div class="toc">
-  <h2>Contents</h2>
-  <ol>
-    <li><a href="#d1"><span class="title">Complete System Architecture</span><span class="desc">Server-first · TanStack Query · OCC</span></a></li>
-    <li><a href="#d2"><span class="title">Auth &amp; Account Lifecycle</span><span class="desc">Register → verify → refresh → delete</span></a></li>
-    <li><a href="#d3"><span class="title">CI/CD &amp; Deployment Pipeline</span><span class="desc">GitHub Actions → Render → EAS</span></a></li>
-    <li><a href="#d4"><span class="title">Data Model &amp; Integrity</span><span class="desc">Schema · OCC · Audit log · CASCADE</span></a></li>
-    <li><a href="#d5"><span class="title">Mobile Screen Map</span><span class="desc">Expo Router file-based navigation</span></a></li>
-  </ol>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     DIAGRAM 1 · SYSTEM ARCHITECTURE
-     ═══════════════════════════════════════════════════════════════ -->
-<div class="diagram" id="d1">
-  <div class="diag-header">
-    <span class="diag-num">Diagram 01 / 05</span>
-    <h2>Complete <em>System Architecture</em></h2>
-    <p>Three tiers — mobile, backend API, Postgres — joined by a single invariant: the server is the source of truth. Local state is UI-only; server state is TanStack Query.</p>
-  </div>
-
-  <div class="svg-wrap">
-    <svg viewBox="0 0 960 900" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, sans-serif">
-      <defs>
-        <marker id="arrow-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5eead4"/>
-        </marker>
-        <marker id="arrow-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#d4a574"/>
-        </marker>
-      </defs>
-
-      <!-- MOBILE TIER -->
-      <rect x="30" y="30" width="900" height="260" rx="12" fill="#0f1524" stroke="#2a3654" stroke-width="1.5"/>
-      <text x="50" y="58" fill="#5eead4" font-weight="700" font-size="11" letter-spacing="1.5">TIER 1 · MOBILE APP</text>
-      <text x="50" y="76" fill="#a8b0c4" font-size="12">React Native + Expo SDK 54 · TypeScript · Pixel 9 Pro XL reference</text>
-
-      <!-- Expo Router box -->
-      <rect x="60" y="100" width="230" height="160" rx="8" fill="#131a2e" stroke="#2dd4bf" stroke-width="1.5"/>
-      <text x="75" y="124" fill="#5eead4" font-weight="700" font-size="12">Expo Router (file-based)</text>
-      <text x="75" y="146" fill="#e4e8f2" font-size="11" font-family="JetBrains Mono">app/(auth)/</text>
-      <text x="75" y="164" fill="#e4e8f2" font-size="11" font-family="JetBrains Mono">app/(tabs)/</text>
-      <text x="75" y="182" fill="#e4e8f2" font-size="11" font-family="JetBrains Mono">app/profile.tsx</text>
-      <text x="75" y="200" fill="#e4e8f2" font-size="11" font-family="JetBrains Mono">app/builder.tsx</text>
-      <text x="75" y="218" fill="#e4e8f2" font-size="11" font-family="JetBrains Mono">app/item/[id].tsx</text>
-      <text x="75" y="236" fill="#e4e8f2" font-size="11" font-family="JetBrains Mono">app/order/create.tsx</text>
-
-      <!-- TanStack Query box -->
-      <rect x="315" y="100" width="330" height="160" rx="8" fill="#131a2e" stroke="#5eead4" stroke-width="2"/>
-      <text x="330" y="124" fill="#5eead4" font-weight="700" font-size="12">TanStack Query — ALL server state</text>
-      <text x="330" y="148" fill="#a8b0c4" font-size="11">useQuery → GET</text>
-      <text x="330" y="166" fill="#a8b0c4" font-size="11">useMutation → POST / PUT / PATCH / DELETE</text>
-      <text x="330" y="184" fill="#a8b0c4" font-size="11">queryClient.invalidateQueries</text>
-      <text x="330" y="202" fill="#a8b0c4" font-size="11">Auto-refetch on focus / reconnect</text>
-      <text x="330" y="226" fill="#d4a574" font-size="11" font-style="italic">409 Conflict handler → refetch → retry</text>
-      <text x="330" y="244" fill="#d4a574" font-size="11" font-style="italic">hooks/useServerData.ts · useServerMutations.ts</text>
-
-      <!-- Zustand box -->
-      <rect x="670" y="100" width="230" height="160" rx="8" fill="#131a2e" stroke="#2a3654" stroke-width="1.5"/>
-      <text x="685" y="124" fill="#d4a574" font-weight="700" font-size="12">Zustand — UI only (3 stores)</text>
-      <text x="685" y="148" fill="#a8b0c4" font-size="11">useAppStore.ts (61)</text>
-      <text x="685" y="166" fill="#a8b0c4" font-size="11">  ui state, isInitialized</text>
-      <text x="685" y="190" fill="#a8b0c4" font-size="11">useAuthStore.ts (422)</text>
-      <text x="685" y="208" fill="#a8b0c4" font-size="11">  user, isAuthenticated, cold-start</text>
-      <text x="685" y="232" fill="#a8b0c4" font-size="11">useResultDialogStore.ts (50)</text>
-      <text x="685" y="250" fill="#5eead4" font-size="11">  cold-start dialog queue</text>
-
-      <!-- HTTPS arrow down from mobile -->
-      <line x1="480" y1="290" x2="480" y2="330" stroke="#5eead4" stroke-width="2" marker-end="url(#arrow-teal)"/>
-      <text x="490" y="315" fill="#5eead4" font-size="11" font-family="JetBrains Mono">HTTPS / JSON</text>
-
-      <!-- BACKEND TIER -->
-      <rect x="30" y="340" width="900" height="310" rx="12" fill="#0f1524" stroke="#2a3654" stroke-width="1.5"/>
-      <text x="50" y="368" fill="#5eead4" font-weight="700" font-size="11" letter-spacing="1.5">TIER 2 · BACKEND API</text>
-      <text x="50" y="386" fill="#a8b0c4" font-size="12">Render · Singapore · Python 3.12 + FastAPI 0.115 · Docker multi-stage · Gunicorn + 4 Uvicorn workers</text>
-
-      <!-- Auth router -->
-      <rect x="60" y="410" width="210" height="210" rx="8" fill="#131a2e" stroke="#2a3654" stroke-width="1.5"/>
-      <text x="75" y="434" fill="#5eead4" font-weight="700" font-size="12">Auth Router</text>
-      <text x="75" y="456" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">POST /register (3/h)</text>
-      <text x="75" y="474" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">POST /login (5/m)</text>
-      <text x="75" y="492" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">POST /refresh (rotate)</text>
-      <text x="75" y="510" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">GET /verify-email</text>
-      <text x="75" y="528" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">POST /change-password</text>
-      <text x="75" y="546" fill="#d4a574" font-size="11" font-family="JetBrains Mono">DELETE /me (PR #13)</text>
-      <text x="75" y="564" fill="#d4a574" font-size="11" font-family="JetBrains Mono">GET /confirm-delete/{t}</text>
-      <text x="75" y="582" fill="#d4a574" font-size="11" font-family="JetBrains Mono">POST /cancel-delete</text>
-      <text x="75" y="604" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">GET /me, PATCH /me</text>
-
-      <!-- CRUD router -->
-      <rect x="295" y="410" width="210" height="210" rx="8" fill="#131a2e" stroke="#2a3654" stroke-width="1.5"/>
-      <text x="310" y="434" fill="#5eead4" font-weight="700" font-size="12">CRUD + Business</text>
-      <text x="310" y="456" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">/items (incl. OCC)</text>
-      <text x="310" y="474" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">  PUT returns 409</text>
-      <text x="310" y="492" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">  if version stale</text>
-      <text x="310" y="510" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">/categories</text>
-      <text x="310" y="528" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">/orders</text>
-      <text x="310" y="546" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">  POST /{id}/apply</text>
-      <text x="310" y="564" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">  (atomic txn)</text>
-      <text x="310" y="582" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">/activities (read)</text>
-      <text x="310" y="604" fill="#6b7490" font-size="10.5" font-style="italic">/sync/* — removed legacy surface</text>
-
-      <!-- Security -->
-      <rect x="530" y="410" width="200" height="210" rx="8" fill="#131a2e" stroke="#2a3654" stroke-width="1.5"/>
-      <text x="545" y="434" fill="#5eead4" font-weight="700" font-size="12">Security Middleware</text>
-      <text x="545" y="456" fill="#a8b0c4" font-size="11">Argon2 password hash</text>
-      <text x="545" y="474" fill="#a8b0c4" font-size="11">JWT HS256 + rotation</text>
-      <text x="545" y="492" fill="#a8b0c4" font-size="11">slowapi rate limit</text>
-      <text x="545" y="510" fill="#a8b0c4" font-size="11">CORS whitelist (prod)</text>
-      <text x="545" y="528" fill="#a8b0c4" font-size="11">Config validators:</text>
-      <text x="545" y="546" fill="#a8b0c4" font-size="10.5">· SECRET_KEY ≥ 32 chars</text>
-      <text x="545" y="562" fill="#a8b0c4" font-size="10.5">· CORS_ORIGINS ≠ "*"</text>
-      <text x="545" y="578" fill="#a8b0c4" font-size="10.5">· FRONTEND_URL set</text>
-      <text x="545" y="594" fill="#d4a574" font-size="11" font-style="italic">(PR #12 hardening)</text>
-
-      <!-- Integrity -->
-      <rect x="755" y="410" width="145" height="210" rx="8" fill="#131a2e" stroke="#d4a574" stroke-width="1.5"/>
-      <text x="770" y="434" fill="#d4a574" font-weight="700" font-size="12">Integrity</text>
-      <text x="770" y="456" fill="#a8b0c4" font-size="10.5">OCC version col</text>
-      <text x="770" y="472" fill="#a8b0c4" font-size="10.5">(items)</text>
-      <text x="770" y="492" fill="#a8b0c4" font-size="10.5">Audit log JSONB</text>
-      <text x="770" y="508" fill="#a8b0c4" font-size="10.5">before/after</text>
-      <text x="770" y="528" fill="#a8b0c4" font-size="10.5">CHECK quantity</text>
-      <text x="770" y="544" fill="#a8b0c4" font-size="10.5">≥ 0</text>
-      <text x="770" y="564" fill="#a8b0c4" font-size="10.5">CASCADE on</text>
-      <text x="770" y="580" fill="#a8b0c4" font-size="10.5">user delete</text>
-      <text x="770" y="600" fill="#a8b0c4" font-size="10.5">Alembic 0001→0005</text>
-
-      <!-- Arrow down to DB -->
-      <line x1="480" y1="650" x2="480" y2="690" stroke="#5eead4" stroke-width="2" marker-end="url(#arrow-teal)"/>
-      <text x="490" y="675" fill="#5eead4" font-size="11" font-family="JetBrains Mono">async SQLAlchemy 2.0 · asyncpg</text>
-
-      <!-- DATABASE TIER -->
-      <rect x="30" y="700" width="900" height="180" rx="12" fill="#0f1524" stroke="#2a3654" stroke-width="1.5"/>
-      <text x="50" y="728" fill="#5eead4" font-weight="700" font-size="11" letter-spacing="1.5">TIER 3 · POSTGRESQL ON NEON</text>
-      <text x="50" y="746" fill="#a8b0c4" font-size="12">Singapore · managed · two branches, one engine</text>
-
-      <!-- Production DB -->
-      <rect x="60" y="770" width="415" height="90" rx="8" fill="#131a2e" stroke="#5eead4" stroke-width="2"/>
-      <text x="75" y="794" fill="#5eead4" font-weight="700" font-size="12">Production</text>
-      <text x="75" y="814" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">Neon branch: neondb</text>
-      <text x="75" y="832" fill="#a8b0c4" font-size="11">Real user data · never wiped</text>
-      <text x="75" y="850" fill="#a8b0c4" font-size="11">api.carekosh.com</text>
-
-      <!-- Staging DB -->
-      <rect x="495" y="770" width="405" height="90" rx="8" fill="#131a2e" stroke="#d4a574" stroke-width="1.5"/>
-      <text x="510" y="794" fill="#d4a574" font-weight="700" font-size="12">Staging</text>
-      <text x="510" y="814" fill="#a8b0c4" font-size="11" font-family="JetBrains Mono">Neon branch: vitaltrack_staging</text>
-      <text x="510" y="832" fill="#a8b0c4" font-size="11">Test data only · safe to wipe</text>
-      <text x="510" y="850" fill="#a8b0c4" font-size="11">staging-api.carekosh.com</text>
-    </svg>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><span class="legend-swatch" style="background:#5eead4"></span> Primary flow</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:#d4a574"></span> PR #12 / #13 addition</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:#2a3654;border:1px solid #5eead4"></span> Standard component</div>
-  </div>
-
-  <div class="compare">
-    <div class="compare-card bad">
-      <h4>Before — Offline-first (pre-PR #4)</h4>
-      <ul>
-        <li>Zustand (1,100 lines) + <code>persist</code> middleware</li>
-        <li>AsyncStorage holding inventory rows</li>
-        <li><code>services/sync.ts</code> — 611 lines of push/pull/full</li>
-        <li>Rehydration race: stale local overwrote server → data loss</li>
-        <li>Merge conflicts on life-critical stock counts</li>
-      </ul>
-    </div>
-    <div class="compare-card good">
-      <h4>After — Server-first (PRs #4–#8)</h4>
-      <ul>
-        <li>TanStack Query owns all server state</li>
-        <li>Zustand 61 lines — UI-only</li>
-        <li><code>sync.ts</code> deleted; backend <code>/sync/*</code> removed</li>
-        <li>OCC <code>version</code> column + HTTP 409</li>
-        <li>Single writer wins; loser re-fetches and retries</li>
-      </ul>
-    </div>
-  </div>
-
-  <div class="callout teal">
-    <span class="callout-label">Why server-first for medical inventory</span>
-    <p>Offline editing of life-critical stock counts creates merge conflicts with real-world consequences — two caregivers silently overwriting each other's updates can result in running out of oxygen. Server-first eliminates the whole conflict class; OCC handles the last remaining race.</p>
-  </div>
-
-  <div class="callout teal">
-    <span class="callout-label">Mobile cache persistence layer (PR #16)</span>
-    <p>Between the mobile app and the server, TanStack Query now keeps a <strong>read-only snapshot</strong> of inventory/order/category/activity data in AsyncStorage (<code>@tanstack/react-query-persist-client</code> + <code>@tanstack/query-async-storage-persister</code>, key <code>carekosh-query-cache</code>). On app launch, the last-seen data renders instantly while fresh data refetches in the background (<code>staleTime: 30s</code>, <code>gcTime: 24h</code>). <strong>Mutations bypass the cache and go direct to the server</strong> — the cache is never pushed back, so the data-corruption failure mode of the old offline-first architecture is structurally impossible. Cache is cleared on both logout and login for shared-device privacy; a schema <code>buster</code> tied to <code>app.json</code>'s <code>version</code> auto-invalidates on upgrade; and a <code>ENABLE_CACHE_PERSISTENCE</code> kill switch in <code>providers/QueryProvider.tsx</code> disables the whole layer with one line. <code>focusManager</code> is wired to React Native's <code>AppState</code> so returning to the foreground triggers a refetch.</p>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     DIAGRAM 2 · AUTH LIFECYCLE
-     ═══════════════════════════════════════════════════════════════ -->
-<div class="diagram" id="d2">
-  <div class="diag-header">
-    <span class="diag-num">Diagram 02 / 05</span>
-    <h2>Auth &amp; <em>Account Lifecycle</em></h2>
-    <p>Six flows — register, login, refresh, password change, account delete, cancel delete. Every refresh rotates; every password change revokes all sessions; every deletion cascades.</p>
-  </div>
-
-  <div class="svg-wrap">
-    <svg viewBox="0 0 960 920" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, sans-serif">
-      <defs>
-        <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5eead4"/>
-        </marker>
-        <marker id="a2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#d4a574"/>
-        </marker>
-        <marker id="a2r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#f87171"/>
-        </marker>
-      </defs>
-
-      <!-- FLOW 1: REGISTER -->
-      <rect x="20" y="20" width="440" height="200" rx="10" fill="#0f1524" stroke="#2a3654"/>
-      <text x="36" y="44" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1">1 · REGISTRATION</text>
-      <rect x="36" y="58" width="160" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
-      <text x="116" y="79" fill="#e4e8f2" font-size="11" text-anchor="middle">User (mobile)</text>
-      <line x1="196" y1="75" x2="276" y2="75" stroke="#5eead4" stroke-width="1.5" marker-end="url(#a2)"/>
-      <text x="236" y="70" fill="#5eead4" font-size="9.5" text-anchor="middle" font-family="JetBrains Mono">POST /register</text>
-      <rect x="276" y="58" width="168" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
-      <text x="360" y="79" fill="#e4e8f2" font-size="11" text-anchor="middle">Server</text>
-      <text x="36" y="118" fill="#a8b0c4" font-size="10.5">1. email REQUIRED (PR #12), Argon2 hash</text>
-      <text x="36" y="134" fill="#a8b0c4" font-size="10.5">2. INSERT user (is_verified=false)</text>
-      <text x="36" y="150" fill="#a8b0c4" font-size="10.5">3. Send verification email via Brevo (bg)</text>
-      <text x="36" y="166" fill="#a8b0c4" font-size="10.5">4. Return access + refresh tokens</text>
-      <text x="36" y="186" fill="#d4a574" font-size="10.5">→ user clicks link → GET /verify-email/{t}</text>
-      <text x="36" y="202" fill="#d4a574" font-size="10.5">→ SHA-256 compare → set is_verified=true</text>
-
-      <!-- FLOW 2: LOGIN -->
-      <rect x="500" y="20" width="440" height="200" rx="10" fill="#0f1524" stroke="#2a3654"/>
-      <text x="516" y="44" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1">2 · LOGIN</text>
-      <rect x="516" y="58" width="160" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
-      <text x="596" y="79" fill="#e4e8f2" font-size="11" text-anchor="middle">User (mobile)</text>
-      <line x1="676" y1="75" x2="756" y2="75" stroke="#5eead4" stroke-width="1.5" marker-end="url(#a2)"/>
-      <text x="716" y="70" fill="#5eead4" font-size="9.5" text-anchor="middle" font-family="JetBrains Mono">POST /login</text>
-      <rect x="756" y="58" width="168" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
-      <text x="840" y="79" fill="#e4e8f2" font-size="11" text-anchor="middle">Server</text>
-      <text x="516" y="118" fill="#a8b0c4" font-size="10.5">1. identifier = email OR username</text>
-      <text x="516" y="134" fill="#a8b0c4" font-size="10.5">2. Argon2 verify</text>
-      <text x="516" y="150" fill="#a8b0c4" font-size="10.5">3. If REQUIRE_EMAIL_VERIFICATION=true</text>
-      <text x="530" y="166" fill="#a8b0c4" font-size="10.5">and email exists → must be verified</text>
-      <text x="516" y="186" fill="#a8b0c4" font-size="10.5">4. Generate access (30m) + refresh (30d)</text>
-      <text x="516" y="202" fill="#5eead4" font-size="10.5">→ refresh stored in SecureStore on device</text>
-
-      <!-- FLOW 3: REFRESH (with rotation) -->
-      <rect x="20" y="240" width="440" height="200" rx="10" fill="#0f1524" stroke="#2a3654"/>
-      <text x="36" y="264" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1">3 · TOKEN REFRESH (rotation)</text>
-      <rect x="36" y="278" width="160" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
-      <text x="116" y="299" fill="#e4e8f2" font-size="11" text-anchor="middle">Mobile (on 401)</text>
-      <line x1="196" y1="295" x2="276" y2="295" stroke="#5eead4" stroke-width="1.5" marker-end="url(#a2)"/>
-      <text x="236" y="290" fill="#5eead4" font-size="9.5" text-anchor="middle" font-family="JetBrains Mono">POST /refresh</text>
-      <rect x="276" y="278" width="168" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
-      <text x="360" y="299" fill="#e4e8f2" font-size="11" text-anchor="middle">Server</text>
-      <text x="36" y="338" fill="#a8b0c4" font-size="10.5">1. Lookup refresh_token hash in DB</text>
-      <text x="36" y="354" fill="#a8b0c4" font-size="10.5">2. DELETE old row (one-time use)</text>
-      <text x="36" y="370" fill="#a8b0c4" font-size="10.5">3. INSERT new refresh_token row</text>
-      <text x="36" y="386" fill="#a8b0c4" font-size="10.5">4. Return new access + new refresh</text>
-      <text x="36" y="406" fill="#f87171" font-size="10.5">Replay protection: old token → 401 forever</text>
-      <text x="36" y="422" fill="#a8b0c4" font-size="10.5">Mobile always writes new refresh to SecureStore</text>
-
-      <!-- FLOW 4: PASSWORD CHANGE -->
-      <rect x="500" y="240" width="440" height="200" rx="10" fill="#0f1524" stroke="#2a3654"/>
-      <text x="516" y="264" fill="#f87171" font-weight="700" font-size="12" letter-spacing="1">4 · PASSWORD CHANGE → SESSION REVOKE</text>
-      <rect x="516" y="278" width="160" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
-      <text x="596" y="299" fill="#e4e8f2" font-size="11" text-anchor="middle">User</text>
-      <line x1="676" y1="295" x2="756" y2="295" stroke="#f87171" stroke-width="1.5" marker-end="url(#a2r)"/>
-      <text x="716" y="290" fill="#f87171" font-size="9.5" text-anchor="middle" font-family="JetBrains Mono">POST /change-password</text>
-      <rect x="756" y="278" width="168" height="34" rx="6" fill="#131a2e" stroke="#2a3654"/>
-      <text x="840" y="299" fill="#e4e8f2" font-size="11" text-anchor="middle">Server</text>
-      <text x="516" y="338" fill="#a8b0c4" font-size="10.5">1. Verify old password (Argon2)</text>
-      <text x="516" y="354" fill="#a8b0c4" font-size="10.5">2. Hash new password (Argon2)</text>
-      <text x="516" y="370" fill="#f87171" font-size="10.5">3. DELETE ALL refresh_tokens FOR user</text>
-      <text x="516" y="386" fill="#a8b0c4" font-size="10.5">4. Current access token expires naturally (≤30m)</text>
-      <text x="516" y="406" fill="#a8b0c4" font-size="10.5">→ Other devices: next /refresh fails → logout</text>
-      <text x="516" y="422" fill="#d4a574" font-size="10.5">Same pattern for /reset-password (PR #12)</text>
-
-      <!-- FLOW 5: ACCOUNT DELETION -->
-      <rect x="20" y="460" width="920" height="220" rx="10" fill="#0f1524" stroke="#d4a574"/>
-      <text x="36" y="484" fill="#d4a574" font-weight="700" font-size="12" letter-spacing="1">5 · ACCOUNT DELETION (two-step email confirmed · PR #13)</text>
-
-      <!-- step A -->
-      <rect x="36" y="500" width="400" height="80" rx="8" fill="#131a2e" stroke="#d4a574"/>
-      <text x="50" y="522" fill="#d4a574" font-weight="700" font-size="11">STEP A — Request</text>
-      <text x="50" y="544" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">DELETE /auth/me</text>
-      <text x="50" y="560" fill="#a8b0c4" font-size="10.5">→ generate raw token · store SHA-256 · 24h TTL</text>
-      <text x="50" y="574" fill="#a8b0c4" font-size="10.5">→ Brevo: confirmation email (bg task)</text>
-
-      <!-- arrow -->
-      <line x1="445" y1="540" x2="510" y2="540" stroke="#d4a574" stroke-width="2" marker-end="url(#a2a)"/>
-      <text x="477" y="533" fill="#d4a574" font-size="10" text-anchor="middle">email link</text>
-
-      <!-- step B -->
-      <rect x="520" y="500" width="408" height="80" rx="8" fill="#131a2e" stroke="#f87171"/>
-      <text x="534" y="522" fill="#f87171" font-weight="700" font-size="11">STEP B — Confirm (user clicks link)</text>
-      <text x="534" y="544" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">GET /auth/confirm-delete/{raw_token}</text>
-      <text x="534" y="560" fill="#a8b0c4" font-size="10.5">→ SHA-256 compare · check not expired</text>
-      <text x="534" y="574" fill="#f87171" font-size="10.5">→ DELETE FROM users → CASCADE unwinds</text>
-
-      <!-- cascade boxes -->
-      <text x="36" y="608" fill="#a8b0c4" font-size="10.5">Cascade on user_id FK (CASCADE + ORM delete-orphan):</text>
-      <rect x="36" y="618" width="130" height="26" rx="4" fill="#131a2e" stroke="#2a3654"/>
-      <text x="101" y="635" fill="#a8b0c4" font-size="10.5" text-anchor="middle">categories</text>
-      <rect x="172" y="618" width="130" height="26" rx="4" fill="#131a2e" stroke="#2a3654"/>
-      <text x="237" y="635" fill="#a8b0c4" font-size="10.5" text-anchor="middle">items</text>
-      <rect x="308" y="618" width="130" height="26" rx="4" fill="#131a2e" stroke="#2a3654"/>
-      <text x="373" y="635" fill="#a8b0c4" font-size="10.5" text-anchor="middle">orders → order_items</text>
-      <rect x="444" y="618" width="130" height="26" rx="4" fill="#131a2e" stroke="#2a3654"/>
-      <text x="509" y="635" fill="#a8b0c4" font-size="10.5" text-anchor="middle">activity_logs</text>
-      <rect x="580" y="618" width="130" height="26" rx="4" fill="#131a2e" stroke="#2a3654"/>
-      <text x="645" y="635" fill="#a8b0c4" font-size="10.5" text-anchor="middle">refresh_tokens</text>
-      <rect x="716" y="618" width="130" height="26" rx="4" fill="#131a2e" stroke="#2a3654"/>
-      <text x="781" y="635" fill="#a8b0c4" font-size="10.5" text-anchor="middle">audit_logs</text>
-      <text x="36" y="665" fill="#5eead4" font-size="10.5">Next mobile API call → 401 → auth guard → redirect to login screen</text>
-
-      <!-- FLOW 6: CANCEL DELETION -->
-      <rect x="20" y="700" width="440" height="130" rx="10" fill="#0f1524" stroke="#2a3654"/>
-      <text x="36" y="724" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1">6 · CANCEL DELETION</text>
-      <text x="36" y="748" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">POST /auth/cancel-delete</text>
-      <text x="36" y="768" fill="#a8b0c4" font-size="10.5">Must still be logged in (pre-confirmation)</text>
-      <text x="36" y="786" fill="#a8b0c4" font-size="10.5">UPDATE users SET deletion_token = NULL,</text>
-      <text x="50" y="802" fill="#a8b0c4" font-size="10.5">deletion_token_expires = NULL</text>
-      <text x="36" y="820" fill="#d4a574" font-size="10.5">Email link is now inert (hash cleared)</text>
-
-      <!-- Security callout -->
-      <rect x="500" y="700" width="440" height="130" rx="10" fill="#131a2e" stroke="#f87171"/>
-      <text x="520" y="724" fill="#f87171" font-weight="700" font-size="11" letter-spacing="1">SECURITY HARDENING (PR #12)</text>
-      <text x="520" y="746" fill="#a8b0c4" font-size="10.5">• SECRET_KEY validator blocks "CHANGE-THIS" in prod</text>
-      <text x="520" y="762" fill="#a8b0c4" font-size="10.5">• SECRET_KEY minimum 32 chars</text>
-      <text x="520" y="778" fill="#a8b0c4" font-size="10.5">• /resend-verification uniform response (no enum leak)</text>
-      <text x="520" y="794" fill="#a8b0c4" font-size="10.5">• CORS_ORIGINS validator rejects "*" in prod</text>
-      <text x="520" y="810" fill="#a8b0c4" font-size="10.5">• FRONTEND_URL required in production config</text>
-      <text x="520" y="826" fill="#a8b0c4" font-size="10.5">• Email REQUIRED in UserRegister schema</text>
-
-      <!-- Legend -->
-      <rect x="20" y="854" width="920" height="50" rx="8" fill="#0f1524" stroke="#2a3654"/>
-      <circle cx="40" cy="880" r="6" fill="#5eead4"/><text x="54" y="884" fill="#a8b0c4" font-size="11">Normal flow</text>
-      <circle cx="170" cy="880" r="6" fill="#d4a574"/><text x="184" y="884" fill="#a8b0c4" font-size="11">Email / verification</text>
-      <circle cx="340" cy="880" r="6" fill="#f87171"/><text x="354" y="884" fill="#a8b0c4" font-size="11">Destructive (revoke / delete)</text>
-    </svg>
-  </div>
-
-  <div class="callout amber">
-    <span class="callout-label">Why two-step deletion</span>
-    <p>Google Play policy (and GDPR / DPDP Act) require full in-app account deletion. A single-click delete would be attractive for attackers with a stolen access token; a two-step flow that requires email access adds an out-of-band check. The raw token is emailed but never stored — the DB keeps only the SHA-256 hash.</p>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     DIAGRAM 3 · CI/CD
-     ═══════════════════════════════════════════════════════════════ -->
-<div class="diagram" id="d3">
-  <div class="diag-header">
-    <span class="diag-num">Diagram 03 / 05</span>
-    <h2>CI/CD &amp; <em>Deployment Pipeline</em></h2>
-    <p>GitHub Actions on PR and push. Configured Render deploy hook on main pushes. EAS builds on demand. Production AAB job exists but is disabled pending Play Store launch.</p>
-  </div>
-
-  <div class="svg-wrap">
-    <svg viewBox="0 0 960 760" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, sans-serif">
-      <defs>
-        <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5eead4"/>
-        </marker>
-        <marker id="a3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#d4a574"/>
-        </marker>
-      </defs>
-
-      <!-- trigger column -->
-      <rect x="20" y="20" width="200" height="720" rx="10" fill="#0f1524" stroke="#2a3654"/>
-      <text x="120" y="50" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1.5" text-anchor="middle">TRIGGERS</text>
-
-      <!-- T1 push feature -->
-      <rect x="36" y="76" width="168" height="62" rx="8" fill="#131a2e" stroke="#6b7490"/>
-      <text x="120" y="96" fill="#6b7490" font-size="11" font-weight="600" text-anchor="middle">push feature/*</text>
-      <text x="120" y="114" fill="#6b7490" font-size="10" text-anchor="middle">— nothing runs —</text>
-      <text x="120" y="130" fill="#6b7490" font-size="10" text-anchor="middle" font-style="italic">(not a CI trigger)</text>
-
-      <!-- T2 PR -->
-      <rect x="36" y="156" width="168" height="80" rx="8" fill="#131a2e" stroke="#5eead4" stroke-width="1.5"/>
-      <text x="120" y="180" fill="#5eead4" font-size="11" font-weight="600" text-anchor="middle">open PR → main</text>
-      <text x="120" y="200" fill="#a8b0c4" font-size="10" text-anchor="middle">pull_request event</text>
-      <text x="120" y="218" fill="#a8b0c4" font-size="10" text-anchor="middle">runs CI</text>
-
-      <!-- T3 label -->
-      <rect x="36" y="254" width="168" height="80" rx="8" fill="#131a2e" stroke="#d4a574" stroke-width="1.5"/>
-      <text x="120" y="278" fill="#d4a574" font-size="11" font-weight="600" text-anchor="middle">+ label: build-apk</text>
-      <text x="120" y="298" fill="#a8b0c4" font-size="10" text-anchor="middle">enables build-preview</text>
-      <text x="120" y="316" fill="#a8b0c4" font-size="10" text-anchor="middle">EAS APK → staging</text>
-
-      <!-- T4 merge -->
-      <rect x="36" y="352" width="168" height="80" rx="8" fill="#131a2e" stroke="#5eead4" stroke-width="2"/>
-      <text x="120" y="376" fill="#5eead4" font-size="11" font-weight="700" text-anchor="middle">merge → main</text>
-      <text x="120" y="396" fill="#a8b0c4" font-size="10" text-anchor="middle">push event on main</text>
-      <text x="120" y="414" fill="#a8b0c4" font-size="10" text-anchor="middle">→ Render deploy</text>
-
-      <!-- T5 manual eas prod -->
-      <rect x="36" y="450" width="168" height="80" rx="8" fill="#131a2e" stroke="#a78bfa" stroke-width="1.5"/>
-      <text x="120" y="474" fill="#a78bfa" font-size="11" font-weight="600" text-anchor="middle">manual eas build</text>
-      <text x="120" y="494" fill="#a8b0c4" font-size="10" text-anchor="middle">--profile production</text>
-      <text x="120" y="512" fill="#a8b0c4" font-size="10" text-anchor="middle">produces AAB</text>
-
-      <!-- T6 workflow dispatch -->
-      <rect x="36" y="548" width="168" height="62" rx="8" fill="#131a2e" stroke="#6b7490"/>
-      <text x="120" y="572" fill="#6b7490" font-size="11" font-weight="600" text-anchor="middle">workflow_dispatch</text>
-      <text x="120" y="592" fill="#6b7490" font-size="10" text-anchor="middle">(manual CI run)</text>
-
-      <!-- arrows from triggers to CI column -->
-      <line x1="220" y1="196" x2="280" y2="196" stroke="#5eead4" stroke-width="1.5" marker-end="url(#a3)"/>
-      <line x1="220" y1="294" x2="280" y2="294" stroke="#d4a574" stroke-width="1.5" marker-end="url(#a3a)"/>
-      <line x1="220" y1="392" x2="280" y2="392" stroke="#5eead4" stroke-width="2" marker-end="url(#a3)"/>
-
-      <!-- CI column -->
-      <rect x="290" y="20" width="300" height="720" rx="10" fill="#0f1524" stroke="#2a3654"/>
-      <text x="440" y="50" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1.5" text-anchor="middle">CI — ci.yml (GitHub Actions)</text>
-
-      <rect x="310" y="76" width="260" height="50" rx="6" fill="#131a2e" stroke="#2a3654"/>
-      <text x="440" y="95" fill="#e4e8f2" font-size="11" text-anchor="middle" font-weight="600">test-backend</text>
-      <text x="440" y="113" fill="#a8b0c4" font-size="10" text-anchor="middle">pytest · ruff · mypy · postgres:16 svc</text>
-
-      <rect x="310" y="140" width="260" height="50" rx="6" fill="#131a2e" stroke="#2a3654"/>
-      <text x="440" y="159" fill="#e4e8f2" font-size="11" text-anchor="middle" font-weight="600">test-frontend</text>
-      <text x="440" y="177" fill="#a8b0c4" font-size="10" text-anchor="middle">tsc · eslint · expo-doctor advisory</text>
-
-      <rect x="310" y="204" width="260" height="50" rx="6" fill="#131a2e" stroke="#2a3654"/>
-      <text x="440" y="223" fill="#e4e8f2" font-size="11" text-anchor="middle" font-weight="600">security-scan</text>
-      <text x="440" y="241" fill="#a8b0c4" font-size="10" text-anchor="middle">Trivy (CRITICAL + HIGH)</text>
-
-      <rect x="310" y="268" width="260" height="50" rx="6" fill="#131a2e" stroke="#5eead4"/>
-      <text x="440" y="287" fill="#5eead4" font-size="11" text-anchor="middle" font-weight="600">pr-check (merge gate)</text>
-      <text x="440" y="305" fill="#a8b0c4" font-size="10" text-anchor="middle">requires backend + frontend green</text>
-
-      <rect x="310" y="332" width="260" height="50" rx="6" fill="#131a2e" stroke="#d4a574"/>
-      <text x="440" y="351" fill="#d4a574" font-size="11" text-anchor="middle" font-weight="600">build-preview</text>
-      <text x="440" y="369" fill="#a8b0c4" font-size="10" text-anchor="middle">IF label == "build-apk" · EAS APK</text>
-
-      <rect x="310" y="396" width="260" height="50" rx="6" fill="#131a2e" stroke="#5eead4" stroke-width="2"/>
-      <text x="440" y="415" fill="#5eead4" font-size="11" text-anchor="middle" font-weight="600">deploy-backend</text>
-      <text x="440" y="433" fill="#a8b0c4" font-size="10" text-anchor="middle">push to main · POST Render hook</text>
-
-      <rect x="310" y="460" width="260" height="50" rx="6" fill="#131a2e" stroke="#f87171" stroke-dasharray="4,4"/>
-      <text x="440" y="479" fill="#f87171" font-size="11" text-anchor="middle" font-weight="600">build-production — DISABLED</text>
-      <text x="440" y="497" fill="#a8b0c4" font-size="10" text-anchor="middle" font-style="italic">if: false · flip on for Play Store launch</text>
-
-      <!-- arrows across -->
-      <line x1="590" y1="421" x2="660" y2="421" stroke="#5eead4" stroke-width="2" marker-end="url(#a3)"/>
-      <line x1="590" y1="357" x2="660" y2="630" stroke="#d4a574" stroke-width="1.5" marker-end="url(#a3a)"/>
-
-      <!-- outputs -->
-      <rect x="660" y="20" width="280" height="720" rx="10" fill="#0f1524" stroke="#2a3654"/>
-      <text x="800" y="50" fill="#5eead4" font-weight="700" font-size="12" letter-spacing="1.5" text-anchor="middle">OUTPUTS</text>
-
-      <rect x="680" y="76" width="240" height="200" rx="8" fill="#131a2e" stroke="#5eead4" stroke-width="1.5"/>
-      <text x="800" y="100" fill="#5eead4" font-size="11" font-weight="700" text-anchor="middle">Render services</text>
-      <text x="800" y="122" fill="#a8b0c4" font-size="10" text-anchor="middle">prod hook · staging root filter</text>
-      <line x1="700" y1="136" x2="900" y2="136" stroke="#2a3654"/>
-      <text x="694" y="158" fill="#e4e8f2" font-size="10.5">1. docker-entrypoint.sh</text>
-      <text x="694" y="174" fill="#a8b0c4" font-size="10">   parse DATABASE_URL</text>
-      <text x="694" y="190" fill="#a8b0c4" font-size="10">   pg_isready (30×)</text>
-      <text x="694" y="206" fill="#a8b0c4" font-size="10">   alembic upgrade head</text>
-      <text x="694" y="226" fill="#e4e8f2" font-size="10.5">2. gunicorn (4 workers)</text>
-      <text x="694" y="242" fill="#e4e8f2" font-size="10.5">3. /health → 200 → live</text>
-      <text x="694" y="262" fill="#d4a574" font-size="10" font-style="italic">localhost:5432 failures — harmless</text>
-
-      <rect x="680" y="296" width="240" height="150" rx="8" fill="#131a2e" stroke="#d4a574" stroke-width="1.5"/>
-      <text x="800" y="320" fill="#d4a574" font-size="11" font-weight="700" text-anchor="middle">EAS Preview APK</text>
-      <text x="800" y="340" fill="#a8b0c4" font-size="10" text-anchor="middle">channel: preview</text>
-      <text x="694" y="362" fill="#a8b0c4" font-size="10">Bakes in EXPO_PUBLIC_API_URL =</text>
-      <text x="694" y="378" fill="#5eead4" font-size="10" font-family="JetBrains Mono">staging-api.carekosh.com</text>
-      <text x="694" y="394" fill="#5eead4" font-size="10" font-family="JetBrains Mono">(staging)</text>
-      <text x="694" y="416" fill="#a8b0c4" font-size="10">Download → sideload → hits staging</text>
-      <text x="694" y="432" fill="#a8b0c4" font-size="10">Reviewer device: Pixel 9 Pro XL · A16</text>
-
-      <rect x="680" y="466" width="240" height="160" rx="8" fill="#131a2e" stroke="#a78bfa" stroke-width="1.5"/>
-      <text x="800" y="490" fill="#a78bfa" font-size="11" font-weight="700" text-anchor="middle">EAS Production AAB (manual)</text>
-      <text x="800" y="510" fill="#a8b0c4" font-size="10" text-anchor="middle">channel: production · autoIncrement</text>
-      <text x="694" y="532" fill="#a8b0c4" font-size="10">Bakes in EXPO_PUBLIC_API_URL =</text>
-      <text x="694" y="548" fill="#5eead4" font-size="10" font-family="JetBrains Mono">api.carekosh.com</text>
-      <text x="694" y="570" fill="#a8b0c4" font-size="10">eas submit → Play Console</text>
-      <text x="694" y="586" fill="#a8b0c4" font-size="10">track: internal</text>
-      <text x="694" y="608" fill="#d4a574" font-size="10" font-style="italic">CI automation ready, gated off</text>
-
-      <!-- env matrix mini -->
-      <rect x="680" y="646" width="240" height="80" rx="8" fill="#131a2e" stroke="#2a3654"/>
-      <text x="694" y="668" fill="#5eead4" font-size="10.5" font-weight="700">ENV DELTA (same image)</text>
-      <text x="694" y="686" fill="#a8b0c4" font-size="10">DATABASE_URL · Neon branch</text>
-      <text x="694" y="702" fill="#a8b0c4" font-size="10">FRONTEND_URL · CORS_ORIGINS</text>
-      <text x="694" y="718" fill="#a8b0c4" font-size="10">MAIL_PASSWORD · SECRET_KEY</text>
-    </svg>
-  </div>
-
-  <div class="callout teal">
-    <span class="callout-label">Key invariant</span>
-    <p>The Docker image that runs in staging and production is <em>byte-identical</em>. Every environmental difference is an env var injected by Render. This is what makes "staging works but production doesn't" a tractable question — the delta is always in config or data, never in code.</p>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     DIAGRAM 4 · DATA MODEL
-     ═══════════════════════════════════════════════════════════════ -->
-<div class="diagram" id="d4">
-  <div class="diag-header">
-    <span class="diag-num">Diagram 04 / 05</span>
-    <h2>Data Model &amp; <em>Integrity</em></h2>
-    <p>Seven tables, one aggregate root (<code>users</code>), a <code>version</code> column that makes OCC possible, a JSONB audit log that makes every write traceable, and CASCADE FKs that let an account-deletion touch only one row and unwind cleanly.</p>
-  </div>
-
-  <div class="svg-wrap">
-    <svg viewBox="0 0 960 820" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, sans-serif">
-      <defs>
-        <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5eead4"/>
-        </marker>
-      </defs>
-
-      <!-- USERS -->
-      <rect x="350" y="20" width="260" height="200" rx="10" fill="#131a2e" stroke="#5eead4" stroke-width="2"/>
-      <rect x="350" y="20" width="260" height="32" rx="10" fill="#0d2626"/>
-      <text x="480" y="42" fill="#5eead4" font-size="13" font-weight="700" text-anchor="middle">users</text>
-      <text x="365" y="70" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">id · UUID · PK</text>
-      <text x="365" y="86" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">name · email (unique) · username</text>
-      <text x="365" y="102" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">hashed_password · Argon2</text>
-      <text x="365" y="118" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">is_verified · is_email_verified</text>
-      <text x="365" y="134" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">email_verification_token (+exp)</text>
-      <text x="365" y="150" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">password_reset_token (+exp)</text>
-      <text x="365" y="166" fill="#d4a574" font-size="10.5" font-family="JetBrains Mono">deletion_token (+exp) ← PR #13</text>
-      <text x="365" y="182" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">last_login · created_at · updated_at</text>
-      <text x="365" y="206" fill="#f87171" font-size="10" font-style="italic">CASCADE DELETE → all children</text>
-
-      <!-- CATEGORIES -->
-      <rect x="40" y="280" width="230" height="130" rx="10" fill="#131a2e" stroke="#2a3654"/>
-      <rect x="40" y="280" width="230" height="32" rx="10" fill="#0f1524"/>
-      <text x="155" y="302" fill="#5eead4" font-size="12" font-weight="700" text-anchor="middle">categories</text>
-      <text x="52" y="328" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">id · user_id (FK)</text>
-      <text x="52" y="344" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">name · icon · color</text>
-      <text x="52" y="360" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">display_order</text>
-      <text x="52" y="376" fill="#d4a574" font-size="10.5" font-family="JetBrains Mono">is_default (client-protected)</text>
-      <text x="52" y="392" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">created_at · updated_at</text>
-
-      <!-- ITEMS -->
-      <rect x="300" y="280" width="360" height="180" rx="10" fill="#131a2e" stroke="#d4a574" stroke-width="2"/>
-      <rect x="300" y="280" width="360" height="32" rx="10" fill="#1c1810"/>
-      <text x="480" y="302" fill="#d4a574" font-size="12" font-weight="700" text-anchor="middle">items  ·  OCC + audit + CHECK</text>
-      <text x="312" y="328" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">id · user_id · category_id (FK)</text>
-      <text x="312" y="344" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">name · unit · notes · is_critical</text>
-      <text x="312" y="360" fill="#5eead4" font-size="10.5" font-family="JetBrains Mono">quantity INT CHECK (quantity ≥ 0)</text>
-      <text x="312" y="376" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">minimum_quantity</text>
-      <text x="312" y="392" fill="#d4a574" font-size="10.5" font-family="JetBrains Mono">version INT ← OCC, incr on UPDATE</text>
-      <text x="312" y="408" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">created_at · updated_at</text>
-      <text x="312" y="430" fill="#5eead4" font-size="10" font-style="italic">UPDATE … WHERE version = :v</text>
-      <text x="312" y="446" fill="#5eead4" font-size="10" font-style="italic">→ 0 rows changed → 409 Conflict</text>
-
-      <!-- ORDERS -->
-      <rect x="690" y="280" width="230" height="180" rx="10" fill="#131a2e" stroke="#2a3654"/>
-      <rect x="690" y="280" width="230" height="32" rx="10" fill="#0f1524"/>
-      <text x="805" y="302" fill="#5eead4" font-size="12" font-weight="700" text-anchor="middle">orders</text>
-      <text x="702" y="328" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">id · user_id (FK)</text>
-      <text x="702" y="344" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">order_number</text>
-      <text x="702" y="360" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">title · notes · supplier</text>
-      <text x="702" y="376" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">status (enum)</text>
-      <text x="702" y="392" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">  pending → ordered</text>
-      <text x="702" y="408" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">  → received → stock_updated</text>
-      <text x="702" y="424" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">  / declined</text>
-      <text x="702" y="446" fill="#d4a574" font-size="10" font-style="italic">POST /{id}/apply — atomic txn</text>
-
-      <!-- ORDER_ITEMS -->
-      <rect x="690" y="490" width="230" height="90" rx="10" fill="#131a2e" stroke="#2a3654"/>
-      <rect x="690" y="490" width="230" height="32" rx="10" fill="#0f1524"/>
-      <text x="805" y="512" fill="#5eead4" font-size="12" font-weight="700" text-anchor="middle">order_items</text>
-      <text x="702" y="538" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">order_id (FK) · item_id (FK)</text>
-      <text x="702" y="554" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">quantity · unit_price</text>
-      <text x="702" y="570" fill="#a8b0c4" font-size="10" font-style="italic">junction · cascades via order</text>
-
-      <!-- AUDIT_LOGS -->
-      <rect x="40" y="490" width="280" height="160" rx="10" fill="#131a2e" stroke="#d4a574" stroke-width="1.5"/>
-      <rect x="40" y="490" width="280" height="32" rx="10" fill="#1c1810"/>
-      <text x="180" y="512" fill="#d4a574" font-size="12" font-weight="700" text-anchor="middle">audit_logs  ·  PR #4</text>
-      <text x="52" y="538" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">id · user_id (FK) · created_at</text>
-      <text x="52" y="554" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">entity_type · entity_id</text>
-      <text x="52" y="570" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">action: create / update / delete</text>
-      <text x="52" y="586" fill="#5eead4" font-size="10.5" font-family="JetBrains Mono">before_snapshot JSONB</text>
-      <text x="52" y="602" fill="#5eead4" font-size="10.5" font-family="JetBrains Mono">after_snapshot  JSONB</text>
-      <text x="52" y="622" fill="#a8b0c4" font-size="10" font-style="italic">Written by app-level hook on every write</text>
-      <text x="52" y="638" fill="#a8b0c4" font-size="10" font-style="italic">DB-level cascade only; no ORM rel on User</text>
-
-      <!-- ACTIVITY_LOGS -->
-      <rect x="340" y="490" width="320" height="120" rx="10" fill="#131a2e" stroke="#2a3654"/>
-      <rect x="340" y="490" width="320" height="32" rx="10" fill="#0f1524"/>
-      <text x="500" y="512" fill="#5eead4" font-size="12" font-weight="700" text-anchor="middle">activity_logs</text>
-      <text x="352" y="538" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">id · user_id · item_id · order_id</text>
-      <text x="352" y="554" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">action (enum) · item_name · details</text>
-      <text x="352" y="570" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">created_at</text>
-      <text x="352" y="592" fill="#a8b0c4" font-size="10" font-style="italic">Human-readable feed (GET /activities)</text>
-
-      <!-- REFRESH_TOKENS -->
-      <rect x="340" y="630" width="320" height="120" rx="10" fill="#131a2e" stroke="#f87171" stroke-width="1.5"/>
-      <rect x="340" y="630" width="320" height="32" rx="10" fill="#1c1010"/>
-      <text x="500" y="652" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">refresh_tokens  ·  rotation + revoke</text>
-      <text x="352" y="678" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">id · user_id (FK) · token_hash</text>
-      <text x="352" y="694" fill="#a8b0c4" font-size="10.5" font-family="JetBrains Mono">expires_at · created_at</text>
-      <text x="352" y="716" fill="#f87171" font-size="10" font-style="italic">DELETE row on /refresh (rotate)</text>
-      <text x="352" y="732" fill="#f87171" font-size="10" font-style="italic">DELETE ALL on /change-password · /reset-password</text>
-
-      <!-- Arrows from users -->
-      <path d="M 380 220 Q 300 250 155 280" stroke="#5eead4" stroke-width="1.5" fill="none" marker-end="url(#a4)"/>
-      <path d="M 480 220 L 480 280" stroke="#5eead4" stroke-width="1.5" fill="none" marker-end="url(#a4)"/>
-      <path d="M 580 220 Q 700 250 805 280" stroke="#5eead4" stroke-width="1.5" fill="none" marker-end="url(#a4)"/>
-      <path d="M 420 220 Q 350 360 180 490" stroke="#5eead4" stroke-width="1.2" fill="none" marker-end="url(#a4)"/>
-      <path d="M 500 220 Q 500 360 500 490" stroke="#5eead4" stroke-width="1.2" fill="none" marker-end="url(#a4)" stroke-dasharray="2,2"/>
-      <path d="M 550 220 Q 600 420 500 630" stroke="#f87171" stroke-width="1.2" fill="none" marker-end="url(#a4)"/>
-      <!-- orders → order_items -->
-      <line x1="805" y1="460" x2="805" y2="490" stroke="#5eead4" stroke-width="1.5" marker-end="url(#a4)"/>
-      <!-- items → order_items (referenced, not cascade) -->
-      <path d="M 660 390 Q 700 440 750 490" stroke="#a8b0c4" stroke-width="1" fill="none" stroke-dasharray="3,3" marker-end="url(#a4)"/>
-
-      <!-- Integrity summary strip -->
-      <rect x="40" y="770" width="880" height="40" rx="8" fill="#0d2626" stroke="#5eead4"/>
-      <text x="54" y="795" fill="#5eead4" font-size="11" font-weight="700">INTEGRITY</text>
-      <text x="140" y="795" fill="#a8b0c4" font-size="10.5">OCC</text>
-      <text x="180" y="795" fill="#e4e8f2" font-size="10.5">·</text>
-      <text x="200" y="795" fill="#a8b0c4" font-size="10.5">Audit log</text>
-      <text x="260" y="795" fill="#e4e8f2" font-size="10.5">·</text>
-      <text x="280" y="795" fill="#a8b0c4" font-size="10.5">CHECK constraint</text>
-      <text x="390" y="795" fill="#e4e8f2" font-size="10.5">·</text>
-      <text x="410" y="795" fill="#a8b0c4" font-size="10.5">Atomic apply-stock</text>
-      <text x="535" y="795" fill="#e4e8f2" font-size="10.5">·</text>
-      <text x="555" y="795" fill="#a8b0c4" font-size="10.5">Unique (user_id, category_id, name)</text>
-      <text x="790" y="795" fill="#e4e8f2" font-size="10.5">·</text>
-      <text x="810" y="795" fill="#a8b0c4" font-size="10.5">CASCADE</text>
-    </svg>
-  </div>
-
-  <table>
-    <thead><tr><th>Mechanism</th><th>Where</th><th>What it prevents</th></tr></thead>
-    <tbody>
-      <tr><td>Optimistic concurrency (<code>version</code>)</td><td><code>items</code> column + 409 response</td><td>Two caregivers silently overwriting each other's stock updates</td></tr>
-      <tr><td>JSONB audit log (<code>before_snapshot</code> / <code>after_snapshot</code>)</td><td><code>audit_logs</code> table</td><td>Untraceable state changes; supports forensic "what happened on April 4 at 3am"</td></tr>
-      <tr><td>CHECK constraint <code>quantity ≥ 0</code></td><td><code>items</code> column</td><td>Negative stock from a bug or manual SQL edit</td></tr>
-      <tr><td>Atomic <code>apply-stock</code></td><td><code>/orders/{id}/apply</code> endpoint</td><td>Partial order application — all items update, or none do</td></tr>
-      <tr><td>Unique <code>(user_id, category_id, name)</code></td><td><code>items</code> index (PR #8)</td><td>Duplicate items created by racing seed prompts</td></tr>
-      <tr><td>CASCADE + ORM delete-orphan</td><td>All user-owned tables</td><td>Orphan data after account deletion (DPDP / GDPR compliance)</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     DIAGRAM 5 · SCREEN MAP
-     ═══════════════════════════════════════════════════════════════ -->
-<div class="diagram" id="d5">
-  <div class="diag-header">
-    <span class="diag-num">Diagram 05 / 05</span>
-    <h2>Mobile <em>Screen Map</em></h2>
-    <p>Expo Router's file-based navigation. Two groups — <code>(auth)</code> and <code>(tabs)</code> — plus four top-level modals. The Profile screen and its swipe-down popup menu shipped in PR #13.</p>
-  </div>
-
-  <div class="svg-wrap">
-    <svg viewBox="0 0 960 720" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, sans-serif">
-      <defs>
-        <marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5eead4"/>
-        </marker>
-      </defs>
-
-      <!-- Root -->
-      <rect x="380" y="20" width="200" height="54" rx="10" fill="#131a2e" stroke="#5eead4" stroke-width="2"/>
-      <text x="480" y="42" fill="#5eead4" font-size="11" font-weight="700" text-anchor="middle">app/_layout.tsx</text>
-      <text x="480" y="60" fill="#a8b0c4" font-size="10" text-anchor="middle">root Stack navigator</text>
-
-      <!-- Branches -->
-      <line x1="480" y1="74" x2="480" y2="100" stroke="#5eead4" stroke-width="1.5"/>
-      <line x1="120" y1="100" x2="840" y2="100" stroke="#5eead4" stroke-width="1.5"/>
-
-      <!-- AUTH group -->
-      <line x1="140" y1="100" x2="140" y2="128" stroke="#5eead4" stroke-width="1.5"/>
-      <rect x="40" y="130" width="200" height="260" rx="10" fill="#131a2e" stroke="#a78bfa"/>
-      <rect x="40" y="130" width="200" height="28" rx="10" fill="#18142a"/>
-      <text x="140" y="149" fill="#a78bfa" font-size="11" font-weight="700" text-anchor="middle">(auth) · unauthenticated</text>
-      <text x="55" y="178" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">login.tsx</text>
-      <text x="55" y="198" fill="#a8b0c4" font-size="9.5">email or username + password</text>
-      <text x="55" y="222" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">register.tsx</text>
-      <text x="55" y="242" fill="#a8b0c4" font-size="9.5">email REQUIRED (PR #12)</text>
-      <text x="55" y="266" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">forgot-password.tsx</text>
-      <text x="55" y="286" fill="#a8b0c4" font-size="9.5">emails a reset link</text>
-      <text x="55" y="310" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">reset-password.tsx</text>
-      <text x="55" y="330" fill="#a8b0c4" font-size="9.5">session-revoke on success</text>
-      <text x="55" y="354" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">verify-email-pending.tsx</text>
-      <text x="55" y="374" fill="#a8b0c4" font-size="9.5">waiting room post-register</text>
-
-      <!-- TABS group -->
-      <line x1="360" y1="100" x2="360" y2="128" stroke="#5eead4" stroke-width="1.5"/>
-      <rect x="260" y="130" width="200" height="260" rx="10" fill="#131a2e" stroke="#5eead4"/>
-      <rect x="260" y="130" width="200" height="28" rx="10" fill="#0d2626"/>
-      <text x="360" y="149" fill="#5eead4" font-size="11" font-weight="700" text-anchor="middle">(tabs) · authenticated</text>
-      <text x="275" y="178" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">index.tsx — Dashboard</text>
-      <text x="275" y="196" fill="#a8b0c4" font-size="9.5">stats cards · needs-attention</text>
-      <text x="275" y="212" fill="#a8b0c4" font-size="9.5">recent activity feed</text>
-      <text x="275" y="228" fill="#a8b0c4" font-size="9.5">"Build Inventory" → /builder</text>
-      <text x="275" y="256" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">inventory.tsx</text>
-      <text x="275" y="274" fill="#a8b0c4" font-size="9.5">category-grouped items</text>
-      <text x="275" y="290" fill="#a8b0c4" font-size="9.5">search · tap → /item/[id]</text>
-      <text x="275" y="318" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">orders.tsx</text>
-      <text x="275" y="336" fill="#a8b0c4" font-size="9.5">status badges</text>
-      <text x="275" y="352" fill="#a8b0c4" font-size="9.5">FAB → /order/create</text>
-
-      <!-- Modals -->
-      <line x1="580" y1="100" x2="580" y2="128" stroke="#5eead4" stroke-width="1.5"/>
-      <rect x="480" y="130" width="200" height="260" rx="10" fill="#131a2e" stroke="#d4a574"/>
-      <rect x="480" y="130" width="200" height="28" rx="10" fill="#1c1810"/>
-      <text x="580" y="149" fill="#d4a574" font-size="11" font-weight="700" text-anchor="middle">modals (top-level)</text>
-      <text x="495" y="178" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">item/[id].tsx</text>
-      <text x="495" y="196" fill="#a8b0c4" font-size="9.5">detail + editor · OCC-aware</text>
-      <text x="495" y="222" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">order/create.tsx</text>
-      <text x="495" y="240" fill="#a8b0c4" font-size="9.5">new order · low-stock picker</text>
-      <text x="495" y="266" fill="#e4e8f2" font-size="10.5" font-family="JetBrains Mono">builder.tsx</text>
-      <text x="495" y="284" fill="#a8b0c4" font-size="9.5">bulk seed · category mgmt</text>
-      <text x="495" y="300" fill="#a8b0c4" font-size="9.5">seed prompt (first-run)</text>
-      <text x="495" y="330" fill="#d4a574" font-size="10.5" font-family="JetBrains Mono">profile.tsx · PR #13</text>
-      <text x="495" y="348" fill="#a8b0c4" font-size="9.5">account info</text>
-      <text x="495" y="364" fill="#a8b0c4" font-size="9.5">change password · delete</text>
-
-      <!-- Profile menu sheet -->
-      <line x1="820" y1="100" x2="820" y2="128" stroke="#d4a574" stroke-width="1.5"/>
-      <rect x="720" y="130" width="200" height="260" rx="10" fill="#131a2e" stroke="#d4a574" stroke-width="1.5"/>
-      <rect x="720" y="130" width="200" height="28" rx="10" fill="#1c1810"/>
-      <text x="820" y="149" fill="#d4a574" font-size="11" font-weight="700" text-anchor="middle">Profile menu sheet</text>
-      <text x="735" y="176" fill="#a8b0c4" font-size="10" font-style="italic">bottom sheet · swipe-down dismiss</text>
-      <text x="735" y="192" fill="#a8b0c4" font-size="10" font-style="italic">(PR #13)</text>
-      <text x="735" y="216" fill="#e4e8f2" font-size="10.5">· User info (name, email)</text>
-      <text x="735" y="234" fill="#e4e8f2" font-size="10.5">· Appearance (dark/light)</text>
-      <text x="735" y="252" fill="#e4e8f2" font-size="10.5">· Edit Profile → /profile</text>
-      <text x="735" y="270" fill="#e4e8f2" font-size="10.5">· Settings</text>
-      <text x="735" y="288" fill="#e4e8f2" font-size="10.5">· About CareKosh (alert)</text>
-      <text x="735" y="306" fill="#e4e8f2" font-size="10.5">· Help &amp; Support</text>
-      <text x="735" y="324" fill="#e4e8f2" font-size="10.5">· Logout</text>
-
-      <!-- Account deletion flow callout -->
-      <rect x="40" y="420" width="880" height="130" rx="10" fill="#0f1524" stroke="#f87171"/>
-      <text x="56" y="446" fill="#f87171" font-size="11" font-weight="700" letter-spacing="1">ACCOUNT DELETION NAV (PR #13)</text>
-      <text x="56" y="470" fill="#a8b0c4" font-size="10.5">1. Top-right avatar tap → Profile menu sheet slides up</text>
-      <text x="56" y="488" fill="#a8b0c4" font-size="10.5">2. Swipe down to dismiss, OR tap Edit Profile → /profile</text>
-      <text x="56" y="506" fill="#a8b0c4" font-size="10.5">3. Profile screen → "Delete Account" danger zone → confirm dialog → DELETE /auth/me → email sent</text>
-      <text x="56" y="524" fill="#d4a574" font-size="10.5">4. Email link opens browser → GET confirmation page → user submits POST /confirm-delete/{token}</text>
-      <text x="56" y="542" fill="#d4a574" font-size="10.5">   → account deleted → mobile next API call 401 → logout</text>
-
-      <!-- Auth redirect diagram -->
-      <rect x="40" y="560" width="880" height="140" rx="10" fill="#0f1524" stroke="#2a3654"/>
-      <text x="56" y="586" fill="#5eead4" font-size="11" font-weight="700" letter-spacing="1">AUTH GUARD / REDIRECT BEHAVIOR</text>
-
-      <rect x="70" y="610" width="150" height="60" rx="8" fill="#131a2e" stroke="#2a3654"/>
-      <text x="145" y="632" fill="#e4e8f2" font-size="10.5" text-anchor="middle">app launch</text>
-      <text x="145" y="650" fill="#a8b0c4" font-size="10" text-anchor="middle">_layout.tsx checks</text>
-      <text x="145" y="666" fill="#a8b0c4" font-size="10" text-anchor="middle">SecureStore token</text>
-
-      <line x1="220" y1="640" x2="280" y2="640" stroke="#5eead4" stroke-width="1.5" marker-end="url(#a5)"/>
-
-      <rect x="280" y="610" width="150" height="60" rx="8" fill="#131a2e" stroke="#a78bfa"/>
-      <text x="355" y="632" fill="#a78bfa" font-size="10.5" text-anchor="middle">no token</text>
-      <text x="355" y="652" fill="#a8b0c4" font-size="10" text-anchor="middle">→ (auth)/login</text>
-
-      <rect x="460" y="610" width="150" height="60" rx="8" fill="#131a2e" stroke="#5eead4"/>
-      <text x="535" y="632" fill="#5eead4" font-size="10.5" text-anchor="middle">valid token</text>
-      <text x="535" y="652" fill="#a8b0c4" font-size="10" text-anchor="middle">→ (tabs) dashboard</text>
-
-      <rect x="640" y="610" width="150" height="60" rx="8" fill="#131a2e" stroke="#d4a574"/>
-      <text x="715" y="632" fill="#d4a574" font-size="10.5" text-anchor="middle">stale token (401)</text>
-      <text x="715" y="652" fill="#a8b0c4" font-size="10" text-anchor="middle">→ /refresh or login</text>
-
-      <rect x="810" y="610" width="110" height="60" rx="8" fill="#131a2e" stroke="#f87171"/>
-      <text x="865" y="632" fill="#f87171" font-size="10.5" text-anchor="middle">account gone</text>
-      <text x="865" y="652" fill="#a8b0c4" font-size="10" text-anchor="middle">→ login</text>
-    </svg>
-  </div>
-
-  <div class="callout violet">
-    <span class="callout-label">Why file-based routing</span>
-    <p>Expo Router's file-to-route mapping is a constraint that doubles as documentation — the <code>app/</code> tree literally <em>is</em> the navigation graph. A new contributor can grep the directory and know every screen the app has. This is worth more than the flexibility a code-based navigator would buy.</p>
-  </div>
-</div>
-
-<!-- PR LIST -->
-<div class="pr-list">
-  <h3>PR history — the thread that runs through every diagram</h3>
-  <ul>
-    <li><span class="pr-num">#1</span><span class="pr-what">Hosting migration: Railway → Render</span></li>
-    <li><span class="pr-num">#2</span><span class="pr-what">Neon branches for staging + production</span></li>
-    <li><span class="pr-num">#4</span><span class="pr-what">Server-first architecture — TanStack Query, OCC, audit log, sync.ts deleted</span></li>
-    <li><span class="pr-num">#5–#7</span><span class="pr-what">Schema fixes, activity endpoint, seed dedup, protected default categories, OrderCreate fixes</span></li>
-    <li><span class="pr-num">#8</span><span class="pr-what">Duplicate item enforcement (unique constraint)</span></li>
-    <li><span class="pr-num">#9</span><span class="pr-what">Order mutation hardening + API error handling</span></li>
-    <li><span class="pr-num">#10–#11</span><span class="pr-what">VitalTrack → CareKosh rebrand (user-visible surfaces only)</span></li>
-    <li><span class="pr-num">#12</span><span class="pr-what">Auth hardening — config validators, enum-leak fix, session revoke, email required</span></li>
-    <li><span class="pr-num">#13</span><span class="pr-what">Account deletion (email-confirmed two-step) + Profile screen + swipe-down popup menu</span></li>
-  </ul>
-</div>
-
-<div class="footer">
-  <em>CareKosh</em> · System Architecture · April–May 2026 · PRs #4–#34
-</div>
-
-</div>
-</body>
-</html>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Architecture diagrams — CareKosh</title><style>body{margin:0;background:#f7f5ef;color:#202c32;font:17px/1.65 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:40px 24px 80px}h1{font-size:clamp(2rem,5vw,3.1rem);line-height:1.15}h2{margin-top:2.5rem;color:#174b49}a{color:#075d70;text-underline-offset:3px}table{border-collapse:collapse;width:100%;margin:20px 0}th,td{border:1px solid #c8d1cd;padding:12px;text-align:left;vertical-align:top}th{background:#e6eeea}pre{padding:18px;background:#172e34;color:#eff7f3;overflow:auto;border-radius:8px}code{font-size:.9em}aside,.note{padding:18px;border-left:4px solid #9b6a1b;background:#fff3d7;margin:20px 0}.eyebrow{font-size:.8rem;text-transform:uppercase;letter-spacing:.1em}nav{display:flex;gap:15px;flex-wrap:wrap}li{margin:8px 0}@media(max-width:650px){table{display:block;overflow:auto}main{padding:24px 16px}}@media print{body{background:white;color:black}main{max-width:none;padding:0}pre{white-space:pre-wrap;background:#eee;color:black}a{color:inherit}}main{max-width:1080px}main>p,main>ul,main>ol,main>aside,main>h1,main>h2,main>h3,main>.lead,main>details{max-width:47rem}li{margin:6px 0}.lead{font-size:1.12rem;color:#2d4540}.inshort{font-size:1.06rem;padding:12px 16px;border-left:4px solid #1f6f66;background:#e8f3f0;border-radius:0 10px 10px 0}figure.dg{margin:26px 0 34px}.dg-frame{background:#fff;border:1px solid #d2dcd8;border-radius:18px;padding:18px 18px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;box-shadow:0 1px 3px rgba(20,50,45,.06)}.dg-frame svg{display:block;width:100%;height:auto;margin:0 auto}figure.dg figcaption{max-width:47rem;margin-top:10px;font-size:.95rem;color:#44574f}figure.dg figcaption b{color:#174b49}.swipe{display:none}details{margin:16px 0;padding:10px 16px;border:1px solid #c8d1cd;border-radius:10px;background:#fff}details summary{cursor:pointer;font-weight:600;color:#174b49}@media(max-width:720px){.dg-frame{padding:10px}.dg-frame svg{min-width:680px}.swipe{display:inline}}@media print{.dg-frame{overflow:visible;border:none;padding:0;box-shadow:none}.dg-frame svg{min-width:0}}.dg-frame img{display:block;width:100%;height:auto;margin:0 auto}@media(max-width:720px){.dg-frame img{min-width:680px}}@media print{.dg-frame img{min-width:0}}</style></head><body>
+<aside data-voice-architecture-sync="2026-10-11" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 11 October 2026.</strong> Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, an explicit shared or encrypted per-account personal key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Personal-key migration 0011 adds encrypted credentials and billing-source metadata; the current local inventory is 50 HTTP operations (47 under /api/v1) and 12 application tables. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. <a href="docs/SARVAM_ENGLISH_VOICE.html">Sarvam activation, costs and device checks</a> · <a href="docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete voice architecture</a>.</p></aside><main><nav><a href="docs/INDEX.html">Documentation home</a></nav><p class="eyebrow">CareKosh · reviewed 7 October 2026, re-checked 8 October 2026 (previous correction 23 September 2026)</p>
+<h1>Architecture diagrams</h1>
+<p><strong>8 October 2026 safety follow-up.</strong> Targeted fixes are local tested changes after the earlier audit. Deployment and device acceptance remain separate. <a href="docs/BACKEND_HARDENING.md#safety-follow-up-8-october-2026">Current changes and remaining scope</a>.</p>
+<aside><strong>Source status (7 Oct 2026; re-checked 8 Oct 2026 against the working tree, <code>03cfebb</code> plus uncommitted documentation):</strong> describes branch <code>feature/backend-hardening-ai-voice-agent-foundation</code> at <code>03cfebb</code> (pushed, <strong>not merged</strong>; <code>main</code> is <code>835fad3</code>): migrations <code>0007</code>–<code>0010</code>, retry-safe order creation, the read-only voice assistant and the API audit fixes. Staging was reported by the owner to run <code>b1c8dd7</code> on 7 Oct 2026 (historical, not re-checked); production's revision and provider settings are NOT VERIFIED. Figures 1–4, 6 and 7 were drawn on 23 September 2026, re-checked against the branch and corrected where needed on 8 October 2026; Figures 5 and 8–10 are generated from <a href="docs/diagrams/src/build_diagrams.py">docs/diagrams/src</a> (see <a href="docs/diagrams/README.md">diagram sources</a>), and the September versions of the schema and cache diagrams are kept below them as history. Earlier corrections came from the 23 September 2026 documentation audit (local notes, not published); this revision follows the <span>7 October 2026 documentation audit <small>(local review reference; not published)</small></span>.</aside>
+<p class="lead"><strong>How to read this page.</strong> Each section starts with a one-line summary, then a diagram, then the details that matter. The colours mean the same thing in every diagram:</p>
+<ul>
+<li><strong>Green — core.</strong> FastAPI, PostgreSQL and the Android app. The product cannot work without them.</li>
+<li><strong>Blue — current provider (swappable).</strong> Render, Neon, Brevo and Expo EAS host or deliver the core, and could be replaced.</li>
+<li><strong>Grey — supporting infrastructure.</strong> DNS, TLS and similar plumbing.</li>
+<li><strong>Dashed amber — conditional.</strong> Sentry, email and the assistant's optional Groq interpretation are active only when they are configured.</li>
+</ul>
+
+<h2 id="topology">Request topology</h2>
+<p class="inshort">In short: the app sends HTTPS requests to one API host; the FastAPI backend on Render reads and writes PostgreSQL on Neon.</p>
+<figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 968" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-topology-t ad-topology-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-topology-t">How a request travels</title><desc id="ad-topology-d">The Android app calls the FastAPI backend on Render over HTTPS; the backend uses PostgreSQL on Neon. Brevo email and Sentry are used only when configured. EAS Build and Google Play deliver the app but are not part of an API request.</desc><defs><marker id="ad-topology-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="ad-topology-ah-b07a1a" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B07A1A"/></marker><marker id="ad-topology-ah-3d5a99" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#3D5A99"/></marker></defs>
+<rect x="300" y="40" width="400" height="150" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="320" y="69" font-size="11.5" font-weight="700" fill="#1F6F66" text-anchor="start" letter-spacing="0.9">CORE</text>
+<text x="320" y="97" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">Android app</text>
+<text x="320" y="123" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Expo SDK 54 · React Native 0.81.5</text>
+<text x="320" y="146" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">API address fixed when the app is built</text>
+<text x="320" y="169" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Sends a Bearer access token</text>
+<path d="M500,192 L500,248" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-topology-ah-1f6f66)"/>
+<rect x="520.534" y="208.0" width="70.93200000000002" height="26" rx="13.0" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="556" y="225.9" font-size="14" font-weight="650" fill="#1F6F66" text-anchor="middle">HTTPS</text>
+<rect x="300" y="252" width="400" height="150" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="320" y="281" font-size="11.5" font-weight="700" fill="#687A83" text-anchor="start" letter-spacing="0.9">SUPPORTING INFRA</text>
+<text x="320" y="309" font-size="19" font-weight="700" fill="#35474F" text-anchor="start">Public hostname and TLS</text>
+<text x="320" y="335" font-size="16" font-weight="400" fill="#35474F" text-anchor="start">api.carekosh.com · DNS at Cloudflare</text>
+<text x="320" y="358" font-size="16" font-weight="400" fill="#35474F" text-anchor="start">TLS ends at Render&#x27;s edge</text>
+<text x="320" y="381" font-size="16" font-weight="400" fill="#35474F" text-anchor="start">Cloudflare proxy mode: check dashboard</text>
+<path d="M500,404 L500,460" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-topology-ah-1f6f66)"/>
+<rect x="520.534" y="420.0" width="70.93200000000002" height="26" rx="13.0" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="556" y="437.9" font-size="14" font-weight="650" fill="#1F6F66" text-anchor="middle">HTTPS</text>
+<rect x="300" y="464" width="400" height="195" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="320" y="493" font-size="11.5" font-weight="700" fill="#1F6F66" text-anchor="start" letter-spacing="0.9">CORE</text>
+<text x="320" y="521" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">FastAPI backend</text>
+<text x="320" y="543" font-size="14" font-weight="500" fill="#21403B" text-anchor="start" font-style="italic">Docker container on Render (provider)</text>
+<text x="320" y="569" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Gunicorn runs 2 Uvicorn workers</text>
+<text x="320" y="592" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">44 API routes under /api/v1</text>
+<text x="320" y="615" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Business data scoped to its owner</text>
+<text x="320" y="638" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Health: /live (Render) · /health (DB)</text>
+<path d="M500,661 L500,725" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-topology-ah-1f6f66)"/>
+<rect x="484.466625" y="681.25" width="311.06674999999996" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="640" y="698.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">asyncpg · TLS · 15 connections per worker</text>
+<rect x="300" y="729" width="400" height="149" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="320" y="758" font-size="11.5" font-weight="700" fill="#1F6F66" text-anchor="start" letter-spacing="0.9">CORE</text>
+<text x="320" y="786" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">PostgreSQL</text>
+<text x="320" y="808" font-size="14" font-weight="500" fill="#21403B" text-anchor="start" font-style="italic">Hosted on Neon (provider)</text>
+<text x="320" y="834" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">11 application tables (migration 0010)</text>
+<text x="320" y="857" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">8-second statement timeout</text>
+<rect x="30" y="470" width="220" height="147" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2" stroke-dasharray="9 6"/>
+<text x="50" y="499" font-size="11.5" font-weight="700" fill="#B07A1A" text-anchor="start" letter-spacing="0.9">CONDITIONAL</text>
+<text x="50" y="527" font-size="19" font-weight="700" fill="#77500F" text-anchor="start">Brevo email</text>
+<text x="50" y="552" font-size="15" font-weight="400" fill="#5A4012" text-anchor="start">Sign-up, reset and</text>
+<text x="50" y="574" font-size="15" font-weight="400" fill="#5A4012" text-anchor="start">deletion emails</text>
+<text x="50" y="596" font-size="15" font-weight="400" fill="#5A4012" text-anchor="start">Needs MAIL_PASSWORD</text>
+<rect x="30" y="647" width="220" height="125" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2" stroke-dasharray="9 6"/>
+<text x="50" y="676" font-size="11.5" font-weight="700" fill="#B07A1A" text-anchor="start" letter-spacing="0.9">CONDITIONAL</text>
+<text x="50" y="704" font-size="19" font-weight="700" fill="#77500F" text-anchor="start">Sentry</text>
+<text x="50" y="729" font-size="15" font-weight="400" fill="#5A4012" text-anchor="start">Scrubbed error events</text>
+<text x="50" y="751" font-size="15" font-weight="400" fill="#5A4012" text-anchor="start">Needs SENTRY_DSN</text>
+<path d="M298,524 L254,524" fill="none" stroke="#B07A1A" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 6" marker-end="url(#ad-topology-ah-b07a1a)"/>
+<path d="M298,614 L275,614 L275,697 L254,697" fill="none" stroke="#B07A1A" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 6" marker-end="url(#ad-topology-ah-b07a1a)"/>
+<rect x="739" y="60" width="247" height="400" rx="18" fill="none" stroke="#5E736E" stroke-width="1.6" stroke-dasharray="7 6"/>
+<rect x="757" y="47" width="138.30769999999998" height="26" rx="13" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.4"/>
+<text x="767" y="65" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.2">APP DELIVERY</text>
+<rect x="755" y="96" width="215" height="125" rx="14" fill="#EAF0FA" stroke="#3D5A99" stroke-width="2.2"/>
+<text x="775" y="125" font-size="11.5" font-weight="700" fill="#3D5A99" text-anchor="start" letter-spacing="0.9">PROVIDER · SWAPPABLE</text>
+<text x="775" y="153" font-size="19" font-weight="700" fill="#243E76" text-anchor="start">EAS Build</text>
+<text x="775" y="178" font-size="15" font-weight="400" fill="#2A3A57" text-anchor="start">Builds the APK / AAB</text>
+<text x="775" y="200" font-size="15" font-weight="400" fill="#2A3A57" text-anchor="start">Embeds the API URL</text>
+<rect x="755" y="277" width="215" height="125" rx="14" fill="#EAF0FA" stroke="#3D5A99" stroke-width="2.2"/>
+<text x="775" y="306" font-size="11.5" font-weight="700" fill="#3D5A99" text-anchor="start" letter-spacing="0.9">PROVIDER · SWAPPABLE</text>
+<text x="775" y="334" font-size="19" font-weight="700" fill="#243E76" text-anchor="start">Google Play</text>
+<text x="775" y="359" font-size="15" font-weight="400" fill="#2A3A57" text-anchor="start">Internal testing track</text>
+<text x="775" y="381" font-size="15" font-weight="400" fill="#2A3A57" text-anchor="start">Installs the app</text>
+<path d="M862.5,223 L862.5,273" fill="none" stroke="#3D5A99" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-topology-ah-3d5a99)"/>
+<rect x="885.2204" y="236.0" width="50.559200000000004" height="26" rx="13.0" fill="#FFFFFF" stroke="#3D5A99" stroke-width="1.5"/>
+<text x="910.5" y="253.9" font-size="14" font-weight="650" fill="#3D5A99" text-anchor="middle">AAB</text>
+<path d="M753,337 L719,337 L719,125 L704,125" fill="none" stroke="#3D5A99" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-topology-ah-3d5a99)"/>
+<rect x="683.3093" y="249.0" width="71.3814" height="26" rx="13.0" fill="#FFFFFF" stroke="#3D5A99" stroke-width="1.5"/>
+<text x="719" y="266.9" font-size="14" font-weight="650" fill="#3D5A99" text-anchor="middle">installs</text>
+<text x="862.5" y="440" font-size="14" font-weight="400" fill="#5E736E" text-anchor="middle" font-style="italic">Not part of an API request</text>
+<path d="M30,908 L970,908" fill="none" stroke="#D5DEDB" stroke-width="1.2" stroke-linejoin="round"/>
+<rect x="30" y="929" width="26" height="18" rx="5" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2"/>
+<text x="64" y="943" font-size="14.5" font-weight="500" fill="#5E736E" text-anchor="start">Core</text>
+<rect x="120.885" y="929" width="26" height="18" rx="5" fill="#EAF0FA" stroke="#3D5A99" stroke-width="2"/>
+<text x="154.885" y="943" font-size="14.5" font-weight="500" fill="#5E736E" text-anchor="start">Current provider (swappable)</text>
+<rect x="375.61999999999995" y="929" width="26" height="18" rx="5" fill="#F1F4F5" stroke="#687A83" stroke-width="2"/>
+<text x="409.61999999999995" y="943" font-size="14.5" font-weight="500" fill="#5E736E" text-anchor="start">Supporting infrastructure</text>
+<rect x="604.2549999999999" y="929" width="26" height="18" rx="5" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="638.2549999999999" y="943" font-size="14.5" font-weight="500" fill="#5E736E" text-anchor="start">Conditional (only if configured)</text>
+</svg></div><figcaption><b>Figure 1.</b> The path of one API request, plus the side services and the app-delivery path. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li>The app sends a Bearer access token with every signed-in request. The API address is fixed when the app is built.</li>
+<li>Cloudflare serves the DNS for the public hostname. Whether Cloudflare also proxies the traffic must be checked in its dashboard.</li>
+<li>The backend runs two Gunicorn/Uvicorn workers and serves 44 API route objects under <code>/api/v1</code> on this branch (39 on <code>main</code>, which has no assistant routes), plus <code>/</code>, <code>/health</code> and <code>/live</code>. Queries for protected business data are limited to the signed-in owner; sign-in lookups and the global order counter use other keys.</li>
+<li>Database access uses SQLAlchemy async with asyncpg. Each worker has a pool of 5 connections plus up to 10 overflow — up to 15 per worker, 30 for two workers. Every application SQL statement has an 8-second limit; the migration engine sets none.</li>
+<li>Brevo sends email through its HTTP API (not the legacy SMTP settings), and only when <code>MAIL_PASSWORD</code> is set.</li>
+<li>Sentry is optional. It receives scrubbed diagnostic events only when <code>SENTRY_DSN</code> is set.</li>
+<li>EAS Build and Google Play deliver the app. They are not hops in an API request.</li>
+<li><code>vitaltrack-backend/render.yaml</code> asks for the Starter plan. Whether Render reads that file, and the live configuration, are not verified.</li>
+<li><strong>Assistant providers (not drawn here):</strong> speech recognition runs on the phone with a Moonshine speech pack downloaded once from Moonshine's servers. Optional text interpretation goes phone → CareKosh API → Groq, only when the phone's local matcher cannot handle the question and the server's <code>AI_*</code> settings, the person's consent and the phone's cloud switch allow it; <code>render.yaml</code> sets none of those settings. Separately selected Groq online listening sends the finished recording through <code>/ai/transcribe</code> after audio consent and Stop. The generated <a href="docs/diagrams/system-context.svg">system context diagram</a> shows the local and conditional cloud components.</li>
+</ul>
+
+<h2 id="request">A write request</h2>
+<p class="inshort">In short: a request passes inward through the middlewares and the dependencies, the handler commits its writes, and the response passes back out through the same layers.</p>
+<figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 1129" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-request-t ad-request-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-request-t">Inside one write request</title><desc id="ad-request-d">A request passes inward through ServerErrorMiddleware, security headers, request ID, CORS, ExceptionMiddleware and the router. FastAPI parses the JSON, runs get_db and get_current_user, then validates the fields; the handler writes and commits, and the response passes back out through the same layers. The AIBodyLimit layer just inside ServerErrorMiddleware is not drawn.</desc><defs><marker id="ad-request-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker></defs>
+<text x="175.0" y="34" font-size="14" font-weight="700" fill="#1F6F66" text-anchor="middle" letter-spacing="1.5">ON THE WAY IN</text>
+<text x="500.0" y="34" font-size="14" font-weight="700" fill="#5E736E" text-anchor="middle" letter-spacing="1.5">LAYER</text>
+<text x="825.0" y="34" font-size="14" font-weight="700" fill="#1F6F66" text-anchor="middle" letter-spacing="1.5">ON THE WAY OUT</text>
+<rect x="360" y="60" width="280" height="92" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="96" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">ServerErrorMiddleware</text>
+<text x="500.0" y="118" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">Starlette · outermost</text>
+<rect x="30" y="60" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="97.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Watches for crashes</text>
+<rect x="680" y="60" width="290" height="92" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="700" y="97.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Crash → plain 500 with none</text>
+<text x="700" y="119.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">of the headers below</text>
+<rect x="360" y="178" width="280" height="105" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="214" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Security headers</text>
+<text x="500.0" y="236" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">app/main.py</text>
+<rect x="30" y="178" width="290" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="215.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Passes the request on</text>
+<rect x="680" y="178" width="290" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="700" y="215.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">nosniff, DENY, Referrer-Policy,</text>
+<text x="700" y="237.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Cache-Control, X-XSS-Protection,</text>
+<text x="700" y="259.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">HSTS in production</text>
+<rect x="360" y="309" width="280" height="92" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="345" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Request ID</text>
+<text x="500.0" y="367" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">app/main.py</text>
+<rect x="30" y="309" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="346.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Keeps X-Request-ID</text>
+<text x="50" y="368.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">or creates one</text>
+<rect x="680" y="309" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="700" y="346.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Echoes X-Request-ID</text>
+<text x="700" y="368.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">(not written to logs)</text>
+<rect x="360" y="427" width="280" height="92" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="463" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">CORS</text>
+<text x="500.0" y="485" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">Starlette CORSMiddleware</text>
+<rect x="30" y="427" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="464.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Answers browser</text>
+<text x="50" y="486.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">preflight (OPTIONS)</text>
+<rect x="680" y="427" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="700" y="464.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Access-Control-* headers,</text>
+<text x="700" y="486.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">only if an Origin was sent</text>
+<rect x="360" y="545" width="280" height="92" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="581" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">ExceptionMiddleware</text>
+<text x="500.0" y="603" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">Starlette</text>
+<rect x="30" y="545" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="582.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Watches for handled</text>
+<text x="50" y="604.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">errors</text>
+<rect x="680" y="545" width="290" height="92" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="700" y="582.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">JSON errors: 401, 403, 404,</text>
+<text x="700" y="604.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">409, 422, 429</text>
+<rect x="360" y="663" width="280" height="105" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="699" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Router + dependencies</text>
+<text x="500.0" y="721" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">FastAPI</text>
+<rect x="30" y="663" width="290" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="700.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Match the route, parse the JSON</text>
+<text x="50" y="722.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">get_db, then get_current_user</text>
+<text x="50" y="744.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Then validate fields (else 422)</text>
+<rect x="680" y="663" width="290" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="700" y="700.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">get_db commits leftovers,</text>
+<text x="700" y="722.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">rolls back on error, closes</text>
+<rect x="210" y="828" width="580" height="153" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="500.0" y="865" font-size="19" font-weight="700" fill="#1D5B38" text-anchor="middle">Route handler: writes, then commit</text>
+<text x="500.0" y="891" font-size="16" font-weight="400" fill="#1D4730" text-anchor="middle">Check ownership and business rules</text>
+<text x="500.0" y="914" font-size="16" font-weight="400" fill="#1D4730" text-anchor="middle">Conditional UPDATE / INSERT (e.g. version check)</text>
+<text x="500.0" y="937" font-size="16" font-weight="400" fill="#1D4730" text-anchor="middle">Add history rows where coded, then commit</text>
+<text x="500.0" y="960" font-size="16" font-weight="400" fill="#1D4730" text-anchor="middle">5 auth routes: slowapi rate limit wraps the handler</text>
+<path d="M340,66 L340,823" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-request-ah-1f6f66)"/>
+<path d="M660,827 L660,64" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-request-ah-1f6f66)"/>
+<rect x="304.2344" y="401.0" width="71.53120000000001" height="26" rx="13.0" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="340" y="418.9" font-size="14" font-weight="650" fill="#1F6F66" text-anchor="middle">request</text>
+<rect x="618.9165" y="401.0" width="82.16700000000002" height="26" rx="13.0" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="660" y="418.9" font-size="14" font-weight="650" fill="#1F6F66" text-anchor="middle">response</text>
+<rect x="30" y="1011" width="940" height="105" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="50" y="1048" font-size="19" font-weight="700" fill="#8C2A20" text-anchor="start">If something crashes</text>
+<text x="50" y="1073.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">An unhandled exception becomes a plain 500 from ServerErrorMiddleware: no security headers,</text>
+<text x="50" y="1095.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">no X-Request-ID and no CORS headers. Handled errors (HTTPException, 409, 422, 429) keep them.</text>
+</svg></div><figcaption><b>Figure 2.</b> What each layer does on the way in and on the way out. The <code>AIBodyLimit</code> layer added on this branch is not drawn (see below). <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li><strong>Middleware order on the way in:</strong> security headers → request ID → CORS. Starlette's error middleware wraps all three.</li>
+<li><strong>Added on this branch, not drawn in Figure 2:</strong> an outer <code>AIBodyLimit</code> layer sits just inside the error middleware. It reads the whole request body first and rejects oversized bodies (2 MB for ordinary routes, 12 KB for assistant JSON, 900 KB for the switched-off audio upload), answers assistant requests without a Bearer token with 401 before reading the body, and gives uploads a 10-second deadline. Its own error responses skip the security-header and request-ID layers. The generated <a href="docs/diagrams/request-lifecycle.svg">request lifecycle diagram</a> includes it.</li>
+<li><strong>Dependencies:</strong> FastAPI parses the JSON body first (malformed JSON gets 422 here), then opens a database session and loads the signed-in user, and only then validates the fields. A 422 for a bad field can therefore follow the user <code>SELECT</code>.</li>
+<li><strong>Rate limits</strong> wrap the handler call on the five limited routes. The limiter is not a guaranteed first line of defence that runs before the dependencies.</li>
+<li><strong>The handler</strong> checks ownership and workflow rules, runs conditional writes, adds activity and audit rows where implemented, and commits.</li>
+<li><strong>The response</strong> is serialised and returned. A failure after the commit cannot undo the committed write.</li>
+<li><strong>X-Request-ID</strong> is only a response header. It is not added to log lines or external traces.</li>
+<li><strong>Security headers:</strong> nosniff, DENY (frame blocking), Referrer-Policy, Cache-Control, X-XSS-Protection and, in production, HSTS. Permissions-Policy is not configured. X-XSS-Protection is set to the legacy <code>1; mode=block</code>; current OWASP guidance is to send <code>0</code> or omit it.</li>
+<li><strong>Crashes:</strong> an unhandled exception becomes a 500 from outside these middlewares, so it carries none of these headers and no X-Request-ID.</li>
+<li><strong>CORS</strong> is a browser rule. It is not access control for a native app.</li>
+</ul>
+
+<h2 id="auth">Session and recovery state</h2>
+<p class="inshort">In short: every signed-in request re-checks the user row; a refresh token can be claimed once; a password change or reset bumps <code>session_version</code>, so every older token stops working.</p>
+<figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 908" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-auth-t ad-auth-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-auth-t">How tokens are checked, refreshed and revoked</title><desc id="ad-auth-d">Three flows: every authenticated request checks the access token and the user row; refresh claims the refresh token once and issues a new pair; a password change or reset increments session_version so older tokens fail.</desc><defs><marker id="ad-auth-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker></defs>
+<rect x="30" y="30" width="300" height="78" rx="14" fill="#16343A" stroke="#16343A" stroke-width="2.2"/>
+<text x="180.0" y="67" font-size="19" font-weight="700" fill="#FFFFFF" text-anchor="middle">Every API call</text>
+<text x="180.0" y="89" font-size="14" font-weight="500" fill="#D5E7E3" text-anchor="middle" font-style="italic">30-minute access token</text>
+<rect x="30" y="138" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="48" y="172.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Bearer access token</text>
+<text x="48" y="194.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">sent in the Authorization header</text>
+<path d="M180.0,216 L180.0,240" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="30" y="244" width="300" height="54" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="48" y="278.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Check signature, expiry, type</text>
+<rect x="289.9696" y="233.5" width="60.0608" height="25" rx="12.5" fill="#FCEBEA" stroke="#B3372B" stroke-width="1.5"/>
+<text x="320" y="250.55" font-size="13" font-weight="650" fill="#B3372B" text-anchor="middle">→ 401</text>
+<path d="M180.0,300 L180.0,324" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="30" y="328" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="48" y="362.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Load the user row</text>
+<text x="48" y="384.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">one SELECT, relationships off</text>
+<path d="M180.0,406 L180.0,430" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="30" y="434" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="48" y="468.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">session_version matches?</text>
+<text x="48" y="490.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">changes after a password reset</text>
+<rect x="289.9696" y="423.5" width="60.0608" height="25" rx="12.5" fill="#FCEBEA" stroke="#B3372B" stroke-width="1.5"/>
+<text x="320" y="440.55" font-size="13" font-weight="650" fill="#B3372B" text-anchor="middle">→ 401</text>
+<path d="M180.0,512 L180.0,536" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="30" y="540" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="48" y="574.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Account active?</text>
+<text x="48" y="596.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">and email verified, if required</text>
+<rect x="288.5786" y="529.5" width="62.8428" height="25" rx="12.5" fill="#FCEBEA" stroke="#B3372B" stroke-width="1.5"/>
+<text x="320" y="546.55" font-size="13" font-weight="650" fill="#B3372B" text-anchor="middle">→ 403</text>
+<path d="M180.0,618 L180.0,642" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="30" y="646" width="300" height="54" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="48" y="680.5" font-size="16.5" font-weight="700" fill="#1D5B38" text-anchor="start">Run the handler</text>
+<rect x="350" y="30" width="300" height="78" rx="14" fill="#16343A" stroke="#16343A" stroke-width="2.2"/>
+<text x="500.0" y="67" font-size="19" font-weight="700" fill="#FFFFFF" text-anchor="middle">Refresh</text>
+<text x="500.0" y="89" font-size="14" font-weight="500" fill="#D5E7E3" text-anchor="middle" font-style="italic">30-day refresh token</text>
+<rect x="350" y="138" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="368" y="172.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Refresh token</text>
+<text x="368" y="194.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">has a unique jti</text>
+<path d="M500.0,216 L500.0,240" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="350" y="244" width="300" height="54" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="368" y="278.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Check signature, expiry, type</text>
+<rect x="609.9696" y="233.5" width="60.0608" height="25" rx="12.5" fill="#FCEBEA" stroke="#B3372B" stroke-width="1.5"/>
+<text x="640" y="250.55" font-size="13" font-weight="650" fill="#B3372B" text-anchor="middle">→ 401</text>
+<path d="M500.0,300 L500.0,324" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="350" y="328" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="368" y="362.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Lock the user row</text>
+<text x="368" y="384.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">SELECT … FOR UPDATE</text>
+<path d="M500.0,406 L500.0,430" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="350" y="434" width="300" height="54" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="368" y="468.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">session_version and policy OK?</text>
+<rect x="595.99005" y="423.5" width="88.01989999999999" height="25" rx="12.5" fill="#FCEBEA" stroke="#B3372B" stroke-width="1.5"/>
+<text x="640" y="440.55" font-size="13" font-weight="650" fill="#B3372B" text-anchor="middle">→ 401/403</text>
+<path d="M500.0,490 L500.0,514" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="350" y="518" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="368" y="552.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Claim the token once</text>
+<text x="368" y="574.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">UPDATE … WHERE not revoked</text>
+<rect x="609.9696" y="507.5" width="60.0608" height="25" rx="12.5" fill="#FCEBEA" stroke="#B3372B" stroke-width="1.5"/>
+<text x="640" y="524.55" font-size="13" font-weight="650" fill="#B3372B" text-anchor="middle">→ 401</text>
+<path d="M500.0,596 L500.0,620" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="350" y="624" width="300" height="54" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="368" y="658.5" font-size="16.5" font-weight="700" fill="#1D5B38" text-anchor="start">New pair + new row, commit</text>
+<rect x="670" y="30" width="300" height="78" rx="14" fill="#16343A" stroke="#16343A" stroke-width="2.2"/>
+<text x="820.0" y="67" font-size="19" font-weight="700" fill="#FFFFFF" text-anchor="middle">Password change or reset</text>
+<text x="820.0" y="89" font-size="14" font-weight="500" fill="#D5E7E3" text-anchor="middle" font-style="italic">ends every old session</text>
+<rect x="670" y="138" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="688" y="172.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Prove it&#x27;s you</text>
+<text x="688" y="194.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">current password or emailed token</text>
+<path d="M820.0,216 L820.0,240" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="670" y="244" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="688" y="278.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Lock the user row</text>
+<text x="688" y="300.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">SELECT … FOR UPDATE</text>
+<path d="M820.0,322 L820.0,346" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="670" y="350" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="688" y="384.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Hash the new password</text>
+<text x="688" y="406.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">Argon2id in a worker thread</text>
+<path d="M820.0,428 L820.0,452" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="670" y="456" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="688" y="490.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">session_version + 1</text>
+<text x="688" y="512.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">old tokens now mismatch</text>
+<path d="M820.0,534 L820.0,558" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="670" y="562" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="688" y="596.5" font-size="16.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Revoke refresh rows</text>
+<text x="688" y="618.5" font-size="14" font-weight="500" fill="#34504A" text-anchor="start" font-style="italic">and clear reset/delete challenges</text>
+<path d="M820.0,640 L820.0,664" fill="none" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-auth-ah-1f6f66)"/>
+<rect x="670" y="668" width="300" height="76" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="688" y="702.5" font-size="16.5" font-weight="700" fill="#1D5B38" text-anchor="start">Commit</text>
+<text x="688" y="724.5" font-size="14" font-weight="500" fill="#1D4730" text-anchor="start" font-style="italic">older tokens fail on next use</text>
+<rect x="30" y="784" width="940" height="105" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2"/>
+<text x="50" y="821" font-size="19" font-weight="700" fill="#77500F" text-anchor="start">Limits to know</text>
+<text x="50" y="846.5" font-size="15.5" font-weight="400" fill="#5A4012" text-anchor="start">No reuse detection: replaying an already-rotated refresh token only returns 401; nothing else is revoked.</text>
+<text x="50" y="868.5" font-size="15.5" font-weight="400" fill="#5A4012" text-anchor="start">Logout revokes only the refresh token it is given; an access token stays valid until it expires (30 min).</text>
+</svg></div><figcaption><b>Figure 3.</b> The checks behind every API call, a token refresh, and a password change or reset. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li>Tokens issued before the generation claim existed count as generation zero, so deploying this change does not log everyone out.</li>
+<li>After a password change or reset, old tokens fail the next time they are checked.</li>
+<li>Ordinary logout revokes only the refresh token it is given. A copied access token stays valid until it expires.</li>
+<li>Email verification applies to login, protected bearer requests and refresh for accounts with an email — only when the flag and the mail configuration enable it. Registration still returns tokens.</li>
+<li><strong>Rate limits</strong> cover five auth routes only. The counters live in memory in each worker process and reset when it restarts, and an open finding about how clients are identified is tracked privately. Treat them as best effort; do not describe them as globally enforced limits.</li>
+<li><strong>Password hashing</strong> uses Argon2. Legacy bcrypt hashes still verify but are not upgraded. Hashing runs in an AnyIO worker thread; benchmark the real runtime instead of assuming a fixed latency.</li>
+</ul>
+
+<h2 id="deletion">Account deletion</h2>
+<p class="inshort">In short: deletion takes two steps. The app asks, an email link is sent, and only the button on the confirmation page deletes anything.</p>
+<figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 627" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-deletion-t ad-deletion-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-deletion-t">Deleting an account takes two steps</title><desc id="ad-deletion-d">The app asks for deletion and an email link is sent; opening the link only shows a page; confirming on that page deletes the user, and PostgreSQL cascades the deletion to every row the user owns.</desc><defs><marker id="ad-deletion-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="ad-deletion-ah-b3372b" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B3372B"/></marker></defs>
+<rect x="30" y="40" width="300" height="254" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<circle cx="66" cy="78" r="16" fill="#1F6F66"/>
+<text x="66" y="83.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="92" y="85" font-size="21" font-weight="700" fill="#0D4A43" text-anchor="start">Ask</text>
+<text x="50" y="122" font-size="13.2" font-weight="600" fill="#1F6F66" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">DELETE /auth/me</text>
+<text x="50" y="148" font-size="14.5" font-weight="400" fill="#5E736E" text-anchor="start" font-style="italic">in the app, signed in</text>
+<text x="50" y="186" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Stores a SHA-256 digest</text>
+<text x="50" y="212" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Link expires in 24 hours</text>
+<text x="50" y="238" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Emails the link (Brevo)</text>
+<text x="50" y="264" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Deletes nothing yet</text>
+<path d="M333,175 L346,175" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-deletion-ah-1f6f66)"/>
+<rect x="350" y="40" width="300" height="254" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<circle cx="386" cy="78" r="16" fill="#1F6F66"/>
+<text x="386" y="83.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="412" y="85" font-size="21" font-weight="700" fill="#0D4A43" text-anchor="start">Look</text>
+<text x="370" y="122" font-size="13.2" font-weight="600" fill="#1F6F66" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">GET /auth/confirm-delete/{token}</text>
+<text x="370" y="148" font-size="14.5" font-weight="400" fill="#5E736E" text-anchor="start" font-style="italic">opening the email link</text>
+<text x="370" y="186" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Shows a confirmation page</text>
+<text x="370" y="212" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">Deletes nothing — safe if</text>
+<text x="370" y="238" font-size="16" font-weight="400" fill="#21403B" text-anchor="start">a mail scanner opens it</text>
+<path d="M653,175 L666,175" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-deletion-ah-1f6f66)"/>
+<rect x="670" y="40" width="300" height="254" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<circle cx="706" cy="78" r="16" fill="#B3372B"/>
+<text x="706" y="83.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="732" y="85" font-size="21" font-weight="700" fill="#8C2A20" text-anchor="start">Confirm</text>
+<text x="690" y="122" font-size="13.2" font-weight="600" fill="#B3372B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">POST /auth/confirm-delete/{token}</text>
+<text x="690" y="148" font-size="14.5" font-weight="400" fill="#5E736E" text-anchor="start" font-style="italic">pressing Confirm</text>
+<text x="690" y="186" font-size="16" font-weight="400" fill="#5C1F18" text-anchor="start">Locks the user row</text>
+<text x="690" y="212" font-size="16" font-weight="400" fill="#5C1F18" text-anchor="start">Checks digest and expiry</text>
+<text x="690" y="238" font-size="16" font-weight="400" fill="#5C1F18" text-anchor="start">Deletes the user</text>
+<text x="500" y="334" font-size="14" font-weight="400" fill="#5E736E" text-anchor="middle" font-style="italic">All paths start with /api/v1</text>
+<path d="M820,296 L820,392" fill="none" stroke="#B3372B" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-deletion-ah-b3372b)"/>
+<rect x="30" y="400" width="940" height="107" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="50" y="437" font-size="19" font-weight="700" fill="#8C2A20" text-anchor="start">PostgreSQL removes everything the user owns (ON DELETE CASCADE)</text>
+<text x="50" y="463" font-size="13.5" text-anchor="start"><tspan font-weight="400" fill="#5C1F18" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">categories · items · orders · order_items · refresh_tokens · activity_logs · audit_log · ai_consents · ai_usage</tspan></text>
+<text x="50" y="486" font-size="16" font-weight="400" fill="#5C1F18" text-anchor="start">Kept: order_number_counters (not owned by a user). Backups, logs and phone caches are handled separately.</text>
+<rect x="30" y="531" width="940" height="84" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="568" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Changed your mind?</text>
+<text x="50" y="594" font-size="16" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">POST /api/v1/auth/cancel-delete</tspan><tspan font-weight="400" fill="#3C5550"> (signed in) clears the pending request under the same row lock.</tspan></text>
+</svg></div><figcaption><b>Figure 4.</b> Ask, look, confirm — then PostgreSQL removes every row the user owns. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li>The request stores only a digest of the challenge token and queues a confirmation email.</li>
+<li>Opening the link shows a page. Mail scanners that open the link therefore delete nothing.</li>
+<li>The confirmation checks the challenge with the account row locked, then deletes the user-owned rows. Cancellation clears the challenge under the same lock.</li>
+<li>All these paths use the <code>/api/v1</code> prefix.</li>
+<li>Deletion is permanent in the active database. Exported files, local caches, logs and provider backups are handled separately.</li>
+<li>The daily order-number counter is not owned by a user, so it survives deletion.</li>
+</ul>
+
+<h2 id="schema">Eleven application tables at migration 0010</h2>
+<p class="inshort">In short: <code>users</code> owns the other tables, directly or (for order lines) through <code>orders</code>; items belong to categories; order lines copy item details; the assistant keeps only consent and usage metadata; the daily order counter stands alone.</p>
+<figure class="dg"><div class="dg-frame"><img src="docs/diagrams/database-erd.svg" alt="Eleven application tables. users owns every other table except order_number_counters, directly or (for order_items) through orders, by foreign keys with ON DELETE CASCADE. order_items.item_id and activity_logs.item_id are plain references without foreign keys, so order history survives item deletion. Item and category names are not unique in the database; the API serializes duplicate checks with advisory locks." width="1560" height="1330" loading="lazy"></div><figcaption><b>Figure 5.</b> The eleven tables at head <code>0010_order_local_id_unique</code>, checked against a schema dump of a freshly migrated database (7 Oct 2026; the 8 Oct 2026 dump has the same schema). Selected columns only. <a href="docs/diagrams/database-erd.svg">Open the diagram full size</a>. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<details><summary>Earlier diagram: nine tables at migration 0007 (drawn 23 September 2026)</summary><figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 1082" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-schema-t ad-schema-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-schema-t">Nine application tables at migration 0007</title><desc id="ad-schema-d">users owns categories, items, orders, refresh_tokens, activity_logs and audit_log; items belong to categories; order_items belong to orders and copy item details without a foreign key; order_number_counters stands alone.</desc><defs><marker id="ad-schema-ah-b07a1a" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B07A1A"/></marker></defs>
+<rect x="30" y="30" width="290" height="152" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M30,42 a12,12 0 0 1 12,-12 h266 a12,12 0 0 1 12,12 v28 h-290 Z" fill="#1F6F66"/>
+<text x="46" y="56.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">refresh_tokens</text>
+<text x="46" y="95" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">jti · unique</text>
+<text x="46" y="119" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">user_id → users</tspan></text>
+<text x="46" y="143" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">is_revoked · expires_at</text>
+<text x="46" y="167" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">device, IP, user agent</text>
+<rect x="355" y="30" width="290" height="152" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M355,42 a12,12 0 0 1 12,-12 h266 a12,12 0 0 1 12,12 v28 h-290 Z" fill="#1F6F66"/>
+<text x="371" y="56.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">activity_logs</text>
+<text x="371" y="95" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">user_id → users</tspan></text>
+<text x="371" y="119" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">action · item_name</text>
+<text x="371" y="143" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">item_id, order_id (no FK)</text>
+<text x="371" y="167" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">details</text>
+<rect x="680" y="30" width="290" height="152" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M680,42 a12,12 0 0 1 12,-12 h266 a12,12 0 0 1 12,12 v28 h-290 Z" fill="#1F6F66"/>
+<text x="696" y="56.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">audit_log</text>
+<text x="696" y="95" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">user_id → users</tspan></text>
+<text x="696" y="119" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">entity_type · entity_id</text>
+<text x="696" y="143" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">action</text>
+<text x="696" y="167" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">old/new values (JSONB)</text>
+<rect x="290" y="260" width="420" height="224" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M290,272 a12,12 0 0 1 12,-12 h396 a12,12 0 0 1 12,12 v28 h-420 Z" fill="#1F6F66"/>
+<text x="306" y="286.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">users</text>
+<text x="306" y="325" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">id · UUID primary key</text>
+<text x="306" y="349" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">email, username · unique</text>
+<text x="306" y="373" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">hashed_password · Argon2id</text>
+<text x="306" y="397" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">session_version</text>
+<text x="306" y="421" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">is_active · is_email_verified</text>
+<text x="306" y="445" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">verify / reset / delete digests</text>
+<text x="306" y="469" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">last_login</text>
+<path d="M175.0,182 L175.0,220" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M175.0,197 L164.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M175.0,197 L175.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M175.0,197 L186.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M500.0,182 L500.0,220" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M500.0,197 L489.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M500.0,197 L500.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M500.0,197 L511.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M825.0,182 L825.0,220" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M825.0,197 L814.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M825.0,197 L825.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M825.0,197 L836.0,182" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M175.0,220 L825.0,220" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M500,220 L500,260" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M491,250 L509,250" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<rect x="30" y="564" width="260" height="128" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M30,576 a12,12 0 0 1 12,-12 h236 a12,12 0 0 1 12,12 v28 h-260 Z" fill="#1F6F66"/>
+<text x="46" y="590.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">categories</text>
+<text x="46" y="629" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">user_id → users</tspan></text>
+<text x="46" y="653" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">name · display_order</text>
+<text x="46" y="677" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">is_default</text>
+<rect x="360" y="564" width="280" height="176" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M360,576 a12,12 0 0 1 12,-12 h256 a12,12 0 0 1 12,12 v28 h-280 Z" fill="#1F6F66"/>
+<text x="376" y="590.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">items</text>
+<text x="376" y="629" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">user_id → users</tspan></text>
+<text x="376" y="653" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">category_id → categories</tspan></text>
+<text x="376" y="677" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">name · quantity · unit</text>
+<text x="376" y="701" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">minimum_stock</text>
+<text x="376" y="725" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">version · is_critical</text>
+<rect x="710" y="564" width="260" height="152" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M710,576 a12,12 0 0 1 12,-12 h236 a12,12 0 0 1 12,12 v28 h-260 Z" fill="#1F6F66"/>
+<text x="726" y="590.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">orders</text>
+<text x="726" y="629" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">user_id → users</tspan></text>
+<text x="726" y="653" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">order_id · unique</text>
+<text x="726" y="677" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">ORD-20260923-0001</text>
+<text x="726" y="701" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">status · totals · dates</text>
+<path d="M500,484 L500,524" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M491,494 L509,494" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M160.0,524 L840.0,524" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M160.0,524 L160.0,564" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M160.0,549 L149.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M160.0,549 L160.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M160.0,549 L171.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M500.0,524 L500.0,564" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M500.0,549 L489.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M500.0,549 L500.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M500.0,549 L511.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M840.0,524 L840.0,564" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M840.0,549 L829.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M840.0,549 L840.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M840.0,549 L851.0,564" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M360,674 L290,674" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M345,674 L360,663" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M345,674 L360,674" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M345,674 L360,685" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M300,665 L300,683" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<rect x="690" y="800" width="280" height="152" rx="12" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<path d="M690,812 a12,12 0 0 1 12,-12 h256 a12,12 0 0 1 12,12 v28 h-280 Z" fill="#1F6F66"/>
+<text x="706" y="826.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">order_items</text>
+<text x="706" y="865" font-size="14.5" text-anchor="start"><tspan font-weight="600" fill="#1F6F66" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">order_id → orders</tspan></text>
+<text x="706" y="889" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">item_id (copy, no FK)</text>
+<text x="706" y="913" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">name · quantity</text>
+<text x="706" y="937" font-size="14.5" font-weight="400" fill="#21403B" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">stock snapshot</text>
+<path d="M840.0,716 L840.0,800" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M840.0,785 L829.0,800" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M840.0,785 L840.0,800" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M840.0,785 L851.0,800" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M831.0,726 L849.0,726" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round"/>
+<path d="M688,910 L500,910 L500,744" fill="none" stroke="#B07A1A" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#ad-schema-ah-b07a1a)"/>
+<rect x="461.04555000000005" y="897.5" width="197.90889999999996" height="25" rx="12.5" fill="#FFFFFF" stroke="#B07A1A" stroke-width="1.5"/>
+<text x="560" y="914.55" font-size="13" font-weight="650" fill="#B07A1A" text-anchor="middle">copies item details · no FK</text>
+<rect x="30" y="800" width="300" height="128" rx="12" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<path d="M30,812 a12,12 0 0 1 12,-12 h276 a12,12 0 0 1 12,12 v28 h-300 Z" fill="#687A83"/>
+<text x="46" y="826.0" font-size="16.5" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">order_number_counters</text>
+<text x="46" y="865" font-size="14.5" font-weight="400" fill="#35474F" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">day · primary key</text>
+<text x="46" y="889" font-size="14.5" font-weight="400" fill="#35474F" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">last_value</text>
+<text x="46" y="913" font-size="14.5" font-weight="400" fill="#35474F" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">not tied to a user</text>
+<rect x="30" y="986" width="940" height="80" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="1023.5" font-size="15.5" text-anchor="start"><tspan font-weight="700" fill="#2B403C">All 8 foreign keys use ON DELETE CASCADE</tspan><tspan font-weight="400" fill="#3C5550">: deleting a user removes every row they own.</tspan></text>
+<text x="50" y="1045.5" font-size="15.5" text-anchor="start"><tspan font-weight="700" fill="#2B403C">Crow&#x27;s foot</tspan><tspan font-weight="400" fill="#3C5550"> = many side · tick = one side · selected columns only.</tspan></text>
+</svg></div><figcaption><b>Earlier figure (23 September 2026).</b> The nine tables and their foreign keys. Selected columns only. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure></details>
+<ul>
+<li>All ten foreign keys use <code>ON DELETE CASCADE</code>. Migration <code>0008</code> added the two on <code>ai_consents.user_id</code> and <code>ai_usage.user_id</code>; at <code>0007</code> there were eight.</li>
+<li><code>ai_consents</code> holds one row per user (consent version, accepted flag, scopes such as <code>groq_text</code>, time). <code>ai_usage</code> holds one row per online assistant request that passes the consent and quota checks (kind, provider, status, reserved cost in micro-US-dollars, token and audio counts) for quotas and cost limits. Neither stores question text, audio or inventory.</li>
+<li><code>orders</code> has a partial unique index on (<code>user_id</code>, <code>local_id</code>) where <code>local_id</code> is set (<code>0010</code>), which makes order creation retry-safe (Figure 8).</li>
+<li><code>order_items.item_id</code> is a snapshot reference without an item foreign key. Line quantities must be positive, and each line keeps snapshot metadata.</li>
+<li><code>categories</code> also store a description. <code>refresh_tokens</code> keep optional device and request metadata. <code>activity_logs</code> is a human-readable history with a copied item name.</li>
+<li><code>audit_log</code> is a singular table name. Alembic's own version table is separate from these eleven.</li>
+<li>Sources: <a href="vitaltrack-backend/app/models/__init__.py">model registry</a> · <a href="vitaltrack-backend/alembic/versions/20260923_session_order_safety.py">0007</a> · <a href="vitaltrack-backend/alembic/versions/20260924_ai_consent_usage.py">0008</a> · <a href="vitaltrack-backend/alembic/versions/20261006_ai_provider_scopes.py">0009</a> · <a href="vitaltrack-backend/alembic/versions/20261006_order_local_id_unique.py">0010</a> · <span>schema dump at 0010 <small>(local review reference; not published)</small></span>.</li>
+</ul>
+
+<h2 id="concurrency">Stock concurrency</h2>
+<p class="inshort">In short: a save succeeds only if the item's <code>version</code> has not changed since the phone read it; otherwise the phone gets 409 and must refetch.</p>
+<figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 914" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-concurrency-t ad-concurrency-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-concurrency-t">Two phones edit the same item</title><desc id="ad-concurrency-d">Both phones read version 1. Phone A saves first and the conditional UPDATE succeeds, making version 2. Phone B&#x27;s save still says version 1, matches no row and gets 409 Conflict; it should refetch before retrying.</desc><defs><marker id="ad-concurrency-ah-5e736e" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#5E736E"/></marker><marker id="ad-concurrency-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="ad-concurrency-ah-2e7d4f" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#2E7D4F"/></marker><marker id="ad-concurrency-ah-b3372b" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B3372B"/></marker></defs>
+<rect x="45" y="26" width="240" height="56" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="165.0" y="62" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Phone A</text>
+<path d="M165,84 L165,770" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round" stroke-dasharray="6 7"/>
+<rect x="380" y="26" width="240" height="56" rx="14" fill="#16343A" stroke="#16343A" stroke-width="2.2"/>
+<text x="500.0" y="62" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">API + PostgreSQL</text>
+<path d="M500,84 L500,770" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round" stroke-dasharray="6 7"/>
+<rect x="715" y="26" width="240" height="56" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="835.0" y="62" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Phone B</text>
+<path d="M835,84 L835,770" fill="none" stroke="#8FA39D" stroke-width="2" stroke-linejoin="round" stroke-dasharray="6 7"/>
+<path d="M500,140 L171,140" fill="none" stroke="#5E736E" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#ad-concurrency-ah-5e736e)"/>
+<rect x="229.61865" y="107.25" width="205.76269999999997" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.5"/>
+<text x="332.5" y="124.725" font-size="13.5" font-weight="650" fill="#5E736E" text-anchor="middle">read: quantity 10 · version 1</text>
+<path d="M500,140 L829,140" fill="none" stroke="#5E736E" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#ad-concurrency-ah-5e736e)"/>
+<rect x="564.61865" y="107.25" width="205.76269999999997" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.5"/>
+<text x="667.5" y="124.725" font-size="13.5" font-weight="650" fill="#5E736E" text-anchor="middle">read: quantity 10 · version 1</text>
+<path d="M165,240 L494,240" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-concurrency-ah-1f6f66)"/>
+<rect x="236.76892500000002" y="207.25" width="191.46214999999998" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="332.5" y="224.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">PUT quantity 8, version 1</text>
+<rect x="300" y="262" width="400" height="112" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="320" y="298.5" font-size="14.5" text-anchor="start"><tspan font-weight="400" fill="#34504A" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">UPDATE items SET quantity=8,</tspan></text>
+<text x="320" y="319.5" font-size="14.5" text-anchor="start"><tspan font-weight="400" fill="#34504A" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">  version=version+1</tspan></text>
+<text x="320" y="340.5" font-size="14.5" text-anchor="start"><tspan font-weight="400" fill="#34504A" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">WHERE id=… AND user_id=… AND version=1</tspan></text>
+<text x="320" y="361.5" font-size="14.5" text-anchor="start"><tspan font-weight="700" fill="#2E7D4F">→ 1 row updated</tspan></text>
+<path d="M500,410 L171,410" fill="none" stroke="#2E7D4F" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-concurrency-ah-2e7d4f)"/>
+<rect x="259.014225" y="377.25" width="146.97155" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#2E7D4F" stroke-width="1.5"/>
+<text x="332.5" y="394.725" font-size="13.5" font-weight="650" fill="#2E7D4F" text-anchor="middle">200 OK · version 2</text>
+<path d="M835,480 L506,480" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-concurrency-ah-1f6f66)"/>
+<rect x="571.768925" y="447.25" width="191.46214999999998" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="667.5" y="464.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">PUT quantity 9, version 1</text>
+<rect x="300" y="502" width="400" height="100" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="320" y="538.5" font-size="14.5" text-anchor="start"><tspan font-weight="400" fill="#34504A" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">Same UPDATE … WHERE version=1</tspan></text>
+<text x="320" y="559.5" font-size="14.5" text-anchor="start"><tspan font-weight="700" fill="#B3372B">→ 0 rows: the row is at version 2</tspan></text>
+<text x="320" y="580.5" font-size="14.5" text-anchor="start"><tspan font-weight="400" fill="#34504A">nothing is written</tspan></text>
+<path d="M500,640 L829,640" fill="none" stroke="#B3372B" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-concurrency-ah-b3372b)"/>
+<rect x="563.3908250000001" y="607.25" width="208.21834999999993" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#B3372B" stroke-width="1.5"/>
+<text x="667.5" y="624.725" font-size="13.5" font-weight="650" fill="#B3372B" text-anchor="middle">409 Conflict + server values</text>
+<path d="M835,715 L506,715" fill="none" stroke="#5E736E" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#ad-concurrency-ah-5e736e)"/>
+<rect x="544.7567750000001" y="682.25" width="245.48644999999996" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.5"/>
+<text x="667.5" y="699.725" font-size="13.5" font-weight="650" fill="#5E736E" text-anchor="middle">refetch, then retry with version 2</text>
+<rect x="30" y="790" width="940" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="827" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Optimistic concurrency (compare-and-swap)</text>
+<text x="50" y="852.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Nothing is locked while someone edits. The write succeeds only if the version is unchanged.</text>
+<text x="50" y="874.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">The values sent with a 409 can themselves be out of date, so refetch before retrying.</text>
+</svg></div><figcaption><b>Figure 6.</b> Two phones save the same item; the second save is rejected. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li>This is optimistic concurrency (compare-and-swap). Nothing is locked while the user edits. Each phone sends an absolute quantity with the version it expects.</li>
+<li>The conditional <code>UPDATE</code> checks owner, item and version, and increments the version in the same statement.</li>
+<li>The conflict snapshot sent with a 409 may itself lag behind a later write, so refetch before retrying. The updated item mutation shows the server message and invalidates affected active queries so they refetch. Reopen the editor with current values; generic Retry retains the original version.</li>
+<li>Edit Item's <code>PUT</code> always sends the name, so the server first takes the account's name lock; a second save waits there and then fails the version check. The API-only stock <code>PATCH</code> instead waits on the row lock. The two-save race was reproduced through the stock <code>PATCH</code> (7 and 8 Oct 2026).</li>
+<li><strong>Applying an order</strong> claims the received order once and adds line quantities with database arithmetic, all in one transaction. A repeated apply is rejected; it does not replay the earlier successful result.</li>
+<li>Version checks do not protect order creation. <em>Earlier (September 2026):</em> a retried order create after a lost response made a second order. <em>Current:</em> creation is retry-safe through <code>localId</code> (Figure 8).</li>
+<li><strong>A-1 fixed locally (8 October 2026):</strong> Edit Item captures the version with its form values; a background refetch cannot bypass server CAS. Conflicts refresh active queries; reopen the editor for current values. See <a href="docs/API_TRACEABILITY.html#known-application-issues-found-while-tracing">API traceability and remaining issues</a>.</li>
+<li><strong>Order numbers</strong> come from a daily counter that increments atomically.</li>
+<li><strong>Names:</strong> category and item creates, and updates that send a name, serialise their duplicate-name checks with per-owner, per-type transaction advisory locks. Direct SQL still needs a reviewed uniqueness policy.</li>
+</ul>
+
+<h2 id="states">Order state machine</h2>
+<p class="inshort">In short: orders move forward only; <code>stock_updated</code> can be reached only through <code>POST …/apply</code>.</p>
+<figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 830" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-orders-t ad-orders-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-orders-t">Order status transitions</title><desc id="ad-orders-d">pending can move to ordered, received or declined; ordered to partially_received or received; partially_received to received; only POST apply moves received to stock_updated. declined and stock_updated are final.</desc><defs><marker id="ad-orders-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="ad-orders-ah-2e7d4f" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#2E7D4F"/></marker><marker id="ad-orders-ah-b3372b" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B3372B"/></marker></defs>
+<rect x="300" y="110" width="210" height="64" rx="32" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.4"/>
+<text x="405.0" y="150" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">ordered</text>
+<rect x="640" y="110" width="300" height="64" rx="32" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.4"/>
+<text x="790.0" y="150" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">partially_received</text>
+<rect x="40" y="320" width="200" height="64" rx="32" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.4"/>
+<text x="140.0" y="360" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">pending</text>
+<rect x="640" y="320" width="300" height="64" rx="32" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.4"/>
+<text x="790.0" y="360" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">received</text>
+<rect x="34" y="524" width="212" height="76" rx="40" fill="none" stroke="#B3372B" stroke-width="1.6"/>
+<rect x="40" y="530" width="200" height="64" rx="32" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.4"/>
+<text x="140.0" y="570" font-size="18" font-weight="700" fill="#8C2A20" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">declined</text>
+<rect x="634" y="524" width="312" height="76" rx="40" fill="none" stroke="#2E7D4F" stroke-width="1.6"/>
+<rect x="640" y="530" width="300" height="64" rx="32" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.4"/>
+<text x="790.0" y="570" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">stock_updated</text>
+<path d="M140,318 L140,142 L296,142" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-1f6f66)"/>
+<rect x="159.79829999999998" y="129.25" width="108.40340000000002" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="214" y="146.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">mark ordered</text>
+<path d="M512,142 L636,142" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-1f6f66)"/>
+<rect x="524.204025" y="95.25" width="99.59195" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="574" y="112.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">some arrive</text>
+<path d="M512,160 L560,160 L560,340 L636,340" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-1f6f66)"/>
+<rect x="519.882175" y="249.25" width="80.23565" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="560" y="266.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">all arrive</text>
+<path d="M790,176 L790,316" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-1f6f66)"/>
+<rect x="741.070725" y="233.25" width="97.85855000000002" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="790" y="250.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">rest arrives</text>
+<path d="M242,368 L636,368" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-1f6f66)"/>
+<rect x="353.80895" y="355.25" width="132.3821" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="420" y="372.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">received directly</text>
+<path d="M790,386 L790,520" fill="none" stroke="#2E7D4F" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-2e7d4f)"/>
+<rect x="700.191375" y="439.25" width="179.61725" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#2E7D4F" stroke-width="1.5"/>
+<text x="790" y="456.725" font-size="13.5" font-weight="650" fill="#2E7D4F" text-anchor="middle">POST /apply (only way)</text>
+<path d="M140,386 L140,520" fill="none" stroke="#B3372B" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-orders-ah-b3372b)"/>
+<rect x="106.16575" y="439.25" width="67.66850000000001" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#B3372B" stroke-width="1.5"/>
+<text x="140" y="456.725" font-size="13.5" font-weight="650" fill="#B3372B" text-anchor="middle">decline</text>
+<text x="470" y="575" font-size="14" font-weight="400" fill="#5E736E" text-anchor="middle" font-style="italic">double outline = final state</text>
+<rect x="30" y="650" width="300" height="160" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="687" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Change status</text>
+<text x="50" y="712.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">PATCH …/status</text>
+<text x="50" y="734.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Illegal move → 400</text>
+<text x="50" y="756.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Same status → no change</text>
+<text x="50" y="778.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Lost a race → 409</text>
+<rect x="350" y="650" width="300" height="160" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="370" y="687" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Update stock</text>
+<text x="370" y="712.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">POST …/apply</text>
+<text x="370" y="734.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Only from received</text>
+<text x="370" y="756.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Adds stock once</text>
+<text x="370" y="778.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Repeat → 400</text>
+<rect x="670" y="650" width="300" height="160" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="690" y="687" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Delete</text>
+<text x="690" y="712.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">DELETE …/orders/{id}</text>
+<text x="690" y="734.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Only pending or declined</text>
+<text x="690" y="756.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Checked in the final SQL</text>
+</svg></div><figcaption><b>Figure 7.</b> Allowed status changes. A double outline marks a final state. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li>A request for the status the order already has is accepted without changing anything.</li>
+<li>The generic status endpoint cannot set <code>stock_updated</code>.</li>
+<li>Delete is limited to <code>pending</code> and <code>declined</code>, and the final SQL re-checks this.</li>
+<li>The server code is the authority: <a href="vitaltrack-backend/app/api/v1/orders.py"><code>LEGAL_STATUS_TRANSITIONS</code> and the apply/delete handlers</a>.</li>
+</ul>
+
+<h2 id="order-retries">Order-create retries</h2>
+<p class="inshort">In short: the app sends a fresh <code>localId</code> with each Save; repeating the same request returns the order already created instead of making a second one.</p>
+<figure class="dg"><div class="dg-frame"><img src="docs/diagrams/order-idempotency.svg" alt="The current app generates one localId per Save. A retry with the same localId returns the order already created with status 200. Two simultaneous requests with the same localId collide on a partial unique index; the loser rolls back, which also releases its order number, and returns the winner&#x27;s order. Requests without a localId, such as those from older app builds, always create a new order." width="1500" height="1238" loading="lazy"></div><figcaption><b>Figure 8.</b> A first attempt, a retry after a lost response, and two identical requests at the same moment. Reproduced with synthetic data on 7 and 8 Oct 2026. <a href="docs/diagrams/order-idempotency.svg">Open the diagram full size</a>. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li>The app generates one <code>localId</code> per Save press and reuses it when the person taps Retry after a failure. Pressing Save again later is a new order by design.</li>
+<li>The server first looks up (<code>user_id</code>, <code>localId</code>). If an order exists it returns it with 200 and writes nothing.</li>
+<li>Two identical requests at the same moment collide on the partial unique index <code>uq_orders_user_id_local_id</code>. The loser's transaction rolls back, which also releases its order number, and it returns the winner's order with 200.</li>
+<li>Requests without <code>localId</code>, such as those from app builds older than this branch, always create a new order.</li>
+<li>The order number <code>ORD-YYYYMMDD-NNNN</code> comes from the daily counter row in the same transaction; numbers are never reused, even after an order or account is deleted.</li>
+</ul>
+
+<h2 id="mobile">Mobile data flow</h2>
+<p class="inshort">In short: the app is server-first. It shows cached data quickly, fetches fresh data from the API, and has no offline write queue.</p>
+<figure class="dg"><div class="dg-frame"><img src="docs/diagrams/mobile-cache.svg" alt="PostgreSQL behind the API is the only source of truth. The app keeps a TanStack Query cache in memory and persists a copy to AsyncStorage for display after a restart. Screens read through query hooks; stale data is refetched on mount, return to the foreground, reconnect, pull-to-refresh or invalidation. Writes go straight to the API and, only after success, invalidate the affected queries. There are no optimistic updates and no offline write queue." width="1560" height="1080" loading="lazy"></div><figcaption><b>Figure 9.</b> Where the app keeps data, what makes it refetch, and why there is no offline write queue (current branch). <a href="docs/diagrams/mobile-cache.svg">Open the diagram full size</a>. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<details><summary>Earlier diagram (23 September 2026): reconnecting did not refetch then, and the API had 39 routes</summary><figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 702" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ad-mobile-t ad-mobile-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="ad-mobile-t">How the app reads and saves data</title><desc id="ad-mobile-d">Screens read from the TanStack Query cache, which fetches from the API through the API client and keeps a saved copy in AsyncStorage. Saves go to the API and then invalidate the cache so it refetches. Tokens live in SecureStore; UI and auth state in Zustand.</desc><defs><marker id="ad-mobile-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="ad-mobile-ah-687a83" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#687A83"/></marker></defs>
+<rect x="20" y="30" width="620" height="540" rx="18" fill="none" stroke="#5E736E" stroke-width="1.6" stroke-dasharray="7 6"/>
+<rect x="38" y="17" width="127.64889999999998" height="26" rx="13" fill="#FFFFFF" stroke="#5E736E" stroke-width="1.4"/>
+<text x="48" y="35" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.2">ANDROID APP</text>
+<rect x="340" y="70" width="270" height="105" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="360" y="107" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">Screens</text>
+<text x="360" y="132.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Dashboard, inventory,</text>
+<text x="360" y="154.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">orders, settings</text>
+<rect x="340" y="231" width="270" height="127" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="360" y="268" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">TanStack Query</text>
+<text x="360" y="293.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Server data cache</text>
+<text x="360" y="315.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">staleTime 30 s (not polling)</text>
+<text x="360" y="337.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">gcTime 24 h</text>
+<rect x="340" y="414" width="270" height="105" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="360" y="451" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">API client</text>
+<text x="360" y="476.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Adds the Bearer token</text>
+<text x="360" y="498.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">One shared refresh at a time</text>
+<rect x="45" y="70" width="240" height="105" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="65" y="107" font-size="19" font-weight="700" fill="#35474F" text-anchor="start">Zustand</text>
+<text x="65" y="132.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">UI and auth state</text>
+<rect x="45" y="241" width="240" height="105" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="65" y="278" font-size="19" font-weight="700" fill="#35474F" text-anchor="start">AsyncStorage</text>
+<text x="65" y="303.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">Saved copy of the cache</text>
+<text x="65" y="325.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">for fast start-up</text>
+<rect x="45" y="414" width="240" height="105" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="65" y="451" font-size="19" font-weight="700" fill="#35474F" text-anchor="start">SecureStore</text>
+<text x="65" y="476.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">Access and refresh</text>
+<text x="65" y="498.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">tokens</text>
+<path d="M475.0,177 L475.0,227" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-mobile-ah-1f6f66)" marker-start="url(#ad-mobile-ah-1f6f66)"/>
+<rect x="494.90355" y="190.5" width="92.19290000000001" height="25" rx="12.5" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="541.0" y="207.55" font-size="13" font-weight="650" fill="#1F6F66" text-anchor="middle">read · save</text>
+<path d="M475.0,360 L475.0,410" fill="none" stroke="#1F6F66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-mobile-ah-1f6f66)" marker-start="url(#ad-mobile-ah-1f6f66)"/>
+<path d="M289,122.5 L335,122.5" fill="none" stroke="#687A83" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-mobile-ah-687a83)" marker-start="url(#ad-mobile-ah-687a83)"/>
+<path d="M289,293.5 L335,293.5" fill="none" stroke="#687A83" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-mobile-ah-687a83)" marker-start="url(#ad-mobile-ah-687a83)"/>
+<path d="M289,466.5 L335,466.5" fill="none" stroke="#687A83" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-mobile-ah-687a83)" marker-start="url(#ad-mobile-ah-687a83)"/>
+<rect x="690" y="414" width="280" height="105" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="830.0" y="451" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="middle">FastAPI backend</text>
+<text x="830.0" y="476.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="middle">HTTPS · JSON</text>
+<text x="830.0" y="498.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="middle">39 routes under /api/v1</text>
+<path d="M614,466.5 L685,466.5" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ad-mobile-ah-1f6f66)" marker-start="url(#ad-mobile-ah-1f6f66)"/>
+<rect x="616.353" y="428.0" width="67.29400000000001" height="25" rx="12.5" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="650" y="445.05" font-size="13" font-weight="650" fill="#1F6F66" text-anchor="middle">HTTPS</text>
+<rect x="690" y="40" width="280" height="149" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="710" y="77" font-size="19" font-weight="700" fill="#1D5B38" text-anchor="start">What triggers a refetch</text>
+<text x="710" y="102.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">✓ App comes back to the front</text>
+<text x="710" y="124.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">✓ A screen opens with stale data</text>
+<text x="710" y="146.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">✓ Pull to refresh</text>
+<text x="710" y="168.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">✓ After a save (invalidation)</text>
+<rect x="690" y="207" width="280" height="127" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="710" y="244" font-size="19" font-weight="700" fill="#8C2A20" text-anchor="start">What does not</text>
+<text x="710" y="269.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">✗ Getting back online</text>
+<text x="710" y="291.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">   (NetInfo is not wired in)</text>
+<text x="710" y="313.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">✗ A timer: there is no polling</text>
+<rect x="20" y="600" width="950" height="83" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2"/>
+<text x="40" y="637" font-size="19" font-weight="700" fill="#77500F" text-anchor="start">No offline queue</text>
+<text x="40" y="662.5" font-size="15.5" font-weight="400" fill="#5A4012" text-anchor="start">A save made while offline fails and is not retried later. The saved cache is for display only.</text>
+</svg></div><figcaption><b>Earlier figure (23 September 2026).</b> Where the app keeps data, and what makes it refetch. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure></details>
+<ul>
+<li><strong>Read:</strong> API → TanStack Query → screen. The last-known display cache persists in AsyncStorage.</li>
+<li><strong>Write:</strong> user action → API → invalidate and refetch. There is no offline sync queue: a save attempted offline fails.</li>
+<li><strong>Local state:</strong> Zustand holds UI and auth state; SecureStore holds the persisted auth data.</li>
+<li><code>staleTime</code>=30 s is a staleness threshold, not polling. Data refetches when a stale query remounts, when the app returns to the foreground, on pull-to-refresh and after invalidation.</li>
+<li><em>Earlier (September 2026, and still on <code>main</code>):</em> regaining connectivity alone did not refetch, because TanStack's online manager was not connected to NetInfo. <em>Current branch:</em> <code>QueryProvider.tsx</code> connects it (online = connected and the internet not known to be unreachable), so reconnecting refetches stale queries. Screens' own offline checks still look only at NetInfo's <code>isConnected</code>.</li>
+<li><code>gcTime</code>=24 h controls how long unused data stays in memory; the saved copy has its own 24-hour <code>maxAge</code>, counted from its last save. Neither limits how old a shown value can be.</li>
+<li>The cache buster follows the visible app version. Over-the-air updates are disabled, so changing a source flag needs a rebuild.</li>
+<li>The API client shares one refresh promise between concurrent requests, and follows bounded order-history pages.</li>
+<li><code>npm test</code> runs 121 Node test-runner tests in nine files (passed 7 Oct 2026 and again 8 Oct 2026): refresh, logout, order creation, the query provider, sanitising, the voice policy and assistant parsing. Native device testing is still required. <em>Earlier (September 2026):</em> eight API tests ran via <code>npm run test:api</code>, which now runs only the refresh tests.</li>
+<li>Ordinary API requests now have one 90 s overall deadline including refresh/retry waits and response parsing. Token refresh retains 30 s and assistant calls retain 50 s; a timed-out write may still have committed.</li>
+</ul>
+<h2 id="assistant">Voice assistant: inventory answers and local drafts</h2>
+<p class="inshort">In short: the phone turns speech into text and answers from inventory it reads; the server supplies inventory and optional separately consented text interpretation/audio transcription; voice never changes inventory or saved orders; it can prepare an unsaved draft, with a separate touch-confirmed save.</p>
+<figure class="dg"><div class="dg-frame"><img src="docs/diagrams/voice-flow.svg" alt="On the phone: tap the microphone, grant permission, record up to 28 seconds, tap again, decode and transcribe with Moonshine on the phone, review and edit the transcript, then press Send. A local matcher turns familiar wording into an intent. Only if it cannot, and the user has opted in, the question text is sent to the CareKosh API, which asks Groq for a validated intent. The app then reads inventory from a fresh cache or GET /items, builds the answer on the phone and can speak it with Android text-to-speech. No inventory is changed." width="1560" height="1460" loading="lazy"></div><figcaption><b>Figure 10.</b> Default recognition and live captions on the phone; optional Groq Whisper recognition after separate audio consent; reviewed Send; local-first or Groq structured interpretation; inventory answers and unsaved drafts resolved on the phone. <a href="docs/diagrams/voice-flow.svg">Open the diagram full size</a>. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+<ul>
+<li><strong>Recognition on the phone:</strong> The latest Kotlin module uses one Android <code>AudioRecord</code> to capture mono PCM16/16 kHz WAV (maximum 28 seconds) and feed genuine provisional Moonshine English live captions. Offline final transcription follows Stop; separately consented Groq Whisper can instead produce the final transcript. Older modules retain Expo AAC/M4A at 44.1 kHz/128 kb/s with words after Stop. It needs a native Android build that includes the module, such as the EAS preview APK (not Expo Go), and the English speech pack, downloaded once from Moonshine's servers and checked before use.</li>
+<li><strong>Review before sending:</strong> the transcript is editable and nothing leaves the phone until the person presses Send.</li>
+<li><strong>Understanding:</strong> local parsers recognize familiar inventory queries and unsaved draft commands. Inventory mutation, saved-order commitment, apply and supplier-send actions remain blocked. Only when it cannot match, the person has opted in (consent plus the phone's cloud switch) and the server's AI settings are on, the question text (no audio, no inventory) goes to <code>POST /api/v1/ai/interpret</code>, which asks Groq (<code>openai/gpt-oss-20b</code>, strict JSON schema, temperature 0, no tools) for one allowed intent. The server rejects any answer that names an item not present in the question, and the phone validates the intent again.</li>
+<li><strong>Answer:</strong> the phone reads inventory (its own cache if loaded in this login session less than 30 seconds ago, otherwise <code>GET /api/v1/items</code>), builds the answer itself and can read it aloud with an installed offline Android voice. Offline answers are labelled as last-known data.</li>
+<li><strong>No server mutation tool by construction:</strong> the dispatcher has no order-save or stock-update operation; local drafts are reviewed separately and saving requires touch confirmation. Its only server writes are <code>ai_consents</code> (consent) and <code>ai_usage</code> (one row per online interpretation, for quotas and cost limits). So "no inventory writes" is not "zero database writes".</li>
+<li><strong>Separate opt-ins:</strong> Groq online transcription requires audio opt-in, <code>groq_audio</code> and server flags. Optional Sarvam English narration uses <code>SARVAM_SPEECH_ENABLED=true</code>, fresh narration opt-in, <code>sarvam_speech</code> and a backend-only key through <code>/ai/speak</code>. Other hosted voices stay disabled; Alba selection is paused. <a href="docs/SARVAM_ENGLISH_VOICE.html">Setup and device checks</a>.</li>
+<li>Full detail: <a href="docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#c7-the-voice-and-typed-assistant">complete developer guide, C7</a> and <a href="docs/VOICE_OPTION_1_IMPLEMENTATION.md">voice implementation notes</a>.</li>
+</ul>
+<p><a href="CAREKOSH_BACKEND_INTERVIEW_GUIDE.html">Interview explanations</a> · <a href="CAREKOSH_E2E_VERIFICATION_GUIDE.html">Manual verification</a> · <a href="docs/diagrams/README.md">All generated diagrams</a> · <a href="docs/API_TRACEABILITY.html">API traceability</a> · <a href="docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html">Complete developer guide</a></p>
+</main></body></html>

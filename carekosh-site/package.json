@@ -1,0 +1,12 @@
+{
+  "name": "carekosh-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/preview.mjs",
+    "build": "node scripts/build.mjs production",
+    "build:staging": "node scripts/build.mjs staging",
+    "check": "node --check src/site.js && node scripts/verify.mjs"
+  }
+}

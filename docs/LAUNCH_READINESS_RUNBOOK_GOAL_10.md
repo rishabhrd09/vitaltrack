@@ -1,5 +1,7 @@
 # CareKosh Goal 10 Launch Readiness Runbook
 
+> **Status (7 October 2026):** historical Goal 10/11 record from 15–16 June 2026 (merged in PR #47, `main` at `1f73699`); kept as evidence and not re-verified. One caveat for anyone reusing these procedures: the feature branch adds migration `0007`, which cannot be downgraded. Once a database has been upgraded by that branch, rolling Render back to an older deploy fails at startup (Alembic cannot find the newer revision), so recovery needs a database restore. Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md), [API traceability](API_TRACEABILITY.md) and [backend hardening](BACKEND_HARDENING.md).
+
 Last updated: 2026-06-16
 
 Scope: production operations and Play launch readiness only. This runbook does

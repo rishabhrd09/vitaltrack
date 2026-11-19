@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <!--
   CAREKOSH ACCOUNT DELETION PAGE — filled 2026-06-29.
-  Operator: Rishabh Dongre · Deletion email: support@carekosh.com · Effective date: 29 June 2026.
+  Operator: Rishabh Dongre · Deletion email: support@carekosh.com · Draft reviewed: 23 September 2026; publication/effective date to be confirmed.
+  7 October 2026: factual statements corrected against the code at 03cfebb (unmerged feature branch). Still a DRAFT needing legal review;
+  this edit does not publish the page and does not establish legal or Play-policy compliance.
   Privacy URL: https://carekosh.com/privacy-policy.html (Questions section). Hosted on Cloudflare Pages at carekosh.com.
   Host this file at a public URL and paste that URL into Play Console → App content → Data deletion.
   Google requires this public "request account deletion" URL for apps with accounts — missing it = rejection.
@@ -32,11 +34,12 @@ th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--border);ver
 th{color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}
 footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--border);color:var(--muted);font-size:.85rem}
 </style>
+<style id="doc-review-style">.doc-review{display:block!important;position:static!important;box-sizing:border-box!important;width:auto!important;max-width:1000px;margin:24px auto!important;padding:18px 22px!important;border:1px solid #aab8ac!important;border-left:5px solid #286258!important;border-radius:8px;background:#f0f6ef!important;color:#1b352c!important;font:15px/1.6 system-ui,sans-serif!important}.doc-review p{margin:6px 0!important;color:inherit!important;font:inherit!important}.doc-review a{color:#075d70!important;text-decoration:underline!important}.doc-review strong{color:#173f34!important}.doc-review code{color:inherit!important;background:transparent!important}@media print{.doc-review{break-inside:avoid}}</style>
 </head>
-<body>
+<body><aside class="doc-review" aria-label="Documentation status"><strong>DRAFT — needs legal review · unpublished local deletion draft · reviewed 23 September 2026 · facts corrected 7 October 2026</strong><p>The app confirmation flow exists. The support identity-verification procedure, response target and actual backup/log retention are not established by source. Unsupported 7-day and 30-day promises were removed; confirm the real commitments before publication.</p><p><strong>7 October 2026 corrections</strong> (checked against the code at <code>03cfebb</code>; the two-step deletion flow is the same on <code>main</code>, which has no assistant tables and no order-number counter table): the in-app path now matches the button label and the two-step email confirmation (24-hour link, confirmation page, then deletion); the deleted-data table now also lists sign-in records with IP address and User-Agent, the internal change history and assistant consent/usage records; the retained-data list adds the per-day order-number counter and data held on the phone. The app has no “cancel deletion” button — not confirming simply lets the link expire. Whether this page is published at carekosh.com, and whether it meets Google Play’s account-deletion requirements, was NOT VERIFIED; documentation cannot prove compliance.</p><p><a href="../../docs/INDEX.html">Documentation home and source status</a> · <a href="../../docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide</a> · <a href="../../docs/API_TRACEABILITY.md">API traceability</a> · <a href="../../docs/documentation-audit-2026-10-07/README.md">Documentation audit, 7 Oct 2026</a> · <a href="../../docs/BACKEND_HARDENING.md">Local hardening and remaining work</a></p></aside>
 <div class="wrap">
   <h1>Delete your CareKosh account &amp; data</h1>
-  <p class="meta">App: <strong>CareKosh</strong> · Operated by <strong>Rishabh Dongre</strong> · Effective date: <strong>29 June 2026</strong></p>
+  <p class="meta">App: <strong>CareKosh</strong> · Operated by <strong>Rishabh Dongre</strong> · Draft revised 7 October 2026 — effective date to be set on publication (earlier draft dated <strong>29 June 2026</strong>)</p>
 
   <p>You can permanently delete your CareKosh account and the data associated with it at any time, using either method below.</p>
 
@@ -45,8 +48,8 @@ footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--border);color
     <p class="tagline">Recommended if you still have the app installed.</p>
     <ol>
       <li>Open CareKosh and sign in.</li>
-      <li>Go to <strong>Profile → Delete Account</strong>.</li>
-      <li>We email you a confirmation link. Your account is deleted only <strong>after you confirm by email</strong> (this protects you from accidental or unauthorised deletion).</li>
+      <li>Go to <strong>Profile → Delete My Account</strong>.</li>
+      <li>We email you a confirmation link, valid for 24 hours. Your account is deleted only <strong>after you open the link and confirm on the page it shows</strong> (this protects you from accidental or unauthorised deletion). If you change your mind, do not confirm; the link expires. This option needs the email address on your account and our email service to be working — if you cannot receive the email, use Option 2.</li>
     </ol>
   </div>
 
@@ -56,7 +59,7 @@ footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--border);color
     <ol>
       <li>Email <a href="mailto:support@carekosh.com?subject=Delete%20my%20CareKosh%20account">support@carekosh.com</a> from the <strong>email address registered to your CareKosh account</strong>.</li>
       <li>Use the subject line: <code>Delete my CareKosh account</code>.</li>
-      <li>We will verify the request belongs to you (e.g. by confirming from your registered email) and complete the deletion. We aim to action verified requests within <strong>7 days</strong> and confirm by email when done.</li>
+      <li>We will verify the request belongs to you (e.g. by confirming from your registered email) and complete the deletion. The operator must confirm the support handling process and response target before publishing this draft; no timed support workflow is established by the repository.</li>
     </ol>
   </div>
 
@@ -66,16 +69,20 @@ footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--border);color
     <thead><tr><th>Deleted</th><th>Details</th></tr></thead>
     <tbody>
       <tr><td>Account &amp; profile</td><td>Name, email, username, password hash, and authentication tokens</td></tr>
+      <tr><td>Sign-in records</td><td>Session records, including the IP address and device User-Agent recorded at each sign-in</td></tr>
       <tr><td>Inventory</td><td>All items, categories, quantities, expiry dates, notes, supplier details, and links</td></tr>
-      <tr><td>Orders &amp; activity</td><td>Order records and your activity history</td></tr>
+      <tr><td>Orders &amp; activity</td><td>Order records, your activity history, and the internal change history of your items and orders</td></tr>
+      <tr><td>Assistant records</td><td>If you used the optional online assistant: your consent record and usage records (no question text is stored)</td></tr>
       <tr><td>Item photo references</td><td>Photo URLs stored as item metadata</td></tr>
     </tbody>
   </table>
 
   <h2>What may be retained (briefly), and why</h2>
   <ul>
-    <li><strong>Encrypted backups:</strong> residual copies in routine backups are overwritten on our normal backup cycle (within <strong>30 days</strong>).</li>
+    <li><strong>Encrypted backups:</strong> residual backup copies follow the configured provider retention schedule. Confirm and disclose the actual schedule before publishing; a 30-day limit has not been verified here.</li>
     <li><strong>Legal/security records:</strong> we may retain a minimal record only where required by law or to prevent abuse.</li>
+    <li><strong>Order-number counter:</strong> a per-day counter (a date and the last order number used) is kept so order numbers are never reused. It contains no personal data and is not linked to your account.</li>
+    <li><strong>Data on your phone:</strong> account deletion does not reach into your device. The app clears its cached inventory when it signs you out; assistant settings and a downloaded speech model stay on the phone until you clear the app's storage or uninstall the app (the speech model can also be removed in Voice setup).</li>
   </ul>
   <p>Files you exported yourself (PDFs, JSON) or data you copied to your clipboard live on your own device and are not controlled by us — delete those locally if you wish.</p>
 

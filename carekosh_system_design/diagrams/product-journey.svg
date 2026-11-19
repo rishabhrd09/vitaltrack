@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1447" width="1000" height="1447" role="img" aria-labelledby="product-journey-title product-journey-desc">
+<title id="product-journey-title">A caregiver&#x27;s day, step by step</title>
+<desc id="product-journey-desc">Eight everyday actions in order: sign in, build the inventory, check the dashboard, update a quantity, order supplies, mark the order received, add it to stock, and ask the assistant. Each card names the screen, the API call and what changes in the database. Writes always go to the server first.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="product-journey-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="product-journey-ah-main" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7B2C34"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#product-journey-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">A caregiver&#x27;s day, step by step</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">What the person does, the request the app sends, and what changes in the database.</text>
+<rect x="40.0" y="130.3" width="440.0" height="216.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="73.0" cy="157.1" r="16" fill="#7B2C34"/>
+<text x="73.0" y="163.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">1</text>
+<text x="100.0" y="167.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Sign in</text>
+<text x="58.0" y="196.2" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">SCREEN</text>
+<text x="154.0" y="197.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Login (a new account registers first)</text>
+<text x="58.0" y="227.7" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">CALLS</text>
+<text x="154.0" y="229.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">POST /auth/login</text>
+<text x="58.0" y="259.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">WRITES</text>
+<text x="154.0" y="260.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">refresh token row, last login, activity</text>
+<text x="58.0" y="290.8" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">KEEPS</text>
+<text x="154.0" y="292.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">tokens in SecureStore</text>
+<rect x="520.0" y="130.3" width="440.0" height="216.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="553.0" cy="157.1" r="16" fill="#7B2C34"/>
+<text x="553.0" y="163.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2</text>
+<text x="580.0" y="167.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Build the inventory</text>
+<text x="538.0" y="196.2" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">SCREEN</text>
+<text x="634.0" y="197.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Builder: “Build Inventory”</text>
+<text x="538.0" y="227.7" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">CALLS</text>
+<text x="634.0" y="229.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">POST /categories, POST /items</text>
+<text x="538.0" y="259.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">WRITES</text>
+<text x="634.0" y="260.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">categories, items at version 1, activity and</text>
+<text x="634.0" y="286.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">audit rows</text>
+<text x="538.0" y="316.4" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">RULE</text>
+<text x="634.0" y="317.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">a name exists once per account (409)</text>
+<path d="M483.0,164.3 L515.0,164.3" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#product-journey-ah-main)"/>
+<rect x="40.0" y="406.3" width="440.0" height="216.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="73.0" cy="433.1" r="16" fill="#7B2C34"/>
+<text x="73.0" y="439.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">3</text>
+<text x="100.0" y="443.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Check the dashboard</text>
+<text x="58.0" y="472.2" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">SCREEN</text>
+<text x="154.0" y="473.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Dashboard tab</text>
+<text x="58.0" y="503.8" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">CALLS</text>
+<text x="154.0" y="505.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">GET /items (all pages), /categories,</text>
+<text x="154.0" y="530.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">/orders, /activities</text>
+<text x="58.0" y="560.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">WRITES</text>
+<text x="154.0" y="562.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">nothing; reads only</text>
+<text x="58.0" y="592.4" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">PHONE</text>
+<text x="154.0" y="593.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">counts low stock, out of stock, pending</text>
+<rect x="520.0" y="406.3" width="440.0" height="216.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="553.0" cy="433.1" r="16" fill="#7B2C34"/>
+<text x="553.0" y="439.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">4</text>
+<text x="580.0" y="443.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Update a quantity</text>
+<text x="538.0" y="472.2" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">SCREEN</text>
+<text x="634.0" y="473.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Edit Item → Save</text>
+<text x="538.0" y="503.8" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">CALLS</text>
+<text x="634.0" y="505.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">PUT /items/{id} with its version</text>
+<text x="538.0" y="535.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">WRITES</text>
+<text x="634.0" y="536.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">quantity, version + 1, activity, audit</text>
+<text x="538.0" y="566.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">CONFLICT</text>
+<text x="634.0" y="568.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">409, nothing saved</text>
+<path d="M483.0,440.3 L515.0,440.3" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#product-journey-ah-main)"/>
+<path d="M740.0,349.3 L740.0,366.3 Q740.0,376.3 730.0,376.3 L270.0,376.3 Q260.0,376.3 260.0,386.3 L260.0,401.3" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#product-journey-ah-main)"/>
+<rect x="40.0" y="682.4" width="440.0" height="216.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="73.0" cy="709.2" r="16" fill="#7B2C34"/>
+<text x="73.0" y="715.3" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">5</text>
+<text x="100.0" y="719.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Order supplies</text>
+<text x="58.0" y="748.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">SCREEN</text>
+<text x="154.0" y="749.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Create Order</text>
+<text x="58.0" y="779.8" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">CALLS</text>
+<text x="154.0" y="781.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">POST /orders with a localId</text>
+<text x="58.0" y="811.4" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">WRITES</text>
+<text x="154.0" y="812.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">order ORD-YYYYMMDD-NNNN, its</text>
+<text x="154.0" y="838.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">lines, the daily counter, activity</text>
+<text x="58.0" y="868.5" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">RETRY</text>
+<text x="154.0" y="869.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">same localId returns the same order</text>
+<rect x="520.0" y="682.4" width="440.0" height="216.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="553.0" cy="709.2" r="16" fill="#7B2C34"/>
+<text x="553.0" y="715.3" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">6</text>
+<text x="580.0" y="719.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Mark it received</text>
+<text x="538.0" y="748.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">SCREEN</text>
+<text x="634.0" y="749.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Orders: “Have you received the order?”</text>
+<text x="538.0" y="779.8" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">CALLS</text>
+<text x="634.0" y="781.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">PATCH /orders/{id}/status</text>
+<text x="538.0" y="811.4" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">WRITES</text>
+<text x="634.0" y="812.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">status received, received_at, activity</text>
+<path d="M483.0,716.4 L515.0,716.4" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#product-journey-ah-main)"/>
+<path d="M740.0,625.4 L740.0,642.4 Q740.0,652.4 730.0,652.4 L270.0,652.4 Q260.0,652.4 260.0,662.4 L260.0,677.4" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#product-journey-ah-main)"/>
+<rect x="40.0" y="958.4" width="440.0" height="267.2" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="73.0" cy="985.2" r="16" fill="#7B2C34"/>
+<text x="73.0" y="991.3" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">7</text>
+<text x="100.0" y="995.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Add it to stock</text>
+<text x="58.0" y="1024.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">SCREEN</text>
+<text x="154.0" y="1025.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Orders: “Update Stock”</text>
+<text x="58.0" y="1055.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">CALLS</text>
+<text x="154.0" y="1057.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">POST /orders/{id}/apply</text>
+<text x="58.0" y="1087.4" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">WRITES</text>
+<text x="154.0" y="1088.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">one transaction: each item gains its line</text>
+<text x="154.0" y="1114.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">quantity and version + 1; audit rows;</text>
+<text x="154.0" y="1139.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">activity; order → stock_updated</text>
+<rect x="520.0" y="958.4" width="440.0" height="267.2" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="553.0" cy="985.2" r="16" fill="#7B2C34"/>
+<text x="553.0" y="991.3" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">8</text>
+<text x="580.0" y="995.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Ask the assistant</text>
+<text x="538.0" y="1024.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">SCREEN</text>
+<text x="634.0" y="1025.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">tap-to-talk dock above the tabs</text>
+<text x="538.0" y="1055.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">PHONE</text>
+<text x="634.0" y="1057.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Moonshine → reviewed text; local parser</text>
+<text x="634.0" y="1082.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">→ inventory answer or unsaved draft</text>
+<text x="538.0" y="1113.0" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">CALLS</text>
+<text x="634.0" y="1114.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">GET /items unless the cache is fresh;</text>
+<text x="634.0" y="1139.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">/ai/interpret only if opted in</text>
+<text x="538.0" y="1170.1" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="11.5" font-weight="600" fill="#7C6B5C" text-anchor="start" letter-spacing="1.6">WRITES</text>
+<text x="634.0" y="1171.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">ai_usage (and consent) rows only if Groq</text>
+<text x="634.0" y="1196.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">is used; never inventory or orders</text>
+<path d="M483.0,992.4 L515.0,992.4" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#product-journey-ah-main)"/>
+<path d="M740.0,901.4 L740.0,918.4 Q740.0,928.4 730.0,928.4 L270.0,928.4 Q260.0,928.4 260.0,938.4 L260.0,953.4" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#product-journey-ah-main)"/>
+<rect x="40.0" y="1277.6" width="2.5" height="134.2" fill="#7B2C34"/>
+<text x="58.0" y="1313.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">Writes go to the server first. After a successful write the</text>
+<text x="58.0" y="1339.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">phone invalidates the affected lists and fetches them</text>
+<text x="58.0" y="1364.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">again; another phone&#x27;s changes appear after the next</text>
+<text x="58.0" y="1390.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">refetch.</text>
+<path d="M518.0,1277.6 H944.0 Q960.0,1277.6 960.0,1293.6 V1392.3 Q960.0,1408.3 944.0,1408.3 H518.0 Q515.0,1408.3 515.0,1405.3 V1280.6 Q515.0,1277.6 518.0,1277.6 Z" fill="#EBDDC6" stroke="none" stroke-width="1.4"/>
+<text x="533.0" y="1305.6" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#7B2C34" text-anchor="start" letter-spacing="1.6">OFFLINE</text>
+<text x="533.0" y="1335.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">The app shows the last data it loaded, labelled as</text>
+<text x="533.0" y="1361.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">such. Every save fails until the phone is back online;</text>
+<text x="533.0" y="1386.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">nothing is queued for later.</text>
+</svg>

@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 919" width="1000" height="919" role="img" aria-labelledby="order-status-title order-status-desc">
+<title id="order-status-title">An order&#x27;s life</title>
+<desc id="order-status-desc">Orders start pending. Pending can become ordered, received or declined. Ordered can become partially received or received. Partially received can become received. Received becomes stock updated only through POST apply, which adds every line&#x27;s full quantity to stock once, in one transaction. Declined and stock updated are final. Only pending and declined orders can be deleted.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="order-status-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="order-status-ah-fail" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#B2423B"/></marker><marker id="order-status-ah-flow" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#4B3E35"/></marker><marker id="order-status-ah-main" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7B2C34"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#order-status-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">An order&#x27;s life</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Statuses only move forward. Stock changes exactly once: when a received order is applied.</text>
+<rect x="40.0" y="142.3" width="236.0" height="80.0" rx="40" fill="#E6E6E0" stroke="#2E5677" stroke-width="2"/>
+<text x="158.0" y="190.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="22" font-weight="600" fill="#2E5677" text-anchor="middle">pending</text>
+<rect x="382.0" y="142.3" width="236.0" height="80.0" rx="40" fill="#E6E6E0" stroke="#2E5677" stroke-width="2"/>
+<text x="500.0" y="190.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="22" font-weight="600" fill="#2E5677" text-anchor="middle">ordered</text>
+<rect x="724.0" y="142.3" width="236.0" height="80.0" rx="40" fill="#E6E6E0" stroke="#2E5677" stroke-width="2"/>
+<text x="842.0" y="190.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="22" font-weight="600" fill="#2E5677" text-anchor="middle">partially received</text>
+<rect x="40.0" y="392.3" width="236.0" height="80.0" rx="40" fill="#EEE2DA" stroke="#7B2C34" stroke-width="2"/>
+<rect x="46.0" y="398.3" width="224.0" height="68.0" rx="34" fill="none" stroke="#7B2C34" stroke-width="1.2"/>
+<text x="158.0" y="440.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="22" font-weight="600" fill="#7B2C34" text-anchor="middle">declined</text>
+<rect x="382.0" y="392.3" width="236.0" height="80.0" rx="40" fill="#E6E6E0" stroke="#2E5677" stroke-width="2"/>
+<text x="500.0" y="440.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="22" font-weight="600" fill="#2E5677" text-anchor="middle">received</text>
+<rect x="724.0" y="392.3" width="236.0" height="80.0" rx="40" fill="#EEE2DA" stroke="#7B2C34" stroke-width="2"/>
+<rect x="730.0" y="398.3" width="224.0" height="68.0" rx="34" fill="none" stroke="#7B2C34" stroke-width="1.2"/>
+<text x="842.0" y="440.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="22" font-weight="600" fill="#7B2C34" text-anchor="middle">stock updated</text>
+<path d="M279.0,182.3 L377.0,182.3" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#order-status-ah-flow)"/>
+<text x="328.0" y="170.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="middle" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">mark ordered</text>
+<path d="M621.0,182.3 L719.0,182.3" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#order-status-ah-flow)"/>
+<text x="670.0" y="170.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="middle" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">some arrived</text>
+<path d="M500.0,225.3 L500.0,387.3" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#order-status-ah-flow)"/>
+<text x="512.0" y="280.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">all arrived</text>
+<path d="M100.0,225.3 L100.0,387.3" fill="none" stroke="#B2423B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#order-status-ah-fail)"/>
+<text x="88.0" y="280.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="end" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">decline</text>
+<path d="M226.0,225.3 L226.0,297.3 Q226.0,307.3 236.0,307.3 L422.0,307.3 Q432.0,307.3 432.0,317.3 L432.0,387.3" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#order-status-ah-flow)"/>
+<text x="329.0" y="297.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="middle" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">received directly</text>
+<path d="M784.0,225.3 L784.0,297.3 Q784.0,307.3 774.0,307.3 L578.0,307.3 Q568.0,307.3 568.0,317.3 L568.0,387.3" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#order-status-ah-flow)"/>
+<text x="676.0" y="297.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="middle" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">rest arrived</text>
+<path d="M621.0,432.3 L719.0,432.3" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#order-status-ah-main)"/>
+<text x="670.0" y="420.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="middle" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">POST /apply</text>
+<text x="671.0" y="462.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7B2C34" text-anchor="middle" font-style="italic">the only way</text>
+<rect x="712.0" y="502.3" width="26.0" height="18.0" rx="9" fill="#EEE2DA" stroke="#7B2C34" stroke-width="1.6"/>
+<text x="746.0" y="516.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#4B3E35" text-anchor="start">double outline = final</text>
+<rect x="40.0" y="542.3" width="293.3" height="184.8" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="58.0" y="571.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">PATCH …/STATUS</text>
+<text x="58.0" y="601.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Change status</text>
+<text x="58.0" y="630.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">illegal move → 400</text>
+<text x="58.0" y="654.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">same status → 200, no change</text>
+<text x="58.0" y="678.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">lost a race → 409</text>
+<rect x="353.3" y="542.3" width="293.3" height="184.8" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="371.3" y="571.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">POST …/APPLY</text>
+<text x="371.3" y="601.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Apply to stock</text>
+<text x="371.3" y="630.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">only from received</text>
+<text x="371.3" y="654.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">adds every line&#x27;s full quantity once,</text>
+<text x="371.3" y="678.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">in one transaction</text>
+<text x="371.3" y="702.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">repeat → 400; missing item → 409</text>
+<rect x="666.7" y="542.3" width="293.3" height="184.8" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="684.7" y="571.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">DELETE /ORDERS/{ID}</text>
+<text x="684.7" y="601.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Delete</text>
+<text x="684.7" y="630.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">only pending or declined</text>
+<text x="684.7" y="654.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="17" font-weight="400" fill="#4B3E35" text-anchor="start">checked again in the final SQL</text>
+<path d="M43.0,753.1 H944.0 Q960.0,753.1 960.0,769.1 V867.8 Q960.0,883.8 944.0,883.8 H43.0 Q40.0,883.8 40.0,880.8 V756.1 Q40.0,753.1 43.0,753.1 Z" fill="#EBDDC6" stroke="none" stroke-width="1.4"/>
+<text x="58.0" y="781.1" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#7B2C34" text-anchor="start" letter-spacing="1.6">IN THE APP</text>
+<text x="58.0" y="811.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">The app offers only two moves: “Have you received the order?” (pending → received) and “Update Stock” (apply). The</text>
+<text x="58.0" y="836.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">others are API-only. “Remove” appears for every status, but the server refuses to delete received and applied orders</text>
+<text x="58.0" y="862.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">(A-2).</text>
+</svg>

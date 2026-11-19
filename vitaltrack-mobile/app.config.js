@@ -1,4 +1,5 @@
 const appJson = require('./app.json');
+const { KOTLIN_VERSION } = require('./plugins/withKotlinCompiler');
 
 const PRODUCTION_API_URL = 'https://api.carekosh.com';
 const PREVIEW_API_URL = 'https://staging-api.carekosh.com';
@@ -16,7 +17,11 @@ module.exports = ({ config }) => {
   const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
   const usesCleartextTraffic = isCleartextDevelopmentBuild();
 
-  if (profile === 'preview' && apiUrl && apiUrl !== PREVIEW_API_URL) {
+  if (profile === 'production' && usesCleartextTraffic) {
+    throw new Error('Production Android builds must not allow cleartext traffic.');
+  }
+
+  if ((profile === 'preview-voice-diagnostics' || (profile === 'preview' && apiUrl)) && apiUrl !== PREVIEW_API_URL) {
     throw new Error('Preview Android builds must use the HTTPS staging API URL.');
   }
 
@@ -24,12 +29,27 @@ module.exports = ({ config }) => {
     throw new Error('Production Android builds must use the HTTPS production API URL.');
   }
 
+  // The offline-voice diagnostics panel (and paused Alba selection) is for test builds only.
+  if (profile === 'production' && process.env.EXPO_PUBLIC_VOICE_DIAGNOSTICS) {
+    throw new Error('Production builds must not enable offline voice diagnostics.');
+  }
+
+  // Whistle can be tested in regular preview without enabling paused speech experiments.
+  if (profile === 'production' && process.env.EXPO_PUBLIC_WHISTLE_LISTENING !== undefined) {
+    throw new Error('Production builds must not enable experimental Whistle listening.');
+  }
+  if ((process.env.EXPO_PUBLIC_WHISTLE_LISTENING === '1' || process.env.EXPO_PUBLIC_VOICE_DIAGNOSTICS === '1') && apiUrl !== PREVIEW_API_URL) {
+    throw new Error('Whistle preview builds must use the HTTPS staging API URL.');
+  }
+
   return {
     ...config,
     ...appJson.expo,
     plugins: [
       ...(appJson.expo.plugins || []),
-      ['expo-build-properties', { android: { usesCleartextTraffic } }],
+      // Keep stdlib/KSP and the actual compiler aligned for LiteRT's metadata.
+      ['expo-build-properties', { android: { usesCleartextTraffic, kotlinVersion: KOTLIN_VERSION } }],
+      './plugins/withKotlinCompiler',
     ],
     extra: {
       ...appJson.expo.extra,

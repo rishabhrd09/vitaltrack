@@ -25,8 +25,29 @@ services:
         generateValue: true
       - key: ENVIRONMENT
         value: production
+      # Configure and prove these on STAGING before syncing this Blueprint.
+      # Shared private Redis; never expose it to the public internet.
+      - key: RATE_LIMIT_STORAGE_URI
+        sync: false
+      - key: RATE_LIMIT_KEY_PREFIX
+        value: carekosh
+      - key: INGRESS_MODE
+        value: edge_secret
+      - key: ALLOWED_HOSTS
+        sync: false
+      # Edge sets X-CareKosh-Origin-Verify. Never ship this in Android or VITE_*.
+      - key: ORIGIN_VERIFY_SECRET
+        sync: false
+      - key: MAX_INFLIGHT_REQUESTS
+        value: "32"
+      - key: API_BODY_TIMEOUT_SECONDS
+        value: "60"
       - key: CORS_ORIGINS
-        value: '["*"]'
+        value: '["https://homeicuinventory.carekosh.com"]'
+      - key: WEB_AUTH_ENABLED
+        value: "true"
+      - key: WEB_APP_ORIGINS
+        value: '["https://homeicuinventory.carekosh.com"]'
       - key: REQUIRE_EMAIL_VERIFICATION
         value: "true"
       - key: MAIL_PASSWORD
@@ -38,3 +59,8 @@ services:
       # Error tracking — paste your Sentry DSN here (leave unset to disable)
       - key: SENTRY_DSN
         sync: false
+      # Optional Sarvam narration is configured separately in the staging
+      # service's Environment; see docs/SARVAM_ENGLISH_VOICE.md. This production
+      # Blueprint does not enable it or store a speech key. Personal keys also
+      # require AI_SARVAM_BYOK_ENABLED and a private, stable
+      # AI_CREDENTIAL_ENCRYPTION_KEY on that service, plus migration 0011.

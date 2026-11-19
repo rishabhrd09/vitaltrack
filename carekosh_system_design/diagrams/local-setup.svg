@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1072" width="1000" height="1072" role="img" aria-labelledby="local-setup-title local-setup-desc">
+<title id="local-setup-title">Local development set-up</title>
+<desc id="local-setup-desc">On the laptop, PostgreSQL 16 and the FastAPI server run in the Docker Compose dev stack (or a Python virtual environment), and Metro serves the JavaScript bundle. The phone reaches Metro and the API over USB with adb reverse for ports 8081 and 8000, over the local Wi-Fi address, or through an Expo tunnel. Expo Go runs everything except the voice microphone, which needs an APK with the native module. A preview APK calls staging, not the laptop, and the development profile also needs expo-dev-client, which is not installed.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="local-setup-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="local-setup-ah-main" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7B2C34"/></marker><marker id="local-setup-ah-reply" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7C6B5C"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#local-setup-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">Your laptop and your phone during development</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Pick one connection. USB with adb reverse is the most reliable: the phone then reaches the laptop as localhost.</text>
+<rect x="40.0" y="126.3" width="920.0" height="328.4" rx="16" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.2"/>
+<rect x="56.0" y="174.3" width="284.0" height="168.5" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="74.0" y="211.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">API · Docker Compose</text>
+<text x="74.0" y="241.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">docker-compose.dev.yml</text>
+<text x="74.0" y="267.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">uvicorn --reload on port 8000</text>
+<text x="74.0" y="292.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">runs alembic upgrade head</text>
+<rect x="358.0" y="174.3" width="284.0" height="168.5" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<text x="376.0" y="211.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">PostgreSQL 16</text>
+<text x="376.0" y="241.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">postgres:16-alpine</text>
+<text x="376.0" y="267.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">port 5432, data in a volume</text>
+<text x="376.0" y="292.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">pgAdmin optional: port 5050</text>
+<rect x="660.0" y="174.3" width="284.0" height="168.5" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<text x="678.0" y="211.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Metro bundler</text>
+<text x="678.0" y="241.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">npm run start:local</text>
+<text x="678.0" y="267.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">EXPO_PUBLIC_API_URL =</text>
+<text x="678.0" y="292.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">http://localhost:8000</text>
+<text x="678.0" y="318.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">port 8081</text>
+<rect x="56.0" y="358.8" width="888.0" height="77.9" rx="12" fill="#FBF6EC" stroke="#D3BF9E" stroke-width="1.4"/>
+<text x="70.0" y="389.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#1A1512" text-anchor="start">Or without Docker</text>
+<text x="70.0" y="416.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">a Python 3.12 virtual environment running uvicorn app.main:app --reload against your own local PostgreSQL 16</text>
+<text x="56.0" y="156.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#6E5D4E" text-anchor="start" letter-spacing="1.6">YOUR LAPTOP</text>
+<rect x="40.0" y="494.7" width="293.3" height="134.0" rx="12" fill="#EEE2DA" stroke="#7B2C34" stroke-width="1.8"/>
+<text x="58.0" y="530.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#7B2C34" text-anchor="start">USB + adb reverse</text>
+<text x="58.0" y="557.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">adb reverse tcp:8081 tcp:8081 and</text>
+<text x="58.0" y="581.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">tcp:8000 tcp:8000; the phone uses</text>
+<text x="58.0" y="604.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">localhost</text>
+<path d="M186.7,458.7 L186.7,489.7" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#local-setup-ah-main)" marker-start="url(#local-setup-ah-main)"/>
+<rect x="353.3" y="494.7" width="293.3" height="134.0" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8" stroke-dasharray="7 6"/>
+<text x="371.3" y="530.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#6E5D4E" text-anchor="start">Same Wi-Fi</text>
+<text x="371.3" y="557.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">set EXPO_PUBLIC_API_URL to</text>
+<text x="371.3" y="581.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">http://&lt;laptop-IP&gt;:8000</text>
+<path d="M500.0,458.7 L500.0,489.7" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#local-setup-ah-reply)" marker-start="url(#local-setup-ah-reply)"/>
+<rect x="666.7" y="494.7" width="293.3" height="134.0" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8" stroke-dasharray="7 6"/>
+<text x="684.7" y="530.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#6E5D4E" text-anchor="start">Expo tunnel</text>
+<text x="684.7" y="557.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">serves the bundle from anywhere; the</text>
+<text x="684.7" y="581.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">API address must still be reachable</text>
+<path d="M813.3,458.7 L813.3,489.7" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#local-setup-ah-reply)" marker-start="url(#local-setup-ah-reply)"/>
+<rect x="40.0" y="658.7" width="920.0" height="246.9" rx="16" fill="#EAE9D8" stroke="#557629" stroke-width="1.2"/>
+<rect x="56.0" y="706.7" width="284.0" height="180.9" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<text x="74.0" y="742.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#557629" text-anchor="start">Expo Go (SDK 54)</text>
+<text x="74.0" y="769.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">scan the QR code; every screen and</text>
+<text x="74.0" y="793.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">typed assistant questions work</text>
+<rect x="358.0" y="706.7" width="284.0" height="180.9" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8" stroke-dasharray="7 6"/>
+<text x="376.0" y="742.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#557629" text-anchor="start">EAS APK</text>
+<text x="376.0" y="769.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">needed for the voice microphone</text>
+<text x="376.0" y="793.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">(native module); a preview APK calls</text>
+<text x="376.0" y="816.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">staging, not this laptop; the</text>
+<text x="376.0" y="840.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">development profile needs</text>
+<text x="376.0" y="863.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">expo-dev-client, not installed</text>
+<rect x="660.0" y="706.7" width="284.0" height="180.9" rx="12" fill="#FBF6EC" stroke="#D3BF9E" stroke-width="1.4"/>
+<text x="678.0" y="742.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#1A1512" text-anchor="start">Android emulator</text>
+<text x="678.0" y="769.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">reaches the laptop at 10.0.2.2, for</text>
+<text x="678.0" y="793.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">example http://10.0.2.2:8000</text>
+<path d="M186.7,631.7 L186.7,648.7 Q186.7,648.7 186.7,648.7 L500.0,648.7" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#local-setup-ah-reply)"/>
+<path d="M500.0,631.7 L500.0,648.7 Q500.0,648.7 500.0,648.7 L500.0,648.7" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#local-setup-ah-reply)"/>
+<path d="M813.3,631.7 L813.3,648.7 Q813.3,648.7 813.3,648.7 L500.0,648.7" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#local-setup-ah-reply)"/>
+<path d="M500.0,648.7 L500.0,655.7" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#local-setup-ah-main)"/>
+<text x="56.0" y="688.7" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#557629" text-anchor="start" letter-spacing="1.6">PHONE OR EMULATOR · CHOOSE THE SHELL INDEPENDENTLY OF THE CONNECTION</text>
+<path d="M43.0,931.6 H944.0 Q960.0,931.6 960.0,947.6 V1020.8 Q960.0,1036.8 944.0,1036.8 H43.0 Q40.0,1036.8 40.0,1033.8 V934.6 Q40.0,931.6 43.0,931.6 Z" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.4"/>
+<text x="58.0" y="959.6" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#B2423B" text-anchor="start" letter-spacing="1.6">TESTS NEVER USE THIS DATABASE</text>
+<text x="58.0" y="989.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Backend tests drop and recreate every table. Run them only against a separate, disposable local database whose name</text>
+<text x="58.0" y="1015.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">contains “test”, never this one.</text>
+</svg>

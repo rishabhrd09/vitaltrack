@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1666" width="1000" height="1666" role="img" aria-labelledby="request-lifecycle-title request-lifecycle-desc">
+<title id="request-lifecycle-title">Inside the server: one request, step by step</title>
+<desc id="request-lifecycle-desc">A close-up of the server side of PUT /api/v1/items/{id}. The middleware reads the body and notes the request id; FastAPI matches the route and parses the JSON; dependencies create a session and load the user, then the fields are validated, all before the handler. The handler takes the account&#x27;s name lock, checks ownership, runs a compare-and-swap UPDATE, writes history rows and commits. db.refresh then reads the row in a new transaction, the response is serialised in camelCase, and get_db commits that read and closes the session; headers are added on the way out.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="request-lifecycle-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="request-lifecycle-ah-fail" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#B2423B"/></marker><marker id="request-lifecycle-ah-flow" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#4B3E35"/></marker><marker id="request-lifecycle-ah-reply" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7C6B5C"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#request-lifecycle-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">Inside the server: one request, step by step</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">The same PUT /api/v1/items/{id}, seen from FastAPI. Steps 1–5 run before your handler.</text>
+<rect x="40.0" y="122.3" width="286.4" height="1514.0" rx="14" fill="#F2EFE7" stroke="#C2C9CB" stroke-width="1.2"/>
+<rect x="352.4" y="122.3" width="260.4" height="1514.0" rx="14" fill="#F5EDE4" stroke="#D7BDB8" stroke-width="1.2"/>
+<rect x="638.8" y="122.3" width="321.2" height="1514.0" rx="14" fill="#F7F0E2" stroke="#E4CEAE" stroke-width="1.2"/>
+<text x="56.0" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">MIDDLEWARE AND FASTAPI</text>
+<text x="368.4" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#7B2C34" text-anchor="start" letter-spacing="1.6">HANDLER · UPDATE_ITEM</text>
+<text x="654.8" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#A9680F" text-anchor="start" letter-spacing="1.6">POSTGRESQL</text>
+<rect x="52.0" y="176.3" width="262.4" height="143.6" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="85.0" cy="203.1" r="16" fill="#7B2C34"/>
+<text x="85.0" y="209.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">1</text>
+<text x="112.0" y="213.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Body read and</text>
+<text x="112.0" y="239.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">checked</text>
+<text x="70.0" y="269.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">AIBodyLimit: at most 2 MB,</text>
+<text x="70.0" y="295.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">else 413</text>
+<rect x="52.0" y="349.9" width="262.4" height="168.5" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="85.0" cy="376.7" r="16" fill="#7B2C34"/>
+<text x="85.0" y="382.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2</text>
+<text x="112.0" y="387.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Request id noted</text>
+<text x="70.0" y="417.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">X-Request-ID echoed or</text>
+<text x="70.0" y="442.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">created; security headers are</text>
+<text x="70.0" y="468.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">added on the way out; CORS</text>
+<text x="70.0" y="493.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">answers browsers only</text>
+<path d="M183.2,321.9 L183.2,345.9" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-lifecycle-ah-flow)"/>
+<rect x="52.0" y="548.4" width="262.4" height="143.6" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="85.0" cy="575.2" r="16" fill="#7B2C34"/>
+<text x="85.0" y="581.3" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">3</text>
+<text x="112.0" y="585.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Route matched,</text>
+<text x="112.0" y="612.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">JSON parsed</text>
+<text x="70.0" y="641.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">malformed JSON → 422</text>
+<text x="70.0" y="667.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">before dependencies</text>
+<path d="M183.2,520.4 L183.2,544.4" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-lifecycle-ah-flow)"/>
+<rect x="52.0" y="722.0" width="262.4" height="143.6" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="85.0" cy="748.8" r="16" fill="#7B2C34"/>
+<text x="85.0" y="754.9" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">4</text>
+<text x="112.0" y="759.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">get_db creates a</text>
+<text x="112.0" y="785.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">session</text>
+<text x="70.0" y="815.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">no connection until the first</text>
+<text x="70.0" y="841.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">SQL; pool 5 + 10 per worker</text>
+<path d="M183.2,694.0 L183.2,718.0" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-lifecycle-ah-flow)"/>
+<rect x="52.0" y="895.6" width="262.4" height="194.7" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="85.0" cy="922.4" r="16" fill="#7B2C34"/>
+<text x="85.0" y="928.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">5</text>
+<text x="112.0" y="932.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Auth, then field</text>
+<text x="112.0" y="959.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">validation</text>
+<text x="70.0" y="989.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">get_current_user SELECTs the</text>
+<text x="70.0" y="1014.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">user and checks policy; then</text>
+<text x="70.0" y="1040.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">ItemUpdate field errors →</text>
+<text x="70.0" y="1065.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">422, before the handler</text>
+<path d="M183.2,867.6 L183.2,891.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-lifecycle-ah-flow)"/>
+<rect x="364.4" y="953.6" width="236.4" height="194.7" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="397.4" cy="980.4" r="16" fill="#7B2C34"/>
+<text x="397.4" y="986.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">6</text>
+<text x="424.4" y="990.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Name lock, then</text>
+<text x="424.4" y="1017.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">ownership</text>
+<text x="382.4" y="1047.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">advisory lock (the body has</text>
+<text x="382.4" y="1072.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">a name); SELECT …</text>
+<text x="382.4" y="1098.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">WHERE id AND user_id;</text>
+<text x="382.4" y="1123.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">not yours → 404</text>
+<path d="M316.4,925.6 L321.9,925.6 Q327.4,925.6 327.4,931.1 L327.4,973.6 Q327.4,983.6 337.4,983.6 L360.4,983.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-lifecycle-ah-flow)"/>
+<rect x="650.8" y="1011.6" width="297.2" height="169.2" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<circle cx="683.8" cy="1038.4" r="16" fill="#7B2C34"/>
+<text x="683.8" y="1044.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">7</text>
+<text x="710.8" y="1048.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">Compare-and-swap</text>
+<text x="710.8" y="1075.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">UPDATE</text>
+<text x="668.8" y="1105.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">SET …, version = version + 1</text>
+<text x="668.8" y="1130.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">WHERE … AND version = :v</text>
+<text x="668.8" y="1156.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">RETURNING</text>
+<path d="M602.8,983.6 L608.3,983.6 Q613.8,983.6 613.8,989.1 L613.8,1031.6 Q613.8,1041.6 623.8,1041.6 L646.8,1041.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-lifecycle-ah-flow)"/>
+<rect x="364.4" y="1178.4" width="236.4" height="194.7" rx="12" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.8"/>
+<circle cx="397.4" cy="1205.2" r="16" fill="#7B2C34"/>
+<text x="397.4" y="1211.3" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">8</text>
+<text x="424.4" y="1215.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">0 rows? Stop</text>
+<text x="424.4" y="1241.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">with 409</text>
+<text x="382.4" y="1271.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">the body carries</text>
+<text x="382.4" y="1297.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">server_version and</text>
+<text x="382.4" y="1322.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">server_quantity; nothing</text>
+<text x="382.4" y="1348.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">written</text>
+<path d="M648.8,1073.6 L643.3,1073.6 Q637.8,1073.6 637.8,1079.1 L637.8,1198.4 Q637.8,1208.4 627.8,1208.4 L604.8,1208.4" fill="none" stroke="#B2423B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-lifecycle-ah-fail)"/>
+<rect x="650.8" y="1210.8" width="297.2" height="117.4" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<circle cx="683.8" cy="1237.6" r="16" fill="#7B2C34"/>
+<text x="683.8" y="1243.7" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">9</text>
+<text x="710.8" y="1248.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">History rows</text>
+<text x="668.8" y="1278.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">INSERT activity_logs (item_update)</text>
+<text x="668.8" y="1303.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">and audit_log (old → new)</text>
+<rect x="650.8" y="1358.2" width="297.2" height="142.9" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<circle cx="683.8" cy="1385.0" r="16" fill="#7B2C34"/>
+<text x="683.8" y="1391.1" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">10</text>
+<text x="710.8" y="1395.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">Handler COMMIT</text>
+<text x="668.8" y="1425.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">UPDATE and history land</text>
+<text x="668.8" y="1450.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">together; rollback undoes work</text>
+<text x="668.8" y="1476.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">before this commit only</text>
+<path d="M799.4,1330.2 L799.4,1354.2" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-lifecycle-ah-flow)"/>
+<rect x="52.0" y="1416.2" width="262.4" height="194.1" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="85.0" cy="1443.0" r="16" fill="#7B2C34"/>
+<text x="85.0" y="1449.1" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">11</text>
+<text x="112.0" y="1453.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Response</text>
+<text x="70.0" y="1483.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">db.refresh reads the row in a</text>
+<text x="70.0" y="1508.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">new transaction; ItemResponse</text>
+<text x="70.0" y="1534.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">in camelCase; get_db commits</text>
+<text x="70.0" y="1560.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">that read and closes; headers</text>
+<text x="70.0" y="1585.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">added on the way out</text>
+<path d="M648.8,1388.2 L643.3,1388.2 Q637.8,1388.2 637.8,1393.7 L637.8,1436.2 Q637.8,1446.2 627.8,1446.2 L318.4,1446.2" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#request-lifecycle-ah-reply)"/>
+</svg>

@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1131" width="1000" height="1131" role="img" aria-labelledby="mobile-cache-title mobile-cache-desc">
+<title id="mobile-cache-title">The phone&#x27;s copy of the data</title>
+<desc id="mobile-cache-desc">PostgreSQL behind the API is the only source of truth. The app keeps a TanStack Query cache in memory and persists a copy to AsyncStorage for display after a restart. Stale data is refetched on mount, return to the foreground, reconnect, pull-to-refresh or invalidation. Writes go straight to the API. Hook-based mutations invalidate affected queries after success, uncertain network/gateway failure or 409. There are no optimistic updates and no offline write queue.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="mobile-cache-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="mobile-cache-ah-copy" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#A9680F"/></marker><marker id="mobile-cache-ah-flow" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#4B3E35"/></marker><marker id="mobile-cache-ah-main" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7B2C34"/></marker><marker id="mobile-cache-ah-reply" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7C6B5C"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#mobile-cache-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">The phone&#x27;s copy of the data</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">The server is the source of truth. The phone keeps a display cache, never a second database.</text>
+<rect x="40.0" y="122.3" width="447.0" height="979.5" rx="14" fill="#F4F0E3" stroke="#CDD2B5" stroke-width="1.2"/>
+<rect x="513.0" y="122.3" width="447.0" height="979.5" rx="14" fill="#F4F0E3" stroke="#CDD2B5" stroke-width="1.2"/>
+<text x="56.0" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#557629" text-anchor="start" letter-spacing="1.6">READING</text>
+<text x="529.0" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#557629" text-anchor="start" letter-spacing="1.6">SAVING</text>
+<rect x="52.0" y="176.3" width="423.0" height="142.9" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="203.1" r="16" fill="#7B2C34"/>
+<text x="85.0" y="209.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">1</text>
+<text x="112.0" y="213.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Screens</text>
+<text x="70.0" y="243.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">useItems → [&#x27;items&#x27;] (all pages)</text>
+<text x="70.0" y="269.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">useOrders → [&#x27;orders&#x27;] (staleTime 0)</text>
+<text x="70.0" y="294.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Dashboard counts are computed on the phone</text>
+<rect x="52.0" y="349.2" width="423.0" height="194.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="376.0" r="16" fill="#7B2C34"/>
+<text x="85.0" y="382.1" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2</text>
+<text x="112.0" y="386.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">TanStack Query cache</text>
+<text x="70.0" y="416.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">in memory: staleTime 30 s (not polling), gcTime</text>
+<text x="70.0" y="441.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">24 h</text>
+<text x="70.0" y="467.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">retry 3 for reads</text>
+<text x="70.0" y="493.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">refetch on mount, foreground, reconnect,</text>
+<text x="70.0" y="518.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">pull-to-refresh</text>
+<path d="M263.5,321.2 L263.5,345.2" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#mobile-cache-ah-flow)"/>
+<rect x="128.0" y="589.2" width="347.0" height="194.1" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<circle cx="161.0" cy="616.1" r="16" fill="#7B2C34"/>
+<text x="161.0" y="622.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">3</text>
+<text x="188.0" y="626.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">AsyncStorage copy</text>
+<text x="146.0" y="656.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">key carekosh-query-cache, restored if</text>
+<text x="146.0" y="682.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">under 24 h old</text>
+<text x="146.0" y="707.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">busted when Expo app version changes</text>
+<text x="146.0" y="733.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">(not versionCode alone)</text>
+<text x="146.0" y="758.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">cleared at login and logout</text>
+<path d="M301.5,546.2 L301.5,584.2" fill="none" stroke="#A9680F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 6" marker-end="url(#mobile-cache-ah-copy)"/>
+<text x="313.5" y="570.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">saved copy</text>
+<rect x="525.0" y="176.3" width="423.0" height="117.4" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="558.0" cy="203.1" r="16" fill="#7B2C34"/>
+<text x="558.0" y="209.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">1</text>
+<text x="585.0" y="213.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">A button</text>
+<text x="543.0" y="243.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">most write buttons check NetInfo first and stop with</text>
+<text x="543.0" y="269.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">“Offline” when disconnected</text>
+<rect x="525.0" y="323.6" width="423.0" height="168.5" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="558.0" cy="350.5" r="16" fill="#7B2C34"/>
+<text x="558.0" y="356.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2</text>
+<text x="585.0" y="361.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Mutation → service → API</text>
+<text x="543.0" y="390.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">retry 0, networkMode always: no deferred offline</text>
+<text x="543.0" y="416.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">replay</text>
+<text x="543.0" y="441.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">ordinary request: 90 s overall deadline; no optimistic</text>
+<text x="543.0" y="467.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">update</text>
+<path d="M736.5,295.6 L736.5,319.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#mobile-cache-ah-flow)"/>
+<rect x="525.0" y="522.1" width="423.0" height="117.4" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="558.0" cy="549.0" r="16" fill="#7B2C34"/>
+<text x="558.0" y="555.0" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">3</text>
+<text x="585.0" y="559.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">On success: invalidate</text>
+<text x="543.0" y="589.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">affected query keys only → refetch (depends on the</text>
+<text x="543.0" y="614.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">mutation)</text>
+<rect x="52.0" y="839.3" width="896.0" height="117.4" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="70.0" y="876.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">CareKosh API + PostgreSQL</text>
+<text x="70.0" y="906.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">The only source of truth. Reads reflect their transaction snapshot and can soon be stale. The server never pushes</text>
+<text x="70.0" y="932.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">changes, so another phone&#x27;s edits appear after a refetch.</text>
+<path d="M90.0,546.2 L90.0,834.3" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#mobile-cache-ah-reply)" marker-start="url(#mobile-cache-ah-reply)"/>
+<text x="104.0" y="821.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">fetches and refetches</text>
+<path d="M736.5,495.1 L736.5,502.6 Q736.5,510.1 744.0,510.1 L966.0,510.1 Q976.0,510.1 976.0,520.1 L976.0,888.0 Q976.0,898.0 966.0,898.0 L953.0,898.0" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#mobile-cache-ah-main)"/>
+<path d="M736.5,836.3 L736.5,644.5" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#mobile-cache-ah-reply)"/>
+<text x="748.5" y="744.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start" font-style="italic" stroke="#FBF6EC" stroke-width="6" stroke-linejoin="round" paint-order="stroke">success reply</text>
+<rect x="52.0" y="992.7" width="2.5" height="83.1" fill="#7B2C34"/>
+<text x="70.0" y="1028.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">Hook-based mutations also invalidate affected active queries after uncertain network/gateway failures or 409s. A missing</text>
+<text x="70.0" y="1054.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">reply can follow commit: check refreshed data before retrying. Retry keeps the original variables.</text>
+</svg>

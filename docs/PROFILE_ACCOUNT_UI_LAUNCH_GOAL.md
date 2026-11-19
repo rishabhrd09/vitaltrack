@@ -1,5 +1,7 @@
 # Goal — Profile / Account UI Launch Readiness
 
+> **Status (7 October 2026):** historical goal record from 18 June 2026, implemented in PR #50 (merged 18 June 2026); kept as evidence and not re-verified. The line references in Appendix A may have drifted. Since then, on the feature branch, `PATCH /auth/me` refuses email changes with 400 (Appendix B describes `main`, where the email can still be changed without re-verification), and the profile sheet gained a "Voice setup" entry. Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) and [API traceability](API_TRACEABILITY.md).
+
 **Status:** Verified against the codebase (read-only) · ready to implement
 **Last reviewed:** 2026-06-18
 **Backend work required:** None

@@ -1,0 +1,88 @@
+{
+  "signature": {
+    "fixture_hash": "synthetic-500-v1",
+    "environment": "local-test",
+    "workload": "inventory-500",
+    "concurrency": 1,
+    "cold_start": false,
+    "device": "reference-cpu",
+    "versions": {
+      "python": "3.12"
+    },
+    "provider": "none",
+    "model": "none",
+    "prompt_version": "none"
+  },
+  "samples": [
+    {
+      "case_id": "pair-00",
+      "metrics_ms": {
+        "sql": 100,
+        "total": 200
+      }
+    },
+    {
+      "case_id": "pair-01",
+      "metrics_ms": {
+        "sql": 101,
+        "total": 201
+      }
+    },
+    {
+      "case_id": "pair-02",
+      "metrics_ms": {
+        "sql": 102,
+        "total": 202
+      }
+    },
+    {
+      "case_id": "pair-03",
+      "metrics_ms": {
+        "sql": 103,
+        "total": 203
+      }
+    },
+    {
+      "case_id": "pair-04",
+      "metrics_ms": {
+        "sql": 104,
+        "total": 204
+      }
+    },
+    {
+      "case_id": "pair-05",
+      "metrics_ms": {
+        "sql": 105,
+        "total": 205
+      }
+    },
+    {
+      "case_id": "pair-06",
+      "metrics_ms": {
+        "sql": 106,
+        "total": 206
+      }
+    },
+    {
+      "case_id": "pair-07",
+      "metrics_ms": {
+        "sql": 107,
+        "total": 207
+      }
+    },
+    {
+      "case_id": "pair-08",
+      "metrics_ms": {
+        "sql": 108,
+        "total": 208
+      }
+    },
+    {
+      "case_id": "pair-09",
+      "metrics_ms": {
+        "sql": 109,
+        "total": 209
+      }
+    }
+  ]
+}

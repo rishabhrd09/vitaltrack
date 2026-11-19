@@ -22,6 +22,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
 import { safeBack } from '@/utils/navigation';
 import { logger } from '@/utils/logger';
+import SupplyReviewEntry from '@/components/supplyReview/SupplyReviewEntry';
 
 const DELETION_POLL_INTERVAL_MS = 5000;
 const DELETION_POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
@@ -267,6 +268,7 @@ export default function ProfileScreen() {
                     </Text>
                 </View>
 
+                <SupplyReviewEntry />
                 {/* Personal Information Card */}
                 <View style={[dynamicStyles.card, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary }]}>
                     <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>Personal Information</Text>

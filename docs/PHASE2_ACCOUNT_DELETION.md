@@ -9,6 +9,8 @@
 >
 > Current security update: Goal 2 (`security/account-deletion-post-confirm`) changed the email-link route so `GET /auth/confirm-delete/{token}` renders a confirmation page only. The destructive delete now happens only after `POST /auth/confirm-delete/{token}`. The original PR #13 token/cascade design remains, but the final mutation is no longer a GET.
 
+> **Status (7 October 2026):** historical record of PR #13 (April 2026, re-audited May 2026); kept as evidence and not re-verified. The "currently running on staging + production" line above dates from then and is NOT VERIFIED now. On the feature branch the cascade also removes `ai_consents` and `ai_usage`, while `order_number_counters` (no user link) are kept; the app still has no cancel-deletion button. Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) and [API traceability](API_TRACEABILITY.md).
+
 ---
 
 ## Overview

@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 1218.2" width="1560" height="1218.2" role="img" aria-labelledby="t d">
+<title id="t">How a multi-part request becomes rows</title>
+<desc id="d">Contract 3: a request becomes a bounded plan. The phone then filters, explains and sorts its own copy of the inventory. Nothing is saved and no stock changes.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2B3138"/></marker><marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="#2B3138"/></marker></defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<text x="40.0" y="52.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#16191D" text-anchor="start">Multi-part requests: plan, then deterministic rows (contract 3)</text>
+<text x="40.0" y="84.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#4A5260" text-anchor="start">Understood on the phone when every word is a known filter; otherwise Groq returns a plan that the server checks. The same executor runs both. Example: “Low-stock wound-care items</text>
+<text x="40.0" y="105.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#4A5260" text-anchor="start">from supplier Good Supplier, excluding gloves, sorted alphabetically.”</text>
+<rect x="40.0" y="150.0" width="466.0" height="135.6" rx="12" fill="#F1F2F4" stroke="#4A5260" stroke-width="2"/>
+<text x="54.0" y="181.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#4A5260" text-anchor="start">You say or type, then Send</text>
+<text x="54.0" y="207.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Reviewed words only. Nothing is understood or fetched</text>
+<text x="54.0" y="227.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">before Send.</text>
+<rect x="546.0" y="150.0" width="466.0" height="135.6" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="560.0" y="181.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">Phone grammar (parsePlan)</text>
+<text x="560.0" y="207.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Comparisons, stock states, critical, category, supplier,</text>
+<text x="560.0" y="227.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">brand, exclusions, sorting, follow-ups and drafts.</text>
+<text x="560.0" y="247.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Unknown words → not guessed.</text>
+<rect x="1052.0" y="150.0" width="466.0" height="135.6" rx="12" fill="#F1ECFA" stroke="#5E4596" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="1066.0" y="181.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#5E4596" text-anchor="start">Groq plan · only if chosen and consented</text>
+<text x="1066.0" y="207.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Strict schema plus lexical checks: names, signs,</text>
+<text x="1066.0" y="227.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">comparisons, filters, critical polarity, groups and</text>
+<text x="1066.0" y="247.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">item-threshold association. Detectable lost conditions</text>
+<text x="1066.0" y="266.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">fail closed; arbitrary meaning is not guaranteed.</text>
+<path d="M 506.0 217.8 L 546.0 217.8" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 1012.0 217.8 L 1052.0 217.8" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1032.0" y="209.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">else</text>
+<rect x="60.0" y="355.6" width="1440.0" height="115.8" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="74.0" y="386.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">Validated plan · version 3</text>
+<text x="74.0" y="413.1" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">any_of: [ low stock AND category “Wound care” AND supplier “Good Supplier” ]</text>
+<text x="74.0" y="432.9" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">exclude: [ name contains “gloves” ] sort: A–Z scope: all active items</text>
+<text x="74.0" y="452.7" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Draft plans add explicit lines (set / add / remove) and include_selection for suggested quantities.</text>
+<path d="M 779.0 285.6 L 779.0 355.6" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 1285.0 285.6 L 1285.0 355.6" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1285.0" y="312.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">or</text>
+<rect x="40.0" y="541.5" width="268.8" height="135.6" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="54.0" y="572.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">1 · Start</text>
+<text x="54.0" y="598.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">All active items, or the list</text>
+<text x="54.0" y="618.7" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">on screen for a follow-up.</text>
+<text x="54.0" y="638.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Values come from the fresh</text>
+<text x="54.0" y="658.3" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">snapshot.</text>
+<path d="M 308.8 609.3 L 342.8 609.3" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="342.8" y="541.5" width="268.8" height="135.6" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="356.8" y="572.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">2 · Each group = AND</text>
+<text x="356.8" y="598.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Every condition in a group must</text>
+<text x="356.8" y="618.7" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">hold. “Low or out of stock”</text>
+<text x="356.8" y="638.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">inside one condition means</text>
+<text x="356.8" y="658.3" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">either.</text>
+<path d="M 611.6 609.3 L 645.6 609.3" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="645.6" y="541.5" width="268.8" height="135.6" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="659.6" y="572.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">3 · Union, unique</text>
+<text x="659.6" y="598.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Rows from any group, each item</text>
+<text x="659.6" y="618.7" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">once by ID. Every reason it</text>
+<text x="659.6" y="638.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">matched is kept.</text>
+<path d="M 914.4 609.3 L 948.4 609.3" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="948.4" y="541.5" width="268.8" height="135.6" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="962.4" y="572.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">4 · Minus exclusions</text>
+<text x="962.4" y="598.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Rows matching an exclusion are</text>
+<text x="962.4" y="618.7" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">removed and listed in the</text>
+<text x="962.4" y="638.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">answer.</text>
+<path d="M 1217.2 609.3 L 1251.2 609.3" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="1251.2" y="541.5" width="268.8" height="135.6" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="1265.2" y="572.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">5 · Sort</text>
+<text x="1265.2" y="598.9" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">A–Z, quantity, shortfall, or</text>
+<text x="1265.2" y="618.7" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">order priority: out of stock,</text>
+<text x="1265.2" y="638.5" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">then critical, then largest</text>
+<text x="1265.2" y="658.3" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">share missing.</text>
+<path d="M 780.0 471.5 L 780.0 506.5 L 174.4 506.5 L 174.4 541.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<line x1="1385.6" y1="677.1" x2="1385.6" y2="711.1" stroke="#2B3138" stroke-width="2.2"/>
+<line x1="273.0" y1="711.1" x2="1385.6" y2="711.1" stroke="#2B3138" stroke-width="2.2"/>
+<rect x="40.0" y="747.1" width="466.0" height="135.6" rx="12" fill="#E6F4EA" stroke="#1E6B34" stroke-width="2"/>
+<text x="54.0" y="778.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1E6B34" text-anchor="start">Answer sheet</text>
+<text x="54.0" y="804.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Filters understood · quantity with unit · status icon +</text>
+<text x="54.0" y="824.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">text · a Why line per row · one-tap refinements that</text>
+<text x="54.0" y="844.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">would change the list.</text>
+<path d="M 273.0 711.1 L 273.0 747.1" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="546.0" y="747.1" width="466.0" height="135.6" rx="12" fill="#E6F4EA" stroke="#1E6B34" stroke-width="2"/>
+<text x="560.0" y="778.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1E6B34" text-anchor="start">Unsaved draft</text>
+<text x="560.0" y="804.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Explicit amounts override suggestions. Contradictory</text>
+<text x="560.0" y="824.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">exclusion → clarify all. Others show Suggested plus</text>
+<text x="560.0" y="844.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">basis. Missing minimum → ask. Existing work → Merge,</text>
+<text x="560.0" y="864.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Replace or Cancel.</text>
+<path d="M 779.0 711.1 L 779.0 747.1" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="1052.0" y="747.1" width="466.0" height="135.6" rx="12" fill="#FCEBEA" stroke="#A8261D" stroke-width="2"/>
+<text x="1066.0" y="778.1" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#A8261D" text-anchor="start">Ask first, run nothing</text>
+<text x="1066.0" y="804.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Unclear or near-spelled names, “critical” versus a</text>
+<text x="1066.0" y="824.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">category named critical, a partly said supplier, or a</text>
+<text x="1066.0" y="844.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">follow-up with no list on screen.</text>
+<path d="M 1285.0 711.1 L 1285.0 747.1" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="40.0" y="948.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="700" fill="#16191D" text-anchor="start">Voice setup keeps four things apart</text>
+<rect x="40.0" y="972.8" width="344.5" height="155.4" rx="12" fill="#E3F3EF" stroke="#1B7563" stroke-width="2"/>
+<text x="54.0" y="1003.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1B7563" text-anchor="start">Prerequisites (derived)</text>
+<text x="54.0" y="1030.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Ready, Needs download, Needs consent,</text>
+<text x="54.0" y="1050.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Needs a configured key, Unavailable,</text>
+<text x="54.0" y="1069.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Paused. Sarvam: Configured · preview to</text>
+<text x="54.0" y="1089.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">verify, not proof of live sound. Never</text>
+<text x="54.0" y="1109.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">stored.</text>
+<path d="M 384.5 1050.5 L 418.5 1050.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="418.5" y="972.8" width="344.5" height="155.4" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="432.5" y="1003.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1F5FA8" text-anchor="start">Saved choice (per account)</text>
+<text x="432.5" y="1030.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Listening, Understanding and Spoken</text>
+<text x="432.5" y="1050.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">replies, stored for this account only.</text>
+<text x="432.5" y="1069.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Old choices load with no online opt-in.</text>
+<path d="M 763.0 1050.5 L 797.0 1050.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="797.0" y="972.8" width="344.5" height="155.4" rx="12" fill="#F1ECFA" stroke="#5E4596" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="811.0" y="1003.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#5E4596" text-anchor="start">Consent (server)</text>
+<text x="811.0" y="1030.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Accepted scopes: groq_text, groq_audio,</text>
+<text x="811.0" y="1050.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">sarvam_speech. Withdrawal is one separate</text>
+<text x="811.0" y="1069.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">action.</text>
+<path d="M 1141.5 1050.5 L 1175.5 1050.5" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="1175.5" y="972.8" width="344.5" height="155.4" rx="12" fill="#E6F4EA" stroke="#1E6B34" stroke-width="2"/>
+<text x="1189.5" y="1003.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" fill="#1E6B34" text-anchor="start">In use</text>
+<text x="1189.5" y="1030.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">The saved choice if it is ready.</text>
+<text x="1189.5" y="1050.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Otherwise the screen states why, for</text>
+<text x="1189.5" y="1069.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">example “Needs your consent”. Never</text>
+<text x="1189.5" y="1089.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">swapped silently.</text>
+<rect x="40.0" y="1168.2" width="26" height="18" rx="4" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="74.0" y="1182.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">Required</text>
+<rect x="163.6" y="1168.2" width="26" height="18" rx="4" fill="#F1ECFA" stroke="#5E4596" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="197.6" y="1182.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">Only when chosen</text>
+<rect x="348.8" y="1168.2" width="26" height="18" rx="4" fill="#E3F3EF" stroke="#1B7563" stroke-width="2"/>
+<text x="382.8" y="1182.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">Derived state</text>
+<rect x="510.9" y="1168.2" width="26" height="18" rx="4" fill="#F1F2F4" stroke="#4A5260" stroke-width="2"/>
+<text x="544.9" y="1182.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">Person</text>
+<rect x="619.1" y="1168.2" width="26" height="18" rx="4" fill="#E6F4EA" stroke="#1E6B34" stroke-width="2"/>
+<text x="653.1" y="1182.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">Result</text>
+<rect x="727.3" y="1168.2" width="26" height="18" rx="4" fill="#FCEBEA" stroke="#A8261D" stroke-width="2"/>
+<text x="761.3" y="1182.2" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#4A5260" text-anchor="start">Asks first</text>
+</svg>

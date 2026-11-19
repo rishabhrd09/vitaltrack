@@ -1,0 +1,1120 @@
+/* Operational screens use the dashboard scale. On narrow layouts, preserve
+   stock, minimums, dates and statuses by reflowing rows instead of shrinking text. */
+.workspace-page {
+  font-size: var(--read-body);
+  line-height: 1.65;
+}
+.workspace-page .page-heading {
+  margin-bottom: 32px;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.workspace-page .page-heading h1 {
+  font-size: var(--read-heading);
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+.workspace-page .eyebrow {
+  font-size: var(--read-label);
+  line-height: 1.7;
+  letter-spacing: 0.12em;
+  margin-bottom: 12px;
+}
+.workspace-page .page-description {
+  font-size: 17px;
+  line-height: 1.7;
+  margin-top: 14px;
+  max-width: 65ch;
+}
+.workspace-page .heading-actions {
+  flex-wrap: wrap;
+}
+.workspace-page .button {
+  font-size: 15px;
+  min-height: 48px;
+  padding: 12px 18px;
+  gap: 10px;
+  white-space: normal;
+}
+.workspace-page .icon-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.workspace-page .text-link,
+.workspace-page .text-button,
+.workspace-page .back-link {
+  font-size: 14px;
+  min-height: 44px;
+  gap: 8px;
+}
+.workspace-page .back-link {
+  margin-bottom: 20px;
+}
+.workspace-page h2 {
+  font-size: 22px;
+  line-height: 1.4;
+}
+.workspace-page h3 {
+  font-size: 18px;
+  line-height: 1.45;
+}
+.workspace-page .section-heading {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+}
+.workspace-page .section-heading p {
+  font-size: 14px;
+  line-height: 1.65;
+  margin-top: 8px;
+}
+.workspace-page .section-heading.padded {
+  padding: 24px;
+}
+.workspace-page .badge {
+  font-size: 12px;
+  padding: 5px 10px;
+  line-height: 1.6;
+}
+.workspace-page .count-pill {
+  font-size: 12px;
+  padding: 3px 8px;
+  vertical-align: middle;
+}
+.workspace-page .small-note {
+  font-size: 13px;
+  line-height: 1.7;
+  gap: 8px;
+}
+.workspace-page .panel-bottom {
+  padding: 18px 24px;
+  font-size: 13px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.workspace-page .panel-bottom > a {
+  font-size: 14px;
+  min-height: 44px;
+}
+.workspace-page .panel-bottom > span {
+  flex: 1;
+  min-width: 0;
+}
+.workspace-page .panel-bottom > strong {
+  font-size: 14px;
+}
+.workspace-page .error-box {
+  font-size: 14px;
+  line-height: 1.65;
+  padding: 16px;
+}
+.workspace-page .empty-state h3 {
+  font-size: 22px;
+}
+.workspace-page .empty-state p {
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 48ch;
+}
+
+/* Forms, dialogs and filters share comfortable controls on every device. */
+.workspace-page input:not([type="checkbox"]):not([type="radio"]),
+.workspace-page .select-wrap select,
+.workspace-page textarea {
+  font-size: 16px;
+  min-height: 52px;
+  padding: 13px 14px;
+  border-radius: 9px;
+}
+.workspace-page .select-wrap select {
+  padding-right: 36px;
+}
+.workspace-page .select-wrap > svg {
+  right: 12px;
+  width: 16px;
+}
+.workspace-page textarea {
+  min-height: 120px;
+  line-height: 1.65;
+}
+.workspace-page input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin: 0;
+}
+.workspace-page .field {
+  gap: 10px;
+}
+.workspace-page .field > span:first-child {
+  font-size: 15px;
+}
+.workspace-page .field small {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.workspace-page .form-section {
+  padding: 28px;
+}
+.workspace-page .form-section > .section-heading {
+  margin-bottom: 28px;
+}
+.workspace-page .form-section > p {
+  font-size: 15px;
+  line-height: 1.7;
+}
+.workspace-page .form-grid {
+  gap: 28px 24px;
+}
+.workspace-page .form-actions {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.workspace-page .form-section > .form-actions {
+  margin-top: 28px;
+}
+.workspace-page .checkbox-line {
+  font-size: 14px;
+  min-height: 44px;
+  gap: 12px;
+}
+.workspace-page .checkbox-card {
+  gap: 12px;
+}
+.workspace-page .checkbox-card strong {
+  font-size: 15px;
+}
+.workspace-page .checkbox-card small {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.workspace-page .stepper > button {
+  min-width: 44px;
+}
+.workspace-page .dialog {
+  padding: 28px;
+}
+.workspace-page .dialog-heading h2 {
+  font-size: 22px;
+}
+.workspace-page .dialog form > .field {
+  margin: 24px 0;
+}
+.workspace-page .dialog-actions {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.workspace-page .dialog-copy {
+  font-size: 15px;
+  line-height: 1.7;
+}
+.workspace-page .search-input {
+  border-radius: 9px;
+  padding-inline: 14px;
+  gap: 10px;
+}
+.workspace-page .search-input > input {
+  padding-inline: 0;
+}
+.workspace-page .search-result {
+  gap: 14px;
+  padding: 18px 4px;
+}
+.workspace-page .search-result > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workspace-page .search-result strong {
+  font-size: 15px;
+  line-height: 1.5;
+}
+.workspace-page .search-result small {
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+/* Inventory */
+.workspace-page .inventory-toolbar {
+  padding: 20px 24px;
+  gap: 16px 24px;
+  flex-wrap: wrap;
+}
+.workspace-page .segmented {
+  padding: 4px;
+  gap: 4px;
+}
+.workspace-page .segmented button {
+  font-size: 15px;
+  min-height: 44px;
+  padding: 10px 16px;
+  gap: 8px;
+}
+.workspace-page .item-count {
+  display: inline;
+  font-size: 13px;
+}
+.workspace-page .filter-bar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.4fr) repeat(3, minmax(0, 1fr));
+  padding: 24px;
+  gap: 14px;
+}
+.workspace-page .filter-bar .select-wrap {
+  max-width: none;
+  width: 100%;
+}
+.workspace-page .filter-summary {
+  font-size: 14px;
+  padding: 0 24px 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.workspace-page .inventory-table-head,
+.workspace-page .inventory-row {
+  grid-template-columns:
+    minmax(180px, 1.5fr) minmax(140px, 1fr)
+    88px 82px 128px 16px;
+  gap: 16px;
+  padding-inline: 24px;
+}
+.workspace-page .inventory-table-head {
+  font-size: 11px;
+  padding-block: 14px;
+}
+.workspace-page .inventory-row {
+  min-height: 96px;
+  padding-block: 20px;
+}
+.workspace-page .inventory-row .item-name-cell strong {
+  font-size: 15px;
+  line-height: 1.5;
+}
+.workspace-page .inventory-row .item-name-cell small {
+  font-size: 12px;
+  line-height: 1.65;
+}
+.workspace-page .category-cell {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.workspace-page .table-quantity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  align-items: baseline;
+}
+.workspace-page .table-quantity b {
+  font-size: 16px;
+}
+.workspace-page .table-quantity small {
+  font-size: 12px;
+  margin: 0;
+}
+.workspace-page .min-cell {
+  font-size: 14px;
+}
+.mobile-cell-label {
+  display: none;
+}
+.workspace-page .category-group-heading {
+  padding: 20px 24px;
+  gap: 12px;
+}
+.workspace-page .category-group-heading strong {
+  font-size: 16px;
+}
+.workspace-page .category-group-heading > span {
+  font-size: 13px;
+}
+
+/* Orders and review screens */
+.workspace-page .tabs {
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  overflow: visible;
+}
+.workspace-page .tabs button {
+  font-size: 15px;
+  min-height: 44px;
+  padding: 10px 0;
+}
+.workspace-page .inventory-toolbar > .muted {
+  display: block;
+  font-size: 13px;
+}
+.workspace-page .order-table-head,
+.workspace-page .order-list-row {
+  grid-template-columns: minmax(180px, 1.4fr) minmax(100px, 1fr) 80px 150px 17px;
+  padding-inline: 24px;
+  gap: 16px;
+}
+.workspace-page .order-table-head {
+  font-size: 11px;
+  padding-block: 14px;
+}
+.workspace-page .order-list-row {
+  font-size: 14px;
+  min-height: 100px;
+  padding-block: 22px;
+}
+.workspace-page .order-list-row .item-name-cell strong {
+  font-size: 16px;
+}
+.workspace-page .order-list-row .item-name-cell small {
+  font-size: 13px;
+  margin-top: 6px;
+}
+.workspace-page .order-guide {
+  margin: 32px 0;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.workspace-page .order-guide > span,
+.workspace-page .order-guide b {
+  font-size: 14px;
+}
+.workspace-page .draft-banner {
+  padding: 22px 24px;
+  gap: 16px;
+}
+.workspace-page .draft-banner > div {
+  min-width: 0;
+}
+.workspace-page .draft-banner strong {
+  font-size: 16px;
+}
+.workspace-page .draft-banner span {
+  font-size: 14px;
+  line-height: 1.65;
+}
+.workspace-page .editor-layout {
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 28px;
+}
+.workspace-page .editor-main,
+.workspace-page .editor-aside {
+  gap: 28px;
+}
+.workspace-page .order-line {
+  padding: 22px 24px;
+  gap: 16px;
+}
+.workspace-page .order-line > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workspace-page .order-line strong {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.workspace-page .order-line small {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.workspace-page .order-line > b {
+  font-size: 18px;
+}
+.workspace-page .line-number {
+  font-size: 12px;
+}
+.workspace-page .order-lifecycle {
+  padding: 28px 20px;
+  gap: 16px;
+}
+.workspace-page .order-lifecycle strong {
+  font-size: 14px;
+}
+.workspace-page .order-lifecycle small {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.workspace-page .draft-start {
+  padding: 48px 28px;
+  gap: 24px;
+}
+.workspace-page .draft-start h2 {
+  font-size: 26px;
+}
+.workspace-page .draft-start > p {
+  font-size: 16px;
+  max-width: 52ch;
+}
+.workspace-page .draft-start .select-wrap {
+  width: min(100%, 360px);
+}
+.workspace-page .draft-selection {
+  padding: 16px 24px;
+  font-size: 14px;
+  gap: 12px 20px;
+}
+.workspace-page .draft-line {
+  padding: 22px 24px;
+  gap: 16px;
+}
+.workspace-page .draft-line strong {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.workspace-page .draft-line small {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.workspace-page .suggestion-label {
+  font-size: 12px;
+  line-height: 1.65;
+  margin-top: 8px;
+}
+.workspace-page .draft-quantity {
+  width: 88px;
+}
+.workspace-page .draft-quantity input {
+  padding-inline: 8px;
+}
+.workspace-page .order-summary > div {
+  font-size: 15px;
+  gap: 16px;
+}
+.workspace-page .order-summary p {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.workspace-page .order-summary .small-note {
+  font-size: 13px;
+}
+.workspace-page .order-notice {
+  padding: 24px;
+}
+.workspace-page .order-notice p,
+.workspace-page .order-progress p,
+.workspace-page .success-banner p {
+  font-size: 15px;
+  line-height: 1.7;
+}
+.workspace-page .success-banner {
+  padding: 24px;
+  margin-bottom: 28px;
+}
+.workspace-page .tip-card {
+  padding: 24px;
+}
+.workspace-page .tip-card p {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.workspace-page .item-preview {
+  padding: 24px;
+}
+.workspace-page .item-preview h3 {
+  font-size: 20px;
+}
+.workspace-page .item-preview > p,
+.workspace-page .item-preview > small,
+.workspace-page .preview-stock span {
+  font-size: 13px;
+}
+.workspace-page .item-art > span {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+/* Build Inventory */
+.workspace-page .builder-intro {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) auto;
+  padding: 28px;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+.workspace-page .builder-intro p:not(.eyebrow) {
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 60ch;
+  margin-top: 12px;
+}
+.workspace-page .builder-intro > .button {
+  margin-left: 0;
+}
+.workspace-page .builder-workspace {
+  margin: 24px 0 32px;
+}
+.workspace-page .builder-workspace .select-wrap {
+  max-width: 100%;
+  width: 300px;
+}
+.workspace-page .category-workspace {
+  padding: 0 24px 24px;
+}
+.workspace-page .category-workspace-actions {
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  gap: 12px 20px;
+}
+.workspace-page .category-manage-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 128px 44px;
+  padding: 20px 0;
+  gap: 16px;
+}
+.workspace-page .category-manage-row strong {
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.workspace-page .category-manage-row small {
+  font-size: 13px;
+  line-height: 1.65;
+  margin-top: 6px;
+}
+.workspace-page .category-manage-row > a:first-of-type {
+  min-height: 44px;
+}
+.workspace-page .catalog-suggestions {
+  padding-top: 24px;
+}
+.workspace-page .catalog-suggestions p {
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 8px 0 16px;
+}
+.workspace-page .catalog-suggestions > div {
+  gap: 12px;
+}
+.workspace-page .catalog-suggestions button {
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 44px;
+  padding: 10px 14px;
+  gap: 8px;
+  text-align: left;
+}
+.workspace-page .builder-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+.workspace-page .category-card {
+  padding: 24px;
+  min-height: 240px;
+}
+.workspace-page .category-card p {
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 10px 0 24px;
+}
+.workspace-page .category-card > a {
+  font-size: 14px;
+  min-height: 48px;
+  gap: 16px;
+  padding-top: 16px;
+}
+.workspace-page .category-card .icon-button svg {
+  width: 18px;
+  height: 18px;
+}
+.workspace-page .add-category strong {
+  font-size: 17px;
+}
+.workspace-page .add-category span {
+  font-size: 14px;
+}
+.workspace-page .reset-panel {
+  padding: 24px;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 32px;
+}
+.workspace-page .reset-panel > div {
+  flex: 1 1 320px;
+}
+.workspace-page .reset-panel p {
+  font-size: 14px;
+  line-height: 1.7;
+  max-width: 65ch;
+}
+.workspace-page .replace-defaults {
+  font-size: 14px;
+  line-height: 1.7;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 24px 0;
+}
+.workspace-page .category-empty {
+  font-size: 15px;
+  padding-block: 28px;
+}
+
+/* Profile */
+.workspace-page .profile-layout {
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 28px;
+}
+.workspace-page .profile-summary {
+  display: block;
+  text-align: center;
+  padding: 32px 24px;
+}
+.workspace-page .profile-avatar {
+  width: 72px;
+  height: 72px;
+  font-size: 26px;
+  margin: 0 0 20px;
+}
+.workspace-page .profile-summary > h2 {
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+.workspace-page .profile-summary > p {
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 10px 0 18px;
+}
+.workspace-page .profile-summary > .badge {
+  display: inline-flex;
+}
+.workspace-page .profile-detail {
+  display: flex;
+  font-size: 14px;
+  line-height: 1.7;
+  gap: 12px;
+  padding-block: 20px;
+  margin: 24px 0;
+}
+.workspace-page .profile-summary > .button {
+  width: 100%;
+  margin: 0;
+}
+.workspace-page .setting-row {
+  gap: 24px;
+  padding-block: 24px;
+  flex-wrap: wrap;
+}
+.workspace-page .setting-row > div {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.workspace-page .setting-row strong {
+  font-size: 16px;
+}
+.workspace-page .setting-row p {
+  font-size: 14px;
+  line-height: 1.7;
+  margin-top: 8px;
+  max-width: 55ch;
+}
+
+/* The full activity history keeps event names, details, dates and actions
+   readable at the same scale as the dashboard's recent activity card. */
+.workspace-page .activity-page {
+  padding: 28px;
+}
+.workspace-page .activity-page .activity {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  padding-bottom: 28px;
+}
+.workspace-page .activity-page .activity:last-child {
+  padding-bottom: 0;
+}
+.workspace-page .activity-page .activity::before {
+  left: 15px;
+  top: 38px;
+  bottom: 8px;
+}
+.workspace-page .activity-page .activity-dot {
+  width: 32px;
+  height: 32px;
+}
+.workspace-page .activity-page .activity > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workspace-page .activity-page .activity strong {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.workspace-page .activity-page .activity p {
+  font-size: 14px;
+  line-height: 1.7;
+  margin-top: 6px;
+}
+.workspace-page .activity-page .activity small {
+  font-size: 12px;
+  line-height: 1.7;
+  margin-top: 8px;
+}
+.workspace-page .activity-page .activity > .muted {
+  display: block;
+  font-size: 12px;
+  line-height: 1.7;
+  text-transform: capitalize;
+}
+.workspace-page .activity-page > .small-note {
+  margin-top: 24px;
+}
+@media (max-width: 760px) {
+  .workspace-page .activity-page {
+    padding: 20px;
+  }
+  .workspace-page .activity-page .activity {
+    grid-template-columns: 32px minmax(0, 1fr);
+    column-gap: 12px;
+  }
+  .workspace-page .activity-page .activity > .muted {
+    grid-column: 2;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 1400px) {
+  .workspace-page .filter-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .workspace-page .filter-bar .search-input {
+    grid-column: 1 / -1;
+  }
+  .workspace-page .draft-line {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) 88px 44px;
+    grid-template-areas: "check item item item" ". status quantity remove";
+    align-items: center;
+  }
+  .workspace-page .draft-line > input {
+    grid-area: check;
+  }
+  .workspace-page .draft-line > div {
+    grid-area: item;
+    min-width: 0;
+  }
+  .workspace-page .draft-line > .badge {
+    grid-area: status;
+    display: inline-flex;
+    margin: 0;
+  }
+  .workspace-page .draft-line > .draft-quantity {
+    grid-area: quantity;
+    margin: 0;
+  }
+  .workspace-page .draft-line > .icon-button {
+    grid-area: remove;
+  }
+}
+@media (max-width: 1200px) {
+  .workspace-page .inventory-table-head,
+  .workspace-page .inventory-row {
+    grid-template-columns: minmax(0, 1fr) 88px 82px 128px 16px;
+  }
+  .workspace-page .category-cell,
+  .workspace-page .inventory-table-head > span:nth-child(2) {
+    display: none;
+  }
+  .workspace-page .profile-layout,
+  .workspace-page .editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-page .editor-aside {
+    display: flex;
+    flex-direction: column;
+  }
+  .workspace-page .builder-intro {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+  .workspace-page .builder-illustration {
+    width: 64px;
+    height: 64px;
+  }
+  .workspace-page .builder-intro > .button {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+@media (max-width: 1100px) {
+  .workspace-page .filter-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workspace-page .filter-bar .select-wrap:last-child {
+    grid-column: 1 / -1;
+  }
+  .workspace-page .inventory-table-head,
+  .workspace-page .order-table-head {
+    display: none;
+  }
+  .workspace-page .inventory-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name name" "stock status" "minimum minimum";
+    gap: 10px 16px;
+    padding: 20px 24px;
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+  }
+  .workspace-page .inventory-row .item-name-cell {
+    grid-area: name;
+  }
+  .workspace-page .inventory-row .item-symbol {
+    display: none;
+  }
+  .workspace-page .inventory-row .table-quantity {
+    grid-area: stock;
+  }
+  .workspace-page .inventory-row .min-cell {
+    display: flex;
+    grid-area: minimum;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .workspace-page .inventory-row .badge {
+    grid-area: status;
+    justify-self: end;
+  }
+  .workspace-page .inventory-row .row-arrow {
+    display: none;
+  }
+  .workspace-page .mobile-cell-label {
+    display: inline;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .workspace-page .order-list-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name status" "date count";
+    gap: 16px 24px;
+    padding: 24px;
+  }
+  .workspace-page .order-list-row .item-name-cell {
+    grid-area: name;
+  }
+  .workspace-page .order-list-row .order-date {
+    display: block;
+    grid-area: date;
+  }
+  .workspace-page .order-list-row .order-item-count {
+    display: block;
+    grid-area: count;
+    justify-self: end;
+  }
+  .workspace-page .order-list-row .badge {
+    grid-area: status;
+    justify-self: end;
+  }
+  .workspace-page .order-list-row > svg {
+    display: none;
+  }
+  .workspace-page .order-lifecycle {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+  .workspace-page .order-lifecycle > div::after {
+    display: none;
+  }
+  .workspace-page .builder-workspace .select-wrap {
+    width: 100%;
+  }
+  .workspace-page .category-manage-row {
+    grid-template-columns: 20px minmax(0, 1fr) 44px;
+    gap: 12px;
+  }
+  .workspace-page .category-manage-row > input {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .workspace-page .category-manage-row > a:first-of-type {
+    grid-column: 2;
+  }
+  .workspace-page .category-manage-row > .badge {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .workspace-page .category-manage-row > a:last-child {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+}
+@media (max-width: 760px) {
+  .workspace-page .heading-actions {
+    width: 100%;
+  }
+  .workspace-page .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-page .inventory-toolbar {
+    gap: 12px 20px;
+  }
+  .workspace-page .category-group-heading {
+    flex-wrap: wrap;
+  }
+  .workspace-page .category-group-heading strong {
+    flex: 1;
+    min-width: 0;
+  }
+}
+@media (max-width: 600px) {
+  .workspace-page .section-heading.padded,
+  .workspace-page .inventory-toolbar,
+  .workspace-page .form-section,
+  .workspace-page .order-notice {
+    padding: 20px;
+  }
+  .workspace-page .filter-bar {
+    padding: 20px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .workspace-page .filter-summary {
+    padding-inline: 20px;
+  }
+  .workspace-page .segmented {
+    width: 100%;
+  }
+  .workspace-page .segmented button {
+    flex: 1;
+    justify-content: center;
+    padding-inline: 8px;
+    font-size: 14px;
+  }
+  .workspace-page .inventory-toolbar .text-link {
+    margin-left: 0;
+  }
+  .workspace-page .inventory-row {
+    padding-inline: 20px;
+  }
+  .workspace-page .inventory-row .table-quantity {
+    gap: 4px;
+  }
+  .workspace-page .inventory-row .table-quantity .mobile-cell-label {
+    width: 100%;
+  }
+  .workspace-page .tabs {
+    gap: 8px 20px;
+    padding: 0;
+  }
+  .workspace-page .tabs button {
+    font-size: 14px;
+  }
+  .workspace-page .inventory-toolbar > .muted {
+    margin-left: 0;
+  }
+  .workspace-page .order-list-row {
+    grid-template-areas: "name name" "date count" "status status";
+    padding: 20px;
+    gap: 12px;
+  }
+  .workspace-page .order-list-row .badge {
+    justify-self: start;
+  }
+  .workspace-page .order-list-row .item-symbol {
+    width: 36px;
+    height: 36px;
+  }
+  .workspace-page .order-guide {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding-inline: 4px;
+  }
+  .workspace-page .order-guide > i {
+    display: none;
+  }
+  .workspace-page .panel-bottom {
+    padding: 18px 20px;
+  }
+  .workspace-page .order-line {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    padding: 20px;
+    gap: 12px;
+  }
+  .workspace-page .order-line > b {
+    grid-column: 2;
+  }
+  .workspace-page .draft-line {
+    padding: 20px;
+    gap: 12px;
+    grid-template-columns: 20px minmax(0, 1fr) 44px;
+    grid-template-areas: "check item item" ". status status" ". quantity remove";
+  }
+  .workspace-page .draft-selection {
+    padding: 16px 20px;
+  }
+  .workspace-page .draft-selection .text-button {
+    margin-left: 0;
+  }
+  .workspace-page .draft-start {
+    padding: 32px 20px;
+  }
+  .workspace-page .builder-intro {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 24px 20px;
+    gap: 20px;
+  }
+  .workspace-page .builder-intro > .button {
+    grid-column: 1;
+    justify-self: stretch;
+  }
+  .workspace-page .builder-intro > div:nth-child(2) {
+    min-width: 0;
+  }
+  .workspace-page .category-workspace {
+    padding: 0 20px 20px;
+  }
+  .workspace-page .category-workspace-actions {
+    gap: 8px 16px;
+  }
+  .workspace-page .category-workspace-actions > .text-link {
+    margin-left: 0;
+  }
+  .workspace-page .category-manage-row {
+    gap: 10px;
+  }
+  .workspace-page .category-card {
+    padding: 24px 20px;
+  }
+  .workspace-page .catalog-suggestions button {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .workspace-page .reset-panel {
+    padding: 24px 20px;
+  }
+  .workspace-page .reset-panel > .button {
+    width: 100%;
+  }
+  .workspace-page .reset-panel > button:last-child {
+    margin-left: 0;
+  }
+  .workspace-page .profile-summary {
+    padding: 28px 20px;
+  }
+  .workspace-page .profile-summary > p {
+    margin: 10px 0 18px;
+  }
+  .workspace-page .setting-row {
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .workspace-page .setting-row > div {
+    flex-basis: 100%;
+  }
+  .workspace-page .setting-row > .button {
+    width: 100%;
+  }
+  .workspace-page .form-actions > .button {
+    flex: 1 1 160px;
+  }
+  .workspace-page .dialog {
+    padding: 20px;
+  }
+  .workspace-page .dialog-actions > .button {
+    flex: 1 1 140px;
+  }
+  .workspace-page .search-result {
+    flex-wrap: wrap;
+  }
+  .workspace-page .search-result > div {
+    flex-basis: calc(100% - 52px);
+  }
+  .workspace-page .search-result > .badge {
+    margin-left: 48px;
+  }
+}

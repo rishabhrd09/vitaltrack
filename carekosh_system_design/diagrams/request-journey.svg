@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1749" width="1000" height="1749" role="img" aria-labelledby="request-journey-title request-journey-desc">
+<title id="request-journey-title">One tap, end to end: saving an edited item</title>
+<desc id="request-journey-desc">The Edit Item screen calls the update mutation and closes. The API client adds the access token and sends PUT /api/v1/items/{id} over HTTPS. On Render a Uvicorn worker runs the middleware; FastAPI parses the JSON, loads the user through its dependencies and then validates the fields. Because the body names the item, the handler first takes the account&#x27;s name lock, then checks ownership, runs a compare-and-swap UPDATE, writes activity and audit rows and commits. The response returns, and the app invalidates its item and activity lists and fetches them again.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="request-journey-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="request-journey-ah-flow" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#4B3E35"/></marker><marker id="request-journey-ah-main" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7B2C34"/></marker><marker id="request-journey-ah-reply" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7C6B5C"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#request-journey-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">One tap, end to end: Edit Item → Save</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">From the button to PostgreSQL and back. Numbers follow the order of events.</text>
+<rect x="40.0" y="122.3" width="286.4" height="1597.5" rx="14" fill="#F4F0E3" stroke="#CDD2B5" stroke-width="1.2"/>
+<rect x="352.4" y="122.3" width="312.5" height="1597.5" rx="14" fill="#F2EFE7" stroke="#C2C9CB" stroke-width="1.2"/>
+<rect x="690.9" y="122.3" width="269.1" height="1597.5" rx="14" fill="#F7F0E2" stroke="#E4CEAE" stroke-width="1.2"/>
+<text x="56.0" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#557629" text-anchor="start" letter-spacing="1.6">ON THE PHONE</text>
+<text x="368.4" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">ON THE SERVER (RENDER)</text>
+<text x="706.9" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#A9680F" text-anchor="start" letter-spacing="1.6">IN POSTGRESQL</text>
+<rect x="52.0" y="176.3" width="262.4" height="117.4" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="203.1" r="16" fill="#7B2C34"/>
+<text x="85.0" y="209.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">1</text>
+<text x="112.0" y="213.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Tap Save</text>
+<text x="70.0" y="243.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">mutate({fields, version}); the</text>
+<text x="70.0" y="269.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">screen closes</text>
+<rect x="52.0" y="323.6" width="262.4" height="117.4" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="350.5" r="16" fill="#7B2C34"/>
+<text x="85.0" y="356.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2</text>
+<text x="112.0" y="361.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">useUpdateItem</text>
+<text x="70.0" y="390.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">no optimistic change; waits for</text>
+<text x="70.0" y="416.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">the reply</text>
+<path d="M183.2,295.6 L183.2,319.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-journey-ah-flow)"/>
+<rect x="52.0" y="471.0" width="262.4" height="117.4" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="497.8" r="16" fill="#7B2C34"/>
+<text x="85.0" y="503.9" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">3</text>
+<text x="112.0" y="508.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">services/api.ts</text>
+<text x="70.0" y="538.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">adds the Bearer token, sends</text>
+<text x="70.0" y="563.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">PUT /api/v1/items/{id}</text>
+<path d="M183.2,443.0 L183.2,467.0" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-journey-ah-flow)"/>
+<rect x="364.4" y="529.0" width="288.5" height="142.9" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="397.4" cy="555.8" r="16" fill="#7B2C34"/>
+<text x="397.4" y="561.9" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">4</text>
+<text x="424.4" y="566.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Middleware</text>
+<text x="382.4" y="596.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">arrives over HTTPS at a Uvicorn</text>
+<text x="382.4" y="621.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">worker; body at most 2 MB;</text>
+<text x="382.4" y="647.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">headers and request id</text>
+<path d="M316.4,501.0 L321.9,501.0 Q327.4,501.0 327.4,506.5 L327.4,549.0 Q327.4,559.0 337.4,559.0 L360.4,559.0" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-journey-ah-main)"/>
+<rect x="364.4" y="701.9" width="288.5" height="143.6" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="397.4" cy="728.8" r="16" fill="#7B2C34"/>
+<text x="397.4" y="734.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">5</text>
+<text x="424.4" y="739.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Route and JSON</text>
+<text x="424.4" y="765.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">parsing</text>
+<text x="382.4" y="795.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">malformed JSON → 422 before</text>
+<text x="382.4" y="820.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">dependencies</text>
+<path d="M508.7,673.9 L508.7,697.9" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-journey-ah-flow)"/>
+<rect x="364.4" y="875.6" width="288.5" height="169.2" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="397.4" cy="902.4" r="16" fill="#7B2C34"/>
+<text x="397.4" y="908.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">6</text>
+<text x="424.4" y="912.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Dependencies, then</text>
+<text x="424.4" y="939.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">field validation</text>
+<text x="382.4" y="969.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">get_db session; get_current_user</text>
+<text x="382.4" y="994.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">SELECTs the user; ItemUpdate</text>
+<text x="382.4" y="1020.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">field errors → 422 only after that</text>
+<path d="M508.7,847.6 L508.7,871.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-journey-ah-flow)"/>
+<rect x="702.9" y="933.6" width="245.1" height="298.4" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<circle cx="735.9" cy="960.4" r="16" fill="#7B2C34"/>
+<text x="735.9" y="966.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">7</text>
+<text x="762.9" y="970.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">Name lock,</text>
+<text x="762.9" y="997.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">ownership,</text>
+<text x="762.9" y="1023.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">compare-and-</text>
+<text x="762.9" y="1049.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">swap</text>
+<text x="720.9" y="1079.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">the body has a name, so a</text>
+<text x="720.9" y="1105.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">per-account advisory lock</text>
+<text x="720.9" y="1130.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">first; SELECT the item;</text>
+<text x="720.9" y="1156.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">UPDATE … WHERE id</text>
+<text x="720.9" y="1181.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">AND user_id AND version</text>
+<text x="720.9" y="1207.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">= :v</text>
+<path d="M654.9,905.6 L660.4,905.6 Q665.9,905.6 665.9,911.1 L665.9,953.6 Q665.9,963.6 675.9,963.6 L698.9,963.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-journey-ah-flow)"/>
+<rect x="702.9" y="1261.9" width="245.1" height="194.7" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<circle cx="735.9" cy="1288.7" r="16" fill="#7B2C34"/>
+<text x="735.9" y="1294.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">8</text>
+<text x="762.9" y="1299.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">History rows, then</text>
+<text x="762.9" y="1325.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">COMMIT</text>
+<text x="720.9" y="1355.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">1 row changed (0 rows →</text>
+<text x="720.9" y="1380.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">409, nothing written);</text>
+<text x="720.9" y="1406.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">activity and audit rows; the</text>
+<text x="720.9" y="1432.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">handler commits</text>
+<path d="M825.5,1233.9 L825.5,1257.9" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#request-journey-ah-flow)"/>
+<rect x="364.4" y="1319.9" width="288.5" height="117.4" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="397.4" cy="1346.7" r="16" fill="#7B2C34"/>
+<text x="397.4" y="1352.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">9</text>
+<text x="424.4" y="1357.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">200 ItemResponse</text>
+<text x="382.4" y="1387.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">camelCase JSON with</text>
+<text x="382.4" y="1412.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">X-Request-ID and security headers</text>
+<path d="M700.9,1291.9 L695.4,1291.9 Q689.9,1291.9 689.9,1297.4 L689.9,1339.9 Q689.9,1349.9 679.9,1349.9 L656.9,1349.9" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#request-journey-ah-reply)"/>
+<rect x="52.0" y="1377.9" width="262.4" height="142.9" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="1404.7" r="16" fill="#7B2C34"/>
+<text x="85.0" y="1410.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">10</text>
+<text x="112.0" y="1415.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">onSuccess</text>
+<text x="70.0" y="1445.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">invalidate items and activities;</text>
+<text x="70.0" y="1470.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">GET /items refetch; a toast (a</text>
+<text x="70.0" y="1496.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">dialog if slow) confirms</text>
+<path d="M362.4,1349.9 L356.9,1349.9 Q351.4,1349.9 351.4,1355.4 L351.4,1397.9 Q351.4,1407.9 341.4,1407.9 L318.4,1407.9" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#request-journey-ah-reply)"/>
+<rect x="52.0" y="1550.9" width="262.4" height="142.9" rx="12" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.8"/>
+<circle cx="85.0" cy="1577.7" r="16" fill="#7B2C34"/>
+<text x="85.0" y="1583.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">11</text>
+<text x="112.0" y="1588.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">If it fails</text>
+<text x="70.0" y="1618.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">a toast or dialog offers Retry; a</text>
+<text x="70.0" y="1643.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">401 first triggers one shared</text>
+<text x="70.0" y="1669.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">token refresh</text>
+</svg>

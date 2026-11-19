@@ -5,9 +5,9 @@ Uses pydantic-settings for type-safe environment variable handling
 
 import json
 from functools import lru_cache
-from typing import List, Union
+from typing import List, Literal, Union
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,12 +30,99 @@ class Settings(BaseSettings):
     # Observability — error tracking (optional; leave empty to disable Sentry)
     SENTRY_DSN: str = ""
 
+    # Server-owned AI credentials. All outbound processing is opt-in and off by default.
+    AI_ENABLED: bool = False
+    # Deterministic server-owned review; independent of cloud providers.
+    SUPPLY_REVIEW_ENABLED: bool = False
+    SUPPLY_REVIEW_TTL_SECONDS: int = Field(default=900, ge=60, le=3600)
+    SUPPLY_REVIEW_MAX_ITEMS: int = Field(default=500, ge=1, le=500)
+    AI_TRANSCRIBE_ENABLED: bool = False
+    AI_SPEECH_ENABLED: bool = False
+    AI_DATA_CONTROLS_REVIEWED: bool = False
+    AI_ALBA_RIGHTS_APPROVED: bool = False
+    GROQ_API_KEY: SecretStr = SecretStr("")
+    GROQ_STT_MODEL: str = "whisper-large-v3"
+    GROQ_INTENT_MODEL: str = "openai/gpt-oss-20b"
+    AI_TIMEOUT_SECONDS: int = Field(default=25, ge=1, le=60)
+    AI_USER_DAILY_REQUESTS: int = Field(default=50, ge=0, le=10000)
+    AI_GLOBAL_DAILY_REQUESTS: int = Field(default=500, ge=0, le=100000)
+    AI_GLOBAL_CONCURRENCY: int = Field(default=4, ge=1, le=32)
+    # Longest wait for the shared AI budget lock before answering "busy" (milliseconds).
+    AI_BUDGET_LOCK_TIMEOUT_MS: int = Field(default=3000, ge=100, le=8000)
+    # Conservative credits, millionths of USD. Not a provider billing cap.
+    AI_USER_DAILY_BUDGET_MICROUSD: int = Field(default=100_000, ge=0)
+    AI_GLOBAL_DAILY_BUDGET_MICROUSD: int = Field(default=1_000_000, ge=0)
+    # Optional personal-key TEXT understanding only. There is no operator OpenAI
+    # key or implicit fallback to another provider/account.
+    AI_OPENAI_ENABLED: bool = False
+    AI_OPENAI_DATA_CONTROLS_REVIEWED: bool = False
+    OPENAI_INTENT_MODEL: str = "gpt-5.4-mini-2026-03-17"
+    # Conservative per-call allowance for the bounded prompt and 3,072 output
+    # tokens. Standard GPT-5.4 mini rates; the adapter fixes the service tier.
+    AI_OPENAI_INTERPRET_RESERVE_MICROUSD: int = Field(default=50_000, ge=50_000)
+    AI_INTERPRET_RESERVE_MICROUSD: int = Field(default=5_000, ge=1)
+    AI_TRANSCRIBE_RESERVE_MICROUSD: int = Field(default=1_000, ge=1)
+    AI_SPEAK_RESERVE_MICROUSD: int = Field(default=1_000, ge=1)
+    PIPER_SERVICE_URL: str = ""
+    PIPER_SERVICE_TOKEN: SecretStr = SecretStr("")
+    # Optional, explicitly consented providers. Offline phone speech needs none of these.
+    SARVAM_API_KEY: SecretStr = SecretStr("")
+    AI_SARVAM_ENABLED: bool = False
+    AI_SARVAM_BYOK_ENABLED: bool = False
+    # Separate from JWT/provider keys. Must be stable across deploys and workers.
+    AI_CREDENTIAL_ENCRYPTION_KEY: SecretStr = SecretStr("")
+    # Comma-separated former Fernet keys, only during a deliberate rotation.
+    AI_CREDENTIAL_PREVIOUS_ENCRYPTION_KEYS: SecretStr = SecretStr("")
+    # Enabling English narration must not enable microphone uploads to Sarvam.
+    AI_SARVAM_TRANSCRIBE_ENABLED: bool = False
+    AI_SARVAM_DATA_CONTROLS_REVIEWED: bool = False
+    SARVAM_STT_MODEL: str = "saaras:v4"
+    SARVAM_TTS_MODEL: str = "bulbul:v3"
+    # Empty selects the model-specific English voice. Never use a v3 ID with v4.
+    SARVAM_SPEAKER: str = ""
+    AI_SARVAM_TRANSCRIBE_RESERVE_MICROUSD: int = Field(default=5_000, ge=1)
+    # Upper bound for one reply: 640 characters of bulbul:v3 at INR 30 per 10,000 characters, with exchange-rate margin.
+    AI_SARVAM_SPEAK_RESERVE_MICROUSD: int = Field(default=25_000, ge=1)
+    # A successful call is settled at an estimate from published prices (never above its
+    # reservation); failed or cancelled calls keep the whole reservation.
+    # Sarvam bulbul:v3: INR 30 per 10,000 characters (docs.sarvam.ai pricing, checked 15 Oct 2026),
+    # about 34 micro-USD per character at INR 88/USD; 38 adds margin. Taxes are not included.
+    AI_SARVAM_SPEAK_MICROUSD_PER_CHAR: int = Field(default=38, ge=1)
+    # Groq openai/gpt-oss-20b: USD 0.075 input and 0.30 output per million tokens; whisper-large-v3:
+    # USD 0.111 per audio hour (console.groq.com/docs/models, checked 15 Oct 2026).
+    AI_GROQ_INPUT_MICROUSD_PER_1K_TOKENS: int = Field(default=75, ge=0)
+    AI_GROQ_OUTPUT_MICROUSD_PER_1K_TOKENS: int = Field(default=300, ge=0)
+    AI_GROQ_STT_MICROUSD_PER_SECOND: int = Field(default=31, ge=0)
+    AI_KOKORO_ENABLED: bool = False
+    AI_KOKORO_RIGHTS_APPROVED: bool = False
+    KOKORO_SERVICE_URL: str = ""
+    KOKORO_SERVICE_TOKEN: SecretStr = SecretStr("")
+
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
+    # Hosted deployments must explicitly configure their ingress boundary and
+    # shared store. Memory counters and direct ingress are local-only defaults.
+    INGRESS_MODE: Literal["direct", "trusted_proxy", "edge_secret"] = "direct"
+    ALLOWED_HOSTS: Union[List[str], str] = []
+    TRUSTED_PROXY_CIDRS: Union[List[str], str] = []
+    ORIGIN_VERIFY_SECRET: SecretStr = SecretStr("")
+    RATE_LIMIT_STORAGE_URI: SecretStr = SecretStr("memory://")
+    RATE_LIMIT_KEY_PREFIX: str = "carekosh"
+    RATE_LIMIT_STORAGE_TIMEOUT_SECONDS: float = Field(default=0.5, gt=0, le=2)
+    MAX_INFLIGHT_REQUESTS: int = Field(default=32, ge=1, le=256)
+    API_BODY_TIMEOUT_SECONDS: float = Field(default=60, gt=0, le=120)
+
+    @field_validator("ALLOWED_HOSTS", "TRUSTED_PROXY_CIDRS", mode="before")
+    @classmethod
+    def parse_ingress_list(cls, value):
+        return cls.parse_cors_origins(value) if value else []
+
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/vitaltrack"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/vitaltrack"
+    )
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
     DATABASE_POOL_TIMEOUT: int = 30
@@ -78,14 +165,19 @@ class Settings(BaseSettings):
     def reject_weak_secret_in_production(cls, v, info):
         secret_value = v.get_secret_value() if isinstance(v, SecretStr) else str(v)
         env = info.data.get("ENVIRONMENT", "development")
-        if env == "production" and secret_value.startswith("CHANGE-THIS"):
+        # The default is public: any deployed environment (staging included) using
+        # it would accept forged tokens. Only local development and tests may.
+        if env not in ("development", "testing") and secret_value.startswith(
+            "CHANGE-THIS"
+        ):
             raise ValueError(
-                "SECRET_KEY must be set to a strong random value in production. "
+                "SECRET_KEY must be set to a strong random value outside development and testing. "
                 'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
             )
         if len(secret_value) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters")
         return v
+
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -114,6 +206,23 @@ class Settings(BaseSettings):
             return [v]
         return v
 
+    # Browser sessions are opt-in. These exact origins must also be in CORS_ORIGINS.
+    WEB_AUTH_ENABLED: bool = False
+    WEB_APP_ORIGINS: Union[List[str], str] = []
+
+    @field_validator("WEB_APP_ORIGINS", mode="before")
+    @classmethod
+    def parse_web_origins(cls, value):
+        origins = cls.parse_cors_origins(value)
+        from urllib.parse import urlsplit
+        for origin in origins:
+            parsed = urlsplit(origin)
+            if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.path or parsed.query or parsed.fragment or parsed.username or parsed.password or "*" in origin:
+                raise ValueError("WEB_APP_ORIGINS must contain exact origins without paths or wildcards")
+            if parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1"}:
+                raise ValueError("Browser origins require HTTPS outside loopback development")
+        return origins
+
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_BURST: int = 10
@@ -141,9 +250,11 @@ class Settings(BaseSettings):
     # Token Expiry
     EMAIL_VERIFICATION_EXPIRY_HOURS: int = 24
     PASSWORD_RESET_EXPIRY_HOURS: int = 1
-    
+
     # Email Verification Enforcement
-    REQUIRE_EMAIL_VERIFICATION: bool = False  # Default False — set True only when Brevo MAIL_PASSWORD is configured
+    REQUIRE_EMAIL_VERIFICATION: bool = (
+        False  # Default False — set True only when Brevo MAIL_PASSWORD is configured
+    )
 
     @property
     def database_url_sync(self) -> str:
@@ -159,7 +270,7 @@ class Settings(BaseSettings):
     def mail_password_value(self) -> str:
         """Raw Brevo API key for outbound email calls."""
         return self.MAIL_PASSWORD.get_secret_value()
-    
+
     @property
     def is_cors_allow_all(self) -> bool:
         """Check if CORS allows all origins (wildcard)."""

@@ -1,342 +1,194 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CareKosh — Build &amp; Deploy Flow</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#faf9f7;--card:#fff;--card2:#f4f3f0;--border:#e5e3de;--text:#1a1a18;--muted:#6b6a65;--accent:#1d6b52;--accent-bg:#e8f5ef;--amber:#8a6830;--amber-bg:#fef8e8;--danger:#8b1a1a;--danger-bg:#fef0f0;--info:#1a4a8b;--info-bg:#eef4fc;--code-bg:#f0efeb;--done:#059669;--done-bg:#d1fae5}
-@media(prefers-color-scheme:dark){:root{--bg:#0e0e12;--card:#161619;--card2:#1c1c21;--border:#2a2a30;--text:#e4e4ec;--muted:#8a8a95;--accent:#5eead4;--accent-bg:#0d2626;--amber:#d4a574;--amber-bg:#1a1510;--danger:#e88;--danger-bg:#1a1010;--info:#7ab4f5;--info-bg:#0f1a2a;--code-bg:#1a1a20;--done:#34d399;--done-bg:#0a1a14}}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.75;font-size:15px}
-.page{max-width:860px;margin:0 auto;padding:32px 24px 80px}
-.hero{text-align:center;padding:40px 0 36px;border-bottom:1px solid var(--border);margin-bottom:40px}
-.hero h1{font-family:'Instrument Serif',serif;font-size:2.4rem;font-weight:400;letter-spacing:-.02em;line-height:1.15;margin-bottom:10px}
-.hero h1 em{font-style:italic;color:var(--accent)}
-.hero .sub{color:var(--muted);font-size:.9rem;max-width:620px;margin:0 auto 8px}
-.hero .meta{color:var(--muted);font-size:.76rem}
-code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--code-bg);padding:2px 6px;border-radius:4px}
-pre{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:14px 0;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.65}
-pre code{background:none;padding:0}
-.section{margin-bottom:48px}
-.section h2{font-family:'Sora',sans-serif;font-size:1.35rem;font-weight:700;margin-bottom:10px}
-.section h3{font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;margin-top:22px;margin-bottom:8px}
-.section p{margin-bottom:12px}
-.section ul,.section ol{margin-bottom:14px;padding-left:22px}.section li{margin-bottom:6px;font-size:.93rem}
-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.86rem}
-th{text-align:left;font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:2px solid var(--border)}
-td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
-td:first-child{font-weight:600}
-.callout{border-radius:10px;padding:14px 18px;margin:18px 0;border-left:4px solid}
-.callout p{margin-bottom:6px;font-size:.9rem}.callout p:last-child{margin-bottom:0}
-.callout-label{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;display:block}
-.callout.info{background:var(--info-bg);border-left-color:var(--info)}.callout.info .callout-label{color:var(--info)}
-.callout.warn{background:var(--amber-bg);border-left-color:var(--amber)}.callout.warn .callout-label{color:var(--amber)}
-.callout.danger{background:var(--danger-bg);border-left-color:var(--danger)}.callout.danger .callout-label{color:var(--danger)}
-.callout.success{background:var(--accent-bg);border-left-color:var(--accent)}.callout.success .callout-label{color:var(--accent)}
-.qa{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px 26px;margin:18px 0}
-.qa .q{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
-.qa h4{font-family:'Sora',sans-serif;font-size:1.05rem;font-weight:700;margin-bottom:10px;line-height:1.35}
-.qa .a{font-family:'Sora',sans-serif;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);margin-top:14px;margin-bottom:6px}
-.qa p{margin-bottom:10px;font-size:.92rem}
-.qa ul{margin-bottom:10px}
-.arch{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:18px;margin:14px 0;font-family:'JetBrains Mono',monospace;font-size:.72rem;line-height:1.6;overflow-x:auto;white-space:pre}
-.tag{display:inline-block;font-family:'Sora',sans-serif;font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:4px;margin-right:6px;margin-bottom:4px}
-.tag.good{background:var(--accent-bg);color:var(--accent)}
-.tag.warn{background:var(--amber-bg);color:var(--amber)}
-.tag.off{background:var(--danger-bg);color:var(--danger)}
-.tag.info{background:var(--info-bg);color:var(--info)}
-hr{border:none;border-top:1px solid var(--border);margin:40px 0}
-.footer{text-align:center;padding:28px 0;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;margin-top:40px}
-</style>
-</head>
-<body>
-<div class="page">
-
-<div class="hero">
-  <h1>Build &amp; <em>Deploy</em> Flow</h1>
-  <p class="sub">A plain-English textbook for what happens every time you push, open a PR, merge, or build a mobile artifact. If you're about to do one of these, read the matching Q first.</p>
-  <p class="meta">CareKosh · Home ICU Inventory · Render + Neon + EAS Build · April–May 2026</p>
-</div>
-
-<div class="callout info">
-  <span class="callout-label">Update — May 2026 cold-start UX track (PRs #17–#34)</span>
-  <p>The build and deploy mechanics themselves are unchanged: same CI jobs, current Render hook, same EAS profiles. What changed is the mobile bundle's runtime behaviour during the cold-start window — see Q10 for the shipped client-side mitigations (<code>MutationResultDialog</code>, consolidated <code>StatusPill</code>, fire-and-forget save flow, retry-via-<code>Mutation.execute()</code>, auto-clear of <code>isBackendColdStarting</code>, inventory PDF redesign). New dependency: <code>react-native-toast-message</code>. The next preview / production APK build will pick all of this up automatically — no env-var or pipeline change required.</p>
-</div>
-
-<!-- MASTER TRIGGER MATRIX -->
-<div class="section">
-  <h2>Master trigger matrix</h2>
-  <p>What each action produces. Everything below is the detail.</p>
-  <table>
-    <thead><tr><th>Trigger</th><th>CI runs?</th><th>Backend deploys?</th><th>Mobile builds?</th><th>Who sees it?</th></tr></thead>
-    <tbody>
-      <tr><td>Push to <code>feature/*</code></td><td>No</td><td>No</td><td>No</td><td>Only you</td></tr>
-      <tr><td>Open PR → <code>main</code></td><td><span class="tag good">Yes</span></td><td>No</td><td>No</td><td>Reviewers</td></tr>
-      <tr><td>PR + label <code>build-apk</code></td><td><span class="tag good">Yes</span></td><td>No</td><td><span class="tag info">Preview APK</span></td><td>Reviewers can sideload</td></tr>
-      <tr><td>Merge PR to <code>main</code></td><td><span class="tag good">Yes</span></td><td><span class="tag good">Production hook; staging if backend rebuilds</span></td><td>No</td><td>Backend environments</td></tr>
-      <tr><td>Manual <code>eas build --profile production</code></td><td>No</td><td>No</td><td><span class="tag warn">AAB</span></td><td>Play Console upload</td></tr>
-      <tr><td><code>workflow_dispatch</code> (Run workflow)</td><td><span class="tag good">Yes</span></td><td>—</td><td>—</td><td>Same as PR</td></tr>
-    </tbody>
-  </table>
-  <div class="callout info">
-    <span class="callout-label">Note</span>
-    <p>The production AAB job (<code>build-production</code>) is currently gated by <code>if: false</code> in <code>.github/workflows/ci.yml</code>. Until that flips, all AAB builds are manual. Plan: flip to <code>if: github.ref == 'refs/heads/main'</code> when Play Store production track is live.</p>
-  </div>
-  <div class="callout warn">
-    <span class="callout-label">Before Play review</span>
-    <p>The Render free-tier cold-start issue is hosting/ops work and can technically be fixed after Play deployment. It is still safer to fix before review: reviewers and first users may treat 30–60 s login or inventory timeouts as a broken app. Minimum: paid Render or an equivalent reliable uptime / keep-warm strategy with evidence.</p>
-  </div>
-</div>
-
-<hr>
-
-<!-- Q1 -->
-<div class="section">
-  <h2>The questions</h2>
-
-  <div class="qa">
-    <div class="q">Question 1</div>
-    <h4>I pushed to my feature branch. What just happened?</h4>
-    <div class="a">Answer</div>
-    <p>Nothing on GitHub. Nothing on Render. Nothing on EAS. CI only triggers on <em>pull_request</em>, <em>push to main</em>, or <em>workflow_dispatch</em> — not on arbitrary branch pushes.</p>
-    <p>The only side effects of a feature-branch push are: the commits land on GitHub, and if your branch is being compared in an open PR, the PR's CI re-runs.</p>
-    <div class="callout warn">
-      <span class="callout-label">Misconception</span>
-      <p>"Render deploys every push" — no. Render watches <code>main</code> only. Until you merge, your code is not running anywhere except your laptop.</p>
-    </div>
-  </div>
-
-  <!-- Q2 -->
-  <div class="qa">
-    <div class="q">Question 2</div>
-    <h4>I opened a PR. What runs?</h4>
-    <div class="a">Answer</div>
-    <p>PR jobs run in <code>.github/workflows/ci.yml</code>, in parallel where possible:</p>
-    <table>
-      <thead><tr><th>Job</th><th>Does</th><th>~Time</th></tr></thead>
-      <tbody>
-        <tr><td><code>test-backend</code></td><td>pytest (postgres:16 service), Ruff, route count, item/order coverage gates</td><td>1–2 min</td></tr>
-        <tr><td><code>typecheck-backend-advisory</code></td><td>mypy baseline, advisory until existing errors are fixed</td><td>~1 min</td></tr>
-        <tr><td><code>test-frontend</code></td><td>blocking TypeScript check + ESLint; <code>expo-doctor</code> advisory sanity check</td><td>30–60 s</td></tr>
-        <tr><td><code>security-scan-advisory</code></td><td>Trivy filesystem scan (CRITICAL + HIGH), advisory until dependency baseline is fixed</td><td>~1 min</td></tr>
-        <tr><td><code>pr-check</code></td><td>Merge gate — succeeds only if backend + frontend pass</td><td>instant</td></tr>
-      </tbody>
-    </table>
-    <p>Neither <code>build-preview</code> nor <code>build-production</code> runs by default. The first needs the <code>build-apk</code> label; the second is disabled.</p>
-  </div>
-
-  <!-- Q3 -->
-  <div class="qa">
-    <div class="q">Question 3</div>
-    <h4>How do I get a preview APK from a PR?</h4>
-    <div class="a">Answer</div>
-    <p>Add the label <code>build-apk</code> to the PR.</p>
-    <p>The <code>build-preview</code> job is gated on this label. Once applied, it runs <code>eas build --profile preview --platform android</code> against the PR branch. Artifact: an APK bound to the <strong>staging</strong> backend (<code>https://staging-api.carekosh.com</code>), because <code>EXPO_PUBLIC_API_URL</code> is baked into the binary at build time.</p>
-    <div class="callout info">
-      <span class="callout-label">Why label-based</span>
-      <p>EAS build credits are finite. Running a build on every PR push burns them. A label makes each build an explicit reviewer decision.</p>
-    </div>
-  </div>
-
-  <!-- Q4 -->
-  <div class="qa">
-    <div class="q">Question 4</div>
-    <h4>I merged the PR. Now what?</h4>
-    <div class="a">Answer — CI and Render both react to main</div>
-    <p><strong>1. CI re-runs on <code>main</code>.</strong> Backend and frontend gates must pass. The mypy job is advisory; the Trivy job is PR-only advisory.</p>
-    <p><strong>2. <code>deploy-backend</code> runs.</strong> If <code>RENDER_DEPLOY_HOOK</code> is configured, CI POSTs that hook as a production deploy backup. Render's own GitHub auto-deploy can also rebuild connected services from <code>main</code>; the repo only proves the production hook and <code>render.yaml</code> production service, while staging is an external Render service documented in the staging diagnosis.</p>
-    <div class="arch">TIMELINE FOR A TYPICAL MERGE
-
-t+0    merge button clicked
-t+0.1  GitHub creates merge commit on main
-t+0.2  CI triggers on push event
-t+2m   backend/frontend gates pass on main; advisory mypy reports separately
-t+2m   deploy-backend POSTs Render hook if configured
-t+2.5m Render pulls image for the service being deployed
-t+3m   docker-entrypoint.sh: waits for DB, runs alembic upgrade head
-t+4m   Gunicorn replaces old workers; Render /live check passes
-t+4m   production live; staging updates through its own Render auto-deploy when its service rebuilds</div>
-    <p>No mobile build is kicked off by merging. Mobile releases are a separate manual step (Q6).</p>
-  </div>
-
-  <!-- Q5 -->
-  <div class="qa">
-    <div class="q">Question 5</div>
-    <h4>What exactly does the backend server do on startup?</h4>
-    <div class="a">Answer — <code>docker-entrypoint.sh</code> is the whole story</div>
-    <ol>
-      <li>Parse <code>DATABASE_URL</code> into host/port/user/db (handles <code>postgresql://</code> and <code>postgresql+asyncpg://</code>)</li>
-      <li>Wait for DB with <code>pg_isready</code> (up to 30 retries × 2 s = 60 s)</li>
-      <li>Run <code>alembic upgrade head</code> — idempotent; skips already-applied migrations</li>
-      <li><code>exec</code> the <code>CMD</code>: <code>gunicorn -k uvicorn.workers.UvicornWorker -w 4 app.main:app</code></li>
-      <li>Gunicorn binds on <code>0.0.0.0:$PORT</code> (Render injects <code>$PORT</code>). The Docker image healthcheck uses <code>/health</code>; Render's platform <code>healthCheckPath</code> is <code>/live</code>.</li>
-    </ol>
-    <div class="callout warn">
-      <span class="callout-label">What you'll see in Render logs</span>
-      <p>The entrypoint parses <code>DATABASE_URL</code> first, extracts the real Neon host and port, then waits with <code>pg_isready</code> for up to 30 attempts. <code>localhost</code> or <code>db</code> are only fallback values if parsing fails or no host is provided; there should not be a routine minute of local fallback failures on every deploy.</p>
-    </div>
-  </div>
-
-  <!-- Q6 -->
-  <div class="qa">
-    <div class="q">Question 6</div>
-    <h4>How does a mobile release actually happen?</h4>
-    <div class="a">Answer — manual, from your laptop, today</div>
-    <pre><code># Prep
-cd vitaltrack-mobile
-npx expo-doctor                              # sanity check
-
-# Build AAB (production profile bakes in api.carekosh.com)
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Build and deploy flow — CareKosh</title><style>body{margin:0;background:#f7f5ef;color:#202c32;font:17px/1.65 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:40px 24px 80px}h1{font-size:clamp(2rem,5vw,3.1rem);line-height:1.15}h2{margin-top:2.5rem;color:#174b49}a{color:#075d70;text-underline-offset:3px}table{border-collapse:collapse;width:100%;margin:20px 0}th,td{border:1px solid #c8d1cd;padding:12px;text-align:left;vertical-align:top}th{background:#e6eeea}pre{padding:18px;background:#172e34;color:#eff7f3;overflow:auto;border-radius:8px}code{font-size:.9em}aside,.note{padding:18px;border-left:4px solid #9b6a1b;background:#fff3d7;margin:20px 0}.eyebrow{font-size:.8rem;text-transform:uppercase;letter-spacing:.1em}nav{display:flex;gap:15px;flex-wrap:wrap}li{margin:8px 0}@media(max-width:650px){table{display:block;overflow:auto}main{padding:24px 16px}}@media print{body{background:white;color:black}main{max-width:none;padding:0}pre{white-space:pre-wrap;background:#eee;color:black}a{color:inherit}}main{max-width:1080px}main>p,main>ul,main>ol,main>aside,main>h1,main>h2,main>h3,main>.lead,main>details{max-width:47rem}li{margin:6px 0}.lead{font-size:1.12rem;color:#2d4540}.inshort{font-size:1.06rem;padding:12px 16px;border-left:4px solid #1f6f66;background:#e8f3f0;border-radius:0 10px 10px 0}figure.dg{margin:26px 0 34px}.dg-frame{background:#fff;border:1px solid #d2dcd8;border-radius:18px;padding:18px 18px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;box-shadow:0 1px 3px rgba(20,50,45,.06)}.dg-frame svg{display:block;width:100%;height:auto;margin:0 auto}figure.dg figcaption{max-width:47rem;margin-top:10px;font-size:.95rem;color:#44574f}figure.dg figcaption b{color:#174b49}.swipe{display:none}details{margin:16px 0;padding:10px 16px;border:1px solid #c8d1cd;border-radius:10px;background:#fff}details summary{cursor:pointer;font-weight:600;color:#174b49}@media(max-width:720px){.dg-frame{padding:10px}.dg-frame svg{min-width:680px}.swipe{display:inline}}@media print{.dg-frame{overflow:visible;border:none;padding:0;box-shadow:none}.dg-frame svg{min-width:0}}</style></head><body>
+<aside data-voice-architecture-sync="2026-10-11" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 11 October 2026.</strong> Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, an explicit shared or encrypted per-account personal key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Personal-key migration 0011 adds encrypted credentials and billing-source metadata; the current local inventory is 50 HTTP operations (47 under /api/v1) and 12 application tables. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. <a href="docs/SARVAM_ENGLISH_VOICE.html">Sarvam activation, costs and device checks</a> · <a href="docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete voice architecture</a>.</p></aside><main><nav><a href="docs/INDEX.html">Documentation home</a></nav><p class="eyebrow">CareKosh · rechecked 8 October 2026 (test evidence: 7 October 2026, re-run 8 October 2026)</p><h1>Build and deploy flow</h1>
+<p><strong>8 October 2026 safety follow-up.</strong> Targeted fixes are local tested changes after the earlier audit. Deployment and device acceptance remain separate. <a href="docs/BACKEND_HARDENING.md#safety-follow-up-8-october-2026">Current changes and remaining scope</a>.</p><aside><strong>Source status (re-checked 8 Oct 2026 against the working tree: <code>03cfebb</code> plus uncommitted documentation):</strong> describes branch <code>feature/backend-hardening-ai-voice-agent-foundation</code> at <code>03cfebb</code> (pushed, <strong>not merged</strong>; <code>main</code> is <code>835fad3</code>), which carries migrations <code>0007</code>–<code>0010</code>, the read-only voice assistant and the API audit fixes. Where <code>main</code> differs, the text says so. Staging was reported by the owner to run <code>b1c8dd7</code> on 7 Oct 2026 (historical, not re-checked); production's deployed commit, database revision and all dashboard settings are NOT VERIFIED. Earlier corrections came from the 23 September 2026 documentation audit (local notes, not published); this revision follows the <span>7 October 2026 documentation audit <small>(local review reference; not published)</small></span>. Main onboarding guide: <a href="docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#f2-cicd-pipeline-githubworkflowsciyml">Complete developer guide, Part F</a>.</aside><p><strong>In short:</strong> <code>vitaltrack-backend/render.yaml</code> declares the production backend on <code>main</code> (whether Render reads that file is not verified); staging can track a feature branch configured in its dashboard; the Android app is built by Expo EAS and distributed through Google Play. The two paths are independent. A backend deploy never changes an installed app, and an app build never deploys the backend.</p><h2 id="triggers">What each action changes</h2><figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 486" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bd-ci-t bd-ci-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="bd-ci-t">What each Git action runs</title><desc id="bd-ci-d">A feature push with no open pull request to main does not trigger this CI workflow, but a linked Render service may auto-deploy. A PR to main, and every push to its branch, runs CI and a label-gated preview job. A merge may trigger enabled auto-deploy or a configured CI hook after the test jobs. App builds are separate EAS builds, made by hand or, for previews, by the label-gated job.</desc><defs><marker id="bd-ci-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="bd-ci-ah-b3372b" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#B3372B"/></marker></defs>
+<rect x="30" y="40" width="290" height="252" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="50" y="76.5" font-size="18.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Push to a feature branch</text>
+<text x="50" y="102.0" font-size="15.5" font-weight="400" fill="#34504A" text-anchor="start">No CI deploy job</text>
+<text x="50" y="124.0" font-size="15.5" font-weight="400" fill="#34504A" text-anchor="start">No app build</text>
+<text x="50" y="158.0" font-size="15.5" font-weight="400" fill="#34504A" text-anchor="start">CI runs only through an</text>
+<text x="50" y="180.0" font-size="15.5" font-weight="400" fill="#34504A" text-anchor="start">open pull request to main</text>
+<circle cx="32" cy="42" r="16" fill="#9AAAA6"/>
+<text x="32" y="47.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<path d="M324,166 L350,166" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-ci-ah-1f6f66)"/>
+<rect x="355" y="40" width="290" height="252" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="375" y="76.5" font-size="18.5" font-weight="700" fill="#0D4A43" text-anchor="start">Pull request to main</text>
+<text x="375" y="98.5" font-size="14" font-weight="500" fill="#21403B" text-anchor="start" font-style="italic">CI checks run</text>
+<text x="375" y="124.0" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Backend tests</text>
+<text x="375" y="146.0" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">(Python 3.12, PostgreSQL 16)</text>
+<text x="375" y="168.0" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Mobile checks (Node 20)</text>
+<text x="375" y="190.0" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Advisory: mypy, Trivy</text>
+<text x="375" y="212.0" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Preview APK only with the</text>
+<text x="375" y="234.0" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">build-apk label</text>
+<circle cx="357" cy="42" r="16" fill="#1F6F66"/>
+<text x="357" y="47.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<path d="M649,166 L675,166" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-ci-ah-1f6f66)"/>
+<rect x="680" y="40" width="290" height="252" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="700" y="76.5" font-size="18.5" font-weight="700" fill="#8C2A20" text-anchor="start">Merge to main</text>
+<text x="700" y="98.5" font-size="14" font-weight="500" fill="#5C1F18" text-anchor="start" font-style="italic">may deploy production</text>
+<text x="700" y="124.0" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Render auto-deploy (if on)</text>
+<text x="700" y="146.0" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">can start before CI ends</text>
+<text x="700" y="168.0" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">CI hook, if configured</text>
+<text x="700" y="190.0" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">after both test jobs pass</text>
+<text x="700" y="212.0" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Production app build job</text>
+<text x="700" y="234.0" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">is disabled (if: false)</text>
+<circle cx="682" cy="42" r="16" fill="#B3372B"/>
+<text x="682" y="47.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<path d="M825.0,294 L825.0,344" fill="none" stroke="#B3372B" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-ci-ah-b3372b)"/>
+<rect x="630" y="350" width="340" height="112" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="800.0" y="387" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="middle">Container starts</text>
+<text x="800.0" y="412" font-size="15" font-weight="400" fill="#21403B" text-anchor="middle">wait for DB → alembic upgrade head</text>
+<text x="800.0" y="434" font-size="15" font-weight="400" fill="#21403B" text-anchor="middle">→ Gunicorn → /live check</text>
+<rect x="30" y="350" width="575" height="112" rx="14" fill="#EAF0FA" stroke="#3D5A99" stroke-width="2.2"/>
+<text x="50" y="387" font-size="19" font-weight="700" fill="#243E76" text-anchor="start">App builds are separate (EAS)</text>
+<text x="50" y="412.5" font-size="15.5" font-weight="400" fill="#2A3A57" text-anchor="start">EAS builds make the APK or AAB (by hand, or the build-apk job).</text>
+<text x="50" y="434.5" font-size="15.5" font-weight="400" fill="#2A3A57" text-anchor="start">A backend deploy never changes an installed app.</text>
+</svg></div><figcaption><b>Figure 1.</b> What a push, a pull request and a merge each run. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure><table><tr><th>Action</th><th>Backend</th><th>Mobile artifact</th></tr><tr><td>Feature-branch push</td><td>CI runs only if the branch has an open PR to <code>main</code> (as a PR run). No deploy in the repository workflow; check any external integrations separately.</td><td>No build from that push alone.</td></tr><tr><td>PR to main</td><td>Backend and mobile CI checks; no staging deploy job.</td><td>A preview APK only when the PR has the <code>build-apk</code> label, after the two test jobs succeed — again on every later PR run while the label stays. The <code>skip-apk</code> label does nothing.</td></tr><tr><td>Push/merge to main</td><td>CI may request the production Render deploy hook after both test jobs. Render's own auto-deploy is independent of CI and depends on dashboard settings.</td><td>The production build job is disabled with <code>if: false</code>. No new installed app.</td></tr><tr><td>Manual EAS build</td><td>Does not deploy an API or run its migrations.</td><td>Builds the chosen profile from the uploaded source.</td></tr></table><p><strong>Merging to <code>main</code> can trigger production deployment through an enabled Render auto-deploy or a configured CI deploy hook.</strong> <code>vitaltrack-backend/render.yaml</code> declares only the production service, with <code>branch: main</code>. Until this branch merges, a push to <code>main</code> runs <code>main</code>'s older workflow, whose hook call (<code>curl -s</code>) cannot fail the job. Older guides documented both APIs watching <code>main</code> with a backend root-directory filter; on 7 Oct 2026 the owner reported switching staging to the feature branch to deploy <code>b1c8dd7</code> (owner-reported, not re-checked). Either way the arrangement has no staging-first release gate of its own, and an "On Commit" auto-deploy can start before CI finishes. Auto-deploy and branch per service are dashboard settings (NOT VERIFIED). Confirm the live settings, and for migrations <code>0007</code>–<code>0010</code> follow the <a href="#release">release sequence</a> below. <a href="https://render.com/docs/deploys">Render deployment controls</a>.</p>
+<h2 id="ci">CI gates</h2><p>There are eight jobs:</p><ul><li><strong>Backend tests</strong> use Python 3.12 (3.11 on <code>main</code>) and PostgreSQL 16: Ruff, pytest with <code>--migrated-schema</code>, a check that exactly 44 <code>/api/v1</code> routes exist (39 on <code>main</code>, before the five assistant routes) and no <code>/sync</code> route, and 70% coverage floors for <code>items.py</code> and <code>orders.py</code>. On 7 Oct 2026 (run 37583748644, manual dispatch on <code>03cfebb</code>): 242 tests passed, 88% coverage. Re-run locally on 8 Oct 2026 against a disposable PostgreSQL 16 database: 242 passed, 88% coverage.</li><li><strong>Mobile checks</strong> (Node 20): install with <code>--legacy-peer-deps</code>, confirm the <code>carekosh-voice</code> native module is autolinked for Android, then TypeScript (<code>tsc --noEmit</code>), <code>npm test</code> (121 Node test-runner tests in <code>tests/*.test.cjs</code> on 7 Oct 2026, and again on 8 Oct), ESLint (errors fail; warnings do not) and Expo Doctor. Expo Doctor's result is discarded (<code>|| echo</code>), so it can never fail the job; on 7 Oct it reported patch-version mismatches. <em>Earlier (September 2026 notes):</em> the job ran eight API tests via <code>npm run test:api</code>; <code>main</code>'s job runs TypeScript, ESLint and Expo Doctor only.</li><li><strong>Advisory jobs:</strong> mypy and the PR-only Trivy scan. Green required checks do not mean there are no typing or dependency findings.</li><li><strong>Other jobs:</strong> the PR summary job (<code>pr-check</code>, not required by GitHub), the deploy hook, the label-gated preview build and the disabled production build.</li></ul><p>The preview build job is <strong>not</strong> marked continue-on-error; only its notification step is. On <code>main</code> it runs on Node 18, below React Native 0.81's minimum of Node 20.19.4; the feature branch moves it to Node 22 (matching <code>.nvmrc</code>). Whether a label-triggered preview build succeeds has not been verified. Which checks block a merge is decided on GitHub, not in the workflow file. Checked through the GitHub API on 7 Oct 2026 (not re-checked since): <code>main</code> has no classic branch protection; the active ruleset <code>protect-main</code> requires a pull request (0 approvals), blocks force-pushes and deletion, and requires <strong>no</strong> status checks. A red CI run therefore does not technically stop a merge; reading every job before merging is a discipline, not an enforced gate.</p>
+<h2 id="startup">Container startup and migration</h2><p>The production image uses Python 3.12 and runs two Uvicorn workers managed by Gunicorn. The shell entrypoint:</p><figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 304" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bd-boot-t bd-boot-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="bd-boot-t">Container start-up</title><desc id="bd-boot-d">The entrypoint waits for PostgreSQL, runs alembic upgrade head and stops if it fails, then starts Gunicorn with two Uvicorn workers; Render then checks /live.</desc><defs><marker id="bd-boot-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker></defs>
+<rect x="30" y="40" width="215" height="128" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="137.5" y="76" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Wait for the DB</text>
+<text x="137.5" y="101" font-size="15" font-weight="400" fill="#21403B" text-anchor="middle">30 tries, 2 s apart,</text>
+<text x="137.5" y="123" font-size="15" font-weight="400" fill="#21403B" text-anchor="middle">then goes on anyway</text>
+<circle cx="137.5" cy="40" r="16" fill="#1F6F66"/>
+<text x="137.5" y="45.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<path d="M248,104 L268,104" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-boot-ah-1f6f66)"/>
+<rect x="272" y="40" width="215" height="128" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="379.5" y="76" font-size="18" font-weight="700" fill="#8C2A20" text-anchor="middle">Migrate</text>
+<text x="379.5" y="101" font-size="15" font-weight="400" fill="#5C1F18" text-anchor="middle">alembic upgrade head</text>
+<text x="379.5" y="123" font-size="15" font-weight="400" fill="#5C1F18" text-anchor="middle">stops start-up on failure</text>
+<circle cx="379.5" cy="40" r="16" fill="#B3372B"/>
+<text x="379.5" y="45.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<path d="M490,104 L510,104" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-boot-ah-1f6f66)"/>
+<rect x="514" y="40" width="215" height="128" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="621.5" y="76" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle">Start Gunicorn</text>
+<text x="621.5" y="101" font-size="15" font-weight="400" fill="#21403B" text-anchor="middle">2 Uvicorn workers</text>
+<text x="621.5" y="123" font-size="15" font-weight="400" fill="#21403B" text-anchor="middle">on $PORT</text>
+<circle cx="621.5" cy="40" r="16" fill="#1F6F66"/>
+<text x="621.5" y="45.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<path d="M732,104 L752,104" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-boot-ah-1f6f66)"/>
+<rect x="756" y="40" width="215" height="128" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="863.5" y="76" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="middle">Health check</text>
+<text x="863.5" y="101" font-size="15" font-weight="400" fill="#1D4730" text-anchor="middle">Render polls /live</text>
+<text x="863.5" y="123" font-size="15" font-weight="400" fill="#1D4730" text-anchor="middle">(no database check)</text>
+<circle cx="863.5" cy="40" r="16" fill="#2E7D4F"/>
+<text x="863.5" y="45.76" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<rect x="30" y="204" width="940" height="80" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="241.5" font-size="15.5" text-anchor="start"><tspan font-weight="700" fill="#2B403C">A failed start does not undo schema changes. </tspan><tspan font-weight="400" fill="#3C5550">Head: 0010_order_local_id_unique; 0007 refuses downgrade.</tspan></text>
+<text x="50" y="263.5" font-size="15.5" text-anchor="start"><tspan font-weight="400" fill="#3C5550">A DATABASE_URL without a port makes the wait loop probe localhost; set DATABASE_HOST/PORT if needed.</tspan></text>
+</svg></div><figcaption><b>Figure 2.</b> The four start-up steps of every production container. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure><ol><li>waits for PostgreSQL — up to 30 attempts, 2 seconds apart; after that it logs a warning and proceeds anyway;</li><li>runs <code>alembic upgrade head</code>, and exits if it fails;</li><li>appends the <code>PORT</code> bind argument and execs Gunicorn from an exec-form Docker CMD.</li></ol><p>A failed start-up does not automatically undo schema changes. The host parser falls back to <code>localhost</code> for a <code>DATABASE_URL</code> without a port. With such a URL, every start waits about 60 seconds before migrating. Look for <code>Extracted HOST:</code> in the deploy log, or set <code>DATABASE_HOST</code>/<code>DATABASE_PORT</code> explicitly. Earlier A-27 made percent-encoded URLs fail during Alembic configuration. The 8 Oct 2026 local fix escapes percent signs for ConfigParser, which returns the original URL. Continue URL-encoding reserved password characters; this needs the updated backend deployment.</p><p>The migration head on the feature branch is <code>0010_order_local_id_unique</code> (<code>main</code> ends at <code>0006_order_item_qty_positive</code>). <code>0007_session_order_safety</code> adds <code>session_version</code>, durable daily order counters and token-digest indexes; <code>0008</code> creates consent and usage tables; <code>0009</code> adds consent scopes and the usage provider field; <code>0010</code> adds a partial per-user unique index on non-null order <code>local_id</code>, exempting later legacy duplicates by id, and takes a <code>SHARE</code> lock on <code>orders</code> until migration commit. Its duration depends on the table size and lock contention. They preserve existing application rows. Automatic downgrade below <code>0007</code> is deliberately refused (it raises an error); <code>0008</code>–<code>0010</code> have downgrades, which are untested. Redeploying an image older than the schema does not roll it back: that image's <code>alembic upgrade head</code> cannot find revision <code>0010</code>, the container exits, and Render keeps the current version. Follow the <a href="docs/BACKEND_HARDENING.md#release-gate-for-migration-0007">release gate, cutover and rollback notes</a>.</p>
+<h2 id="artifacts">APK, AAB and the existing app</h2><figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 578" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bd-apk-t bd-apk-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="bd-apk-t">Which build talks to which backend</title><desc id="bd-apk-d">development would build a development-client APK for localhost once expo-dev-client is installed; preview builds an APK installed directly that calls staging; production builds an AAB submitted to Google Play that calls production.</desc><defs><marker id="bd-apk-ah-8fa39d" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#8FA39D"/></marker></defs>
+<text x="34" y="36" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.4">EAS PROFILE</text>
+<text x="244" y="36" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.4">OUTPUT</text>
+<text x="474" y="36" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.4">HOW IT REACHES A PHONE</text>
+<text x="764" y="36" font-size="13" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.4">CALLS</text>
+<rect x="30" y="56" width="180" height="120" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="120" y="123.0" font-size="18" font-weight="700" fill="#35474F" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">development</text>
+<rect x="240" y="56" width="200" height="120" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="260" y="91.5" font-size="17.5" font-weight="700" fill="#1F2F2D" text-anchor="start">Dev-client APK</text>
+<text x="260" y="116.0" font-size="14.5" font-weight="400" fill="#34504A" text-anchor="start">needs expo-dev-client</text>
+<text x="260" y="137.0" font-size="14.5" font-weight="400" fill="#34504A" text-anchor="start">(not installed yet)</text>
+<rect x="470" y="56" width="260" height="120" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="490" y="93" font-size="15" font-weight="400" fill="#34504A" text-anchor="start">Install on a test phone</text>
+<rect x="760" y="56" width="210" height="120" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="865" y="122.0" font-size="15.5" font-weight="700" fill="#35474F" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">localhost:8000</text>
+<path d="M212,116.0 L236,116.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<path d="M442,116.0 L466,116.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<path d="M732,116.0 L756,116.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<rect x="30" y="196" width="180" height="120" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="120" y="263.0" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">preview</text>
+<rect x="240" y="196" width="200" height="120" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="260" y="231.5" font-size="17.5" font-weight="700" fill="#1F2F2D" text-anchor="start">APK</text>
+<text x="260" y="256.0" font-size="14.5" font-weight="400" fill="#34504A" text-anchor="start">installed directly</text>
+<rect x="470" y="196" width="260" height="120" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="490" y="233" font-size="15" font-weight="400" fill="#34504A" text-anchor="start">Download from EAS,</text>
+<text x="490" y="255" font-size="15" font-weight="400" fill="#34504A" text-anchor="start">install by hand</text>
+<rect x="760" y="196" width="210" height="120" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2"/>
+<text x="865" y="250.0" font-size="15.5" font-weight="700" fill="#77500F" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">staging-api.</text>
+<text x="865" y="274.0" font-size="15.5" font-weight="700" fill="#77500F" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">carekosh.com</text>
+<path d="M212,256.0 L236,256.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<path d="M442,256.0 L466,256.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<path d="M732,256.0 L756,256.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<rect x="30" y="336" width="180" height="120" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="120" y="403.0" font-size="18" font-weight="700" fill="#8C2A20" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">production</text>
+<rect x="240" y="336" width="200" height="120" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="260" y="371.5" font-size="17.5" font-weight="700" fill="#1F2F2D" text-anchor="start">AAB</text>
+<text x="260" y="396.0" font-size="14.5" font-weight="400" fill="#34504A" text-anchor="start">Android App Bundle</text>
+<rect x="470" y="336" width="260" height="120" rx="14" fill="#FFFFFF" stroke="#9AAAA6" stroke-width="2.2"/>
+<text x="490" y="373" font-size="15" font-weight="400" fill="#34504A" text-anchor="start">eas submit → Play</text>
+<text x="490" y="395" font-size="15" font-weight="400" fill="#34504A" text-anchor="start">internal track → Play</text>
+<text x="490" y="417" font-size="15" font-weight="400" fill="#34504A" text-anchor="start">makes device APKs</text>
+<rect x="760" y="336" width="210" height="120" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="865" y="402.0" font-size="15.5" font-weight="700" fill="#8C2A20" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">api.carekosh.com</text>
+<path d="M212,396.0 L236,396.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<path d="M442,396.0 L466,396.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<path d="M732,396.0 L756,396.0" fill="none" stroke="#8FA39D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#bd-apk-ah-8fa39d)"/>
+<rect x="30" y="482" width="940" height="80" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="519.5" font-size="15.5" text-anchor="start"><tspan font-weight="700" fill="#2B403C">The profile decides the backend</tspan><tspan font-weight="400" fill="#3C5550">, because it embeds the API URL — not the file type or the Play track.</tspan></text>
+<text x="50" y="541.5" font-size="15.5" text-anchor="start"><tspan font-weight="400" fill="#3C5550">A production AAB in internal testing still calls production.</tspan></text>
+</svg></div><figcaption><b>Figure 3.</b> The EAS profile decides which backend a build calls. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure><table><tr><th>Profile</th><th>Output</th><th>API</th></tr><tr><td>development</td><td>Development-client APK (needs <code>expo-dev-client</code>, which is not installed yet)</td><td>http://localhost:8000; Android needs a matching network/ADB setup</td></tr><tr><td>preview</td><td>APK for direct installation</td><td>https://staging-api.carekosh.com</td></tr><tr><td>production</td><td>AAB for Google Play</td><td>https://api.carekosh.com</td></tr></table><p>The profile and its embedded API URL decide the environment, not the APK/AAB file type or the Play track name. A production-profile AAB in internal testing still calls production. An AAB is not installed directly: Google Play (or bundle tooling) turns it into installable, device-specific APKs. <a href="https://docs.expo.dev/build-reference/apk/">Expo artifact guide</a>.</p><p>Backend-only fixes reach existing compatible installations as soon as the API is deployed. Mobile changes, such as the refresh and history fixes, retry-safe order creation and the voice assistant, need a new installation, because over-the-air updates are off (<code>updates.enabled=false</code>). The EAS channels in <code>eas.json</code> do not enable OTA updates. Custom-domain DNS can move an existing hostname to another host without changing the embedded URL.</p><pre>cd vitaltrack-mobile
+eas build --profile preview --platform android
+# After staging validation and the controlled backend release:
 eas build --profile production --platform android
-
-# Upload to Play Console internal track
-eas submit --profile production --platform android</code></pre>
-    <p>The <code>production</code> EAS profile sets <code>channel: production</code> and <code>autoIncrement: true</code> (bumps <code>versionCode</code> automatically). Submit target is <code>track: internal</code>.</p>
-    <div class="callout info">
-      <span class="callout-label">Planned change</span>
-      <p>The CI file has a disabled <code>build-production</code> job ready to automate this. When Play Console production is active, flip <code>if: false</code> to <code>if: github.ref == 'refs/heads/main'</code> and wire the EAS robot token as a secret.</p>
-    </div>
-  </div>
-
-  <!-- Q7 -->
-  <div class="qa">
-    <div class="q">Question 7</div>
-    <h4>Why does the same code produce different behavior in staging vs production?</h4>
-    <div class="a">Answer — env vars, not artifacts</div>
-    <p>Render runs the <em>same Docker image</em> in both environments. The differences are injected via env vars on the Render service:</p>
-    <table>
-      <thead><tr><th>Var</th><th>Staging</th><th>Production</th></tr></thead>
-      <tbody>
-        <tr><td><code>ENVIRONMENT</code></td><td><code>staging</code></td><td><code>production</code></td></tr>
-        <tr><td><code>DATABASE_URL</code></td><td>Neon branch <code>vitaltrack_staging</code></td><td>Neon branch <code>neondb</code></td></tr>
-        <tr><td><code>FRONTEND_URL</code></td><td><code>https://staging-api.carekosh.com/api/v1/auth</code></td><td><code>https://api.carekosh.com/api/v1/auth</code></td></tr>
-        <tr><td><code>CORS_ORIGINS</code></td><td><code>["*"]</code> is acceptable for mobile-only staging</td><td><code>["*"]</code> today per <code>render.yaml</code>; tighten when real browser/admin origins exist</td></tr>
-        <tr><td><code>REQUIRE_EMAIL_VERIFICATION</code></td><td><code>true</code></td><td><code>true</code></td></tr>
-        <tr><td><code>MAIL_PASSWORD</code></td><td>Brevo staging key</td><td>Brevo production key</td></tr>
-        <tr><td><code>SECRET_KEY</code></td><td>distinct 32+ char value</td><td>distinct 32+ char value</td></tr>
-      </tbody>
-    </table>
-    <div class="callout info">
-      <span class="callout-label">12-factor</span>
-      <p>This is the orthodox 12-factor split: one immutable artifact, per-environment configuration. Data never crosses; a staging DB wipe touches zero production rows.</p>
-    </div>
-  </div>
-
-  <!-- Q8 -->
-  <div class="qa">
-    <div class="q">Question 8</div>
-    <h4>Which backend does a given APK talk to?</h4>
-    <div class="a">Answer — whichever URL was baked in at build time</div>
-    <p><code>EXPO_PUBLIC_API_URL</code> is a compile-time constant. Once an APK/AAB is built, its backend is fixed — changing the API URL later won't redirect existing installs.</p>
-    <table>
-      <thead><tr><th>EAS profile</th><th>Artifact</th><th>Points at</th></tr></thead>
-      <tbody>
-        <tr><td><code>development</code></td><td>APK</td><td><code>http://localhost:8000</code></td></tr>
-        <tr><td><code>preview</code></td><td>APK</td><td><code>https://staging-api.carekosh.com</code></td></tr>
-        <tr><td><code>production</code></td><td>AAB (Play Store internal)</td><td><code>https://api.carekosh.com</code></td></tr>
-      </tbody>
-    </table>
-    <div class="callout danger">
-      <span class="callout-label">Sharp edge</span>
-      <p>If a teammate gets confused test data on "preview APK," the fix is a rebuild, not a server config change. Always verify which URL an APK is pointed at before blaming the backend.</p>
-    </div>
-  </div>
-
-  <!-- Q9 -->
-  <div class="qa">
-    <div class="q">Question 9</div>
-    <h4>What does the backend actually serve for non-JSON requests?</h4>
-    <div class="a">Answer — a few HTML pages, rendered server-side</div>
-    <p>Most endpoints return JSON, but three return HTML because the user arrives via an email link:</p>
-    <table>
-      <thead><tr><th>Endpoint</th><th>Who hits it</th><th>Response</th></tr></thead>
-      <tbody>
-        <tr><td><code>GET /api/v1/auth/verify-email</code></td><td>Browser clicking email verification link</td><td>HTML page — "email verified"</td></tr>
-        <tr><td><code>GET /api/v1/auth/reset-password</code></td><td>Browser clicking reset link</td><td>HTML form — submit to <code>POST /reset-password</code></td></tr>
-        <tr><td><code>GET /api/v1/auth/confirm-delete/{token}</code></td><td>Browser clicking deletion confirmation link (PR #13)</td><td>HTML confirmation page only — no deletion on GET</td></tr>
-        <tr><td><code>POST /api/v1/auth/confirm-delete/{token}</code></td><td>User submits the confirmation form</td><td>Final account deletion; cascade runs server-side</td></tr>
-      </tbody>
-    </table>
-    <p>The JSON API variants (<code>GET /verify-email/{token}</code>, <code>POST /reset-password</code>, <code>POST /cancel-delete</code>) exist for in-app flows.</p>
-  </div>
-
-  <!-- Q10 -->
-  <div class="qa">
-    <div class="q">Question 10</div>
-    <h4>The first request after idle is slow. Why?</h4>
-    <div class="a">Answer — Render free-tier cold start</div>
-    <p>Free Render web services sleep after 15 min of inactivity. The first request wakes them — container start, Alembic check, Gunicorn boot — which can take 30–60 s.</p>
-    <p>Mitigation status:</p>
-    <ul>
-      <li><strong>Client-side UX (shipped, audit/cold-start-mutation-ux track):</strong> ambient <code>StatusPill</code> escalates from "Connecting…" to "Connecting… server warming up"; per-item "Updating…" indicators on rows with in-flight saves; cold-start pre-flight banner on Edit Item; <code>MutationResultDialog</code> centred summary for slow-success and connection-failure outcomes; tappable Retry button that re-fires the same mutation through <code>Mutation.execute()</code>; auto-clear of the cold-start flag on any successful 2xx so the pill doesn't get stuck. Cache persistence (PR #16) means cached data renders instantly on launch while the fresh fetch is still in flight.</li>
-      <li><strong>UptimeRobot</strong> pinging <code>/health</code> every 14 min keeps the service warm — not configured today, but recommended.</li>
-      <li><strong>Paid Render tier</strong> removes the sleep behaviour entirely — the most reliable fix once the project monetises.</li>
-    </ul>
-    <div class="callout warn">
-      <span class="callout-label">Launch timing verdict</span>
-      <p>Do not make first reviewers discover the cold-start path. Either move production to paid Render or prove an equivalent uptime/keep-warm setup before Play review. Staging can stay cheaper.</p>
-    </div>
-  </div>
-
-  <!-- Q10b -->
-  <div class="qa">
-    <div class="q">Question 10b</div>
-    <h4>Can we move the backend off Render later?</h4>
-    <div class="a">Answer — yes, but plan the public URL</div>
-    <p>The backend is portable because <code>vitaltrack-backend/Dockerfile</code>, <code>docker-entrypoint.sh</code>, Alembic, and <code>app/core/config.py</code> already define a Docker + env-var runtime. Render paid is the smallest cold-start fix; Fly.io, Railway, DigitalOcean, Hetzner, AWS Lightsail, or another Docker-capable VPS/managed host can also work. A MacBook/home server is fine for demos, not Play Store production.</p>
-    <p>The mobile app bakes <code>EXPO_PUBLIC_API_URL</code> at build time and <code>app.config.js</code> guards the current Render URLs. If the public API hostname changes, update <code>eas.json</code>, <code>app.config.js</code>, and the <code>start:staging</code>/<code>start:prod</code> scripts in <code>package.json</code>, then rebuild affected APK/AAB artifacts.</p>
-    <p>Current shape: <code>api.carekosh.com</code> and <code>staging-api.carekosh.com</code> sit in front of the backend, so a future platform move can usually be DNS-only for installed apps.</p>
-  </div>
-
-  <!-- Q11 -->
-  <div class="qa">
-    <div class="q">Question 11</div>
-    <h4>My PR says "2 commits behind main." Should I rebase?</h4>
-    <div class="a">Answer — usually no</div>
-    <p>GitHub counts the merge commits of other PRs against your branch. After every merge on <code>main</code>, every open PR goes up by 1. Rebase only if you have actual merge conflicts, not because of the count.</p>
-    <div class="callout success">
-      <span class="callout-label">When to rebase anyway</span>
-      <p>(1) You want a recent fix from main that your work depends on. (2) Your branch is weeks old and ancestors matter for review. (3) CI is failing because of a main-side change that your branch doesn't include.</p>
-    </div>
-  </div>
-
-  <!-- Q12 -->
-  <div class="qa">
-    <div class="q">Question 12</div>
-    <h4>How do I verify a deploy actually worked?</h4>
-    <div class="a">Answer — the E2E verification guide</div>
-    <p>Short version:</p>
-    <pre><code># 1. Health
-curl https://staging-api.carekosh.com/health
-curl https://api.carekosh.com/health
-# expected: {"status":"healthy"}
-
-# 2. Recent deploy check (in Render dashboard)
-#    Events tab → latest entry should say "Deploy live"
-
-# 3. Alembic head
-#    Render shell → alembic current
-#    → should match the latest file in alembic/versions/
-
-# 4. Smoke: register → login → create item → delete item</code></pre>
-    <p>Full step-by-step with expected responses: <strong>CAREKOSH_E2E_VERIFICATION_GUIDE.html</strong>.</p>
-  </div>
-
-  <!-- Q13 -->
-  <div class="qa">
-    <div class="q">Question 13</div>
-    <h4>Which device is the golden reference for manual QA?</h4>
-    <div class="a">Answer</div>
-    <p>Pixel 9 Pro XL · Android 16. Install APKs via <code>adb install -r app.apk</code> or sideload directly. Expo Go works for dev iteration but does not exercise the EAS-built binary path.</p>
-  </div>
-</div>
-
-<div class="footer">
-  CareKosh · Build &amp; Deploy Flow · April–May 2026 · PRs #4–#34
-</div>
-
-</div>
-</body>
-</html>
+eas build:version:get --platform android
+eas submit --profile production --platform android</pre><p>These commands need the EAS CLI (<code>npm install -g eas-cli</code>) and consume EAS quota. The submit profile targets the <code>internal</code> track and leaves <code>releaseStatus</code> at EAS's default, so a submission can become available to internal testers — who use production data — immediately. Set <code>releaseStatus: "draft"</code> in <code>eas.json</code> if you want a separate manual release step in Play Console. Remote version management and production <code>autoIncrement</code> control the versionCode; compare it with the previous Play upload. The visible app version stays 1.0.0 until it is changed deliberately. <a href="https://docs.expo.dev/build-reference/app-versions/">Expo version management</a>.</p>
+<h2 id="release">Release sequence for this change</h2><p class="inshort">In short: open a PR, stage the candidate deliberately with both auto-deploy and the CI deploy hook controlled, back up, then cut over with old writers drained. This is the same gate as in <a href="docs/BACKEND_HARDENING.md#release-gate-for-migration-0007">BACKEND_HARDENING.md</a>.</p><figure class="dg"><div class="dg-frame"><svg viewBox="0 0 1000 1360" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bd-gate-t bd-gate-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="bd-gate-t">Release gate for migrations 0007–0010</title><desc id="bd-gate-d">Eight steps: control both deploy triggers (Render auto-deploy and the CI hook) and record the current state; stage the candidate on isolated fresh and populated synthetic legacy databases while preserving staging; back up and rehearse a restore; cut over in a maintenance window with old writers stopped; re-seed the order counter only if writes could not be paused; check logs; monitor; then turn auto-deploy back on.</desc><defs></defs>
+<rect x="30" y="24" width="940" height="127" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="50" y="61" font-size="19" font-weight="700" fill="#8C2A20" text-anchor="start">Why a plain merge is unsafe for this migration</text>
+<text x="50" y="86.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">An enabled deploy trigger may ship a merge. 0007 blocks downgrade below it; code rollback does not undo schema.</text>
+<text x="50" y="108.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">A zero-downtime deploy runs old and new instances side by side for a while.</text>
+<text x="50" y="130.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Meanwhile the old COUNT-based order numbering can collide with the new counter and block orders.</text>
+<text x="110" y="201" font-size="13.5" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.6">PREPARE</text>
+<rect x="110" y="219" width="860" height="104" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="130" y="255" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="start">Before merging</text>
+<text x="130" y="280.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Control auto-deploy AND the CI deploy hook.</text>
+<text x="130" y="302.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Record the deployed commit and alembic current; confirm the target database.</text>
+<circle cx="66" cy="249" r="18" fill="#1F6F66"/>
+<text x="66" y="255.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<rect x="110" y="345" width="860" height="104" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="130" y="381" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="start">Stage the candidate</text>
+<text x="130" y="406.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Preserve staging; use an isolated candidate target.</text>
+<text x="130" y="428.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Test fresh and populated synthetic legacy upgrades.</text>
+<circle cx="66" cy="375" r="18" fill="#1F6F66"/>
+<text x="66" y="381.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<rect x="110" y="471" width="860" height="104" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="130" y="507" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="start">Back up</text>
+<text x="130" y="532.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Take a production backup or restore point.</text>
+<text x="130" y="554.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Rehearse the restore on a separate database.</text>
+<circle cx="66" cy="501" r="18" fill="#1F6F66"/>
+<text x="66" y="507.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="110" y="613" font-size="13.5" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.6">RELEASE</text>
+<rect x="110" y="631" width="860" height="126" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="130" y="667" font-size="18" font-weight="700" fill="#8C2A20" text-anchor="start">Cut over in a maintenance window</text>
+<text x="130" y="692.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Block new writes and drain old writers before migrating.</text>
+<text x="130" y="714.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Deploy the reviewed commit; the container runs alembic upgrade head.</text>
+<text x="130" y="736.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Before reopening: Render&#x27;s commit, alembic current = 0010, /live, /health.</text>
+<circle cx="66" cy="661" r="18" fill="#B3372B"/>
+<text x="66" y="667.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<rect x="110" y="779" width="860" height="82" rx="14" fill="#FFF6DE" stroke="#B07A1A" stroke-width="2.2" stroke-dasharray="9 6"/>
+<text x="130" y="815" font-size="18" font-weight="700" fill="#77500F" text-anchor="start">Only if writes could not be paused</text>
+<text x="130" y="840.5" font-size="15.5" font-weight="400" fill="#5A4012" text-anchor="start">Run the idempotent order-counter re-seed SQL (safe to repeat).</text>
+<circle cx="66" cy="809" r="18" fill="#B07A1A"/>
+<text x="66" y="815.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="110" y="899" font-size="13.5" font-weight="700" fill="#5E736E" text-anchor="start" letter-spacing="1.6">AFTER THE RELEASE</text>
+<rect x="110" y="917" width="860" height="82" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="130" y="953" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="start">Check logs and privacy</text>
+<text x="130" y="978.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">Real access and error logs, proxy logs and telemetry, using synthetic tokens.</text>
+<circle cx="66" cy="947" r="18" fill="#2E7D4F"/>
+<text x="66" y="953.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<rect x="110" y="1021" width="860" height="82" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="130" y="1057" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="start">Monitor</text>
+<text x="130" y="1082.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">Errors, database connections and lock waits, order-create failures, sign-in recovery.</text>
+<circle cx="66" cy="1051" r="18" fill="#2E7D4F"/>
+<text x="66" y="1057.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<rect x="110" y="1125" width="860" height="82" rx="14" fill="#E8F5EB" stroke="#2E7D4F" stroke-width="2.2"/>
+<text x="130" y="1161" font-size="18" font-weight="700" fill="#1D5B38" text-anchor="start">Re-enable auto-deploy</text>
+<text x="130" y="1186.5" font-size="15.5" font-weight="400" fill="#1D4730" text-anchor="start">Only after everything above checks out.</text>
+<circle cx="66" cy="1155" r="18" fill="#2E7D4F"/>
+<text x="66" y="1161.12" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">8</text>
+<path d="M66,269 L66,1135" fill="none" stroke="#8FA39D" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="2 7"/>
+<rect x="30" y="1235" width="940" height="105" rx="14" fill="#F6F8F7" stroke="#C9D4D0" stroke-width="2.2"/>
+<text x="50" y="1272" font-size="19" font-weight="700" fill="#2B403C" text-anchor="start">Rollback</text>
+<text x="50" y="1297.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Keep the additive schema. A pre-0007 image cannot start: its Alembic does not know revision 0010.</text>
+<text x="50" y="1319.5" font-size="15.5" font-weight="400" fill="#3C5550" text-anchor="start">Restoring a backup can lose writes made after it; there is no automatic restore.</text>
+</svg></div><figcaption><b>Figure 4.</b> The release gate, first drawn for <code>0007</code>; its principles also apply when <code>0007</code>–<code>0010</code> ship together (expected <code>alembic current</code> after the release: <code>0010_order_local_id_unique</code>). A redrawn version is <a href="docs/diagrams/release-gate-0007-0010.svg">release-gate-0007-0010.svg</a>. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure><p>Details that matter for this release:</p><ul><li><strong>Branch and PR first.</strong> Commit all intended source, test and migration files to a feature branch, push, and open a PR to <code>main</code>. A push cannot include uncommitted changes. Read every CI job; on 7 Oct 2026 GitHub required no status checks.</li><li><strong>Staging (step 2).</strong> Preserve existing staging data. Do not run the one-way <code>0007</code>–<code>0010</code> on the existing staging database. Deploy the candidate deliberately to an isolated target, testing a fresh database and a populated synthetic <code>0006</code> → <code>0010</code> upgrade, because fresh-schema tests alone do not prove a legacy upgrade is safe; control both the CI hook and Render auto-deploy (not verified) before merging. A preview APK does not deploy its backend.</li><li><strong>Device test (step 2).</strong> Build and install a preview APK from the same candidate. Test login, verification and recovery; profile; stock edits (Edit Item, including a version conflict from a second device); order create (including Retry after a failed save, which must return the same order), status, apply and delete; older order history (the Orders tab list and each order card's timeline); PDFs; shared-device logout; and the assistant (typed questions anywhere; the microphone only on a real phone with the speech pack downloaded).</li><li><strong>Back up (step 3).</strong> Confirm the target database, the current migration and a restorable backup or recovery point, and rehearse the restore on a separate target.</li><li><strong>Cut over (step 4).</strong> The old COUNT-based allocation and the new counter must never write at the same time. The migration-runner lock does not stop old application writers, and <code>0010</code> blocks writes to <code>orders</code> while it builds its index (duration depends on data and contention). Unverified accounts that have an email receive 403 <code>EMAIL_NOT_VERIFIED</code> on login, refresh and protected bearer routes when both verification and email sending are configured; public health and token-link routes are outside that policy. A successful deploy-hook response does not confirm the deployment: check the commit Render actually deployed.</li><li><strong>Mobile release (after the backend).</strong> For mobile changes, build a fresh production AAB and submit it to internal testing. With the current <code>eas.json</code>, the submission may become available to testers immediately; set <code>releaseStatus: "draft"</code> first if you need a manual release step. Then install and test that exact version.</li></ul><p>The re-seed SQL and the rollback notes are in the <a href="docs/BACKEND_HARDENING.md#release-gate-for-migration-0007">release gate</a>.</p><h2 id="health">Verify service health</h2><p><code>/live</code> does not query the database. <code>/health</code> runs a database probe with a two-second timeout and returns 503 when it fails. <code>render.yaml</code> sets <code>/live</code> as Render's health check (whether Render reads that file is not verified), so a database outage alone does not fail that liveness probe. Other platform conditions may still restart or remove an instance. Add a separate readiness alert on <code>/health</code>, with retry and grace thresholds, so a sustained database failure is visible. A transient 503 may reflect the database waking up, but that cause must be established from evidence. A healthy <code>/live</code> does not prove that users can load their inventory.</p><p><code>render.yaml</code> requests Starter hosting; it cannot prove the current plan. The actual staging plan, Neon suspension policy, alert destinations and provider retention remain dashboard evidence.</p><h2>Source files</h2><p><a href=".github/workflows/ci.yml">CI</a> · <a href="vitaltrack-backend/Dockerfile">Dockerfile</a> · <a href="vitaltrack-backend/docker-entrypoint.sh">Entrypoint</a> · <a href="vitaltrack-mobile/eas.json">EAS profiles</a> · <a href="vitaltrack-mobile/app.json">App configuration</a></p></main></body></html>

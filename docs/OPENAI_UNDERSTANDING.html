@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="docs/tools/build_docs.py from docs/OPENAI_UNDERSTANDING.md">
+<title>OpenAI understanding — personal keys and independent voice choices</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d2328;--muted:#56606b;--card:#ffffff;--border:#d6dbe0;--accent:#0b5a73;
+--accent-bg:#e5f1f5;--code-bg:#f1f3f5;--code-fg:#1d2328;--warn-bg:#fff4d6;--warn-border:#9a6a00;--mark:#fff1a8}
+@media (prefers-color-scheme:dark){:root{--bg:#14181c;--fg:#e8ecef;--muted:#a9b3bc;--card:#1c2228;--border:#36404a;
+--accent:#7cc7df;--accent-bg:#17303a;--code-bg:#0f1316;--code-fg:#e8ecef;--warn-bg:#3a2f12;--warn-border:#d9a93a;--mark:#5b4e10}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+a{color:var(--accent);text-underline-offset:3px}a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:0}.skip:focus{left:12px;top:12px;background:var(--card);padding:8px 12px;z-index:9}
+header.site{border-bottom:1px solid var(--border);background:var(--card)}
+header.site .inner{max-width:1180px;margin:auto;padding:14px 20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;min-width:0}
+header.site .meta{min-width:0;overflow-wrap:anywhere}
+header.site .brand{font-weight:700}
+.layout{max-width:1180px;margin:auto;padding:0 20px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:36px}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:24px 0;font-size:14.5px;line-height:1.45}
+nav.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}nav.toc ul{list-style:none;padding-left:0;margin:0}nav.toc ul ul{padding-left:14px}nav.toc li{margin:5px 0}
+nav.toc a{color:var(--fg);text-decoration:none}nav.toc a:hover{text-decoration:underline}
+main{min-width:0;padding:28px 0 80px;max-width:78ch;overflow-wrap:break-word}
+:not(pre)>code{overflow-wrap:anywhere;word-break:break-word}
+h1{font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.15;margin:.2em 0 .4em}
+h2{font-size:1.6rem;margin-top:2.6rem;padding-top:.6rem;border-top:1px solid var(--border)}
+h3{font-size:1.25rem;margin-top:2rem}h4{font-size:1.05rem;margin-top:1.6rem}
+h2,h3,h4{scroll-margin-top:12px}.anchor{margin-left:.35em;font-size:.8em;text-decoration:none;opacity:.45}
+.anchor:hover,.anchor:focus{opacity:1}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--warn-border);background:var(--warn-bg)}
+blockquote p{margin:.4em 0}
+code{font:0.9em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code-bg);padding:.1em .3em;border-radius:4px}
+.codewrap{position:relative;margin:1.1em 0}
+pre{background:var(--code-bg);color:var(--code-fg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow:auto;line-height:1.5}
+pre code{background:none;padding:0;font-size:.86em}
+button.copy{position:absolute;top:8px;right:8px;font:600 12.5px system-ui,sans-serif;padding:4px 10px;border-radius:6px;
+border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer}
+.tablewrap{overflow-x:auto;margin:1.1em 0;border:1px solid var(--border);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.94em;background:var(--card)}
+th,td{border-bottom:1px solid var(--border);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--accent-bg);position:sticky;top:0}
+figure.diagram{margin:1.6em 0}figure.diagram .scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:#fff}
+figure.diagram img{display:block;width:100%;min-width:680px;height:auto}
+figcaption{font-size:.92em;color:var(--muted);margin-top:.5em}
+.meta{color:var(--muted);font-size:.92em}
+footer{color:var(--muted);font-size:.9em;border-top:1px solid var(--border);margin-top:3rem;padding-top:1rem}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.toc{position:static;max-height:none;border-bottom:1px solid var(--border)}
+main{max-width:none}}
+@media print{header.site,nav.toc,button.copy,.skip,.anchor{display:none!important}body{background:#fff;color:#000;font-size:11.5pt}
+.layout{display:block;max-width:none;padding:0}main{max-width:none;padding:0}a{color:#000}
+pre{white-space:pre-wrap;border:1px solid #999}.tablewrap{overflow:visible;border:none}th{position:static}
+figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{break-after:avoid}pre,figure,tr{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="site"><div class="inner"><span class="brand">CareKosh docs</span>
+<a href="INDEX.html">Documentation home</a>
+<span class="meta">Generated from <code>docs/OPENAI_UNDERSTANDING.md</code> — edit the Markdown, not this file.</span></div></header>
+<div class="layout">
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#what-changes">What changes</a></li><li><a href="#end-to-end-architecture">End-to-end architecture</a></li><li><a href="#manual-backend-configuration">Manual backend configuration</a></li><li><a href="#user-setup-on-android">User setup on Android</a></li><li><a href="#security-and-privacy-boundaries">Security and privacy boundaries</a></li><li><a href="#allowances-and-clear-errors">Allowances and clear errors</a></li><li><a href="#api-and-code-map">API and code map</a></li><li><a href="#verification-and-remaining-acceptance">Verification and remaining acceptance</a></li></ul></details></nav>
+<main id="content">
+<h1 id="openai-understanding--personal-keys-and-independent-voice-choices">OpenAI understanding — personal keys and independent voice choices</h1>
+<p>Source review: <strong>25 October 2026</strong>. Implemented locally for staging review; no deployment, live OpenAI request or physical-phone acceptance is implied. Existing dated guides retain their historical evidence.</p>
+<h2 id="what-changes">What changes<a class="anchor" href="#what-changes" aria-label="Link to this section">#</a></h2>
+<p>Voice setup keeps three independent stages. Selecting OpenAI changes only <strong>Understanding</strong>. It never enables recording, uploads audio, changes the selected narrator or grants another provider consent.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Choices and purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Listening</td>
+<td>Existing Moonshine, experimental Whistle and explicitly available online listeners turn speech into a reviewed transcript. Typed input also works.</td>
+</tr>
+<tr>
+<td>Understanding</td>
+<td>On-phone parsing first; unfamiliar wording uses the selected Local-only, Groq or personal-key OpenAI policy.</td>
+</tr>
+<tr>
+<td>Spoken replies</td>
+<td>Existing device voice or separately configured/consented Sarvam reads the locally calculated answer. Alba/Kokoro retain their current build gates.</td>
+</tr>
+</tbody>
+</table></div>
+<p>An example combination is <strong>Whistle → OpenAI → Sarvam</strong>. Another is <strong>Moonshine → Groq → device voice</strong>. Changing one stage preserves the other two. This feature adds no OpenAI listening or OpenAI speaking voice.</p>
+<p>OpenAI starts with <strong>GPT-5.4 mini</strong>, pinned to <code>gpt-5.4-mini-2026-03-17</code>. It supports the Responses API and structured outputs. The backend also allowlists the <code>gpt-5.4-mini</code> alias; arbitrary models and custom API URLs are refused. <a href="https://developers.openai.com/api/docs/models/gpt-5.4-mini">Official model reference</a>.</p>
+<h2 id="end-to-end-architecture">End-to-end architecture<a class="anchor" href="#end-to-end-architecture" aria-label="Link to this section">#</a></h2>
+<pre><code class="language-text">Microphone / typed question
+  → chosen listener → editable reviewed transcript → explicit Send
+  → deterministic on-phone parser
+  → if needed: chosen OpenAI provider + separate question-text consent
+  → authenticated CareKosh API → account-owned encrypted key
+  → fixed OpenAI Responses endpoint → strict contract-3 plan
+  → schema validation + semantic grounding against the question
+  → existing local executor over account-authorized inventory
+  → factual answer/table or unsaved order draft
+  → independently chosen narrator
+  → touch review/confirmation required to save an order or change stock
+</code></pre>
+<p>Only the reviewed question and a Boolean indicating follow-up context are sent with fixed instructions/schema. Inventory tables, audio, credentials for other providers and previous conversation text are not sent. Names included in the question necessarily reach OpenAI.</p>
+<p>The model proposes a bounded plan, never inventory facts. Existing contract 3 supports grouped quantity comparisons, criticality, low/out-of-stock conditions, exclusions and draft lines. The same grounding and executor apply to Groq and OpenAI. Unsupported history, forecasting or ambiguous requests still need clarification.</p>
+<p>Examples to verify against your own stock:</p>
+<ul>
+<li>“Show critical items that are low in stock.”</li>
+<li>“Show items with quantity less than three, plus all low and out-of-stock items.”</li>
+<li>“Create a draft for two Ambu bags and all low or out-of-stock items.”</li>
+<li>“Which important low-stock items need attention?”</li>
+</ul>
+<p>A stronger language model does not guarantee perfect interpretation. Review the displayed filters, rows, quantities and draft suggestions. Familiar commands can finish locally even while OpenAI is selected.</p>
+<h2 id="manual-backend-configuration">Manual backend configuration<a class="anchor" href="#manual-backend-configuration" aria-label="Link to this section">#</a></h2>
+<p>Use the intended <strong>Render staging backend</strong>, not EAS environment variables. Keep all unrelated ingress, Redis, database and existing Sarvam/Groq settings unchanged.</p>
+<ol>
+<li>Review this change and deploy the matching backend through the usual process. Apply migration <strong><code>0012_openai_personal_keys</code></strong> with the existing migration procedure (<code>alembic upgrade head</code>). It adds only <code>ai_openai_credentials</code>; it preserves Sarvam credentials, consent and business records.</li>
+<li>In Render → backend service → Environment, configure the following values. Save through the normal reviewed deployment process.</li>
+</ol>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Value / action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AI_ENABLED</code></td>
+<td><code>true</code> for the reviewed assistant pilot</td>
+</tr>
+<tr>
+<td><code>AI_OPENAI_ENABLED</code></td>
+<td><code>true</code> to offer personal OpenAI understanding</td>
+</tr>
+<tr>
+<td><code>AI_OPENAI_DATA_CONTROLS_REVIEWED</code></td>
+<td><code>true</code> only after reviewing OpenAI data policy, disclosures and the deployment's logging controls</td>
+</tr>
+<tr>
+<td><code>OPENAI_INTENT_MODEL</code></td>
+<td><code>gpt-5.4-mini-2026-03-17</code></td>
+</tr>
+<tr>
+<td><code>AI_CREDENTIAL_ENCRYPTION_KEY</code></td>
+<td>Keep the existing stable Fernet secret used for personal Sarvam keys. If none exists, generate it privately once and store it as a Render secret.</td>
+</tr>
+<tr>
+<td><code>AI_OPENAI_INTERPRET_RESERVE_MICROUSD</code></td>
+<td><code>50000</code> (default and minimum; $0.05 allowance per attempt)</td>
+</tr>
+<tr>
+<td><code>AI_USER_DAILY_REQUESTS</code>, <code>AI_GLOBAL_DAILY_REQUESTS</code></td>
+<td>Existing shared assistant request limits; defaults 50 and 500</td>
+</tr>
+<tr>
+<td><code>AI_USER_DAILY_BUDGET_MICROUSD</code>, <code>AI_GLOBAL_DAILY_BUDGET_MICROUSD</code></td>
+<td>Existing shared daily allowance; defaults 100000 ($0.10) and 1000000 ($1.00)</td>
+</tr>
+<tr>
+<td><code>AI_GLOBAL_CONCURRENCY</code>, <code>AI_TIMEOUT_SECONDS</code></td>
+<td>Existing controls; defaults 4 and 25 seconds</td>
+</tr>
+</tbody>
+</table></div>
+<p>There is <strong>no operator <code>OPENAI_API_KEY</code> configuration</strong> in this implementation. Each user enrolls their own key through the authenticated app. A personal-key failure cannot charge an application OpenAI account or switch to Groq.</p>
+<p>Never replace a working encryption master key casually: existing OpenAI <strong>and Sarvam</strong> rows depend on it. For planned rotation, the existing <code>AI_CREDENTIAL_PREVIOUS_ENCRYPTION_KEYS</code> accepts up to three former keys. Old rows remain readable until re-saved with the current key; rotation does not rewrite them automatically. Keep secrets and backups under restricted access.</p>
+<p>If creating the first master key, run this in the configured backend Python environment and paste its output only into the secret manager:</p>
+<pre><code class="language-bash">python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+</code></pre>
+<p>Do not place personal keys or master keys in Git, documentation, EAS, Expo public variables, screenshots or support messages. No new package dependency or native module is introduced. A new APK is needed to receive these settings; a backend deployment alone does not update the installed app.</p>
+<h2 id="user-setup-on-android">User setup on Android<a class="anchor" href="#user-setup-on-android" aria-label="Link to this section">#</a></h2>
+<ol>
+<li>Open <strong>Profile → Voice setup → Understanding</strong>. Listening and Spoken replies remain separately selectable.</li>
+<li>Under <strong>Your OpenAI account</strong>, paste your own API key and tap <strong>Save OpenAI key</strong>. Confirm encrypted storage. The field clears after saving, leaving the screen or backgrounding. Plaintext is not saved in phone preferences.</li>
+<li>Tap <strong>Check OpenAI key &amp; model</strong>. This explicitly checks model metadata; it sends no question, recording or inventory and generates no answer. Success does not prove credits or query accuracy.</li>
+<li>Tap <strong>Use OpenAI understanding</strong>, read and accept the separate question-text consent. Saving/checking a key alone does not select OpenAI or grant this consent.</li>
+<li>Choose your listener and narrator independently. Review a transcript or type a question, then tap Send. Check the answer's filters and rows.</li>
+<li>Use <strong>Replace OpenAI key</strong> or <strong>Remove OpenAI key</strong> as needed. Removal preserves the selected provider as needing a key; it does not silently select another provider.</li>
+</ol>
+<p>Your OpenAI API billing is separate from a ChatGPT subscription. A project key needs access to the configured model and permission for Responses requests; a restricted key also needs model-read permission for the explicit metadata check. Create/revoke keys in your own OpenAI API dashboard. <a href="https://developers.openai.com/api/reference/overview#authentication">Official authentication guidance</a>.</p>
+<h2 id="security-and-privacy-boundaries">Security and privacy boundaries<a class="anchor" href="#security-and-privacy-boundaries" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Boundary</th>
+<th>Enforcement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Account isolation</td>
+<td>Authentication selects the owner; no client-provided owner ID. Separate OpenAI table, encrypted envelope bound to owner and provider; row deletion cascades with account deletion.</td>
+</tr>
+<tr>
+<td>Secrets</td>
+<td>Printable bounded secret input; secret fields omitted from errors/response bodies. Randomized authenticated Fernet encryption; server master secret remains separate from the database. No plaintext retrieval endpoint.</td>
+</tr>
+<tr>
+<td>Outbound access</td>
+<td>Fixed HTTPS OpenAI URLs, verified TLS, no redirects, environment proxies, arbitrary base URL, automatic retries or alternate credential. Outbound tracing headers stay disabled by existing telemetry policy.</td>
+</tr>
+<tr>
+<td>Provider response</td>
+<td>Bounded body, timeout, duplicate/nonfinite/deep JSON rejection, one completed assistant message, strict schema plus existing semantic grounding. Refusals, incomplete output, tool calls and ungrounded values fail safely.</td>
+</tr>
+<tr>
+<td>Prompt injection</td>
+<td>No tools, browsing, SQL, shell, code execution or database credentials are exposed to the model. Model text is validated as data; it is not evaluated as executable code.</td>
+</tr>
+<tr>
+<td>Business writes</td>
+<td>Interpretation reads no business tables and writes only AI usage metadata. Local results use authorized data. Existing touch confirmation and backend ownership/version checks govern actual writes.</td>
+</tr>
+<tr>
+<td>Billing isolation</td>
+<td>Only the signed-in user's personal key is loaded. Failure never uses an application key, another user's key, another model or Groq.</td>
+</tr>
+<tr>
+<td>Consent</td>
+<td>New explicit <code>openai_text</code> scope. Old Groq/Sarvam consent does not grant it. Existing consent version remains unchanged because existing scopes/disclosures are not broadened.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Responses use <code>store:false</code>, no background/streaming and no conversation state. This is <strong>not a Zero Data Retention guarantee</strong>: provider abuse-monitoring and account controls still apply. Avoid patient identifiers in questions. Review <a href="https://developers.openai.com/api/docs/guides/your-data#v1responses">OpenAI data controls</a>.</p>
+<p>Encryption reduces database-only exposure; a compromised live backend/master secret could still expose credentials. Keep Render access, TLS, logs, crash reporting, dependencies and backups protected. No implementation can promise immunity from every attack.</p>
+<p>Removing a key deletes the current CareKosh credential row. It does not revoke the key at OpenAI, cancel work already sent, or remove encrypted copies from retained backups. Revoke a suspected key in the OpenAI dashboard. Withdrawing assistant consent blocks new processing but is separate from key deletion.</p>
+<h2 id="allowances-and-clear-errors">Allowances and clear errors<a class="anchor" href="#allowances-and-clear-errors" aria-label="Link to this section">#</a></h2>
+<p>CareKosh reserves at least <strong>50000 microUSD ($0.05)</strong> before each OpenAI interpretation. This is a shared assistant allowance guard, <strong>not</strong> an OpenAI charge, credit balance or guaranteed provider billing cap. Successful requests settle at the configured model's standard published-price estimate; failed/cancelled requests retain the reservation conservatively.</p>
+<p>At the current default $0.10 user allowance, at most two failed full reservations fit per day. A completed low-token request settles lower, but another call still needs $0.05 headroom. Other assistant providers share the daily allowance and request counters.</p>
+<p>The checked standard rate is $0.75 per million input tokens and $4.50 per million output tokens; reasoning tokens count within the 3072 output limit. Cached input is conservatively counted at full input price. The bounded request estimate is below the $0.05 reservation at these rates; prices and provider billing remain external. <a href="https://developers.openai.com/api/docs/pricing">Official pricing</a>.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>User-visible outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Missing/locked key or paused backend</td>
+<td>Settings explains the missing configuration; no alternate provider is used.</td>
+</tr>
+<tr>
+<td>Rejected key/model permission</td>
+<td>Replace/check key. Provider 401/403 is mapped to 409, so it does not sign the user out of CareKosh.</td>
+</tr>
+<tr>
+<td>No API credits/billing quota</td>
+<td>Clear OpenAI-credit error (402). No fallback or automatic retry.</td>
+</tr>
+<tr>
+<td>Provider rate limit</td>
+<td>Clear rate-limit error (429); manual retry later only.</td>
+</tr>
+<tr>
+<td>Local daily allowance/concurrency</td>
+<td>Existing CareKosh limit shown before provider work; distinguish it from OpenAI credits.</td>
+</tr>
+<tr>
+<td>Timeout/invalid/refused/unsafe response</td>
+<td>Error or clarification; nothing is executed or saved from the invalid output.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="api-and-code-map">API and code map<a class="anchor" href="#api-and-code-map" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/v1/ai/capabilities</code></td>
+<td>Additive interpretation providers, OpenAI key metadata, configured model and shared limits; legacy <code>interpret</code> Boolean keeps its Groq meaning.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/ai/openai-key</code></td>
+<td>Current owner's configured/usable/update metadata only. “Usable” means decryptable/configured, not provider-verified credits.</td>
+</tr>
+<tr>
+<td><code>PUT /api/v1/ai/openai-key</code></td>
+<td>Bounded secret plus literal <code>storage_consent:true</code>; authenticated encrypted upsert.</td>
+</tr>
+<tr>
+<td><code>DELETE /api/v1/ai/openai-key</code></td>
+<td>Remove only current owner's OpenAI row, even if setup is paused.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/ai/openai-key/check</code></td>
+<td>Explicit, rate-limited fixed model-metadata request.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/ai/interpret</code></td>
+<td>Optional <code>provider:"openai"</code>, contract 3 only; omitted provider remains existing Groq behavior.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Key metadata is limited to 30 requests/minute, enrollment/removal to 10/minute, and model checks to 5/minute per authenticated account and API worker in this publication scope. These are soft endpoint limits; the shared daily interpretation allowance/concurrency guards use PostgreSQL. Interpretation retains existing request, concurrency and spending guards. This OpenAI-only publication has <strong>51 route objects under <code>/api/v1</code></strong>; four were added for OpenAI keys. Unpublished browser/ingress work is outside this commit.</p>
+<p>Core implementation: <code>app/services/openai_interpreter.py</code>, <code>openai_credentials.py</code>, <code>ai_guard.py</code>, <code>app/api/v1/openai_keys.py</code>, the existing AI routes/schemas, and mobile <code>OpenAIKeySettings.tsx</code>, <code>VoiceSetup.tsx</code>, <code>AssistantExperience.tsx</code>, preferences/provider registry and assistant HTTP service.</p>
+<p>The adapter uses Responses structured output, not an autonomous tool loop. Strict schema improves structure, while grounding and touch confirmation enforce meaning and write boundaries. <a href="https://developers.openai.com/api/docs/guides/structured-outputs#supported-schemas">Official structured-output guidance</a>.</p>
+<h2 id="verification-and-remaining-acceptance">Verification and remaining acceptance<a class="anchor" href="#verification-and-remaining-acceptance" aria-label="Link to this section">#</a></h2>
+<p>All provider calls in automated checks use synthetic credentials and mocked transport. Local disposable PostgreSQL 16 and Redis exercise real authentication, persistence, migration and limits. No production/staging database is used.</p>
+<p>The <a href="AI_VOICE_END_TO_END_REVIEW.html#17-openai-personal-key-understanding--25-october-2026">current end-to-end review</a> records final check results. New tests cover credential isolation/rotation, consent, malformed and hostile provider responses, no fallback, no business writes, migration preservation, settings independence, second-question routing and field clearing.</p>
+<p>Before release, deploy the reviewed backend/migration and install a matching preview APK. On the Nord 4, verify each listener with OpenAI and Sarvam independently; check the exact complex requests against known inventory; ask a second question. Explicitly authorize one live OpenAI request using your own key/credits to verify real model/schema compatibility. Also test invalid key, quota errors, remove/replace, denied consent and account switching.</p>
+<p>Mocked tests do not establish live provider availability, complex-query accuracy or physical microphone/audio behavior. No change here repairs or enables paused Alba/Kokoro. Keep those separate acceptance gates.</p>
+<footer>Generated 2026-10-25 by <code>docs/tools/build_docs.py</code> from <code>docs/OPENAI_UNDERSTANDING.md</code>.</footer>
+</main>
+</div>
+<script>
+var tocDetails = document.getElementById('toc-details');
+if (tocDetails && window.matchMedia('(min-width: 901px)').matches) { tocDetails.open = true; }
+document.querySelectorAll('pre > code').forEach(function (code) {
+  var pre = code.parentElement, wrap = document.createElement('div');
+  wrap.className = 'codewrap'; pre.parentNode.insertBefore(wrap, pre); wrap.appendChild(pre);
+  var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+  b.setAttribute('aria-label', 'Copy this code block');
+  b.addEventListener('click', function () {
+    var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(code.innerText).then(done, function () { b.textContent = 'Select and copy'; }); }
+    else { b.textContent = 'Select and copy'; }
+  });
+  wrap.appendChild(b);
+});
+</script>
+</body>
+</html>

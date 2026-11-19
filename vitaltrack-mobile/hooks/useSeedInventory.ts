@@ -19,6 +19,8 @@ import { SEED_DATA, ESSENTIAL_ITEM_KEYWORDS } from '@/data/seedData';
 import { queryKeys } from './useServerData';
 import type { Item, Category } from '@/types';
 import { logger } from '@/utils/logger';
+import { generateId } from '@/utils/helpers';
+import { captureSession, assertSession, type Session } from '@/services/assistantSession';
 
 interface SeedProgress {
   phase: 'categories' | 'items';
@@ -342,9 +344,40 @@ export async function createAutoBackup(
   const FileSystem = await import('expo-file-system/legacy');
   const dir = FileSystem.documentDirectory || '';
   const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const fileUri = `${dir}CareKosh-AutoBackup-${dateStr}.json`;
+  const fileUri = `${dir}CareKosh-AutoBackup-${dateStr}-${generateId()}.json`;
   await FileSystem.writeAsStringAsync(fileUri, json);
   return fileUri;
+}
+
+export interface InventoryResetSnapshot {
+  categories: Category[];
+  items: Item[];
+  session: Session;
+}
+
+/** No destructive request may start until this exact server snapshot is saved. */
+export async function prepareInventoryReset(): Promise<{ snapshot: InventoryResetSnapshot; backupPath: string }> {
+  const session = captureSession();
+  const [itemsResponse, categoriesResponse] = await Promise.all([
+    itemService.getAll({ limit: 999 }), categoryService.getAll(),
+  ]);
+  assertSession(session);
+  if (itemsResponse.items.some(item => !Number.isInteger(item.version) || item.version < 1)) {
+    throw new Error('Inventory versions could not be verified. Refresh before resetting.');
+  }
+  if (categoriesResponse.categories.some(category => typeof category.updatedAt !== 'string' || !Number.isFinite(Date.parse(category.updatedAt)))) {
+    throw new Error('Category update times could not be verified. Refresh before resetting.');
+  }
+  // Keep private DTO copies so another caller cannot mutate the response
+  // objects after their values have been written to the backup.
+  const snapshot = {
+    items: itemsResponse.items.map(item => ({ ...item })),
+    categories: categoriesResponse.categories.map(category => ({ ...category })),
+    session,
+  };
+  const backupPath = await createAutoBackup(snapshot.categories, snapshot.items);
+  assertSession(session);
+  return { snapshot, backupPath };
 }
 
 /**
@@ -359,25 +392,21 @@ export async function createAutoBackup(
  * Item-before-category ordering matters because of the FK from items to
  * categories; categories with items cannot be deleted.
  *
- * Fetches server state directly instead of trusting caller-supplied arrays.
- * The React Query cache can drift (phantom IDs locally, shadow records on
- * server), and issuing DELETEs for phantom IDs burns round-trips and
- * corrupts partial-failure accounting.
+ * Deletes only the server snapshot saved by prepareInventoryReset. Version
+ * checks preserve later edits, and empty-only category deletion preserves new
+ * items that were not backed up. Saved category update times protect later
+ * metadata edits. Ordinary category deletion still cascades.
  */
-export async function deleteAllInventory(): Promise<void> {
-  // Source-of-truth reconciliation, not the React cache.
-  const [serverItemsResp, serverCategoriesResp] = await Promise.all([
-    itemService.getAll({ limit: 999 }),
-    categoryService.getAll(),
-  ]);
-  const serverItems = serverItemsResp.items;
-  const serverCategories = serverCategoriesResp.categories;
+export async function deleteAllInventory(snapshot: InventoryResetSnapshot): Promise<void> {
+  const { items: serverItems, categories: serverCategories, session } = snapshot;
+  assertSession(session);
 
   const errors: string[] = [];
 
   for (const item of serverItems) {
+    assertSession(session);
     try {
-      await itemService.delete(item.id);
+      await itemService.delete(item.id, item.version);
     } catch (err) {
       // 404 is already swallowed in itemService.delete; this catches real failures.
       errors.push(`Item "${item.name}": ${err instanceof Error ? err.message : String(err)}`);
@@ -385,8 +414,9 @@ export async function deleteAllInventory(): Promise<void> {
   }
 
   for (const cat of serverCategories) {
+    assertSession(session);
     try {
-      await categoryService.delete(cat.id);
+      await categoryService.delete(cat.id, true, cat.updatedAt);
     } catch (err) {
       errors.push(`Category "${cat.name}": ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -410,6 +440,7 @@ export function useStartFresh() {
   const [isResetting, setIsResetting] = useState(false);
 
   const startFresh = async (
+    snapshot: InventoryResetSnapshot,
     onProgress?: (current: number, total: number, currentName: string) => void
   ): Promise<{ deleted: number; kept: number; errors: string[] }> => {
     setIsResetting(true);
@@ -418,18 +449,17 @@ export function useStartFresh() {
     let kept = 0;
 
     try {
-      // Fetch server state directly — the cache may have drifted and passing
-      // in the React Query snapshot would issue DELETEs for phantom IDs.
-      const serverItemsResp = await itemService.getAll({ limit: 999 });
-      const allItems = serverItemsResp.items;
+      assertSession(snapshot.session);
+      const allItems = snapshot.items;
       const nonEssential = allItems.filter((i) => !isEssentialItem(i));
       kept = allItems.length - nonEssential.length;
 
       for (let i = 0; i < nonEssential.length; i++) {
+        assertSession(snapshot.session);
         const item = nonEssential[i];
         onProgress?.(i, nonEssential.length, item.name);
         try {
-          await itemService.delete(item.id);
+          await itemService.delete(item.id, item.version);
           deleted++;
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);

@@ -32,19 +32,19 @@ export const sanitizeString = (input: string | undefined | null, maxLength = 500
     return String(input)
         .replace(/<[^>]*>/g, '') // Remove all HTML tags
         .replace(/javascript:/gi, '') // Remove JS protocol
-        .replace(/on\w+=/gi, '') // Remove event handlers
+        // No `on…=` stripping: with tags removed it is inert text, and it deleted
+        // real content ("Dose once=daily" → "Dose daily"). PDFs escape on output.
         .replace(/data:/gi, '') // Remove data URIs
         .trim()
         .slice(0, maxLength);
 };
 
 /**
- * Sanitize for display names (more restrictive)
+ * Clean markup and whitespace without changing legitimate name punctuation.
  */
 export const sanitizeName = (input: string | undefined | null): string => {
     if (!input) return '';
-    return String(input)
-        .replace(/[<>'"&;]/g, '') // Remove dangerous chars
+    return sanitizeString(input, 255)
         .replace(/\s+/g, ' ') // Normalize whitespace
         .trim()
         .slice(0, 255);
@@ -187,14 +187,12 @@ export const isValidUuid = (id: string | undefined | null): boolean => {
 
 /**
  * Sanitize phone/contact information
- * Allows numbers, spaces, dashes, parentheses, plus sign, and email chars
+ * Preserve contact text (including valid email punctuation and Unicode).
+ * HTML exports escape this value at the output boundary.
  */
 export const sanitizeContact = (input: string | undefined | null): string => {
     if (!input) return '';
-    return String(input)
-        .replace(/[^0-9\s\-\(\)\+\.@a-zA-Z]/g, '') // Keep phone-valid chars and email chars
-        .trim()
-        .slice(0, 100);
+    return sanitizeString(input, 100);
 };
 
 // ============================================================================

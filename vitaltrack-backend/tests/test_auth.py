@@ -16,6 +16,8 @@ import asyncio
 import hashlib
 import html
 import logging
+import re
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -25,6 +27,7 @@ from httpx import AsyncClient
 
 import app.main as main_module
 from app.api.v1 import auth as auth_routes
+from app.api.v1 import declared_routes
 from app.models import User
 from tests.conftest import TestSession, register_user, login_user, auth_header
 
@@ -300,6 +303,34 @@ class TestLogin:
             "identifier": "ghost", "password": "TestPass1",
         })
         assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("identifier", ["ghost", "ghost@test.com"])
+    @pytest.mark.parametrize("verification_result", [False, True])
+    async def test_missing_user_verifies_password_in_worker(
+        self, client: AsyncClient, monkeypatch, identifier, verification_result,
+    ):
+        calls = []
+        request_thread = threading.get_ident()
+
+        def counted_verify(password, password_hash):
+            calls.append((password, password_hash, threading.get_ident()))
+            return verification_result
+
+        monkeypatch.setattr(auth_routes, "verify_password", counted_verify)
+        resp = await client.post("/api/v1/auth/login", json={
+            "identifier": identifier, "password": "TestPass1",
+        })
+
+        assert resp.status_code == 401
+        assert resp.json() == {"detail": "Incorrect email/username or password"}
+        assert resp.headers["WWW-Authenticate"] == "Bearer"
+        assert len(calls) == 1
+        password, password_hash, worker_thread = calls[0]
+        assert password == "TestPass1"
+        assert password_hash == auth_routes._DUMMY_PASSWORD_HASH
+        assert auth_routes.pwd_context.identify(password_hash) == "argon2"
+        assert worker_thread != request_thread
 
     @pytest.mark.asyncio
     async def test_case_insensitive_login(self, client: AsyncClient):
@@ -995,15 +1026,20 @@ class TestHealthDiagnostics:
         assert body["health"] == "/health"
         assert body["live"] == "/live"
 
-    def test_api_v1_route_count_remains_39(self):
-        api_v1_routes = [
-            route
-            for route in main_module.app.routes
-            if getattr(route, "path", "").startswith("/api/v1")
-        ]
+    def test_api_v1_route_count_includes_browser_auth(self):
+        api_v1_paths = [path for path, _ in declared_routes()]
 
-        assert len(api_v1_routes) == 39
-        assert all(route.path not in {"/api/v1/health", "/api/v1/live"} for route in api_v1_routes)
+        assert len(api_v1_paths) == 65
+        assert not {"/api/v1/health", "/api/v1/live"} & set(api_v1_paths)
+
+    async def test_every_declared_api_route_is_mounted(self, client: AsyncClient):
+        # OPTIONS is never routed here: 405 proves the path exists in the app,
+        # while an unmounted router would answer 404.
+        for path, _ in declared_routes():
+            concrete = re.sub(r"\{[^}]+\}", "x", path)
+            response = await client.options(concrete)
+            assert response.status_code == 405, (path, response.status_code)
+        assert (await client.options("/api/v1/not-a-route")).status_code == 404
 
     def test_render_health_check_uses_liveness_endpoint(self):
         render_yaml = Path(__file__).resolve().parents[1] / "render.yaml"
@@ -1011,3 +1047,61 @@ class TestHealthDiagnostics:
 
         assert "healthCheckPath: /live" in render_config
         assert "healthCheckPath: /health" not in render_config
+
+
+async def test_auth_responses_do_not_load_account_history(client: AsyncClient):
+    """Login, refresh, register and profile edits must not load the user's collections.
+
+    db.refresh(user) used to reload every selectin relationship (all categories,
+    items, orders, activity logs and refresh tokens) on each login and refresh.
+    """
+    from sqlalchemy import event
+
+    from tests.conftest import test_engine
+
+    registered = await register_user(client, name="History Owner", email="history@test.com")
+    headers = auth_header(registered["access_token"])
+    for i in range(3):  # some history to (not) load
+        await client.post("/api/v1/categories", headers=headers, json={"name": f"Ward {i}"})
+
+    statements: list[str] = []
+
+    def capture(conn, cursor, statement, parameters, context, executemany):
+        statements.append(" ".join(statement.split()))
+
+    collection_tables = ("categories", "items", "orders", "activity_logs", "refresh_tokens")
+
+    def collection_selects() -> list[str]:
+        return [
+            s for s in statements
+            if s.startswith("SELECT") and any(f"FROM {t}" in s for t in collection_tables)
+        ]
+
+    event.listen(test_engine.sync_engine, "before_cursor_execute", capture)
+    try:
+        calls = {
+            "register": lambda: client.post(
+                "/api/v1/auth/register",
+                json={"name": "Fresh", "email": "fresh-history@test.com", "password": "TestPass1"},
+            ),
+            "login": lambda: client.post(
+                "/api/v1/auth/login",
+                json={"identifier": "history@test.com", "password": "TestPass1"},
+            ),
+            "refresh": lambda: client.post(
+                "/api/v1/auth/refresh", json={"refresh_token": registered["refresh_token"]}
+            ),
+            "update profile": lambda: client.patch(
+                "/api/v1/auth/me", headers=headers, json={"name": "History Owner Renamed"}
+            ),
+        }
+        for label, call in calls.items():
+            statements.clear()
+            response = await call()
+            assert response.status_code in (200, 201), (label, response.text)
+            body = response.json()
+            user = body.get("user", body)
+            assert user["updatedAt"] and user["createdAt"], label
+            assert collection_selects() == [], (label, collection_selects())
+    finally:
+        event.remove(test_engine.sync_engine, "before_cursor_execute", capture)

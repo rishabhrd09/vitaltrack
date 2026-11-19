@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="docs/tools/build_docs.py from docs/SUPPLY_REVIEW.md">
+<title>CareKosh Supply Review</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d2328;--muted:#56606b;--card:#ffffff;--border:#d6dbe0;--accent:#0b5a73;
+--accent-bg:#e5f1f5;--code-bg:#f1f3f5;--code-fg:#1d2328;--warn-bg:#fff4d6;--warn-border:#9a6a00;--mark:#fff1a8}
+@media (prefers-color-scheme:dark){:root{--bg:#14181c;--fg:#e8ecef;--muted:#a9b3bc;--card:#1c2228;--border:#36404a;
+--accent:#7cc7df;--accent-bg:#17303a;--code-bg:#0f1316;--code-fg:#e8ecef;--warn-bg:#3a2f12;--warn-border:#d9a93a;--mark:#5b4e10}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+a{color:var(--accent);text-underline-offset:3px}a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:0}.skip:focus{left:12px;top:12px;background:var(--card);padding:8px 12px;z-index:9}
+header.site{border-bottom:1px solid var(--border);background:var(--card)}
+header.site .inner{max-width:1180px;margin:auto;padding:14px 20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;min-width:0}
+header.site .meta{min-width:0;overflow-wrap:anywhere}
+header.site .brand{font-weight:700}
+.layout{max-width:1180px;margin:auto;padding:0 20px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:36px}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:24px 0;font-size:14.5px;line-height:1.45}
+nav.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}nav.toc ul{list-style:none;padding-left:0;margin:0}nav.toc ul ul{padding-left:14px}nav.toc li{margin:5px 0}
+nav.toc a{color:var(--fg);text-decoration:none}nav.toc a:hover{text-decoration:underline}
+main{min-width:0;padding:28px 0 80px;max-width:78ch;overflow-wrap:break-word}
+:not(pre)>code{overflow-wrap:anywhere;word-break:break-word}
+h1{font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.15;margin:.2em 0 .4em}
+h2{font-size:1.6rem;margin-top:2.6rem;padding-top:.6rem;border-top:1px solid var(--border)}
+h3{font-size:1.25rem;margin-top:2rem}h4{font-size:1.05rem;margin-top:1.6rem}
+h2,h3,h4{scroll-margin-top:12px}.anchor{margin-left:.35em;font-size:.8em;text-decoration:none;opacity:.45}
+.anchor:hover,.anchor:focus{opacity:1}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--warn-border);background:var(--warn-bg)}
+blockquote p{margin:.4em 0}
+code{font:0.9em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code-bg);padding:.1em .3em;border-radius:4px}
+.codewrap{position:relative;margin:1.1em 0}
+pre{background:var(--code-bg);color:var(--code-fg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow:auto;line-height:1.5}
+pre code{background:none;padding:0;font-size:.86em}
+button.copy{position:absolute;top:8px;right:8px;font:600 12.5px system-ui,sans-serif;padding:4px 10px;border-radius:6px;
+border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer}
+.tablewrap{overflow-x:auto;margin:1.1em 0;border:1px solid var(--border);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.94em;background:var(--card)}
+th,td{border-bottom:1px solid var(--border);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--accent-bg);position:sticky;top:0}
+figure.diagram{margin:1.6em 0}figure.diagram .scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:#fff}
+figure.diagram img{display:block;width:100%;min-width:680px;height:auto}
+figcaption{font-size:.92em;color:var(--muted);margin-top:.5em}
+.meta{color:var(--muted);font-size:.92em}
+footer{color:var(--muted);font-size:.9em;border-top:1px solid var(--border);margin-top:3rem;padding-top:1rem}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.toc{position:static;max-height:none;border-bottom:1px solid var(--border)}
+main{max-width:none}}
+@media print{header.site,nav.toc,button.copy,.skip,.anchor{display:none!important}body{background:#fff;color:#000;font-size:11.5pt}
+.layout{display:block;max-width:none;padding:0}main{max-width:none;padding:0}a{color:#000}
+pre{white-space:pre-wrap;border:1px solid #999}.tablewrap{overflow:visible;border:none}th{position:static}
+figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{break-after:avoid}pre,figure,tr{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="site"><div class="inner"><span class="brand">CareKosh docs</span>
+<a href="INDEX.html">Documentation home</a>
+<span class="meta">Generated from <code>docs/SUPPLY_REVIEW.md</code> — edit the Markdown, not this file.</span></div></header>
+<div class="layout">
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#what-the-user-can-do">What the user can do</a></li><li><a href="#architecture-and-authority">Architecture and authority</a></li><li><a href="#deterministic-rules">Deterministic rules</a></li><li><a href="#review-and-request-sequence">Review and request sequence</a></li><li><a href="#api-and-source-map">API and source map</a></li><li><a href="#safety-privacy-and-bounded-work">Safety, privacy and bounded work</a></li><li><a href="#web-and-android-recovery">Web and Android recovery</a></li><li><a href="#staging-and-release-procedure">Staging and release procedure</a></li><li><a href="#retention-monitoring-and-incidents">Retention, monitoring and incidents</a></li><li><a href="#acceptance-and-evidence">Acceptance and evidence</a><ul><li><a href="#local-verification--5-november-2026">Local verification — 5 November 2026</a></li></ul></li></ul></details></nav>
+<main id="content">
+<h1 id="carekosh-supply-review">CareKosh Supply Review</h1>
+<p>Source implementation: <strong>5 November 2026</strong>, local feature-branch working tree. This guide describes an additive, server-owned review workflow for the authenticated web app and Android app. It does not establish a deployed release or physical-device acceptance. The marketing site is separate.</p>
+<h2 id="what-the-user-can-do">What the user can do<a class="anchor" href="#what-the-user-can-do" aria-label="Link to this section">#</a></h2>
+<p>Open <strong>Supply review</strong> from the authenticated app, choose recorded minimums as the starting target, answer any questions, and review a supplier-grouped replenishment proposal. Only explicit confirmation creates a pending order. Normal inventory, order status, stock application, the existing Coach and independent speech settings remain available.</p>
+<p>The feature is disabled by default. It makes no model, audio, supplier or purchase call. It can work when all cloud AI providers are disabled. Existing Groq/OpenAI interpretation and Sarvam narration remain separate features with their existing consent and credentials.</p>
+<h2 id="architecture-and-authority">Architecture and authority<a class="anchor" href="#architecture-and-authority" aria-label="Link to this section">#</a></h2>
+<pre><code class="language-text">Authenticated web or Android
+       │ start / answer / read / cancel / confirm
+       ▼
+FastAPI owner-scoped supply-review routes
+       │ short, bounded SQL transaction
+       ├── owner supply-revision lock
+       ├── fresh authorized inventory + outstanding order columns
+       ├── pure Python quantity and unit rules
+       ├── durable run + immutable proposal revision
+       └── explicit confirmation → existing protected order service
+                                      │
+                         pending order + confirmation + audit
+                                      │
+                              one atomic SQL commit
+</code></pre>
+<p>SQL remains authoritative. Clients display server-calculated facts and send IDs, versions, targets and explicit choices. They cannot authorize stock changes by submitting a model-generated quantity or a cached snapshot. No mutation is queued for offline replay.</p>
+<p>The new workflow is a bounded, human-reviewed supply workflow. It is not an autonomous purchasing or medical agent. The current deterministic Coach remains useful for quick questions and unsaved drafts. Neither LangGraph, a queue, MCP nor vector search is needed for this first workflow. A process-restart-safe HTTP state machine is sufficient; live stock must continue to come from SQL.</p>
+<h2 id="deterministic-rules">Deterministic rules<a class="anchor" href="#deterministic-rules" aria-label="Link to this section">#</a></h2>
+<p>Only owned active items are considered. A quantity of zero is out of stock. Positive quantity below the recorded minimum is low stock. Explicitly marked critical equipment at quantity one also receives backup attention. Name-based clinical inference is not used by this new workflow.</p>
+<p>For an eligible item:</p>
+<pre><code class="language-text">order quantity = max(0, chosen target − on hand − known ordered inbound)
+</code></pre>
+<p>Quantities are nonnegative integers. Targets are bounded by 999,999. The recorded minimum is used only after the user explicitly selects that starting policy. A missing/zero minimum or a backup item already meeting its minimum needs the user's target. It is not an optimal-stock recommendation.</p>
+<p>Units are matched by the same space trimming and case normalization as stock application. Boxes are never converted into pieces. Empty or mismatched units require correction in the normal screens or exclusion from this proposal. No daily use, days remaining, dose, clinical consumption or delivery promise is inferred.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Order state</th>
+<th>Treatment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unsaved client/AI draft</td>
+<td>No inbound quantity and no database order.</td>
+</tr>
+<tr>
+<td><code>pending</code></td>
+<td>An existing saved commitment; ask the user to reconcile it or exclude the affected item. Do not subtract it as delivery.</td>
+</tr>
+<tr>
+<td><code>ordered</code></td>
+<td>Subtract the recorded line quantity only for the same item ID and matching unit. This is user-recorded inbound, not supplier verification.</td>
+</tr>
+<tr>
+<td><code>partially_received</code></td>
+<td>Remaining quantity is unknown in the current schema. Require reconciliation; never subtract the whole order line.</td>
+</tr>
+<tr>
+<td><code>received</code></td>
+<td>Awaiting manual stock application. Require reconciliation; never apply stock automatically.</td>
+</tr>
+<tr>
+<td><code>stock_updated</code></td>
+<td>Already reflected in stock; do not count it again.</td>
+</tr>
+<tr>
+<td><code>declined</code></td>
+<td>No inbound quantity.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Rows explain on-hand quantity, minimum, inbound, chosen target, proposed quantity and reason. Questions can be answered or excluded together in one request. A numeric target cannot override an unresolved order or unit conflict.</p>
+<h2 id="review-and-request-sequence">Review and request sequence<a class="anchor" href="#review-and-request-sequence" aria-label="Link to this section">#</a></h2>
+<ol>
+<li>Authenticated capability discovery checks the optional feature without changing ordinary app startup requirements.</li>
+<li>Start sends a fresh <code>request_id</code> and explicit <code>target_mode:"minimum"</code>. Retrying that start ID returns the same owned run.</li>
+<li>The backend reads current records under the cooperating owner lock, calculates a proposal and stores its source revision/fingerprint and rules version.</li>
+<li>Clarifications and exclusions create a new immutable proposal revision. Refresh clears earlier target choices so a changed source requires renewed review.</li>
+<li>The UI displays snapshot time, expiry, reasons, questions and excluded rows. An empty result cannot create an empty order.</li>
+<li>Explicit confirmation sends the reviewed run/proposal versions and an idempotency key. The server revalidates ownership, expiry, rules, source revision, fingerprint, item versions and units.</li>
+<li>Order creation, durable result linkage, confirmation and audit commit together. Stock does not increase; the new order is <code>pending</code>.</li>
+<li>Lost responses are recovered by reading the owned run. A completed run returns its original order identifier. Repeated confirmations and competing web/Android reviews cannot create duplicate effects from one approval.</li>
+</ol>
+<p>A changed proposal, expired review or changed inventory/order source requires renewed review. Refreshing a browser or restarting Android never grants approval. Cancel is a durable state transition, not proof that an already completed save was undone.</p>
+<h2 id="api-and-source-map">API and source map<a class="anchor" href="#api-and-source-map" aria-label="Link to this section">#</a></h2>
+<p>All paths below are relative to <code>/api/v1</code>. Authentication remains required, including capability/history endpoints.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Method/path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /supply-reviews/capabilities</code></td>
+<td>Version 1, enabled state, limits, TTL and whether this owner has history.</td>
+</tr>
+<tr>
+<td><code>GET /supply-reviews</code></td>
+<td>Up to 20 owned summaries, without proposal payloads.</td>
+</tr>
+<tr>
+<td><code>POST /supply-reviews</code></td>
+<td>Start or recover an identical start request.</td>
+</tr>
+<tr>
+<td><code>GET /supply-reviews/{run_id}</code></td>
+<td>Authoritative status/result recovery.</td>
+</tr>
+<tr>
+<td><code>POST /supply-reviews/{run_id}/answers</code></td>
+<td>Versioned targets/exclusions in one batch.</td>
+</tr>
+<tr>
+<td><code>POST /supply-reviews/{run_id}/refresh</code></td>
+<td>Fresh proposal and renewed review.</td>
+</tr>
+<tr>
+<td><code>POST /supply-reviews/{run_id}/cancel</code></td>
+<td>Versioned cancellation; safe repeat returns current result.</td>
+</tr>
+<tr>
+<td><code>POST /supply-reviews/{run_id}/confirm</code></td>
+<td>Explicit, idempotent, transactionally revalidated pending-order creation.</td>
+</tr>
+<tr>
+<td><code>GET /orders/submission/{local_id}</code></td>
+<td>Owner-scoped ordinary order recovery by original UUID.</td>
+</tr>
+<tr>
+<td><code>POST /orders/submission/{local_id}/resolve</code></td>
+<td>Explicitly recover a saved order or close/fence an absent interrupted submission.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Run statuses are <code>needs_input</code>, <code>awaiting_review</code>, <code>completed</code>, <code>cancelled</code>, <code>expired</code> and <code>stale</code>. A run contains an immutable proposal ID/version, snapshot/expiry/source revision, reasons, questions, exclusions and optional public <code>ORD-…</code> result identifier. History provides summaries only.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Files</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP/schema</td>
+<td><code>vitaltrack-backend/app/api/v1/supply_reviews.py</code>, <code>app/schemas/supply_review.py</code></td>
+</tr>
+<tr>
+<td>Pure rules</td>
+<td><code>vitaltrack-backend/app/services/supply_rules.py</code></td>
+</tr>
+<tr>
+<td>Orchestration/revalidation</td>
+<td><code>vitaltrack-backend/app/services/supply_review.py</code>, <code>supply_revision.py</code></td>
+</tr>
+<tr>
+<td>Reused order transaction</td>
+<td><code>vitaltrack-backend/app/services/orders.py</code>, <code>app/api/v1/orders.py</code></td>
+</tr>
+<tr>
+<td>Durable state</td>
+<td><code>vitaltrack-backend/app/models/supply_review.py</code>, migration <code>20261105_supply_reviews.py</code> (revision <code>0013</code>)</td>
+</tr>
+<tr>
+<td>Web</td>
+<td><code>carekosh-web/src/services/supply-review.ts</code>, <code>src/pages/SupplyReview.tsx</code>, <code>src/components/SupplyReviewEntry.ts</code></td>
+</tr>
+<tr>
+<td>Android</td>
+<td><code>vitaltrack-mobile/services/supplyReview.ts</code>, <code>features/supplyReview/</code>, <code>components/supplyReview/</code>, <code>app/supply-review.tsx</code></td>
+</tr>
+<tr>
+<td>Retention</td>
+<td><code>vitaltrack-backend/app/services/supply_retention.py</code>, <code>scripts/prune_supply_reviews.py</code></td>
+</tr>
+<tr>
+<td>Evaluation</td>
+<td><code>vitaltrack-backend/app/services/regression_analysis.py</code>, <code>scripts/evaluate_supply_review.py</code>, <code>scripts/compare_benchmarks.py</code>, <code>scripts/benchmark_supply_rules.py</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="safety-privacy-and-bounded-work">Safety, privacy and bounded work<a class="anchor" href="#safety-privacy-and-bounded-work" aria-label="Link to this section">#</a></h2>
+<ul>
+<li>Owner identity comes from authenticated server state. Another user's run returns 404. Item names and notes are data, never executable instructions.</li>
+<li>This workflow sends no inventory, order tool result, audio or prompt to a model. Adding model-visible records later requires minimized fields and a new, explicit versioned data consent. Existing audio, text and narration consents remain separate.</li>
+<li>Existing browser memory access tokens/HttpOnly refresh cookies and Android SecureStore are reused. Credentials are not added to bundles, recovery pointers or logs. There is no paid-provider fallback.</li>
+<li>New review JSON is capped at 64 KB. Defaults bound inventory at 500 active items, outstanding order lines at 5,000, open runs at 20 per owner, proposal revisions at 10 and clarification rounds at nine. Larger sources fail clearly rather than silently truncating facts.</li>
+<li>A shared owner revision serializes relevant manual item/category/order writes and confirmation. Locks exist only within a transaction, never while waiting for user review, speech, PDFs or a model. Lock acquisition has a 1.5-second timeout and a sanitized retry response.</li>
+<li>Completed run/result and confirmation records prevent a deleted order from reopening an old approval. Closed interrupted-submission IDs also remain fenced until account deletion.</li>
+<li>Operator pause prevents new starts/answers/refresh/confirm, while history, status and cancellation stay usable. Capability failure hides this optional entry rather than disabling inventory.</li>
+</ul>
+<h2 id="web-and-android-recovery">Web and Android recovery<a class="anchor" href="#web-and-android-recovery" aria-label="Link to this section">#</a></h2>
+<p>Web uses typed interaction, accessible tables, keyboard controls, a stable run URL and authenticated history. Demo mode explains that server reviews are unavailable and makes no supply API calls. Refresh, multiple tabs, logout and account switching re-authorize each read; server transactions decide simultaneous confirmations.</p>
+<p>Android uses the same proposal contract. Its account-bound recovery pointer for ordinary orders stores only an original local UUID and timestamp, not an order body or approval. A 404 lookup alone does not prove an earlier POST cannot still finish. Explicit resolution acquires the same owner lock: it returns an existing order or stores a closed-ID fence that rejects a delayed old POST. Unknown outcomes retain the pointer.</p>
+<p>There is no automatic write replay. Supply Review resumes from server history/status after process death. Backgrounding, microphone denial and provider failure must leave typed/manual inventory usable. Existing microphone, Moonshine, Whistle, Sarvam, device speech and experimental voice gates are separate from this workflow.</p>
+<h2 id="staging-and-release-procedure">Staging and release procedure<a class="anchor" href="#staging-and-release-procedure" aria-label="Link to this section">#</a></h2>
+<p>No hosting, hostname, deployment or release was changed by implementing this source. Follow the current Render/database arrangement.</p>
+<ol>
+<li>Review the complete dirty checkout and publish only an intentionally reviewed change set. This task itself does not commit or push.</li>
+<li>Take a database backup and prove a restore into a separate disposable database. Record the API revision and migration head without exposing credentials.</li>
+<li>Keep <code>SUPPLY_REVIEW_ENABLED=false</code>. Apply migration <code>0013</code> using the existing release migration process before the new backend serves requests.</li>
+<li>Deploy the new backend to every instance/worker before enabling Supply Review. Older backend writers do not participate in its revision lock. Do not mix old writers with enabled new proposals.</li>
+<li>Deploy matching staging web assets and build a signed Android preview APK. Verify API/build revisions and exact staging origins. Old clients may continue their manual workflows against the new backend.</li>
+<li>In the staging Render environment, set <code>SUPPLY_REVIEW_ENABLED=true</code>. Optional settings are <code>SUPPLY_REVIEW_TTL_SECONDS=900</code> and <code>SUPPLY_REVIEW_MAX_ITEMS=500</code>. No new provider key is required.</li>
+<li>Run the synthetic staging and physical-device acceptance below. Enable production only after those evidence gates and backup/monitoring checks pass.</li>
+</ol>
+<p>For an operational pause, set <code>SUPPLY_REVIEW_ENABLED=false</code>; read recovery remains available. For backend rollback, pause first, drain in-flight requests and keep the additive schema. Do not downgrade a database automatically. A frontend rollback is not a database rollback. The new backend's normal writes require the new revision/fence tables even when Supply Review is disabled.</p>
+<p>Android OTA app-code updates remain disabled. A local JavaScript export is not an APK, signed AAB, native compile, Play release or physical-phone test. Existing production guards keep experimental voices and cleartext out of production.</p>
+<h2 id="retention-monitoring-and-incidents">Retention, monitoring and incidents<a class="anchor" href="#retention-monitoring-and-incidents" aria-label="Link to this section">#</a></h2>
+<p>Expiry limits approval, not storage retention. <code>scripts/prune_supply_reviews.py</code> is operator-only and dry-run by default. It reports counts, not user data. Its bounded batch may remove unconfirmed cancelled/logically expired reviews only after at least 30 days. It never removes completed effects, confirmation records or closed-order fences. Account deletion uses existing foreign-key cascades.</p>
+<p>From a configured backend operator shell, inspect first:</p>
+<pre><code class="language-bash">python scripts/prune_supply_reviews.py --days 30 --limit 100
+</code></pre>
+<p>Apply only after checking the target environment, retention policy and backup:</p>
+<pre><code class="language-bash">python scripts/prune_supply_reviews.py --days 30 --limit 100 --apply --expect-environment staging
+</code></pre>
+<p>This is one batch, not a scheduled deletion job. No retention command was run against a hosted database. Confirm local legal/product retention requirements before scheduling it.</p>
+<p>Monitor existing sanitized request logs and audit records for response status, route latency, 409/410 stale/expired reviews, 503 lock contention, provider-stage errors and unknown save outcomes. Never attach credentials, transcripts or complete proposal bodies to alerts. Record a staging baseline before setting latency/error alerts. The offline comparison script flags investigation; it does not establish root cause.</p>
+<p>An incident drill should pause new reviews, recover known run/order IDs, inspect sanitized request IDs and transaction evidence, fix the cause, add a regression test, then restore service through staging. Do not use an AI agent to run autonomous production tests, edit code or deploy.</p>
+<h2 id="acceptance-and-evidence">Acceptance and evidence<a class="anchor" href="#acceptance-and-evidence" aria-label="Link to this section">#</a></h2>
+<h3 id="local-verification--5-november-2026">Local verification — 5 November 2026<a class="anchor" href="#local-verification--5-november-2026" aria-label="Link to this section">#</a></h3>
+<p>The saved pre-change working-tree backend passed 895 tests through migrations. The final candidate passed <strong>977 tests in each schema mode</strong> on separate disposable PostgreSQL 16 databases, using Python 3.12 and synthetic records. Redis was also an isolated local test service. No hosted database was used.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Check actually run</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>python -m pytest tests/ unit_tests/ -q</code></td>
+<td>977 passed.</td>
+</tr>
+<tr>
+<td>Same suite with <code>--migrated-schema</code></td>
+<td>977 passed; additive migration preservation included.</td>
+</tr>
+<tr>
+<td>Ruff across backend app/tests/unit tests/scripts</td>
+<td>Passed.</td>
+</tr>
+<tr>
+<td>API route inventory</td>
+<td>65 registered <code>/api/v1</code> route objects; gate passed.</td>
+</tr>
+<tr>
+<td>Coverage floor</td>
+<td>Items 96.72%, order routes 88.35%, order service 95.65%, supply service 92.15%, revision lock 80.65%, pure rules 97.59%; all exceed 70%.</td>
+</tr>
+<tr>
+<td>Mobile <code>npm test</code></td>
+<td>491 passed.</td>
+</tr>
+<tr>
+<td>Mobile TypeScript and lint</td>
+<td>Types clean; zero lint errors and one existing <code>app/builder.tsx:118</code> warning.</td>
+</tr>
+<tr>
+<td>Local offline Android JavaScript export</td>
+<td>Passed, 1,977 modules; not a native APK or phone test.</td>
+</tr>
+<tr>
+<td>Web units, TypeScript and lint</td>
+<td>103 units passed; types/lint clean.</td>
+</tr>
+<tr>
+<td>Browser flows</td>
+<td>30 mocked/demo browser cases passed; 11 Supply Review cases rerun after the final screenshot-path change. One existing opt-in real-API case was skipped.</td>
+</tr>
+<tr>
+<td>Web release builds and hosting</td>
+<td>Production/staging builds and unsafe-config guards passed; 22 deep links, four expected 404s and security/cache headers checked locally.</td>
+</tr>
+<tr>
+<td>Pure rule goldens</td>
+<td>12/12 passed, no safety failures.</td>
+</tr>
+<tr>
+<td>Seeded timing regression</td>
+<td>Correctly flagged a synthetic +100 ms slowdown; intentional comparator exit 1.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Coverage uses Python 3.12's <code>sys.monitoring</code> core (<code>COVERAGE_CORE=sysmon</code>). The default local tracer undercounted resumed asynchronous handlers; no coverage floor was lowered. CI now checks both schema modes and the shared order/supply services.</p>
+<p>A matched local API probe used 32 synthetic items, five warmups and 50 samples per version. Median inventory reads were 2.431 ms before and 2.403 ms after. Median stock updates were 3.777 ms before and 4.232 ms after: approximately <strong>0.455 ms added</strong> for coordination, or 12% at this very small local baseline. This is measured overhead, not a promise of zero regression or a production load test. Pure rules for 500 synthetic items had a 0.392 ms median over 30 samples.</p>
+<p>The added live browser-to-HTTP/PostgreSQL acceptance check remains pending. No real or hosted data was accessed. Existing API/database tests and mocked browser tests provide separate evidence, not a substitute for this missing combined check. Physical Android audio, staging deployment, restore drills and operated-production acceptance also remain pending.</p>
+<p>The dated local verification results are recorded in the implementation handoff. Test source and CI configuration alone are not proof of execution. Backend integration tests drop/recreate tables and require an explicitly disposable test database. The implementation's checks use synthetic records only.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Required evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pure unit/rule evaluation</td>
+<td>Exact quantity, all status/unit cases, no invented targets, injection strings, bounds and seeded regression reports.</td>
+</tr>
+<tr>
+<td>Real local API/database</td>
+<td>Both model-created and Alembic-created schemas; wrong owner, stale review, same/different keys, competing clients, rollback and closed-submission fencing.</td>
+</tr>
+<tr>
+<td>Browser</td>
+<td>Clarification, empty/ready/stale results, lost response, refresh, paused history, logout/tabs, demo isolation, keyboard and narrow/large-text layout.</td>
+</tr>
+<tr>
+<td>Android source checks</td>
+<td>Tests, TypeScript, lint, session/background/process-restart recovery, existing voice and order regressions.</td>
+</tr>
+<tr>
+<td>Physical Nord 4</td>
+<td>Signed preview revision; manual stock/edit/order/PDF/apply; Supply Review; mic deny/revoke; Moonshine/Whistle; Sarvam/device voice; second question; background/kill/reopen/network switch; large text/TalkBack.</td>
+</tr>
+<tr>
+<td>Operated release</td>
+<td>Verified deployed revision/migration/flags, restore drill, monitored pilot, measured failure handling and supported-client matrix.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Live provider calls, physical Android audio, hosted configuration, store status and real backup restoration remain separate acceptance work. Passing local tests cannot certify all devices or promise zero performance degradation.</p>
+<p>See <a href="SUPPLY_REVIEW_LEARNING.html">learning and ownership</a>, <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">voice architecture</a>, <a href="OPENAI_UNDERSTANDING.html">OpenAI understanding</a> and <a href="SARVAM_ENGLISH_VOICE.html">Sarvam narration</a>.</p>
+<footer>Generated 2026-11-05 by <code>docs/tools/build_docs.py</code> from <code>docs/SUPPLY_REVIEW.md</code>.</footer>
+</main>
+</div>
+<script>
+var tocDetails = document.getElementById('toc-details');
+if (tocDetails && window.matchMedia('(min-width: 901px)').matches) { tocDetails.open = true; }
+document.querySelectorAll('pre > code').forEach(function (code) {
+  var pre = code.parentElement, wrap = document.createElement('div');
+  wrap.className = 'codewrap'; pre.parentNode.insertBefore(wrap, pre); wrap.appendChild(pre);
+  var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+  b.setAttribute('aria-label', 'Copy this code block');
+  b.addEventListener('click', function () {
+    var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(code.innerText).then(done, function () { b.textContent = 'Select and copy'; }); }
+    else { b.textContent = 'Select and copy'; }
+  });
+  wrap.appendChild(b);
+});
+</script>
+</body>
+</html>

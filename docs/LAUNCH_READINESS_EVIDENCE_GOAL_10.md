@@ -1,5 +1,7 @@
 # Goal 10 Launch Readiness Evidence
 
+> **Status (7 October 2026):** historical record from 15–16 June 2026 (Goal 10/11, merged in PR #47); kept as evidence and not re-verified. Its figures are June values (for example 123 backend tests, route gate 39, and `onrender.com` API targets from before the custom domains of PR #49). Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) and [API traceability](API_TRACEABILITY.md).
+
 Last updated: 2026-06-16
 
 This file records non-secret operational evidence for Goal 10. Do not paste

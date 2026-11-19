@@ -88,6 +88,7 @@ engine = create_async_engine(
     pool_timeout=settings.DATABASE_POOL_TIMEOUT,
     pool_pre_ping=True,  # Enable connection health check
     echo=settings.DEBUG,  # Log SQL statements in debug mode
+    hide_parameters=True,
     connect_args=_connect_args,
 )
 
@@ -106,10 +107,15 @@ AsyncSessionLocal = async_sessionmaker(
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency that provides a database session.
-    
-    Usage:
+
+    Never depend on this directly. Use the shared alias, which commits before
+    the response is sent; a bare Depends(get_db) would commit afterwards and
+    get its own session:
+
+        from app.api.deps import DB
+
         @router.get("/items")
-        async def get_items(db: AsyncSession = Depends(get_db)):
+        async def get_items(db: DB):
             ...
     """
     async with AsyncSessionLocal() as session:

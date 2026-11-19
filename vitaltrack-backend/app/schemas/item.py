@@ -45,7 +45,8 @@ class ItemCreate(BaseModel):
         v = re.sub(r"<[^>]*>", "", v)
         # Remove dangerous characters for XSS
         v = re.sub(r"javascript:", "", v, flags=re.IGNORECASE)
-        v = re.sub(r"on\w+=", "", v, flags=re.IGNORECASE)
+        # No `on...=` stripping: with tags removed it is inert text, and it deleted
+        # real content ("Ondansetron=4mg" became "4mg"). Outputs escape HTML.
         return v.strip()
 
     @field_validator("supplier_contact")
@@ -54,9 +55,18 @@ class ItemCreate(BaseModel):
         """Sanitize contact info."""
         if v is None:
             return v
-        # Keep phone-valid chars and email chars
-        v = re.sub(r"[^0-9\s\-\(\)\+\.@a-zA-Z]", "", v)
-        return v.strip()[:100]
+        # Contact text may include email punctuation or Unicode. Remove markup,
+        # preserve the value, and escape HTML where it is rendered/exported.
+        v = re.sub(r"<[^>]*>", "", v)
+        v = re.sub(r"javascript:", "", v, flags=re.IGNORECASE)
+        return v.strip()
+
+    @field_validator("name")
+    @classmethod
+    def nonempty_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("Name must contain visible text")
+        return v
 
     @field_validator("purchase_link")
     @classmethod
@@ -65,7 +75,7 @@ class ItemCreate(BaseModel):
         if v is None or not v.strip():
             return None
         v = v.strip()
-        if not v.startswith(("http://", "https://")):
+        if not v.lower().startswith(("http://", "https://")):
             raise ValueError("URL must start with http:// or https://")
         return v
 
@@ -92,6 +102,11 @@ class ItemUpdate(BaseModel):
 
     model_config = {"populate_by_name": True}
 
+    @field_validator("supplier_contact")
+    @classmethod
+    def sanitize_contact(cls, v: Optional[str]) -> Optional[str]:
+        return ItemCreate.sanitize_contact(v)
+
     @field_validator("name", "description", "brand", "notes", "supplier_name")
     @classmethod
     def sanitize_string(cls, v: Optional[str]) -> Optional[str]:
@@ -100,8 +115,14 @@ class ItemUpdate(BaseModel):
             return v
         v = re.sub(r"<[^>]*>", "", v)
         v = re.sub(r"javascript:", "", v, flags=re.IGNORECASE)
-        v = re.sub(r"on\w+=", "", v, flags=re.IGNORECASE)
         return v.strip()
+
+    @field_validator("name")
+    @classmethod
+    def nonempty_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("Name must contain visible text")
+        return v
 
     @field_validator("purchase_link")
     @classmethod
@@ -110,7 +131,7 @@ class ItemUpdate(BaseModel):
         if v is None or not v.strip():
             return None
         v = v.strip()
-        if not v.startswith(("http://", "https://")):
+        if not v.lower().startswith(("http://", "https://")):
             raise ValueError("URL must start with http:// or https://")
         return v
 

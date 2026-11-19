@@ -76,6 +76,21 @@ interface AuthActions {
 
 type AuthStore = AuthState & AuthActions;
 
+// A cold-start attempt belongs to the session that started it. Logging in,
+// registering, logging out or initializing again invalidates all old callbacks.
+let initializationGeneration = 0;
+let initializationController: AbortController | undefined;
+let initializationRetry: ReturnType<typeof setTimeout> | undefined;
+let initializationDeadline: ReturnType<typeof setTimeout> | undefined;
+function invalidateInitialization() {
+  initializationGeneration++;
+  initializationController?.abort(); initializationController = undefined;
+  if (initializationRetry !== undefined) clearTimeout(initializationRetry);
+  if (initializationDeadline !== undefined) clearTimeout(initializationDeadline);
+  initializationRetry = undefined; initializationDeadline = undefined;
+}
+
+
 // ============================================================================
 // STORE IMPLEMENTATION
 // ============================================================================
@@ -96,104 +111,60 @@ export const useAuthStore = create<AuthStore>()(
       // INITIALIZE - Check for existing session
       // =====================================================================
       initialize: async () => {
-        logger.debug('Auth', 'Initializing session');
+        invalidateInitialization();
+        const generation = initializationGeneration;
+        const current = () => generation === initializationGeneration && !get().isLoggingOut;
+        const assertCurrent = () => { if (!current()) throw new Error('Session changed.'); };
         set({ isLoading: true, error: null });
-
         try {
           const token = await tokenStorage.getAccessToken();
-
+          if (!current()) return;
           if (!token) {
-            logger.debug('Auth', 'No token found');
-            set({
-              isAuthenticated: false,
-              user: null,
-              isLoading: false,
-              isInitialized: true
-            });
+            set({ isAuthenticated: false, user: null, isLoading: false, isInitialized: true });
             return;
           }
-
-          logger.debug('Auth', 'Token found; fetching profile');
-
-          // Race profile fetch against timeout (Render cold start can take 60s)
-          let user;
+          initializationController = new AbortController();
+          let user: User;
           try {
             user = await Promise.race([
-              authService.getProfile(),
-              new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('PROFILE_TIMEOUT')), 8000)
-              ),
+              authService.getProfile(initializationController.signal, assertCurrent),
+              new Promise<never>((_, reject) => {
+                initializationDeadline = setTimeout(() => reject(new Error('PROFILE_TIMEOUT')), 8000);
+              }),
             ]);
-          } catch (timeoutErr) {
-            const err = timeoutErr as Error;
-            if (err.message === 'PROFILE_TIMEOUT') {
-              logger.info('Auth', 'Profile fetch timed out; using cached auth state');
-              set({
-                isAuthenticated: true,
-                isLoading: false,
-                isInitialized: true,
-                // Flip on the amber banner so the user understands why
-                // subsequent mutations may take 30-60s.
-                isBackendColdStarting: true,
-              });
-              // Retry in background after server wakes
-              setTimeout(async () => {
-                try {
-                  const freshUser = await authService.getProfile();
-                  set({ user: freshUser, isBackendColdStarting: false });
-                  logger.debug('Auth', 'Background profile refresh succeeded');
-                } catch {
-                  // Leave the flag set — the backend may still be warming
-                  // and the next successful API call will clear it.
-                  logger.warn('Auth', 'Background profile refresh failed');
-                }
-              }, 5000);
-              return;
+          } catch (error) {
+            if (!current()) return;
+            if ((error as Error).message !== 'PROFILE_TIMEOUT') throw error;
+            initializationController?.abort();
+            set({ isAuthenticated: !!get().user, isLoading: false, isInitialized: true, isBackendColdStarting: true });
+            initializationRetry = setTimeout(async () => {
+              initializationRetry = undefined;
+              if (!current()) return;
+              initializationController = new AbortController();
+              try {
+                const freshUser = await authService.getProfile(initializationController.signal, assertCurrent);
+                if (current()) set({ user: freshUser, isAuthenticated: true, isBackendColdStarting: false });
+              } catch { /* A later foreground retry can recover without restoring an old account. */ }
+            }, 5000);
+            return;
+          } finally {
+            if (generation === initializationGeneration && initializationDeadline !== undefined) {
+              clearTimeout(initializationDeadline); initializationDeadline = undefined;
             }
-            throw timeoutErr;
           }
-
-          logger.debug('Auth', 'Profile loaded');
-          set({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-            isInitialized: true
-          });
-
-          // Invalidate React Query cache for the new session
-          setTimeout(async () => {
-            try {
-              const { queryClient } = await import('@/providers/QueryProvider');
-              queryClient.invalidateQueries();
-            } catch (err) {
-              logger.warn('Auth', 'Failed to invalidate queries after initialize', err);
-            }
-          }, 100);
+          if (!current()) return;
+          set({ user, isAuthenticated: true, isLoading: false, isInitialized: true, isBackendColdStarting: false });
+          try {
+            const { queryClient } = await import('@/providers/QueryProvider');
+            if (current()) queryClient.invalidateQueries();
+          } catch { /* Inventory fetches have their own recovery. */ }
         } catch (error) {
-          logger.warn('Auth', 'Initialize failed', error);
-          // Only clear tokens on explicit auth errors (401)
-          // On network errors (Render cold start), preserve cached auth state
-          const apiError = error as { status?: number };
-          if (apiError.status === 401) {
+          if (!current()) return;
+          if ((error as { status?: number }).status === 401) {
             await tokenStorage.clearTokens();
-            set({
-              isAuthenticated: false,
-              user: null,
-              isLoading: false,
-              isInitialized: true,
-              error: null,
-            });
+            if (current()) set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true, error: null });
           } else {
-            // Network error — keep existing persisted auth state
-            logger.info('Auth', 'Network error during initialize; preserving cached auth state');
-            const existingUser = get().user;
-            set({
-              isAuthenticated: !!existingUser,
-              isLoading: false,
-              isInitialized: true,
-              error: null,
-            });
+            set({ isAuthenticated: !!get().user, isLoading: false, isInitialized: true, error: null });
           }
         }
       },
@@ -202,6 +173,8 @@ export const useAuthStore = create<AuthStore>()(
       // LOGIN
       // =====================================================================
       login: async (identifier: string, password: string) => {
+        if (get().isLoggingOut) return false;
+        invalidateInitialization();
         logger.debug('Auth', 'Login attempt');
         set({ isLoading: true, error: null, isColdStart: false });
 
@@ -272,6 +245,8 @@ export const useAuthStore = create<AuthStore>()(
       // REGISTER
       // =====================================================================
       register: async (data: RegisterRequest) => {
+        if (get().isLoggingOut) return false;
+        invalidateInitialization();
         logger.debug('Auth', 'Register attempt');
         set({ isLoading: true, error: null });
 
@@ -314,8 +289,9 @@ export const useAuthStore = create<AuthStore>()(
       logout: async () => {
         // Prevent double-tap
         if (get().isLoggingOut) return;
+        invalidateInitialization();
         // Immediately deauthenticate so the UI redirects to login
-        set({ isAuthenticated: false, isLoggingOut: true });
+        set({ user: null, isAuthenticated: false, isLoggingOut: true });
 
         logger.debug('Auth', 'Logout started');
 

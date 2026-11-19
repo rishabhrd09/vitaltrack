@@ -28,7 +28,9 @@
       ],
       "blockedPermissions": [
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE",
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.VIBRATE",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -44,6 +46,13 @@
     "plugins": [
       "expo-router",
       "expo-asset",
+      ["expo-audio", {
+        "microphonePermission": "CareKosh records only when you tap Record. Android offline recognition stays on your phone. Optional cloud recognition sends recordings to your selected provider only with your consent.",
+        "recordAudioAndroid": true,
+        "enableBackgroundRecording": false
+      }],
+      "./plugins/withForegroundOnlyAudio",
+      ["expo-build-properties", { "android": { "minSdkVersion": 26 } }],
       [
         "expo-secure-store",
         {

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1214" width="1000" height="1214" role="img" aria-labelledby="dev-workflow-title dev-workflow-desc">
+<title id="dev-workflow-title">From a code change to a phone</title>
+<desc id="dev-workflow-desc">Create a feature branch and commit; a feature push alone does not trigger this CI workflow. Render can independently auto-deploy its linked branch if enabled. A pull request to main runs CI: backend tests, mobile tests and advisory scans. The build-apk label adds a preview APK that talks to staging. Merging can deploy the backend through a configured CI deploy hook or Render auto-deploy if it is on. A production AAB is built by hand and uploaded to Play internal testing.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="dev-workflow-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="dev-workflow-ah-flow" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#4B3E35"/></marker><marker id="dev-workflow-ah-main" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7B2C34"/></marker><marker id="dev-workflow-ah-optional" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#6B3A6E"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#dev-workflow-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">Your change, from laptop to users</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">The left lane is what you do; the right lane is what GitHub, Render and Expo do after you push.</text>
+<rect x="40.0" y="122.3" width="411.2" height="928.7" rx="14" fill="#F4F0E3" stroke="#CDD2B5" stroke-width="1.2"/>
+<rect x="477.2" y="122.3" width="482.8" height="928.7" rx="14" fill="#F5EFE5" stroke="#D4CBC0" stroke-width="1.2"/>
+<text x="56.0" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#557629" text-anchor="start" letter-spacing="1.6">ON YOUR LAPTOP</text>
+<text x="493.2" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#6E5D4E" text-anchor="start" letter-spacing="1.6">ON GITHUB, RENDER AND EXPO</text>
+<rect x="52.0" y="176.3" width="387.2" height="91.8" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="203.1" r="16" fill="#7B2C34"/>
+<text x="85.0" y="209.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">1</text>
+<text x="112.0" y="213.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Create a branch</text>
+<text x="70.0" y="243.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">git switch -c feature/short-name</text>
+<rect x="52.0" y="302.1" width="387.2" height="91.8" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="328.9" r="16" fill="#7B2C34"/>
+<text x="85.0" y="335.0" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2</text>
+<text x="112.0" y="339.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Change the code</text>
+<text x="70.0" y="369.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">backend, mobile or docs</text>
+<path d="M245.6,270.1 L245.6,298.1" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#dev-workflow-ah-flow)"/>
+<rect x="52.0" y="427.9" width="387.2" height="91.8" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="454.7" r="16" fill="#7B2C34"/>
+<text x="85.0" y="460.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">3</text>
+<text x="112.0" y="465.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Run it locally</text>
+<text x="70.0" y="495.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">the API and Expo on your phone</text>
+<path d="M245.6,395.9 L245.6,423.9" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#dev-workflow-ah-flow)"/>
+<rect x="52.0" y="553.7" width="387.2" height="117.4" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="580.5" r="16" fill="#7B2C34"/>
+<text x="85.0" y="586.6" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">4</text>
+<text x="112.0" y="591.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Run the tests</text>
+<text x="70.0" y="620.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">pytest on a disposable database · npm test · tsc ·</text>
+<text x="70.0" y="646.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">lint</text>
+<path d="M245.6,521.7 L245.6,549.7" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#dev-workflow-ah-flow)"/>
+<rect x="52.0" y="705.1" width="387.2" height="91.8" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="731.9" r="16" fill="#7B2C34"/>
+<text x="85.0" y="738.0" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">5</text>
+<text x="112.0" y="742.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Commit</text>
+<text x="70.0" y="772.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">small, focused commits</text>
+<path d="M245.6,673.1 L245.6,701.1" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#dev-workflow-ah-flow)"/>
+<rect x="489.2" y="176.3" width="458.8" height="117.4" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8"/>
+<circle cx="522.2" cy="203.1" r="16" fill="#7B2C34"/>
+<text x="522.2" y="209.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">6</text>
+<text x="549.2" y="213.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6E5D4E" text-anchor="start">Push the branch</text>
+<text x="507.2" y="243.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">no CI trigger for a feature push; linked Render</text>
+<text x="507.2" y="269.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">auto-deploy may still run</text>
+<path d="M442.2,751.0 L449.7,751.0 Q457.2,751.0 457.2,743.5 L457.2,245.0 Q457.2,235.0 467.2,235.0 L484.2,235.0" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#dev-workflow-ah-main)"/>
+<rect x="489.2" y="327.6" width="458.8" height="117.4" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8"/>
+<circle cx="522.2" cy="354.5" r="16" fill="#7B2C34"/>
+<text x="522.2" y="360.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">7</text>
+<text x="549.2" y="365.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6E5D4E" text-anchor="start">Open a pull request to main</text>
+<text x="507.2" y="394.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">CI: test-backend and test-frontend; advisory mypy and</text>
+<text x="507.2" y="420.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Trivy</text>
+<path d="M718.6,295.6 L718.6,323.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#dev-workflow-ah-flow)"/>
+<rect x="489.2" y="479.0" width="458.8" height="91.8" rx="12" fill="#EDE3DF" stroke="#6B3A6E" stroke-width="1.8" stroke-dasharray="7 6"/>
+<circle cx="522.2" cy="505.8" r="16" fill="#7B2C34"/>
+<text x="522.2" y="511.9" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">8</text>
+<text x="549.2" y="516.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6B3A6E" text-anchor="start">Optional: label build-apk</text>
+<text x="507.2" y="546.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">an EAS preview APK that talks to staging</text>
+<path d="M718.6,447.0 L718.6,475.0" fill="none" stroke="#6B3A6E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#dev-workflow-ah-optional)"/>
+<rect x="489.2" y="604.8" width="458.8" height="117.4" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8"/>
+<circle cx="522.2" cy="631.6" r="16" fill="#7B2C34"/>
+<text x="522.2" y="637.7" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">9</text>
+<text x="549.2" y="642.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#6E5D4E" text-anchor="start">Review</text>
+<text x="507.2" y="672.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">read every job, advisory ones too; the ruleset seen on 7 Oct</text>
+<text x="507.2" y="697.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">needs a PR but no checks</text>
+<path d="M718.6,572.8 L718.6,600.8" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#dev-workflow-ah-flow)"/>
+<rect x="489.2" y="756.2" width="458.8" height="117.4" rx="12" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.8"/>
+<circle cx="522.2" cy="783.0" r="16" fill="#7B2C34"/>
+<text x="522.2" y="789.1" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">10</text>
+<text x="549.2" y="793.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">Merge to main</text>
+<text x="507.2" y="823.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">production deploy if auto-deploy or hook configured;</text>
+<text x="507.2" y="848.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">migrations run at container start</text>
+<path d="M718.6,724.2 L718.6,752.2" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#dev-workflow-ah-main)"/>
+<rect x="489.2" y="907.6" width="458.8" height="117.4" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="522.2" cy="934.4" r="16" fill="#7B2C34"/>
+<text x="522.2" y="940.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">11</text>
+<text x="549.2" y="944.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Release the app</text>
+<text x="507.2" y="974.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">by hand: eas build --profile production → AAB → Play</text>
+<text x="507.2" y="1000.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">internal testing</text>
+<path d="M718.6,875.6 L718.6,903.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#dev-workflow-ah-flow)"/>
+<path d="M43.0,1078.9 H944.0 Q960.0,1078.9 960.0,1094.9 V1168.0 Q960.0,1184.0 944.0,1184.0 H43.0 Q40.0,1184.0 40.0,1181.0 V1081.9 Q40.0,1078.9 43.0,1078.9 Z" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.4"/>
+<text x="58.0" y="1106.9" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#B2423B" text-anchor="start" letter-spacing="1.6">BEFORE YOU MERGE</text>
+<text x="58.0" y="1136.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">0007 blocks automatic downgrade below it: test fresh schema and a synthetic 0006 upgrade and follow the release gate</text>
+<text x="58.0" y="1162.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">before merging. Mobile changes reach people only through a new build.</text>
+</svg>

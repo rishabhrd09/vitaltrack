@@ -1,0 +1,25 @@
+<svg width="1000" height="548" viewBox="0 0 1000 548" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pyramid-t pyramid-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="pyramid-t">Testing pyramid</title><desc id="pyramid-d">Many fast backend unit and API tests at the base, API integration tests against PostgreSQL 16 in CI in the middle, and a few manual end-to-end checks on a real device with a preview APK at the top.</desc><defs></defs>
+<rect x="0" y="0" width="1000" height="548" rx="18" fill="#FFFFFF"/>
+<polygon points="250,40.0 325.9,181.9 174.1,181.9" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.4" stroke-linejoin="round"/>
+<text x="250" y="140.95" font-size="16" font-weight="700" fill="#8C2A20" text-anchor="middle">Manual</text>
+<polygon points="174.1,181.9 325.9,181.9 401.8,323.8 98.19999999999999,323.8" fill="#EAF0FA" stroke="#3D5A99" stroke-width="2.4" stroke-linejoin="round"/>
+<text x="250" y="259.85" font-size="19" font-weight="700" fill="#243E76" text-anchor="middle">Integration</text>
+<polygon points="98.19999999999999,323.8 401.8,323.8 480.0,470.0 20.0,470.0" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.4" stroke-linejoin="round"/>
+<text x="250" y="403.9" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="middle">Unit</text>
+<rect x="530" y="40" width="440" height="120" rx="14" fill="#FCEBEA" stroke="#B3372B" stroke-width="2.2"/>
+<text x="550" y="76" font-size="18" font-weight="700" fill="#8C2A20" text-anchor="start">Manual end-to-end</text>
+<text x="550" y="101.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">Preview APK on a real device</text>
+<text x="550" y="123.5" font-size="15.5" font-weight="400" fill="#5C1F18" text-anchor="start">5–10 critical flows before merging</text>
+<path d="M480,100 L526,100" fill="none" stroke="#B3372B" stroke-width="2" stroke-linejoin="round" stroke-dasharray="4 4"/>
+<rect x="530" y="190" width="440" height="120" rx="14" fill="#EAF0FA" stroke="#3D5A99" stroke-width="2.2"/>
+<text x="550" y="226" font-size="18" font-weight="700" fill="#243E76" text-anchor="start">Integration (CI)</text>
+<text x="550" y="251.5" font-size="15.5" font-weight="400" fill="#2A3A57" text-anchor="start">Backend API tests against a</text>
+<text x="550" y="273.5" font-size="15.5" font-weight="400" fill="#2A3A57" text-anchor="start">PostgreSQL 16 service container</text>
+<path d="M480,250 L526,250" fill="none" stroke="#3D5A99" stroke-width="2" stroke-linejoin="round" stroke-dasharray="4 4"/>
+<rect x="530" y="330" width="440" height="120" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="550" y="366" font-size="18" font-weight="700" fill="#0D4A43" text-anchor="start">Unit (CI)</text>
+<text x="550" y="391.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Backend functions, utilities, schemas</text>
+<text x="550" y="413.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Mobile: 8 Node tests of the API client</text>
+<path d="M480,390 L526,390" fill="none" stroke="#1F6F66" stroke-width="2" stroke-linejoin="round" stroke-dasharray="4 4"/>
+<text x="500" y="520" font-size="15" font-weight="400" fill="#5E736E" text-anchor="middle" font-style="italic">152 backend tests run with pytest in CI · no automated mobile UI tests yet</text>
+</svg>

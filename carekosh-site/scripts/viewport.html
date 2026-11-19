@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>CareKosh responsive preview</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 15px;
+        background: #e9edf3;
+        color: #233045;
+        font: 13px system-ui;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+      button {
+        padding: 9px 12px;
+        background: white;
+        border: 1px solid #c6d2e3;
+        border-radius: 6px;
+        color: #233045;
+        cursor: pointer;
+      }
+      button[aria-pressed="true"] {
+        background: #3675d0;
+        color: white;
+      }
+      output {
+        display: block;
+        width: 100%;
+        margin-top: 5px;
+        font-size: 12px;
+      }
+      #stage {
+        position: relative;
+        margin: auto;
+      }
+      iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        transform-origin: top left;
+        border: 0;
+        background: white;
+        box-shadow: 0 3px 20px #22324a1a;
+      }
+      a {
+        color: #2862b4;
+        margin-left: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <button data-width="1440" aria-pressed="true">Desktop 1440</button
+      ><button data-width="768" aria-pressed="false">Tablet 768</button
+      ><button data-width="1024" aria-pressed="false">Laptop 1024</button
+      ><button data-width="390" aria-pressed="false">Mobile 390</button
+      ><button data-width="320" aria-pressed="false">Compact 320</button
+      ><a href="/">Open landing page</a
+      ><output id="result" aria-live="polite">Loading preview…</output>
+    </header>
+    <div id="stage">
+      <iframe
+        title="Responsive landing page"
+        src="/"
+        width="1440"
+        height="1000"
+      ></iframe>
+    </div>
+    <script>
+      const frame = document.querySelector("iframe"),
+        stage = document.querySelector("#stage"),
+        result = document.querySelector("#result");
+      let width = 1440;
+      function layout() {
+        const scale = Math.min(
+          1,
+          (document.documentElement.clientWidth - 30) / width,
+        );
+        const height = Math.max(
+          600,
+          Math.floor(
+            (window.innerHeight -
+              document.querySelector("header").offsetHeight -
+              45) /
+              scale,
+          ),
+        );
+        frame.style.width = width + "px";
+        frame.style.height = height + "px";
+        frame.style.transform = `scale(${scale})`;
+        stage.style.width = width * scale + "px";
+        stage.style.height = height * scale + "px";
+      }
+      function check() {
+        const doc = frame.contentDocument;
+        if (!doc) return;
+        const measured = doc.documentElement.scrollWidth;
+        result.textContent = `Viewport ${frame.contentWindow.innerWidth}px · document ${measured}px · ${measured <= width ? "No horizontal overflow" : "OVERFLOW DETECTED"}`;
+      }
+      frame.addEventListener("load", () => {
+        layout();
+        requestAnimationFrame(() => requestAnimationFrame(check));
+        frame.contentDocument.fonts.ready.then(check);
+        new frame.contentWindow.ResizeObserver(check).observe(
+          frame.contentDocument.documentElement,
+        );
+        new frame.contentWindow.MutationObserver(check).observe(
+          frame.contentDocument.body,
+          { childList: true, subtree: true, attributes: true },
+        );
+      });
+      document.querySelectorAll("button").forEach((button) =>
+        button.addEventListener("click", () => {
+          width = Number(button.dataset.width);
+          document
+            .querySelectorAll("button")
+            .forEach((b) =>
+              b.setAttribute("aria-pressed", String(b === button)),
+            );
+          layout();
+          requestAnimationFrame(() => requestAnimationFrame(check));
+        }),
+      );
+      window.addEventListener("resize", () => {
+        layout();
+        check();
+      });
+      layout();
+    </script>
+  </body>
+</html>

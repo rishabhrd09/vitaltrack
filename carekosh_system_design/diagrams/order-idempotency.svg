@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1505" width="1000" height="1505" role="img" aria-labelledby="order-idempotency-title order-idempotency-desc">
+<title id="order-idempotency-title">Order creation and retries</title>
+<desc id="order-idempotency-desc">The app generates one localId per Save. A retry with the same localId returns the order already created with status 200. Two identical requests at the same moment collide on a partial unique index; the loser rolls back, which also releases its order number, and returns the winner&#x27;s order. Requests without a localId, such as those from older app builds, always create a new order.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="order-idempotency-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="order-idempotency-ah-fail" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#B2423B"/></marker><marker id="order-idempotency-ah-flow" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#4B3E35"/></marker><marker id="order-idempotency-ah-reply" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7C6B5C"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#order-idempotency-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">Order creation and retries</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">A localId per Save makes the same request safe to send twice (migration 0010).</text>
+<rect x="40.0" y="122.3" width="260.4" height="1194.7" rx="14" fill="#F4F0E3" stroke="#CDD2B5" stroke-width="1.2"/>
+<rect x="326.4" y="122.3" width="312.5" height="1194.7" rx="14" fill="#F2EFE7" stroke="#C2C9CB" stroke-width="1.2"/>
+<rect x="664.9" y="122.3" width="295.1" height="1194.7" rx="14" fill="#F7F0E2" stroke="#E4CEAE" stroke-width="1.2"/>
+<text x="56.0" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#557629" text-anchor="start" letter-spacing="1.6">PHONE</text>
+<text x="342.4" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">API</text>
+<text x="680.9" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#A9680F" text-anchor="start" letter-spacing="1.6">POSTGRESQL</text>
+<line x1="50.0" y1="180.3" x2="950.0" y2="180.3" stroke="#D3BF9E" stroke-width="1.4"/>
+<text x="56.0" y="210.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="500" fill="#7B2C34" text-anchor="start" font-style="italic">First attempt</text>
+<rect x="52.0" y="226.3" width="236.4" height="142.9" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="253.1" r="16" fill="#7B2C34"/>
+<text x="85.0" y="259.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">1</text>
+<text x="112.0" y="263.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Save → localId L</text>
+<text x="70.0" y="293.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">generated once for this</text>
+<text x="70.0" y="319.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">submission, retained for</text>
+<text x="70.0" y="344.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">retries</text>
+<rect x="338.4" y="284.3" width="288.5" height="117.4" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="371.4" cy="311.1" r="16" fill="#7B2C34"/>
+<text x="371.4" y="317.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2</text>
+<text x="398.4" y="321.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Look up (user, L)</text>
+<text x="356.4" y="351.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">none found; every item id must</text>
+<text x="356.4" y="377.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">belong to you (else 400)</text>
+<path d="M290.4,256.3 L295.9,256.3 Q301.4,256.3 301.4,261.8 L301.4,304.3 Q301.4,314.3 311.4,314.3 L334.4,314.3" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#order-idempotency-ah-flow)"/>
+<rect x="676.9" y="342.3" width="271.1" height="169.2" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<circle cx="709.9" cy="369.1" r="16" fill="#7B2C34"/>
+<text x="709.9" y="375.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">3</text>
+<text x="736.9" y="379.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">Number, insert,</text>
+<text x="736.9" y="405.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">commit</text>
+<text x="694.9" y="435.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">today&#x27;s counter + 1 →</text>
+<text x="694.9" y="461.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">ORD-…-0007; INSERT order,</text>
+<text x="694.9" y="486.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">lines, activity; COMMIT</text>
+<path d="M628.9,314.3 L634.4,314.3 Q639.9,314.3 639.9,319.8 L639.9,362.3 Q639.9,372.3 649.9,372.3 L672.9,372.3" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#order-idempotency-ah-flow)"/>
+<rect x="52.0" y="431.6" width="236.4" height="91.8" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="458.5" r="16" fill="#7B2C34"/>
+<text x="85.0" y="464.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">4</text>
+<text x="112.0" y="469.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">201 Created</text>
+<text x="70.0" y="498.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">the Orders list refetches</text>
+<path d="M674.9,404.3 L669.4,404.3 Q663.9,404.3 663.9,409.8 L663.9,451.6 Q663.9,461.6 653.9,461.6 L292.4,461.6" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#order-idempotency-ah-reply)"/>
+<line x1="50.0" y1="557.5" x2="950.0" y2="557.5" stroke="#D3BF9E" stroke-width="1.4"/>
+<text x="56.0" y="587.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="500" fill="#7B2C34" text-anchor="start" font-style="italic">The response was lost, so the person taps Retry</text>
+<rect x="52.0" y="603.5" width="236.4" height="143.6" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="630.3" r="16" fill="#7B2C34"/>
+<text x="85.0" y="636.4" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">5</text>
+<text x="112.0" y="640.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Same request,</text>
+<text x="112.0" y="667.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">same L</text>
+<text x="70.0" y="696.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Retry reuses the mutation&#x27;s</text>
+<text x="70.0" y="722.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">variables</text>
+<rect x="338.4" y="661.5" width="288.5" height="91.8" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="371.4" cy="688.3" r="16" fill="#7B2C34"/>
+<text x="371.4" y="694.4" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">6</text>
+<text x="398.4" y="698.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Look up (user, L)</text>
+<text x="356.4" y="728.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">found: return it</text>
+<path d="M290.4,633.5 L295.9,633.5 Q301.4,633.5 301.4,639.0 L301.4,681.5 Q301.4,691.5 311.4,691.5 L334.4,691.5" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#order-idempotency-ah-flow)"/>
+<rect x="52.0" y="777.1" width="236.4" height="118.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="803.9" r="16" fill="#7B2C34"/>
+<text x="85.0" y="810.0" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">7</text>
+<text x="112.0" y="814.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">200 OK, the</text>
+<text x="112.0" y="840.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">same order</text>
+<text x="70.0" y="870.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">nothing new is written</text>
+<path d="M336.4,723.5 L330.9,723.5 Q325.4,723.5 325.4,729.0 L325.4,797.1 Q325.4,807.1 315.4,807.1 L292.4,807.1" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#order-idempotency-ah-reply)"/>
+<line x1="50.0" y1="929.1" x2="950.0" y2="929.1" stroke="#D3BF9E" stroke-width="1.4"/>
+<text x="56.0" y="959.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="500" fill="#7B2C34" text-anchor="start" font-style="italic">Two identical requests arrive at the same moment</text>
+<rect x="338.4" y="975.1" width="288.5" height="168.5" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="371.4" cy="1002.0" r="16" fill="#7B2C34"/>
+<text x="371.4" y="1008.0" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">8</text>
+<text x="398.4" y="1012.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Both look up: none</text>
+<text x="356.4" y="1042.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">both take a number from the daily</text>
+<text x="356.4" y="1067.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">counter; the second waits on the</text>
+<text x="356.4" y="1093.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">counter row until the first</text>
+<text x="356.4" y="1119.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">commits</text>
+<rect x="676.9" y="1033.1" width="271.1" height="143.6" rx="12" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.8"/>
+<circle cx="709.9" cy="1060.0" r="16" fill="#7B2C34"/>
+<text x="709.9" y="1066.0" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">9</text>
+<text x="736.9" y="1070.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">The unique index</text>
+<text x="736.9" y="1096.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">stops the second</text>
+<text x="694.9" y="1126.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">uq_orders_user_id_local_id →</text>
+<text x="694.9" y="1152.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">IntegrityError</text>
+<path d="M628.9,1005.1 L634.4,1005.1 Q639.9,1005.1 639.9,1010.6 L639.9,1053.1 Q639.9,1063.1 649.9,1063.1 L672.9,1063.1" fill="none" stroke="#B2423B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#order-idempotency-ah-fail)"/>
+<rect x="338.4" y="1173.6" width="288.5" height="117.4" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="371.4" cy="1200.4" r="16" fill="#7B2C34"/>
+<text x="371.4" y="1206.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">10</text>
+<text x="398.4" y="1210.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">The loser rolls back</text>
+<text x="356.4" y="1240.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">its number is released; it returns</text>
+<text x="356.4" y="1266.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">the winner&#x27;s order with 200</text>
+<path d="M674.9,1095.1 L669.4,1095.1 Q663.9,1095.1 663.9,1100.6 L663.9,1193.6 Q663.9,1203.6 653.9,1203.6 L630.9,1203.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#order-idempotency-ah-flow)"/>
+<path d="M43.0,1345.0 H944.0 Q960.0,1345.0 960.0,1361.0 V1459.7 Q960.0,1475.7 944.0,1475.7 H43.0 Q40.0,1475.7 40.0,1472.7 V1348.0 Q40.0,1345.0 43.0,1345.0 Z" fill="#EBDDC6" stroke="none" stroke-width="1.4"/>
+<text x="58.0" y="1373.0" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#7B2C34" text-anchor="start" letter-spacing="1.6">LIMITS</text>
+<text x="58.0" y="1403.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">Requests without a localId (app builds older than this branch) always create a new order. A new confirmed submission</text>
+<text x="58.0" y="1428.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">uses a new key; an uncertain submission retains its original key. The index preserves later legacy duplicate rows by</text>
+<text x="58.0" y="1454.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">exempting their ids; a replay with changed data still returns the original.</text>
+</svg>

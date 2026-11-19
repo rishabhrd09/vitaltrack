@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1781" width="1000" height="1781" role="img" aria-labelledby="auth-session-title auth-session-desc">
+<title id="auth-session-title">Signing in and staying signed in</title>
+<desc id="auth-session-desc">Login returns a 30-minute access token and a 30-day refresh token, stored in SecureStore. Every request sends the access token; the server checks it and the user row. When it expires the app makes one shared refresh call; the server claims the old refresh token with a conditional update and issues a new pair. Logout clears local credentials without waiting for best-effort server revocation (30 s overall). Server logout revokes the refresh token only. A password change or reset increases session_version, which invalidates every older token.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="auth-session-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="auth-session-ah-flow" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#4B3E35"/></marker><marker id="auth-session-ah-reply" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7C6B5C"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#auth-session-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">Signing in and staying signed in</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Two tokens: a short access token for every call, and a single-use refresh token to get a new pair.</text>
+<rect x="40.0" y="122.3" width="277.8" height="1629.0" rx="14" fill="#F4F0E3" stroke="#CDD2B5" stroke-width="1.2"/>
+<rect x="343.8" y="122.3" width="312.5" height="1629.0" rx="14" fill="#F2EFE7" stroke="#C2C9CB" stroke-width="1.2"/>
+<rect x="682.2" y="122.3" width="277.8" height="1629.0" rx="14" fill="#F7F0E2" stroke="#E4CEAE" stroke-width="1.2"/>
+<text x="56.0" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#557629" text-anchor="start" letter-spacing="1.6">PHONE</text>
+<text x="359.8" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#2E5677" text-anchor="start" letter-spacing="1.6">API</text>
+<text x="698.2" y="152.3" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace" font-size="13" font-weight="600" fill="#A9680F" text-anchor="start" letter-spacing="1.6">POSTGRESQL</text>
+<line x1="50.0" y1="180.3" x2="950.0" y2="180.3" stroke="#D3BF9E" stroke-width="1.4"/>
+<text x="56.0" y="210.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="500" fill="#7B2C34" text-anchor="start" font-style="italic">Sign in</text>
+<rect x="52.0" y="226.3" width="253.8" height="117.4" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="253.1" r="16" fill="#7B2C34"/>
+<text x="85.0" y="259.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">1</text>
+<text x="112.0" y="263.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">POST /auth/login</text>
+<text x="70.0" y="293.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">identifier (email or username)</text>
+<text x="70.0" y="319.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">and password</text>
+<rect x="355.8" y="284.3" width="288.5" height="142.9" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="388.8" cy="311.1" r="16" fill="#7B2C34"/>
+<text x="388.8" y="317.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">2</text>
+<text x="415.8" y="321.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Check the password</text>
+<text x="373.8" y="351.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">user row locked (SELECT … FOR</text>
+<text x="373.8" y="377.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">UPDATE); Argon2 verify in a</text>
+<text x="373.8" y="402.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">worker thread</text>
+<path d="M307.8,256.3 L313.3,256.3 Q318.8,256.3 318.8,261.8 L318.8,304.3 Q318.8,314.3 328.8,314.3 L351.8,314.3" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#auth-session-ah-flow)"/>
+<rect x="694.2" y="342.3" width="253.8" height="117.4" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<circle cx="727.2" cy="369.1" r="16" fill="#7B2C34"/>
+<text x="727.2" y="375.2" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">3</text>
+<text x="754.2" y="379.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">Record the session</text>
+<text x="712.2" y="409.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">INSERT refresh_tokens (jti);</text>
+<text x="712.2" y="435.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">last_login; activity user_login</text>
+<path d="M646.2,314.3 L651.7,314.3 Q657.2,314.3 657.2,319.8 L657.2,362.3 Q657.2,372.3 667.2,372.3 L690.2,372.3" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#auth-session-ah-flow)"/>
+<rect x="52.0" y="457.2" width="253.8" height="117.4" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="484.0" r="16" fill="#7B2C34"/>
+<text x="85.0" y="490.1" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">4</text>
+<text x="112.0" y="494.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Keep both tokens</text>
+<text x="70.0" y="524.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">SecureStore: access 30 min,</text>
+<text x="70.0" y="549.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">refresh 30 days</text>
+<path d="M692.2,404.3 L686.7,404.3 Q681.2,404.3 681.2,409.8 L681.2,477.2 Q681.2,487.2 671.2,487.2 L309.8,487.2" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#auth-session-ah-reply)"/>
+<line x1="50.0" y1="608.6" x2="950.0" y2="608.6" stroke="#D3BF9E" stroke-width="1.4"/>
+<text x="56.0" y="638.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="500" fill="#7B2C34" text-anchor="start" font-style="italic">Every request</text>
+<rect x="52.0" y="654.6" width="253.8" height="118.1" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="681.4" r="16" fill="#7B2C34"/>
+<text x="85.0" y="687.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">5</text>
+<text x="112.0" y="691.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Authorization:</text>
+<text x="112.0" y="718.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">Bearer &lt;access&gt;</text>
+<text x="70.0" y="748.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">added by services/api.ts</text>
+<rect x="355.8" y="712.6" width="288.5" height="168.5" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="388.8" cy="739.4" r="16" fill="#7B2C34"/>
+<text x="388.8" y="745.5" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">6</text>
+<text x="415.8" y="749.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">get_current_user</text>
+<text x="373.8" y="779.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">signature, expiry, type,</text>
+<text x="373.8" y="805.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">session_version, active; verified</text>
+<text x="373.8" y="830.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">only when enforcement and email</text>
+<text x="373.8" y="856.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">are on → 401 / 403</text>
+<path d="M307.8,684.6 L313.3,684.6 Q318.8,684.6 318.8,690.1 L318.8,732.6 Q318.8,742.6 328.8,742.6 L351.8,742.6" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#auth-session-ah-flow)"/>
+<line x1="50.0" y1="915.1" x2="950.0" y2="915.1" stroke="#D3BF9E" stroke-width="1.4"/>
+<text x="56.0" y="945.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="500" fill="#7B2C34" text-anchor="start" font-style="italic">When the access token expires</text>
+<rect x="52.0" y="961.1" width="253.8" height="143.6" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="987.9" r="16" fill="#7B2C34"/>
+<text x="85.0" y="994.0" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">7</text>
+<text x="112.0" y="998.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">401 → one shared</text>
+<text x="112.0" y="1024.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">refresh</text>
+<text x="70.0" y="1054.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">all waiting calls share it; 30 s</text>
+<text x="70.0" y="1080.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">limit</text>
+<rect x="694.2" y="1019.1" width="253.8" height="245.9" rx="12" fill="#F3E8D6" stroke="#A9680F" stroke-width="1.8"/>
+<circle cx="727.2" cy="1045.9" r="16" fill="#7B2C34"/>
+<text x="727.2" y="1052.0" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">8</text>
+<text x="754.2" y="1056.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">Claim the refresh</text>
+<text x="754.2" y="1082.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#A9680F" text-anchor="start">token once</text>
+<text x="712.2" y="1112.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">user row locked,</text>
+<text x="712.2" y="1138.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">session_version checked;</text>
+<text x="712.2" y="1163.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">UPDATE … SET is_revoked</text>
+<text x="712.2" y="1189.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">WHERE jti AND not</text>
+<text x="712.2" y="1214.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">revoked AND not expired; a</text>
+<text x="712.2" y="1240.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">second use gets 401</text>
+<path d="M307.8,991.1 L313.3,991.1 Q318.8,991.1 318.8,996.6 L318.8,1039.1 Q318.8,1049.1 328.8,1049.1 L690.2,1049.1" fill="none" stroke="#4B3E35" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#auth-session-ah-flow)"/>
+<rect x="52.0" y="1134.7" width="253.8" height="220.3" rx="12" fill="#EAE9D8" stroke="#557629" stroke-width="1.8"/>
+<circle cx="85.0" cy="1161.5" r="16" fill="#7B2C34"/>
+<text x="85.0" y="1167.6" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">9</text>
+<text x="112.0" y="1172.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">New pair stored,</text>
+<text x="112.0" y="1198.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#557629" text-anchor="start">call retried once</text>
+<text x="70.0" y="1228.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">stored only if the credential</text>
+<text x="70.0" y="1253.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">generation still matches;</text>
+<text x="70.0" y="1279.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">refresh 401/403 → signed</text>
+<text x="70.0" y="1304.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">out; timeout/5xx → keep</text>
+<text x="70.0" y="1330.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">tokens, fail the call</text>
+<path d="M692.2,1081.1 L686.7,1081.1 Q681.2,1081.1 681.2,1086.6 L681.2,1154.7 Q681.2,1164.7 671.2,1164.7 L309.8,1164.7" fill="none" stroke="#7C6B5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#auth-session-ah-reply)"/>
+<line x1="50.0" y1="1389.0" x2="950.0" y2="1389.0" stroke="#D3BF9E" stroke-width="1.4"/>
+<text x="56.0" y="1419.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="500" fill="#7B2C34" text-anchor="start" font-style="italic">Log out, change or reset the password</text>
+<rect x="52.0" y="1435.0" width="592.2" height="142.9" rx="12" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.8"/>
+<circle cx="85.0" cy="1461.8" r="16" fill="#7B2C34"/>
+<text x="85.0" y="1467.9" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">10</text>
+<text x="112.0" y="1472.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#B2423B" text-anchor="start">Logout</text>
+<text x="70.0" y="1502.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">clear phone tokens and caches; captured credentials are revoked separately,</text>
+<text x="70.0" y="1527.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">best effort (30 s). New login waits only for local cleanup. Existing access</text>
+<text x="70.0" y="1553.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">tokens still expire normally (at most 30 min).</text>
+<rect x="355.8" y="1607.9" width="592.2" height="117.4" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<circle cx="388.8" cy="1634.7" r="16" fill="#7B2C34"/>
+<text x="388.8" y="1640.8" font-family="'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" font-size="17.92" font-weight="500" fill="#FBF6EC" text-anchor="middle">11</text>
+<text x="415.8" y="1645.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="21" font-weight="600" fill="#2E5677" text-anchor="start">Password change or reset</text>
+<text x="373.8" y="1675.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">session_version + 1 and every refresh row revoked: all older tokens fail at</text>
+<text x="373.8" y="1700.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="400" fill="#4B3E35" text-anchor="start">their next use</text>
+</svg>

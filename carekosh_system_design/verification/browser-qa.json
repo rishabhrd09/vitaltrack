@@ -1,0 +1,197 @@
+{
+  "diagrams": [
+    {
+      "name": "async-model.svg",
+      "texts": 37,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "auth-session.svg",
+      "texts": 59,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "backend-layers.svg",
+      "texts": 80,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "database-erd.svg",
+      "texts": 90,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "dependency-graph.svg",
+      "texts": 40,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "dev-workflow.svg",
+      "texts": 46,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "domains-email.svg",
+      "texts": 39,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "environments.svg",
+      "texts": 51,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "inventory-concurrency.svg",
+      "texts": 46,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "local-setup.svg",
+      "texts": 42,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "middleware-onion.svg",
+      "texts": 32,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "mobile-cache.svg",
+      "texts": 42,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "order-idempotency.svg",
+      "texts": 54,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "order-status.svg",
+      "texts": 36,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "product-journey.svg",
+      "texts": 91,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "release-gate.svg",
+      "texts": 57,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "release-pipeline.svg",
+      "texts": 46,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "request-journey.svg",
+      "texts": 61,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "request-lifecycle.svg",
+      "texts": 61,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "request-rollback.svg",
+      "texts": 29,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "system-context.svg",
+      "texts": 56,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    },
+    {
+      "name": "voice-flow.svg",
+      "texts": 62,
+      "overflow": [],
+      "collisions": [],
+      "fonts": true
+    }
+  ],
+  "pages": [
+    {
+      "name": "01_system_overview_and_api_flows.html",
+      "figures": 15,
+      "enlargeButtons": 15,
+      "duplicateIds": [],
+      "badReferences": [],
+      "desktopOverflow": false,
+      "mobileOverflow": false
+    },
+    {
+      "name": "02_backend_fastapi_interview_guide.html",
+      "figures": 11,
+      "enlargeButtons": 11,
+      "duplicateIds": [],
+      "badReferences": [],
+      "desktopOverflow": false,
+      "mobileOverflow": false
+    },
+    {
+      "name": "03_developer_onboarding_guide.html",
+      "figures": 5,
+      "enlargeButtons": 5,
+      "duplicateIds": [],
+      "badReferences": [],
+      "desktopOverflow": false,
+      "mobileOverflow": false
+    },
+    {
+      "name": "04_environments_and_deployment.html",
+      "figures": 4,
+      "enlargeButtons": 4,
+      "duplicateIds": [],
+      "badReferences": [],
+      "desktopOverflow": false,
+      "mobileOverflow": false
+    }
+  ],
+  "consoleErrors": []
+}

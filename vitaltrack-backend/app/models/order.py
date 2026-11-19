@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Integer, String, Text
+from sqlalchemy import CheckConstraint, BigInteger, DateTime, Enum as SQLEnum, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin, UUIDMixin
@@ -27,10 +27,29 @@ class OrderStatus(str, Enum):
     DECLINED = "declined"
 
 
+class OrderNumberCounter(Base):
+    """Daily public numbering survives order/account deletion."""
+
+    __tablename__ = "order_number_counters"
+
+    day: Mapped[str] = mapped_column(String(8), primary_key=True)
+    last_value: Mapped[int] = mapped_column(BigInteger, nullable=False)
+
+
 class Order(UUIDMixin, TimestampMixin, Base):
     """Order/purchase request model - matches frontend SavedOrder interface."""
 
     __tablename__ = "orders"
+    __table_args__ = (
+        # One order per submission key (migration 0010); keyless orders are exempt.
+        Index(
+            "uq_orders_user_id_local_id",
+            "user_id",
+            "local_id",
+            unique=True,
+            postgresql_where=text("local_id IS NOT NULL"),
+        ),
+    )
 
     # Owner
     user_id: Mapped[str] = mapped_column(
@@ -101,7 +120,7 @@ class Order(UUIDMixin, TimestampMixin, Base):
         nullable=True,
     )
 
-    # Sync tracking (for offline-first)
+    # Client submission key: a retry with the same key returns this order
     local_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         nullable=True,
@@ -128,6 +147,7 @@ class OrderItem(UUIDMixin, TimestampMixin, Base):
     """Order line item - matches frontend OrderItem interface."""
 
     __tablename__ = "order_items"
+    __table_args__ = (CheckConstraint("quantity > 0", name="chk_order_items_quantity_positive"),)
 
     # Parent order
     order_id: Mapped[str] = mapped_column(

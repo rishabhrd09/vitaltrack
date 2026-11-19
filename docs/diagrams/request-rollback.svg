@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1253" width="1500" height="1253" role="img" aria-labelledby="t d">
+<title id="t">Error and rollback paths</title>
+<desc id="d">Three failure paths: invalid schema fields stop the request before the handler, after the dependencies may already have queried the user; an ownership miss returns 404; and an order apply that discovers a missing item raises 409 before it writes anything, and get_db rolls the transaction back. A failure after the order is claimed is rolled back the same way, so no partial stock change is kept.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2B3138"/></marker><marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="#2B3138"/></marker></defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<text x="40.0" y="52.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#16191D" text-anchor="start">When a request fails: what is kept and what is undone</text>
+<text x="40.0" y="84.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#4A5260" text-anchor="start">Rollback undoes uncommitted work only. A response failure after commit cannot undo a mutation.</text>
+<rect x="52.0" y="120.0" width="331.0" height="70.0" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="217.5" y="150.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#1F5FA8" text-anchor="middle">Client (app or API test)</text>
+<rect x="407.0" y="120.0" width="331.0" height="70.0" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="572.5" y="150.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#1F5FA8" text-anchor="middle">FastAPI (validation + Depends)</text>
+<rect x="762.0" y="120.0" width="331.0" height="70.0" rx="12" fill="#E7F0FB" stroke="#1F5FA8" stroke-width="2"/>
+<text x="927.5" y="150.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#1F5FA8" text-anchor="middle">Handler orders.apply_order_to_stock</text>
+<rect x="1117.0" y="120.0" width="331.0" height="70.0" rx="12" fill="#FFF3DB" stroke="#8F5B00" stroke-width="2"/>
+<text x="1282.5" y="150.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#8F5B00" text-anchor="middle">PostgreSQL</text>
+<line x1="217.5" y1="190.0" x2="217.5" y2="1213.2" stroke="#9AA2AE" stroke-width="1.6" stroke-dasharray="6 6"/>
+<line x1="572.5" y1="190.0" x2="572.5" y2="1213.2" stroke="#9AA2AE" stroke-width="1.6" stroke-dasharray="6 6"/>
+<line x1="927.5" y1="190.0" x2="927.5" y2="1213.2" stroke="#9AA2AE" stroke-width="1.6" stroke-dasharray="6 6"/>
+<line x1="1282.5" y1="190.0" x2="1282.5" y2="1213.2" stroke="#9AA2AE" stroke-width="1.6" stroke-dasharray="6 6"/>
+<line x1="30.0" y1="214.0" x2="1470.0" y2="214.0" stroke="#C9CED6" stroke-width="1.2"/>
+<text x="44.0" y="236.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#4A5260" text-anchor="start" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">A · invalid schema fields — auth may SELECT first; handler never runs</text>
+<path d="M 217.5 268.0 L 564.5 268.0" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="395.0" y="258.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">1. POST /api/v1/items  {&quot;name&quot;: &quot;&quot;}</text>
+<path d="M 572.5 326.0 L 225.5 326.0" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<text x="395.0" y="316.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">2. 422 {&quot;error&quot;:&quot;Validation Error&quot;,&quot;details&quot;:[{&quot;field&quot;:&quot;body.name&quot;,…}]}</text>
+<line x1="30.0" y1="374.0" x2="1470.0" y2="374.0" stroke="#C9CED6" stroke-width="1.2"/>
+<text x="44.0" y="396.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#4A5260" text-anchor="start" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">B · someone else&#x27;s id — ownership is a WHERE clause</text>
+<path d="M 217.5 428.0 L 564.5 428.0" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="395.0" y="418.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">3. GET /api/v1/items/&lt;another user&#x27;s id&gt;</text>
+<path d="M 572.5 486.0 L 1274.5 486.0" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="927.5" y="476.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">4. handler: SELECT … WHERE id = :id AND user_id = :me</text>
+<path d="M 572.5 544.0 L 225.5 544.0" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<text x="395.0" y="534.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">5. 404 {&quot;detail&quot;:&quot;Item not found&quot;} (not 403: existence is not revealed)</text>
+<line x1="30.0" y1="592.0" x2="1470.0" y2="592.0" stroke="#C9CED6" stroke-width="1.2"/>
+<text x="44.0" y="614.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#4A5260" text-anchor="start" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">C · apply an order whose item was deleted — 409 before any write; get_db rolls back</text>
+<path d="M 217.5 646.0 L 919.5 646.0" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="572.5" y="636.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">6. POST /api/v1/orders/{id}/apply</text>
+<path d="M 927.5 704.0 L 1274.5 704.0" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1105.0" y="694.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">7. SELECT order (status must be received)</text>
+<path d="M 927.5 762.0 L 1274.5 762.0" fill="none" stroke="#2B3138" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="1105.0" y="752.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">8. check every line&#x27;s item still exists</text>
+<path d="M 1282.5 820.0 L 935.5 820.0" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<text x="1105.0" y="810.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">9. one item missing</text>
+<path d="M 927.5 878.0 L 580.5 878.0" fill="none" stroke="#A8261D" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="750.0" y="868.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">10. raise HTTPException(409, missing: Suction catheter 12FR)</text>
+<path d="M 572.5 936.0 L 1274.5 936.0" fill="none" stroke="#A8261D" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="927.5" y="926.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">11. get_db sees the exception → ROLLBACK</text>
+<path d="M 572.5 994.0 L 225.5 994.0" fill="none" stroke="#2B3138" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<text x="395.0" y="984.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="500" fill="#16191D" text-anchor="middle" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" stroke-linejoin="round">12. 409 — order still &#x27;received&#x27;, every quantity unchanged</text>
+<rect x="778.4" y="1034.0" width="653.2" height="59.6" rx="8" fill="#FCEBEA" stroke="#A8261D" stroke-width="1.6"/>
+<text x="788.4" y="1059.0" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">If a later step fails after the order was claimed (status UPDATE) the same</text>
+<text x="788.4" y="1078.8" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">rollback undoes the claim too: no partial stock application is kept.</text>
+<rect x="68.4" y="1119.6" width="653.2" height="59.6" rx="8" fill="#FFF8D6" stroke="#7A6A00" stroke-width="1.6"/>
+<text x="78.4" y="1144.6" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">Unexpected exceptions return a generic 500 without SQL details. Reproduced 7 Oct</text>
+<text x="78.4" y="1164.4" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="400" fill="#16191D" text-anchor="start">and re-run 8 Oct: those 500 responses lack X-Request-ID and the security headers.</text>
+</svg>

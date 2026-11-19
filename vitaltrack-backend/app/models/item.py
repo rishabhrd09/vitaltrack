@@ -6,7 +6,7 @@ Database model for inventory items (matches frontend types exactly)
 from datetime import date
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text
+from sqlalchemy import CheckConstraint, Boolean, Date, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin, UUIDMixin
@@ -20,6 +20,7 @@ class Item(UUIDMixin, TimestampMixin, Base):
     """Inventory item model - matches frontend Item interface exactly."""
 
     __tablename__ = "items"
+    __table_args__ = (CheckConstraint("quantity >= 0", name="chk_items_quantity_non_negative"),)
 
     # Owner
     user_id: Mapped[str] = mapped_column(

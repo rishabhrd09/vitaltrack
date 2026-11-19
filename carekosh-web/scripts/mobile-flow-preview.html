@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>CareKosh mobile flow preview</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #e9edf3;
+        color: #233045;
+        font: 14px system-ui;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      button,
+      a {
+        padding: 10px 14px;
+        border: 1px solid #c6d2e3;
+        border-radius: 8px;
+        background: white;
+        color: #233045;
+      }
+      button[aria-pressed="true"] {
+        background: #3675d0;
+        color: white;
+      }
+      output {
+        width: 100%;
+      }
+      iframe {
+        display: block;
+        margin: auto;
+        border: 0;
+        background: white;
+        box-shadow: 0 4px 24px #23304522;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <button data-width="320" aria-pressed="false">Compact 320</button>
+      <button data-width="390" aria-pressed="true">Mobile 390</button>
+      <button data-width="414" aria-pressed="false">Mobile 414</button>
+      <button id="restart">Start at landing page</button>
+      <button id="short">Short viewport</button>
+      <a href="/">Open web app</a>
+      <output aria-live="polite">Loading mobile preview…</output>
+    </header>
+    <iframe title="CareKosh mobile journey" width="390" height="844"></iframe>
+    <script>
+      // Local-only review tool. Real links navigate inside the fixed-width frame;
+      // no app content, authentication, or production behavior is overridden.
+      const frame = document.querySelector("iframe");
+      const result = document.querySelector("output");
+      const landing = `http://127.0.0.1:${["5189", "5176"].includes(location.port) ? "5176" : "5175"}/`;
+      const start = new URLSearchParams(location.search).get("start");
+      let width = 390;
+      function check() {
+        try {
+          const doc = frame.contentDocument;
+          if (!doc) throw new Error("Cross-origin landing");
+          const overflow = doc.documentElement.scrollWidth > width;
+          const dialogs = [...doc.querySelectorAll("dialog[open]")];
+          result.textContent = `${width}px · ${frame.contentWindow.location.pathname} · ${overflow || dialogs.some((d) => d.scrollWidth > d.clientWidth + 1) ? "OVERFLOW DETECTED" : "No horizontal overflow"}`;
+        } catch {
+          result.textContent = `${width}px · Landing page on a separate local origin`;
+        }
+      }
+      frame.addEventListener("load", check);
+      // A bounded local check survives navigation between the two origins and
+      // React route changes without retaining observers from unloaded frames.
+      const monitor = setInterval(check, 500);
+      window.addEventListener("pagehide", () => clearInterval(monitor));
+      document.querySelectorAll("[data-width]").forEach((button) =>
+        button.addEventListener("click", () => {
+          width = Number(button.dataset.width);
+          frame.width = width;
+          document
+            .querySelectorAll("[data-width]")
+            .forEach((b) =>
+              b.setAttribute("aria-pressed", String(b === button)),
+            );
+          requestAnimationFrame(check);
+        }),
+      );
+      document.querySelector("#restart").onclick = () => {
+        frame.src = landing;
+      };
+      document.querySelector("#short").onclick = () => {
+        frame.height = frame.height === "844" ? "480" : "844";
+        document.querySelector("#short").textContent =
+          frame.height === "480" ? "Tall viewport" : "Short viewport";
+        check();
+      };
+      frame.src = [
+        "/login",
+        "/register",
+        "/",
+        "/inventory",
+        "/orders",
+      ].includes(start)
+        ? start
+        : landing;
+    </script>
+  </body>
+</html>

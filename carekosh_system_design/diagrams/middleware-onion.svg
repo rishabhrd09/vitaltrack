@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 881" width="1000" height="881" role="img" aria-labelledby="middleware-onion-title middleware-onion-desc">
+<title id="middleware-onion-title">The layers around every request</title>
+<desc id="middleware-onion-desc">Nested layers a request passes through, outermost first: ServerErrorMiddleware, AIBodyLimit, security headers, request id, CORS, ExceptionMiddleware, then the router with its dependencies and handler. The right column lists what each layer can send back. Crashes become a plain 500 from the outermost layer, without the request id or security headers.</desc>
+<style data-fonts="standalone">@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&amp;display=swap");</style>
+<defs><pattern id="middleware-onion-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#CDBB9C" opacity="0.6"/></pattern><marker id="middleware-onion-ah-main" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="4.6" markerHeight="4.6" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0,0.6 L10,5 L0,9.4 L2.4,5 Z" fill="#7B2C34"/></marker></defs>
+<rect width="100%" height="100%" fill="#FBF6EC"/>
+<rect width="100%" height="100%" fill="url(#middleware-onion-dots)"/>
+<text x="40.0" y="58.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="30" font-weight="500" fill="#1A1512" text-anchor="start">The layers around every request</text>
+<text x="40.0" y="98.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18.5" font-weight="400" fill="#7C6B5C" text-anchor="start" font-style="italic">Each middleware wraps the previous one, so the last one added (AIBodyLimit) is the outermost of ours.</text>
+<rect x="40.0" y="158.3" width="520.0" height="620.0" rx="18" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.6"/>
+<text x="58.0" y="191.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#6E5D4E" text-anchor="start">ServerErrorMiddleware · Starlette</text>
+<rect x="64.0" y="210.3" width="472.0" height="546.0" rx="18" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.6"/>
+<text x="82.0" y="243.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#2E5677" text-anchor="start">AIBodyLimit · pure ASGI</text>
+<rect x="88.0" y="262.3" width="424.0" height="472.0" rx="18" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.6"/>
+<text x="106.0" y="295.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#2E5677" text-anchor="start">Security headers</text>
+<rect x="112.0" y="314.3" width="376.0" height="398.0" rx="18" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.6"/>
+<text x="130.0" y="347.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#2E5677" text-anchor="start">X-Request-ID</text>
+<rect x="136.0" y="366.3" width="328.0" height="324.0" rx="18" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.6"/>
+<text x="154.0" y="399.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#2E5677" text-anchor="start">CORS</text>
+<rect x="160.0" y="418.3" width="280.0" height="250.0" rx="18" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.6"/>
+<text x="178.0" y="451.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="18" font-weight="600" fill="#6E5D4E" text-anchor="start">ExceptionMiddleware · Starlette</text>
+<rect x="184.0" y="470.3" width="232.0" height="176.0" rx="12" fill="#EEE2DA" stroke="#7B2C34" stroke-width="1.8"/>
+<text x="202.0" y="505.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#7B2C34" text-anchor="start">Router and handler</text>
+<text x="202.0" y="533.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">route match, JSON parsed</text>
+<text x="202.0" y="556.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">get_db, get_current_user</text>
+<text x="202.0" y="580.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">field validation → 422</text>
+<text x="202.0" y="603.6" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">your code</text>
+<rect x="590.0" y="158.3" width="370.0" height="104.6" rx="12" fill="#F4E4DA" stroke="#B2423B" stroke-width="1.8"/>
+<text x="605.0" y="190.7" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#B2423B" text-anchor="start">ServerErrorMiddleware</text>
+<text x="605.0" y="218.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">unexpected crash → plain 500 {detail, timestamp};</text>
+<text x="605.0" y="241.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">no X-Request-ID or security headers (A-13)</text>
+<rect x="590.0" y="276.9" width="370.0" height="151.5" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="605.0" y="309.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#2E5677" text-anchor="start">AIBodyLimit</text>
+<text x="605.0" y="337.0" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">body over 2 MB → 413 (12 KB for AI JSON); /ai</text>
+<text x="605.0" y="360.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">without a token → 401 before reading the body;</text>
+<text x="605.0" y="383.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">slow AI upload → 408; these replies skip the inner</text>
+<text x="605.0" y="407.2" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">header layers</text>
+<rect x="590.0" y="442.4" width="370.0" height="128.0" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="605.0" y="474.8" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#2E5677" text-anchor="start">Headers and request id</text>
+<text x="605.0" y="502.4" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">nosniff, DENY, Referrer-Policy, Cache-Control:</text>
+<text x="605.0" y="525.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">no-store (HSTS in production); echo or create</text>
+<text x="605.0" y="549.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">X-Request-ID</text>
+<rect x="590.0" y="584.4" width="370.0" height="104.6" rx="12" fill="#E6E6E0" stroke="#2E5677" stroke-width="1.8"/>
+<text x="605.0" y="616.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#2E5677" text-anchor="start">CORS</text>
+<text x="605.0" y="644.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">answers browser preflights; not an access control;</text>
+<text x="605.0" y="667.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">no effect on the Android app</text>
+<rect x="590.0" y="703.0" width="370.0" height="128.0" rx="12" fill="#EDE7DC" stroke="#6E5D4E" stroke-width="1.8"/>
+<text x="605.0" y="735.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="19" font-weight="600" fill="#6E5D4E" text-anchor="start">ExceptionMiddleware</text>
+<text x="605.0" y="763.1" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">handled errors: 4xx, IntegrityError → 409,</text>
+<text x="605.0" y="786.5" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">validation → 422, rate limit → 429; they pass</text>
+<text x="605.0" y="809.9" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="16.5" font-weight="400" fill="#4B3E35" text-anchor="start">back out through the header layers</text>
+<path d="M66.0,128.3 L66.0,154.3" fill="none" stroke="#7B2C34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#middleware-onion-ah-main)"/>
+<text x="80.0" y="146.3" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-size="15.5" font-weight="400" fill="#7B2C34" text-anchor="start" font-style="italic">request in</text>
+</svg>

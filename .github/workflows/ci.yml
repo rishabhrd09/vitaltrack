@@ -53,6 +53,15 @@ jobs:
     runs-on: ubuntu-latest
     
     services:
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
       postgres:
         image: postgres:16
         env:
@@ -74,28 +83,42 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: 'pip'
           cache-dependency-path: vitaltrack-backend/requirements.txt
       
       - name: Install dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
           cd vitaltrack-backend
           pip install -r requirements.txt
       
       - name: Run linting (Ruff)
         run: |
           cd vitaltrack-backend
-          ruff check app/ tests/ scripts/ --output-format=github
+          ruff check app/ tests/ unit_tests/ scripts/ --output-format=github
       
       - name: Run tests
         env:
+          # Python 3.12 monitoring records resumed async handlers reliably.
+          # The legacy tracer undercounted code after awaits in local checks.
+          COVERAGE_CORE: sysmon
+          TEST_REDIS_URL: redis://127.0.0.1:6379/0
+          RATE_LIMIT_STORAGE_URI: memory://
           DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
           SECRET_KEY: test-secret-key-for-ci-testing-minimum-32-chars-long
           ENVIRONMENT: testing
         run: |
           cd vitaltrack-backend
-          python -m pytest tests/ -q --cov=app --cov-report=term-missing --cov-report=json
+          python -m pytest tests/ unit_tests/ -q
+          python -m pytest tests/ unit_tests/ -q --migrated-schema --cov=app --cov-report=term-missing --cov-report=json
+
+      - name: Verify deterministic supply rules and timing comparison
+        run: |
+          cd vitaltrack-backend
+          python scripts/evaluate_supply_review.py scripts/fixtures/supply_review_eval.json --run-rules
+          python scripts/compare_benchmarks.py scripts/fixtures/timing_baseline.json scripts/fixtures/timing_baseline.json
       
       - name: Verify API route count
         env:
@@ -104,14 +127,18 @@ jobs:
           ENVIRONMENT: testing
         run: |
           cd vitaltrack-backend
-          python scripts/check_api_routes.py --expected 39
+          python scripts/check_api_routes.py --expected 65
 
       - name: Verify item/order coverage floors
         run: |
           cd vitaltrack-backend
           python scripts/check_file_coverage.py coverage.json --threshold 70 \
             --file app/api/v1/items.py \
-            --file app/api/v1/orders.py
+            --file app/api/v1/orders.py \
+            --file app/services/orders.py \
+            --file app/services/supply_review.py \
+            --file app/services/supply_revision.py \
+            --file app/services/supply_rules.py
 
   # =============================================================================
   # BACKEND TYPE CHECK (Advisory until the existing mypy baseline is green)
@@ -128,7 +155,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: 'pip'
           cache-dependency-path: vitaltrack-backend/requirements.txt
 
@@ -176,11 +203,31 @@ jobs:
           cd vitaltrack-mobile
           npm install --legacy-peer-deps
       
+      # EAS uploads skip git-ignored files and offlineVoice.ts loads the module with
+      # requireOptionalNativeModule, so a missing native module never fails a build.
+      - name: Verify carekosh-voice native module is autolinked
+        run: |
+          cd vitaltrack-mobile
+          node node_modules/expo-modules-autolinking/bin/expo-modules-autolinking.js resolve --platform android --json > "$RUNNER_TEMP/autolinking-android.json"
+          node -e '
+            const { modules } = require(process.argv[1]);
+            if (!modules.some((m) => m.packageName === "carekosh-voice")) {
+              console.error("::error::carekosh-voice is missing from Android autolinking. Commit modules/carekosh-voice/android/ and keep it out of .gitignore, or builds ship without offline voice.");
+              process.exit(1);
+            }
+          ' "$RUNNER_TEMP/autolinking-android.json"
+          echo "✅ carekosh-voice is autolinked for Android"
+
       - name: Run TypeScript type check
         run: |
           cd vitaltrack-mobile
           npx tsc --noEmit
           echo "✅ TypeScript check passed"
+
+      - name: Test API session recovery
+        run: |
+          cd vitaltrack-mobile
+          npm test
       
       - name: Run ESLint
         run: |
@@ -254,7 +301,7 @@ jobs:
     name: "Deploy Backend to Render"
     runs-on: ubuntu-latest
     needs: [test-backend, test-frontend]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.ENABLE_RENDER_AUTO_DEPLOY == 'true'
     environment: production
 
     steps:
@@ -272,9 +319,9 @@ jobs:
         if: steps.check-hook.outputs.has_hook == 'true'
         run: |
           echo "🚀 Triggering Render deployment..."
-          curl -s "${{ secrets.RENDER_DEPLOY_HOOK }}"
+          curl --fail --silent --show-error --connect-timeout 10 --max-time 30 "${{ secrets.RENDER_DEPLOY_HOOK }}"
           echo ""
-          echo "✅ Deploy triggered successfully"
+          echo "✅ Deployment request accepted; verify the expected revision is healthy in Render"
 
       - name: Deployment summary
         run: |
@@ -313,7 +360,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: vitaltrack-mobile/package-lock.json
       

@@ -263,14 +263,11 @@ export default function DashboardScreen() {
           <NeedsAttention
             outOfStockItems={outOfStockItems}
             lowStockItems={lowStockItems}
+            backupItems={activeItems}
             onOrderNow={() => router.push('/order/create')}
             onEditItem={(itemId) => router.push(`/item/${itemId}`)}
             onViewAll={() => router.push('/inventory')}
-            onEmergencyOrder={() => {
-              // In a real app, we might pass specific critical items to order
-              // For now, we direct to Create Order where user can select them
-              router.push('/order/create');
-            }}
+            onEmergencyOrder={() => router.push({ pathname: '/order/create', params: { mode: 'emergency' } })}
             onLowStockLayout={(y) => {
               lowStockYRef.current = y;
             }}

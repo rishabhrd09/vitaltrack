@@ -1,0 +1,101 @@
+{
+  "validation_probes": [
+    {
+      "case": "schema-invalid body with valid access token",
+      "status": 422,
+      "events": [
+        "session dependency entered",
+        "auth SELECT (fake; no database)",
+        "session dependency exited"
+      ]
+    },
+    {
+      "case": "schema-invalid body with bad token",
+      "status": 401,
+      "events": [
+        "session dependency entered",
+        "session dependency exited"
+      ]
+    },
+    {
+      "case": "malformed JSON with valid token",
+      "status": 422,
+      "events": []
+    }
+  ],
+  "api_operations": 47,
+  "versioned_operations": 44,
+  "application_tables": 11,
+  "foreign_keys": {
+    "activity_logs": [
+      {
+        "column": "user_id",
+        "target": "users.id",
+        "ondelete": "CASCADE"
+      }
+    ],
+    "ai_consents": [
+      {
+        "column": "user_id",
+        "target": "users.id",
+        "ondelete": "CASCADE"
+      }
+    ],
+    "ai_usage": [
+      {
+        "column": "user_id",
+        "target": "users.id",
+        "ondelete": "CASCADE"
+      }
+    ],
+    "audit_log": [
+      {
+        "column": "user_id",
+        "target": "users.id",
+        "ondelete": "CASCADE"
+      }
+    ],
+    "categories": [
+      {
+        "column": "user_id",
+        "target": "users.id",
+        "ondelete": "CASCADE"
+      }
+    ],
+    "items": [
+      {
+        "column": "user_id",
+        "target": "users.id",
+        "ondelete": "CASCADE"
+      },
+      {
+        "column": "category_id",
+        "target": "categories.id",
+        "ondelete": "CASCADE"
+      }
+    ],
+    "order_items": [
+      {
+        "column": "order_id",
+        "target": "orders.id",
+        "ondelete": "CASCADE"
+      }
+    ],
+    "order_number_counters": [],
+    "orders": [
+      {
+        "column": "user_id",
+        "target": "users.id",
+        "ondelete": "CASCADE"
+      }
+    ],
+    "refresh_tokens": [
+      {
+        "column": "user_id",
+        "target": "users.id",
+        "ondelete": "CASCADE"
+      }
+    ],
+    "users": []
+  }
+}

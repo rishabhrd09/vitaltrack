@@ -3,7 +3,7 @@
  * Authentication API calls
  */
 
-import { api, tokenStorage, ApiClientError } from './api';
+import { api, tokenStorage, ApiClientError, revokeSession } from './api';
 import type { User, AuthResponse, LoginRequest, RegisterRequest } from '@/types';
 
 export const authService = {
@@ -29,21 +29,19 @@ export const authService = {
      * Logout and revoke refresh token
      */
     async logout(): Promise<void> {
-        try {
-            const refreshToken = await tokenStorage.getRefreshToken();
-            if (refreshToken) {
-                await api.post('/auth/logout', { refresh_token: refreshToken });
-            }
-        } finally {
-            await tokenStorage.clearTokens();
-        }
+        const [accessToken, refreshToken] = await Promise.all([
+            tokenStorage.getAccessToken(), tokenStorage.getRefreshToken(),
+        ]);
+        await tokenStorage.clearTokens();
+        // Local logout must not wait for a sleeping or unreachable server.
+        if (accessToken && refreshToken) void revokeSession(accessToken, refreshToken);
     },
 
     /**
      * Get current user profile
      */
-    async getProfile(): Promise<User> {
-        return api.get<User>('/auth/me');
+    async getProfile(signal?: AbortSignal, assertCurrent?: () => void): Promise<User> {
+        return api.get<User>('/auth/me', true, signal, assertCurrent);
     },
 
     /**

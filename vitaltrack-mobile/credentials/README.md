@@ -9,3 +9,8 @@
 #
 # Never commit this file to version control!
 
+#
+# Status (7 October 2026): eas.json "submit.production" reads ./credentials/google-service-account.json
+# and uploads to the "internal" track. vitaltrack-mobile/.gitignore excludes credentials/*.json.
+# Play Console role and permission names change over time; check the current Play Console
+# "Users and permissions" page instead of relying on the role named above (NOT VERIFIED).

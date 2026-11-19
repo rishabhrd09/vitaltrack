@@ -21,7 +21,7 @@ import { readAsStringAsync, documentDirectory, copyAsync } from 'expo-file-syste
 import { Alert } from 'react-native';
 import { escapeHtml, validateImageUri } from '@/utils/sanitize';
 import { formatDate, now } from '@/utils/helpers';
-import { isLowStock, isOutOfStock, type Item, type Category } from '@/types';
+import { isCriticalEquipment, isLowStock, isOutOfStock, type Item, type Category } from '@/types';
 import { logger } from '@/utils/logger';
 
 async function getBase64Image(uri: string): Promise<string> {
@@ -77,8 +77,10 @@ function groupByCategory(items: GeneratedItem[], categories: Category[]): Catego
     const list = byCategory.get(cat.id);
     if (list && list.length > 0) {
       groups.push({ id: cat.id, name: cat.name, items: list });
+      byCategory.delete(cat.id);
     }
   }
+  for (const [id, list] of byCategory) groups.push({ id, name: 'Category name unavailable', items: list });
   if (uncategorized.length > 0) {
     groups.push({ id: null, name: 'Uncategorized', items: uncategorized });
   }
@@ -102,10 +104,11 @@ function statusBadgeHtml(item: Item): string {
 }
 
 function criticalMarkerHtml(item: Item): string {
-  if (!item.isCritical) return '';
+  if (!isCriticalEquipment(item)) return '';
   // Inline gold star + small label, sits next to the item name. Doesn't
   // compete with the status badge for the row's primary color signal.
-  return ' <span class="critical-marker" title="Critical equipment">★</span>';
+  const basis = item.isCritical ? 'Marked critical equipment' : 'Critical equipment by name rule';
+  return ` <span class="critical-marker" title="${basis}">★</span>`;
 }
 
 function stockClass(item: Item): string {
@@ -114,7 +117,7 @@ function stockClass(item: Item): string {
   return 'stock-ok';
 }
 
-function buildHtml(opts: {
+export function buildHtml(opts: {
   activeItems: GeneratedItem[];
   categories: Category[];
   includePhotos: boolean;
@@ -124,7 +127,7 @@ function buildHtml(opts: {
   const outOfStock = activeItems.filter(isOutOfStock);
   const lowStock = activeItems.filter((i) => !isOutOfStock(i) && isLowStock(i));
   const fullyStocked = activeItems.filter((i) => !isOutOfStock(i) && !isLowStock(i));
-  const criticalCount = activeItems.filter((i) => i.isCritical).length;
+  const criticalCount = activeItems.filter(isCriticalEquipment).length;
   const groups = groupByCategory(activeItems, categories);
 
   const itemsWithPhotos = includePhotos
@@ -492,7 +495,7 @@ function buildHtml(opts: {
     </table>
     ${criticalCount > 0 ? `
         <div class="table-legend">
-            <span class="marker">★</span> marks critical equipment (${criticalCount} ${criticalCount === 1 ? 'item' : 'items'})
+            <span class="marker">★</span> marks critical equipment (${criticalCount} ${criticalCount === 1 ? 'item' : 'items'}), using the recorded flag or the app's equipment-name rules.
         </div>
     ` : ''}
 
@@ -519,8 +522,13 @@ export async function exportInventoryPdf(opts: {
   items: Item[];
   categories: Category[];
   includePhotos: boolean;
-}): Promise<void> {
+  timestamp?: number;
+  stale?: boolean;
+  assertReady?: () => void;
+}): Promise<{ uri: string; shared: boolean }> {
   const { items, categories, includePhotos } = opts;
+  const assertReady = opts.assertReady || (() => {});
+  assertReady();
   const activeItems = items.filter((i) => i.isActive);
 
   const withPhotos: GeneratedItem[] = includePhotos
@@ -532,26 +540,34 @@ export async function exportInventoryPdf(opts: {
       )
     : activeItems.map((item) => ({ ...item, imageBase64: '' }));
 
-  const html = buildHtml({ activeItems: withPhotos, categories, includePhotos });
+  const label = opts.timestamp ? `${opts.stale ? 'Last-known/offline snapshot' : 'Last synced'}: ${new Date(opts.timestamp).toLocaleString()}. This report contains ${activeItems.length} items in the reviewed view.` : '';
+  const html = buildHtml({ activeItems: withPhotos, categories, includePhotos }).replace('<body>', `<body><p>${escapeHtml(label)}</p>`);
+  assertReady();
   const { uri } = await Print.printToFileAsync({ html });
 
   // Rename to a human-friendly filename before sharing
   const dateStr = new Date().toISOString().slice(0, 10);
-  const dest = `${documentDirectory || ''}CareKosh-Inventory-${dateStr}.pdf`;
+  const dest = `${documentDirectory || ''}CareKosh-Inventory-${dateStr}-${Date.now()}.pdf`;
+  let shareUri = uri;
+  assertReady();
   try {
     await copyAsync({ from: uri, to: dest });
+    shareUri = dest;
   } catch {
     // If copy fails for any reason, fall back to the original temp uri.
   }
 
-  const shareUri = dest || uri;
-  if (await Sharing.isAvailableAsync()) {
+  assertReady();
+  const shared = await Sharing.isAvailableAsync();
+  assertReady();
+  if (shared) {
     await Sharing.shareAsync(shareUri, {
       UTI: 'com.adobe.pdf',
       mimeType: 'application/pdf',
       dialogTitle: 'CareKosh Inventory Report',
     });
   }
+  return { uri: shareUri, shared };
 }
 
 export function showInventoryPdfDialog(opts: {

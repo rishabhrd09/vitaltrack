@@ -1,0 +1,40 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "carekosh-web-local",
+  "compatibility_date": "2026-10-24",
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./dist-production",
+    "not_found_handling": "404-page",
+    "html_handling": "none",
+  },
+  "env": {
+    "staging": {
+      "name": "carekosh-web-staging",
+      "workers_dev": false,
+      "preview_urls": false,
+      "assets": {
+        "directory": "./dist-staging",
+        "not_found_handling": "404-page",
+        "html_handling": "none",
+      },
+      "routes": [
+        { "pattern": "staging-app.carekosh.com", "custom_domain": true },
+      ],
+    },
+    "production": {
+      "name": "carekosh-web",
+      "workers_dev": false,
+      "preview_urls": false,
+      "assets": {
+        "directory": "./dist-production",
+        "not_found_handling": "404-page",
+        "html_handling": "none",
+      },
+      "routes": [
+        { "pattern": "homeicuinventory.carekosh.com", "custom_domain": true },
+      ],
+    },
+  },
+}

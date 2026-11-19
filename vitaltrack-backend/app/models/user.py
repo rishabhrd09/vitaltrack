@@ -6,7 +6,7 @@ Database model for user accounts and authentication
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin, UUIDMixin
@@ -23,6 +23,7 @@ class User(UUIDMixin, TimestampMixin, Base):
     """User account model."""
 
     __tablename__ = "users"
+    __table_args__ = (CheckConstraint("email IS NOT NULL OR username IS NOT NULL", name="email_or_username"),)
 
     # Authentication - email OR username required
     email: Mapped[Optional[str]] = mapped_column(
@@ -40,6 +41,10 @@ class User(UUIDMixin, TimestampMixin, Base):
     hashed_password: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
+    )
+    # Legacy tokens have generation zero. Only credential recovery increments it.
+    session_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0",
     )
 
     # Profile
@@ -78,6 +83,7 @@ class User(UUIDMixin, TimestampMixin, Base):
     email_verification_token: Mapped[Optional[str]] = mapped_column(
         String(255),
         nullable=True,
+        index=True,
     )
     email_verification_expiry: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
@@ -88,6 +94,7 @@ class User(UUIDMixin, TimestampMixin, Base):
     password_reset_token: Mapped[Optional[str]] = mapped_column(
         String(255),
         nullable=True,
+        index=True,
     )
     password_reset_expiry: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
@@ -99,6 +106,7 @@ class User(UUIDMixin, TimestampMixin, Base):
         String(255),
         nullable=True,
         default=None,
+        index=True,
     )
     deletion_token_expires: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),

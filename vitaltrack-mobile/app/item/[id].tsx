@@ -107,6 +107,13 @@ export default function ItemFormScreen() {
   const [notes, setNotes] = useState(existingItem?.notes || '');
   const [imageUri, setImageUri] = useState(existingItem?.imageUri || '');
   const [isCritical, setIsCritical] = useState(existingItem?.isCritical || false);
+  // The fields above are seeded once, on first render. If the item list had not
+  // loaded yet, the edit form started blank, and saving it would overwrite the
+  // item's stock, category and details with defaults.
+  const [formSeededFromItem] = useState(!!existingItem);
+  // Keep the concurrency token from the same snapshot as the form values.
+  // A cache refetch must not make an old form look like a current edit.
+  const [formVersion] = useState(existingItem?.version);
 
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showUnitPicker, setShowUnitPicker] = useState(false);
@@ -143,6 +150,13 @@ export default function ItemFormScreen() {
       toast.info('Still saving previous changes', 'Please wait a moment');
       return;
     }
+    if (!isNew && (!formSeededFromItem || formVersion === undefined)) {
+      Alert.alert(
+        'Item details not loaded',
+        'This item had not loaded when the screen opened, so the form is empty. Go back and open the item again before saving.'
+      );
+      return;
+    }
     if (!name.trim()) {
       Alert.alert('Error', 'Item name is required');
       return;
@@ -158,6 +172,10 @@ export default function ItemFormScreen() {
 
     // Sanitize all user inputs for security
     const sanitizedName = sanitizeName(name);
+    if (!sanitizedName) {
+      Alert.alert('Error', 'Item name must contain text, not just markup.');
+      return;
+    }
     const sanitizedPurchaseLink = sanitizeUrl(purchaseLink);
 
     const itemData = {
@@ -195,7 +213,20 @@ export default function ItemFormScreen() {
         createItemMutation.mutate(itemData);
       }
     } else {
-      updateItemMutation.mutate({ id, ...itemData, version: existingItem?.version ?? 1 });
+      // A cleared optional field must reach the server as null: undefined is
+      // dropped from the request, so the old value would come back on refetch.
+      // A non-blank but invalid purchase link stays undefined (left unchanged).
+      updateItemMutation.mutate({
+        id,
+        ...itemData,
+        description: itemData.description ?? null,
+        brand: itemData.brand ?? null,
+        supplierName: itemData.supplierName ?? null,
+        supplierContact: itemData.supplierContact ?? null,
+        purchaseLink: purchaseLink.trim() ? itemData.purchaseLink : null,
+        notes: itemData.notes ?? null,
+        version: formVersion!,
+      });
     }
     safeBack();
   };

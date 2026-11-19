@@ -1,0 +1,25 @@
+Whistle and Needle runtime — Cactus Compute, Inc.
+Licensed under Apache License 2.0. See APACHE-2.0.txt.
+
+Model: https://huggingface.co/Cactus-Compute/whistle
+Revision: 741118687e1f008f06d1351a402a731274789790
+File: whistle.cact (16,919,407 bytes)
+SHA-256: b6e02f048568ac5d01a2042556c658061e699acbc0aa2a1439f52f3d461dffeb
+
+Android ARM64 runtime: https://huggingface.co/Cactus-Compute/needle3
+Revision: d6c7d6a2e9655505e0f8e23339356dd1705900eb
+File: android-arm64/libneedle.a (2,177,676 bytes)
+SHA-256: 7aa6de6132a22bf45f5e903425feb66f159ad46f47fa558921bc4fd02c3a2fa0
+Header SHA-256: a27dac4b3239eead91d124b7f7dbce5495c13019903fd817b68c16d39b055a99
+
+CareKosh uses the C API directly, without the Python wrapper, cloud tools,
+telemetry wrapper or automatic runtime/model downloader. Runtime code is linked
+at build time only. Model data is downloaded only after an explicit user action.
+Both NEEDLE_TELEMETRY=0 and DO_NOT_TRACK=1 are set before loading the runtime.
+The initial diagnostic adapter forces English and consumes completed recordings.
+
+The JNI library links a private static LLVM C++ runtime. LLVM-NDK-NOTICE.txt
+is the complete toolchain notice from the Android NDK 27.1.12297006 used for
+verification, including Apache-2.0 WITH LLVM-exception and included notices.
+ANDROID-NDK-SYSROOT-NOTICE.txt contains the matching NDK sysroot notices.
+No C++ objects or exceptions cross this library's JNI C boundary.

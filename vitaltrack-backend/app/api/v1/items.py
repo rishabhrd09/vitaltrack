@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import and_, func, or_, select, update
 
+from app.services.inventory_lock import lock_inventory_names
+from app.services.supply_revision import advance_supply_revision, lock_supply_revision
 from app.api.deps import DB, CurrentUser
 from app.models import ActivityActionType, ActivityLog, Category, Item
 from app.schemas import (
@@ -96,7 +98,7 @@ async def list_items(
     total = count_result.scalar() or 0
 
     # Order by name
-    query = query.order_by(Item.name)
+    query = query.order_by(Item.name, Item.id)
     
     # Apply pagination
     offset = (page - 1) * page_size
@@ -262,9 +264,12 @@ async def create_item(
     - **minimumStock**: Reorder threshold
     - **isCritical**: Mark as critical equipment
     """
+    await lock_supply_revision(db, current_user.id)
+    await lock_inventory_names(db, current_user.id, "item")
+
     # Verify category exists and belongs to user
     cat_result = await db.execute(
-        select(Category).where(
+        select(Category.id).where(
             Category.id == data.category_id,
             Category.user_id == current_user.id,
         )
@@ -277,12 +282,12 @@ async def create_item(
     
     # Check for duplicate item name (case-insensitive) within this user's items
     dup_result = await db.execute(
-        select(Item).where(
+        select(Item.id).where(
             Item.user_id == current_user.id,
             func.lower(Item.name) == data.name.strip().lower(),
         )
     )
-    if dup_result.scalar_one_or_none():
+    if dup_result.scalars().first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"An item named '{data.name}' already exists",
@@ -330,6 +335,7 @@ async def create_item(
         new_values={"name": item.name, "quantity": item.quantity, "unit": item.unit},
     )
 
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
     await db.refresh(item)
 
@@ -354,7 +360,12 @@ async def update_item(
     Update an existing item.
     
     All fields are optional - only provided fields will be updated.
+    An explicit null clears an optional field; it is ignored for required fields.
     """
+    await lock_supply_revision(db, current_user.id)
+    if data.name is not None:
+        await lock_inventory_names(db, current_user.id, "item")
+
     result = await db.execute(
         select(Item).where(
             Item.id == item_id,
@@ -385,13 +396,13 @@ async def update_item(
     # Check for duplicate item name if renaming
     if data.name is not None and data.name.strip().lower() != item.name.strip().lower():
         dup_result = await db.execute(
-            select(Item).where(
+            select(Item.id).where(
                 Item.user_id == current_user.id,
                 Item.id != item_id,
                 func.lower(Item.name) == data.name.strip().lower(),
             )
         )
-        if dup_result.scalar_one_or_none():
+        if dup_result.scalars().first():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"An item named '{data.name}' already exists",
@@ -418,9 +429,12 @@ async def update_item(
         values["category_id"] = data.category_id
         changes.append("category changed")
 
+    # Nullable columns are written whenever the client sent them, so an explicit
+    # null clears the value; omitted fields stay unchanged. Required columns
+    # treat None as "not sent" and are never set to NULL.
     if data.name is not None:
         values["name"] = data.name
-    if data.description is not None:
+    if "description" in data.model_fields_set:
         values["description"] = data.description
     if data.quantity is not None and data.quantity != item.quantity:
         changes.append(f"qty: {item.quantity} → {data.quantity}")
@@ -429,19 +443,19 @@ async def update_item(
         values["unit"] = data.unit
     if data.minimum_stock is not None:
         values["minimum_stock"] = data.minimum_stock
-    if data.expiry_date is not None:
+    if "expiry_date" in data.model_fields_set:
         values["expiry_date"] = data.expiry_date
-    if data.brand is not None:
+    if "brand" in data.model_fields_set:
         values["brand"] = data.brand
-    if data.notes is not None:
+    if "notes" in data.model_fields_set:
         values["notes"] = data.notes
-    if data.supplier_name is not None:
+    if "supplier_name" in data.model_fields_set:
         values["supplier_name"] = data.supplier_name
-    if data.supplier_contact is not None:
+    if "supplier_contact" in data.model_fields_set:
         values["supplier_contact"] = data.supplier_contact
-    if data.purchase_link is not None:
+    if "purchase_link" in data.model_fields_set:
         values["purchase_link"] = data.purchase_link
-    if data.image_uri is not None:
+    if "image_uri" in data.model_fields_set:
         values["image_uri"] = data.image_uri
     if data.is_active is not None:
         values["is_active"] = data.is_active
@@ -506,6 +520,7 @@ async def update_item(
         new_values=new_values,
     )
 
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
     await db.refresh(item)
 
@@ -531,6 +546,7 @@ async def update_stock(
     
     Use this for simple stock adjustments.
     """
+    await lock_supply_revision(db, current_user.id)
     result = await db.execute(
         select(Item).where(
             Item.id == item_id,
@@ -594,6 +610,7 @@ async def update_stock(
         new_values={"quantity": data.quantity},
     )
 
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
     await db.refresh(item)
 
@@ -612,16 +629,20 @@ async def delete_item(
     item_id: str,
     db: DB,
     current_user: CurrentUser,
+    version: int | None = Query(None, ge=1),
 ) -> SuccessResponse:
     """
     Delete an inventory item.
     """
-    result = await db.execute(
-        select(Item).where(
-            Item.id == item_id,
-            Item.user_id == current_user.id,
-        )
+    await lock_supply_revision(db, current_user.id)
+    # Reset operations opt into a version check against their saved backup.
+    # Lock first so an update cannot slip between the check and deletion.
+    query = select(Item).where(
+        Item.id == item_id, Item.user_id == current_user.id,
     )
+    if version is not None:
+        query = query.with_for_update()
+    result = await db.execute(query)
     item = result.scalar_one_or_none()
     
     if not item:
@@ -630,6 +651,12 @@ async def delete_item(
             detail="Item not found",
         )
     
+    if version is not None and item.version != version:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Item changed after the backup; it was not deleted. Refresh and try again.",
+        )
+
     item_name = item.name
 
     # Log activity before deletion
@@ -652,6 +679,7 @@ async def delete_item(
     )
 
     await db.delete(item)
+    await advance_supply_revision(db, current_user.id)
     await db.commit()
 
     return SuccessResponse(message=f"Item '{item_name}' deleted")

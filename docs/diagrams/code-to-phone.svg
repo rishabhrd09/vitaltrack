@@ -1,0 +1,42 @@
+<svg width="1000" height="792" viewBox="0 0 1000 792" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="code-to-phone-t code-to-phone-d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"><title id="code-to-phone-t">From code to phone</title><desc id="code-to-phone-d">Pull requests to main, pushes to main and manual runs trigger GitHub Actions; a feature-branch push alone does not. On a push to main, CI requests the Render deploy hook only if that secret is set, and Render may also auto-deploy (dashboard setting, not verified); Render runs the FastAPI backend with PostgreSQL, documented as hosted on Neon. Expo EAS builds the APK and AAB; the AAB reaches phones through Google Play. The installed app calls the API over HTTPS.</desc><defs><marker id="code-to-phone-ah-1f6f66" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#1F6F66"/></marker><marker id="code-to-phone-ah-3d5a99" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1,1 L11,6 L1,11 Z" fill="#3D5A99"/></marker></defs>
+<rect x="0" y="0" width="1000" height="792" rx="18" fill="#FFFFFF"/>
+<rect x="300" y="24" width="400" height="78" rx="14" fill="#16343A" stroke="#16343A" stroke-width="2.2"/>
+<text x="500.0" y="61" font-size="19" font-weight="700" fill="#FFFFFF" text-anchor="middle">Your code on GitHub</text>
+<text x="500.0" y="83" font-size="14" font-weight="500" fill="#D5E7E3" text-anchor="middle" font-style="italic">pull request to main · merge (push to main)</text>
+<path d="M500,104 L500,146" fill="none" stroke="#1F6F66" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#code-to-phone-ah-1f6f66)"/>
+<rect x="200" y="150" width="600" height="147" rx="14" fill="#F1F4F5" stroke="#687A83" stroke-width="2.2"/>
+<text x="220" y="179" font-size="11.5" font-weight="700" fill="#687A83" text-anchor="start" letter-spacing="0.9">SUPPORTING INFRA</text>
+<text x="220" y="207" font-size="19" font-weight="700" fill="#35474F" text-anchor="start">GitHub Actions (CI)</text>
+<text x="220" y="232.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">Tests the backend and the mobile app on PRs to main</text>
+<text x="220" y="254.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">On main: requests the Render deploy hook, if configured</text>
+<text x="220" y="276.5" font-size="15.5" font-weight="400" fill="#35474F" text-anchor="start">Preview APK only with the build-apk label · production build disabled</text>
+<path d="M360,299 L360,355 L230,355 L230,389" fill="none" stroke="#1F6F66" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#code-to-phone-ah-1f6f66)"/>
+<path d="M640,299 L640,355 L770,355 L770,389" fill="none" stroke="#3D5A99" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#code-to-phone-ah-3d5a99)"/>
+<rect x="224.21329999999998" y="342.5" width="141.57340000000005" height="25" rx="12.5" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="295" y="359.55" font-size="13" font-weight="650" fill="#1F6F66" text-anchor="middle">deploy hook (main)</text>
+<rect x="629.13615" y="342.5" width="151.7277" height="25" rx="12.5" fill="#FFFFFF" stroke="#3D5A99" stroke-width="1.5"/>
+<text x="705" y="359.55" font-size="13" font-weight="650" fill="#3D5A99" text-anchor="middle">preview build (label)</text>
+<rect x="30" y="393" width="400" height="169" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="50" y="422" font-size="11.5" font-weight="700" fill="#1F6F66" text-anchor="start" letter-spacing="0.9">CORE</text>
+<text x="50" y="450" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="start">Backend: FastAPI + PostgreSQL</text>
+<text x="50" y="475.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Docker on Render · api.carekosh.com</text>
+<text x="50" y="497.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Staging: staging-api.carekosh.com</text>
+<text x="50" y="519.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Database hosted on Neon (documented)</text>
+<text x="50" y="541.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="start">Render may also auto-deploy from main</text>
+<rect x="570" y="393" width="400" height="147" rx="14" fill="#EAF0FA" stroke="#3D5A99" stroke-width="2.2"/>
+<text x="590" y="422" font-size="11.5" font-weight="700" fill="#3D5A99" text-anchor="start" letter-spacing="0.9">PROVIDER · SWAPPABLE</text>
+<text x="590" y="450" font-size="19" font-weight="700" fill="#243E76" text-anchor="start">Expo EAS</text>
+<text x="590" y="475.5" font-size="15.5" font-weight="400" fill="#2A3A57" text-anchor="start">Builds the APK (preview) and AAB</text>
+<text x="590" y="497.5" font-size="15.5" font-weight="400" fill="#2A3A57" text-anchor="start">Embeds the API URL at build time</text>
+<text x="590" y="519.5" font-size="15.5" font-weight="400" fill="#2A3A57" text-anchor="start">Stores builds on expo.dev</text>
+<rect x="300" y="652" width="400" height="110" rx="14" fill="#E4F2EF" stroke="#1F6F66" stroke-width="2.2"/>
+<text x="500.0" y="689" font-size="19" font-weight="700" fill="#0D4A43" text-anchor="middle">User&#x27;s phone</text>
+<text x="500.0" y="711" font-size="14" font-weight="500" fill="#21403B" text-anchor="middle" font-style="italic">CareKosh app</text>
+<text x="500.0" y="736.5" font-size="15.5" font-weight="400" fill="#21403B" text-anchor="middle">from Google Play (AAB) or an installed APK</text>
+<path d="M770,542 L770,707 L704,707" fill="none" stroke="#3D5A99" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#code-to-phone-ah-3d5a99)"/>
+<rect x="698.20735" y="649.25" width="215.5853" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#3D5A99" stroke-width="1.5"/>
+<text x="806" y="666.725" font-size="13.5" font-weight="650" fill="#3D5A99" text-anchor="middle">APK (testers) · AAB via Play</text>
+<path d="M296,707 L230,707 L230,566" fill="none" stroke="#1F6F66" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#code-to-phone-ah-1f6f66)"/>
+<rect x="138.07555" y="649.25" width="135.84890000000001" height="25.5" rx="12.75" fill="#FFFFFF" stroke="#1F6F66" stroke-width="1.5"/>
+<text x="206" y="666.725" font-size="13.5" font-weight="650" fill="#1F6F66" text-anchor="middle">HTTPS API calls</text>
+</svg>
