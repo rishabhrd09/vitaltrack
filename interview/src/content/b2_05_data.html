@@ -1,0 +1,146 @@
+<section class="part" id="p5" data-toc="The data layer" data-desc="PostgreSQL, the engine and sessions, models, queries, locks and migrations.">
+  <div class="part-head">
+    <p class="eyebrow">Part 5 · Data</p>
+    <h2>The data layer: <em>async SQLAlchemy and PostgreSQL</em></h2>
+    <p class="in-short"><strong>In short:</strong> PostgreSQL owns every rule that must hold even if application code is wrong: foreign keys, cascades, checks and unique indexes. SQLAlchemy 2.0's async session gives explicit transactions, and every concurrency guarantee comes from a specific SQL statement.</p>
+  </div>
+
+  <div class="sub" id="b2-schema" data-toc="Schema and constraints">
+    <h3>PostgreSQL and the schema</h3>
+    <p>At {{f:baseline}} SQLAlchemy defines 18 application tables. Alembic tracks its own revision separately. Start with users, items, categories, orders and order_items. User-owned reads and writes filter by the authenticated account. Order lines retain item snapshots, which lets history survive an item deletion. Activity records describe business events and audit records capture mutation details.</p>
+    <p>The later migrations matter when tracing a request. Revision 0012 adds encrypted OpenAI credentials. Revision 0013 adds supply revisions, review runs, proposals, confirmations and closed order submissions. A supply revision gives cooperating writers a per-owner lock and lets the API detect when an earlier recommendation has become stale.</p>
+    <p>{{p:B/app/models/__init__.py}} · {{p:B/app/models/supply_review.py}} · {{p:B/alembic/versions/20261105_supply_reviews.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/models/__init__.py}} · {{p:B/alembic/versions/20261105_supply_reviews.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-engine" data-toc="Engine, pool, sessions">
+    <h3>The engine, the pool and sessions</h3>
+    {{x:B/app/core/database.py:74-101|The engine and the session factory: an 8-second statement timeout, TLS outside development and testing, pre-ping, hidden SQL parameters, expire_on_commit and autoflush off.}}
+    <ul>
+      <li><strong>Pool:</strong> 5 connections plus up to 10 overflow per worker; wait up to 30 seconds for a free one. <code>pool_pre_ping</code> tests a connection before handing it out, which matters with a serverless database that may drop idle connections.</li>
+      <li><strong><code>expire_on_commit=False</code>:</strong> after a commit, attributes stay loaded. SQLAlchemy's asyncio guide recommends this because reloading an expired attribute would need implicit I/O, which async code cannot do.</li>
+      <li><strong><code>autoflush=False</code>:</strong> pending changes are sent only on <code>flush()</code> or <code>commit()</code>, so a query does not unexpectedly write half-built objects.</li>
+      <li><strong><code>hide_parameters=True</code>:</strong> SQL errors do not print bound values (which can include emails or token digests).</li>
+    </ul>
+    {{fig:session-transaction|One request, one session, two transactions. The handler commits its write; the refresh after it is a new transaction that get_db commits at teardown.}}
+    <say><p>"A session is a unit of work, not a transaction. In CareKosh the handler commits the change and its history together; a refresh after that is a second, read-only transaction. That's why I never say 'rollback undoes the request': it only undoes what hasn't committed."</p></say>
+    <p class="small muted">Repository evidence · {{p:B/app/api/deps.py}} · {{p:B/app/core/database.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-models" data-toc="Models and loading">
+    <h3>Models, relationships and loading strategy</h3>
+    <p>The <code>User</code> model declares its collections (categories, items, orders, activity logs, refresh tokens) with <code>lazy="selectin"</code>: when a user is loaded, SQLAlchemy loads each collection with one extra <code>SELECT … WHERE user_id IN (…)</code>. That avoids N+1 queries when you need the collections, and costs a lot when you do not.</p>
+    <ul>
+      <li><strong>Authentication only needs scalars</strong>, so every user lookup on the auth path uses <code>.options(noload("*"))</code>, and handlers avoid <code>db.refresh(user)</code>, which would reload every collection.</li>
+      <li><strong>Version note:</strong> SQLAlchemy 2.0 documents <code>noload</code> as a legacy feature. <code>lazyload("*")</code> or <code>raiseload("*")</code> are the modern ways to express "do not load", and <code>raiseload</code> turns an accidental access into an error. Changing it needs tests, because <code>noload</code> silently gives empty collections.</li>
+      <li><strong>Cascades:</strong> relationships use <code>cascade="all, delete-orphan"</code> and foreign keys use <code>ON DELETE CASCADE</code>, so deleting a user or a category removes its children in the database.</li>
+    </ul>
+    <avoid><p>"selectin is always better." It is better than lazy loading inside loops, but the best query is the one you do not run.</p></avoid>
+    <p class="small muted">Repository evidence · {{p:B/app/models/__init__.py}} · {{p:B/alembic/versions/20261105_supply_reviews.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-queries" data-toc="Query patterns">
+    <h3>Query patterns you will be asked about</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Pattern</th><th>Where</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>select(Item).where(Item.id == id, Item.user_id == current_user.id)</code></td><td>Every item, category and order route</td><td>Ownership is part of the query; another user's id simply finds nothing (404).</td></tr>
+        <tr><td><code>SELECT … FOR UPDATE</code> (<code>.with_for_update()</code>)</td><td>Login, refresh, reset, change-password, profile, account deletion; versioned deletes</td><td>Serialise competing changes to one row for the rest of the transaction.</td></tr>
+        <tr><td>Conditional <code>UPDATE … WHERE … RETURNING</code></td><td>Item compare-and-swap, refresh-token claim, order status change, order apply claim, email verification</td><td>Check and change in one atomic statement; zero rows returned means "someone else won".</td></tr>
+        <tr><td><code>INSERT … ON CONFLICT DO UPDATE … RETURNING</code></td><td>Daily order counter, AI consent, personal Sarvam key</td><td>Insert-or-update atomically, with no read-then-write race.</td></tr>
+        <tr><td><code>pg_advisory_xact_lock(key)</code></td><td>Per-account name changes; the global AI budget</td><td>Lock a <em>concept</em> (not a row) until the transaction ends.</td></tr>
+        <tr><td><code>offset</code>/<code>limit</code> pagination</td><td><code>GET /items</code> (page size ≤ 100), activities (≤ 200)</td><td>Bounded responses; cursor pagination would scale better.</td></tr>
+      </tbody>
+    </table></div>
+    {{x:B/app/services/inventory_lock.py:9-16|The per-account name lock: a 64-bit key derived from the owner and the kind, held until the transaction ends.}}
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/items.py}} · {{p:B/app/services/audit.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-isolation" data-toc="Transactions, isolation, locks">
+    <h3>Transactions, isolation and locks</h3>
+    <p>PostgreSQL's default isolation level is <strong>Read Committed</strong>: each statement sees data committed before it started. The rule that makes CareKosh's conditional updates safe:</p>
+    <div class="callout note"><span class="callout-title">Read Committed and UPDATE</span><p>When an <code>UPDATE</code> finds a row that a concurrent transaction is changing, it waits. If that transaction commits, PostgreSQL re-evaluates the <code>WHERE</code> clause against the new row version, and skips the row if it no longer matches. So two <code>UPDATE … WHERE version = 3</code> statements cannot both succeed.</p></div>
+    <ul>
+      <li><strong>Deadlock avoidance:</strong> applying an order updates items sorted by item id. Two applies that share items take their row locks in the same order and queue instead of deadlocking.</li>
+      <li><strong>Lock waits are bounded:</strong> migrations set <code>lock_timeout = 30s</code>; the AI budget sets a few seconds and answers "busy" (503) instead of piling up requests.</li>
+      <li><strong>Lost updates</strong> are prevented by the version check, not by a stricter isolation level. Serializable isolation would also work, at the cost of retrying failed transactions.</li>
+    </ul>
+    <p class="evidence-line">Evidence: {{ev:docs}} PostgreSQL 16 documentation, "Transaction Isolation" and "Advisory Lock Functions". {{ev:code,test}} concurrency tests in <span class="path">tests/test_items.py</span> and <span class="path">tests/test_orders.py</span>.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/items.py}} · {{p:B/app/services/audit.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-alembic" data-toc="Alembic migrations">
+    <h3>Migrations with Alembic</h3>
+    {{fig:migration-chain|Thirteen revisions in one chain on main. The head is 0013_supply_reviews. 0007 is one-way.}}
+    <ul>
+      <li><strong>When they run:</strong> <code>alembic upgrade head</code> in the container entrypoint, before Gunicorn starts. A failure stops start-up, so a new instance never serves a schema it does not understand.</li>
+      <li><strong>How they run:</strong> {{p:B/alembic/env.py}} uses an async engine from the same settings and sets <code>lock_timeout = '30s'</code> inside each migration transaction, so a migration that cannot get its lock fails instead of blocking traffic for ever.</li>
+      <li><strong>Data-aware migrations:</strong> 0007 seeds the order counter from existing public order ids; 0010 builds a unique index while exempting older duplicate rows by id, so no history is deleted.</li>
+      <li><strong>Testing:</strong> CI runs both model-created and Alembic-migrated schema suites. A pass exercises application behavior on each schema. Check migration history and constraints separately.</li>
+    </ul>
+    {{x:B/alembic/versions/20260923_session_order_safety.py:16-43|Migration 0007: additive changes, a data seed from existing order ids, three token-digest indexes, and a downgrade that refuses on purpose.}}
+    <say><p>"0007's downgrade raises on purpose. Dropping session_version would bring revoked credentials back to life, and dropping the counter could reuse deleted order numbers. So rollback means rolling back the image, not the schema, and a release goes through a gate."</p></say>
+    <p class="small muted">Repository evidence · {{p:B/alembic/env.py}} · {{p:B/alembic/versions/20260923_session_order_safety.py}}</p>
+  </div>
+</section>
+
+<section class="part" id="p6" data-toc="Correctness patterns" data-desc="Optimistic concurrency, stock paths, orders, history and reset guards.">
+  <div class="part-head">
+    <p class="eyebrow">Part 6 · Domain</p>
+    <h2>Correctness patterns <em>for concurrent writes</em></h2>
+    <p class="in-short"><strong>In short:</strong> each write path has a named guarantee: a version check, an idempotency key, a status claim or a lock, and each one is visible in a single SQL statement.</p>
+  </div>
+
+  <div class="sub" id="b2-occ" data-toc="Optimistic concurrency">
+    <h3>Optimistic concurrency on items</h3>
+    <p>Two editors open one item at quantity 10 and version 3. One saves quantity 8 with version 3. The transaction succeeds and increments the version to 4. The other submits version 3 and receives 409. Inventory remains at 8. Read the current values and make a fresh decision before retrying.</p>
+    <p>Both user-facing editors send PUT /api/v1/items/{item_id}. The request carries the version captured when the editor opened. The separate stock-only PATCH is available to API callers. The owner supply-revision lock coordinates cooperating writers. The conditional UPDATE includes the item, owner and submitted version. Success also writes the related activity and audit records in the transaction.</p>
+    {{fig:stock-edit-current|Follow the successful save and the stale save separately.}}
+    {{x:B/app/api/v1/items.py:465-489|The row predicate includes ownership and the caller’s expected version.}}
+    <p class="small muted">Repository evidence · {{p:carekosh-web/src/pages/ItemForm.tsx}} · {{p:B/app/api/v1/items.py}} · {{p:B/tests/test_items.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-stock" data-toc="Stock paths and constraints">
+    <h3>Every way stock can change</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Path</th><th>Guard</th></tr></thead>
+      <tbody>
+        <tr><td>Create an item with an initial quantity</td><td>Name lock, owned category, duplicate-name check, <code>quantity &gt;= 0</code> CHECK</td></tr>
+        <tr><td><code>PUT /items/{id}</code> with a new quantity</td><td>Version compare-and-swap</td></tr>
+        <tr><td><code>PATCH /items/{id}/stock</code> (API-only)</td><td>Version compare-and-swap</td></tr>
+        <tr><td><code>POST /orders/{id}/apply</code></td><td>Status claim, then <code>quantity = quantity + line</code> and <code>version + 1</code> for each item, in item-id order</td></tr>
+        <tr><td>Delete during a reset</td><td><code>DELETE /items/{id}?version=v</code> locks the row and refuses if the version moved</td></tr>
+      </tbody>
+    </table></div>
+    <p>Marking an order received does <em>not</em> change stock; only the apply step does, exactly once.</p>
+    <p class="small muted">Repository evidence · {{p:carekosh-web/src/pages/ItemForm.tsx}} · {{p:B/app/api/v1/items.py}} · {{p:B/tests/test_items.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-orders" data-toc="Orders end to end">
+    <h3>Orders: lifecycle, idempotency, numbering and apply</h3>
+    <p>A phone that loses the response after placing an order cannot infer whether the database committed. Send the same localId and the same saved fields. On the first submission the API takes the owner’s supply-revision lock, checks ownership, allocates the order number and saves the order. A matching replay returns 200. Different notes or persisted line fields under that key return 409. An explicitly closed interrupted submission also returns 409.</p>
+    {{x:B/app/services/orders.py:135-147|The owner lock and replay check happen before a new order is allocated.}}
+    <p>Pending can become ordered, received or declined. Ordered can become partially received, received or declined. Partially received can become received or declined. An unapplied received order can still be declined. Applying a received order checks its items and units and updates stock in one transaction. A missing item or changed unit returns 409 with no partial credit. A replay of a completed apply returns 200 and adds nothing. Only pending and declined orders are deletable.</p>
+    {{fig:order-apply-current|A lost success response can be retried without a second stock credit.}}
+    <p>{{p:B/app/api/v1/orders.py}} · {{p:B/app/services/orders.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/services/orders.py}} · {{p:B/app/api/v1/orders.py}} · {{p:B/tests/test_orders.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-history" data-toc="Activity and audit">
+    <h3>Activity log versus audit log</h3>
+    <p>{{s:B/app/services/audit.py#log_audit}} adds an <code>AuditLog</code> row to the current session and deliberately does not commit: the caller's commit writes the change and its audit row together, or neither. Item create, update, stock update and delete, category delete (one audit row per removed item), order apply and order delete write audit rows. Auth events write activity rows only.</p>
+    <limits><p>The audit log has no API and no retention policy, and not every write produces both kinds of history. Describe it as "before-and-after snapshots for selected inventory changes", not as a complete audit trail.</p></limits>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/items.py}} · {{p:B/app/services/audit.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-reset" data-toc="Reset and bulk guards">
+    <h3>Reset and bulk-operation guards</h3>
+    <p>The app's "start fresh" and replace-all features delete many rows from the phone, one request at a time, after saving a local JSON backup. Because those requests are not one transaction, the server offers opt-in guards so a reset cannot destroy changes made after the backup:</p>
+    <ul>
+      <li><code>DELETE /items/{id}?version=v</code> locks the item and refuses (409) if its version changed.</li>
+      <li><code>DELETE /categories/{id}?onlyIfEmpty=true&amp;expectedUpdatedAt=…</code> locks the category, refuses if it changed or still has items, and never deletes a default category.</li>
+    </ul>
+    <p>Ordinary deletes keep their simple behaviour; only resets opt in. A reset can still stop half-way, which is why the app keeps the backup.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/items.py}} · {{p:B/app/services/audit.py}}</p>
+  </div>
+</section>

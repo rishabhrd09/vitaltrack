@@ -1,0 +1,144 @@
+<section class="part" id="p1" data-toc="Foundations" data-desc="Hashing, salt, encryption, signing, randomness, tokens, sessions and TLS.">
+  <div class="part-head">
+    <p class="eyebrow">Part 1 · Concepts</p>
+    <h2>Security foundations, <em>mapped to the code</em></h2>
+    <p class="in-short"><strong>In short:</strong> most security interview mistakes are vocabulary mistakes. Learn the five tools (encoding, fast hash, password hash, encryption, signature), the three meanings of "session key", and exactly which one CareKosh uses where.</p>
+  </div>
+
+  <div class="sub" id="b3-authn" data-toc="Authentication vs authorization">
+    <h3>Authentication versus authorization</h3>
+    <ul>
+      <li><strong>Authentication</strong> answers "who are you?": the password at login, then a signed token on every request ({{s:B/app/api/deps.py#get_current_user}}).</li>
+      <li><strong>Authorization</strong> answers "what may you do?": in CareKosh, "only your own rows", enforced by filtering every query on <code>user_id</code>; plus consent scopes for the optional AI providers.</li>
+      <li><strong>Identity:</strong> a <code>users</code> row with an email (required at registration) and an optional username; either can be used to log in.</li>
+    </ul>
+    <p>The status codes follow that split: <strong>401</strong> means "not authenticated" (missing, invalid or expired token, or a revoked session); <strong>403</strong> means "authenticated, but not allowed" (disabled account, unverified email when required, missing AI consent); <strong>404</strong> hides another user's row.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/deps.py}} · {{p:B/app/api/v1/items.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-primitives" data-toc="Five tools people mix up">
+    <h3>Encoding, hashing, encryption and signing</h3>
+    {{fig:crypto-primitives|Five tools that people mix up. Ask two questions: can it be reversed, and who needs a key?}}
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Tool</th><th>Property</th><th>In CareKosh</th></tr></thead>
+      <tbody>
+        <tr><td>Encoding (base64url)</td><td>Changes representation; anyone can reverse it</td><td>The header and payload of every JWT</td></tr>
+        <tr><td>Fast hash (SHA-256)</td><td>One-way, deterministic, fast</td><td>Digests of email-verification, reset and deletion tokens</td></tr>
+        <tr><td>Password hash (Argon2id)</td><td>One-way, salted, deliberately slow and memory-hard</td><td><code>users.hashed_password</code></td></tr>
+        <tr><td>Encryption (Fernet; TLS)</td><td>Reversible with the key</td><td>Personal Sarvam keys at rest; all traffic in transit</td></tr>
+        <tr><td>MAC / signature (HMAC-SHA256)</td><td>Proves integrity and origin; reveals nothing new</td><td>The HS256 signature on every JWT</td></tr>
+      </tbody>
+    </table></div>
+    <say><p>"Passwords are hashed with Argon2id, never encrypted, because the server never needs them back. Tokens are signed, not encrypted, because they carry no secrets. The one thing we encrypt at rest is a user's own provider key, because the server must use it again."</p></say>
+    <p class="small muted">Repository evidence · {{p:B/app/core/security.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-hashing" data-toc="Password hashing">
+    <h3>Password hashing, salt and pepper</h3>
+    <p>A password hash must make guessing expensive, because people choose guessable passwords and stolen hash databases are attacked offline. Three properties do that:</p>
+    <ul>
+      <li><strong>Salted:</strong> a random value mixed into each hash, so equal passwords give different hashes and precomputed tables are useless. The salt is not secret.</li>
+      <li><strong>Slow:</strong> many iterations, so each guess costs time.</li>
+      <li><strong>Memory-hard:</strong> each guess also needs a lot of memory, which makes GPU and ASIC attacks expensive. Argon2id (RFC 9106) is designed for this.</li>
+    </ul>
+    {{x:B/app/core/security.py:18-34|passlib's CryptContext: Argon2 for every new hash; bcrypt accepted only to verify older hashes (deprecated="auto").}}
+    <p>What a stored hash looks like. This one was produced by the app's own <code>hash_password("Sample-Passw0rd")</code> during verification (a sample, not a real user's):</p>
+    <div class="anatomy">
+      <div class="token"><span class="seg s1">$argon2id</span><span class="seg s2">$v=19</span><span class="seg s3">$m=65536,t=3,p=4</span><span class="seg s4">$UWrNGcN4r3XO+Z+TkrL2fg</span><span class="seg s5">$mAwRDjR7smEkV8CDBh3Op4jZGEVX5acLRv7o7MTLxqM</span></div>
+      <dl>
+        <dt>argon2id</dt><dd>The variant: Argon2id, the hybrid recommended by RFC 9106 and OWASP.</dd>
+        <dt>v=19</dt><dd>Algorithm version 1.3 (0x13).</dd>
+        <dt>m, t, p</dt><dd>Memory 65,536 KiB (64 MiB), 3 passes, 4 lanes: argon2-cffi 23.1.0's defaults, which passlib adopts.</dd>
+        <dt>salt</dt><dd>16 random bytes (base64, 22 characters), different for every hash.</dd>
+        <dt>hash</dt><dd>32 bytes of output (43 characters).</dd>
+      </dl>
+    </div>
+    <ul>
+      <li><strong>No separate salt column:</strong> the salt and the parameters travel inside the string, so <code>verify</code> can recompute the hash with the same settings.</li>
+      <li><strong>No pepper:</strong> there is no extra server-side secret mixed in. OWASP describes a pepper as optional defence in depth, kept in a secrets store separate from the database.</li>
+      <li><strong>Cost on this hardware:</strong> about 24 ms per hash in an earlier laptop measurement. Hashing runs in a worker thread so the event loop stays free.</li>
+      <li><strong>Hashing the same password twice</strong> gives two different strings, and <code>verify_password</code> accepts both. Reproduced on {{f:checked}}.</li>
+    </ul>
+    <limits><p><strong>Legacy bcrypt hashes are never upgraded:</strong> the code does not call <code>needs_update</code> or <code>verify_and_update</code>, so an old bcrypt hash changes only when its owner changes or resets the password. With bcrypt 4.2.1, passlib 1.7.4 logs a harmless "(trapped) error reading bcrypt version" warning, a sign that passlib (last released in October 2020) is no longer maintained. bcrypt also only uses the first 72 bytes of a password.</p></limits>
+    <p class="small muted">Repository evidence · {{p:B/app/core/security.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-tokens" data-toc="Randomness and one-time tokens">
+    <h3>Randomness and one-time tokens</h3>
+    {{x:B/app/utils/email.py:51-61|One-time tokens: 32 random bytes from the operating system, sent raw in the email; only the SHA-256 digest is stored.}}
+    <ul>
+      <li><strong>Entropy:</strong> 32 bytes is 256 bits. Even at a trillion guesses per second, guessing one would take longer than the age of the universe, so a fast hash (SHA-256) is enough. Passwords, by contrast, have low entropy and need Argon2.</li>
+      <li><strong>Why store a digest:</strong> a copy of the database would not contain usable links.</li>
+      <li><strong>Single use:</strong> consuming a token clears or conditionally updates its column, and each has an expiry checked in SQL: 24 hours for verification, 1 hour for password reset, 24 hours for account deletion.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/core/security.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-signing" data-toc="HMAC, HS256 and RS256">
+    <h3>Symmetric, asymmetric and HMAC: why HS256</h3>
+    <ul>
+      <li><strong>Symmetric</strong> cryptography uses one shared key for both operations; <strong>asymmetric</strong> uses a private key to sign and a public key to verify.</li>
+      <li><strong>HMAC-SHA256</strong> (HS256) combines a secret key with SHA-256 to produce a tag that only a key holder can make.</li>
+      <li><strong>HS256 fits CareKosh</strong> because the same service issues and verifies tokens. <strong>RS256 or ES256</strong> fit when other services must verify tokens without being able to mint them.</li>
+      <li><strong>Algorithm allow-list:</strong> decoding passes <code>algorithms=[settings.JWT_ALGORITHM]</code>, so a token claiming another algorithm (for example <code>none</code>) is rejected, as RFC 8725 recommends.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/core/security.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-jwt" data-toc="Tokens, sessions and JWTs">
+    <h3>Sessions versus tokens, and the anatomy of a JWT</h3>
+    <p>Classic web apps keep a <em>server-side session</em> and give the browser a random session id in a cookie. CareKosh uses a separate HttpOnly browser refresh cookie. Its native app and authenticated inventory endpoints use <em>bearer tokens</em> in the <code>Authorization</code> header instead: whoever holds the token can use it, which is why it lives in SecureStore and travels only over TLS.</p>
+    <p>A sample access token, minted with the app's claim layout and a throwaway secret (not a real token):</p>
+    <div class="anatomy">
+      <div class="token"><span class="seg s1">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span>.<span class="seg s2">eyJzdWIiOiIzZjljMmExZS01YjdkLTRjOGUtOWExMC0yYjNjNGQ1ZTZmNzAiLCJleHAiOjE3OTIwNDI1MDUsImlhdCI6MTc5MjA0MDcwNSwidHlwZSI6ImFjY2VzcyIsInNlc3Npb25fdmVyc2lvbiI6MH0</span>.<span class="seg s5">nzMyfBDkxz52fgqQSYEawkrnaFvHmvUSRbGtVhRcsMs</span></div>
+      <dl>
+        <dt>header</dt><dd>base64url of <code>{"alg":"HS256","typ":"JWT"}</code></dd>
+        <dt>payload</dt><dd>base64url of <code>{"sub": user id, "exp": …, "iat": …, "type": "access", "session_version": 0}</code>. Readable by anyone.</dd>
+        <dt>signature</dt><dd>HMAC-SHA256 of <code>header.payload</code> with <code>SECRET_KEY</code>. Changing one character of the payload makes verification fail (reproduced).</dd>
+      </dl>
+    </div>
+    {{x:B/app/core/security.py:40-48|The payload model: registered claims sub, exp, iat and jti (RFC 7519), plus two custom claims.}}
+    {{x:B/app/core/security.py:165-185|decode_token: signature, expiry and the payload shape; any failure returns None, which the callers turn into 401.}}
+    <ul>
+      <li><strong>Access token:</strong> 30 minutes by default; sent on every request.</li>
+      <li><strong>Refresh token:</strong> 30 days by default; has a <code>jti</code> with a row in <code>refresh_tokens</code> (revocable); used only at <code>/auth/refresh</code>; single use.</li>
+      <li><strong>The <code>type</code> claim</strong> stops a refresh token being used as an access token and the reverse, since both are signed with the same key.</li>
+      <li><strong>Not purely stateless:</strong> after the signature check, every protected request loads the user and compares <code>session_version</code>. One indexed lookup buys instant revocation on password change.</li>
+    </ul>
+    <avoid><p>"JWTs are encrypted." A signed JWT (JWS) is readable; RFC 7519 points to encryption (JWE) or keeping sensitive data out of the token. CareKosh keeps only ids, times, a type and a counter in it.</p></avoid>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/tests/test_web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-sessionkey" data-toc="Three meanings of session key">
+    <h3>Three things people call a "session key"</h3>
+    {{fig:session-key-meanings|Three things called a session key. CareKosh has TLS session keys (handled by the platform), one long-lived signing key, and application sessions made of a refresh-token row plus a generation number.}}
+    <ol class="steps">
+      <li><strong>TLS session keys</strong> are symmetric keys negotiated in each TLS handshake (TLS 1.3 uses an ephemeral Diffie–Hellman exchange and an HKDF key schedule), so every connection gets fresh keys and past traffic stays safe even if a server key leaks later (forward secrecy). They exist between the public client and Cloudflare for the proxied API; application code never sees them.</li>
+      <li><strong><code>SECRET_KEY</code></strong> is the server's long-lived HMAC key. It signs every token for every user, so it is a master secret, not a session key. Rotating it would sign everyone out.</li>
+      <li><strong>The application session</strong> is what the product calls "being logged in": a <code>refresh_tokens</code> row (identified by the token's <code>jti</code>, with an expiry and a revoked flag) plus the user's <code>session_version</code>. The database records refresh-token state. The browser transports its refresh token in a host-only HttpOnly cookie.</li>
+    </ol>
+    <say><p>"If you mean the TLS session key, that's negotiated per connection and terminated at Cloudflare for a proxied public request. Our application session is a refresh-token row plus a session_version counter on the user; the signing key is a single long-lived secret that we never put in the app."</p></say>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/tests/test_web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-tls" data-toc="Transport security">
+    <h3>Transport security: HTTPS and HSTS</h3>
+    <ul>
+      <li><strong>Where TLS ends:</strong> The supplied DNS inventory shows proxied API CNAMEs. The public client negotiates TLS with Cloudflare. Cloudflare connects to the Render origin, which forwards the request to the container. Verify the active origin TLS policy in the dashboard.</li>
+      <li><strong>Database leg:</strong> the API connects to Neon with TLS (<code>ssl=True</code>) outside development and testing.</li>
+      <li><strong>Phone:</strong> production and preview builds must use HTTPS URLs; cleartext HTTP is allowed only in development builds (<code>app.config.js</code>).</li>
+      <li><strong>HSTS</strong> (<code>max-age=31536000; includeSubDomains</code>) is sent in production and staging. It matters for browsers that open the email-link pages; a native client ignores it.</li>
+    </ul>
+    <p class="evidence-line">Evidence: {{ev:code}} {{ev:docs}} RFC 8446 for TLS 1.3 keys; MDN for HSTS. {{ev:nv}} live certificates and DNS proxy settings.</p>
+    <p class="small muted">Repository evidence · {{p:B/render.yaml}} · {{p:B/app/core/config.py}} · {{p:B/app/core/database.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-policies" data-toc="CORS, CSRF, XSS, headers">
+    <h3>Browser policies: CORS, CSRF, XSS and security headers</h3>
+    <p>Browser refresh uses a host-only HttpOnly cookie. Hosted environments use Secure and SameSite=Strict and limit the cookie path to the web-auth endpoints. A native Android request supplies a bearer token explicitly. A browser also uses bearer access tokens for inventory, but its refresh credential can be attached automatically by the browser.</p>
+    <p>Enabling browser login requires an explicit WEB_APP_ORIGINS list included in CORS_ORIGINS. The cookie endpoint checks the exact Origin and X-CareKosh-Web marker and rejects cross-site fetch metadata. CORS controls browser access across origins. It cannot establish ownership of an inventory item. Server-side authorization still runs on every protected operation.</p>
+    {{x:B/app/api/v1/web_auth.py:44-65|The browser request contract and cookie attributes are both explicit.}}
+    <p>{{p:B/app/main.py}} · {{p:carekosh-web/README.md}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/tests/test_web_auth.py}}</p>
+  </div>
+</section>

@@ -1,0 +1,497 @@
+## Concepts
+Q: What is the difference between authentication and authorization?
+L: basic
+T: concepts, authn, authz
+S: Authentication proves who you are (password, then a signed token); authorization decides what you may do (in CareKosh: only your own rows, and only consented AI providers).
+D: In code: get_current_user authenticates every protected request; owner-scoped queries authorize it. 401 means not authenticated, 403 authenticated but not allowed, and 404 hides other users' rows.
+
+Q: Hashing versus encryption?
+L: basic
+T: concepts, hashing, encryption
+S: Hashing is one-way: you can only compare. Encryption is reversible with a key. Use hashing when you never need the original (passwords, email tokens) and encryption when you do (a provider key the server must use).
+D: CareKosh hashes passwords with Argon2id, hashes one-time tokens with SHA-256, and encrypts personal Sarvam and OpenAI keys with Fernet.
+X: "We encrypt passwords."
+
+Q: Encoding versus encryption?
+L: basic
+T: concepts, encoding
+S: Encoding (base64url) changes representation and anyone can reverse it; encryption needs a key. A JWT's header and payload are only encoded.
+D: Decoding a sample CareKosh access token with plain base64url shows its user id, times, type and session_version; no key is needed. That is fine because nothing in it is secret, and the signature stops anyone changing it.
+
+Q: What is a salt and why is it needed?
+L: basic
+T: hashing, salt
+S: A random value mixed into each password hash, so identical passwords produce different hashes and precomputed (rainbow) tables are useless. It is not secret.
+D: Argon2 generates 16 random bytes per hash and stores them inside the encoded string, so there is no separate salt column. Hashing "Sample-Passw0rd" twice gave two different strings, both verifying.
+
+Q: What is a pepper? Does CareKosh use one?
+L: intermediate
+T: hashing, pepper
+S: A secret value added to every password before or after hashing, stored outside the database (for example in a secrets manager). CareKosh does not use one.
+D: A pepper protects hashes if only the database leaks. OWASP describes it as optional defence in depth; it complicates rotation because changing it invalidates every hash unless handled carefully.
+
+Q: Why Argon2id rather than SHA-256 for passwords?
+L: intermediate
+T: hashing, argon2
+S: SHA-256 is fast, so an attacker can try billions of guesses per second on a GPU. Argon2id is deliberately slow and needs lots of memory per guess, which makes offline guessing expensive.
+D: CareKosh's parameters are 64 MiB of memory, 3 passes and 4 lanes (argon2-cffi's defaults, above OWASP's minimums), about 24 ms per hash in an earlier laptop measurement.
+
+Q: What do the parts of an Argon2 hash string mean?
+L: intermediate
+T: hashing, argon2
+S: $argon2id is the variant, $v=19 the version, $m=65536,t=3,p=4 the memory (KiB), passes and lanes, then the base64 salt, then the base64 hash.
+D: Because the parameters travel in the string, the server can raise them later and still verify older hashes; passlib's needs_update would say when to rehash.
+
+Q: Why is bcrypt still in the CryptContext?
+L: intermediate
+T: hashing, bcrypt
+S: To verify hashes created before Argon2 became the default. deprecated="auto" marks every scheme except the first as deprecated, but CareKosh never calls needs_update, so old hashes are only replaced on a password change or reset.
+D: bcrypt only uses the first 72 bytes of a password, and passlib 1.7.4 logs a version-detection warning with bcrypt 4.2.1.
+
+Q: Why is hashing done in a thread?
+L: intermediate
+T: hashing, async
+S: Argon2 takes tens of milliseconds of CPU; running it on the event loop would stall every other request on that worker.
+D: anyio.to_thread.run_sync moves it to a worker thread at registration, login, password change and reset.
+
+Q: What makes a token unguessable?
+L: basic
+T: randomness, tokens
+S: Enough entropy from a cryptographically secure source. secrets.token_urlsafe(32) gives 256 random bits from the operating system.
+D: Python's random module is predictable and must never be used for tokens.
+
+Q: Why store a hash of the email token, not the token?
+L: intermediate
+T: tokens, hashing
+S: So a database leak does not contain working verification, reset or deletion links. The raw token exists only in the email.
+D: A fast SHA-256 is enough because the token is random and long; there is nothing to brute-force.
+
+Q: What is HMAC?
+L: intermediate
+T: concepts, hmac, jwt
+S: A keyed hash: HMAC-SHA256(key, message) produces a tag that only someone with the key can create, so it proves integrity and origin.
+D: HS256 JWTs are HMAC-SHA256 over header.payload with SECRET_KEY.
+
+Q: HS256 or RS256?
+L: advanced
+T: jwt, signing
+S: HS256 uses one shared secret to sign and verify; RS256 (or ES256) signs with a private key and verifies with a public key. HS256 fits one service that both issues and checks tokens, as in CareKosh.
+D: Choose an asymmetric algorithm when other services must verify tokens without being able to create them, or when you publish keys (JWKS).
+
+Q: What is a JWT made of?
+L: basic
+T: jwt
+S: Three base64url parts joined by dots: header (algorithm and type), payload (claims) and signature.
+D: CareKosh access claims: sub (user id), exp, iat, type="access", session_version; refresh adds jti and type="refresh".
+
+Q: Are JWTs encrypted?
+L: basic
+T: jwt
+S: Not signed JWTs (JWS): anyone can decode them. They are protected by the signature (integrity) and by TLS and SecureStore (confidentiality).
+D: RFC 7519 says to use encrypted JWTs (JWE) or keep sensitive data out of the token when confidentiality matters; CareKosh keeps only ids, times, a type and a counter.
+
+Q: What is a bearer token?
+L: basic
+T: tokens
+S: A token that grants access to whoever presents it, sent as Authorization: Bearer … (RFC 6750). Possession is enough, so it must be stored and transmitted securely.
+D: Because possession is enough, CareKosh keeps access tokens short-lived (30 minutes), sends them only over HTTPS, stores them in SecureStore and redacts token values from logs.
+
+Q: Server-side sessions versus tokens?
+L: intermediate
+T: sessions, tokens
+S: A server-side session keeps state on the server and gives the client an opaque id (usually a cookie); tokens carry signed claims the server can check without a lookup.
+D: CareKosh is a hybrid: signed tokens, but the access check still loads the user to compare session_version, and refresh tokens have database rows. That buys immediate revocation on password change.
+
+Q: What is a "session key"?
+L: advanced
+T: sessions, tls
+S: It depends on the layer. In TLS it is the symmetric key negotiated per connection. In CareKosh's application, the session is a refresh-token row plus session_version. SECRET_KEY is a long-lived signing key, not a session key.
+D: TLS 1.3 derives per-connection keys from an ephemeral Diffie–Hellman exchange, so each connection is independent and has forward secrecy. The Cloudflare edge terminates the client TLS connection on a proxied API hostname; the app never sees them.
+
+Q: What does TLS protect, and where does it end here?
+L: intermediate
+T: tls, transport
+S: Confidentiality and integrity in transit, plus server authentication through the certificate. For the proxied hostname, the public connection ends at Cloudflare. The connection to Render and the application connection to Neon are separate legs.
+D: Release builds must use HTTPS URLs; cleartext is allowed only in development builds.
+
+Q: What is HSTS and when is it sent?
+L: intermediate
+T: headers, tls
+S: Strict-Transport-Security tells browsers to use HTTPS for a host for max-age seconds (here a year, including subdomains). CareKosh sends it in production and staging.
+D: It matters for the HTML pages behind email links; native HTTP clients ignore it.
+
+Q: What does CORS do, and does it protect the API?
+L: intermediate
+T: cors
+S: CORS lets a browser decide whether a page from another origin may read a response. It does not protect the API: non-browser clients ignore it.
+D: CareKosh allows all origins without credentials; authentication and ownership checks are what protect data.
+
+Q: Is CSRF a risk for CareKosh?
+L: advanced
+T: csrf
+S: Yes, for browser endpoints that receive the refresh cookie. A native bearer token has different delivery semantics.
+D: Browser auth checks the exact Origin, requires X-CareKosh-Web: 1 and rejects cross-site fetch metadata. The hosted refresh cookie is HttpOnly, Secure, path-limited and SameSite=Strict.
+
+Q: Where could XSS appear, and how is it handled?
+L: intermediate
+T: xss
+S: XSS matters in the browser frontend and in HTML pages the API serves for verification, password reset and deletion. The deletion pages escape the name and email with html.escape.
+D: A Content-Security-Policy would be the modern extra layer; the X-XSS-Protection header the app sends is deprecated in browsers.
+
+Q: What does each security header do?
+L: intermediate
+T: headers
+S: nosniff stops MIME sniffing; X-Frame-Options DENY blocks framing (clickjacking); Referrer-Policy strict-origin-when-cross-origin limits URL leakage; Cache-Control no-store prevents caching responses; HSTS forces HTTPS in production.
+D: They matter most for the HTML pages the API serves behind email links; a native client ignores most of them. X-XSS-Protection is also sent but is deprecated; a Content-Security-Policy would be the modern addition.
+
+Q: What is BOLA?
+L: intermediate
+T: authz, owasp
+S: Broken object-level authorization: accessing another user's object by changing its id. It is API1 in the OWASP API Security Top 10 2023. CareKosh prevents it by putting the owner id in every query.
+D: Using a UUID instead of a sequence makes ids hard to guess, but that is not a defence on its own; the owner filter is. A foreign id returns 404, not 403, so its existence is not confirmed.
+
+## Flows
+Q: Walk through registration.
+L: basic
+T: flow, register
+S: Validate input, check that the email and username are free, create a random verification token and store its SHA-256 digest, hash the password with Argon2id in a thread, insert the user, a refresh-token row and an activity row, commit, reply 201 with tokens, then send the email in the background.
+D: The app discards the returned tokens and shows "check your email". If mail is not configured, no email is sent and verification is not enforced.
+
+Q: Why does the app discard the tokens returned by registration?
+L: intermediate
+T: flow, register, mobile
+S: So an unverified account is not signed in: the person must verify the email and then log in. The API still returns tokens for backward compatibility with older clients.
+D: The register action in the auth store calls clearTokens() after a successful registration and leaves isAuthenticated false; the person lands on the verify-email-pending screen and logs in after verifying.
+
+Q: What can go wrong at registration?
+L: basic
+T: flow, register
+S: 429 rate limited; 422 invalid email, weak password or bad username; 400 email or username already taken.
+D: The 400 reveals whether an email is registered, an enumeration trade-off.
+
+Q: How does email verification work?
+L: intermediate
+T: flow, verification
+S: The link carries the raw token; the API hashes it and runs one UPDATE that sets is_email_verified and clears the token where the digest matches and the expiry is in the future. One row means verified; zero means invalid or expired.
+D: The link opens an HTML page on the API itself (FRONTEND_URL points at /api/v1/auth in production). Tokens last 24 hours and work once.
+
+Q: When is email verification enforced?
+L: intermediate
+T: flow, verification, policy
+S: Hosted startup requires a nonblank email credential when verification is enabled. At runtime the check applies when REQUIRE_EMAIL_VERIFICATION is true and mail is configured, and only for accounts with an email; then login, refresh and every protected request refuse with 403 EMAIL_NOT_VERIFIED.
+D: Without mail the server cannot send links, so enforcing verification would lock everyone out; that is why the second condition exists.
+
+Q: How does resend-verification avoid account enumeration?
+L: intermediate
+T: flow, enumeration
+S: It returns the same message whether the account exists, is already verified or does not exist; only a real unverified account gets a new token and email.
+D: It also replaces the stored digest when it does send, so only the newest link works, and it is rate limited to 3 per hour per IP. When mail is not configured it answers 503 for everyone, which reveals nothing about a specific account.
+
+Q: Walk through login.
+L: basic
+T: flow, login
+S: Lowercase the identifier; look it up as an email if it contains @ and as a username otherwise, with SELECT … FOR UPDATE; verify Argon2 in a thread; refuse disabled or unverified accounts; mint an access and a refresh token; store the refresh row, update last_login, log the activity and commit.
+D: Unknown user and wrong password share one 401 message. Statuses: 429, 401, 403 disabled, 403 EMAIL_NOT_VERIFIED.
+
+Q: Why lock the user row at login?
+L: advanced
+T: flow, login, concurrency
+S: Login, refresh, password change and reset all lock the same row first, so token issue and revocation are ordered. A login cannot create a token that escapes a concurrent password reset.
+D: The same ordering appears in refresh (lock the user, then claim the token), change-password and reset (lock, bump session_version, revoke rows). With one lock order, PostgreSQL serialises these operations per user and none can interleave badly.
+
+Q: What happens on every authenticated request?
+L: intermediate
+T: flow, session
+S: HTTPBearer reads the header; decode_token checks the HS256 signature and expiry; the type must be access; the user is loaded; session_version must match; the account must be active; the verification policy applies; then the handler runs with owner-scoped queries.
+D: Failures: 401 for missing, invalid, expired or revoked tokens; 403 for disabled or unverified accounts.
+
+Q: How does refresh work?
+L: intermediate
+T: flow, refresh
+S: The phone posts the refresh token; the API decodes it, locks the user, checks session_version and the policy, claims the token with UPDATE … SET is_revoked = true WHERE jti, user, not revoked and not expired RETURNING id, then issues a new pair and stores the new row.
+D: If nothing is claimed (already used, revoked or expired) the answer is 401. Each refresh starts a new 30-day window.
+
+Q: What does the phone do when a request gets 401?
+L: intermediate
+T: flow, refresh, mobile
+S: If another request already stored a newer access token it reuses that; otherwise it joins one shared refresh. On success it retries the original request once.
+D: If refresh answers 401 or 403, tokens are deleted and the person is signed out. If it times out or the server errors, tokens are kept: an outage is not proof of revocation.
+
+Q: Why share one refresh between concurrent requests?
+L: advanced
+T: refresh, mobile, concurrency
+S: Because refresh tokens are single-use: if two requests refreshed with the same token, one would succeed and the other would get 401 and sign the person out.
+D: One promise (refreshPromise) serves every waiting request, and a credential epoch stops a slow refresh from writing tokens after a logout.
+
+Q: What happens when the app starts?
+L: intermediate
+T: flow, startup, mobile
+S: No token → signed out. Token present → fetch /auth/me within 8 seconds; success → signed in; timeout → keep the cached session and retry in the background; 401 after a failed refresh → clear tokens.
+D: The auth store's initialize() races the profile request against an 8-second timer; a timeout keeps the persisted state, shows a "server warming up" status and retries once after 5 seconds. Only an explicit 401 clears tokens.
+
+Q: Walk through logout.
+L: basic
+T: flow, logout
+S: Android clears its local session and asks the API to revoke its refresh row. Browser logout clears the cookie and revokes its browser refresh family.
+D: The browser implementation is app/api/v1/web_auth.py. An already-issued access token can still be valid until expiry unless a separate account-level action invalidates it.
+
+Q: Does logout invalidate the access token?
+L: intermediate
+T: logout, jwt
+S: No. Logout revokes only the refresh token; the access token works until its exp, at most 30 minutes by default.
+D: To close the window: shorten access tokens, add a jti denylist checked in get_current_user, or add "log out everywhere" by bumping session_version.
+X: "Logout kills the session immediately."
+
+Q: How do you log a user out of every device?
+L: intermediate
+T: logout, sessions
+S: Increment users.session_version and revoke all their refresh rows. Every token carries the old generation, so each fails at its next use. CareKosh does this on password change and reset; there is no separate endpoint yet.
+D: A dedicated endpoint would lock the user row, increment session_version, revoke refresh rows and commit, exactly the session-ending part of change-password. Every access token then fails at once, because get_current_user compares the generation.
+
+Q: Walk through changing the password.
+L: intermediate
+T: flow, password-change
+S: Re-read the user under a row lock (refusing if the session generation changed), verify the current password in a thread, store a new Argon2 hash, increment session_version, clear pending reset and deletion tokens, revoke every refresh row and commit.
+D: A wrong current password returns 400, not 401, so the app does not treat it as an expired session. Every device must log in again.
+
+Q: Walk through forgot and reset password.
+L: intermediate
+T: flow, password-reset
+S: Forgot answers generically, stores the SHA-256 digest of a random token valid for 1 hour and emails a link. Reset matches the digest, expiry and active status under a row lock, stores the new hash, clears the token, increments session_version, clears any deletion token, revokes all refresh rows, commits and emails a notification.
+D: Rate limits: forgot 3 per hour, reset 5 per hour per IP. Mail not configured → 503.
+
+Q: Why send a "password changed" email?
+L: basic
+T: flow, password-reset
+S: So the real owner notices a reset or change they did not make and can act quickly.
+D: It is sent as a background task after the reset commits, through the same Brevo API path. If the person did not ask for the reset, they know their inbox or account may be compromised.
+
+Q: Why does forgot-password return 503 when mail is off?
+L: intermediate
+T: flow, password-reset
+S: Promising "we sent a link" when no email can be sent would mislead the person; the app instead suggests other options. This does not reveal anything about a specific account.
+D: Resend-verification and account deletion behave the same way: when the server cannot send email, the endpoints that depend on email say so instead of pretending.
+
+Q: Walk through account deletion.
+L: intermediate
+T: flow, deletion
+S: DELETE /auth/me (needs an email and working mail) stores a 24-hour digest and emails a link; GET on the link shows a confirmation page; POST on it locks the user by digest and expiry and deletes the row; ON DELETE CASCADE removes every owned row in the same transaction.
+D: Cancel, a password change or a reset clears the token. The global order counter has no user link and stays.
+
+Q: Why does the deletion link need a POST?
+L: intermediate
+T: flow, deletion, safety
+S: Email scanners and link previews fetch URLs automatically; if GET deleted the account, a scan could delete it without the person. GET only shows the page; the form's POST deletes.
+D: This follows the HTTP rule that GET must be safe (no side effects). The confirmation page shows which account will be deleted, and the POST re-checks the token and expiry under a row lock before deleting.
+
+Q: Why require email confirmation for deletion at all?
+L: intermediate
+T: flow, deletion, security
+S: A stolen access token alone should not be enough to destroy an account; the attacker would also need the inbox.
+D: It also gives a 24-hour window to cancel, and Play Store policy expects a clear deletion path. A password change or reset clears a pending deletion token.
+
+Q: Can a user change their email?
+L: basic
+T: flow, profile
+S: At the reviewed main revision, PATCH /auth/me refuses an email change with 400 and points to support. Username, name and phone can change.
+D: The handler rejects an attempted email change. Other editable profile fields go through their own validation.
+
+Q: What happens to a disabled account?
+L: basic
+T: flow, account-status
+S: Login → 403; refresh → 401; protected requests → 403; forgot-password sends nothing but answers generically; reset finds no active user (400).
+D: Being disabled is checked everywhere a session is used or created: login, refresh, protected requests, _lock_current_user and the reset lookup. There is no API to disable an account; it would be an operator action in the database.
+
+Q: How is the login identifier interpreted?
+L: basic
+T: flow, login
+S: Lowercased and trimmed by the schema; if it contains @ it is treated as an email, otherwise as a username; the database comparison lowercases the stored value too, for legacy mixed-case rows.
+D: Usernames cannot contain @ (the schema rejects it), so the rule is unambiguous. Registration also lowercases emails and usernames before storing them.
+
+Q: What is stored on the phone after login?
+L: basic
+T: flow, mobile, storage
+S: Both tokens in SecureStore; the user profile and a signed-in flag in the Zustand store, persisted through SecureStore; server data in the TanStack Query cache, copied to AsyncStorage without auth queries.
+D: Logout and login both clear the query cache in memory and its AsyncStorage copy, so a shared family phone never shows the previous person's data. Keep token storage and the persisted inventory cache in separate security reviews.
+
+Q: What does the API return on login?
+L: basic
+T: flow, login
+S: AuthResponse: access_token, refresh_token, token_type "bearer", expires_in (seconds) and the user profile in camelCase.
+D: Registration and refresh return the same AuthResponse shape. The tokens are snake_case fields; profile fields such as isEmailVerified and lastLogin are camelCase through serialization aliases.
+
+## Tokens and sessions
+Q: Why two tokens instead of one long-lived token?
+L: intermediate
+T: tokens, design
+S: A short access token limits the damage if one leaks; a long refresh token, used rarely and only at one endpoint, keeps people signed in and can be revoked through its database row.
+D: The access token goes out on every request, to many endpoints and through many logs, so it should die quickly. The refresh token goes to one endpoint, is single-use and revocable, so it can live longer.
+
+Q: What is refresh-token rotation?
+L: intermediate
+T: tokens, rotation
+S: Every use of a refresh token revokes it and issues a new one, so each token works once.
+D: RFC 9700 says refresh tokens for public clients (like mobile apps) must be sender-constrained or rotated. CareKosh rotates.
+
+Q: What is refresh-token reuse detection, and does CareKosh have it?
+L: advanced
+T: tokens, rotation, gaps
+S: If an already-used refresh token is presented again, the server assumes theft and revokes the whole chain. CareKosh does not: the replay gets 401 but the newer token stays valid.
+D: Implementation: a family id shared by rotated tokens; on reuse of a revoked member, revoke every token in the family (RFC 9700 §4.14.2).
+
+Q: What is session_version?
+L: intermediate
+T: sessions, revocation
+S: An integer on the user, copied into every token. get_current_user and refresh reject tokens whose value differs. Password change and reset increment it, ending every session at once.
+D: Tokens issued before the field existed count as generation zero.
+
+Q: Is there an absolute session lifetime?
+L: advanced
+T: sessions, gaps
+S: No. Each refresh gives a new refresh token with a new 30-day expiry, so a regularly used phone stays signed in indefinitely; only 30 days of inactivity, logout or a password change ends it.
+D: An absolute cap would store the original login time in the token family and refuse refreshes past it.
+
+Q: Why does the access token carry a type claim?
+L: intermediate
+T: jwt
+S: Both token kinds are signed with the same key; the type claim stops a refresh token being used as an access token and the reverse.
+D: get_current_user rejects anything but type access, and refresh rejects anything but type refresh with a jti. Without the claim, a 30-day refresh token could be used as an access token for 30 days.
+
+Q: What is jti used for?
+L: intermediate
+T: jwt, refresh
+S: A unique id per refresh token (RFC 7519 §4.1.7), stored in refresh_tokens.jti, so a specific token can be claimed once, revoked and audited.
+D: Refresh claims match on jti and user together, so a token's id alone is not enough. Access tokens do not carry a jti today; adding one would allow a denylist.
+
+Q: How would you revoke a single access token?
+L: advanced
+T: jwt, revocation
+S: Give access tokens a jti and keep a denylist of revoked ids until their expiry (in the database or a fast store), checked in get_current_user. CareKosh does not do this today.
+D: Entries only need to live until the token's exp (at most 30 minutes), so the list stays small. An alternative is shortening access tokens and relying on refresh-time checks, which CareKosh already has.
+
+Q: What happens if SECRET_KEY leaks?
+L: advanced
+T: secrets, incident
+S: Anyone could forge tokens for any user. Rotate the key immediately (which signs everyone out), investigate, and consider asymmetric keys and key ids for smoother rotation later.
+D: Production signing keys should be generated randomly and kept in the server environment. With a strong key, the main risks are a leaked environment or logs; the settings use SecretStr so it is never printed by accident.
+
+Q: Where should a mobile app store tokens?
+L: basic
+T: mobile, storage
+S: In the platform's secure storage: Expo SecureStore uses an Android Keystore-backed key on Android and the Keychain on iOS. Not in AsyncStorage, which is unencrypted.
+D: SecureStore values are encrypted and scoped to the app. CareKosh writes both tokens through one serialised writer so a refresh and a logout can never interleave.
+
+Q: Why are auth queries excluded from the persisted cache?
+L: intermediate
+T: mobile, privacy
+S: So a deleted or signed-out account cannot appear signed in from data on disk, and profile data does not outlive the session in plain storage.
+D: The persister's shouldDehydrateQuery skips query keys auth, user and me, and the cache is also discarded when the app version changes (the persister's buster).
+
+Q: What is the "credential epoch" in the API client?
+L: advanced
+T: mobile, concurrency
+S: A counter incremented on every token write. A refresh captures it before starting and only stores its result if it has not changed, so a slow refresh cannot restore tokens after a logout or a new login.
+D: If the store is refused, the client revokes the abandoned token pair in the background.
+
+Q: What does expires_in tell the client?
+L: basic
+T: tokens
+S: The access token's lifetime in seconds (1800 by default), so a client could refresh proactively. The CareKosh app refreshes reactively on 401 instead.
+D: Proactive refresh would avoid one 401 round trip per half hour; reactive refresh is simpler and handles clock skew and revoked sessions the same way.
+
+Q: How long do email tokens last?
+L: basic
+T: tokens, email
+S: Verification 24 hours, password reset 1 hour, account deletion 24 hours, all single use.
+D: Each expiry is checked inside the SQL that consumes or looks up the token, so an expired link fails with the same response as an invalid one. Verification and reset expiries come from settings (EMAIL_VERIFICATION_EXPIRY_HOURS, PASSWORD_RESET_EXPIRY_HOURS).
+
+Q: What is session fixation and is CareKosh exposed?
+L: advanced
+T: sessions, attacks
+S: An attacker makes the victim use a session id the attacker knows. CareKosh is not exposed: login always issues fresh, server-signed tokens; the client cannot choose them.
+D: Session fixation matters for cookie sessions where an id exists before login. Bearer tokens created at login, plus rotation at refresh, avoid it by design.
+
+## Threats and hardening
+Q: How does CareKosh resist password guessing?
+L: intermediate
+T: threats, brute-force
+S: CareKosh uses expensive Argon2 password verification, generic credential errors and a rate-limited login route.
+D: Hosted counters are shared across workers. Web and native login share a scope. A 429 denotes quota exhaustion, while a protected-route 503 can indicate that the limiter store is unavailable.
+
+Q: What does credential stuffing mean, and what would help?
+L: intermediate
+T: threats, credential-stuffing
+S: Trying username–password pairs leaked from other sites. MFA, breached-password checks at registration and change, anomaly detection and robust rate limiting help; hashing alone does not.
+D: CareKosh's generic login error and per-IP limit slow it a little; per-account limits and breached-password checks would help more without blocking users who share a network.
+
+Q: What is account enumeration and where is it possible?
+L: intermediate
+T: threats, enumeration
+S: Learning whether an account exists from differing responses. Forgot-password and resend answer generically, but registration's 400 "Email already registered" reveals it.
+D: Generic answers are the usual fix. For registration that means always replying "check your email" and telling an existing owner by email instead of in the response.
+
+Q: How are tokens kept out of logs?
+L: intermediate
+T: logging, privacy
+S: A log-record factory redacts the token segment of verification and deletion paths and the values of token, access_token, refresh_token and password query parameters, strips query strings from access logs and withholds exception messages.
+D: It is installed as a log-record factory, so it applies to every logger and handler, including Uvicorn's access log. SQLAlchemy's hide_parameters keeps bound values (such as digests) out of SQL errors.
+
+Q: What does Sentry receive?
+L: intermediate
+T: telemetry, privacy
+S: Error type, code locations, the URL path and method; no personal data, no request bodies, no local variables, and no trace headers sent to outside providers.
+D: It is enabled only when SENTRY_DSN is set, with send_default_pii False, max_request_body_size never, include_local_variables False and an empty trace_propagation_targets list; a scrubber drops user data, extras and breadcrumbs, keeps only the URL path and method of the request, and redacts messages.
+
+Q: How are large or slow requests handled?
+L: intermediate
+T: dos, hardening
+S: A pure ASGI middleware caps every body (2 MB, 12 KB for AI JSON, 64 KB for Supply Review and 900 KB for audio), refuses AI routes without a bearer token before reading, and enforces upload deadlines on AI routes.
+D: Bodies over the cap get 413, AI uploads that are too slow get 408, and both refusals still carry the security headers and a request id. Ordinary API uploads use a configurable 60-second default body-read deadline, so slow phones and cold starts still work.
+
+Q: Why does the server never return SQL errors?
+L: basic
+T: errors, hardening
+S: Database messages reveal schema details and sometimes values. IntegrityError becomes a generic 409 and unexpected errors a generic 500; SQL parameters are also hidden from logs.
+D: The handlers log the exception type and code location only, so even the server logs do not hold SQL text with values; the response carries a timestamp for correlation.
+
+Q: Why is the container's user not root?
+L: basic
+T: docker, hardening
+S: To limit what an attacker could do after exploiting the process: no root inside the container.
+D: The Dockerfile creates appuser with uid 1000, copies the code with that owner and switches with USER appuser; nothing at run time needs root.
+
+Q: What production settings refuse to start?
+L: intermediate
+T: configuration, hardening
+S: The public default SECRET_KEY outside development and testing, any key shorter than 32 characters, and an empty FRONTEND_URL in production.
+D: Validation happens when Settings is created at import, so a misconfigured deploy fails at start-up and Render keeps the old instance serving.
+
+Q: What would you do first after a suspected token theft?
+L: advanced
+T: incident
+S: For one account: bump session_version and revoke its refresh rows (a password reset does both). For a key compromise: rotate SECRET_KEY, which ends every session.
+D: Then review activity rows for that user, check the refresh_tokens rows' device and address fields for unknown sessions, and tell the person to reset their password.
+
+Q: How do consent and scopes protect privacy?
+L: intermediate
+T: privacy, ai
+S: Each cloud use (text interpretation, audio transcription, narration) needs its own consented scope with the current consent version, re-checked under the budget lock before any provider call; revocation always works.
+D: Consent rows hold a version, an accepted flag and the scopes; server flags and a data-controls review flag must also be on. No inventory data is ever sent; only the text or audio the person chose to send.
+
+Q: What is the biggest remaining security gap?
+L: advanced
+T: gaps
+S: Prioritize the risk in the actual deployment. Examples include missing MFA, refresh replay handling and whether recovery has been rehearsed.
+D: Distinguish the browser family revoked on logout from automatic family revocation on replay. Shared hosted rate limits are implemented. An interview about their effectiveness needs operational evidence as well.
+
+Q: How would you add MFA?
+L: advanced
+T: mfa, design
+S: Add TOTP or passkeys: enrol with a verified factor, require a second step after the password at login, issue tokens only after both, and provide recovery codes. Refresh would keep working without repeating MFA until the session ends.
+D: Rate limiting and lockouts for the second factor, and a recovery path that does not bypass it, are the parts people forget. Passkeys (WebAuthn) would also remove password guessing for users who adopt them.
+
+Q: How would you align the password policy with NIST SP 800-63B-4?
+L: intermediate
+T: passwords, policy
+S: Require at least 15 characters for single-factor passwords (8 if used with MFA), allow at least 64, drop composition rules, check new passwords against a breached-password list, and never force periodic changes.
+D: CareKosh currently requires 8–128 characters with an uppercase letter, a lowercase letter and a digit.

@@ -1,0 +1,65 @@
+<section class="part" id="p4" data-toc="Interview preparation" data-desc="Whiteboard order, stories, wrong claims, questions and a cheat sheet.">
+  <div class="part-head">
+    <p class="eyebrow">Part 4 · Practice</p>
+    <h2>Interview <em>preparation</em></h2>
+    <p class="in-short"><strong>In short:</strong> rehearse the whiteboard order, keep five true stories ready, avoid the wrong claims below, and test yourself with the questions with the answers hidden.</p>
+  </div>
+
+  <div class="sub" id="b1-whiteboard" data-toc="Draw it in two minutes">
+    <h3>Draw it in two minutes</h3>
+    <p>Draw four boxes: browser or Android client, Cloudflare, Render API, PostgreSQL. Show a second line from the browser to the frontend Worker to retrieve static assets. Add Redis alongside the API for hosted rate limits. Draw GitHub Actions, Render builds and EAS above that request path to show when code is released.</p>
+    <p>Walk through Save. An access token establishes identity, an owner filter selects the account’s item, and a submitted version protects against overwriting a newer edit. Ask which revision is actually deployed before attributing a staging result to a Git commit.</p>
+    {{fig:big-picture|Builds and user requests have different triggers.}}
+    <p class="small muted">Repository evidence · {{p:carekosh-web/package.json}} · {{p:M/package.json}} · {{p:B/app/main.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-stories" data-toc="Story bank">
+    <h3>Story bank (situation, task, action, result)</h3>
+    <p>These are historical events from the project's dated notes ({{p:docs/PROJECT_LEARNINGS_AND_JOURNEY.md}}, {{p:docs/TECHNICAL_CHALLENGES.md}} and the 8 October review). Dates are the team's notes, not independently verified. {{ev:hist}}</p>
+    <div class="cards two">
+      <div class="card"><h4>Silent overwrites → optimistic concurrency</h4><p><b>Situation:</b> on 4 April 2026 two caregivers editing the same item overwrote each other's quantity. <b>Task:</b> make concurrent edits safe. <b>Action:</b> moved to a server-first design (PRs #4–#8, merged 7–14 April) with a <code>version</code> column, a compare-and-swap UPDATE and 409 responses carrying the current values. <b>Result:</b> the loser now sees a conflict and nothing is overwritten; concurrency tests run on every CI build.</p></div>
+      <div class="card"><h4>Data wiped on reopen → server as source of truth</h4><p><b>Situation:</b> in March 2026, during preview testing, reopening the app during a slow cold start wiped local data before the server answered. <b>Action:</b> stop treating the phone as a database; the server owns data, the phone caches it read-only. <b>Lesson:</b> never destroy local state before the server confirms it has the data.</p></div>
+      <div class="card"><h4>Signed out by a network error → 401 versus offline</h4><p><b>Situation:</b> session start-up cleared tokens on any error, including timeouts. <b>Action:</b> clear credentials only on a real 401; on network errors keep the cached session and show a "warming up" status. <b>Result:</b> the current <code>initialize()</code> waits 8 seconds for the profile and otherwise keeps the cached state.</p></div>
+      <div class="card"><h4>SMTP stalls → HTTPS email API</h4><p><b>Situation:</b> SMTP to Brevo stalled on the hosting platform. <b>Action:</b> switched to Brevo's HTTPS transactional API with a 10-second timeout. <b>Why:</b> the notes record that Render's free web services block outbound SMTP ports; port 443 is not affected.</p></div>
+      <div class="card"><h4>Stale form version → client follows the protocol too</h4><p><b>Situation:</b> the 8 October 2026 review found the edit form could pick up a newer version from a cache refresh while keeping older field values (finding A-1). <b>Action:</b> capture the version together with the form fields; a rendered component test reproduces the old failure. <b>Lesson:</b> optimistic concurrency needs both the server check and a client that sends the version it actually read.</p></div>
+      <div class="card"><h4>A migration you cannot undo → a release gate</h4><p><b>Situation:</b> migration 0007 deliberately refuses to downgrade, and a deploy runs migrations automatically. <b>Action:</b> a written gate: control auto-deploy and the CI hook, test fresh and upgraded schemas on staging with a fresh database, back up, pause writes during cut-over, verify the revision. <b>Result:</b> releases are planned events, not side effects of a merge.</p></div>
+    </div>
+    <p class="small muted">Repository evidence · {{p:B/tests/test_items.py}} · {{p:B/tests/test_orders.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-avoid" data-toc="Wrong claims to avoid">
+    <h3>Wrong claims to avoid</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Don't say</th><th>Say instead</th></tr></thead>
+      <tbody>
+        <tr><td>"JWTs are encrypted."</td><td>They are signed with HS256; anyone holding one can read its claims.</td></tr>
+        <tr><td>"Passwords are encrypted."</td><td>They are hashed with Argon2id and a random salt; they cannot be decrypted.</td></tr>
+        <tr><td>"Logout kills the session immediately."</td><td>Logout revokes the refresh token; the access token works until it expires (30 minutes by default). A password change ends every session.</td></tr>
+        <tr><td>"Our API is stateless, so no database lookup."</td><td>Signatures are checked without the database, but every protected request also loads the user to compare <code>session_version</code>.</td></tr>
+        <tr><td>"One request is one transaction."</td><td>One session per request; it can span several transactions.</td></tr>
+        <tr><td>"The app works offline."</td><td>It shows cached data offline; writes need the server.</td></tr>
+        <tr><td>"/health proves the deploy."</td><td>Neither health endpoint reports the commit or the migration revision.</td></tr>
+        <tr><td>"CORS protects the API."</td><td>CORS is a browser rule; it does nothing for the Android app.</td></tr>
+        <tr><td>"The assistant never writes anything."</td><td>It never writes inventory or orders; cloud features write consent and usage rows.</td></tr>
+        <tr><td>"It handles N users per second."</td><td>A route benchmark alone cannot establish end-to-end capacity.</td></tr>
+        <tr><td>"Staging and production are verified separate."</td><td>The documents say so; the dashboard settings are not verified here.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small muted">Repository evidence · {{p:B/tests/test_items.py}} · {{p:B/tests/test_orders.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-qa" data-toc="Question bank">
+    <h3>Question bank: the whole project</h3>
+    <p>Answers are hidden so you can test yourself. Filter by a word such as <code>deploy</code>, <code>jwt</code>, <code>concurrency</code> or <code>advanced</code>. Backend-only questions are in {{book:2#b2-qa|Book 2}} and security questions in {{book:3#b3-qa|Book 3}}.</p>
+    {{qa:b1}}
+    <p class="small muted">Repository evidence · {{p:B/tests/test_items.py}} · {{p:B/tests/test_orders.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-cheat" data-toc="Last-hour cheat sheet">
+    <h3>Last-hour cheat sheet</h3>
+    <p>At <code>{{f:baseline}}</code>, the application registers 65 operations under /api/v1 and three root operations. PostgreSQL has 18 application tables plus Alembic’s version table. Thirteen migration revisions lead to 0013_supply_reviews.</p>
+    <p>For an interview, explain one save before quoting counts: the client submits an item version, the API scopes the query to the owner, a conditional update increments the version, and a later stale edit gets 409. For release questions distinguish the Worker version, Render SHA, database migration and Android build.</p>
+    <p>{{p:B/app/api/v1/__init__.py}} · {{p:B/app/models/__init__.py}} · {{p:B/app/api/v1/items.py}}</p>
+    <p class="small muted">Repository evidence · {{p:carekosh-web/package.json}} · {{p:M/package.json}} · {{p:B/app/main.py}}</p>
+  </div>
+</section>

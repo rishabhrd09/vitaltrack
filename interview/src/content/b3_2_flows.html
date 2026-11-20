@@ -1,0 +1,211 @@
+<section class="part" id="p2" data-toc="The identity data model" data-desc="The tables and columns behind accounts, sessions and secrets.">
+  <div class="part-head">
+    <p class="eyebrow">Part 2 · Data</p>
+    <h2>The identity <em>data model</em></h2>
+    <p class="in-short"><strong>In short:</strong> one <code>users</code> row per account, one <code>refresh_tokens</code> row per login session, digests instead of raw tokens, and secrets that live only in each service's environment.</p>
+  </div>
+
+  <div class="sub" id="b3-model" data-toc="Tables and columns">
+    <h3>Tables and columns</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>users.email</code>, <code>users.username</code></td><td>Unique; at least one must be set (CHECK <code>email_or_username</code>). Registration now requires an email; username-only rows are legacy.</td></tr>
+        <tr><td><code>users.hashed_password</code></td><td>Argon2id encoded string (salt and parameters inside), or a legacy bcrypt hash</td></tr>
+        <tr><td><code>users.session_version</code></td><td>Generation number copied into every token; incremented by password change and password reset (migration 0007)</td></tr>
+        <tr><td><code>users.is_active</code>, <code>users.is_email_verified</code></td><td>Disabled accounts get 403; verification may be required for accounts with an email</td></tr>
+        <tr><td><code>email_verification_token</code> + <code>_expiry</code></td><td>SHA-256 digest of the emailed token; 24 hours</td></tr>
+        <tr><td><code>password_reset_token</code> + <code>_expiry</code></td><td>SHA-256 digest; 1 hour</td></tr>
+        <tr><td><code>deletion_token</code> + <code>deletion_token_expires</code></td><td>SHA-256 digest; 24 hours</td></tr>
+        <tr><td><code>last_login</code></td><td>Updated on successful login</td></tr>
+        <tr><td><code>refresh_tokens.jti</code> (unique), <code>user_id</code>, <code>is_revoked</code>, <code>expires_at</code></td><td>One row per issued refresh token; claimed (revoked) when used</td></tr>
+        <tr><td><code>refresh_tokens.device_name</code>, <code>ip_address</code></td><td>The request's User-Agent (first 255 characters) and the socket address, recorded at issue time</td></tr>
+        <tr><td><code>ai_consents</code></td><td>Consent version, accepted flag and scopes per user</td></tr>
+        <tr><td><code>ai_sarvam_credentials.ciphertext</code></td><td>Fernet token of a personal provider key; never the plaintext</td></tr>
+      </tbody>
+    </table></div>
+    <p>Migration 0007 also added indexes on the three token-digest columns, because each email link is looked up by digest.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/tests/test_web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-secrets" data-toc="Where secrets live">
+    <h3>Where secrets live</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Secret</th><th>Purpose</th><th>Stored</th></tr></thead>
+      <tbody>
+        <tr><td><code>SECRET_KEY</code></td><td>HMAC key for every JWT</td><td>Environment of each service; Render generates it for production (<code>generateValue</code>); at least 32 characters; the public default is refused outside development and testing</td></tr>
+        <tr><td><code>DATABASE_URL</code></td><td>Database credentials</td><td>Environment, entered in the dashboard (<code>sync: false</code>)</td></tr>
+        <tr><td><code>MAIL_PASSWORD</code></td><td>The Brevo API key used by the HTTP API call</td><td>Environment (<code>sync: false</code>)</td></tr>
+        <tr><td><code>AI_CREDENTIAL_ENCRYPTION_KEY</code> (+ previous keys)</td><td>Fernet keys for personal provider keys</td><td>Environment; must be stable across deploys and workers</td></tr>
+        <tr><td><code>GROQ_API_KEY</code>, <code>SARVAM_API_KEY</code></td><td>Server-owned provider keys</td><td>Environment, only where AI is enabled</td></tr>
+        <tr><td>Access and refresh tokens</td><td>A person's session</td><td>Android uses SecureStore. The browser keeps the access token in memory and its refresh token in an HttpOnly cookie.</td></tr>
+      </tbody>
+    </table></div>
+    <p>The signing key and several service credentials use <code>SecretStr</code>. The database URL is a string and client tokens are issued at runtime. Keep full settings dumps, connection URLs and tokens out of logs. The logging and Sentry integrations apply redaction.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/core/config.py}} · {{p:B/app/main.py}}</p>
+  </div>
+</section>
+
+<section class="part" id="p3" data-toc="Every flow, end to end" data-desc="Register, verify, log in, use, refresh, restart, log out, change, reset, delete.">
+  <div class="part-head">
+    <p class="eyebrow">Part 3 · Flows</p>
+    <h2>Every account flow, <em>end to end</em></h2>
+    <p class="in-short"><strong>In short:</strong> each flow below has a diagram (phone, API, PostgreSQL), the exact code, the failure branches with their status codes, and what is stored where afterwards.</p>
+  </div>
+
+  <div class="sub" id="b3-register" data-toc="Registration">
+    <h3>Registration</h3>
+    <p>Browser registration returns the user and <code>verificationRequired</code>. It issues no browser login cookie here. The native endpoint has its own response contract.</p>
+    {{fig:flow-register|Registration: validate, check uniqueness, create secrets, insert and commit, reply, then send the email in the background.}}
+    {{x:B/app/api/v1/auth.py:154-175|The verification token and the Argon2 hash are created before the user row; only the digest is stored.}}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Failure</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Rate limit (3 per hour per client key)</td><td>429</td></tr>
+        <tr><td>Invalid email, weak password, bad username</td><td>422</td></tr>
+        <tr><td>Email or username taken</td><td>400 "Email already registered" / "Username already taken"</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout note"><span class="callout-title">Stored where afterwards</span><p><strong>Database:</strong> the user (Argon2id hash, verification digest and expiry), one refresh-token row, an activity row. <strong>Phone:</strong> nothing: the app deliberately discards the tokens the API returned and shows "check your email". <strong>Inbox:</strong> the raw token inside the link.</p></div>
+    <limits><p>The 400 messages reveal whether an email is registered (account enumeration), while forgot-password and resend do not. That is a usability trade-off; a privacy-first design would always answer "check your email".</p></limits>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-verify-email" data-toc="Email verification">
+    <h3>Email verification</h3>
+    {{fig:flow-verify|Email verification: the link opens the API's own page; one conditional UPDATE matches the digest and expiry, marks the email verified and clears the token.}}
+    {{x:B/app/api/v1/auth.py:87-97|Single use in one statement: the UPDATE only matches an unexpired digest, and clears it while setting the flag.}}
+    <ul>
+      <li><strong>Two endpoints:</strong> <code>GET /auth/verify-email?token=…</code> returns an HTML page (the email link); <code>GET /auth/verify-email/{token}</code> returns JSON for the app.</li>
+      <li><strong>Enforcement</strong> happens only when <code>REQUIRE_EMAIL_VERIFICATION</code> is true <em>and</em> mail is configured, and only for accounts with an email. Hosted startup refuses a blank mail credential when verification is required. Login, refresh and authenticated request checks enforce the account policy.</li>
+      <li><strong>Resend</strong> answers the same generic message whether or not the account exists, replaces the digest (so older links stop working) and returns 503 if mail is not configured.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-login" data-toc="Login">
+    <h3>Login</h3>
+    <p>The browser posts to <code>/api/v1/web-auth/login</code>. The response exposes an access token to the frontend and sets a refresh cookie scoped to <code>/api/v1/web-auth</code>. The Android diagram below shows the native token-pair transport.</p>
+    {{fig:flow-login|Login: normalise the identifier, lock the user row, verify Argon2 in a thread, check status, mint two tokens, record the session and commit.}}
+    {{x:B/app/api/v1/auth.py:256-290|Lookup, verification and status checks. A wrong password and an unknown account get the same 401 message.}}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Failure</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Rate limit (5 per minute per client key)</td><td>429</td></tr>
+        <tr><td>Unknown identifier or wrong password</td><td>401 "Incorrect email/username or password"</td></tr>
+        <tr><td>Disabled account</td><td>403 "Account is disabled"</td></tr>
+        <tr><td>Email not verified (policy on)</td><td>403 "EMAIL_NOT_VERIFIED"; the app offers to resend</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout note"><span class="callout-title">Stored where afterwards</span><p><strong>Database:</strong> a new <code>refresh_tokens</code> row (jti, expiry, User-Agent, socket address), <code>last_login</code>, an activity row. <strong>Phone:</strong> both tokens in SecureStore; the user and <code>isAuthenticated</code> in the Zustand store (persisted through SecureStore); the previous user's query cache cleared.</p></div>
+    <p>Why lock the user row at login? Login, refresh, password change and reset all lock the same row first, so issuing new tokens and revoking old ones happen in a single order: a login cannot slip a new token past a concurrent password reset.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/tests/test_web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-session" data-toc="During a session">
+    <h3>What happens during a session</h3>
+    {{fig:flow-request|An authenticated request: bearer header, signature and expiry, token type, user row and session_version, status and policy, then an owner-scoped query.}}
+    {{x:B/app/api/deps.py:37-86|get_current_user: every check in order.}}
+    <ul>
+      <li><strong>Cost:</strong> one HMAC verification and one indexed primary-key lookup per request.</li>
+      <li><strong>Why the lookup:</strong> it makes revocation immediate. If the password changed, <code>session_version</code> no longer matches and the request gets 401 at once, without waiting for the token to expire.</li>
+      <li><strong>Inside handlers:</strong> the user comes from this dependency, never from the request body, and every business query filters on that user's id.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/api/deps.py}} · {{p:B/app/api/v1/items.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-refresh" data-toc="Expiry and refresh">
+    <h3>Access-token expiry and refresh</h3>
+    <p>For browser refresh, the cookie travels with the request and the frontend supplies its browser marker. A successful response rotates the cookie and replaces the in-memory access token. Android submits its refresh token explicitly.</p>
+    {{fig:flow-refresh|Refresh: one shared refresh on the phone; on the server, lock the user, claim the refresh token once, issue and store a new pair.}}
+    {{x:B/app/api/v1/auth.py:791-814|The claim: only one request can flip is_revoked from false to true for a given jti.}}
+    {{x:M/services/api.ts:146-205|The phone's side: a credential "epoch" stops a slow refresh from writing tokens back after a logout; one shared promise serves every waiting request; tokens are deleted only on 401 or 403 from the refresh call.}}
+    {{fig:token-timeline|A session over time with the default lifetimes: login, a refresh, a replayed old refresh token, logout, and the alternative of a password change.}}
+    <ul>
+      <li><strong>Sliding window:</strong> every refresh issues a refresh token with a new 30-day expiry, so a phone used at least once a month stays signed in; there is no absolute session limit.</li>
+      <li><strong>No reuse detection:</strong> presenting an already-rotated refresh token gets 401, but its successor stays valid. RFC 9700 recommends revoking the active token in that case, because the server cannot tell the attacker from the real client.</li>
+      <li><strong>Refresh has no rate-limit decorator:</strong> each attempt needs a valid, signed, unrevoked token, so guessing is not possible.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/tests/test_web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-restart" data-toc="App restart">
+    <h3>App restart (cold start)</h3>
+    <p>After a browser reload the access token in memory is gone. The client can restore a session through cookie-backed refresh. On Android, the startup flow uses secure device storage.</p>
+    <ol class="steps">
+      <li><strong>No access token in SecureStore</strong> → signed out; show login.</li>
+      <li><strong>Token present</strong> → fetch <code>/auth/me</code> with an 8-second limit. Success → signed in with the fresh profile; the query cache is invalidated so screens refetch.</li>
+      <li><strong>Timeout</strong> (for example a cold server) → stay signed in from the cached state, show a "server warming up" status and retry in the background after 5 seconds.</li>
+      <li><strong>401</strong> → the API client tries one shared refresh first; if that also fails, tokens are cleared and the person signs in again. A network error never clears tokens.</li>
+    </ol>
+    <p>The guard in {{p:M/app/_layout.tsx}} redirects to <code>(auth)/login</code> whenever the store says signed out, and to <code>(tabs)</code> when signed in.</p>
+    <p class="small muted">Repository evidence · {{p:M/services/api.ts}} · {{p:M/store/useAuthStore.ts}}</p>
+  </div>
+
+  <div class="sub" id="b3-logout" data-toc="Logout">
+    <h3>Logout</h3>
+    <p>Browser logout expires the refresh cookie and revokes refresh rows for the matched browser family. Android revokes the presented refresh row. Already-issued access tokens still follow their expiry and account session-version checks.</p>
+    {{fig:flow-logout|Logout: immediate local cleanup, then a best-effort background revocation of one refresh token. The access token keeps working until it expires.}}
+    {{x:M/services/auth.ts:31-38|The phone clears tokens first and never waits for a sleeping or unreachable server.}}
+    {{x:B/app/api/v1/auth.py:852-888|The server side: requires a valid access token, revokes the matching refresh row and logs the activity.}}
+    <div class="callout risk"><span class="callout-title">The logout window</span><p>Logout does not revoke the access token: a copy of it would keep working until its <code>exp</code> (at most 30 minutes by default). Options: a shorter access lifetime, a <code>jti</code> denylist checked in <code>get_current_user</code>, or a "log out everywhere" action that increments <code>session_version</code>. A password change or reset already ends every session immediately.</p></div>
+    <p>On the phone, logout also clears the TanStack Query cache in memory and its AsyncStorage copy, so the next person on a shared family phone cannot see the previous inventory.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/tests/test_web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-change" data-toc="Changing the password">
+    <h3>Changing the password</h3>
+    {{x:B/app/api/v1/auth.py:1202-1239|Change password: lock and re-check the session, verify the current password in a thread, store a new hash, bump session_version, clear pending tokens and revoke every refresh row.}}
+    {{x:B/app/api/v1/auth.py:65-74|_lock_current_user: re-reads the user under a row lock and refuses if the session generation changed while the request waited.}}
+    <ul>
+      <li>A wrong current password returns 400 (not 401), so the app does not treat it as an expired session.</li>
+      <li>Every device, including this one, must log in again: the response says so, and the old tokens fail at their next use.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-reset" data-toc="Forgot and reset password">
+    <h3>Forgot and reset password</h3>
+    {{fig:flow-reset|Forgot and reset: a generic reply, a one-hour single-use link, then a new hash and the end of every existing session.}}
+    {{x:B/app/api/v1/auth.py:707-740|Reset: the token is matched by digest, expiry and active status under a row lock; the new hash, the cleared token, the generation bump and the revocations commit together.}}
+    <ul>
+      <li><strong>Anti-enumeration:</strong> forgot-password gives the same message for unknown, disabled and real accounts.</li>
+      <li><strong>Two ways to submit:</strong> the API's HTML form at <code>GET /auth/reset-password</code> (hidden from the schema) and the app's reset screen both post to <code>POST /auth/reset-password</code>, rate limited to 5 per hour per IP.</li>
+      <li><strong>Notification:</strong> a "password changed" email goes out in the background, so the real owner learns about an unexpected reset.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-delete" data-toc="Account deletion">
+    <h3>Account deletion</h3>
+    {{fig:flow-delete|Account deletion: request in the app, confirm from the email; the confirmation deletes the user and the database cascades remove every owned row.}}
+    {{x:B/app/api/v1/auth.py:1146-1173|Confirmation: find the user by digest and expiry under a lock, delete, commit, and show a completion page.}}
+    <ul>
+      <li><strong>Why two steps:</strong> a stolen access token alone cannot delete the account; the attacker would also need the inbox.</li>
+      <li><strong>Why GET only shows a page:</strong> mail scanners and link previews fetch URLs; a GET that deleted the account could fire without a human click. The deletion happens only on the form's POST.</li>
+      <li><strong>Accounts without an email</strong> cannot use this flow (400 with a support address).</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-profile" data-toc="Profile updates">
+    <h3>Profile updates</h3>
+    <p><code>PATCH /auth/me</code> locks the user row, then allows a new unique username, a name and a phone number. Changing the email is refused with 400 "To change your email, contact support." This rule also applies to the browser client. Read {{p:B/app/api/v1/auth.py}} before adding an email-change form. {{ev:code}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-states" data-toc="Disabled and unverified">
+    <h3>Disabled and unverified accounts</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Path</th><th>Disabled (<code>is_active</code> false)</th><th>Unverified email, policy on</th></tr></thead>
+      <tbody>
+        <tr><td>Login</td><td>403</td><td>403 EMAIL_NOT_VERIFIED</td></tr>
+        <tr><td>Refresh</td><td>401</td><td>403 EMAIL_NOT_VERIFIED</td></tr>
+        <tr><td>Protected request</td><td>403</td><td>403 EMAIL_NOT_VERIFIED</td></tr>
+        <tr><td>Forgot password</td><td>Generic reply, no email</td><td>Sends the reset email</td></tr>
+        <tr><td>Reset password</td><td>400 (no matching active user)</td><td>Allowed</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small muted">Repository evidence · {{p:B/app/api/deps.py}} · {{p:B/app/api/v1/items.py}}</p>
+  </div>
+</section>

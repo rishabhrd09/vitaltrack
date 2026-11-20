@@ -102,6 +102,7 @@ Full setup, env vars, and troubleshooting: **[CAREKOSH_DEVELOPER_GUIDE.md](CAREK
 |---|---|
 | [docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md](docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) | Main onboarding entry: architecture, setup, data model, request flow, voice assistant, CI/CD, release |
 | [docs/API_TRACEABILITY.md](docs/API_TRACEABILITY.md) | Every endpoint, traced to its handler, tables and tests |
+| [Deployment Atlas and interview reading order](docs/deployment/CAREKOSH_DEPLOYMENT_ATLAS.html#interview-library) | Open the HTML from your clone to follow the stock-edit walkthrough, explore deployment, and read the three source-linked interview books. |
 | [docs/INDEX.html](docs/INDEX.html) | Documentation home (open in a browser) |
 | docs/documentation-audit-2026-10-07/README.md (local review reference; not published) | What the 7 Oct 2026 documentation audit checked and corrected |
 

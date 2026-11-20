@@ -1,0 +1,118 @@
+<section class="part" id="p13" data-toc="Important code, annotated" data-desc="Eleven exact excerpts with what to say about each.">
+  <div class="part-head">
+    <p class="eyebrow">Part 13 · Code</p>
+    <h2>Important code, <em>annotated</em></h2>
+    <p class="in-short"><strong>In short:</strong> eleven short excerpts that carry the system's guarantees. Each is an exact copy from <code>{{f:baseline}}</code>; the notes underneath are what you would say while pointing at it.</p>
+  </div>
+
+  <div class="sub" id="b2-code-cors" data-toc="CORS set-up">
+    <h3>CORS: wildcard without credentials</h3>
+    <p>Browser refresh uses a host-only HttpOnly cookie. Hosted environments use Secure and SameSite=Strict and limit the cookie path to the web-auth endpoints. A native Android request supplies a bearer token explicitly. A browser also uses bearer access tokens for inventory, but its refresh credential can be attached automatically by the browser.</p>
+    <p>Enabling browser login requires an explicit WEB_APP_ORIGINS list included in CORS_ORIGINS. The cookie endpoint checks the exact Origin and X-CareKosh-Web marker and rejects cross-site fetch metadata. CORS controls browser access across origins. It cannot establish ownership of an inventory item. Server-side authorization still runs on every protected operation.</p>
+    {{x:B/app/api/v1/web_auth.py:44-65|The browser request contract and cookie attributes are both explicit.}}
+    <p>{{p:B/app/main.py}} · {{p:carekosh-web/README.md}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/main.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/app/services/ingress.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-code-tokens" data-toc="Minting tokens">
+    <h3>Minting a token pair</h3>
+    {{x:B/app/core/security.py:137-159}}
+    <ul>
+      <li>The access token carries <code>session_version</code> as an extra claim; the refresh token carries it plus a <code>jti</code>.</li>
+      <li><code>expires_in</code> is reported in seconds (1800 by default) so clients can plan refreshes.</li>
+      <li>Signing uses <code>settings.secret_key_value</code> with <code>JWT_ALGORITHM</code> (HS256); decoding passes <code>algorithms=[…]</code> as an allow-list, which blocks algorithm-confusion attacks.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/core/security.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-code-null" data-toc="Omitted versus null">
+    <h3>Partial updates: omitted versus <code>null</code></h3>
+    {{x:B/app/api/v1/items.py:432-463}}
+    <ul>
+      <li>Optional columns are written only if the client sent the field (<code>model_fields_set</code>), so <code>"notes": null</code> clears notes while an omitted <code>notes</code> leaves them alone.</li>
+      <li>Required columns treat <code>None</code> as "not sent" and are never set to NULL.</li>
+      <li>Nothing is assigned to the ORM object: the values go into one conditional UPDATE, so the version check and the write are a single statement.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/schemas/item.py}} · {{p:B/app/api/v1/items.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-code-status" data-toc="Status changes">
+    <h3>Order status changes: claim the old state</h3>
+    {{x:B/app/api/v1/orders.py:338-352}}
+    <ul>
+      <li>The transition was validated against the status read earlier; the UPDATE only fires while the row still has that status.</li>
+      <li>Zero rows means another request moved the order first, so the API answers 409 instead of applying a stale transition (no lost update, no last-writer-wins).</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/services/orders.py}} · {{p:B/app/api/v1/orders.py}} · {{p:B/tests/test_orders.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-code-apply" data-toc="Claiming an apply">
+    <h3>Applying stock exactly once</h3>
+    {{x:B/app/api/v1/orders.py:465-488}}
+    <ul>
+      <li>The claim moves the order from <code>received</code> to <code>stock_updated</code>. Two concurrent applies cannot both claim it.</li>
+      <li>Stock updates follow in the same transaction; if any fails, <code>get_db</code> rolls back the claim and every stock change together.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/services/orders.py}} · {{p:B/app/api/v1/orders.py}} · {{p:B/tests/test_orders.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-code-refresh" data-toc="Refresh rotation">
+    <h3>Refresh-token rotation</h3>
+    {{x:B/app/api/v1/auth.py:781-831}}
+    <ul>
+      <li>The user row is locked first, then the refresh row is claimed: the same lock order as password changes, so a token cannot slip past a password change.</li>
+      <li>The claim is one conditional UPDATE; only one concurrent request can flip <code>is_revoked</code>.</li>
+      <li>The new refresh token gets a new <code>jti</code> and a new 30-day expiry.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-code-ai" data-toc="AI concurrency">
+    <h3>AI concurrency: one billable call per kind per account</h3>
+    {{x:B/app/services/ai_guard.py:232-256}}
+    <ul>
+      <li>"Active" means a reserved row that has not expired. The checks run under the global advisory lock, so the count cannot change between the check and the insert.</li>
+      <li>A person can have a question interpreted while an earlier answer is still being spoken (different kinds), but cannot queue two billable calls of one kind.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/services/ai_guard.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-code-bodylimit" data-toc="Refuse before reading">
+    <h3>Refuse before reading the body</h3>
+    {{x:B/app/services/ai_body_limit.py:62-90}}
+    <ul>
+      <li>Pure ASGI middleware sees the raw <code>scope</code>: path, method and headers, before any body bytes are read.</li>
+      <li>An AI upload missing a bearer header gets 401 before the middleware buffers the body. The authentication dependency validates the token later, with the security headers that the inner middleware would otherwise add.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/services/ai_body_limit.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-code-fernet" data-toc="Encrypting a provider key">
+    <h3>Encrypting a personal provider key</h3>
+    {{x:B/app/services/sarvam_credentials.py:51-79}}
+    <ul>
+      <li>The envelope binds the ciphertext to its owner and provider: copying a ciphertext into another user's row would fail the owner check.</li>
+      <li><code>raise … from None</code> hides why decryption failed (bad key, tampered token, wrong owner) from the caller.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/services/sarvam_credentials.py}} · {{p:B/app/services/openai_credentials.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-code-requestid" data-toc="Safe request ids">
+    <h3>Safe request ids</h3>
+    {{x:B/app/utils/request_ids.py:7-11}}
+    <ul>
+      <li>A client may send its own <code>X-Request-ID</code> for correlation, but only a short, printable value is echoed back into headers and logs.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/utils/request_ids.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-code-frontend" data-toc="Production config guard">
+    <h3>A production configuration guard</h3>
+    {{x:B/app/core/config.py:240-249}}
+    <ul>
+      <li>Email links are built from <code>FRONTEND_URL</code>. Production refuses to start without it, rather than sending links to <code>127.0.0.1</code>.</li>
+      <li>Validation at start-up turns a silent misconfiguration into a failed deploy that keeps the old instance serving.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/core/config.py}} · {{p:B/app/utils/email.py}}</p>
+  </div>
+</section>

@@ -1,0 +1,141 @@
+<section class="part" id="p3" data-toc="FastAPI and Starlette" data-desc="App factory, routes, dependencies, validation, middleware, background tasks, health and servers.">
+  <div class="part-head">
+    <p class="eyebrow">Part 3 · Framework</p>
+    <h2>FastAPI internals, <em>as CareKosh uses them</em></h2>
+    <p class="in-short"><strong>In short:</strong> FastAPI is Starlette (routing, middleware, requests) plus Pydantic (validation) plus a dependency-injection system driven by type hints. Most bugs and most interview questions live in the order these pieces run.</p>
+  </div>
+
+  <div class="sub" id="b2-factory" data-toc="App factory and lifespan">
+    <h3>The application factory and lifespan</h3>
+    <p>{{s:B/app/main.py#create_app}} builds the app: middleware, routers, the rate limiter, exception handlers and health endpoints. The module ends with <code>app = create_app()</code>, which is what Gunicorn imports as <code>app.main:app</code>.</p>
+    <ul>
+      <li><strong>API docs are hidden by default.</strong> <code>docs_url</code>, <code>redoc_url</code> and <code>openapi_url</code> are set only when <code>DEBUG</code> is true, so production does not publish its schema.</li>
+      <li><strong>Lifespan</strong> replaces the older start-up and shutdown events: create tables in development only, and dispose of the engine's connections at shutdown.</li>
+      <li><strong>Sentry</strong> is initialised at import time only if <code>SENTRY_DSN</code> is set, with personal data, request bodies, local variables and trace propagation to outside services all turned off.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/main.py}} · {{p:B/app/api/v1/auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-routes" data-toc="Path operations">
+    <h3>Path operations and responses</h3>
+    <p>Each resource has an <code>APIRouter</code> with a prefix (<code>/auth</code>, <code>/items</code> …), included under a parent router with prefix <code>/api/v1</code>. Patterns worth recognising:</p>
+    <ul>
+      <li><strong><code>response_model</code></strong> filters and serialises the return value; it is why internal columns such as <code>hashed_password</code> never leak.</li>
+      <li><strong><code>status_code=201</code></strong> on creates; a handler can still change it through a <code>Response</code> parameter, as order creation does when a <code>localId</code> replay returns <code>200</code>.</li>
+      <li><strong>Returning a <code>JSONResponse</code> directly</strong> bypasses the response model. The item 409 does this to send <code>server_version</code> and <code>server_quantity</code>.</li>
+      <li><strong><code>response_class=HTMLResponse</code></strong> for the pages behind email links; three of them use <code>include_in_schema=False</code> to stay out of the OpenAPI schema.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/__init__.py}} · {{p:B/scripts/check_api_routes.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-di" data-toc="Dependency injection">
+    <h3>Dependency injection</h3>
+    <p>A dependency is a function FastAPI calls before the handler, because the handler's parameter type says so. Dependencies can depend on other dependencies; FastAPI resolves the graph once per request and <em>caches</em> each dependency's result within that request.</p>
+    {{fig:sd:dependency-graph|What FastAPI builds before update_item runs. get_current_user needs get_db too; because results are cached per request, the handler and the authentication share one session.}}
+    {{x:B/app/api/deps.py:37-86|get_current_user: bearer token → signature, expiry and type → user row → session_version, active flag and verification policy.}}
+    <ul>
+      <li><strong><code>HTTPBearer(auto_error=False)</code></strong> returns <code>None</code> when the header is missing, so the dependency can answer with its own 401 and <code>WWW-Authenticate: Bearer</code>.</li>
+      <li><strong>Aliases in use:</strong> routes use <code>DB</code> and <code>CurrentUser</code>. <code>Pagination</code>, <code>OptionalUser</code>, <code>ActiveUser</code>, <code>VerifiedUser</code> and <code>SuperUser</code> exist but no route uses them.</li>
+      <li><strong>AI routes differ:</strong> their <code>principal()</code> dependency opens its own short session, authenticates and returns only the user id, so no database connection is held while waiting for a provider.</li>
+    </ul>
+    <say><p>"Authentication is a dependency, not middleware. That gives each route an explicit, typed requirement, it reuses the request's session through dependency caching, and it fails with a clean 401 before my handler runs."</p></say>
+    <p class="small muted">Repository evidence · {{p:B/app/api/deps.py}} · {{p:B/app/core/database.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-yield" data-toc="yield dependencies and versions">
+    <h3>Dependencies with <code>yield</code>: when does the clean-up run?</h3>
+    <p>CareKosh pins FastAPI {{f:fastapi}}. Its DB alias explicitly uses Depends(get_db, scope="function"). The handler and its session-based authentication dependency share the dependency result. After the handler returns, the dependency completes before the response is sent. This allows a failing final commit to affect the HTTP outcome.</p>
+    <p>Leaving scope unspecified on a yielding dependency gives it request scope in this version. Reusing DB prevents an accidental second session with a different cleanup time. Explicit commits inside a handler can finish a transaction earlier. A subsequent rollback cannot undo an already committed transaction.</p>
+    {{x:B/app/api/deps.py:26-31|The application chooses the cleanup boundary explicitly.}}
+    {{x:B/app/core/database.py:121-129|Commit on success, roll back on exception and always close the session.}}
+    <p><a href="https://fastapi.tiangolo.com/tutorial/dependencies/dependencies-with-yield/">FastAPI dependency lifecycle</a></p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/deps.py}} · {{p:B/app/core/database.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-validation" data-toc="Validation order and errors">
+    <h3>Validation order and error responses</h3>
+    <p>A favourite trick question: "does FastAPI validate the body before or after authentication?" In this app:</p>
+    <ol class="steps">
+      <li><strong>Malformed JSON</strong> fails with 422 while the body is parsed, before any dependency runs.</li>
+      <li><strong>Dependencies run next.</strong> A bad token gives 401 even if the body is also invalid.</li>
+      <li><strong>Field validation errors</strong> (wrong types, out-of-range values) give 422, but only after <code>get_current_user</code> may already have queried the user.</li>
+    </ol>
+    {{x:B/app/main.py:211-265|The custom handlers: validation errors become a structured 422, IntegrityError a generic 409 without SQL details, anything unexpected a generic 500.}}
+    <p>Two more handlers are registered: slowapi's handler turns <code>RateLimitExceeded</code> into 429, and FastAPI's default turns <code>HTTPException</code> into <code>{"detail": …}</code>. The phone's client understands all of these shapes.</p>
+    <limits><p>Handlers for <code>Exception</code> are run by Starlette's outermost <code>ServerErrorMiddleware</code>, outside the app's own middleware, so an unexpected 500 lacks the <code>X-Request-ID</code> and security headers (review finding A-13).</p></limits>
+    <p class="small muted">Repository evidence · {{p:B/app/schemas/item.py}} · {{p:B/app/api/v1/items.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-middleware" data-toc="The middleware onion">
+    <h3>The middleware onion</h3>
+    <p>FastAPI constructs the application once. Its installed middleware wraps each request. For a normal application request, CORS is the outermost application-added layer, followed by IngressGuard, RequestCapacity, AIBodyLimit, then the security-header and request-ID layers in their configured order. Starlette also supplies framework-level error handling. Middleware can answer early, so a denied request may never execute a route.</p>
+    <p>Trace a browser refresh in two steps. A matching OPTIONS request can finish at CORS. The POST continues through ingress validation and capacity and body checks before the browser session handler checks the origin and refresh cookie. A 200 preflight and a 503 POST are consistent outcomes.</p>
+    {{x:B/app/main.py:161-164|These wrappers are registered before CORS, which wraps them on incoming traffic.}}
+    <p>{{p:B/app/services/ingress.py}} · {{p:B/app/services/ai_body_limit.py}} · {{p:B/app/api/v1/web_auth.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/main.py}} · {{p:B/app/api/v1/auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-background" data-toc="Background tasks">
+    <h3>Background tasks</h3>
+    <p>Registration, verification resend, forgot-password, reset-password and the account-deletion request add email sends to FastAPI's <code>BackgroundTasks</code>. They run in the same worker process after the response is sent.</p>
+    <ul>
+      <li><strong>Why:</strong> the person does not wait up to 10 seconds for Brevo, and a slow email provider cannot slow the API's reply.</li>
+      <li><strong>Limits:</strong> a background task is not a queue. If the process stops right after the reply, the email is lost; a failure is logged and not retried.</li>
+      <li><strong>Next step:</strong> a durable queue (or a transactional outbox table polled by a worker) with retries and idempotent sends.</li>
+    </ul>
+    <avoid><p>"Background tasks are like Celery." They are in-process and non-durable.</p></avoid>
+    <p class="small muted">Repository evidence · {{p:B/app/main.py}} · {{p:B/app/api/v1/auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-health" data-toc="Health endpoints">
+    <h3>Health endpoints</h3>
+    {{x:B/app/main.py:291-337|/health runs SELECT 1 with a 2-second limit and returns 503 on failure; /live never touches the database.}}
+    <p>Render health-checks <code>/live</code> and the Dockerfile's <code>HEALTHCHECK</code> uses it too, so a brief database outage cannot make the platform restart healthy app processes in a loop. <code>/health</code> is for people and monitors. Both report the constant <code>APP_VERSION</code> ("1.0.0"), never the commit.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/main.py}} · {{p:B/app/api/v1/auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-servers" data-toc="ASGI servers">
+    <h3>ASGI servers: Uvicorn under Gunicorn</h3>
+    <p>ASGI is the interface between an async server and an async app. Uvicorn implements it; Gunicorn manages processes. The container runs <code>gunicorn app.main:app --worker-class app.worker.CareKoshUvicornWorker --workers 2</code>, bound to <code>0.0.0.0:$PORT</code> by the entrypoint.</p>
+    <ul>
+      <li><strong>Why two processes:</strong> CPU parallelism and fault isolation; if one worker crashes, Gunicorn replaces it.</li>
+      <li><strong>Graceful shutdown:</strong> the entrypoint uses <code>exec</code>, so Gunicorn itself receives the platform's SIGTERM and can finish in-flight requests.</li>
+      <li><strong>Version note:</strong> <code>uvicorn.workers</code> has been deprecated since Uvicorn 0.30 in favour of the separate <code>uvicorn-worker</code> package; with 0.34.0 it still works but warns. Running Uvicorn's own <code>--workers</code> is another option.</li>
+    </ul>
+    <p class="evidence-line">Evidence: {{ev:code}} Dockerfile and entrypoint. {{ev:docs}} Uvicorn 0.34 changelog.</p>
+    <p class="small muted">Repository evidence · {{p:B/Dockerfile}} · {{p:B/docker-entrypoint.sh}} · {{p:B/app/worker.py}}</p>
+  </div>
+</section>
+
+<section class="part" id="p4" data-toc="Pydantic" data-desc="Schemas, aliases, validators and settings.">
+  <div class="part-head">
+    <p class="eyebrow">Part 4 · Validation</p>
+    <h2>Pydantic: <em>schemas and settings</em></h2>
+    <p class="in-short"><strong>In short:</strong> Pydantic models define what the API accepts and returns; pydantic-settings turns environment variables into a validated, typed settings object.</p>
+  </div>
+
+  <div class="sub" id="b2-schemas" data-toc="Schemas, aliases, validators">
+    <h3>Schemas, aliases and validators</h3>
+    <ul>
+      <li><strong>camelCase on the wire, snake_case in Python.</strong> Request fields use <code>alias="minimumStock"</code> with <code>populate_by_name</code>; responses use <code>serialization_alias</code>, and FastAPI serialises by alias. Token responses keep snake_case (<code>access_token</code>).</li>
+      <li><strong><code>from_attributes</code></strong> lets <code>UserResponse.model_validate(user)</code> read an ORM object.</li>
+      <li><strong>Field validators</strong> enforce rules: passwords 8–128 characters with an uppercase letter, a lowercase letter and a digit; usernames 3–50 lowercase letters, digits and underscores; names stripped of angle brackets and quotes; the login identifier lowercased and trimmed.</li>
+      <li><strong>"Omitted" versus "null".</strong> The item update writes an optional column only if the field appears in <code>model_fields_set</code>; an explicit <code>null</code> clears it, an omitted field is untouched.</li>
+    </ul>
+    {{x:B/app/schemas/user.py:31-43|The password validator used at registration; change-password has the same rule.}}
+    <p class="small muted">Repository evidence · {{p:B/app/schemas/item.py}} · {{p:B/app/api/v1/items.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-settings" data-toc="Settings and secrets">
+    <h3>Settings and secrets</h3>
+    <p>{{s:B/app/core/config.py#Settings}} extends <code>BaseSettings</code>: every field can come from an environment variable (case-insensitive) or a local <code>.env</code> file, and <code>get_settings()</code> caches one instance with <code>lru_cache</code>.</p>
+    <ul>
+      <li><strong><code>SecretStr</code></strong> hides secrets in <code>repr</code> and logs; code must call <code>get_secret_value()</code> deliberately.</li>
+      <li><strong>Validators refuse unsafe production values:</strong> the public default <code>SECRET_KEY</code> outside development and testing, any key shorter than 32 characters, and an empty <code>FRONTEND_URL</code> in production.</li>
+      <li><strong><code>DATABASE_URL</code> is normalised:</strong> provider URLs become <code>postgresql+asyncpg://</code>, and query parameters such as Neon's <code>?sslmode=require</code> are removed because asyncpg does not accept them through SQLAlchemy; TLS is requested through <code>connect_args</code> instead.</li>
+      <li><strong>Feature flags</strong> such as <code>AI_ENABLED</code> default to false: features turn on deliberately per environment.</li>
+    </ul>
+    {{x:B/app/core/config.py:130-156|DATABASE_URL normalisation.}}
+    <p class="small muted">Repository evidence · {{p:B/app/core/config.py}} · {{p:B/app/main.py}}</p>
+  </div>
+</section>
