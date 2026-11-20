@@ -1,48 +1,21 @@
-## What does this PR do?
+## Change
 
-<!-- Describe your changes in 1-3 sentences -->
+<!-- What user-visible behavior or developer instruction changes? For a fix, describe how to reproduce it. -->
 
-## Type of change
+## Affected components
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Refactor / code cleanup
+- [ ] FastAPI / database
+- [ ] Browser app / public site
+- [ ] Android
+- [ ] CI / deployment configuration
 - [ ] Documentation
-- [ ] CI/CD / infrastructure
-- [ ] Other: ___
 
-## Environments affected
+## Verification
 
-- [ ] Backend (vitaltrack-backend/)
-- [ ] Mobile app (vitaltrack-mobile/)
-- [ ] CI/CD (.github/workflows/)
-- [ ] Documentation (docs/)
+<!-- Record the local commands or user journey you exercised and the result. For a shared API change, cover both clients. For docs, check the instructions and links after cloning. -->
 
-## Testing
+## Release record
 
-<!-- Describe how you tested this -->
+<!-- For a release, add the candidate SHA, staging deployment or build ID, and result of the changed journey. On promotion, add the production version, smoke result and previous working version. For docs-only work, state whether a deployment is intended. -->
 
-- [ ] Backend tested locally with Docker or a disposable test database
-- [ ] Mobile screens tested with Expo Go where supported (voice requires a native build)
-- [ ] Native voice changes tested with an Android build on a device
-- [ ] Preview APK tested on device
-- [ ] curl commands verified
-- [ ] Not applicable (docs/config only)
-
-## Preview APK
-
-> **Want a Preview APK built automatically?**
-> On this feature branch's workflow, add the label `build-apk` to a PR targeting `main`.
-> After the backend and mobile test jobs pass, CI queues an EAS build using `EXPO_TOKEN`.
-> The job uses `--no-wait`: a successful job means the build was accepted, not that the APK compiled.
-> The label stays active on later PR updates; remove it to stop requesting more builds.
-> The current `preview` profile embeds `https://staging-api.carekosh.com`.
-> Confirm the deployed service uses the staging database before device testing.
-> EAS build availability and charges depend on your account's current plan and quota.
-
-## Checklist
-
-- [ ] My code follows the project's style (Ruff passes; mypy is advisory in CI and its baseline is not clean yet, so check that I added no new mypy errors)
-- [ ] I have tested my changes locally
-- [ ] I have not modified the production profile in eas.json
-- [ ] I have updated documentation if needed
+For a staging Android APK, the optional `build-apk` label requests an EAS preview build after the backend and mobile tests pass. The CI job exits when EAS accepts the request. Check the EAS build result and test the installed APK. Remove the label to avoid requesting another build on subsequent PR updates.

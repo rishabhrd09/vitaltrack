@@ -33,18 +33,10 @@ footer{margin-top:3rem;color:var(--muted);font-size:.9rem;border-top:1px solid v
 </style>
 </head>
 <body>
-<aside data-voice-architecture-sync="2026-10-11" style="margin:16px;padding:16px;border:1px solid #9b8b7b;border-radius:12px;line-height:1.6"><p><strong>AI voice source update — 11 October 2026.</strong> Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, an explicit shared or encrypted per-account personal key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Personal-key migration 0011 adds encrypted credentials and billing-source metadata; the current local inventory is 50 HTTP operations (47 under /api/v1) and 12 application tables. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. <a href="SARVAM_ENGLISH_VOICE.html">Sarvam activation, costs and device checks</a> · <a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Complete voice architecture</a>.</p></aside><p style="padding:16px"><a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html"><strong>Current inventory answers, drafts and narration — 11 October 2026</strong></a>: local drafts, touch-only saving, query/PDF flow and device checklist.</p>
 <a class="skip" href="#start">Skip to the guides</a>
 <main>
-<p class="eyebrow">CareKosh · documentation home · documentation follow-up 8 October 2026</p>
 <h1>CareKosh documentation</h1>
-<aside><strong>5 November 2026 · Supply Review (local source).</strong> Shared web/Android, server-calculated proposals, explicit pending-order confirmation and recovery. Disabled by default pending migration and staging/device acceptance. <a href="SUPPLY_REVIEW.html">Architecture and release guide</a> · <a href="SUPPLY_REVIEW_LEARNING.html">Learning and ownership</a>. Earlier counts below are dated evidence.</aside>
-<aside><strong>25 October 2026 · Personal OpenAI understanding.</strong> Independent listener, understanding and narrator choices; encrypted personal keys, separate consent and exact Render setup. <a href="OPENAI_UNDERSTANDING.html">Read the OpenAI guide</a>. Local implementation; live provider and Android acceptance remain pending.</aside>
-<p>Pick the guide for your task. Current guides, historical evidence and future proposals have different authority, so each one is labelled.</p>
-
-<aside>
-<strong>What "current" means here.</strong> Current guides describe the source at branch <code>feature/backend-hardening-ai-voice-agent-foundation</code>, commit <code>03cfebb</code> plus uncommitted safety fixes and documentation (<code>main</code> is <code>835fad3</code>): migration head <code>0010_order_local_id_unique</code>, 11 application tables, 47 HTTP operations (44 under <code>/api/v1</code>), and an inventory assistant with local unsaved drafts, Moonshine live/offline recognition, optional separately consented Groq GPT-OSS understanding/Whisper listening and local device TTS. The later safety follow-up reran 250 backend tests in both schema setups, 152 mobile tests and the 89-step synthetic API walkthrough: all passed. Targeted issues are fixed locally; earlier audit counts describe earlier snapshots. See the <a href="BACKEND_HARDENING.md#safety-follow-up-8-october-2026">current fixes, release constraints and remaining scope</a>. Live deployments, installed phones and real providers remain <strong>not verified</strong>. Earlier numbers in older documents are historical. See the <a href="../carekosh_system_design/TECHNICAL_REVIEW.md#documentation-reliability-follow-up">documentation follow-up and its scope</a>.
-</aside>
+<p>Start with one working client, then trace a real inventory edit. Use the task references below when you need more detail. Dated guides and diagrams describe the revision they examined. For a release, check the workflows in your checkout and the version each provider is serving.</p>
 
 <nav class="toc" aria-label="On this page">
 <a href="#start">Start here</a><a href="#orders">Reading orders</a><a href="#tasks">Guides by task</a><a href="#diagrams">Diagrams</a><a href="#history">Historical records</a><a href="#future">Proposals</a><a href="#legal">Legal drafts</a><a href="#outside">Prompts and outside scope</a><a href="#rules">Evidence rules</a>
@@ -52,48 +44,31 @@ footer{margin-top:3rem;color:var(--muted);font-size:.9rem;border-top:1px solid v
 
 <h2 id="start">Start here</h2>
 <div class="cards">
-<div class="card"><h3><a href="WHISTLE_OFFLINE_LISTENER.html">Whistle experimental offline listener</a></h3><p>24 October 2026 · regular preview and diagnostic APKs. Setup, model/runtime boundaries, privacy controls and OnePlus acceptance. Moonshine stays the default; narration is separate.</p></div>
-<div class="card"><h3><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html">Complete developer guide</a></h3><p>The main onboarding guide: product rules, architecture, request lifecycle, data model, auth, orders, mobile cache, the voice assistant, concepts, tests and release. <a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Markdown source</a>.</p></div>
-<div class="card"><h3><a href="NEW_DEVELOPER_QUICKSTART.md">Quick start (30 minutes)</a></h3><p>Docker backend + Expo Go on your phone, first login.</p></div>
-<div class="card"><h3><a href="API_TRACEABILITY.html">API traceability</a></h3><p>All 47 endpoints from screen to handler to tables, with worked examples and known application issues. <a href="API_TRACEABILITY.md">Markdown source</a>.</p></div>
-<div class="card"><h3><span>Documentation audit, 7 Oct 2026 <small>(local review reference; not published)</small></span></h3><p>What was checked, corrected and left unverified: source of truth, coverage ledger, corrections, verification and sources.</p></div>
+<div class="card"><h3><a href="NEW_DEVELOPER_QUICKSTART.md">Run a client locally</a></h3><p>Choose a demo or connect a browser or Android phone to the local database through FastAPI.</p></div>
+<div class="card"><h3><a href="deployment/CAREKOSH_DEPLOYMENT_ATLAS.html#stock-edit">Trace a stock edit</a></h3><p>Follow Save through the handler and transaction. Check persistence and a stale edit.</p></div>
+<div class="card"><h3><a href="GIT_WORKFLOW_GUIDE.md">Ship a change</a></h3><p>Choose tests, verify the staging revision and record what reached production.</p></div>
 </div>
-
 <h2 id="orders">Reading orders</h2>
-<h3>New developer — first week</h3>
-<ol>
-<li><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#part-a--the-product-and-the-system">Complete guide, Part A</a>: what the product is and the rules it enforces.</li>
-<li><a href="NEW_DEVELOPER_QUICKSTART.md">Quick start</a>, then the <a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#b3-a-complete-first-workflow-setup--login--inventory--order--voice--tests--deployment">first complete workflow</a> (setup → login → inventory → order → voice question → tests → deployment).</li>
-<li><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#part-c--how-it-works-one-layer-at-a-time">Complete guide, Part C</a> with the code open; then three endpoints in <a href="API_TRACEABILITY.html">API traceability</a>.</li>
-<li><a href="local_testing_field_manual.html">Local testing field manual</a> and <a href="USB_ADB_REVERSE_GUIDE.md">USB / ADB guide</a> when testing on a phone.</li>
-<li><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#part-e--testing-debugging-and-daily-work">Part E (tests)</a> and <a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#part-f--environments-cicd-deployment-and-release">Part F (release)</a> before your first PR; <a href="../CAREKOSH_E2E_VERIFICATION_GUIDE.html">E2E verification</a> before your first staging test.</li>
-<li><a href="VOICE_OPTION_1_IMPLEMENTATION.md">Voice implementation</a> before touching the assistant.</li>
-</ol>
-<h3>Interview preparation</h3>
-<ol>
-<li><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#part-d--backend-concepts-through-this-codebase">Complete guide, Part D</a>: concepts explained through this codebase, with limits and common misconceptions.</li>
-<li><a href="../carekosh_architecture_diagrams.html">Architecture diagrams</a>.</li>
-<li><a href="../CAREKOSH_BACKEND_INTERVIEW_GUIDE.html">Backend interview textbook</a> (long-form).</li>
-<li><a href="../CAREKOSH_SERVER_FIRST_INTERVIEW_GUIDE.html">Server-first design story</a> (why the app stopped saving locally first).</li>
-<li><a href="API_TRACEABILITY.html#known-application-issues-found-while-tracing">Known application issues</a>: explaining limits honestly is part of a good answer.</li>
-</ol>
+<p>For a first change, follow the three guides above in order. After time away, use the <a href="deployment/CAREKOSH_DEPLOYMENT_ATLAS.html#branches">Atlas branch and deployment comparison</a>. For deeper study, use the <a href="deployment/CAREKOSH_DEPLOYMENT_ATLAS.html#interview-library">three verified interview books</a> on system design, the FastAPI backend and authentication.</p>
 
-<h2 id="tasks">Current guides by task</h2>
+<h2 id="tasks">Technical references by task</h2>
 <div class="tablewrap"><table>
 <thead><tr><th>Task</th><th>Guide</th><th>What it is for</th></tr></thead>
 <tbody>
 <tr><td>Run locally</td><td><a href="NEW_DEVELOPER_QUICKSTART.md">Quick start</a></td><td>Fast path to a running stack.</td></tr>
 <tr><td>Run locally</td><td><a href="local_testing_field_manual.html">Local testing field manual</a></td><td>Detailed Metro, Expo Go, USB and network tutorial.</td></tr>
 <tr><td>Run locally</td><td><a href="LOCAL_TESTING_COMPLETE_GUIDE.md">Local testing guide</a> · <a href="LOCAL_TESTING_INTERNALS.md">internals</a> · <a href="USB_ADB_REVERSE_GUIDE.md">USB / ADB</a></td><td>Troubleshooting and how the pieces connect.</td></tr>
-<tr><td>Understand the system</td><td><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html">Complete developer guide</a></td><td>The main reference.</td></tr>
-<tr><td>Understand the system</td><td><a href="API_TRACEABILITY.html">API traceability</a></td><td>Every endpoint, table and caller.</td></tr>
+<tr><td>Understand the system</td><td><a href="CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html">Complete developer guide</a></td><td>Detailed product and architecture background.</td></tr>
+<tr><td>Understand the system</td><td><a href="API_TRACEABILITY.html">API traceability</a></td><td>Worked examples of how API handlers connect to callers and tables.</td></tr>
 <tr><td>Understand the system</td><td><a href="../carekosh_architecture_diagrams.html">Architecture diagrams</a> · <a href="diagrams/README.md">diagram sources</a></td><td>Visual explanations of the verified behaviour.</td></tr>
 <tr><td>Understand the system</td><td><a href="DEVOPS_AND_ARCHITECTURE.md">DevOps and architecture narrative</a> · <a href="../CAREKOSH_DEVELOPER_GUIDE.md">concise developer reference</a></td><td>The "why" behind infrastructure choices; one-page summary.</td></tr>
 <tr><td>Sarvam English narration</td><td><a href="SARVAM_ENGLISH_VOICE.html">Activation and architecture</a> · <a href="SARVAM_ENGLISH_VOICE.md">Markdown</a></td><td>Backend-only API key, model/voice pairing, free-credit limits, audio lifecycle and pending OnePlus checks. Alba is paused.</td></tr>
+<tr><td>Supply Review</td><td><a href="SUPPLY_REVIEW.html">Architecture</a> · <a href="SUPPLY_REVIEW_LEARNING.html">worked examples</a></td><td>How recommendations become reviewed order drafts.</td></tr>
+<tr><td>Optional voice features</td><td><a href="OPENAI_UNDERSTANDING.html">Personal OpenAI understanding</a> · <a href="WHISTLE_OFFLINE_LISTENER.html">Whistle listener</a></td><td>Provider setup, device integration and dated acceptance results.</td></tr>
 <tr><td>Voice assistant</td><td><a href="VOICE_INVENTORY_AND_ORDER_DRAFTS.html">AI voice architecture (current)</a> · <a href="VOICE_OPTION_1_IMPLEMENTATION.md">native implementation record</a></td><td>Complete current stack, live captions, separate Groq audio/text and Sarvam narration consent, request paths, local drafts, costs and device checks.</td></tr>
 <tr><td>Accounts and email</td><td><a href="EMAIL_VERIFICATION_GUIDE.md">Email verification</a> · <a href="../CAREKOSH_DOMAIN_AND_EMAIL_GUIDE.html">domain and email tutorial</a></td><td>Brevo, verification links and their limits.</td></tr>
 <tr><td>Test end to end</td><td><a href="../CAREKOSH_E2E_VERIFICATION_GUIDE.html">E2E verification guide</a></td><td>Synthetic staging walkthrough plus device checklist.</td></tr>
-<tr><td>Deploy and release</td><td><a href="../CAREKOSH_BUILD_DEPLOY_FLOW.html">Build and deploy flow</a> · <a href="../CAREKOSH_DEPLOYMENT_STRATEGY.html">deployment strategy</a> · <a href="../CAREKOSH_ENVIRONMENT_ARCHITECTURE.html">environment architecture</a></td><td>What each Git action runs, the 0007–0010 release gate, environments.</td></tr>
+<tr><td>Deploy and release</td><td><a href="../CAREKOSH_BUILD_DEPLOY_FLOW.html">Build and deploy flow</a> · <a href="../CAREKOSH_DEPLOYMENT_STRATEGY.html">deployment strategy</a> · <a href="../CAREKOSH_ENVIRONMENT_ARCHITECTURE.html">environment architecture</a></td><td>Earlier deployment designs and migration history. Use the Atlas for the release workflow.</td></tr>
 <tr><td>Deploy and release</td><td><a href="BACKEND_HARDENING.md">Backend hardening record and the 0007 gate</a></td><td>Dated change record; the migration release gate and re-seed SQL.</td></tr>
 <tr><td>Deploy and release</td><td><a href="ENVIRONMENT_SPLIT.md">Environment split</a> · <a href="EXPO_AND_PLAY_STORE_GUIDE.md">Expo and Play Store</a> · <a href="../future_plan/CAREKOSH_PLAY_STORE_LAUNCH_PLAYBOOK.html">Play Store launch playbook</a></td><td>Staging/production separation; builds; Play release steps (playbook is planning material).</td></tr>
 <tr><td>Operate</td><td><a href="LAUNCH_READINESS_RUNBOOK_GOAL_10.md">Operations runbook</a></td><td>Backup, restore, monitoring and incident procedures (live settings not verified).</td></tr>
