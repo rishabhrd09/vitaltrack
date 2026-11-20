@@ -1,25 +1,6 @@
 # Hosted staging release acceptance
 
-Prepared 25 October 2026 (Asia/Kolkata). The owner chose instructions now and deployment later. This document records the distinction between completed preflight checks and hosted acceptance that still needs to run.
-
-Hostname update, 27 October 2026: the canonical production app is now `homeicuinventory.carekosh.com`; staging remains `staging-app.carekosh.com`. The historical DNS observation below refers to the former production choice and is not a check of the new hostname. Public-site links from `www.carekosh.com` and the optional `www.homeicuinventory.carekosh.com` redirect require the later domain checks in [DEPLOYMENT.md](DEPLOYMENT.md#domain-scope). No hosted changes were made for this update.
-
-## Preflight evidence
-
-| Check | Observed result |
-| --- | --- |
-| Production `/live` and `/health` | HTTP 200, environment `production`; database connected on `/health`. Read-only requests at approximately 09:27 IST. |
-| Staging `/live` and `/health` | HTTP 200, environment `staging`; database connected on `/health`. Read-only requests at approximately 09:27 IST. |
-| New frontend DNS | Neither `app.carekosh.com` nor `staging-app.carekosh.com` resolved from the local resolver. This does not substitute for inspecting private Cloudflare records/configuration. |
-| Cloudflare CLI | `wrangler whoami`: not authenticated. |
-| Render deployment access | No Render CLI or deployment credentials were available in the task environment. Dashboard settings were not inspected. |
-| Frontend code checks | TypeScript, ESLint and all 14 unit tests passed again. |
-| Staging artifact | Build and API-host/demo-isolation checks passed. |
-| Local Cloudflare runtime | All 17 application URLs remained direct 200 responses; four unknown paths returned 404. Headers/cache behavior passed with and without navigation request headers. |
-| Staging deployment configuration | Wrangler staging dry-run passed; no upload occurred. |
-| Existing backend regression evidence | 686 tests passed in the implementation session; this is local evidence, not a hosted staging or physical Android result. |
-
-The public health responses do not establish the database identities, migration revisions, deployed commit, current CORS allowlists or Android compatibility. Inspect those before rollout.
+Use a fresh copy of this checklist for each release candidate. Record the results in the PR or release record, alongside the Git SHA. The [change workflow](../../docs/GIT_WORKFLOW_GUIDE.md) explains when to run these checks.
 
 ## Record before acceptance
 
@@ -36,7 +17,7 @@ The public health responses do not establish the database identities, migration 
 
 ## Required hosted checks
 
-All rows below are **pending**. Use `https://staging-app.carekosh.com` with `https://staging-api.carekosh.com`; use fictional records and email inboxes controlled by the testers.
+For hosted release acceptance, record the result and evidence for each required row. Use `https://staging-app.carekosh.com` with `https://staging-api.carekosh.com`; use fictional records and email inboxes controlled by the testers.
 
 Before any later backend rollout, confirm that `REQUIRE_EMAIL_VERIFICATION=true`
 has a nonblank `MAIL_PASSWORD` (Brevo API key). The backend now refuses hosted
@@ -84,4 +65,4 @@ The repository backend pytest suite drops/recreates tables and is restricted to 
 
 ## Release decision
 
-Current decision: **not yet evaluated for hosted release**. Do not mark this gate complete until the required rows have evidence and no unresolved failures. Deploy through the sequence in [DEPLOYMENT.md](DEPLOYMENT.md), then record a separate production smoke result and previous-good rollback versions. Preserve database credentials and signing keys; do not use a database restore as a frontend rollback.
+Record a pass or hold decision for this candidate. Release only after the required checks have evidence and failures are resolved. Deploy through the sequence in [DEPLOYMENT.md](DEPLOYMENT.md), then record a separate production smoke result and previous-good rollback versions. Preserve database credentials and signing keys; do not use a database restore as a frontend rollback.
