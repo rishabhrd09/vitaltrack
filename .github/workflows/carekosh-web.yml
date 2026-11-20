@@ -5,6 +5,11 @@ on:
   push:
     paths: ['carekosh-web/**', 'carekosh-site/**', '.github/workflows/carekosh-web.yml']
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      retain_production_build:
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -40,6 +45,16 @@ jobs:
       - run: npx wrangler deploy --env production --dry-run
         env:
           WRANGLER_SEND_METRICS: 'false'
+      - name: Save verified production assets for release
+        if: inputs.retain_production_build
+        uses: actions/upload-artifact@v4
+        with:
+          name: carekosh-web-production
+          path: carekosh-web/dist-production/
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

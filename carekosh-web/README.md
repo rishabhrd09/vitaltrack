@@ -79,7 +79,15 @@ The public landing page at `carekosh.com` can also be served through `www.careko
 
 `wrangler.jsonc`, generated security/cache headers, explicit SPA rewrites, and a static 404 page are included. The build rejects mismatched API/origin/demo environment combinations. Sample records are excluded from hosted builds. There is no service worker caching authenticated data.
 
-See [deployment and rollback](docs/DEPLOYMENT.md), [Android parity](docs/PARITY.md), and [verification](docs/VERIFICATION.md). **No public deployment or DNS change has been performed.**
+### Release the production frontend
+
+Keep the `carekosh-web` Worker connected to `main` with build command `npm run build`, root directory `/carekosh-web/`, and deploy command `npx wrangler deploy --env production --dry-run`.
+
+To publish, open **GitHub → Actions → Release CareKosh web → Run workflow**, choose **main**, and confirm **Run workflow**. The workflow runs the web checks, publishes their verified assets, and checks that <https://homeicuinventory.carekosh.com/> serves the matching JavaScript bundle over HTTPS. For a frontend rollback, open the Worker’s **Deployments** tab and roll back to a previously verified version.
+
+The release job uses the GitHub environment `carekosh-web-production`. Configure its `CLOUDFLARE_ACCOUNT_ID` variable and `CLOUDFLARE_API_TOKEN` secret, and restrict its deployment branches to `main`. Scope the token to the production Worker and the `carekosh.com` zone for custom domain management.
+
+See [Android parity](docs/PARITY.md) and [verification](docs/VERIFICATION.md) for the web app's supported behavior and checks.
 
 ## Source map
 
