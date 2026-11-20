@@ -167,11 +167,6 @@ export function Shell() {
           </button>
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <span className="little-cross">+</span>
-            <p>{BRAND.tagline}</p>
-            <span className="note-line" />
-          </div>
           <nav className="primary-nav">
             <NavLink to="/help">
               <CircleHelp size={19} />
@@ -282,27 +277,15 @@ export function Shell() {
               : undefined
           }
         >
-          <div className="environment-row">
-            <span className="environment-label">
-              {DEMO ? (
-                <>
-                  <span className="status-dot blue" />
-                  Demo workspace{" "}
-                  <span className="environment-detail">
-                    · Explore with sample data
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className={`status-dot ${a.online ? "good" : "low"}`} />
-                  {a.online
-                    ? "Connected to your account"
-                    : "Offline · showing last loaded data"}
-                </>
-              )}
-            </span>
-            <span className="today">{shortDate(new Date().toISOString())}</span>
-          </div>
+          {(DEMO || !a.online) && (
+            <div className="environment-row">
+              <span className="environment-label">
+                <span className={`status-dot ${DEMO ? "blue" : "low"}`} />
+                {DEMO ? "Demo workspace · Sample data" : "Offline · showing last loaded data"}
+              </span>
+              <span className="today">{shortDate(new Date().toISOString())}</span>
+            </div>
+          )}
           {a.error && a.data && (
             <ErrorBox
               message={`Showing last loaded data. ${a.error}`}
@@ -311,12 +294,6 @@ export function Shell() {
           )}
           <Outlet />
         </main>
-        <footer className="app-footer">
-          <span>
-            <ShieldCheck size={13} /> {BRAND.tagline}
-          </span>
-          <span>{BRAND.fullName}</span>
-        </footer>
       </div>
       <nav className="mobile-tabs" aria-label="Mobile navigation">
         {nav.map(({ to, label, icon: Icon }) => (

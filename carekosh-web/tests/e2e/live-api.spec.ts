@@ -21,7 +21,7 @@ test("real API: login, CRUD, refresh cookie restoration and cross-tab logout", a
   await page.getByLabel("Password", { exact: true }).fill("PreviewTest123");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "A clear view. A calmer day." }),
+    page.getByRole("heading", { name: "Inventory overview" }),
   ).toBeVisible();
   expect(
     await page.evaluate(() =>
@@ -94,7 +94,7 @@ test("real API: login, CRUD, refresh cookie restoration and cross-tab logout", a
   const other = await context.newPage();
   await other.goto("http://127.0.0.1:5189/");
   await expect(
-    other.getByRole("heading", { name: "A clear view. A calmer day." }),
+    other.getByRole("heading", { name: "Inventory overview" }),
   ).toBeVisible();
   await page.goto("http://127.0.0.1:5189/profile");
   await page.getByRole("button", { name: "Sign out", exact: true }).click();

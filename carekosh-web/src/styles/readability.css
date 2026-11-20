@@ -45,7 +45,7 @@
   line-height: 1.7;
   letter-spacing: 0.14em;
 }
-.auth-story h1 {
+.auth-story-title {
   font-size: clamp(42px, 4vw, 60px);
   line-height: 1.16;
   letter-spacing: -0.045em;
@@ -88,7 +88,7 @@
 .auth-heading {
   margin-bottom: 32px;
 }
-.auth-heading h2 {
+.auth-heading h1 {
   font-size: var(--read-heading);
   line-height: 1.2;
   letter-spacing: -0.04em;
@@ -724,7 +724,7 @@
   .auth-story {
     padding-inline: 32px;
   }
-  .auth-story h1 {
+  .auth-story-title {
     font-size: 44px;
   }
   .auth-main {

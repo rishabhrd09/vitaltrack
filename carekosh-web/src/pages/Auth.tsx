@@ -10,10 +10,8 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  ShieldCheck,
   ArrowLeft,
   Check,
-  Package,
   Sun,
   Moon,
 } from "lucide-react";
@@ -116,8 +114,8 @@ export default function Auth() {
       setBusy(false);
     }
   };
-  const titles: Record<string, [string, string]> = {
-    login: ["Welcome back.", "Your care space is right where you left it."],
+  const titles: Record<string, [string, string?]> = {
+    login: ["Welcome back."],
     register: [
       "A calmer way to care.",
       "Create your account to start organizing your home ICU.",
@@ -159,45 +157,14 @@ export default function Auth() {
           </span>
         </Link>
         <div className="auth-story-content">
-          <span className="eyebrow">CARE STARTS WITH CLARITY</span>
-          <h1>
-            More prepared.
-            <br />
-            More present.
-          </h1>
-          <p>
-            A thoughtful home for your supplies, so you can focus on the people
-            who matter.
-          </p>
-          <div className="auth-visual">
+          <strong className="auth-story-title">More prepared.</strong>
+          <div className="auth-visual" aria-hidden="true">
             <div className="auth-orbit" />
             <div className="auth-visual-main">
-              <img src="/brand/mark-dark.png" alt="CareKosh home care emblem" />
-            </div>
-            <div className="floating-note note-one">
-              <span className="stat-icon good">
-                <Check size={18} />
-              </span>
-              <div>
-                <strong>Ready when you need it</strong>
-                <small>Every essential, in one place</small>
-              </div>
-            </div>
-            <div className="floating-note note-two">
-              <span className="stat-icon blue">
-                <Package size={18} />
-              </span>
-              <div>
-                <strong>A clearer picture</strong>
-                <small>Stock, supplies & peace of mind</small>
-              </div>
+              <img src="/brand/mark-dark.png" alt="" />
             </div>
           </div>
         </div>
-        <span className="auth-story-footer">
-          <ShieldCheck size={15} />
-          {BRAND.tagline}
-        </span>
       </aside>
       <main className="auth-main">
         <a className="auth-home" href={BRAND.siteOrigin}>
@@ -228,14 +195,13 @@ export default function Auth() {
             </span>
           </Link>
           <div className="auth-heading">
-            <p className="eyebrow">{BRAND.tagline}</p>
-            <h2>{title}</h2>
-            <p>{subtitle}</p>
+            <h1>{title}</h1>
+            {subtitle && <p>{subtitle}</p>}
           </div>
           {DEMO && (
             <div className="demo-auth-note">
               <span className="status-dot blue" />
-              Local preview · fictional sample data
+              Demo changes stay in this browser.
             </div>
           )}
           {(error || a.authError) && (
@@ -354,10 +320,6 @@ export default function Auth() {
               )}
               {mode === "login" && (
                 <div className="auth-options">
-                  <span>
-                    <ShieldCheck size={14} />
-                    Private by design
-                  </span>
                   <Link to="/forgot-password">Forgot password?</Link>
                 </div>
               )}
@@ -398,16 +360,6 @@ export default function Auth() {
                 Already have an account? <Link to="/login">Sign in</Link>
               </p>
             )}
-          </div>
-          <div className="auth-fine-print">
-            <ShieldCheck size={14} />
-            <span>
-              Your inventory stays in your CareKosh account.
-              <br />
-              {DEMO
-                ? "Demo changes stay in this browser."
-                : "The same supplies, on Android and the web."}
-            </span>
           </div>
         </div>
         <div className="auth-footer">{BRAND.fullName}</div>

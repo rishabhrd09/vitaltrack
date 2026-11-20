@@ -14,7 +14,6 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { useApp } from "../context";
-import { BRAND } from "../brand";
 import { CoachMark } from "../components/CoachMark";
 import {
   attention,
@@ -71,7 +70,6 @@ export default function Dashboard() {
     {
       label: "Out of stock",
       value: out.length,
-      detail: out.length ? "Ready for your next order" : "Nothing missing",
       icon: CircleAlert,
       color: "out",
       to: "/inventory?status=out",
@@ -79,7 +77,6 @@ export default function Dashboard() {
     {
       label: "Low stock",
       value: low.length,
-      detail: low.length ? "A little attention needed" : "Minimums are covered",
       icon: TriangleAlert,
       color: "low",
       to: "/inventory?status=low",
@@ -87,7 +84,6 @@ export default function Dashboard() {
     {
       label: "Pending orders",
       value: activeOrders(orders).length,
-      detail: "Track, receive & restock",
       icon: ShoppingCart,
       color: "blue",
       to: "/orders",
@@ -95,11 +91,7 @@ export default function Dashboard() {
   ];
   return (
     <div className="dashboard-page">
-      <PageTitle
-        eyebrow={BRAND.fullName}
-        title="A clear view. A calmer day."
-        description={BRAND.tagline}
-      >
+      <PageTitle title="Inventory overview">
         <Link className="button secondary" to="/builder">
           <SlidersHorizontal size={16} />
           Build Inventory
@@ -118,10 +110,7 @@ export default function Dashboard() {
               {value}
               <span>{label}</span>
             </div>
-            <p>
-              <span className={`status-dot ${color}`} />
-              {detail}
-            </p>
+            {detail && <p>{detail}</p>}
           </Link>
         ))}
       </div>
@@ -196,7 +185,6 @@ export default function Dashboard() {
         <section className="panel attention-panel">
           <SectionTitle
             title="Needs attention"
-            subtitle="The supplies to put on your radar."
             to="/inventory?status=attention"
           />
           {needs.length ? (
@@ -272,16 +260,7 @@ export default function Dashboard() {
               <span className="all-good">
                 <Check size={25} />
               </span>
-              <h3>
-                {items.length
-                  ? "All stocked up!"
-                  : "Your care space starts here."}
-              </h3>
-              <p>
-                {items.length
-                  ? "No items need attention right now."
-                  : "Build your inventory to see what needs attention."}
-              </p>
+              <h3>{items.length ? "No stock alerts" : "No inventory items yet"}</h3>
               <Link className="button secondary" to="/builder">
                 Build Inventory
                 <ArrowRight size={15} />
