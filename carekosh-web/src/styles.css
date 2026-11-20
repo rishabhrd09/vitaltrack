@@ -2810,7 +2810,8 @@ main#main-content {
   font-size: 9px;
   letter-spacing: 2px;
 }
-.auth-story h1 {
+.auth-story-title {
+  display: block;
   font-size: clamp(36px, 3.9vw, 58px);
   font-weight: 500;
   letter-spacing: -2.4px;
@@ -2928,7 +2929,7 @@ main#main-content {
 .auth-heading {
   margin-bottom: 30px;
 }
-.auth-heading h2 {
+.auth-heading h1 {
   font-size: 28px;
   font-weight: 500;
   letter-spacing: -1.1px;
@@ -2970,7 +2971,7 @@ main#main-content {
 .auth-options {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   font-size: 10px;
   margin: 20px 0 25px;
 }
@@ -3475,7 +3476,7 @@ main#main-content {
   .coach-card .button {
     font-size: 9px;
   }
-  .auth-story h1 {
+  .auth-story-title {
     font-size: 42px;
   }
   .auth-story {
@@ -4535,7 +4536,7 @@ main#main-content {
     padding: 13px;
     font-size: 10px;
   }
-  .auth-heading h2 {
+  .auth-heading h1 {
     font-size: 28px;
   }
   .error-box {

@@ -6,7 +6,7 @@ test("dashboard, inventory editing, category creation, order receive and apply",
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "A clear view. A calmer day." }),
+    page.getByRole("heading", { name: "Inventory overview" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Add item", exact: true }).click();
   await page.getByLabel("Item name").fill("Demo wound dressing");
@@ -190,7 +190,7 @@ test("signed-in visitors go from sign-in and registration to the workspace", asy
     await page.goto(path);
     await expect(page).toHaveURL(/\/$/);
     await expect(
-      page.getByRole("heading", { name: "A clear view. A calmer day." }),
+      page.getByRole("heading", { name: "Inventory overview" }),
     ).toBeVisible();
   }
 });
