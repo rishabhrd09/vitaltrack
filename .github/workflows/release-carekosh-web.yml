@@ -1,23 +1,27 @@
 name: Release CareKosh web
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths: ['.github/workflows/release-carekosh-web.yml']
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-carekosh-web-production
+  group: release-carekosh-web-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   verify:
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     uses: ./.github/workflows/carekosh-web.yml
     with:
       retain_production_build: true
 
   publish:
     name: Publish production frontend
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 15
