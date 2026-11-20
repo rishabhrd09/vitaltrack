@@ -2,6 +2,18 @@
 
 FastAPI serves the Android app and browser app. Both clients use the same owner-scoped inventory, order and activity data in PostgreSQL. Start the API and database with the [local quick start](../docs/NEW_DEVELOPER_QUICKSTART.md). It includes browser authentication, Docker startup and a check that the database schema matches the checkout.
 
+## Run FastAPI directly
+
+To run the API outside Docker, start a local PostgreSQL database and point `DATABASE_URL` at that development database. From `vitaltrack-backend/`, activate a Python 3.12 virtual environment, then run:
+
+```sh
+python -m pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000 --no-proxy-headers
+```
+
+Keep `--no-proxy-headers` so the application sees the socket peer and can apply its own rules for trusting forwarded headers.
+
 ## Follow a request
 
 | Open this file | Question it answers |
