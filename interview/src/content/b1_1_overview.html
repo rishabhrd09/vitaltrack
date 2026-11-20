@@ -1,0 +1,144 @@
+<section class="part" id="p1" data-toc="The project at a glance" data-desc="What CareKosh is, the pitches, the stack and the numbers.">
+  <div class="part-head">
+    <p class="eyebrow">Part 1 · Overview</p>
+    <h2>The project <em>at a glance</em></h2>
+    <p class="in-short"><strong>In short:</strong> CareKosh has an Android app and a browser app backed by a shared FastAPI service and PostgreSQL. It keeps a family's home-ICU supplies counted, ordered and restocked, and it is built so that two phones, a flaky network or a bad deploy cannot quietly corrupt that count.</p>
+  </div>
+
+  <div class="sub" id="b1-what" data-toc="What CareKosh is">
+    <h3>What CareKosh is, and why it is not a toy</h3>
+    <p>Family caregivers who run a home ICU for a chronically ill relative juggle dozens of consumables: tracheostomy tubes, suction catheters, feeding-tube extensions and medicines. Running out of one of them is a medical emergency. CareKosh is the app they use to know what is left, what is low, what has been ordered and what has arrived.</p>
+    <p>The product was first released as <em>VitalTrack</em>. That is why the code lives in {{p:vitaltrack-backend/README.md}} and {{p:vitaltrack-mobile/README.md}}: the folder names are kept on purpose, because the Render service, the EAS project and the Git history depend on them. Everything a person sees says CareKosh.</p>
+    <p>What a caregiver can do:</p>
+    <ul>
+      <li><strong>Keep an inventory.</strong> Categories and items, each with a quantity, a unit, a minimum stock level and a "critical" flag. An optional expiry date is stored and shown, but it does not raise alerts.</li>
+      <li><strong>See what needs attention.</strong> An item is <em>out of stock</em> when its quantity is 0 or less, and <em>low</em> when it is above 0 but below its minimum ({{s:B/app/models/item.py#is_low_stock}}). The dashboard counts these on the phone.</li>
+      <li><strong>Order and restock.</strong> Build an order, export it as a PDF, mark it received, then apply it to stock in one step.</li>
+      <li><strong>Follow the history.</strong> An activity feed for people, and a server-side audit table with before-and-after snapshots for selected changes.</li>
+      <li><strong>Ask the assistant.</strong> "Ask Care Coach" answers inventory questions and prepares <em>unsaved</em> order drafts. It is read-only: only a touch on the Create Order screen saves an order.</li>
+    </ul>
+    <p>Why it is a good interview project: the hard parts are the ones real systems have. Two family members can edit the same item at the same time. A phone can lose the reply to a request that the server already committed. A migration can make a deploy impossible to roll back. Accounts need verification, password recovery and revocable sessions. And an AI feature must not send private data anywhere without consent.</p>
+    <say><p>"CareKosh is a medical-supply inventory app for families running a home ICU. It's an Expo React Native app talking to a FastAPI service on Render with PostgreSQL on Neon. The interesting work was correctness: optimistic locking for concurrent edits, idempotent order creation for retries, rotating refresh tokens, and a release process for one-way migrations."</p></say>
+    <p class="evidence-line">Evidence: {{ev:code}} product behaviour read in the models, routes and screens at the baseline commit.</p>
+    <p class="small muted">Repository evidence · {{p:carekosh-web/package.json}} · {{p:M/package.json}} · {{p:B/app/main.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-pitch" data-toc="Elevator pitches">
+    <h3>Three pitches: 30 seconds, 2 minutes, 5 minutes</h3>
+    <div class="cards two">
+      <div class="card"><h4>30 seconds</h4><p>"CareKosh is a web and Android application that helps families track life-critical medical supplies. The app is Expo and React Native; the backend is FastAPI with async SQLAlchemy and PostgreSQL, deployed as a Docker container on Render. I focused on data correctness: version checks for concurrent edits, safe retries for orders, and secure sessions with rotating refresh tokens."</p></div>
+      <div class="card"><h4>2 minutes</h4><p>Add the shape: two clients, one API and one database. The phone keeps a read-only cache with TanStack Query and stores tokens in SecureStore. Every protected request carries a JWT; the server re-checks the user row, so a password change ends every session. Writes are owner-scoped and either compare a version number or use an idempotency key. Migrations run when the container starts, and CI tests both a fresh and a migrated schema.</p></div>
+    </div>
+    <div class="card"><h4>5 minutes</h4>
+      <ol>
+        <li><strong>Problem:</strong> running out of a supply is an emergency, and several family members update the same data.</li>
+        <li><strong>Architecture:</strong> draw <a href="#b1-bigpicture">the big picture</a>: Android or browser → Cloudflare proxy → Render → FastAPI → PostgreSQL, plus email and optional AI providers.</li>
+        <li><strong>One request:</strong> trace "Save an edited item" through middleware, dependencies, the version-checked UPDATE and the commit (<a href="#b1-journey">Part 3</a>).</li>
+        <li><strong>Correctness:</strong> optimistic concurrency, idempotent orders, atomic stock application, row locks for auth.</li>
+        <li><strong>Security:</strong> Argon2id password hashes, signed short-lived access tokens, single-use refresh tokens, hashed one-time email tokens, encrypted personal provider keys.</li>
+        <li><strong>Operations:</strong> Docker, migrations at start-up, liveness versus readiness checks, CI gates, a release gate for one-way migrations.</li>
+        <li><strong>Honest limits:</strong> no load test, shared hosted rate limits, a logout window, no MFA. Say what you would do next.</li>
+      </ol>
+    </div>
+    <p class="small muted">Repository evidence · {{p:carekosh-web/package.json}} · {{p:M/package.json}} · {{p:B/app/main.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-features" data-toc="Feature map">
+    <h3>Feature map: screen → request → table</h3>
+    <p>Android screen routes are defined under <span class="path">vitaltrack-mobile/app/</span>: Expo Router turns files into routes, and {{p:M/app/_layout.tsx}} guards them. The table shows what each screen calls and what it changes.</p>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Screen (file)</th><th>What the person does</th><th>Requests</th><th>Principal tables written</th></tr></thead>
+      <tbody>
+        <tr><td><code>(auth)/login</code>, <code>register</code>, <code>verify-email-pending</code>, <code>forgot-password</code>, <code>reset-password</code></td><td>Create an account, verify, sign in, recover</td><td><code>POST /auth/register</code>, <code>/login</code>, <code>/forgot-password</code>, <code>/reset-password</code>, <code>/resend-verification</code></td><td><code>users</code>, <code>refresh_tokens</code>, <code>activity_logs</code></td></tr>
+        <tr><td><code>(tabs)/index</code> (dashboard)</td><td>See low and out-of-stock counts, recent activity</td><td><code>GET /items</code>, <code>/orders</code>, <code>/activities</code></td><td>none (reads)</td></tr>
+        <tr><td><code>(tabs)/inventory</code>, <code>search</code></td><td>Browse and search items by category</td><td><code>GET /items</code>, <code>/categories</code></td><td>none</td></tr>
+        <tr><td><code>builder</code></td><td>Build the first inventory</td><td><code>POST /categories</code>, <code>POST /items</code></td><td><code>categories</code>, <code>items</code>, <code>activity_logs</code>, <code>audit_log</code></td></tr>
+        <tr><td><code>item/[id]</code></td><td>Edit an item and save</td><td><code>PUT /items/{id}</code> with its <code>version</code></td><td><code>items</code> (version + 1), <code>activity_logs</code>, <code>audit_log</code></td></tr>
+        <tr><td><code>order/create</code></td><td>Turn low items into an order</td><td><code>POST /orders</code> with a <code>localId</code></td><td><code>orders</code>, <code>order_items</code>, <code>order_number_counters</code>, <code>activity_logs</code></td></tr>
+        <tr><td><code>(tabs)/orders</code></td><td>Mark received, apply to stock</td><td><code>PATCH /orders/{id}/status</code>, <code>POST /orders/{id}/apply</code></td><td><code>orders</code>, <code>items</code>, <code>audit_log</code>, <code>activity_logs</code></td></tr>
+        <tr><td><code>profile</code></td><td>Edit profile, change password, delete account, log out</td><td><code>/auth/me</code> (GET, PATCH, DELETE), <code>/change-password</code>, <code>/logout</code></td><td><code>users</code>, <code>refresh_tokens</code></td></tr>
+        <tr><td><code>assistant</code> and the dock</td><td>Ask about stock; prepare an unsaved draft</td><td><code>/ai/capabilities</code>; optional <code>/ai/consent</code>, <code>/ai/interpret</code>, <code>/ai/transcribe</code>, <code>/ai/speak</code>, <code>/ai/sarvam-key</code></td><td><code>ai_consents</code>, <code>ai_usage</code>, <code>ai_sarvam_credentials</code> only; never inventory</td></tr>
+      </tbody>
+    </table></div>
+    <p>The API-only routes are worth knowing too: <code>PATCH /items/{id}/stock</code> exists and is version-checked, but no screen calls it today; the Android dashboard computes its counts on the phone instead of calling <code>GET /items/stats</code>.</p>
+    <p class="evidence-line">Evidence: {{ev:code}} hooks used by each screen were read in <span class="path">app/</span> and <span class="path">hooks/</span>.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/__init__.py}} · {{p:B/scripts/check_api_routes.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-stack" data-toc="The stack by layer">
+    <h3>The technology stack, layer by layer</h3>
+    <p>Not every row is a mandatory layer. Each component is labelled <span class="chip core">core</span> (the product needs it), <span class="chip infra">infrastructure</span> (needed to run it), <span class="chip provider">provider choice</span> (swappable) or <span class="chip conditional">conditional</span> (only when configured and consented).</p>
+    <div class="stack wide-block">
+      <div class="stack-layer"><div class="name">Browser app<small>Cloudflare Worker assets</small></div><div class="stack-items"><span class="tech core"><b>React, TypeScript and Vite</b><span>The web build embeds the API origin. The running browser talks to that API.</span></span></div></div>
+      <div class="stack-layer"><div class="name">Phone app<small>Android, built with Expo</small></div><div class="stack-items">
+        <span class="tech core"><b>Expo SDK {{f:expo}}</b><span>core · build and runtime</span></span>
+        <span class="tech core"><b>React Native {{f:react_native}}</b><span>core · React {{f:react}}</span></span>
+        <span class="tech core"><b>expo-router {{f:expo_router}}</b><span>core · file-based screens</span></span>
+        <span class="tech core"><b>TanStack Query {{f:tanstack}}</b><span>core · server-data cache</span></span>
+        <span class="tech core"><b>Zustand {{f:zustand}}</b><span>core · auth and UI state</span></span>
+        <span class="tech core"><b>expo-secure-store {{f:securestore}}</b><span>core · token storage</span></span>
+        <span class="tech conditional"><b>carekosh-voice module</b><span>conditional · Android recording + Moonshine</span></span>
+      </div></div>
+      <div class="stack-layer"><div class="name">API<small>one FastAPI service</small></div><div class="stack-items">
+        <span class="tech core"><b>Python {{f:python}}</b><span>core</span></span>
+        <span class="tech core"><b>FastAPI {{f:fastapi}}</b><span>core · Starlette {{f:starlette}}</span></span>
+        <span class="tech core"><b>Pydantic {{f:pydantic}}</b><span>core · validation</span></span>
+        <span class="tech core"><b>SQLAlchemy {{f:sqlalchemy}} + asyncpg {{f:asyncpg}}</b><span>core · async ORM and driver</span></span>
+        <span class="tech core"><b>Alembic {{f:alembic}}</b><span>core · migrations</span></span>
+        <span class="tech core"><b>passlib + argon2-cffi</b><span>core · password hashing</span></span>
+        <span class="tech core"><b>PyJWT {{f:pyjwt}}</b><span>core · JWT (HS256)</span></span>
+        <span class="tech core"><b>cryptography (Fernet)</b><span>conditional · personal keys</span></span>
+        <span class="tech infra"><b>slowapi {{f:slowapi}}</b><span>infrastructure · shared hosted limits</span></span>
+      </div></div>
+      <div class="stack-layer"><div class="name">Data<small>the source of truth</small></div><div class="stack-items">
+        <span class="tech core"><b>PostgreSQL {{f:postgres}}</b><span>core · CI and local; Neon in hosting</span></span>
+        <span class="tech provider"><b>Neon</b><span>provider choice · managed Postgres</span></span>
+      </div></div>
+      <div class="stack-layer"><div class="name">Run and ship<small>infrastructure</small></div><div class="stack-items">
+        <span class="tech infra"><b>Docker</b><span>infrastructure · python:3.12-slim</span></span>
+        <span class="tech infra"><b>Gunicorn {{f:gunicorn}} + Uvicorn {{f:uvicorn}}</b><span>infrastructure · 2 workers</span></span>
+        <span class="tech provider"><b>Render</b><span>provider choice · web service</span></span>
+        <span class="tech provider"><b>Cloudflare</b><span>provider choice · DNS</span></span>
+        <span class="tech infra"><b>GitHub Actions</b><span>infrastructure · CI</span></span>
+        <span class="tech provider"><b>EAS Build + Google Play</b><span>provider choice · app delivery</span></span>
+      </div></div>
+      <div class="stack-layer"><div class="name">Outside services<small>only when configured</small></div><div class="stack-items">
+        <span class="tech provider"><b>Brevo</b><span>provider choice · transactional email</span></span>
+        <span class="tech conditional"><b>Sentry</b><span>conditional · if SENTRY_DSN is set</span></span>
+        <span class="tech conditional"><b>Groq</b><span>conditional · consented interpretation and listening</span></span>
+        <span class="tech conditional"><b>Sarvam</b><span>conditional · consented English narration</span></span>
+      </div></div>
+    </div>
+    <p>Why these choices, in interview terms. These are reasons you can defend today, not a claim about what was debated at the time.</p>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Choice</th><th>Why it fits</th><th>Alternative</th><th>Trade-off you accept</th></tr></thead>
+      <tbody>
+        <tr><td>FastAPI + Pydantic</td><td>Type hints become validation, OpenAPI and dependency injection; async I/O suits a database-bound API.</td><td>Django REST Framework, Flask</td><td>Fewer batteries (no admin, no built-in auth); you design sessions and permissions yourself.</td></tr>
+        <tr><td>Async SQLAlchemy + asyncpg</td><td>One event loop serves many waiting requests; mature ORM, explicit transactions.</td><td>Sync SQLAlchemy in threads, an async-only ORM</td><td>Lazy loading cannot happen implicitly; you must load relationships deliberately.</td></tr>
+        <tr><td>PostgreSQL</td><td>Transactions, row locks, partial unique indexes, CHECK constraints, JSONB.</td><td>MySQL, a document store</td><td>Schema migrations are part of every release.</td></tr>
+        <tr><td>JWT access + stored refresh tokens</td><td>Native app, no cookies; short access tokens; refresh rows give revocation.</td><td>Server sessions with an opaque id</td><td>A logout window until the access token expires.</td></tr>
+        <tr><td>TanStack Query on the phone</td><td>Server stays the source of truth; caching, refetch and invalidation for free.</td><td>Redux with a local database and sync</td><td>No offline writes; a dead network means no save.</td></tr>
+        <tr><td>Render + Neon</td><td>Managed TLS, deploy hooks, health checks; managed Postgres with restore points.</td><td>A VM, Kubernetes, AWS RDS</td><td>Less control; dashboard state must be checked by hand.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="evidence-line">Evidence: {{ev:code}} versions read from <span class="path">requirements.txt</span>, <span class="path">package.json</span> and the Dockerfile. {{ev:nv}} the Neon, Render, Cloudflare and Play settings live in dashboards.</p>
+    <p class="small muted">Repository evidence · {{p:B/requirements.txt}} · {{p:M/package.json}} · {{p:carekosh-web/package.json}}</p>
+  </div>
+
+  <div class="sub" id="b1-context" data-toc="The system on one page">
+    <h3>The system on one page</h3>
+    <p>A caregiver loads the browser app from its Cloudflare Worker or opens the installed Android app. Both clients send authenticated requests to the environment’s API hostname. At the edge, Cloudflare adds an origin-verification header to proxied API traffic. The Render container runs FastAPI, checks the request and sends account-scoped SQL to PostgreSQL. Hosted workers share rate limits through Redis.</p>
+    <p>The public landing site and the signed-in browser app have separate builds. A visit to the landing page makes no inventory change. A successful inventory edit has to reach the API and commit in PostgreSQL.</p>
+    {{fig:big-picture|Follow a browser or Android request from its client to the account’s rows.}}
+    <p>{{p:carekosh-web/wrangler.jsonc}} · {{p:B/app/services/ingress.py}} · {{p:B/app/api/v1/items.py}}</p>
+    <p class="small muted">Repository evidence · {{p:carekosh-web/package.json}} · {{p:M/package.json}} · {{p:B/app/main.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-numbers" data-toc="Numbers to remember">
+    <h3>Numbers to remember</h3>
+    <p>At <code>{{f:baseline}}</code>, the application registers 65 operations under /api/v1 and three root operations. PostgreSQL has 18 application tables plus Alembic’s version table. Thirteen migration revisions lead to 0013_supply_reviews.</p>
+    <p>For an interview, explain one save before quoting counts: the client submits an item version, the API scopes the query to the owner, a conditional update increments the version, and a later stale edit gets 409. For release questions distinguish the Worker version, Render SHA, database migration and Android build.</p>
+    <p>{{p:B/app/api/v1/__init__.py}} · {{p:B/app/models/__init__.py}} · {{p:B/app/api/v1/items.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/__init__.py}} · {{p:B/scripts/check_api_routes.py}}</p>
+  </div>
+</section>

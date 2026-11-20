@@ -1,0 +1,162 @@
+<section class="part" id="p7" data-toc="The AI backend" data-desc="A constrained assistant as a backend design case study.">
+  <div class="part-head">
+    <p class="eyebrow">Part 7 · Case study</p>
+    <h2>The AI feature as a <em>backend design case</em></h2>
+    <p class="in-short"><strong>In short:</strong> the AI routes give the phone optional cloud help with interpreting, transcribing and speaking. They are off by default, consented per provider, budgeted in PostgreSQL and unable to change inventory. Classify every piece as conditional.</p>
+  </div>
+
+  <div class="sub" id="b2-ai-shape" data-toc="Shape and gating">
+    <h3>Shape and gating</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Route</th><th>Does</th><th>Rate (per account, shared in hosted environments)</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /ai/capabilities</code></td><td>What this server offers and what the account has consented to</td><td>60/minute</td></tr>
+        <tr><td><code>PUT /ai/consent</code></td><td>Grant or revoke consent with a version and scopes; granting is refused (503) while <code>AI_ENABLED</code> is false</td><td>30/minute</td></tr>
+        <tr><td><code>POST /ai/interpret</code></td><td>Turn a reviewed question into a strict JSON intent, specification or plan (contracts 1, 2, 3)</td><td>30/minute</td></tr>
+        <tr><td><code>POST /ai/transcribe</code></td><td>Optional cloud transcription of a short recording (Groq or Sarvam)</td><td>30/minute</td></tr>
+        <tr><td><code>POST /ai/speak</code></td><td>Optional narration of an answer (Sarvam; other providers need extra rights and services)</td><td>30/minute</td></tr>
+        <tr><td><code>GET/PUT/DELETE /ai/sarvam-key</code></td><td>A person's own Sarvam key, stored encrypted</td><td>status 30/minute; save and remove 10/minute</td></tr>
+        <tr><td><code>/ai/openai-key</code> and its check endpoint</td><td>Read status, save, delete or check the owner’s OpenAI credential. See {{p:B/app/api/v1/openai_keys.py}} for the method-specific limits.</td><td>Scoped by account</td></tr>
+      </tbody>
+    </table></div>
+    <p>Each provider path is enabled only when several independent settings agree: <code>AI_ENABLED</code>, the kind (<code>AI_TRANSCRIBE_ENABLED</code>, <code>AI_SPEECH_ENABLED</code>), a "data controls reviewed" flag for that provider, and a key. A missing piece gives 503 "This AI feature is unavailable", and the phone falls back to on-device behaviour.</p>
+    <p>The per-route limits are keyed by the authenticated account ({{s:B/app/utils/rate_limiter.py#authenticated_ai_rate_key}}), which is set by the AI routes' own authentication dependency. Shared budgets and concurrency are enforced in PostgreSQL, across all workers.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/ai.py}} · {{p:B/app/api/v1/supply_reviews.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-ai-reserve" data-toc="Reservation and settlement">
+    <h3>Reservation and settlement</h3>
+    {{fig:ai-guard|One cloud AI request: refuse early, authenticate in a short session, reserve under a global advisory lock, call the provider without holding a database connection, then settle.}}
+    {{x:B/app/services/ai_guard.py:177-192|The start of reserve(): a short transaction, a bounded lock wait, the global budget lock and a consent re-check under that lock.}}
+    <ul>
+      <li><strong>Why a lock:</strong> budgets and concurrency limits are "count, compare, insert". Without one lock around them, two workers could both see room for one more call.</li>
+      <li><strong>Why short:</strong> the transaction ends before the provider call, so a 25-second provider wait never pins a pooled connection.</li>
+      <li><strong>Why "busy" instead of waiting:</strong> a lock wait over a few seconds, or a cancelled statement, becomes 503 "AI is busy" with <code>Retry-After: 5</code>.</li>
+      <li><strong>Settlement:</strong> success is charged an estimated cost from published prices, never above the reservation; failures and cancellations keep the whole reservation because the provider may still have billed them. Daily limits reset at 00:00 UTC.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/services/ai_guard.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-ai-provider" data-toc="Provider calls and grounding">
+    <h3>Provider calls and grounding</h3>
+    {{x:B/app/services/ai_provider.py:348-386|Interpretation: temperature 0, a strict JSON schema derived from the Pydantic model, a finish-reason check, Pydantic validation, then lexical grounding for version-3 plans.}}
+    <ul>
+      <li><strong>No tools, no data:</strong> the model receives the question and one flag, never the inventory, and can only return JSON that matches the schema.</li>
+      <li><strong>Portable schema:</strong> only features Groq documents for strict mode are sent; <code>const</code> becomes a one-value enum.</li>
+      <li><strong>Grounding:</strong> {{s:B/app/services/ai_provider.py#ground_plan}} rejects plans that drop, invent or regroup conditions the question did not contain, for example numbers, exclusions or item names. It is a conservative lexical check that fails closed, not proof that the meaning is right.</li>
+      <li><strong>Bounded calls:</strong> a total deadline (<code>AI_TIMEOUT_SECONDS</code>, default 25) plus connect and read timeouts, and a response-size cap.</li>
+      <li><strong>Cancellation:</strong> when the phone disconnects, the route cancels the provider task and answers 499, a non-standard code borrowed from nginx for "client closed request".</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/ai.py}} · {{p:B/app/api/v1/supply_reviews.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-ai-keys" data-toc="Personal keys">
+    <h3>Personal provider keys</h3>
+    <p>Separate the data a person has agreed to send from the credential that pays for the request. Microphone transcription, text interpretation and narration are distinct operations. Provider and consent checks happen before the relevant call. Mobile can select local interpretation or an explicitly enabled cloud option. Personal OpenAI credentials support interpretation. Sarvam credentials support narration.</p>
+    <p>The backend stores encrypted personal credentials for the owner and exposes status or masked metadata to clients. Keep plaintext keys out of logs, screenshots and frontend build variables. A supply recommendation is a separate workflow. A user explicitly confirms before it becomes a pending order.</p>
+    <p>{{p:B/app/services/openai_credentials.py}} · {{p:B/app/services/sarvam_credentials.py}} · {{p:B/app/services/ai_guard.py}} · {{p:B/app/services/supply_review.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/services/sarvam_credentials.py}} · {{p:B/app/services/openai_credentials.py}}</p>
+  </div>
+</section>
+
+<section class="part" id="p8" data-toc="Security essentials" data-desc="A two-page summary; Book 3 has the details.">
+  <div class="part-head">
+    <p class="eyebrow">Part 8 · Security</p>
+    <h2>Security <em>essentials</em></h2>
+    <p class="in-short"><strong>In short:</strong> passwords hashed with Argon2id, signed short-lived access tokens checked against the user row, single-use refresh tokens, hashed one-time tokens, owner-scoped queries, and secrets that never leave the environment.</p>
+  </div>
+  <div class="sub" id="b2-sec-summary" data-toc="The security model">
+    <h3>The security model in one table</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Concern</th><th>Mechanism</th><th>Book 3 chapter</th></tr></thead>
+      <tbody>
+        <tr><td>Password storage</td><td>passlib <code>CryptContext(["argon2", "bcrypt"], deprecated="auto")</code>; Argon2id m=64 MiB, t=3, p=4; hashed in a thread</td><td>{{book:3#b3-hashing|Password hashing}}</td></tr>
+        <tr><td>Authentication</td><td>HS256 access JWT (30 min) on every request; user row and <code>session_version</code> checked</td><td>{{book:3#b3-session|During a session}}</td></tr>
+        <tr><td>Session renewal</td><td>Refresh JWT (30 days) with a <code>jti</code> row; claimed once by a conditional UPDATE; rotated</td><td>{{book:3#b3-refresh|Refresh}}</td></tr>
+        <tr><td>Revocation</td><td>Logout revokes one refresh row; password change or reset bumps <code>session_version</code> and revokes all rows</td><td>{{book:3#b3-logout|Logout}}</td></tr>
+        <tr><td>Email tokens</td><td><code>token_urlsafe(32)</code>; only SHA-256 digests stored; expiries; single use</td><td>{{book:3#b3-verify-email|Verification}}</td></tr>
+        <tr><td>Authorization</td><td>Owner-scoped queries; 404 for others' rows; no roles in use</td><td>{{book:3#b3-authz|Authorization}}</td></tr>
+        <tr><td>Abuse</td><td>Body caps; shared limits on sensitive authentication routes; per-account AI limits and database budgets</td><td>{{book:3#b3-limits|Rate limiting}}</td></tr>
+        <tr><td>Transport and headers</td><td>Cloudflare edge and Render origin TLS; HSTS in staging and production; nosniff, DENY, Referrer-Policy, no-store</td><td>{{book:3#b3-tls|Transport}}</td></tr>
+        <tr><td>Secrets and logs</td><td><code>SecretStr</code>, dashboard-only values, redacted logs, privacy-preserving Sentry</td><td>{{book:3#b3-secrets|Secrets}}</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small muted">Repository evidence · {{p:B/app/main.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/app/services/ingress.py}}</p>
+  </div>
+</section>
+
+<section class="part" id="p9" data-toc="Reliability and operations" data-desc="Logging, request ids, Sentry, timeouts, pools and health.">
+  <div class="part-head">
+    <p class="eyebrow">Part 9 · Operations</p>
+    <h2>Reliability and <em>operations</em></h2>
+    <p class="in-short"><strong>In short:</strong> every wait has a limit, every error is logged without its secrets, and the platform's health check cannot be fooled into restarting a healthy process.</p>
+  </div>
+  <div class="sub" id="b2-ops" data-toc="Logs, ids and Sentry">
+    <h3>Logs, request ids and error reporting</h3>
+    <ul>
+      <li><strong>Redaction at the source.</strong> {{s:B/app/core/logging.py#configure_safe_logging}} installs a log-record factory that runs for every handler: tokens in verification and deletion paths and <code>token</code>, <code>access_token</code>, <code>refresh_token</code> and <code>password</code> query values become <code>[REDACTED]</code>; access-log URLs lose their query strings; exceptions keep their type and code locations but not their messages.</li>
+      <li><strong>Correlation.</strong> Normal application responses carry an <code>X-Request-ID</code>; a client-supplied id is echoed only if it is short and printable.</li>
+      <li><strong>Sentry</strong> (only with a DSN): 10% trace sampling, <code>send_default_pii=False</code>, no request bodies, no local variables, no trace headers sent to outside services, and a scrubber that keeps only the URL path and method and withholds exception messages.</li>
+    </ul>
+    {{x:B/app/core/logging.py:8-13|The two patterns that remove capability tokens from any log line.}}
+    <p class="small muted">Repository evidence · {{p:B/app/main.py}} · {{p:B/app/api/v1/auth.py}}</p>
+  </div>
+  <div class="sub" id="b2-timeouts" data-toc="Timeouts and pools">
+    <h3>Timeouts, pools and cold starts</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Limit</th><th>Value</th><th>Protects against</th></tr></thead>
+      <tbody>
+        <tr><td>PostgreSQL <code>statement_timeout</code></td><td>8 s (application engine)</td><td>A hung query pinning a pooled connection</td></tr>
+        <tr><td>Pool wait</td><td>30 s</td><td>Unbounded queueing for a connection</td></tr>
+        <tr><td>Health probe</td><td>2 s</td><td>A slow database hanging <code>/health</code></td></tr>
+        <tr><td>Brevo call</td><td>10 s</td><td>A slow email provider</td></tr>
+        <tr><td>AI provider call</td><td>25 s total (configurable)</td><td>Trickling or stuck responses</td></tr>
+        <tr><td>AI upload read</td><td>30 s audio, 10 s JSON</td><td>Slow-upload resource exhaustion</td></tr>
+        <tr><td>Phone request</td><td>90 s overall</td><td>A spinner that never ends</td></tr>
+      </tbody>
+    </table></div>
+    <p>Ordinary API uploads have a 2,000,000-byte cap and a configurable 60-second default read deadline. Supply Review uses a 64,000-byte cap. The deadline covers the upload, independently of database or provider time.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/services/ingress.py}} · {{p:B/app/core/database.py}} · {{p:B/app/utils/rate_limiter.py}}</p>
+  </div>
+</section>
+
+<section class="part" id="p10" data-toc="Testing" data-desc="What the suite proves and what it does not.">
+  <div class="part-head">
+    <p class="eyebrow">Part 10 · Testing</p>
+    <h2>Testing: <em>what the suite proves</em></h2>
+    <p class="in-short"><strong>In short:</strong> the migrated-schema run passed 975 backend tests with two skips. CI also exercises a model-created schema, and runs integration requests through the ASGI app. Concurrency tests submit overlapping requests.</p>
+  </div>
+  <div class="sub" id="b2-tests" data-toc="Test strategy">
+    <h3>Test strategy</h3>
+    <p>Run backend integration and unit tests against a disposable local PostgreSQL database. CI exercises a schema created from models and a schema built with Alembic. The migration path matters because indexes, constraints and seeded state can differ from a model-only schema. The versioned route gate expects 65. The workflow also enforces a 70% coverage floor on six selected inventory, order and supply modules.</p>
+    <p>For this review the full backend suite on the migrated schema passed 975 tests and skipped two. Android Node tests passed 491 and web unit tests passed 103. Those counts describe local suites and exclude installed-device and hosted acceptance.</p>
+    <p>{{p:B/tests/conftest.py}} · {{p:.github/workflows/ci.yml}} · {{p:B/scripts/check_api_routes.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/tests/conftest.py}} · {{p:.github/workflows/ci.yml}}</p>
+  </div>
+</section>
+
+<section class="part" id="p11" data-toc="How development is done" data-desc="Local setup, tools and the Git workflow.">
+  <div class="part-head">
+    <p class="eyebrow">Part 11 · Workflow</p>
+    <h2>How development <em>is done</em></h2>
+    <p class="in-short"><strong>In short:</strong> run the API and PostgreSQL locally, test against a disposable database, open a pull request, let CI judge, and release migrations through a gate.</p>
+  </div>
+  <div class="sub" id="b2-local" data-toc="Local setup">
+    <h3>Local setup</h3>
+    <ul>
+      <li><strong>Docker Compose:</strong> {{p:B/docker-compose.dev.yml}} runs the API with hot reload (code mounted into the container) and <code>postgres:16-alpine</code>; {{p:B/docker-compose.yml}} runs the production image locally, plus optional pgAdmin.</li>
+      <li><strong>Or a virtual environment:</strong> Python 3.12, <code>pip install -r requirements.txt</code>, a local PostgreSQL 16, <code>uvicorn app.main:app --reload</code>.</li>
+      <li><strong>Configuration:</strong> {{p:B/.env.example}} lists every variable; exported environment variables override <code>.env</code>.</li>
+      <li><strong>Tests:</strong> <code>ENVIRONMENT=testing</code>, a <code>SECRET_KEY</code> of at least 32 characters and a <code>DATABASE_URL</code> whose database name contains "test"; then <code>python -m pytest tests/ unit_tests/ -q</code>, and again with <code>--migrated-schema</code>.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/tests/conftest.py}} · {{p:.github/workflows/ci.yml}}</p>
+  </div>
+  <div class="sub" id="b2-workflow" data-toc="Quality tools and Git">
+    <h3>Quality tools and the Git workflow</h3>
+    <p>Open a pull request to main and record the revision you test. Backend and Android CI runs for pull requests targeting main, pushes to main and manual dispatch. Web checks use a separate path-filtered workflow. A build-apk label on an eligible PR requests an Android preview build.</p>
+    <p>Before using a merge-first release sequence, verify production Render’s native auto-deploy and the production Worker’s Git deploy command. The optional Render CI hook requires passing test jobs, a push to main, ENABLE_RENDER_AUTO_DEPLOY=true and a configured hook secret. A hook acknowledgment means Render accepted the request. Confirm the live SHA in Render.</p>
+    <p>Advance staging to the candidate and test the affected user journey. Publish the production web build with Release CareKosh web on main. If main moved, test that revision first. API and Android releases use their own service and Play controls. A working screen, a tested commit and a live deployment each supply different evidence.</p>
+    <p>{{p:.github/workflows/ci.yml}} · {{p:.github/workflows/carekosh-web.yml}} · {{p:.github/workflows/release-carekosh-web.yml}} · {{p:M/eas.json}}</p>
+    <p class="small muted">Repository evidence · {{p:.github/workflows/ci.yml}} · {{p:.github/workflows/release-carekosh-web.yml}}</p>
+  </div>
+</section>

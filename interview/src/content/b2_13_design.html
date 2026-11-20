@@ -1,0 +1,116 @@
+<section class="part" id="p14" data-toc="System design through the backend" data-desc="Scaling, consistency, idempotency, queues, limits and failure modes.">
+  <div class="part-head">
+    <p class="eyebrow">Part 14 · System design</p>
+    <h2>System design <em>through the backend</em></h2>
+    <p class="in-short"><strong>In short:</strong> the backend is a stateless tier over one database. Scaling it means more instances, a connection pooler, durable background work and monitored shared limiter capacity, in roughly that order, after measuring.</p>
+  </div>
+
+  <div class="sub" id="b2-scale" data-toc="Scaling the tier">
+    <h3>Statelessness and horizontal scaling</h3>
+    <p>A shared Redis limiter coordinates protected requests across workers. The database connection budget still grows with the number of processes and instances. Before increasing capacity, measure pool usage, lock waits, provider latency, request throughput and error rates under a representative workload.</p>
+    <p>The request concurrency guard caps work admitted by a single worker. Hosted ingress authentication and browser origin checks address separate boundaries. Review dashboards, secret rotation procedures, backup restoration and installed-client behavior as operational evidence. A source review alone cannot demonstrate that these controls are configured correctly for a particular deployment.</p>
+    <p>{{p:B/app/core/database.py}} · {{p:B/app/services/ingress.py}} · {{p:B/app/utils/rate_limiter.py}} · {{p:B/scripts/restore_drill.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/services/ingress.py}} · {{p:B/app/core/database.py}} · {{p:B/app/utils/rate_limiter.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-consistency" data-toc="Consistency and idempotency">
+    <h3>Consistency and idempotency</h3>
+    <ul>
+      <li><strong>Inside the server:</strong> single-database transactions; every invariant either in a constraint or in one conditional statement.</li>
+      <li><strong>Across the network:</strong> a lost reply is the classic problem. Orders use an idempotency key; other creates are guarded by duplicate checks (names) or are naturally safe to repeat (status changes to the same status, revocations).</li>
+      <li><strong>Exactly-once effects</strong> are built from at-least-once delivery plus idempotent handling: the order <code>localId</code>, the apply claim, the refresh-token claim and single-use email tokens are all examples.</li>
+    </ul>
+    <say><p>"I can't guarantee a request arrives exactly once on a phone network, so I make the effect happen once: an idempotency key for orders, and claims that flip a state with a conditional UPDATE so a second attempt finds nothing to do."</p></say>
+    <p class="small muted">Repository evidence · {{p:B/tests/test_items.py}} · {{p:B/tests/test_orders.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-failure" data-toc="Failure modes">
+    <h3>Failure modes and how the backend behaves</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Failure</th><th>Behaviour</th></tr></thead>
+      <tbody>
+        <tr><td>Database down</td><td><code>/health</code> 503; requests fail fast once the pool's pre-ping or connect fails; <code>/live</code> keeps the process alive</td></tr>
+        <tr><td>Slow statement</td><td>Cancelled at 8 s; the request fails instead of pinning a connection</td></tr>
+        <tr><td>Migration fails at start</td><td>The new container exits; the old instance keeps serving</td></tr>
+        <tr><td>Email provider down</td><td>Background send logs a failure; the person can resend</td></tr>
+        <tr><td>AI provider slow or down</td><td>Bounded by a total deadline; mapped to 5xx or 429 with a retry hint; reservation kept</td></tr>
+        <tr><td>Client disconnects mid-AI call</td><td>The provider task is cancelled; 499 is logged</td></tr>
+        <tr><td>Worker crash</td><td>Gunicorn replaces it; other worker keeps serving</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small muted">Repository evidence · {{p:B/tests/test_items.py}} · {{p:B/tests/test_orders.py}}</p>
+  </div>
+</section>
+
+<section class="part" id="p15" data-toc="Question bank" data-desc="Python, FastAPI, Pydantic, SQLAlchemy, PostgreSQL, Alembic, testing, deployment and design.">
+  <div class="part-head">
+    <p class="eyebrow">Part 15 · Practice</p>
+    <h2>Backend <em>question bank</em></h2>
+    <p class="in-short"><strong>In short:</strong> answers are hidden; say yours out loud, then open the card. Filter by a topic such as <code>sqlalchemy</code>, <code>dependencies</code> or <code>docker</code>.</p>
+  </div>
+  <div class="sub" id="b2-qa" data-toc="Questions">
+    <h3>Questions</h3>
+    {{qa:b2}}
+    <p class="small muted">Repository evidence · {{p:B/tests/conftest.py}} · {{p:.github/workflows/ci.yml}}</p>
+  </div>
+</section>
+
+<section class="part" id="p16" data-toc="Limitations and next steps" data-desc="Known gaps, each checked in the code, with the next step.">
+  <div class="part-head">
+    <p class="eyebrow">Part 16 · Honesty</p>
+    <h2>Limitations and <em>what I would do next</em></h2>
+    <p class="in-short"><strong>In short:</strong> say these before the interviewer finds them. Each one was checked in the code or in official documentation.</p>
+  </div>
+  <div class="sub" id="b2-limits" data-toc="Known limitations">
+    <h3>Known limitations</h3>
+    <p>A shared Redis limiter coordinates protected requests across workers. The database connection budget still grows with the number of processes and instances. Before increasing capacity, measure pool usage, lock waits, provider latency, request throughput and error rates under a representative workload.</p>
+    <p>The request concurrency guard caps work admitted by a single worker. Hosted ingress authentication and browser origin checks address separate boundaries. Review dashboards, secret rotation procedures, backup restoration and installed-client behavior as operational evidence. A source review alone cannot demonstrate that these controls are configured correctly for a particular deployment.</p>
+    <p>{{p:B/app/core/database.py}} · {{p:B/app/services/ingress.py}} · {{p:B/app/utils/rate_limiter.py}} · {{p:B/scripts/restore_drill.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/services/ingress.py}} · {{p:B/app/core/database.py}} · {{p:B/app/utils/rate_limiter.py}}</p>
+  </div>
+</section>
+
+<section class="part" id="p17" data-toc="Appendices" data-desc="Glossary, verification record and sources.">
+  <div class="part-head">
+    <p class="eyebrow">Part 17 · Reference</p>
+    <h2><em>Appendices</em></h2>
+    <p class="in-short"><strong>In short:</strong> terms, the verification record for this book and the official sources behind its general statements.</p>
+  </div>
+  <div class="sub" id="b2-glossary" data-toc="Glossary">
+    <h3>Glossary</h3>
+    <dl class="glossary">
+      <dt>Coroutine</dt><dd>The object an <code>async def</code> function returns; it runs when awaited or scheduled on an event loop.</dd>
+      <dt>Event loop</dt><dd>The scheduler that runs coroutines and switches between them at await points.</dd>
+      <dt>GIL</dt><dd>CPython's global interpreter lock: one thread runs Python bytecode at a time per process.</dd>
+      <dt>Dependency (FastAPI)</dt><dd>A function FastAPI calls before a handler because a parameter's type asks for it; cached per request.</dd>
+      <dt>Middleware</dt><dd>Code that wraps every request and response; the last one added runs outermost.</dd>
+      <dt>Session (SQLAlchemy)</dt><dd>A unit of work that tracks objects and runs one transaction at a time on a pooled connection.</dd>
+      <dt>Read Committed</dt><dd>PostgreSQL's default isolation: each statement sees data committed before it began.</dd>
+      <dt>Compare-and-swap</dt><dd>An update that only applies if the current value (here, a version) matches the expected one.</dd>
+      <dt>Advisory lock</dt><dd>A lock on an application-chosen number; <code>pg_advisory_xact_lock</code> holds it until the transaction ends.</dd>
+      <dt>Expand and contract</dt><dd>A migration strategy: add new structures, move code and data, then remove the old ones later.</dd>
+      <dt>Outbox</dt><dd>A table of pending messages written in the same transaction as the change, sent later by a worker.</dd>
+      <dt>Idempotent</dt><dd>Safe to repeat: doing it twice has the same effect as doing it once.</dd>
+    </dl>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/__init__.py}} · {{p:B/scripts/check_api_routes.py}}</p>
+  </div>
+  <div class="sub" id="b2-verify" data-toc="Verification and limits">
+    <h3>Verification record and limits</h3>
+    <p>Review baseline: GitHub main at <code>{{f:baseline}}</code>, {{f:checked}}. Code excerpts are drawn from that Git revision. Route registration and migration checks distinguish versioned API operations, root HTTP operations and application tables. The registered inventory has 65 versioned operations and 3 root operations. The migration head is 0013_supply_reviews.</p>
+    <p>The local migrated-schema run passed 975 backend tests with two skips. The Android Node suite passed 491 tests and the browser frontend suite passed 103. Earlier timing measurements or incident records in these books describe their original conditions. Local tests do not establish a hosted service revision, Play rollout, production load capacity, device permission behavior or live provider availability.</p>
+    <p>{{p:B/tests/conftest.py}} · {{p:B/scripts/check_api_routes.py}} · {{p:B/alembic/versions/20261105_supply_reviews.py}} · {{p:.github/workflows/ci.yml}}</p>
+    <p class="small muted">Repository evidence · {{p:B/tests/conftest.py}} · {{p:.github/workflows/ci.yml}}</p>
+  </div>
+  <div class="sub" id="b2-sources" data-toc="Sources">
+    <h3>Official sources</h3>
+    <ul class="small">
+      <li>Python 3.12: <a href="https://docs.python.org/3.12/library/asyncio-task.html">asyncio tasks</a> · <a href="https://docs.python.org/3.12/library/secrets.html">secrets</a> · <a href="https://docs.python.org/3.12/library/threading.html">threading</a></li>
+      <li>FastAPI: <a href="https://fastapi.tiangolo.com/tutorial/dependencies/dependencies-with-yield/">dependencies with yield</a> · <a href="https://fastapi.tiangolo.com/advanced/advanced-dependencies/">advanced dependencies</a> · <a href="https://fastapi.tiangolo.com/tutorial/middleware/">middleware</a> · <a href="https://fastapi.tiangolo.com/tutorial/background-tasks/">background tasks</a> · <a href="https://fastapi.tiangolo.com/release-notes/">release notes</a></li>
+      <li>Starlette: <a href="https://starlette.dev/middleware/">middleware and its limitations</a></li>
+      <li>SQLAlchemy 2.0: <a href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html">asyncio</a> · <a href="https://docs.sqlalchemy.org/en/20/orm/queryguide/relationships.html">relationship loading</a></li>
+      <li>PostgreSQL 16: <a href="https://www.postgresql.org/docs/16/transaction-iso.html">transaction isolation</a> · <a href="https://www.postgresql.org/docs/16/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS">advisory locks</a> · <a href="https://www.postgresql.org/docs/16/runtime-config-client.html">statement and lock timeouts</a></li>
+      <li>Uvicorn 0.34 <a href="https://github.com/encode/uvicorn/blob/0.34.0/CHANGELOG.md">changelog</a> · passlib <a href="https://passlib.readthedocs.io/en/stable/lib/passlib.hash.argon2.html">argon2</a> · Render <a href="https://render.com/docs/blueprint-spec">Blueprint spec</a> · Neon <a href="https://neon.com/docs/introduction/scale-to-zero">scale to zero</a> · NIST <a href="https://pages.nist.gov/800-63-4/sp800-63b.html">SP 800-63B-4</a> · RFC <a href="https://www.rfc-editor.org/rfc/rfc9700.html">9700</a></li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/requirements.txt}} · {{p:M/package.json}} · {{p:carekosh-web/package.json}}</p>
+  </div>
+</section>

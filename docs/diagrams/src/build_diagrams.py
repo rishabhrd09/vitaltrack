@@ -255,36 +255,27 @@ def database_erd() -> Svg:
 
 def inventory_concurrency() -> Svg:
     s = Svg(1500, 1100, "Two clients save the same item",
-            "Client A and client B both loaded the item at version 3. Each sends a stock update naming version 3 "
-            "(the API-only PATCH used by the reproduction). PostgreSQL lets the first UPDATE take the row lock and "
-            "commit version 4; the second UPDATE re-checks its WHERE clause after waiting, matches no row, and the "
-            "API returns 409 with the values it had read. The app's Edit Item sends PUT with the item name, which "
-            "first takes a per-account advisory lock, so a second PUT waits before its SELECT; the outcome is the "
-            "same. The app now captures the version with its form values; a cache refresh cannot replace it "
-            "(A-1 fixed locally on 8 October 2026).")
-    s.heading("Optimistic concurrency: the version column",
-              "PUT /items/{id} and PATCH /items/{id}/stock both run UPDATE … WHERE version = :seen. Reproduced 7 and 8 Oct with two stock PATCH calls: one 200, one 409.")
-    seq = Sequence(s, [("a", "Client A (API test)", "external"), ("b", "Client B (API test)", "external"),
+            "Two clients opened version 3. Both editors send the version they opened. Cooperating writes take "
+            "an owner supply-revision lock. The first update commits version 4. A second save with version 3 "
+            "returns a conflict and leaves the first quantity intact.")
+    s.heading("Two editors save the same item",
+              "Both editors use PUT /items/{id}. The version in the form protects a saved quantity from an older edit.")
+    seq = Sequence(s, [("a", "Client A", "external"), ("b", "Client B", "external"),
                        ("api", "API worker(s)", "core"), ("db", "PostgreSQL items row", "provider")], top=120, box_h=64)
     seq.note("a", "b", "Both clients read Nitrile gloves: quantity 40, version 3", "note")
-    seq.msg("a", "api", 'PATCH /items/{id}/stock {"quantity":38,"version":3}', step=1)
-    seq.msg("b", "api", 'PATCH /items/{id}/stock {"quantity":36,"version":3}', step=2)
+    seq.msg("a", "api", 'PUT /items/{id} {"quantity":38,"version":3}', step=1)
+    seq.msg("b", "api", 'PUT /items/{id} {"quantity":36,"version":3}', step=2)
     seq.msg("api", "db", "A: UPDATE … SET quantity=38, version=version+1 WHERE … AND version=3", step=3)
-    seq.msg("api", "db", "B: same UPDATE with version=3 → waits for A's row lock", step=4)
+    seq.msg("api", "db", "B: acquire the same owner supply-revision lock before reading the item", step=4)
     seq.msg("api", "db", "A: INSERT activity + audit · COMMIT (row now version 4)", step=5)
-    seq.msg("db", "api", "B: lock released → WHERE re-checked → version is 4 → 0 rows", dashed=True, step=6)
+    seq.msg("db", "api", "B: read version 4 → conditional UPDATE with version 3 matches no row", dashed=True, step=6)
     seq.msg("api", "a", "200 · quantity 38 · version 4", dashed=True, step=7)
     seq.msg("api", "b", '409 {"error":"Version conflict","server_version":…,"server_quantity":…}', dashed=True, step=8, color="#A8261D")
     seq.note("b", "api", "The 409 body carries the values read at the start of B's request, which may already be "
              "out of date. The app shows the server message and invalidates affected active queries. "
              "Reopen the form for current values; Retry retains its original version.", "danger")
-    seq.note("a", "db", "Why this is safe: under PostgreSQL's default READ COMMITTED isolation, a blocked UPDATE re-evaluates "
-             "its WHERE clause against the newest row version. No SELECT … FOR UPDATE is needed for this compare-and-swap. "
-             "The lock wait shown is one possible interleaving; the reproduction checks the outcome. "
-             "Ordinary item deletes have no version check. Resets opt into a version check under a row lock.", "core")
-    seq.note("a", "db", "In the app: Edit Item sends PUT /items/{id} with the item name, which first takes a per-account "
-             "advisory lock. A second PUT waits there until the first commits, then its SELECT sees version 4 and its "
-             "UPDATE matches no row: the same 200 / 409 result, without the row-lock wait.", "note")
+    seq.note("a", "db", "The transaction holds the owner lock until commit. The conditional UPDATE also checks "
+             "the submitted version. Read the saved item again before attempting a new edit.", "note")
     seq.finish()
     return s
 
@@ -329,14 +320,14 @@ def order_status() -> Svg:
             "stock updated only through POST apply, which adds every line's full quantity to stock in one "
             "transaction. Declined and stock updated are final. Only pending and declined orders can be deleted.")
     s.heading("Order status machine and applying stock",
-              "PATCH /orders/{id}/status enforces these arrows (400 otherwise; same status = no-op). Only POST /orders/{id}/apply reaches stock_updated.")
+              "Any pending, ordered, partially received or received order can be declined. Only POST /apply reaches stock_updated.")
     states = {
         "pending": (60, 230, "ok"), "ordered": (420, 150, "core"), "partially_received": (780, 150, "core"),
         "received": (780, 400, "core"), "declined": (60, 520, "danger"), "stock_updated": (1150, 400, "infra"),
     }
     w, h = 280, 92
-    sub = {"pending": "created by POST /orders · deletable", "ordered": "sets ordered_at",
-           "partially_received": "label only — no quantities", "received": "sets received_at · not deletable",
+    sub = {"pending": "created by POST /orders · deletable", "ordered": "can decline · sets ordered_at",
+           "partially_received": "can decline · no line quantities", "received": "can decline before applying stock",
            "declined": "final · sets declined_at · deletable", "stock_updated": "final · sets applied_at"}
     for name, (x, y, role) in states.items():
         s.box(x, y, w, h, name, sub[name], role, align="middle")
@@ -351,9 +342,9 @@ def order_status() -> Svg:
     s.text_halo(205, 470, "declined", 14, "start", 600)
     s.text_halo(648, 330, "ordered → received", 14, "start", 600)
     s.box(60, 660, 1380, 200, "What POST /orders/{id}/apply does — one transaction",
-          ["1. Load the order (yours, status received, at least one line) → else 404 / 400.",
-           "2. Check every line's item still exists → else 409 and nothing changes.",
-           "3. Claim: UPDATE orders SET status='STOCK_UPDATED', applied_at=now WHERE status='RECEIVED' (the column stores enum names) → a second apply gets 400.",
+          ["1. Lock owner revision and load the order. An already-applied order returns 200 with no new credit.",
+           "2. Check every referenced item still exists and the units match. A conflict returns 409.",
+           "3. Claim a received order with a conditional UPDATE. Only the successful claim credits stock.",
            "4. For each line, in item-id order: UPDATE items SET quantity = quantity + line.quantity, version = version + 1; write an audit row.",
            "5. Write ORDER_APPLIED activity, COMMIT. Any failure before COMMIT rolls back steps 3–5."], "core")
     return s

@@ -1,0 +1,132 @@
+<section class="part" id="p2" data-toc="End-to-end architecture" data-desc="Frontend, backend, data, environments, deployment, hosting and workflow.">
+  <div class="part-head">
+    <p class="eyebrow">Part 2 · Architecture</p>
+    <h2>End-to-end <em>architecture</em></h2>
+    <p class="in-short"><strong>In short:</strong> the app and the API are built and shipped through two separate pipelines, then meet at run time over HTTPS. This part names every box, the files behind it and the environment it runs in.</p>
+  </div>
+
+  <div class="sub" id="b1-bigpicture" data-toc="The big picture">
+    <h3>The big picture: connecting the dots</h3>
+    <p>A caregiver loads the browser app from its Cloudflare Worker or opens the installed Android app. Both clients send authenticated requests to the environment’s API hostname. At the edge, Cloudflare adds an origin-verification header to proxied API traffic. The Render container runs FastAPI, checks the request and sends account-scoped SQL to PostgreSQL. Hosted workers share rate limits through Redis.</p>
+    <p>The public landing site and the signed-in browser app have separate builds. A visit to the landing page makes no inventory change. A successful inventory edit has to reach the API and commit in PostgreSQL.</p>
+    {{fig:big-picture|Follow a browser or Android request from its client to the account’s rows.}}
+    <p>{{p:carekosh-web/wrangler.jsonc}} · {{p:B/app/services/ingress.py}} · {{p:B/app/api/v1/items.py}}</p>
+    <p class="small muted">Repository evidence · {{p:carekosh-web/package.json}} · {{p:M/package.json}} · {{p:B/app/main.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-frontend" data-toc="Frontend architecture">
+    <h3>Frontend architecture: the files that matter</h3>
+    <p>The phone app is TypeScript on Expo SDK 54. Each layer only talks to the layer below it, which is why a screen never builds a URL or reads a token itself.</p>
+    {{fig:frontend-layers|Inside the phone app. Screens use hooks; hooks call services; every service goes through one API client. Storage on the right: tokens in SecureStore, server data in TanStack Query (copied to AsyncStorage), auth and UI state in Zustand.}}
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>File or folder</th><th>Job</th><th>Talks to</th></tr></thead>
+      <tbody>
+        <tr><td>{{p:M/app/_layout.tsx}}</td><td>Root layout: providers, theme, store start-up, and the auth guard that sends signed-out users to <code>(auth)/login</code> and signed-in users to <code>(tabs)</code></td><td><code>useAuthStore</code>, <code>QueryProvider</code></td></tr>
+        <tr><td><span class="path">app/(auth)/*</span>, <span class="path">app/(tabs)/*</span>, <span class="path">app/item/[id].tsx</span>, <span class="path">app/order/create.tsx</span></td><td>Screens (one file per route)</td><td>hooks, stores</td></tr>
+        <tr><td>{{p:M/hooks/useServerData.ts}}</td><td>Read hooks: <code>useItems</code>, <code>useCategories</code>, <code>useOrders</code>, <code>useActivities</code> and their query keys</td><td>services</td></tr>
+        <tr><td>{{p:M/hooks/useServerMutations.ts}}</td><td>Write hooks; invalidate the affected query keys after success, and after a 409 or an uncertain network failure</td><td>services, query client</td></tr>
+        <tr><td>{{p:M/services/api.ts}}</td><td>Shared Android API client: base URL, bearer token, one shared refresh, 90-second deadline, error mapping, auto-logout on a final 401</td><td>SecureStore, the API</td></tr>
+        <tr><td>{{p:M/services/auth.ts}}, {{p:M/services/items.ts}}, {{p:M/services/orders.ts}}, {{p:M/services/categories.ts}}</td><td>One function per endpoint</td><td><code>api.ts</code></td></tr>
+        <tr><td>{{p:M/providers/QueryProvider.tsx}}</td><td>TanStack Query client: staleTime 30 s, gcTime 24 h, persisted to AsyncStorage without auth queries; mutations never retried or queued offline</td><td>AsyncStorage, NetInfo</td></tr>
+        <tr><td>{{p:M/store/useAuthStore.ts}}</td><td>Session start-up, login, register, logout; persists only <code>user</code> and <code>isAuthenticated</code> through SecureStore</td><td><code>services/auth.ts</code></td></tr>
+        <tr><td><span class="path">features/assistant/</span>, <span class="path">components/assistant/</span></td><td>Ask Care Coach: local parser, validated plans, drafts, optional cloud calls behind {{p:M/features/assistant/policy.ts}}</td><td><code>services/assistant.ts</code>, native module</td></tr>
+        <tr><td><span class="path">modules/carekosh-voice/</span></td><td>Android-only native module: microphone capture and on-device Moonshine recognition</td><td>the assistant</td></tr>
+        <tr><td>{{p:M/eas.json}}, {{p:M/app.config.js}}, {{p:M/app.json}}</td><td>Build profiles, API URL guards, package id <code>com.carekosh.mobile</code>, OTA updates disabled</td><td>EAS Build</td></tr>
+      </tbody>
+    </table></div>
+    <say><p>"The phone app is deliberately thin. Screens call hooks, hooks call services, and one API client owns tokens, refresh and timeouts. Server data lives in TanStack Query, so the server stays the source of truth and the cache is only for display."</p></say>
+    <p class="evidence-line">Evidence: {{ev:code}} read in the mobile source at the baseline commit.</p>
+    <p class="small muted">Repository evidence · {{p:M/providers/QueryProvider.tsx}} · {{p:M/hooks/useServerMutations.ts}}</p>
+  </div>
+
+  <div class="sub" id="b1-backend" data-toc="Backend architecture">
+    <h3>Backend architecture: layers and files</h3>
+    <p>The backend is a layered FastAPI application. A request enters at the top of the figure and goes down; shared configuration, database, security and logging utilities support the handlers.</p>
+    {{fig:backend-layers|The backend in layers: server process, middleware, routers, dependencies, schemas, services and models, down to PostgreSQL. Router counts add up to 65 under /api/v1; app/main.py adds /, /health and /live.}}
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td>{{p:B/app/main.py}}</td><td><code>create_app()</code>: middleware, routers, exception handlers, health endpoints, Sentry set-up, lifespan</td></tr>
+        <tr><td>{{p:B/app/core/config.py}}</td><td><code>Settings</code> from environment variables, with validators that refuse unsafe production values</td></tr>
+        <tr><td>{{p:B/app/core/database.py}}</td><td>Async engine and pool, <code>AsyncSessionLocal</code>, <code>get_db</code>, base model and mixins</td></tr>
+        <tr><td>{{p:B/app/core/security.py}}</td><td>Argon2 password hashing and JWT creation and decoding</td></tr>
+        <tr><td>{{p:B/app/api/deps.py}}</td><td><code>get_current_user</code> and the <code>DB</code> and <code>CurrentUser</code> type aliases</td></tr>
+        <tr><td><span class="path">app/api/v1/</span>: auth, web_auth, categories, items, orders, activity, ai, sarvam_keys, openai_keys, supply_reviews</td><td>Route handlers, grouped by resource under <code>/api/v1</code></td></tr>
+        <tr><td><span class="path">app/schemas/</span></td><td>Pydantic request and response models (camelCase JSON for business data)</td></tr>
+        <tr><td><span class="path">app/models/</span></td><td>SQLAlchemy models for the 18 tables</td></tr>
+        <tr><td><span class="path">app/services/</span></td><td>Audit writer, per-account name lock, AI guard, provider calls, body limit, encrypted key vault</td></tr>
+        <tr><td><span class="path">app/utils/</span></td><td>Email through Brevo, rate limiter, request-id sanitiser</td></tr>
+        <tr><td><span class="path">alembic/</span></td><td>Migration environment and the 13 revisions</td></tr>
+        <tr><td>{{p:B/Dockerfile}}, {{p:B/docker-entrypoint.sh}}, {{p:B/render.yaml}}</td><td>Image, start-up sequence and production service definition</td></tr>
+      </tbody>
+    </table></div>
+    <p>Book 2 walks through every one of these files in depth: {{book:2#p3|FastAPI and Starlette}}, {{book:2#p5|the data layer}} and {{book:2#p12|deployment}}.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/__init__.py}} · {{p:B/scripts/check_api_routes.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-data" data-toc="Data architecture">
+    <h3>Data architecture: eighteen application tables and their ownership boundaries</h3>
+    <p>At {{f:baseline}} SQLAlchemy defines 18 application tables. Alembic tracks its own revision separately. Start with users, items, categories, orders and order_items. User-owned reads and writes filter by the authenticated account. Order lines retain item snapshots, which lets history survive an item deletion. Activity records describe business events and audit records capture mutation details.</p>
+    <p>The later migrations matter when tracing a request. Revision 0012 adds encrypted OpenAI credentials. Revision 0013 adds supply revisions, review runs, proposals, confirmations and closed order submissions. A supply revision gives cooperating writers a per-owner lock and lets the API detect when an earlier recommendation has become stale.</p>
+    <p>{{p:B/app/models/__init__.py}} · {{p:B/app/models/supply_review.py}} · {{p:B/alembic/versions/20261105_supply_reviews.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/models/__init__.py}} · {{p:B/alembic/versions/20261105_supply_reviews.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-envs" data-toc="Three environments">
+    <h3>Development, staging and production</h3>
+    <p>Production serves the browser at homeicuinventory.carekosh.com and routes api.carekosh.com to the production Render service. Staging pairs staging-app.carekosh.com with staging-api.carekosh.com. Each frontend custom domain selects a Worker. Each proxied API hostname has its own origin-header rule and Render configuration. The database connection comes from that service’s private DATABASE_URL.</p>
+    <p>A DNS record selects the destination. A Worker deployment selects the assets. A Render deployment selects the backend commit. The Android build profile embeds the public API URL. Check these independently when a staging screen loads but the data appears wrong. Brevo email links use the backend’s configured public URL.</p>
+    <p>{{p:carekosh-web/wrangler.jsonc}} · {{p:M/eas.json}} · {{p:B/render.yaml}} · {{p:B/app/services/ingress.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/render.yaml}} · {{p:B/app/core/config.py}} · {{p:B/app/core/database.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-config" data-toc="Build time vs run time">
+    <h3>Build-time versus run-time configuration</h3>
+    <p>This distinction answers many "how do you configure environments?" questions.</p>
+    <div class="grid-2">
+      <div class="card"><h4>Fixed when the app is built</h4><p><code>EXPO_PUBLIC_API_URL</code> comes from the EAS profile and is inlined into the JavaScript bundle. Anyone can read it from the APK, so it must never hold a secret. {{p:M/app.config.js}} refuses a preview build aimed anywhere but staging and a production build aimed anywhere but <code>https://api.carekosh.com</code>. An empty URL is not refused: the client then falls back to <code>http://localhost:8000</code>.</p></div>
+      <div class="card"><h4>Set on each backend service</h4><p><code>DATABASE_URL</code>, <code>SECRET_KEY</code>, <code>FRONTEND_URL</code>, mail, Sentry and AI settings are environment variables read by pydantic-settings at start-up. The validators refuse the public default <code>SECRET_KEY</code> outside development and testing, any key shorter than 32 characters, and an empty <code>FRONTEND_URL</code> in production.</p></div>
+    </div>
+    {{x:B/app/core/config.py:163-179|The SECRET_KEY validator. ENVIRONMENT is declared earlier in the class, so the validator can read it from info.data.}}
+    <p class="evidence-line">Evidence: {{ev:code}} {{ev:docs}} Expo documents that <code>EXPO_PUBLIC_</code> variables are inlined at build time and visible in the app.</p>
+    <p class="small muted">Repository evidence · {{p:B/render.yaml}} · {{p:B/app/core/config.py}} · {{p:B/app/core/database.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-deploy" data-toc="Deployment pipeline">
+    <h3>The deployment pipelines, end to end</h3>
+    <p>Open a pull request to main and record the revision you test. Backend and Android CI runs for pull requests targeting main, pushes to main and manual dispatch. Web checks use a separate path-filtered workflow. A build-apk label on an eligible PR requests an Android preview build.</p>
+    <p>Before using a merge-first release sequence, verify production Render’s native auto-deploy and the production Worker’s Git deploy command. The optional Render CI hook requires passing test jobs, a push to main, ENABLE_RENDER_AUTO_DEPLOY=true and a configured hook secret. A hook acknowledgment means Render accepted the request. Confirm the live SHA in Render.</p>
+    <p>Advance staging to the candidate and test the affected user journey. Publish the production web build with Release CareKosh web on main. If main moved, test that revision first. API and Android releases use their own service and Play controls. A working screen, a tested commit and a live deployment each supply different evidence.</p>
+    <p>{{p:.github/workflows/ci.yml}} · {{p:.github/workflows/carekosh-web.yml}} · {{p:.github/workflows/release-carekosh-web.yml}} · {{p:M/eas.json}}</p>
+    <p class="small muted">Repository evidence · {{p:.github/workflows/ci.yml}} · {{p:.github/workflows/release-carekosh-web.yml}}</p>
+  </div>
+
+  <div class="sub" id="b1-mobile-release" data-toc="Mobile build and release">
+    <h3>Mobile build and release</h3>
+    <ul>
+      <li><strong>Profiles</strong> in {{p:M/eas.json}}: <code>development</code> (APK, <code>localhost:8000</code>), <code>preview</code> (APK, staging, channel <code>preview</code>), <code>preview-voice-diagnostics</code> (preview plus the voice diagnostics flag, refused in production) and <code>production</code> (Android App Bundle, <code>api.carekosh.com</code>, channel <code>production</code>).</li>
+      <li><strong>Distribution.</strong> A preview APK is installed directly for testing against staging. A production AAB goes to Google Play's internal testing track first, then closed testing and production. Play's tester requirements depend on the type and age of the developer account; check them before planning a launch date.</li>
+      <li><strong>No over-the-air updates.</strong> <code>expo-updates</code> is installed but <code>app.json</code> sets <code>updates.enabled</code> to false, so every JavaScript change needs a new build. The upside: what a reviewer approved is exactly what users run.</li>
+      <li><strong>Backward compatibility matters.</strong> Old APKs stay installed. The API therefore keeps older contracts working, for example order creation without a <code>localId</code> and assistant contract versions 1 and 2.</li>
+    </ul>
+    <p class="evidence-line">Evidence: {{ev:code}} eas.json, app.config.js, app.json. {{ev:nv}} Play Console tracks and installed versions.</p>
+    <p class="small muted">Repository evidence · {{p:M/eas.json}} · {{p:M/app.config.js}}</p>
+  </div>
+
+  <div class="sub" id="b1-hosting" data-toc="Hosting, DNS and TLS">
+    <h3>Hosting, DNS, TLS and email links</h3>
+    <p>Production serves the browser at homeicuinventory.carekosh.com and routes api.carekosh.com to the production Render service. Staging pairs staging-app.carekosh.com with staging-api.carekosh.com. Each frontend custom domain selects a Worker. Each proxied API hostname has its own origin-header rule and Render configuration. The database connection comes from that service’s private DATABASE_URL.</p>
+    <p>A DNS record selects the destination. A Worker deployment selects the assets. A Render deployment selects the backend commit. The Android build profile embeds the public API URL. Check these independently when a staging screen loads but the data appears wrong. Brevo email links use the backend’s configured public URL.</p>
+    <p>{{p:carekosh-web/wrangler.jsonc}} · {{p:M/eas.json}} · {{p:B/render.yaml}} · {{p:B/app/services/ingress.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/render.yaml}} · {{p:B/app/core/config.py}} · {{p:B/app/core/database.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-devflow" data-toc="How development is done">
+    <h3>How development is done</h3>
+    <p>Open a pull request to main and record the revision you test. Backend and Android CI runs for pull requests targeting main, pushes to main and manual dispatch. Web checks use a separate path-filtered workflow. A build-apk label on an eligible PR requests an Android preview build.</p>
+    <p>Before using a merge-first release sequence, verify production Render’s native auto-deploy and the production Worker’s Git deploy command. The optional Render CI hook requires passing test jobs, a push to main, ENABLE_RENDER_AUTO_DEPLOY=true and a configured hook secret. A hook acknowledgment means Render accepted the request. Confirm the live SHA in Render.</p>
+    <p>Advance staging to the candidate and test the affected user journey. Publish the production web build with Release CareKosh web on main. If main moved, test that revision first. API and Android releases use their own service and Play controls. A working screen, a tested commit and a live deployment each supply different evidence.</p>
+    <p>{{p:.github/workflows/ci.yml}} · {{p:.github/workflows/carekosh-web.yml}} · {{p:.github/workflows/release-carekosh-web.yml}} · {{p:M/eas.json}}</p>
+    <p class="small muted">Repository evidence · {{p:.github/workflows/ci.yml}} · {{p:.github/workflows/release-carekosh-web.yml}}</p>
+  </div>
+</section>

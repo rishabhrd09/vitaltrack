@@ -1,0 +1,156 @@
+<section class="part" id="p4" data-toc="Authorization and isolation" data-desc="Ownership scoping, roles, and consent as authorization.">
+  <div class="part-head">
+    <p class="eyebrow">Part 4 · Authorization</p>
+    <h2>Authorization and <em>data isolation</em></h2>
+    <p class="in-short"><strong>In short:</strong> every business query includes the signed-in user's id, so one account can never read or change another's rows, and a foreign id looks exactly like a missing one.</p>
+  </div>
+
+  <div class="sub" id="b3-authz" data-toc="Ownership and 404">
+    <h3>Ownership scoping and the 404 policy</h3>
+    {{x:B/app/api/v1/items.py:219-241|Ownership is part of the WHERE clause, not a check after loading. Someone else's item and a non-existent item give the same 404.}}
+    <ul>
+      <li><strong>The threat:</strong> broken object-level authorization (OWASP API Security Top 10 2023, API1), where changing an id in a URL reaches someone else's data.</li>
+      <li><strong>The rule:</strong> the owner comes from <code>get_current_user</code>, never from the request; child rows are reached through their owned parent (order lines through orders; items' categories are checked to belong to the same user).</li>
+      <li><strong>Cross-object checks:</strong> an order may only reference items the user owns (400 otherwise); creating an item checks the category's owner.</li>
+      <li><strong>Why 404, not 403:</strong> 403 would confirm that the id exists.</li>
+    </ul>
+    <say><p>"Authorization is ownership. Every query filters on the current user's id from the token, so there's no code path where a client-supplied id can reach another account's row; it just isn't found."</p></say>
+    <p class="small muted">Repository evidence · {{p:B/app/api/deps.py}} · {{p:B/app/api/v1/items.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-roles" data-toc="Roles that are not used">
+    <h3>Roles that exist but are not used</h3>
+    <p>{{p:B/app/api/deps.py}} defines <code>get_current_superuser</code> and <code>get_current_verified_user</code> (with aliases <code>SuperUser</code> and <code>VerifiedUser</code>), and the user model has <code>is_superuser</code>. No route depends on them: there is no admin surface. If an admin area were added, it would need its own routes, an audited role assignment, and probably MFA.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/deps.py}} · {{p:B/app/api/v1/items.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-consent" data-toc="Consent as authorization">
+    <h3>Consent as authorization for third-party processing</h3>
+    <p>Separate the data a person has agreed to send from the credential that pays for the request. Microphone transcription, text interpretation and narration are distinct operations. Provider and consent checks happen before the relevant call. Mobile can select local interpretation or an explicitly enabled cloud option. Personal OpenAI credentials support interpretation. Sarvam credentials support narration.</p>
+    <p>The backend stores encrypted personal credentials for the owner and exposes status or masked metadata to clients. Keep plaintext keys out of logs, screenshots and frontend build variables. A supply recommendation is a separate workflow. A user explicitly confirms before it becomes a pending order.</p>
+    <p>{{p:B/app/services/openai_credentials.py}} · {{p:B/app/services/sarvam_credentials.py}} · {{p:B/app/services/ai_guard.py}} · {{p:B/app/services/supply_review.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/ai.py}} · {{p:B/app/api/v1/supply_reviews.py}}</p>
+  </div>
+</section>
+
+<section class="part" id="p5" data-toc="Encryption and keys" data-desc="Fernet for provider keys, storage on the phone, data at rest and key rotation.">
+  <div class="part-head">
+    <p class="eyebrow">Part 5 · Encryption</p>
+    <h2>Encryption and <em>key management</em></h2>
+    <p class="in-short"><strong>In short:</strong> encrypt only what the server must read back later (a personal provider key); hash everything it only needs to check; keep keys in the environment, not the database.</p>
+  </div>
+
+  <div class="sub" id="b3-fernet" data-toc="Fernet for provider keys">
+    <h3>Fernet for personal provider keys</h3>
+    {{fig:fernet-envelope|How a personal Sarvam key is stored: an envelope with owner and provider, encrypted with MultiFernet; only the token is stored; decryption checks the envelope.}}
+    {{x:B/app/services/sarvam_credentials.py:22-33|The cipher: a primary key plus up to three previous keys, so keys can be rotated without breaking stored ciphertexts.}}
+    <ul>
+      <li><strong>Fernet</strong> (from the <code>cryptography</code> library) is authenticated encryption: AES-128 in CBC mode with a random IV, and an HMAC-SHA256 tag over the version byte, timestamp, IV and ciphertext. A 32-byte key holds a 16-byte signing key and a 16-byte encryption key. Any tampering fails the tag check.</li>
+      <li><strong>Reproduced:</strong> two encryptions of the same value differ (random IV); a token starts with the version byte 0x80; <code>MultiFernet</code> decrypts a token made with an older key and <code>rotate()</code> re-encrypts it under the new primary; a ciphertext built for one owner is refused for another with 503.</li>
+      <li><strong>Operational rule:</strong> <code>AI_CREDENTIAL_ENCRYPTION_KEY</code> must stay stable across deploys and workers, and must differ from <code>SECRET_KEY</code>. Losing it makes every stored personal key unreadable; people would have to save their keys again.</li>
+      <li><strong>Public metadata</strong> never includes the plaintext, the ciphertext, or a prefix or suffix of the key.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/services/sarvam_credentials.py}} · {{p:B/app/services/openai_credentials.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-phone" data-toc="On the phone">
+    <h3>On the phone</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Data</th><th>Where</th><th>Protection</th><th>Cleared at logout?</th></tr></thead>
+      <tbody>
+        <tr><td>Access and refresh tokens</td><td>SecureStore</td><td>Encrypted with a key held in the Android Keystore</td><td>Yes</td></tr>
+        <tr><td>User profile + signed-in flag</td><td>Zustand persisted through SecureStore</td><td>Same</td><td>Yes (reset)</td></tr>
+        <tr><td>Inventory, orders, activity (query cache)</td><td>Memory and AsyncStorage (<code>carekosh-query-cache</code>)</td><td>App sandbox only (not encrypted by the app)</td><td>Yes, memory and disk</td></tr>
+        <tr><td>Auth queries</td><td>Memory only</td><td>Excluded from persistence</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+    <p>The cache is also cleared at login, in case a crash interrupted the previous logout. The trade-off: inventory data at rest on the phone relies on Android's app sandbox, not on app-level encryption.</p>
+    <p class="small muted">Repository evidence · {{p:M/services/api.ts}} · {{p:M/store/useAuthStore.ts}}</p>
+  </div>
+
+  <div class="sub" id="b3-atrest" data-toc="At rest and key rotation">
+    <h3>Data at rest on the server, and rotating keys</h3>
+    <ul>
+      <li><strong>Database storage encryption</strong> is a property of the hosting provider; the app does not encrypt ordinary columns. {{ev:nv}}</li>
+      <li><strong>Backups</strong> contain password hashes, token digests and ciphertexts, never raw passwords, raw email tokens or plaintext provider keys.</li>
+      <li><strong>Rotating <code>SECRET_KEY</code></strong> invalidates every access and refresh token, signing everyone out. A graceful rotation would need several verification keys and a key id (<code>kid</code>) in the token header.</li>
+      <li><strong>Rotating the Fernet key</strong> is built in: put the new key first, keep the old one in <code>AI_CREDENTIAL_PREVIOUS_ENCRYPTION_KEYS</code>, re-encrypt, then remove the old key.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/services/sarvam_credentials.py}} · {{p:B/app/services/openai_credentials.py}}</p>
+  </div>
+</section>
+
+<section class="part" id="p6" data-toc="Abuse protection and hardening" data-desc="Rate limits, hardening measures and a threat model.">
+  <div class="part-head">
+    <p class="eyebrow">Part 6 · Hardening</p>
+    <h2>Abuse protection and <em>hardening</em></h2>
+    <p class="in-short"><strong>In short:</strong> limits on the routes attackers like, caps on request sizes and waiting times, no internals in errors or logs, and a threat model that names what is left.</p>
+  </div>
+
+  <div class="sub" id="b3-limits" data-toc="Rate limiting">
+    <h3>Rate limiting</h3>
+    <p>Hosted configurations require shared Redis storage for SlowAPI counters. Development and tests can use memory storage. The edge establishes trusted request identity before the limiter uses it. Browser and mobile login share the login bucket, and their registration routes share the registration bucket. Authenticated AI limits can also use an account key.</p>
+    <p>An exhausted limit returns 429 with Retry-After. A store outage on a protected fail-closed route returns 503. Selected side-effect-free reads explicitly allow a fail-open policy. These responses diagnose different conditions. Neither one is a reason to clear a valid client session.</p>
+    <p>{{p:B/app/utils/rate_limiter.py}} · {{p:B/app/services/ingress.py}} · {{p:B/app/api/v1/web_auth.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/utils/rate_limiter.py}} · {{p:B/tests/test_ingress_android_compatibility.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-hardening" data-toc="Hardening measures">
+    <h3>Hardening measures</h3>
+    <ul>
+      <li><strong>Request size:</strong> ordinary API requests allow 2 MB, Supply Review allows 64 KB, AI JSON allows 12 KB and audio allows 900 KB. AI and Supply Review check for a bearer header before buffering. GET and HEAD /live skip buffering.</li>
+      <li><strong>Timeouts:</strong> 8-second statements, bounded provider and email calls, a 90-second client deadline.</li>
+      <li><strong>Errors without internals:</strong> generic 500 and 409 messages; SQL parameters hidden; exception messages withheld from logs.</li>
+      <li><strong>Docs hidden</strong> unless <code>DEBUG</code> is true.</li>
+      <li><strong>Security headers</strong> on every normal response (and on the body-limit refusals); HSTS in staging and production.</li>
+      <li><strong>Least privilege in the container:</strong> a non-root user.</li>
+      <li><strong>Safe configuration:</strong> unsafe production settings stop start-up; secrets are <code>SecretStr</code>.</li>
+      <li><strong>Privacy-preserving telemetry:</strong> Sentry without personal data, bodies, local variables or outbound trace headers.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/main.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/app/services/ingress.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-threats" data-toc="Threat model">
+    <h3>A threat model (STRIDE)</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Threat</th><th>Example</th><th>Mitigation in the code</th><th>Residual risk</th></tr></thead>
+      <tbody>
+        <tr><td>Spoofing</td><td>Guessing passwords; stealing tokens</td><td>Argon2id; generic 401; shared hosted limits; SecureStore; TLS; short access tokens</td><td>No MFA; a stolen refresh token works until used by the owner or revoked</td></tr>
+        <tr><td>Tampering</td><td>Editing a JWT's claims</td><td>HS256 signature with an algorithm allow-list</td><td>A leaked <code>SECRET_KEY</code> would allow forged tokens</td></tr>
+        <tr><td>Repudiation</td><td>"I didn't change that stock"</td><td>Activity rows and audit snapshots written in the same transaction</td><td>Not every write has an audit row; no API to review them</td></tr>
+        <tr><td>Information disclosure</td><td>Enumerating accounts; tokens in logs; reading others' data</td><td>Generic forgot/resend replies; log redaction; owner-scoped queries with 404</td><td>Registration reveals taken emails</td></tr>
+        <tr><td>Denial of service</td><td>Huge bodies; slow uploads; expensive AI calls</td><td>Body caps, deadlines, statement timeouts, AI budgets and concurrency limits</td><td>Argon2 is costly by design; shared client-key limits</td></tr>
+        <tr><td>Elevation of privilege</td><td>Acting on another account</td><td>Ownership in every query; no admin routes</td><td>None known in the routes reviewed</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small muted">Repository evidence · {{p:B/app/main.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/app/services/ingress.py}}</p>
+  </div>
+</section>
+
+<section class="part" id="p7" data-toc="Honest gaps and improvements" data-desc="What is missing, why it matters and what to do next.">
+  <div class="part-head">
+    <p class="eyebrow">Part 7 · Honesty</p>
+    <h2>Honest gaps and <em>improvements</em></h2>
+    <p class="in-short"><strong>In short:</strong> each gap below was checked in the code. Interviewers respect a candidate who names them first.</p>
+  </div>
+  <div class="sub" id="b3-gaps" data-toc="Gaps and next steps">
+    <h3>Gaps and next steps</h3>
+    <p>A shared Redis limiter coordinates protected requests across workers. The database connection budget still grows with the number of processes and instances. Before increasing capacity, measure pool usage, lock waits, provider latency, request throughput and error rates under a representative workload.</p>
+    <p>The request concurrency guard caps work admitted by a single worker. Hosted ingress authentication and browser origin checks address separate boundaries. Review dashboards, secret rotation procedures, backup restoration and installed-client behavior as operational evidence. A source review alone cannot demonstrate that these controls are configured correctly for a particular deployment.</p>
+    <p>{{p:B/app/core/database.py}} · {{p:B/app/services/ingress.py}} · {{p:B/app/utils/rate_limiter.py}} · {{p:B/scripts/restore_drill.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/main.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/app/services/ingress.py}}</p>
+  </div>
+</section>
+
+<section class="part" id="p8" data-toc="Question bank" data-desc="Concepts, flows, tokens and sessions, threats and hardening.">
+  <div class="part-head">
+    <p class="eyebrow">Part 8 · Practice</p>
+    <h2>Security <em>question bank</em></h2>
+    <p class="in-short"><strong>In short:</strong> hide the answers, say yours aloud, then compare. Filter by <code>jwt</code>, <code>hashing</code>, <code>logout</code> or <code>advanced</code>.</p>
+  </div>
+  <div class="sub" id="b3-qa" data-toc="Questions">
+    <h3>Questions</h3>
+    {{qa:b3}}
+    <p class="small muted">Repository evidence · {{p:B/app/main.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/app/services/ingress.py}}</p>
+  </div>
+</section>

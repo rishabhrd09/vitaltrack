@@ -1,0 +1,93 @@
+/* Interview-pack additions to the shared CareKosh design system (carekosh_system_design/assets/carekosh.css). */
+
+.skip { position: absolute; left: -9999px; top: 8px; z-index: 50; background: var(--sheet); padding: 6px 14px; border-radius: 8px; border: 1px solid var(--maroon); }
+.skip:focus { left: 12px; }
+
+/* chapter numbers inside a part */
+.cnum { font-family: var(--math); font-weight: 400; color: var(--maroon); margin-right: .35em; font-variant-numeric: lining-nums tabular-nums; }
+
+/* "Say it in the interview" and friends */
+.callout.say { background: var(--sheet); border: 1px solid var(--rule); border-left: 4px double var(--maroon); border-radius: 4px 12px 12px 4px; padding: 14px 20px; box-shadow: var(--shadow); }
+.callout.say .callout-title { color: var(--maroon); }
+.callout.say p { font-style: italic; }
+
+/* evidence chips */
+.evidence { display: inline-flex; flex-wrap: wrap; gap: 6px; vertical-align: middle; margin: 0 .2em; }
+.chip.ev { font-size: .74rem; padding: 1px 10px; }
+.chip.provider { color: var(--service); border-color: var(--service); background: var(--service-bg); }
+p.evidence-line { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .95rem; color: var(--ink-3); }
+
+/* exact code excerpts */
+.excerpt { display: grid; gap: .45rem; grid-template-columns: minmax(0, 1fr); }
+.excerpt-head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+pre .ln { color: #A8946F; user-select: none; }
+.excerpt-note { font-style: italic; }
+.content > .part > .excerpt, .sub > .excerpt { max-width: var(--wide); }
+
+/* question banks */
+.qa-tools { display: grid; gap: 10px; padding: 16px 20px; background: var(--paper-2); border-radius: 12px; max-width: var(--wide); }
+.qa-filter { display: grid; gap: 4px; font-family: var(--mono); font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.qa-filter input { font: inherit; font-family: var(--serif); font-size: 1.05rem; letter-spacing: 0; text-transform: none; color: var(--ink);
+  padding: 9px 14px; border-radius: 10px; border: 1px solid var(--grid-2); background: var(--sheet); width: 100%; }
+.qa-buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.qa-buttons .pill { font: inherit; font-size: .9rem; cursor: pointer; background: var(--sheet); }
+.qa-count { font-size: .92rem; color: var(--ink-3); font-style: italic; }
+.qa-head { margin-top: 1.2rem; color: var(--maroon); font-size: 1.2rem; }
+details.qa summary { align-items: baseline; }
+details.qa summary::before { content: none; }
+details.qa .qn { font-family: var(--math); font-weight: 400; color: var(--maroon); min-width: 2.2em; }
+details.qa .qt { flex: 1 1 auto; }
+details.qa .lvl { font-family: var(--mono); font-size: .66rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+  padding: 1px 8px; border-radius: 999px; border: 1px solid var(--grid-2); color: var(--ink-3); white-space: nowrap; }
+details.qa .lvl.basic { color: var(--client); border-color: var(--client); }
+details.qa .lvl.intermediate { color: var(--server); border-color: var(--server); }
+details.qa .lvl.advanced { color: var(--maroon); border-color: var(--maroon); }
+details.qa .a p { font-size: 1.04rem; }
+details.qa .a .short { background: var(--paper); border-radius: 8px; padding: 10px 14px; }
+details.qa .a .avoid { color: var(--fail); }
+details.qa .a .chips .chip { font-size: .72rem; padding: 0 9px; }
+details.qa.hidden { display: none; }
+
+/* reading paths on the hero */
+.reading-paths { max-width: var(--wide); }
+.reading-paths .card { padding: 14px 18px; gap: .3rem; }
+
+/* token and hash anatomy */
+.anatomy { display: grid; gap: 10px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; padding: 18px 20px; max-width: var(--wide); box-shadow: var(--shadow); }
+.anatomy .token { font-family: var(--mono); font-size: .86rem; line-height: 2.1; word-break: break-all; }
+.anatomy .seg { padding: 2px 3px; border-radius: 4px; border-bottom: 3px solid; }
+.anatomy .seg.s1 { border-color: var(--server); background: var(--server-bg); }
+.anatomy .seg.s2 { border-color: var(--client); background: var(--client-bg); }
+.anatomy .seg.s3 { border-color: var(--data); background: var(--data-bg); }
+.anatomy .seg.s4 { border-color: var(--service); background: var(--service-bg); }
+.anatomy .seg.s5 { border-color: var(--fail); background: var(--fail-bg); }
+.anatomy dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 18px; margin: 0; font-size: 1rem; }
+.anatomy dt { font-family: var(--mono); font-size: .8rem; padding-top: .15rem; }
+.anatomy dd { margin: 0; color: var(--ink-2); }
+
+/* glossary */
+dl.glossary { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 22px; margin: 0; max-width: var(--wide); }
+dl.glossary dt { font-weight: 600; }
+dl.glossary dd { margin: 0; color: var(--ink-2); }
+
+@media (max-width: 700px) {
+  .hero-meta .chip, .evidence .chip, p.evidence-line .chip { white-space: normal; max-width: 100%; }
+  .anatomy dl, dl.glossary { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }
+  .anatomy dd, dl.glossary dd { margin-bottom: 8px; }
+  details.qa summary { flex-wrap: wrap; }
+}
+@media print {
+  .qa-tools, .skip { display: none !important; }
+  details.qa.hidden { display: block; }
+  .callout.say { box-shadow: none; }
+}
+
+/* Exact excerpts: show "->" and "!=" as typed, not as font ligatures. */
+pre, code, .anatomy .token { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+
+@media (max-width: 720px) {
+  .topbar-inner > nav { flex-basis: 100%; }
+  .topbar .pages { flex-wrap: wrap; }
+  .topbar .pages a { white-space: normal; }
+  .sub { min-width: 0; overflow-wrap: anywhere; }
+}

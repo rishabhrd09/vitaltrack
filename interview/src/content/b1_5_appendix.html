@@ -1,0 +1,53 @@
+<section class="part" id="p5" data-toc="Appendices" data-desc="Glossary, verification record and sources.">
+  <div class="part-head">
+    <p class="eyebrow">Part 5 · Reference</p>
+    <h2><em>Appendices</em></h2>
+    <p class="in-short"><strong>In short:</strong> the terms used in this book, exactly what was checked and how, and the sources behind the general statements.</p>
+  </div>
+
+  <div class="sub" id="b1-glossary" data-toc="Glossary">
+    <h3>Glossary</h3>
+    <dl class="glossary">
+      <dt>ASGI</dt><dd>The asynchronous interface between a Python web server (Uvicorn) and an application (FastAPI).</dd>
+      <dt>Access token</dt><dd>A short-lived signed JWT sent on every request as <code>Authorization: Bearer …</code>.</dd>
+      <dt>Refresh token</dt><dd>A longer-lived signed JWT used once to obtain a new token pair; its <code>jti</code> has a database row so it can be revoked.</dd>
+      <dt>Optimistic concurrency</dt><dd>Writers do not lock while reading; each write states the version it read and fails if the row changed.</dd>
+      <dt>Idempotency key</dt><dd>A client-generated id (<code>localId</code>) that makes repeating the same request safe.</dd>
+      <dt>Partial unique index</dt><dd>A unique index that only covers rows matching a condition.</dd>
+      <dt>Advisory lock</dt><dd>A PostgreSQL lock on an application-chosen number; here held until the transaction ends.</dd>
+      <dt>Liveness vs readiness</dt><dd>Liveness: the process answers (<code>/live</code>). Readiness: it can do useful work, including reaching the database (<code>/health</code>).</dd>
+      <dt>Migration</dt><dd>A versioned schema change applied by Alembic in order.</dd>
+      <dt>EAS profile</dt><dd>A named build configuration in <code>eas.json</code> that fixes the API address and package type.</dd>
+      <dt>TanStack Query</dt><dd>A client library that caches server data, refetches it and invalidates it after writes.</dd>
+      <dt>SecureStore</dt><dd>Expo's encrypted key-value storage (Android Keystore; iOS Keychain).</dd>
+      <dt>Argon2id</dt><dd>A memory-hard password-hashing function (RFC 9106).</dd>
+      <dt>HS256</dt><dd>HMAC with SHA-256: a shared-secret signature for JWTs.</dd>
+      <dt>Fernet</dt><dd>Authenticated symmetric encryption (AES-128-CBC with an HMAC-SHA256 tag) from the <code>cryptography</code> library.</dd>
+      <dt>BOLA</dt><dd>Broken object-level authorization: reading or changing another user's object by its id.</dd>
+    </dl>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/__init__.py}} · {{p:B/scripts/check_api_routes.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-verify" data-toc="Verification and limits">
+    <h3>Verification record and limits</h3>
+    <p>Review baseline: GitHub main at <code>{{f:baseline}}</code>, {{f:checked}}. Code excerpts are drawn from that Git revision. Route registration and migration checks distinguish versioned API operations, root HTTP operations and application tables. The registered inventory has 65 versioned operations and 3 root operations. The migration head is 0013_supply_reviews.</p>
+    <p>The local migrated-schema run passed 975 backend tests with two skips. The Android Node suite passed 491 tests and the browser frontend suite passed 103. Earlier timing measurements or incident records in these books describe their original conditions. Local tests do not establish a hosted service revision, Play rollout, production load capacity, device permission behavior or live provider availability.</p>
+    <p>{{p:B/tests/conftest.py}} · {{p:B/scripts/check_api_routes.py}} · {{p:B/alembic/versions/20261105_supply_reviews.py}} · {{p:.github/workflows/ci.yml}}</p>
+    <p class="small muted">Repository evidence · {{p:B/tests/conftest.py}} · {{p:.github/workflows/ci.yml}}</p>
+  </div>
+
+  <div class="sub" id="b1-sources" data-toc="Sources">
+    <h3>Sources</h3>
+    <ul class="small">
+      <li>Project code at the baseline commit, and the reviewed guides in <span class="path">carekosh_system_design/</span>, {{p:docs/API_TRACEABILITY.md}} and {{p:docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md}}.</li>
+      <li>FastAPI: <a href="https://fastapi.tiangolo.com/advanced/advanced-dependencies/">advanced dependencies</a> · <a href="https://fastapi.tiangolo.com/release-notes/">release notes</a> · <a href="https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/">OAuth2 with JWT tutorial</a></li>
+      <li>TanStack Query v5: <a href="https://tanstack.com/query/v5/docs/framework/react/guides/network-mode">network mode</a> · <a href="https://tanstack.com/query/v5/docs/framework/react/plugins/persistQueryClient">persistQueryClient</a></li>
+      <li>Expo: <a href="https://docs.expo.dev/versions/v54.0.0/sdk/securestore/">SecureStore (SDK 54)</a> · <a href="https://docs.expo.dev/guides/environment-variables/">environment variables</a> · <a href="https://docs.expo.dev/build/eas-json/">eas.json</a></li>
+      <li>Render: <a href="https://render.com/docs/deploys#zero-downtime-deploys">zero-downtime deploys</a> · <a href="https://render.com/docs/health-checks">health checks</a> · <a href="https://render.com/docs/deploy-hooks">deploy hooks</a> · <a href="https://render.com/docs/blueprint-spec">Blueprint spec</a></li>
+      <li>Neon: <a href="https://neon.com/docs/manage/branches">branches</a> · <a href="https://neon.com/docs/introduction/restore-window">restore window</a></li>
+      <li>PostgreSQL 16: <a href="https://www.postgresql.org/docs/16/transaction-iso.html">transaction isolation</a> · <a href="https://www.postgresql.org/docs/16/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS">advisory locks</a></li>
+      <li>OWASP: <a href="https://owasp.org/API-Security/editions/2023/en/0x11-t10/">API Security Top 10 2023</a></li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/__init__.py}} · {{p:B/scripts/check_api_routes.py}}</p>
+  </div>
+</section>

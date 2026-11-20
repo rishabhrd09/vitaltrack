@@ -1,0 +1,137 @@
+<section class="part" id="p3" data-toc="How a request flows" data-desc="One tap end to end, then the system-design ideas behind it.">
+  <div class="part-head">
+    <p class="eyebrow">Part 3 · Request journeys and system design</p>
+    <h2>How a request <em>flows</em></h2>
+    <p class="in-short"><strong>In short:</strong> if you can trace one save from the button to PostgreSQL and back, naming every layer and every way it can fail, you can answer most system-design follow-ups about this project.</p>
+  </div>
+
+  <div class="sub" id="b1-journey" data-toc="Life of one request">
+    <h3>The life of one request: saving an edited item</h3>
+    <p>Open a saved item and change quantity from 10 to 8. The browser or Android editor sends the item fields and its opened version in an authenticated PUT. The backend checks ingress, request limits, the bearer token and account ownership. A scoped database session carries the mutation. Updating a deleted or unowned item returns 404. A stale version returns 409.</p>
+    <p>On success the API returns the updated item. Reopen it after a reload to verify the saved quantity. A successful CORS preflight only proves that the browser may send the actual request.</p>
+    {{fig:stock-edit-current|An inventory edit through the account and version checks.}}
+    {{x:B/app/api/v1/items.py:465-489|Compare the conditional SQL update with the version submitted by the editor.}}
+    <p class="small muted">Repository evidence · {{p:carekosh-web/src/pages/ItemForm.tsx}} · {{p:B/app/api/v1/items.py}} · {{p:B/tests/test_items.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-auth" data-toc="Signing in, staying signed in">
+    <h3>Signing in and staying signed in</h3>
+    <p>Android signs in through /api/v1/auth/login, keeps the access and refresh tokens in secure device storage and sends a bearer access token for data requests. Browser login uses /api/v1/web-auth/login. The browser holds the access token in memory, and the API sets a scoped HttpOnly refresh cookie. On reload the browser can renew its session through the refresh endpoint.</p>
+    <p>Both clients call the same owner-scoped inventory handlers. A valid token identifies an account. The query must still constrain every item to that account. Password changes and resets advance the user’s session_version and revoke refresh tokens. Browser logout revokes its browser session family and clears the cookie.</p>
+    <p>{{p:B/app/api/v1/web_auth.py}} · {{p:B/app/api/deps.py}} · {{p:M/services/auth.ts}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/auth.py}} · {{p:B/app/api/v1/web_auth.py}} · {{p:B/tests/test_web_auth.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-orders" data-toc="Orders: retries and stock">
+    <h3>Orders: safe retries and atomic restocking</h3>
+    <p>A phone that loses the response after placing an order cannot infer whether the database committed. Send the same localId and the same saved fields. On the first submission the API takes the owner’s supply-revision lock, checks ownership, allocates the order number and saves the order. A matching replay returns 200. Different notes or persisted line fields under that key return 409. An explicitly closed interrupted submission also returns 409.</p>
+    {{x:B/app/services/orders.py:135-147|The owner lock and replay check happen before a new order is allocated.}}
+    <p>Pending can become ordered, received or declined. Ordered can become partially received, received or declined. Partially received can become received or declined. An unapplied received order can still be declined. Applying a received order checks its items and units and updates stock in one transaction. A missing item or changed unit returns 409 with no partial credit. A replay of a completed apply returns 200 and adds nothing. Only pending and declined orders are deletable.</p>
+    {{fig:order-apply-current|A lost success response can be retried without a second stock credit.}}
+    <p>{{p:B/app/api/v1/orders.py}} · {{p:B/app/services/orders.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/app/services/orders.py}} · {{p:B/app/api/v1/orders.py}} · {{p:B/tests/test_orders.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-concurrency" data-toc="Two phones, one item">
+    <h3>Two phones edit the same item</h3>
+    <p>Two editors open one item at quantity 10 and version 3. One saves quantity 8 with version 3. The transaction succeeds and increments the version to 4. The other submits version 3 and receives 409. Inventory remains at 8. Read the current values and make a fresh decision before retrying.</p>
+    <p>Both user-facing editors send PUT /api/v1/items/{item_id}. The request carries the version captured when the editor opened. The separate stock-only PATCH is available to API callers. The owner supply-revision lock coordinates cooperating writers. The conditional UPDATE includes the item, owner and submitted version. Success also writes the related activity and audit records in the transaction.</p>
+    {{fig:stock-edit-current|Follow the successful save and the stale save separately.}}
+    {{x:B/app/api/v1/items.py:465-489|The row predicate includes ownership and the caller’s expected version.}}
+    <p class="small muted">Repository evidence · {{p:carekosh-web/src/pages/ItemForm.tsx}} · {{p:B/app/api/v1/items.py}} · {{p:B/tests/test_items.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-cache" data-toc="The phone's cache">
+    <h3>The phone's cache is a copy, never a database</h3>
+    {{fig:sd:mobile-cache|The phone's copy of the data: TanStack Query in memory, persisted to AsyncStorage for fast start-up, refreshed from the server; writes always go to the server.}}
+    <ul>
+      <li><strong>Reads:</strong> stale after 30 s, kept for 24 h, retried 3 times; queries use <code>networkMode: 'offlineFirst'</code>.</li>
+      <li><strong>Writes:</strong> <code>networkMode: 'always'</code> and <code>retry: 0</code>. A save is attempted at once and never queued for later replay, so the app cannot replay an old edit over newer data.</li>
+      <li><strong>Privacy on shared phones:</strong> the persisted copy excludes auth queries, uses the app version as a "buster", and is cleared at login and at logout.</li>
+    </ul>
+    <p class="evidence-line">Evidence: {{ev:code}} {{p:M/providers/QueryProvider.tsx}}. {{ev:docs}} TanStack Query documents <code>offlineFirst</code>, <code>always</code> and the persister's <code>buster</code>.</p>
+    <p class="small muted">Repository evidence · {{p:M/providers/QueryProvider.tsx}} · {{p:M/hooks/useServerMutations.ts}}</p>
+  </div>
+
+  <div class="sub" id="b1-assistant" data-toc="An assistant question">
+    <h3>An assistant question (conditional feature)</h3>
+    <p>Ask Care Coach is a constrained assistant, not an agent with tools. The phone records and transcribes speech on the device, shows the words for review, and tries a local parser first. Only an unfamiliar question, from a person who opted in, on a server where AI is enabled and reviewed, goes to <code>POST /api/v1/ai/interpret</code>. The configured interpreter (Groq by default, OpenAI when enabled) returns structured data; the server checks it again; the phone runs it against cached inventory data.</p>
+    <ul>
+      <li><strong>Read-only by design.</strong> The AI routes never write inventory or orders. They write only consent and usage metadata, and encrypted credentials when a person saves a supported personal provider key.</li>
+      <li><strong>Defaults are offline.</strong> Device speech is the default voice; Alba and Kokoro voices are only offered in a diagnostics build.</li>
+      <li><strong>Cost and abuse control</strong> live in PostgreSQL: daily budgets, request counts and per-account concurrency, checked under a short advisory lock before any provider call.</li>
+    </ul>
+    <p>The full design is in {{book:2#p7|Book 2, Part 7}}.</p>
+    <p class="small muted">Repository evidence · {{p:B/app/api/v1/ai.py}} · {{p:B/app/api/v1/supply_reviews.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-concepts" data-toc="System design, mapped">
+    <h3>System-design ideas, mapped to CareKosh</h3>
+    <p>The right-hand column is design reasoning, not a measurement: capacity has not been load-tested.</p>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Idea</th><th>What CareKosh does</th><th>Why</th><th>At 10× or 100× load</th></tr></thead>
+      <tbody>
+        <tr><td>API design</td><td>REST resources under a versioned prefix <code>/api/v1</code>; status codes carry meaning (201, 200 on replay, 404 for not-yours, 409, 422, 429)</td><td>Clients branch on codes, not text</td><td>Add pagination everywhere it is missing; keep v1 stable for old APKs</td></tr>
+        <tr><td>Stateless app tier</td><td>No session in process memory; any worker can serve any request</td><td>Horizontal scaling and safe restarts</td><td>Add instances; nothing to migrate</td></tr>
+        <tr><td>Source of truth</td><td>One PostgreSQL database; the phone only caches</td><td>No sync conflicts</td><td>Read replicas for heavy reads; the writer stays single</td></tr>
+        <tr><td>Connection pooling</td><td>5 + 10 overflow per worker, 2 workers per instance</td><td>Reuse TCP/TLS connections; bounded load on the database</td><td>Instances × 30 can exceed the database's limit: add a pooler such as PgBouncer</td></tr>
+        <tr><td>Concurrency control</td><td>Version compare-and-swap; row locks for auth; advisory locks for names and AI budgets</td><td>Correct under concurrent writers without long locks</td><td>Unchanged; watch lock waits</td></tr>
+        <tr><td>Idempotency</td><td><code>localId</code> per order submission; partial unique index</td><td>Mobile retries after lost replies</td><td>Extend to other creates</td></tr>
+        <tr><td>Caching</td><td>Client-side only (TanStack Query)</td><td>Simple; no invalidation across servers</td><td>Server-side caching only for hot, shared reads</td></tr>
+        <tr><td>Background work</td><td>FastAPI <code>BackgroundTasks</code> for email, in the same process</td><td>No queue to operate</td><td>A durable queue with retries (for example Redis with a worker, or a managed queue)</td></tr>
+        <tr><td>Availability</td><td><code>/live</code> for the platform, <code>/health</code> for readiness; zero-downtime deploys</td><td>A database blip should not restart the app</td><td>More instances in more than one region</td></tr>
+        <tr><td>Observability</td><td><code>X-Request-ID</code>, redacting logs, optional Sentry</td><td>Debug without leaking tokens</td><td>Metrics, tracing and alerts</td></tr>
+        <tr><td>Security layers</td><td>TLS, JWT + database check, owner scoping, shared hosted rate limits, body caps</td><td>Defence in depth</td><td>A WAF, MFA, monitored shared limiter capacity</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small muted">Repository evidence · {{p:B/tests/test_items.py}} · {{p:B/tests/test_orders.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-failures" data-toc="Failure modes">
+    <h3>Failure modes you should be able to explain</h3>
+    {{fig:sd:request-rollback|When a request fails: 422 invalid input, 404 not your data, 409 conflict, 500 unexpected. Rollback only undoes uncommitted work.}}
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Situation</th><th>What happens</th><th>What the person sees</th></tr></thead>
+      <tbody>
+        <tr><td>Database unreachable</td><td><code>/health</code> returns 503; <code>/live</code> stays 200, so Render does not restart a healthy process during a database blip</td><td>Errors on save; cached data still shows</td></tr>
+        <tr><td>Slow query</td><td>PostgreSQL cancels any statement after 8 s on the application engine</td><td>An error instead of a hung request</td></tr>
+        <tr><td>Phone loses the reply after commit</td><td>The write stands; the client times out after 90 s at most</td><td>"The server may still be processing it": refresh before retrying; order retries reuse the <code>localId</code></td></tr>
+        <tr><td>Two writers</td><td>One wins; the other gets 409 and writes nothing</td><td>A conflict message; the list refetches</td></tr>
+        <tr><td>Access token expired</td><td>401, one shared refresh, one retry</td><td>Nothing, unless refresh fails</td></tr>
+        <tr><td>Cold start</td><td>The first requests wait for an instance</td><td>A "server warming up" status pill</td></tr>
+        <tr><td>Unexpected exception</td><td>Generic 500 with a timestamp; the log keeps the type and code location but no values</td><td>"An unexpected error occurred"</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small muted">Repository evidence · {{p:B/tests/test_items.py}} · {{p:B/tests/test_orders.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-capacity" data-toc="Capacity, honestly">
+    <h3>Capacity, honestly</h3>
+    <p>This review established no system-wide throughput figure, so never quote a requests-per-second figure. Reason from the design instead:</p>
+    <ul>
+      <li><strong>Database connections</strong> are the first hard limit: 2 workers × (5 + 10) = up to 30 per instance, and a deploy briefly runs old and new instances side by side.</li>
+      <li><strong>Argon2</strong> deliberately costs 64 MiB of memory per hash with these parameters; an earlier laptop measurement took about 24 ms. Login bursts are CPU- and memory-bound; that is the price of password safety.</li>
+      <li><strong>Eager loading.</strong> The <code>User</code> model loads its collections with <code>selectin</code>. Auth paths disable that with <code>noload("*")</code> because loading every item and order on each request would grow with the account.</li>
+      <li><strong>Lists.</strong> <code>GET /items</code> is paginated (up to 100 per page) and the app fetches all pages; activities are capped at 200. Large accounts would need cursor pagination.</li>
+    </ul>
+    <say><p>"I haven't load-tested it, so I won't quote throughput. The first limits I'd watch are database connections per instance and Argon2's CPU and memory during login bursts. The app tier is stateless, so I'd add instances behind a connection pooler before changing the design."</p></say>
+    <p class="small muted">Repository evidence · {{p:B/app/services/ingress.py}} · {{p:B/app/core/database.py}} · {{p:B/app/utils/rate_limiter.py}}</p>
+  </div>
+
+  <div class="sub" id="b1-tradeoffs" data-toc="Trade-offs and next steps">
+    <h3>Trade-offs and what I would change next</h3>
+    <div class="table-wrap"><table class="wide">
+      <thead><tr><th>Area</th><th>Current trade-off</th><th>Next step</th><th>Details</th></tr></thead>
+      <tbody>
+        <tr><td>Sessions</td><td>Logout leaves the access token valid until it expires</td><td>A short <code>jti</code> denylist, or "log out everywhere" by bumping <code>session_version</code></td><td>{{book:3#b3-logout|Book 3}}</td></tr>
+        <tr><td>Refresh tokens</td><td>Rotation without reuse detection</td><td>Revoke the whole token family when an old token is replayed (RFC 9700)</td><td>{{book:3#b3-gaps|Book 3}}</td></tr>
+        <tr><td>Rate limiting</td><td>Shared Redis counters for hosted deployments</td><td>Exercise store outages and check the limits under expected load</td><td>{{book:3#b3-limits|Book 3}}</td></tr>
+        <tr><td>Email</td><td>In-process background tasks, no retry</td><td>A durable job queue with retries</td><td>{{book:2#b2-background|Book 2}}</td></tr>
+        <tr><td>Libraries</td><td>passlib for password hashing and PyJWT for tokens</td><td>Evaluate a password-library migration with existing Argon2 and bcrypt hashes</td><td>{{book:2#b2-limits|Book 2}}</td></tr>
+        <tr><td>Observability</td><td>Logs and optional Sentry; the health checks do not report the deployed commit</td><td>Expose the commit and migration revision; add metrics</td><td>{{book:2#b2-ops|Book 2}}</td></tr>
+        <tr><td>Capacity</td><td>Not measured</td><td>A load test against a staging copy with synthetic data</td><td>this part</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small muted">Repository evidence · {{p:B/app/services/ingress.py}} · {{p:B/app/core/database.py}} · {{p:B/app/utils/rate_limiter.py}}</p>
+  </div>
+</section>

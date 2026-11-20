@@ -1,0 +1,52 @@
+<section class="part" id="p9" data-toc="Appendices" data-desc="Glossary, verification record and sources.">
+  <div class="part-head">
+    <p class="eyebrow">Part 9 · Reference</p>
+    <h2><em>Appendices</em></h2>
+    <p class="in-short"><strong>In short:</strong> the vocabulary of this book, exactly what was reproduced on {{f:checked}}, and the standards behind the general statements.</p>
+  </div>
+
+  <div class="sub" id="b3-glossary" data-toc="Glossary">
+    <h3>Glossary</h3>
+    <dl class="glossary">
+      <dt>Salt</dt><dd>A random, non-secret value mixed into each password hash so equal passwords hash differently.</dd>
+      <dt>Pepper</dt><dd>A secret value added to every password hash and kept outside the database; not used in CareKosh.</dd>
+      <dt>KDF</dt><dd>Key derivation function; Argon2 is a password-hashing KDF, HKDF is used inside TLS 1.3.</dd>
+      <dt>PHC string</dt><dd>The <code>$algorithm$version$params$salt$hash</code> format that stores everything needed to verify.</dd>
+      <dt>Nonce / IV</dt><dd>A value used once per encryption so equal plaintexts encrypt differently; Fernet uses a random 128-bit IV.</dd>
+      <dt>HMAC</dt><dd>A keyed hash that proves integrity and origin to anyone holding the same key.</dd>
+      <dt>JWT, JWS, JWE</dt><dd>A JSON Web Token; signed (JWS, readable) or encrypted (JWE). CareKosh uses signed tokens.</dd>
+      <dt><code>sub</code>, <code>exp</code>, <code>iat</code>, <code>jti</code></dt><dd>Registered claims: subject (user id), expiry, issued-at and token id (RFC 7519 §4.1).</dd>
+      <dt>Bearer token</dt><dd>A token whose holder is trusted; sent as <code>Authorization: Bearer …</code> (RFC 6750).</dd>
+      <dt>Rotation</dt><dd>Replacing a refresh token with a new one on every use.</dd>
+      <dt>Revocation</dt><dd>Making a token unusable before it expires (a revoked row, or a bumped <code>session_version</code>).</dd>
+      <dt>Session fixation</dt><dd>Forcing a victim to use a session id the attacker knows; prevented by issuing new credentials at login, as CareKosh does.</dd>
+      <dt>CSRF</dt><dd>A forged cross-site request riding on the victim's cookies; not applicable to header-based tokens.</dd>
+      <dt>XSS</dt><dd>Injected script in a page; prevented by escaping output in the backend's HTML pages.</dd>
+      <dt>HSTS</dt><dd>A header telling browsers to use only HTTPS for a host for a period.</dd>
+      <dt>Forward secrecy</dt><dd>A property of TLS 1.3 key exchange: a later key leak cannot decrypt earlier sessions.</dd>
+      <dt>Enumeration</dt><dd>Learning whether an account exists from differing responses.</dd>
+    </dl>
+    <p class="small muted">Repository evidence · {{p:B/app/core/security.py}}</p>
+  </div>
+
+  <div class="sub" id="b3-verify" data-toc="Verification and demonstrations">
+    <h3>Verification record and reproduced demonstrations</h3>
+    <p>Review baseline: GitHub main at <code>{{f:baseline}}</code>, {{f:checked}}. Code excerpts are drawn from that Git revision. Route registration and migration checks distinguish versioned API operations, root HTTP operations and application tables. The registered inventory has 65 versioned operations and 3 root operations. The migration head is 0013_supply_reviews.</p>
+    <p>The local migrated-schema run passed 975 backend tests with two skips. The Android Node suite passed 491 tests and the browser frontend suite passed 103. Earlier timing measurements or incident records in these books describe their original conditions. Local tests do not establish a hosted service revision, Play rollout, production load capacity, device permission behavior or live provider availability.</p>
+    <p>{{p:B/tests/conftest.py}} · {{p:B/scripts/check_api_routes.py}} · {{p:B/alembic/versions/20261105_supply_reviews.py}} · {{p:.github/workflows/ci.yml}}</p>
+    <p class="small muted">Repository evidence · {{p:B/tests/conftest.py}} · {{p:.github/workflows/ci.yml}}</p>
+  </div>
+
+  <div class="sub" id="b3-sources" data-toc="Sources">
+    <h3>Standards and official sources</h3>
+    <ul class="small">
+      <li>Passwords: <a href="https://www.rfc-editor.org/rfc/rfc9106.html">RFC 9106 (Argon2)</a> · <a href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html">OWASP Password Storage</a> · <a href="https://pages.nist.gov/800-63-4/sp800-63b.html">NIST SP 800-63B-4</a> · <a href="https://passlib.readthedocs.io/en/stable/lib/passlib.hash.argon2.html">passlib argon2</a></li>
+      <li>Tokens: <a href="https://www.rfc-editor.org/rfc/rfc7519.html">RFC 7519 (JWT)</a> · <a href="https://www.rfc-editor.org/rfc/rfc8725.html">RFC 8725 (JWT best practices)</a> · <a href="https://www.rfc-editor.org/rfc/rfc6750.html">RFC 6750 (Bearer)</a> · <a href="https://www.rfc-editor.org/rfc/rfc9700.html#section-4.14.2">RFC 9700 §4.14.2 (refresh tokens)</a></li>
+      <li>Encryption and transport: <a href="https://cryptography.io/en/latest/fernet/">cryptography Fernet</a> · <a href="https://github.com/fernet/spec/blob/master/Spec.md">Fernet spec</a> · <a href="https://www.rfc-editor.org/rfc/rfc8446.html">RFC 8446 (TLS 1.3)</a></li>
+      <li>Web: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security">HSTS</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-XSS-Protection">X-XSS-Protection</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS">CORS</a></li>
+      <li>OWASP: <a href="https://owasp.org/API-Security/editions/2023/en/0x11-t10/">API Security Top 10 2023</a> · <a href="https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html">Authentication</a> · <a href="https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html">Forgot Password</a> · <a href="https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html">Session Management</a></li>
+      <li>Python and Expo: <a href="https://docs.python.org/3.12/library/secrets.html">secrets</a> · <a href="https://docs.expo.dev/versions/v54.0.0/sdk/securestore/">SecureStore (SDK 54)</a> · <a href="https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/">FastAPI OAuth2 with JWT</a></li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/app/core/security.py}}</p>
+  </div>
+</section>

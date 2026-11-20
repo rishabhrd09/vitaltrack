@@ -1,0 +1,802 @@
+## Python
+Q: What does an async def function return when you call it?
+L: basic
+T: python, async
+S: A coroutine object. Nothing runs until it is awaited or scheduled on an event loop.
+D: FastAPI awaits route coroutines for you. Forgetting an await in your own code gives a coroutine that never runs (Python warns "coroutine was never awaited"), a common bug.
+
+Q: What is the difference between concurrency and parallelism?
+L: basic
+T: python, async
+S: Concurrency is making progress on several tasks by interleaving them; parallelism is running them at the same instant on several cores.
+D: One Uvicorn worker gives concurrency: its event loop switches between requests while they wait on PostgreSQL. Two Gunicorn worker processes give parallelism on two cores.
+
+Q: What is the GIL and does it matter for this backend?
+L: intermediate
+T: python, gil
+S: CPython's global interpreter lock lets one thread run Python bytecode at a time per process. It matters little here because requests mostly wait on I/O, and parallelism comes from two worker processes.
+D: CPU-heavy work in a request thread would still block the event loop, which is why Argon2 runs through anyio.to_thread. Whether that thread runs truly in parallel depends on the C library releasing the GIL; either way the loop stays responsive.
+X: "Python can't do concurrency because of the GIL."
+
+Q: Why does the login route hash and verify passwords in a thread?
+L: intermediate
+T: python, async, argon2
+S: Argon2 is deliberately slow (about 24 ms and 64 MiB per hash here). Running it on the event loop would freeze every other request on that worker for that time.
+D: anyio.to_thread.run_sync(verify_password, …) sends the call to a worker thread and awaits the result, so the loop keeps serving. The same applies at registration, password change and reset.
+
+Q: What happens if an async route calls a blocking function?
+L: intermediate
+T: python, async, fastapi
+S: The whole event loop stops until it returns, so every request on that worker waits, even simple ones.
+D: Use async libraries (asyncpg, httpx), move blocking work to a thread (anyio.to_thread, asyncio.to_thread) or a process, or declare the route with plain def so FastAPI runs it in its thread pool.
+
+Q: How does FastAPI run a plain def route?
+L: intermediate
+T: fastapi, threads
+S: In a thread pool (through AnyIO), so a blocking route does not block the event loop.
+D: The pool is limited (AnyIO's default capacity is 40 threads), so many slow sync routes can still queue. CareKosh uses async def throughout because its database driver is async.
+
+Q: What is a context manager, and where does CareKosh use async ones?
+L: basic
+T: python, context-managers
+S: An object that runs set-up on entry and guaranteed clean-up on exit of a with block. Async ones use async with.
+D: async with AsyncSessionLocal() as session in get_db; AsyncSessionLocal.begin() in the AI guard for a transaction that commits or rolls back on exit; the lifespan defined with @asynccontextmanager; asyncio.timeout(…) blocks around provider calls.
+
+Q: How does a FastAPI dependency with yield work?
+L: intermediate
+T: fastapi, dependencies, python
+S: The dependency opens a session, yields it to the handler, then commits on normal exit or rolls back on failure.
+D: The DB alias uses Depends(get_db, scope="function"). This makes finalization run before the response is sent. A handler can commit earlier. A later rollback affects only work since that commit.
+
+Q: What is a decorator? Give two from the code.
+L: basic
+T: python, decorators
+S: A function that takes a function and returns a wrapped or registered version of it.
+D: @router.post("/login", …) registers a route; @limiter.limit("5/minute") wraps it with a rate check; @field_validator registers a Pydantic validator; @asynccontextmanager makes the lifespan generator a context manager.
+F: In which order do stacked decorators apply? (Bottom-up: the one nearest the function wraps it first.)
+
+Q: What is typing.Annotated used for here?
+L: intermediate
+T: python, typing, fastapi
+S: To attach FastAPI metadata to a type: CurrentUser = Annotated[User, Depends(get_current_user)] means "a User produced by that dependency".
+D: It keeps signatures short and reusable, and type checkers still see the parameter as a User.
+
+Q: Why do the models import other models inside if TYPE_CHECKING?
+L: intermediate
+T: python, typing
+S: To give type checkers the names for relationship annotations without importing them at run time, which would create circular imports between model modules.
+D: SQLAlchemy resolves relationship targets by string name ("User") at mapper configuration time, so the runtime import is not needed.
+
+Q: Why is get_settings wrapped in lru_cache?
+L: basic
+T: python, configuration
+S: So the settings are read from the environment once and reused; the module also stores the instance as settings.
+D: The trade-off is that tests must set environment variables before import, which the test setup and CI do.
+
+Q: Why use the secrets module instead of random?
+L: basic
+T: python, security
+S: secrets uses the operating system's cryptographically secure random source; random is a predictable pseudo-random generator meant for simulations.
+D: token_urlsafe(32) gives 256 bits of randomness, which cannot be guessed. Using random for tokens would let an attacker who sees some outputs predict others.
+
+Q: Why compare secrets in constant time?
+L: intermediate
+T: python, security
+S: An ordinary comparison stops at the first different character, so response timing can leak how much of a guess was right. secrets.compare_digest avoids content-based early exit. Length and type can still affect timing.
+D: The email helper uses it. The routes instead compare the SHA-256 digest inside SQL, where an attacker cannot time the comparison meaningfully and the token has 256 bits of entropy anyway.
+
+Q: Why is SHA-256 fine for email tokens but not for passwords?
+L: intermediate
+T: python, hashing
+S: Email tokens are 256-bit random values, so even billions of fast guesses per second cannot find one; passwords are low-entropy human choices, so hashing must be slow and memory-hard to make guessing expensive.
+D: That is why tokens get one SHA-256 and passwords get Argon2id with 64 MiB of memory and three passes.
+
+Q: What does raise … from None do?
+L: intermediate
+T: python, exceptions
+S: It raises the new exception without the original as its cause, so the traceback and error chaining do not show the underlying failure.
+D: The key vault uses it so a decryption failure never reveals whether the key, the token or the owner check failed.
+
+Q: The AI guard builds SQL with an f-string. Is that an injection risk?
+L: advanced
+T: python, security, sql
+S: Not here: it formats int(settings.AI_BUDGET_LOCK_TIMEOUT_MS), a validated integer from configuration, into SET LOCAL lock_timeout, which does not accept bind parameters.
+D: The rule stays the same: never format user input into SQL; use bound parameters (the name lock does: text("SELECT pg_advisory_xact_lock(:key)")).
+
+Q: What does asyncio.gather do when one task fails?
+L: intermediate
+T: python, async, testing
+S: By default it raises the first exception to the caller, while the other tasks keep running; with return_exceptions=True it returns exceptions as results instead.
+D: The race tests use gather to send two requests at once and then assert on both responses.
+
+Q: asyncio.timeout versus asyncio.wait_for?
+L: intermediate
+T: python, async
+S: asyncio.timeout (Python 3.11+) is a context manager that cancels whatever runs inside the block at the deadline; wait_for wraps a single awaitable.
+D: The body-limit middleware and provider calls use asyncio.timeout; the health probe uses wait_for with 2 seconds.
+
+Q: Why is OrderStatus declared as class OrderStatus(str, Enum)?
+L: basic
+T: python, enums
+S: Members are also strings, so they compare equal to plain strings and serialise to JSON naturally.
+D: The database stores them as strings (native_enum=False), and helper functions accept either an enum or a raw string from older rows.
+
+Q: What is a frozen dataclass and where is one used?
+L: basic
+T: python, dataclasses
+S: A dataclass whose fields cannot be reassigned after creation. AIPrincipal(user_id) is one: the AI dependency returns an immutable value instead of an ORM object.
+D: Returning only the id means no ORM object, and no session, travels with the request into the provider call.
+
+Q: What Python 3.10+ features does the code rely on?
+L: basic
+T: python
+S: X | None union syntax, asyncio.timeout (3.11+), and modern typing generics such as dict[str, int] and list[str].
+D: Docker and CI both use Python 3.12.
+
+Q: How would you profile a slow endpoint?
+L: intermediate
+T: python, performance
+S: Measure first: timing logs with the request id, then EXPLAIN ANALYZE for the SQL, then a profiler (for example py-spy) on a staging instance.
+D: In this backend the likely suspects are database queries and eager loading rather than Python code.
+
+## FastAPI and Starlette
+Q: What is FastAPI built on?
+L: basic
+T: fastapi
+S: Starlette for the web layer (routing, requests, middleware, responses) and Pydantic for data validation and serialisation, served by an ASGI server such as Uvicorn.
+D: FastAPI adds dependency injection, parameter parsing from type hints and automatic OpenAPI generation.
+
+Q: How does dependency injection work in FastAPI?
+L: intermediate
+T: fastapi, dependencies
+S: A route parameter typed with Depends(func) tells FastAPI to call func first and inject its result. Dependencies can have their own dependencies; FastAPI resolves the graph per request.
+D: Results are cached within one request by default, so get_db is called once even though both get_current_user and the handler need a session.
+F: How do you disable the cache? (Depends(func, use_cache=False).)
+
+Q: Why is authentication a dependency rather than middleware here?
+L: intermediate
+T: fastapi, auth, design
+S: A dependency is explicit per route, typed (handlers receive a User), shares the request's database session and fails with a clean 401 before the handler.
+D: Middleware runs for every path, cannot easily share the session or return a typed user, and would need its own allow-list for public routes.
+
+Q: When does code after yield in a dependency run?
+L: advanced
+T: fastapi, dependencies, versions
+S: The dependency opens a session, yields it to the handler, then commits on normal exit or rolls back on failure.
+D: The DB alias uses Depends(get_db, scope="function"). This makes finalization run before the response is sent. A handler can commit earlier. A later rollback affects only work since that commit.
+
+Q: How does a route return 200 instead of its declared 201?
+L: intermediate
+T: fastapi, responses
+S: By accepting a Response parameter and setting response.status_code = 200, as order creation does when a localId replay returns the existing order.
+D: The return value still goes through the response model. Returning a JSONResponse directly is the other way, used for the item 409.
+
+Q: What does response_model do?
+L: basic
+T: fastapi, pydantic
+S: It validates and filters the return value through a Pydantic model and documents it in OpenAPI.
+D: That is why returning an ORM User never leaks hashed_password: UserResponse does not have the field. FastAPI serialises by alias, so business fields come out in camelCase.
+
+Q: What happens when a handler returns a JSONResponse?
+L: intermediate
+T: fastapi, responses
+S: FastAPI sends it as is: no response-model validation or filtering.
+D: The item routes use it for 409 so the body can include server_version and server_quantity, which the success model does not have.
+
+Q: In what order does FastAPI parse the body, run dependencies and validate fields?
+L: advanced
+T: fastapi, validation
+S: Malformed JSON fails first (422); then dependencies run (a bad token is 401); then field validation errors give 422.
+D: So a request with a bad token and an invalid body gets 401, and a valid token with invalid fields gets 422 after get_current_user has already queried the user. Reproduced against the pinned version in the system-design review.
+
+Q: What does the custom validation error handler return?
+L: basic
+T: fastapi, errors
+S: 422 with {"error": "Validation Error", "message": …, "details": [{"field", "message", "code"}], "timestamp"}.
+D: The phone's API client recognises this shape alongside FastAPI's default {"detail": …}.
+
+Q: How are database integrity errors handled?
+L: intermediate
+T: fastapi, errors, database
+S: An IntegrityError that reaches the app becomes a generic 409 "A conflict occurred" without SQL details, and the exception type is logged.
+D: Expected conflicts (duplicate names, versions, localIds) are handled earlier in the handlers with specific messages; this handler is the safety net.
+
+Q: Why does an unexpected 500 lack the X-Request-ID header?
+L: advanced
+T: starlette, middleware, errors
+S: Handlers registered for Exception run in Starlette's ServerErrorMiddleware, which sits outside the app's own middleware, so the header-adding layers never see that response.
+D: Recorded as review finding A-13. A pure ASGI middleware outermost, or headers added inside the handler, would fix it.
+
+Q: BaseHTTPMiddleware or pure ASGI middleware?
+L: advanced
+T: starlette, middleware
+S: BaseHTTPMiddleware (what @app.middleware("http") creates) is convenient; pure ASGI middleware sees the raw scope and messages and has no hidden costs. Starlette documents that context variables set inside BaseHTTPMiddleware do not propagate upwards.
+D: CareKosh uses function middleware for headers and request ids, and a pure ASGI class (AIBodyLimit) where it must inspect headers and control body reading before the app.
+
+Q: In which order do middlewares run?
+L: intermediate
+T: starlette, middleware
+S: For a normal API request the application-added layers run in this order: CORS → IngressGuard → RequestCapacity → AIBodyLimit → security headers → request ID → router.
+D: The last registered wrapper is outermost. A preflight or refusal can return early. Starlette also supplies its own error and exception handling around the application layers.
+
+Q: How is CORS configured, and does it protect the API?
+L: intermediate
+T: fastapi, cors, security
+S: CORSMiddleware with allow_origins from settings; with a wildcard, credentials are off as the CORS rules require. CORS does not protect the API: it is a browser rule, and the Android app is not a browser.
+D: CORS only stops a web page on another origin from reading responses with JavaScript. Authentication and authorization are what protect the API.
+
+Q: What are BackgroundTasks and when should you not use them?
+L: intermediate
+T: fastapi, background
+S: Functions FastAPI runs in the same process after sending the response. Don't use them for work that must not be lost or needs retries.
+D: CareKosh sends emails this way. If the worker dies after the reply, the email is lost. A durable queue or outbox is the upgrade path.
+
+Q: lifespan versus on_event("startup")?
+L: basic
+T: fastapi, lifespan
+S: lifespan is one async context manager covering start-up (before yield) and shutdown (after); on_event handlers are the older, deprecated style.
+D: CareKosh's lifespan creates tables in development only and disposes of the engine at shutdown.
+
+Q: How are the API docs hidden in production?
+L: basic
+T: fastapi, security
+S: docs_url, redoc_url and openapi_url are set only when DEBUG is true; otherwise they are None and the endpoints do not exist.
+D: Three HTML routes also use include_in_schema=False so they never appear in the schema.
+
+Q: HTTPBearer or OAuth2PasswordBearer?
+L: intermediate
+T: fastapi, auth
+S: HTTPBearer just reads Authorization: Bearer …; OAuth2PasswordBearer also documents an OAuth2 password-flow token URL. CareKosh uses HTTPBearer(auto_error=False) because login is a JSON endpoint, not an OAuth2 form.
+D: auto_error=False returns None when the header is missing, so get_current_user can answer with its own 401 and WWW-Authenticate header.
+
+Q: What is request.state used for here?
+L: intermediate
+T: starlette, rate-limiting
+S: Per-request storage. The AI routes' authentication dependency stores the user id in request.state.ai_user_id so the AI rate-limit key can be the account.
+D: request.state lives for one request only, so it is safe across concurrent requests.
+
+Q: How does slowapi rate limiting work in this app?
+L: intermediate
+T: fastapi, rate-limiting
+S: Hosted API workers share Redis counters. Sensitive authentication routes use a client key. Authenticated AI requests use an account key. Provider budgets use PostgreSQL.
+D: The exhausted quota produces 429 and Retry-After. Protected routes return 503 when the store is unavailable. Selected reads allow an explicit fail-open policy. The in-memory limiter is available for development and tests.
+
+Q: How would you add a per-request timeout to FastAPI?
+L: advanced
+T: fastapi, reliability
+S: Bound the expensive parts rather than the whole request: statement_timeout in PostgreSQL, timeouts on HTTP clients, asyncio.timeout around blocks.
+D: A blanket middleware timeout would cancel the handler mid-transaction and still not stop a statement already running in PostgreSQL. CareKosh uses targeted limits (8 s statements, 25 s AI calls, 10 s email, upload deadlines on AI routes).
+
+Q: How do you test a FastAPI app without a server?
+L: basic
+T: fastapi, testing
+S: With httpx.AsyncClient using an ASGI transport, which calls the app in process, or with Starlette's TestClient.
+D: The whole stack runs: middleware, dependencies (with get_db overridden to the test database) and handlers.
+
+Q: What does Uvicorn do, and what does Gunicorn add?
+L: basic
+T: servers, deployment
+S: Uvicorn is an ASGI server that speaks HTTP and runs the app's event loop; Gunicorn is a process manager that starts, monitors and restarts several workers.
+D: The image runs Gunicorn with two UvicornWorker processes. uvicorn.workers is deprecated since Uvicorn 0.30 in favour of the uvicorn-worker package.
+
+Q: How many workers would you run?
+L: intermediate
+T: servers, scaling
+S: Start from the CPU count of the instance and measure. Two fits a small instance; more workers also mean more database connections (each has its own pool).
+D: For async I/O-bound apps, a few workers go a long way; the database connection budget is usually the real limit.
+
+Q: How does the transcription route handle uploads safely?
+L: advanced
+T: fastapi, uploads, security
+S: Before FastAPI parses anything, AIBodyLimit requires a bearer token, rejects bodies over 900 KB and enforces a 30-second upload deadline; the route then reads at most 900,001 bytes and refuses empty or oversized files.
+D: Consent is checked before decoding, a budget reservation is taken before CPU-heavy normalisation, and the provider call is cancelled if the phone disconnects.
+
+Q: What is HTTP 499 and why does CareKosh use it?
+L: intermediate
+T: http, ai
+S: A non-standard status from nginx meaning "client closed request". The AI routes return it when the phone disconnects mid-call, mostly for logs, since the client is gone.
+D: It is not registered in the IANA list, so say "non-standard" if asked.
+
+Q: How are path, query and body parameters distinguished?
+L: basic
+T: fastapi, parameters
+S: Path parameters appear in the route path; simple types not in the path are query parameters; Pydantic models are the JSON body.
+D: Query parameters can have aliases: GET /items uses page_size with alias pageSize, and DELETE /items/{id} accepts an optional version query parameter.
+
+Q: Why is the API versioned under /api/v1?
+L: basic
+T: api-design
+S: To change contracts later without breaking installed apps: a v2 could coexist with v1.
+D: Old APKs stay installed because there are no over-the-air updates, so backward compatibility is a real constraint here.
+
+Q: What would you change to make the API more RESTful or consistent?
+L: intermediate
+T: api-design
+S: Consistent error shapes (several exist today), cursor pagination everywhere, an idempotency key for every create, and problem-details style errors.
+D: The current inconsistencies come from history; the phone's client handles all shapes, so changing them needs a versioned plan.
+
+## Pydantic
+Q: What changed from Pydantic v1 to v2 that you see in this code?
+L: intermediate
+T: pydantic
+S: model_validate instead of from_orm/parse_obj, field_validator instead of validator, model_config dictionaries, model_fields_set, and a Rust core for speed.
+D: from_attributes replaces orm_mode; serialization_alias separates output names from input aliases.
+
+Q: alias versus serialization_alias versus populate_by_name?
+L: intermediate
+T: pydantic, api
+S: alias names the field in incoming JSON (and outgoing too, by default); serialization_alias names it only on output; populate_by_name accepts the Python name as well as the alias on input.
+D: Requests accept minimumStock or minimum_stock; responses emit camelCase because FastAPI serialises by alias.
+
+Q: What does from_attributes do?
+L: basic
+T: pydantic, orm
+S: Lets model_validate read attributes from an arbitrary object, such as a SQLAlchemy model, instead of requiring a dict.
+D: UserResponse, ItemResponse and OrderResponse set it, so handlers can return model_validate(orm_object) after a commit. Because expire_on_commit is off, the attributes are still loaded and no extra query runs.
+
+Q: What is model_fields_set and why does the item update use it?
+L: intermediate
+T: pydantic, api
+S: The set of fields the client actually sent. The update uses it to tell "set this to null" from "leave this alone".
+D: With only None you cannot distinguish an explicit null from an omitted field; model_fields_set can.
+
+Q: What do field validators do in this app?
+L: basic
+T: pydantic, validation
+S: Enforce password strength, normalise usernames and the login identifier to lowercase, strip tags and quotes from display names, and refuse unsafe settings.
+D: Validators run before the handler, so invalid input is a 422 without touching business logic.
+
+Q: What is SecretStr?
+L: basic
+T: pydantic, security
+S: A string wrapper that prints as ********** in reprs and logs; the value is only available through get_secret_value().
+D: SECRET_KEY, MAIL_PASSWORD and provider keys are SecretStr, so a stray log of the settings object cannot leak them.
+
+Q: In what order does pydantic-settings take values?
+L: intermediate
+T: pydantic, configuration
+S: Explicit constructor arguments first, then environment variables, then the .env file, then defaults.
+D: So an exported environment variable, even an empty one, overrides .env, which surprises people during local set-up.
+
+Q: Why is session_version declared strict in TokenPayload?
+L: advanced
+T: pydantic, jwt
+S: Strict mode accepts only a real integer, so a token carrying "1" as a string would fail validation instead of being coerced.
+D: Its default of 0 means tokens issued before the field existed count as generation zero.
+
+Q: Why does EmailStr need email-validator?
+L: basic
+T: pydantic
+S: Pydantic delegates email syntax checks to the email-validator package, which is in requirements.txt.
+D: Registration requires an email (EmailStr) and the profile update accepts one; invalid addresses are rejected with 422 before the handler. The address is also lowercased before it is stored or looked up.
+
+## SQLAlchemy and PostgreSQL
+Q: AsyncSession versus Session?
+L: intermediate
+T: sqlalchemy, async
+S: AsyncSession exposes awaitable methods (execute, commit, scalar) over an async driver; it uses greenlets internally to run SQLAlchemy's synchronous core on asyncpg.
+D: Implicit I/O (lazy loading on attribute access) is not allowed, so relationships must be loaded explicitly, and expire_on_commit should normally be False.
+
+Q: Why expire_on_commit=False?
+L: intermediate
+T: sqlalchemy
+S: So objects keep their loaded values after commit. Otherwise accessing an attribute would trigger a reload, which is implicit I/O that async code cannot perform.
+D: The cost: values may be stale after commit, so handlers that need fresh database values call db.refresh explicitly.
+
+Q: What is the difference between a session, a connection and a transaction?
+L: advanced
+T: sqlalchemy, transactions
+S: A connection is a database socket from the pool; a transaction is a unit of atomic work on one connection; a session is SQLAlchemy's unit of work that begins transactions as needed and can run several in sequence.
+D: In CareKosh a request's session commits the write, then a refresh starts a new transaction, which get_db commits at teardown.
+
+Q: Explain the pool settings.
+L: intermediate
+T: sqlalchemy, pooling
+S: pool_size=5 kept-open connections, max_overflow=10 extra under load, pool_timeout=30 s to wait for one, pool_pre_ping to test a connection before use.
+D: Per worker. Two workers per instance can open 30 connections; during a deploy two instances overlap.
+
+Q: What is the N+1 problem and how does CareKosh avoid it?
+L: intermediate
+T: sqlalchemy, performance
+S: Loading N parents and then issuing one query per parent for its children. Relationships here use selectin loading, which fetches all children in one extra query per relationship.
+D: The opposite risk is loading too much: auth paths use noload("*") so a user lookup does not load every item and order.
+
+Q: noload, lazyload, raiseload and selectin: when to use which?
+L: advanced
+T: sqlalchemy, loading
+S: selectin for collections you will use; lazyload to defer; raiseload to make an accidental access fail loudly; noload to pretend a collection is empty.
+D: SQLAlchemy 2.0 marks noload as legacy. Replacing it with raiseload("*") on the auth path would be safer, after tests confirm nothing reads those collections.
+
+Q: What does SELECT … FOR UPDATE do?
+L: intermediate
+T: postgresql, locking
+S: Locks the selected rows until the transaction ends; other writers and FOR UPDATE readers wait.
+D: Login, refresh, reset and password change lock the user row, so revocations and new tokens are ordered. Variants NOWAIT and SKIP LOCKED fail or skip instead of waiting.
+
+Q: Why use UPDATE … WHERE … RETURNING instead of SELECT then UPDATE?
+L: intermediate
+T: postgresql, concurrency
+S: It checks and changes in one atomic statement, so there is no gap for another transaction between the check and the write (no time-of-check to time-of-use bug).
+D: RETURNING tells you whether a row matched without another query. Used for the item version check, refresh claims, status changes, the apply claim and email verification.
+
+Q: How does INSERT … ON CONFLICT DO UPDATE help?
+L: intermediate
+T: postgresql
+S: It inserts a row or, if a unique key already exists, updates it, atomically. The daily order counter, consent records and personal keys use it.
+D: Without it you would need a read-then-insert with a race, or retries on unique violations.
+
+Q: Read Committed, Repeatable Read, Serializable: which does CareKosh use?
+L: advanced
+T: postgresql, isolation
+S: PostgreSQL's default, Read Committed. Correctness comes from conditional updates, row locks and constraints, not from a stricter level.
+D: Under Read Committed, an UPDATE that waited on a concurrent change re-evaluates its WHERE clause on the new row version, which is exactly why version checks work. Serializable would also prevent anomalies but requires retrying failed transactions.
+
+Q: What is a lost update and how is it prevented here?
+L: intermediate
+T: concurrency
+S: Two transactions read the same value and both write, so one write silently replaces the other. Here every overwrite of an item is conditioned on the version that was read.
+D: Additive changes (applying an order) instead use quantity = quantity + n inside the database, which cannot lose an update.
+
+Q: How does the code avoid deadlocks when applying orders?
+L: advanced
+T: postgresql, deadlocks
+S: Items are updated in a fixed order (sorted by item id), so two transactions that touch the same items lock them in the same order and one simply waits.
+D: Deadlocks come from opposite lock orders. PostgreSQL detects them and aborts one transaction, but avoiding them is better than handling them.
+
+Q: What are advisory locks and where are they used?
+L: advanced
+T: postgresql, locking
+S: Locks on application-chosen numbers rather than rows. pg_advisory_xact_lock(key) holds one until the transaction ends.
+D: Per-account name changes lock a key derived from the owner and kind, so two renames cannot both pass the duplicate check. The AI budget uses one global key so the check-and-reserve is atomic across workers.
+
+Q: statement_timeout versus lock_timeout?
+L: intermediate
+T: postgresql, timeouts
+S: statement_timeout cancels any statement running longer than the limit; lock_timeout cancels a statement that waits too long for a lock.
+D: The app engine sets statement_timeout to 8 s; migrations set lock_timeout to 30 s; the AI budget sets a short lock_timeout and maps it to 503 busy.
+
+Q: What is a partial unique index?
+L: intermediate
+T: postgresql, indexes
+S: A unique index with a WHERE clause, so uniqueness only applies to matching rows.
+D: uq_orders_user_id_local_id covers rows with a localId, so keyless legacy orders are not constrained.
+
+Q: Why have CHECK constraints when Pydantic already validates?
+L: intermediate
+T: postgresql, validation
+S: Defence in depth: the database rule holds for every code path, including future ones, scripts and migrations.
+D: quantity >= 0 on items and quantity > 0 on order lines protect stock even if an API check were bypassed.
+
+Q: ORM cascade versus ON DELETE CASCADE?
+L: advanced
+T: sqlalchemy, postgresql
+S: ORM cascades act on objects the session has loaded; ON DELETE CASCADE acts inside the database regardless of what is loaded.
+D: CareKosh has both. Account deletion loads the user with noload, so the database's ON DELETE CASCADE does the real work.
+
+Q: Why UUID string primary keys?
+L: intermediate
+T: database, design
+S: Ids are not guessable sequences, can be created before insert, and are safe to expose in URLs.
+D: The costs are bigger indexes and random insert order. Stored as String(36) here, not PostgreSQL's native uuid type.
+
+Q: Why timezone-aware timestamps?
+L: basic
+T: database
+S: DateTime(timezone=True) stores an instant (timestamptz), so comparisons like "expiry > now()" are correct regardless of server or client time zones.
+D: Token expiries, deletion links and AI budget windows (reset at 00:00 UTC) all compare stored instants with datetime.now(timezone.utc). Mixing naive and aware datetimes would raise errors or compare the wrong moments.
+
+Q: Why JSONB for audit snapshots?
+L: intermediate
+T: postgresql, audit
+S: Snapshot fields differ by entity and action; JSONB stores them flexibly and can still be queried and indexed.
+D: An item update stores name, quantity, unit, minimum stock and flags; a stock change stores only the quantity and its source; an order delete stores the order id, status and totals. A fixed column set would not fit them all.
+
+Q: Why did migration 0007 add indexes on the token digest columns?
+L: intermediate
+T: postgresql, indexes, security
+S: Verification, reset and deletion look users up by token digest; without an index each lookup would scan the users table.
+D: The lookups are equality matches on email_verification_token, password_reset_token and deletion_token, so an ordinary B-tree index on each makes them instant even with many users.
+
+Q: Offset or cursor pagination?
+L: intermediate
+T: api-design, postgresql
+S: Offset is simple but gets slower and can skip or repeat rows as data changes; cursor (keyset) pagination uses "after this id" and stays fast.
+D: Items use offset pagination capped at 100 per page; the app fetches all pages. Cursor pagination is the upgrade for big accounts.
+
+Q: How would you investigate a slow query?
+L: intermediate
+T: postgresql, performance
+S: Reproduce it, run EXPLAIN (ANALYZE, BUFFERS), look for sequential scans, bad estimates and lock waits, then add an index or rewrite.
+D: pg_stat_statements on the server shows which queries cost the most overall.
+
+Q: What are the symptoms of pool exhaustion?
+L: intermediate
+T: sqlalchemy, operations
+S: Requests stall, then fail after pool_timeout (30 s) with a timeout error, while the database itself may look idle.
+D: Causes include long transactions, held connections during external calls (avoided in the AI routes) and too many workers for the database's limit.
+
+## Alembic and migrations
+Q: How does Alembic work?
+L: basic
+T: alembic
+S: Each revision is a Python file with upgrade() and downgrade() and a pointer to its parent; the database stores its current revision in alembic_version; upgrade head applies the missing ones in order.
+D: CareKosh has 13 revisions in one linear chain (0001 to 0013), and the async env.py uses the application's settings. alembic heads shows a single head, so there are no branches to merge.
+
+Q: What can autogenerate miss?
+L: intermediate
+T: alembic
+S: It diffs models against the database but misses or mis-detects renames, some constraint and index changes, data migrations and server defaults; generated scripts must be reviewed.
+D: CareKosh's later migrations are hand-written where data matters, such as seeding the counter and exempting legacy duplicates.
+
+Q: Pros and cons of running migrations at container start?
+L: intermediate
+T: alembic, deployment
+S: Pro: the schema always matches the code that starts. Con: every instance runs it, a long migration delays start-up, and a merge can migrate production without a human in the loop.
+D: Alembic's version table makes repeat runs no-ops. CareKosh pairs it with a release gate for risky revisions.
+
+Q: Why does migration 0007's downgrade raise?
+L: advanced
+T: alembic, security
+S: Downgrading would drop session_version, which could make revoked credentials valid again, and drop the order counter, which could reuse deleted order numbers.
+D: The safe rollback is an older application image on the newer, additive schema.
+
+Q: How do you change a schema with zero downtime?
+L: advanced
+T: migrations, design
+S: Expand and contract: add new columns or tables in a backwards-compatible way, deploy code that uses both, migrate data, then remove the old structure in a later release.
+D: During a rolling deploy old and new code run together, so every intermediate schema must work with both.
+
+Q: What is a data migration, and is there one here?
+L: intermediate
+T: alembic
+S: A migration that changes data, not only structure. 0007 seeds order_number_counters from existing public order ids.
+D: Data migrations must be safe on real data: the 0007 seed derives each day's counter from the highest existing ORD- number, so new numbers never collide with old ones, and it changes no existing order.
+
+Q: Why set lock_timeout in migrations?
+L: advanced
+T: alembic, postgresql
+S: DDL takes strong locks; if it waits behind a long transaction, every new query queues behind the DDL. A 30-second lock_timeout makes the migration fail instead of freezing traffic.
+D: PostgreSQL queues lock requests: a pending ACCESS EXCLUSIVE request blocks later ordinary reads too. Failing fast and retrying later is safer than freezing every request behind the migration.
+
+Q: How do you know migrations match the models?
+L: intermediate
+T: alembic, testing
+S: CI builds the test database with Alembic and runs the whole suite; locally the suite also runs on create_all. Both passing means models and migrations agree on everything the tests touch.
+D: The two modes catch different mistakes: a model change without a migration fails in migrated mode, and a migration that drifts from the models shows up as a difference between the two runs.
+
+## Testing
+Q: Describe the backend test strategy.
+L: basic
+T: testing
+S: Integration tests through the real app against real PostgreSQL, plus unit tests for pure logic. Every test gets a freshly created schema.
+D: An autouse fixture drops and recreates all tables per test, either with create_all or through Alembic, so tests cannot affect each other.
+
+Q: Why not SQLite or mocks for the database?
+L: intermediate
+T: testing, postgresql
+S: The guarantees under test are PostgreSQL features: row locks, Read Committed re-checks, partial unique indexes, ON CONFLICT, RETURNING, JSONB and CHECK constraints.
+D: SQLite or mocks would pass tests that production would fail, or fail tests production would pass.
+
+Q: How does the suite protect real databases?
+L: intermediate
+T: testing, safety
+S: It refuses to run unless the database name contains "test" or "pytest", and refuses URLs that look like staging, production or known hosting providers.
+D: Each test drops and recreates every table, so pointing the suite at a real database would destroy it. The guard runs at import time, before any fixture, and raises with an explanation.
+
+Q: How are external providers handled in tests?
+L: intermediate
+T: testing, mocking
+S: With pytest's monkeypatch: provider functions or the HTTP transport are replaced by fakes, so tests never call Groq, Sarvam or Brevo.
+D: test_ai.py patches functions such as ai_provider.transcribe or the shared bounded_call transport; some fakes raise if called, proving a refused request never reaches a provider. Email sending is never performed in tests.
+
+Q: Is rate limiting covered by the suite?
+L: intermediate
+T: testing, rate-limiting
+S: Yes. Specific tests enable rate limiting and exercise the real authentication routes. General endpoint tests can isolate their business logic.
+D: See tests/test_ingress_android_compatibility.py for shared login quota behavior. The local suite establishes application behavior. Live Redis availability is an environment check.
+
+Q: What do the coverage floors and the route gate do?
+L: basic
+T: ci, testing
+S: CI fails if items.py or orders.py drop below 70% line coverage, or if the /api/v1 route count stops being 65, so an accidental route removal or untested rewrite is caught.
+D: Both are scripts in vitaltrack-backend/scripts (check_file_coverage.py and check_api_routes.py) run as CI steps. The floors target the two files with the most concurrency logic.
+
+Q: How does pytest run async tests here?
+L: basic
+T: testing, async
+S: pytest-asyncio in auto mode (asyncio_mode = auto in pytest.ini) runs async test functions and fixtures on an event loop.
+D: A session-scoped event loop fixture keeps one loop for the whole run, and the autouse fresh_database fixture is itself async. pytest.ini also sets the test paths and hides DeprecationWarning output.
+
+Q: What do the tests not prove?
+L: intermediate
+T: testing, honesty
+S: Deployed configuration, real provider behaviour, phone behaviour, load capacity and backup restores.
+D: Each gap needs its own check: dashboard review for settings, a staging smoke test for deployment, a provider sandbox or recorded calls for AI, device testing for the app, a load test for capacity and a restore drill for backups.
+
+Q: How is the mobile code tested?
+L: basic
+T: testing, mobile
+S: With Node's built-in test runner (node --test tests/*.test.cjs): 491 tests including rendered component, store, cache and assistant tests; CI also runs TypeScript and ESLint.
+D: Each test is a CommonJS file: it transpiles the TypeScript source with the TypeScript compiler (transpileModule) and runs it in a Node vm context with stubbed dependencies such as SecureStore. CI also checks that the native voice module is autolinked and that the Expo configuration resolves.
+
+Q: A test passes alone but fails in the full suite. What do you check?
+L: intermediate
+T: testing, debugging
+S: Shared state: leftover rows, module-level caches, settings read at import, monkeypatches not undone, or the event loop scope.
+D: The per-test schema rebuild removes database leakage; the remaining suspects are in-process state.
+
+## Deployment and operations
+Q: Why a multi-stage Dockerfile?
+L: basic
+T: docker
+S: The builder stage has compilers to build dependencies; the final stage copies only the built virtual environment, so the image is smaller and has less attack surface.
+D: Here the builder installs build-essential and libpq-dev and fills /opt/venv; the final stage installs only runtime libraries and copies /opt/venv. Compilers and headers never reach the running image.
+
+Q: Why run the container as a non-root user?
+L: basic
+T: docker, security
+S: If the process is compromised, the attacker does not have root inside the container, which limits damage.
+D: The Dockerfile creates appuser (uid 1000), gives it the code with COPY --chown and switches with USER appuser before the entrypoint runs. Render also needs no root privileges to bind $PORT.
+
+Q: Why exec in the entrypoint?
+L: intermediate
+T: docker, signals
+S: exec replaces the shell with Gunicorn, so Gunicorn receives SIGTERM from the platform and can shut down gracefully; otherwise the shell might not forward the signal.
+D: The process that receives the platform's SIGTERM is the container's main process. With exec, Gunicorn becomes that process; it stops accepting new connections and lets workers finish in-flight requests within its graceful timeout.
+
+Q: What happens during a Render deploy?
+L: intermediate
+T: deployment, render
+S: Render builds the image, starts a new instance, waits for its health check on /live to pass, then moves traffic; if build, start or health check fails, the previous instance keeps serving.
+D: The entrypoint's migrations run before the health check can pass, so a failed migration fails the deploy.
+
+Q: What do sync: false and generateValue mean in render.yaml?
+L: basic
+T: render, secrets
+S: sync: false asks for the value in the dashboard when the Blueprint is created, so it never enters Git; generateValue: true makes Render generate a random value (used for SECRET_KEY).
+D: DATABASE_URL, MAIL_PASSWORD, MAIL_FROM and SENTRY_DSN use sync: false. Later Blueprint syncs ignore those keys, so the dashboard remains the source of truth for them, which is also why their live values are not verified here.
+
+Q: What is the twelve-factor approach to config, and does CareKosh follow it?
+L: basic
+T: configuration
+S: Keep configuration in the environment, separate from code. Yes: every environment difference is an environment variable read by pydantic-settings.
+D: The same Docker image runs in staging and production with different variables; .env exists only for local development, and the validators stop a deployed service from starting with unsafe defaults.
+
+Q: How are staging and production kept apart?
+L: intermediate
+T: environments
+S: Different Render services, databases and secrets, and different app builds pointing at different hostnames. app.config.js refuses a build aimed at the wrong API.
+D: Dashboard values are not verified from the code; the documents say staging and production use separate databases in one Neon project.
+
+Q: Neon branch or database for testing a risky migration?
+L: advanced
+T: neon, migrations
+S: A fresh database. A Neon branch of production would copy production data into a test environment.
+D: A fresh, empty database behind the staging service also makes rollback trivial: point staging back at its previous database. The release notes record this choice for migrations 0007 onwards.
+
+Q: How is the database connection secured?
+L: intermediate
+T: database, tls
+S: Outside development and testing the engine passes ssl=True to asyncpg; Neon's query parameters are stripped from the URL because SQLAlchemy would pass them to asyncpg as unsupported keywords.
+D: TLS is decided by environment: development and testing (local Docker, CI) skip it; every other environment requires it. The credentials live only in DATABASE_URL on the service.
+
+Q: How are logs kept safe?
+L: intermediate
+T: logging, security
+S: A log-record factory redacts tokens in URLs and messages, strips query strings from access logs, and replaces exception messages with type and code location.
+D: SQL parameters are hidden (hide_parameters=True) and Sentry sends no personal data, bodies or local variables.
+
+Q: How do you roll back a bad deploy?
+L: advanced
+T: deployment, rollback
+S: Redeploy the previous image if the schema is compatible; otherwise roll forward. Never downgrade a one-way migration; restore from a backup only as a last resort, accepting lost writes.
+D: Because 0007 onwards are additive, an older image can run on the newer schema. The release gate's backup and staged rehearsal exist so that the last-resort restore is never the first idea.
+
+Q: What would rotating SECRET_KEY do?
+L: advanced
+T: security, operations
+S: Every existing access and refresh token would fail verification, signing everyone out. Rotation with a grace period needs support for several verification keys (for example key ids in the token header).
+D: HS256 uses one shared key for signing and verifying, and the tokens carry no key id. A planned rotation would add a kid header and accept the old key for verification until the longest token lifetime (30 days) has passed.
+
+Q: How do you know which commit is running in production?
+L: intermediate
+T: operations
+S: From Render's deploy page today; the health endpoints report a constant version string. Exposing the commit and the Alembic revision is a planned improvement.
+D: /live and /health return APP_VERSION 1.0.0, a constant. Adding the git commit (passed in at build time) and alembic current to an authenticated endpoint would close the gap.
+
+Q: What does the CI pipeline check, and what blocks a merge?
+L: basic
+T: ci
+S: The backend/mobile workflow runs for pull requests to main, pushes to main and manual dispatch. It runs backend and mobile checks. Web CI has a separate path-filtered workflow.
+D: CI exercises Ruff, both schema setups, route inventory, coverage floors and mobile checks. A failing job fails its workflow. Whether it blocks merging depends on the effective GitHub rules for the target branch.
+
+Q: What monitoring would you add first?
+L: intermediate
+T: operations, observability
+S: Uptime checks on /live and /health, error-rate and latency alerts, database connection and lock-wait metrics, and alerts on email failures and AI budget refusals.
+D: A monitor template for /live and /health on both hosts already exists in docs/monitoring. Metrics would come next, for example request counts by status, latency percentiles and pool usage.
+
+## System design through the backend
+Q: How do you design an idempotent API endpoint?
+L: intermediate
+T: idempotency, design
+S: The client sends a unique key per logical operation; the server stores it with the result under a unique constraint and returns the stored result on a repeat.
+D: CareKosh's localId does this for orders, including the concurrent case: the unique index decides the winner and the loser returns the winner's order.
+
+Q: Can you achieve exactly-once processing?
+L: advanced
+T: distributed-systems
+S: Not delivery, but you can get exactly-once effects: deliver at least once and make the handling idempotent.
+D: Examples here: order localIds, the apply claim, single-use refresh tokens and single-use email tokens.
+
+Q: What is the transactional outbox pattern?
+L: advanced
+T: design, background
+S: Write the business change and an outbox row in the same transaction; a separate worker reads the outbox and sends the message, retrying until it succeeds.
+D: It would make CareKosh's emails durable without risking "email sent but transaction rolled back".
+
+Q: How many database connections can CareKosh open, and what would you do at scale?
+L: advanced
+T: scaling, postgresql
+S: Each worker pools up to 15, so an instance with 2 workers can open 30. At scale, put PgBouncer in transaction mode in front and shrink per-worker pools.
+D: asyncpg uses prepared statements, which need care with transaction pooling (asyncpg documents turning off its statement cache for PgBouncer, or using a PgBouncer version that supports prepared statements).
+
+Q: Compare rate-limiting algorithms.
+L: intermediate
+T: rate-limiting, design
+S: Fixed window is simple but allows bursts at window edges; sliding window smooths that; token bucket allows controlled bursts with a steady refill.
+D: Pick by what you protect: logins want a strict limit per account and per source, expensive endpoints want a smooth rate, and costly providers want a budget, which CareKosh enforces in PostgreSQL for the AI routes.
+
+Q: Where would you cache in this system?
+L: intermediate
+T: caching
+S: Mostly on the client, as now. On the server only for expensive shared reads, with explicit invalidation on writes; per-user inventory changes too often to cache usefully.
+D: The phone already caches with TanStack Query (fresh for 30 s, kept 24 h, invalidated after writes). A server cache would add a cross-instance invalidation problem for little gain.
+
+Q: How would read replicas affect consistency?
+L: advanced
+T: postgresql, consistency
+S: Replicas lag, so a read right after a write could miss it. Route reads that must see your own writes to the primary, or wait for the replica to reach the write's position.
+D: CareKosh has no replicas, so the server always reads its own writes. Adding them would need a routing rule, for example primary for a few seconds after a user's write, or for any request that follows a mutation.
+
+Q: How would you design an audit log for compliance?
+L: advanced
+T: audit, design
+S: Write it in the same transaction as the change, make it append-only (no updates or deletes by the app role), include who, what, when and before/after values, and define retention and access.
+D: CareKosh has the transactional part; append-only permissions, coverage of every write, retention and a reader API would be next.
+
+Q: How do feature flags work in this backend?
+L: basic
+T: configuration, ai
+S: Boolean settings from the environment, such as AI_ENABLED, AI_SPEECH_ENABLED and provider review flags. Each provider path needs all of its flags plus a key.
+D: require_enabled() combines them per kind and provider and raises 503 if any piece is missing; capabilities() reports the result so the phone shows only what works. Flags are read at start-up, so changing one needs a restart.
+
+Q: How do you protect a system from a slow third-party API?
+L: intermediate
+T: reliability, design
+S: Timeouts on every call, a total deadline, bounded concurrency, budgets, no database connection held during the call, and clear "busy" errors with Retry-After.
+D: A circuit breaker (stop calling for a while after repeated failures) would be the next addition.
+
+Q: How would you add multi-tenancy?
+L: advanced
+T: multi-tenancy, design
+S: Add an organisation or household table and memberships with roles, move ownership to the household id, and scope every query by it; consider PostgreSQL row-level security as a second guard.
+D: Every owner-scoped query and every foreign key would change, so it would be a staged migration: add household ids alongside user ids, backfill, switch queries, then drop the old scope. Roles would also need an authorization layer that today's user-only scoping does not have.
+
+Q: What is your API versioning strategy?
+L: intermediate
+T: api-design
+S: A path prefix (/api/v1) and additive, backwards-compatible changes inside it; new optional fields and new contract versions (the assistant offers contracts 1, 2 and 3) instead of breaking ones.
+D: Old APKs stay installed because there are no over-the-air updates, so v1 must keep accepting old requests: order creation still works without localId, and the assistant still accepts contracts 1 and 2.
+
+Q: How do you keep a long external call from exhausting the pool?
+L: advanced
+T: sqlalchemy, design
+S: Never hold a session or transaction across it: commit or close before the call and open a new short transaction afterwards. The AI guard reserves, commits, calls the provider, then settles in a new transaction.
+D: The AI routes authenticate in their own short session, reserve in a short transaction, release it, call the provider, and settle in another short transaction, so a 25-second provider wait holds no database connection.
+
+Q: If you had a week to improve the backend, what would you do?
+L: intermediate
+T: priorities
+S: Choose an improvement with measurable impact, such as rehearsing a restore, measuring contention or making email delivery durable.
+D: For an outbox, persist the send intent along with the domain change and track retries. Explain what to test before claiming delivery guarantees.

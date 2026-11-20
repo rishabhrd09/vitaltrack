@@ -1,0 +1,2548 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>CareKosh · Deployment and architecture guide</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #142d30;
+        --sub: #435c60;
+        --line: #c6d7d3;
+        --sea: #116859;
+        --paper: #f7f9f5;
+        --gold: #98632a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font:
+          16px/1.6 "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+      a {
+        color: #096451;
+        text-underline-offset: 3px;
+      }
+      a:hover {
+        color: #994823;
+      }
+      a:focus-visible,
+      summary:focus-visible {
+        outline: 3px solid #d48633;
+        outline-offset: 3px;
+      }
+      .skip {
+        position: absolute;
+        top: -100px;
+      }
+      .skip:focus {
+        top: 5px;
+        background: white;
+      }
+      .wrap {
+        max-width: 1510px;
+        margin: auto;
+        padding: 0 clamp(16px, 4vw, 64px);
+      }
+      header {
+        background: #123d3b;
+        color: #f7fff9;
+        border-bottom: 7px solid #c9b684;
+        padding: 46px 0 38px;
+      }
+      header small,
+      .hub small {
+        font:
+          600 12px/1.3 ui-monospace,
+          monospace;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+      header small {
+        color: #b1d7ca;
+      }
+      h1,
+      h2 {
+        font-family: "Baskervville", Georgia, serif;
+        font-weight: 500;
+        line-height: 1.12;
+        letter-spacing: -0.035em;
+      }
+      h1 {
+        font-size: clamp(39px, 5.3vw, 76px);
+        margin: 12px 0 14px;
+      }
+      header p {
+        max-width: 760px;
+        font-size: 19px;
+        color: #d8e9e2;
+        margin: 0;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 190px minmax(0, 1fr);
+        gap: clamp(22px, 4vw, 65px);
+      }
+      nav {
+        align-self: start;
+        position: sticky;
+        top: 16px;
+        max-height: 95vh;
+        overflow: auto;
+        padding: 24px 0;
+      }
+      nav strong {
+        display: block;
+        font-size: 12px;
+        color: var(--sub);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin: 0 0 12px;
+      }
+      nav a {
+        display: block;
+        text-decoration: none;
+        color: var(--ink);
+        font-size: 14px;
+        padding: 6px 9px;
+        border-left: 2px solid var(--line);
+      }
+      nav a:hover,
+      nav a:focus {
+        background: #deebe3;
+        border-color: var(--sea);
+      }
+      main {
+        min-width: 0;
+      }
+      section {
+        padding: 34px 0 32px;
+        border-bottom: 1px solid var(--line);
+        scroll-margin: 12px;
+      }
+      section > p {
+        max-width: 91ch;
+      }
+      section > h2 + p {
+        font-size: 18px;
+        color: var(--sub);
+      }
+      h2 {
+        font-size: clamp(32px, 3.3vw, 49px);
+        margin: 0 0 12px;
+      }
+      h3 {
+        margin: 25px 0 10px;
+        font-size: 21px;
+      }
+      .scroll {
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        margin: 20px 0;
+        background: white;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 14px;
+        line-height: 1.5;
+        text-align: left;
+      }
+      td,
+      th {
+        padding: 13px 16px;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+      }
+      thead {
+        background: #e4eee6;
+        color: #234b43;
+      }
+      tbody th {
+        width: 22%;
+        font-weight: 650;
+      }
+      tbody tr + tr {
+        border-top: 1px solid #dce6df;
+      }
+      tbody tr:nth-child(even) {
+        background: #fbfcf8;
+      }
+      code {
+        font:
+          0.91em/1.45 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        overflow-wrap: anywhere;
+        color: #185550;
+      }
+      aside.note {
+        padding: 18px 22px;
+        background: #f2ecdd;
+        border-left: 4px solid #b68646;
+        margin: 20px 0;
+      }
+      aside p {
+        margin: 5px 0 0;
+      }
+      .atlas {
+        padding: 22px;
+        background: #e4ede4;
+        border-radius: 16px;
+        margin: 22px 0;
+      }
+      .hub {
+        margin: 0 auto 0;
+        text-align: center;
+        max-width: 560px;
+        background: #174941;
+        color: white;
+        border-radius: 10px;
+        padding: 18px;
+      }
+      .hub small {
+        color: #c1dfcc;
+      }
+      .hub strong,
+      .hub span,
+      .leaves span,
+      .files span,
+      .flow span {
+        display: block;
+      }
+      .hub strong {
+        font:
+          500 27px Georgia,
+          serif;
+        margin: 5px;
+      }
+      .hub span {
+        color: #e0ebe0;
+        font-size: 14px;
+      }
+      .leaves {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        padding-top: 22px;
+        position: relative;
+      }
+      .leaves a {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-top: 3px solid #548575;
+        border-radius: 6px;
+        padding: 15px;
+        text-decoration: none;
+        position: relative;
+      }
+      .leaves a:before {
+        content: "";
+        height: 14px;
+        border-left: 1px solid #71958a;
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+      }
+      .leaves::before,
+      .leaves::after {
+        content: "";
+        position: absolute;
+      }
+      .leaves::before {
+        top: 10px;
+        left: calc(12.5% - 4.5px);
+        right: calc(12.5% - 4.5px);
+        border-top: 1px solid #71958a;
+      }
+      .leaves::after {
+        top: 0;
+        height: 10px;
+        left: 50%;
+        border-left: 1px solid #71958a;
+      }
+      .leaves span,
+      .flow span {
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--sub);
+        margin-top: 6px;
+      }
+      figure {
+        margin: 20px 0;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: #ecf3ed;
+        padding: 19px;
+      }
+      .warm {
+        background: #f4ede0;
+      }
+      figcaption {
+        font-weight: 700;
+        margin-bottom: 15px;
+      }
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: 23px;
+      }
+      .flow li {
+        position: relative;
+        padding: 13px;
+        background: white;
+        border-radius: 7px;
+        border: 1px solid #cad9cf;
+      }
+      .flow li + li:before {
+        content: "→";
+        position: absolute;
+        left: -21px;
+        top: 40%;
+        color: var(--sea);
+        font-weight: bold;
+      }
+      .steps li {
+        padding: 5px;
+      }
+      .files {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .files div {
+        padding: 16px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        min-width: 0;
+      }
+      .files dt {
+        font-weight: 700;
+      }
+      .files dd {
+        margin: 5px 0 0;
+        font-size: 14px;
+      }
+      .files span {
+        margin-top: 6px;
+      }
+      .links {
+        font-size: 14px;
+      }
+      .foot {
+        padding: 26px 0;
+        color: var(--sub);
+      }
+      @media (max-width: 1050px) {
+        .layout {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 0;
+        }
+        nav {
+          position: static;
+          max-height: none;
+          padding: 15px 0 0;
+        }
+        nav strong {
+          display: none;
+        }
+        nav a {
+          display: inline-block;
+          padding: 4px 10px;
+        }
+      }
+      @media (max-width: 760px) {
+        .flow,
+        .files {
+          grid-template-columns: 1fr;
+        }
+        .leaves {
+          grid-template-columns: 1fr 1fr;
+        }
+        .leaves::before,
+        .leaves::after,
+        .leaves a:before {
+          display: none;
+        }
+        .flow li + li:before {
+          content: "↓";
+          top: -24px;
+          left: 50%;
+        }
+        .scroll table {
+          min-width: 560px;
+        }
+        .wrap {
+          padding: 0 16px;
+        }
+        header {
+          padding: 30px 0;
+        }
+        .atlas {
+          padding: 12px;
+        }
+        .hub strong {
+          font-size: 23px;
+        }
+      }
+      .release-map {
+        max-width: 46rem;
+      }
+      .route {
+        display: grid;
+        grid-template-columns: minmax(4.5rem, 1fr) minmax(0, 4fr);
+        gap: 1.25rem 0.75rem;
+        align-items: stretch;
+      }
+      .station {
+        grid-column: 2;
+        padding: 0.6rem 0.9rem;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        text-align: center;
+        background: white;
+        position: relative;
+      }
+      .station:not(:first-child):before {
+        content: "↓";
+        position: absolute;
+        top: -1.38rem;
+        left: 50%;
+        transform: translateX(-50%);
+        color: var(--sea);
+        line-height: 1.3rem;
+      }
+      .station.decision {
+        background: #f5edda;
+        border-color: #aa8754;
+        font-weight: 650;
+      }
+      .station.pass {
+        grid-row: 8;
+      }
+      .station.pass b {
+        color: var(--sea);
+      }
+      .retry {
+        grid-column: 1;
+        grid-row: 2 / 8;
+        position: relative;
+        align-self: stretch;
+        margin-block: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        justify-content: end;
+        border: solid #8a6a3d;
+        border-width: 1px 0 1px 2px;
+        border-radius: 10px 0 0 10px;
+        color: #694514;
+        padding: 0.45rem;
+        font-size: 0.85rem;
+        line-height: 1.4;
+      }
+      .retry:before {
+        content: "→";
+        position: absolute;
+        top: -0.7rem;
+        right: -0.72rem;
+      }
+      .retry:after {
+        content: "";
+        position: absolute;
+        right: -0.75rem;
+        bottom: -1px;
+        width: 0.75rem;
+        border-top: 1px solid #8a6a3d;
+      }
+      .release-record {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        background: #e8efe8;
+        padding: 1rem;
+        font-size: 0.89rem;
+      }
+      @media print {
+        header {
+          background: white;
+          color: black;
+          padding: 12px 0;
+        }
+        header p,
+        header small {
+          color: #345;
+        }
+        body {
+          font-size: 10pt;
+          background: white;
+        }
+        .layout {
+          display: block;
+        }
+        nav,
+        .skip {
+          display: none;
+        }
+        .wrap {
+          max-width: none;
+          padding: 0;
+        }
+        .scroll {
+          overflow: visible;
+        }
+        .scroll table {
+          min-width: 0;
+        }
+        td,
+        th {
+          padding: 6px;
+        }
+        table {
+          font-size: 9pt;
+        }
+        tr,
+        figure,
+        .note,
+        .files div {
+          break-inside: avoid;
+        }
+        section {
+          padding: 16px 0;
+        }
+        h2,
+        h3 {
+          break-after: avoid;
+        }
+        h1 {
+          font-size: 32pt;
+        }
+        a {
+          color: inherit;
+        }
+        .flow {
+          grid-template-columns: repeat(4, 1fr);
+        }
+        .files {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#reading-order">Skip to the reading order</a>
+    <header>
+      <div class="wrap">
+        <small>CareKosh engineering · 21 November 2026</small>
+        <h1>Deployment &amp; architecture guide</h1>
+        <p>
+          How the Home ICU Inventory website and Android app reach the right API and database, and
+          how a code change becomes a release.
+        </p>
+      </div>
+    </header>
+    <div class="wrap layout">
+      <nav aria-label="Contents">
+        <strong>In this guide</strong><a href="#reading-order">New developer reading order</a><a href="#engineering-library">Guides by task</a><a href="#interview-library">Interview books and HTML tutorials</a><a href="#stock-edit">Trace a stock edit</a><a href="#map">System map</a
+        ><a href="#runtime">User requests</a><a href="#change-guide">Developer release checklist</a
+        ><a href="#branches">Branch alignment</a><a href="#dns">DNS inventory</a
+        ><a href="#rules">Header transforms</a><a href="#workers">Workers & Pages</a
+        ><a href="#release">CI/CD and releases</a><a href="#data">Render and Neon</a
+        ><a href="#mobile">Android delivery</a><a href="#keys">Keys and settings</a
+        ><a href="#files">Configuration files</a><a href="#operate">Operate and recover</a>
+      </nav>
+      <main>
+        <section id="reading-order">
+          <h2>New developer reading order</h2>
+          <p>Start with the product, then follow a single request. The links open the copies in this checkout. The stock example below follows source revision <code>a14b623</code>, reviewed 21 November 2026.</p>
+          <ol>
+            <li><p><strong>Learn the product and its vocabulary.</strong> Read Parts A and B of the <a href="../CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html">Complete developer guide</a> for accounts, inventory, orders and the repository layout. Use the <a href="../CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#b3-a-complete-first-workflow-setup--login--inventory--order--voice--tests--deployment">first local workflow</a> for setup and <a href="../CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html#c1-the-life-of-one-request">Part C</a> when you reach the API. <a href="../CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Editable Markdown</a>.</p></li>
+            <li><p><strong>Draw the boundary between client and server.</strong> Open <a href="../../carekosh_system_design/01_system_overview_and_api_flows.html">System overview and API flows</a> for the visual model of the Android client, API and database. Its October illustrations show an earlier release. The <a href="#map">Atlas system map</a> adds the browser and both hosted environments.</p></li>
+            <li><p><strong>Look up the operation you are changing.</strong> Use <a href="../API_TRACEABILITY.html">API traceability</a> to find a method, path, handler and relevant tests. Open the <a href="../API_TRACEABILITY.html#put-apiv1itemsitem_id">existing-item PUT entry</a> for the stock example. Older walkthroughs include historical line numbers. Follow the handler by name in this checkout. <a href="../API_TRACEABILITY.md">Editable Markdown</a>.</p></li>
+            <li><p><strong>Work out where the change will run.</strong> Use this Atlas’s <a href="#runtime">request diagrams</a> for traffic and its <a href="#change-guide">developer release checklist</a> for branch, staging acceptance, promotion and rollback evidence.</p></li>
+          </ol>
+          <h3>Open the guide for the component you own</h3>
+          <div class="scroll" tabindex="0"><table>
+            <thead><tr><th scope="col">File</th><th scope="col">When to use it</th></tr></thead><tbody>
+            <tr><td><a href="../../carekosh-web/README.md">Web README</a></td><td>Before running the browser app. Choose demo or API mode and check the API URL before testing persistence.</td></tr>
+            <tr><td><a href="../../vitaltrack-backend/README.md">Backend README</a></td><td>Before changing a handler or database rule. Start a local PostgreSQL instance, migrate it and run the API tests.</td></tr>
+            <tr><td><a href="../../carekosh_system_design/02_backend_fastapi_interview_guide.html">Backend and FastAPI illustrated guide</a></td><td>When you need the reasoning behind dependency injection, ownership checks, transactions and optimistic concurrency. Start with its revision note.</td></tr>
+            <tr><td><a href="../../vitaltrack-mobile/README.md">Android README</a></td><td>When the same behavior must work on a phone. Trace the Expo screen, mutation hook, cached reads and staging build profile.</td></tr>
+            <tr><td><a href="../../carekosh-web/docs/STAGING_RELEASE_CHECKLIST.md">Hosted staging release acceptance</a></td><td>Before promoting a candidate. Record the deployed versions, then exercise the affected journey with a staging account.</td></tr>
+            </tbody></table></div>
+          <p>To check what triggers a build, read the <a href="../../.github/workflows/ci.yml">backend and Android CI workflow</a>, <a href="../../.github/workflows/carekosh-web.yml">web checks</a> and <a href="../../.github/workflows/release-carekosh-web.yml">manual web release</a>. To check a destination, open <a href="../../carekosh-web/wrangler.jsonc">Wrangler configuration</a>, the <a href="../../vitaltrack-backend/render.yaml">Render blueprint</a> or <a href="../../vitaltrack-mobile/eas.json">Android build profiles</a>. The deploy histories identify the versions actually serving users.</p>
+        </section>
+        <section id="engineering-library">
+          <h2>Find a guide by engineering task</h2>
+          <p>For your first inventory fix, follow the <a href="#reading-order">reading order</a>, run the <a href="#stock-edit">stock edit walkthrough</a>, then use the <a href="#change-guide">release checklist</a>. For a specific task, open the group below. Each file opens from this checkout.</p>
+          <p><strong>Verification record · 21 November 2026.</strong> Against source revision <code>a14b623</code>, a fresh local PostgreSQL 16 database migrated to <code>0013_supply_reviews</code>. The full backend suite on the migrated schema passed 975 tests and skipped two. The Android Node suite passed 491 tests and the browser frontend unit suite passed 103. The API inventory matched all 68 registered operations, including 65 under /api/v1. All 90 steps in the local API walkthrough matched their expected results with email and AI provider calls simulated. Both Compose configurations parsed and the public site passed its local, staging and production artifact checks. Use these as local evidence. Record new dashboard, browser, device and restore results for a release candidate.</p>
+          <details open><summary><strong>Set up a development machine</strong></summary><ul>
+            <li><p><a href="../NEW_DEVELOPER_QUICKSTART.md">Quick start</a> · Choose a browser demo or the local Android and API setup.</p></li>
+            <li><p><a href="../../carekosh_system_design/03_developer_onboarding_guide.html">Illustrated developer onboarding</a> · Walk through a first API request and the Android development loop. Use the revision note for current commands.</p></li>
+            <li><p><a href="../../vitaltrack-backend/DOCKER_GUIDE.md">Docker for this repository</a> · Understand containers, ports, volumes, migrations and the differences between the dev image and the Render image.</p></li>
+            <li><p><a href="../LOCAL_TESTING_COMPLETE_GUIDE.md">Local testing guide</a> · Diagnose a failed container, local database connection or handset connection.</p></li>
+            <li><p><a href="../LOCAL_TESTING_INTERNALS.md">Local testing internals</a> · Understand how the setup scripts, Metro, Docker networking and a physical phone fit together.</p></li>
+            <li><p><a href="../local_testing_field_manual.html">Visual local testing manual</a> · Use the illustrated Android setup as a companion to the quick start.</p></li>
+            <li><p><a href="../USB_ADB_REVERSE_GUIDE.md">USB and ADB reverse</a> · Reach a laptop service from an Android phone over USB when LAN access is unavailable.</p></li>
+          </ul></details>
+          <details><summary><strong>Understand a request and test a change</strong></summary><ul>
+            <li><p><a href="../../carekosh_system_design/README.md">Illustrated architecture collection</a> · Find the four volumes covering request flow, FastAPI internals, developer onboarding and deployment.</p></li>
+            <li><p><a href="../diagrams/README.md">Diagram sources</a> · Find the diagrams embedded in the technical guides and the instructions for maintaining them.</p></li>
+            <li><p><a href="../../vitaltrack-backend/API_TESTING_GUIDE.md">API testing with curl</a> · Exercise local registration, bearer authentication, inventory, order transitions and error responses on disposable data.</p></li>
+            <li><p><a href="../../vitaltrack-backend/README.md">Backend development and test commands</a> · Choose a disposable PostgreSQL database, apply Alembic and run the same schema test modes as CI.</p></li>
+            <li><p><a href="../tools/README.md">Documentation verification tools</a> · Regenerate the API inventory and rendered guides, check local links, or run the synthetic walkthrough.</p></li>
+            <li><p><a href="../../carekosh-web/docs/PARITY.md">Browser and Android parity</a> · Compare feature coverage when a shared API or inventory operation changes.</p></li>
+            <li><p><a href="../../carekosh-web/docs/VERIFICATION.md">Web verification record</a> · Find the scope of earlier browser checks and choose cases to repeat for your revision.</p></li>
+            <li><p><a href="../../carekosh-site/README.md">Public site</a> · Use this for landing-site content or build changes. The signed-in inventory frontend lives in carekosh-web.</p></li>
+            <li><p><a href="../../carekosh-site/docs/VERIFICATION.md">Public site verification</a> · Check links, navigation and responsive behavior when the public landing site changes.</p></li>
+          </ul></details>
+          <details><summary><strong>Configure environments and ship</strong></summary><ul>
+            <li><p><a href="../ENVIRONMENT_SPLIT.md">Environment guide</a> · Identify each frontend, API and database boundary before choosing configuration values.</p></li>
+            <li><p><a href="../../carekosh_system_design/04_environments_and_deployment.html">Illustrated environments and deployment</a> · Understand where an API request travels and how a build reaches an environment.</p></li>
+            <li><p><a href="../DEVOPS_AND_ARCHITECTURE.md">DevOps and architecture companion</a> · Understand CI roles, database design and service boundaries. The dated diagrams record earlier releases.</p></li>
+            <li><p><a href="../GIT_WORKFLOW_GUIDE.md">Git workflow</a> · Prepare a branch and pull request. Check the live repo rules before relying on a required job or approval.</p></li>
+            <li><p><a href="../../carekosh-web/docs/DEPLOYMENT.md">Web deployment and rollback</a> · Follow the stage, publish, verify and recover steps for the browser app.</p></li>
+            <li><p><a href="../../carekosh-web/docs/SECURITY_AND_SCALE.md">Web security and capacity</a> · Identify which checks can run locally and which require hosted traffic, configuration or measurements.</p></li>
+            <li><p><a href="../../carekosh-web/docs/STAGING_RELEASE_CHECKLIST.md">Hosted staging acceptance</a> · Record Worker version, Render revision and the actual result of a staging user journey.</p></li>
+            <li><p><a href="../EXPO_AND_PLAY_STORE_GUIDE.md">Expo and Play Store</a> · Understand APK versus AAB, EAS build profiles, the internal track and promotion.</p></li>
+            <li><p><a href="../../vitaltrack-mobile/credentials/README.md">Android credentials</a> · Locate the signing and Google Play credential instructions before building or submitting.</p></li>
+            <li><p><a href="../LAUNCH_READINESS_RUNBOOK_GOAL_10.md">Launch readiness runbook</a> · Use the release and rollback rehearsal steps. Record fresh results for the release candidate.</p></li>
+            <li><p><a href="../monitoring/carekosh-uptime-monitors.example.yml">Uptime monitor template</a> · Compare proposed liveness and readiness probes with your configured monitoring service.</p></li>
+          </ul></details>
+          <details><summary><strong>Consult when a feature is affected</strong></summary><ul>
+            <li><p><a href="../BACKEND_HARDENING.md">Backend hardening history</a> · Read the rationale for migration, authentication, concurrency and retry changes. Compare each dated finding to its implementation.</p></li>
+            <li><p><a href="../EMAIL_VERIFICATION_GUIDE.md">Email verification</a> · Trace a registration email and its verification link. Check the current hosted startup requirements before changing mail settings.</p></li>
+            <li><p><a href="../../vitaltrack-backend/docs/HOSTED_EMAIL_STARTUP_GUARD.txt">Hosted email startup guard</a> · Understand why hosted email verification requires a configured mail transport.</p></li>
+            <li><p><a href="../SUPPLY_REVIEW.md">Supply Review</a> · Trace server-generated proposals and the explicit action that creates a pending order.</p></li>
+            <li><p><a href="../VOICE_INVENTORY_AND_ORDER_DRAFTS.md">Voice inventory and order drafts</a> · Understand the mobile voice path, its consent boundaries and the confirmation that saves an order.</p></li>
+            <li><p><a href="../WHISTLE_OFFLINE_LISTENER.md">Whistle listener</a> · Check Android build and model requirements before changing offline speech recognition.</p></li>
+            <li><p><a href="../OPENAI_UNDERSTANDING.md">Personal OpenAI understanding</a> · Check the consent and key handling for the optional interpretation provider.</p></li>
+            <li><p><a href="../SARVAM_ENGLISH_VOICE.md">Sarvam narration</a> · Trace answer text to audio when this optional narrator is selected.</p></li>
+            <li><p><a href="../../voice-service/README.md">Optional voice service</a> · Read before working on the standalone service. Check whether the selected client build uses it.</p></li>
+          </ul></details>
+          <details><summary><strong>Read as design history or proposals</strong></summary><ul>
+            <li><p><a href="../../carekosh_architecture_diagrams.html">Original architecture diagrams</a> · Study the earlier system and data model. The current web client and hosted ingress are mapped in this Atlas.</p></li>
+            <li><p><a href="../../CAREKOSH_DEVELOPER_GUIDE.md">Original developer handbook</a> · Find longer worked examples. Use the current component READMEs for setup and version-specific instructions.</p></li>
+            <li><p><a href="../../CAREKOSH_BACKEND_INTERVIEW_GUIDE.html">Backend interview reference</a> · Study FastAPI concepts. Check current auth, request limits and transaction semantics against the linked source.</p></li>
+            <li><p><a href="../../CAREKOSH_SERVER_FIRST_INTERVIEW_GUIDE.html">Server-first architecture</a> · Learn why the application moved inventory writes to the shared backend.</p></li>
+            <li><p><a href="../../CAREKOSH_ENVIRONMENT_ARCHITECTURE.html">Original environment diagrams</a> · Understand the origin of the environment split.</p></li>
+            <li><p><a href="../../CAREKOSH_BUILD_DEPLOY_FLOW.html">Original build and deploy flow</a> · Read the history of Android and API publishing. For a release today use the component workflow.</p></li>
+            <li><p><a href="../../CAREKOSH_CUSTOM_DOMAIN_CONFIGURATION_GUIDE.html">Custom domain setup record</a> · Understand how the API hostnames were first attached to Render. Both API records are proxied in the later DNS capture.</p></li>
+            <li><p><a href="../../CAREKOSH_DOMAIN_AND_EMAIL_GUIDE.html">Domain and mail history</a> · Trace the DNS and mail setup. Verify current records before changing the zone.</p></li>
+            <li><p><a href="../../CAREKOSH_E2E_VERIFICATION_GUIDE.html">Earlier end-to-end verification</a> · Reuse the test scenarios with current expected results and record the candidate SHA.</p></li>
+            <li><p><a href="../../CAREKOSH_DEPLOYMENT_STRATEGY.html">Deployment strategy history</a> · Compare the earlier release strategy with the current manual web release.</p></li>
+            <li><p><a href="../STAGING_DEPLOY_DIAGNOSIS.html">Staging incident record</a> · Use the incident timeline to diagnose a similar build filter or branch mismatch.</p></li>
+            <li><p><a href="CAREKOSH_AWS_DEPLOYMENT_PLAN.md">AWS migration proposal</a> · Evaluate a possible future hosting design. The observed API deployment uses Render.</p></li>
+            <li><p><a href="../INDEX.html">Full documentation index</a> · Find additional specialist guides, audits, historical evidence, prompts and proposals.</p></li>
+          </ul></details>
+        </section>
+        <section id="interview-library">
+          <h2>Interview books and HTML tutorials</h2>
+          <p>For a backend assignment, start with the <a href="../../carekosh_system_design/01_system_overview_and_api_flows.html">illustrated system overview</a>, then the <a href="../../carekosh_system_design/02_backend_fastapi_interview_guide.html">illustrated FastAPI guide</a>. Use the <a href="../API_TRACEABILITY.html">API inventory</a> to find the handler and database behavior for the operation you will change.</p>
+          <h3>Read the interview books in this order</h3>
+          <ol>
+            <li><p><a href="../../interview/interviewpreparation.html">The whole project</a> · 34 chapters and 65 questions. Start with <a href="../../interview/interviewpreparation.html#b1-bigpicture">the system map</a>. Rehearse <a href="../../interview/interviewpreparation.html#b1-journey">one stock edit</a> from the browser or phone to PostgreSQL. Explain what the second editor sees after the first saves.</p></li>
+            <li><p><a href="../../interview/backendfastapi.html">The FastAPI backend</a> · 68 chapters and 132 questions. Follow <a href="../../interview/backendfastapi.html#b2-middleware">the request through middleware</a>, the <a href="../../interview/backendfastapi.html#b2-yield">database session lifetime</a> and <a href="../../interview/backendfastapi.html#b2-orders">order replay and stock application</a>. Use <a href="../../interview/backendfastapi.html#b2-alembic">the migration chain</a> for schema changes.</p></li>
+            <li><p><a href="../../interview/authsecurity.html">Authentication and security</a> · 37 chapters and 82 questions. Compare <a href="../../interview/authsecurity.html#b3-login">Android and browser login</a>, trace <a href="../../interview/authsecurity.html#b3-refresh">token rotation</a>, then explain <a href="../../interview/authsecurity.html#b3-logout">which session a logout revokes</a> and <a href="../../interview/authsecurity.html#b3-limits">how shared quotas work</a>.</p></li>
+          </ol>
+          <h3>What the chapter review verified</h3>
+          <p>On 21 November 2026 the review used GitHub <code>main</code> at <code>a14b623</code>. All 139 chapters link to repository evidence. The registered application exposed 65 versioned API operations and three root operations. The ORM declared 18 application tables. Alembic’s head was <code>0013_supply_reviews</code>. The backend pinned FastAPI 0.162.0 and PyJWT 2.15.1. <a href="../../interview/src/facts.json">Reviewed baseline</a> · <a href="../API_TRACEABILITY.html">API inventory</a> · <a href="../../vitaltrack-backend/requirements.txt">Backend pins</a>.</p>
+          <p>Local checks passed 975 backend tests on the Alembic-migrated schema (two skipped), 491 Android Node tests and 103 web tests. The API walkthrough matched all 90 expected outcomes against disposable PostgreSQL. The books opened offline at phone and desktop widths with working chapter navigation and question controls. Production configuration, physical-device behavior and capacity require separate evidence.</p>
+          <p>When a dependency, route or workflow changes, update the <a href="../../interview/src/content/">chapter fragments and question banks</a> and the reviewed baseline. From the repository root run <code>python3 interview/src/build.py</code>, then <code>python3 interview/src/check.py</code>. The builder resolves excerpts from the pinned Git revision. Review the surrounding explanation when changing that revision. <a href="../../interview/src/build.py">Book builder</a> · <a href="../../interview/src/check.py">Book checks</a>.</p>
+          <p>Two separate references at the repository root cover the original design. Use the <a href="../../CAREKOSH_SERVER_FIRST_INTERVIEW_GUIDE.html">server-first interview guide</a> for the decision to centralize writes, and the <a href="../../CAREKOSH_BACKEND_INTERVIEW_GUIDE.html">backend interview reference</a> for its longer explanations and question bank.</p>
+          <h3>Learn by doing</h3>
+          <ul>
+            <li><p><a href="../../carekosh_system_design/03_developer_onboarding_guide.html">Illustrated onboarding</a> and <a href="../local_testing_field_manual.html">local testing field manual</a> · Set up a development machine and follow an Android request to the local API.</p></li>
+            <li><p><a href="../../carekosh_system_design/04_environments_and_deployment.html">Illustrated deployment guide</a> · Connect builds, environments and migrations. Use the <a href="#change-guide">release checklist</a> when shipping a revision.</p></li>
+            <li><p><a href="../SUPPLY_REVIEW_LEARNING.html">Supply Review tutorial</a> and <a href="../SUPPLY_REVIEW.html">architecture guide</a> · Follow a proposed order through review and explicit confirmation.</p></li>
+            <li><p><a href="../VOICE_INVENTORY_AND_ORDER_DRAFTS.html">Voice inventory and order drafts</a> · Follow a voice request. The <a href="../WHISTLE_OFFLINE_LISTENER.html">Whistle</a>, <a href="../OPENAI_UNDERSTANDING.html">OpenAI</a>, <a href="../SARVAM_ENGLISH_VOICE.html">Sarvam</a> and <a href="../POCKET_TTS_ALBA.html">Alba</a> guides cover individual speech and interpretation options and their recorded availability.</p></li>
+          </ul>
+          <p>For earlier reviews, see the <a href="../AI_VOICE_END_TO_END_REVIEW.html">voice review</a>, <a href="../CAREKOSH_PRODUCTION_GUARD_FINAL_AUDIT.html">production guard audit</a> and <a href="../STAGING_DEPLOY_DIAGNOSIS.html">staging incident</a>. The <a href="../INDEX.html#future">proposal index</a> lists future designs separately.</p>
+        </section>
+        <section id="stock-edit">
+          <h2>Trace one stock edit from screen to database</h2>
+          <p>Suppose a staging account opens a box of gloves at quantity <strong>10</strong>, version <strong>3</strong>, changes the quantity to <strong>8</strong> and selects Save. Use a fictional item and the web app’s real API mode for this exercise.</p>
+          <figure><figcaption>The path of the existing item’s Save button</figcaption>
+            <ol class="flow">
+              <li><strong>Item editor</strong><span>Keep the version from when the user opened the item.</span></li>
+              <li><strong>API request</strong><span>Send the edited fields with version 3 to the environment’s API hostname.</span></li>
+              <li><strong>Database transaction</strong><span>Check owner and version. Save quantity 8 and version 4 with its activity and audit records.</span></li>
+              <li><strong>Refetch</strong><span>Refresh the inventory. A second client on the same account and API can read quantity 8.</span></li>
+            </ol>
+          </figure>
+          <h3>Follow the calls in your editor</h3>
+          <ol>
+            <li><p><strong>Browser.</strong> <a href="../../carekosh-web/src/pages/ItemForm.tsx">ItemForm</a> keeps the edit snapshot. Follow the save through the <a href="../../carekosh-web/src/context.tsx">workspace action</a> to <a href="../../carekosh-web/src/services/workspace.ts">saveItem</a> and the <a href="../../carekosh-web/src/services/api.ts">browser HTTP client</a>. An existing item uses <code>PUT /api/v1/items/{item_id}</code> with the snapshot version. The Worker supplied the page assets. The browser sends this second request to the API hostname.</p></li>
+            <li><p><strong>Android.</strong> Start at <code>handleSave</code> in the <a href="../../vitaltrack-mobile/app/item/%5Bid%5D.tsx">item screen</a>. Follow <code>useUpdateItem</code> in <a href="../../vitaltrack-mobile/hooks/useServerMutations.ts">the mutation hooks</a> through <code>itemService.update</code> in <a href="../../vitaltrack-mobile/services/items.ts">the item service</a> and the <a href="../../vitaltrack-mobile/services/api.ts">mobile HTTP client</a>. It sends the same PUT. The separate stock-only operation, <code>PATCH /api/v1/items/{item_id}/stock</code>, has its own handler and payload.</p></li>
+            <li><p><strong>Render API.</strong> Follow the <a href="../../vitaltrack-backend/app/main.py">application entry point</a>, <a href="../../vitaltrack-backend/app/api/deps.py">authenticated user and session dependencies</a> and <a href="../../vitaltrack-backend/app/schemas/item.py">item schema</a> into <code>update_item</code> in the <a href="../../vitaltrack-backend/app/api/v1/items.py">item handlers</a>. The handler locks the <a href="../../vitaltrack-backend/app/services/supply_revision.py">owner’s supply revision</a>, checks ownership, and issues a database update conditional on the item ID, owner and submitted version.</p></li>
+            <li><p><strong>PostgreSQL and the next read.</strong> On success the transaction increments the item version, records <code>ITEM_UPDATE</code> and an audit entry, advances the owner’s supply revision and commits. The API returns the refreshed item with HTTP 200. The web action refreshes workspace data and the Android mutation invalidates item and activity queries. A different device sees the change on its next fetch.</p></li>
+          </ol>
+          <h3>Prove the edit and the conflict</h3>
+          <p>In staging, open the same test item in two browser tabs before editing. Save 8 in the first tab. In the Network panel check the API hostname, PUT, submitted version and the 200 response with the incremented version. Reload the page and refresh Android on the same staging account. Both should show 8. Then save a different quantity from the still-stale second editor. If the tab has already fetched version 4, Save is disabled before it sends anything. If the change is still unseen, submitting version 3 returns HTTP 409. Load the latest item, confirm it still shows 8 and review the edit before trying again.</p>
+          <p><strong>Reproduced locally on 21 November 2026.</strong> Two Chromium tabs used the API-mode web app, FastAPI and a disposable PostgreSQL 16 database migrated to head. The first save returned 200 with version 4. The second returned 409. Reopening the editor showed 8, and a fresh API read returned 8 at version 4.</p>
+          <p>For repeatable local checks, use the <a href="../../carekosh-web/tests/e2e/api-item-editor.spec.ts">browser editor scenarios with a mocked API</a>, <a href="../../vitaltrack-backend/tests/test_items.py">API tests against a disposable database</a> and <a href="../../vitaltrack-mobile/tests/mutation-reconciliation.test.cjs">Android mutation reconciliation tests</a>. Record hosted and physical-device results separately for each release candidate.</p>
+        </section>
+        <section id="map">
+          <h2>The system at a glance</h2>
+          <p>
+            Start with two questions. Is someone using the app, or releasing a new version? A
+            sign-in follows an API request. A release moves code from GitHub to a hosting service.
+          </p>
+          <div class="atlas">
+            <div class="hub">
+              <small>System map</small><strong>CareKosh Home ICU Inventory</strong
+              ><span>One repository · two clients · two hosted environments</span>
+            </div>
+            <div class="leaves">
+              <a href="#release"
+                ><b>GitHub</b
+                ><span>Stores source, tests changes and starts explicit web releases.</span></a
+              ><a href="#dns"
+                ><b>Cloudflare</b
+                ><span>Resolves names, serves both web builds and forwards API requests.</span></a
+              ><a href="#data"
+                ><b>Render + Neon</b
+                ><span>Run the API and store each environment’s application records.</span></a
+              ><a href="#mobile"
+                ><b>Expo + Play</b><span>Build, sign and distribute the Android client.</span></a
+              >
+            </div>
+          </div>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">What you are connecting</th>
+                  <th scope="col">Production</th>
+                  <th scope="col">Staging</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Browser address → Worker</th>
+                  <td><code>homeicuinventory.carekosh.com</code> → <code>carekosh-web</code></td>
+                  <td><code>staging-app.carekosh.com</code> → <code>carekosh-web-staging</code></td>
+                </tr>
+                <tr>
+                  <th scope="row">Public API → Render service</th>
+                  <td><code>api.carekosh.com</code> → <code>vitaltrack-api</code></td>
+                  <td>
+                    <code>staging-api.carekosh.com</code> → <code>vitaltrack-api-staging</code>
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Render → PostgreSQL database</th>
+                  <td>
+                    <code>DATABASE_URL</code> selects <code>neondb</code> in the documented layout.
+                  </td>
+                  <td>
+                    <code>DATABASE_URL</code> selects <code>vitaltrack_staging</code> in the
+                    documented layout. Verify actual identities privately.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Android → API</th>
+                  <td>EAS <code>production</code> → store bundle (AAB) → production API.</td>
+                  <td>EAS <code>preview</code> → internal installer (APK) → staging API.</td>
+                </tr>
+                <tr>
+                  <th scope="row">Git source</th>
+                  <td>
+                    <code>main</code> at <code>a14b623</code>. Render screenshot identifies this
+                    exact commit.
+                  </td>
+                  <td>
+                    Staging Git tip <code>a14b623</code>. Render’s staging header showed the same
+                    linked feature branch with <code>52d0618</code> Live.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <aside class="note">
+            <strong>Why two Workers?</strong>
+            <p>
+              Each serves its own compiled HTML, JavaScript, CSS, fonts and images. Vite embeds the
+              API address while building. Once the browser downloads the app, its JavaScript
+              contacts the API hostname directly. The Worker needs zero database bindings.
+            </p>
+          </aside>
+        </section>
+        <section id="runtime">
+          <h2>Follow a user request</h2>
+          <p>
+            Imagine someone opens their inventory and changes the quantity of an item. Loading the
+            screen and saving the change take different paths.
+          </p>
+          <figure class="">
+            <figcaption>1 · Load the screen</figcaption>
+            <ol class="flow">
+              <li><strong>Browser</strong><span>Requests /login at the app hostname.</span></li>
+              <li>
+                <strong>Cloudflare custom domain</strong
+                ><span>Selects the matching environment’s Worker.</span>
+              </li>
+              <li>
+                <strong>Worker Static Assets</strong
+                ><span>Serves HTML, then the named JS and CSS assets.</span>
+              </li>
+              <li>
+                <strong>React in the browser</strong
+                ><span>Renders the screen and uses the API URL embedded at build time.</span>
+              </li>
+            </ol>
+          </figure>
+          <figure class="warm">
+            <figcaption>2 · Save a quantity</figcaption>
+            <ol class="flow">
+              <li>
+                <strong>Browser or Android</strong
+                ><span>Sends an authenticated HTTPS request to the environment’s API.</span>
+              </li>
+              <li>
+                <strong>Cloudflare API hostname</strong
+                ><span>Proxies the request and applies that host’s request-header rule.</span>
+              </li>
+              <li>
+                <strong>Render · FastAPI</strong
+                ><span
+                  >Checks ingress, user authorization and input. The service executes inventory
+                  logic.</span
+                >
+              </li>
+              <li>
+                <strong>Neon · PostgreSQL</strong
+                ><span
+                  >Persists records through SQLAlchemy. The API returns the result to the
+                  client.</span
+                >
+              </li>
+            </ol>
+          </figure>
+          <figure class="">
+            <figcaption>3 · Establish a browser session</figcaption>
+            <ol class="flow">
+              <li>
+                <strong>Page opens</strong
+                ><span>POST /api/v1/web-auth/refresh checks for a session.</span>
+              </li>
+              <li>
+                <strong>Fresh browser</strong
+                ><span>401 “No browser session” is the expected signed-out result.</span>
+              </li>
+              <li>
+                <strong>Successful login</strong
+                ><span
+                  >/web-auth/login returns a short-lived access token and sets a secure HttpOnly
+                  refresh cookie.</span
+                >
+              </li>
+              <li>
+                <strong>Later requests</strong
+                ><span
+                  >Access token stays in memory. The browser sends the scoped cookie to refresh the
+                  session.</span
+                >
+              </li>
+            </ol>
+          </figure>
+          <p>
+            <strong>What if two devices change the same quantity?</strong>
+            Both item editors send the quantity and the version they opened via <code>PUT /api/v1/items/{item_id}</code>. Follow the <a href="#stock-edit">stock edit walkthrough</a>.
+            The API checks that the item belongs to the signed-in user. PostgreSQL updates the row
+            only if the version still matches. A successful transaction advances the version and
+            records the activity. A stale edit receives HTTP 409 so the client can reload the
+            current stock before retrying.
+            <a
+              href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-backend/app/api/v1/items.py"
+              >Stock update implementation ↗</a
+            >
+          </p>
+          <p>
+            The frontend and API are different origins. The browser preflights the credentialed
+            request when required. The API allows the exact web origin, credentials and the app’s
+            <code>X-CareKosh-Web</code> header. Cloudflare adds a separate private
+            origin-verification header on its onward request. Android uses the mobile auth routes
+            and Expo SecureStore for its tokens.
+          </p>
+          <p>
+            Server structure follows FastAPI routes → services and validation → async SQLAlchemy
+            sessions → PostgreSQL. Categories, items, orders, supply reviews, activity and account
+            records live behind the API. Brevo handles transactional mail. Redis is configured for
+            rate-limit state shared across server processes. Optional AI, narration and device voice
+            features have their own flags, consent and credentials. The standard inventory path can
+            be understood independently of those features.
+          </p>
+        </section>
+        <section id="branches">
+          <h2>Which branch is staging?</h2>
+          <p>
+            GitHub’s branch list and comparison were checked on 20 November 2026. A branch selects
+            source, a build profile selects configuration, and a deployment selects the version
+            receiving traffic.
+          </p>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Question</th>
+                  <th scope="col">Answer</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">What is actually checked out on this Mac?</th>
+                  <td>
+                    <code>feature/backend-hardening-ai-voice-agent-foundation</code> at
+                    <code>a14b623</code> after the fast-forward. Production was released from GitHub
+                    <code>main</code> at <code>a14b623</code>. A local checkout can differ from the
+                    deployed source.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Is there a branch named staging?</th>
+                  <td>
+                    No literal <code>staging</code> branch appeared in the checked branch list. The
+                    staging web deployment shows the long-lived feature branch above. The latest
+                    Render screenshot confirms this branch on
+                    <code>vitaltrack-api-staging</code> and identifies <code>52d0618</code> as Live.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Do the Git branches match?</th>
+                  <td>
+                    Yes. Both remote tips are <code>a14b623</code>, zero commits ahead or behind.
+                    The fast-forward brought five commits into staging. Compared with Render’s live
+                    <code>52d0618</code>, they changed exactly
+                    <code>.github/workflows/carekosh-web.yml</code>,
+                    <code>.github/workflows/ci.yml</code>,
+                    <code>.github/workflows/release-carekosh-web.yml</code>,
+                    <code>carekosh-web/README.md</code> and
+                    <code>docs/deployment/CAREKOSH_AWS_DEPLOYMENT_PLAN.md</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Are the apps aligned?</th>
+                  <td>
+                    Both tips contain identical source, release automation and tracked
+                    configuration. Other feature and fix branches may have independent histories.
+                    The two Render revisions contain identical backend application code. Output
+                    bundles intentionally differ by environment. Database rows, live secrets,
+                    deployed revisions, dashboard triggers and Play distribution have separate
+                    lifecycles.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Why does staging say Production in Cloudflare?</th>
+                  <td>
+                    It is the primary deployed environment of the Worker named
+                    <code>carekosh-web-staging</code>. Its custom hostname, Wrangler target, build
+                    directory and API URL select CareKosh staging.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">How should a future change travel?</th>
+                  <td>
+                    Start work on a short-lived branch from main. After review and CI, stage the
+                    resulting main commit and verify the changed user journey before releasing it.
+                    <a href="#change-guide">Follow the developer release checklist.</a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="links">
+            <a
+              href="https://github.com/rishabhrd09/vitaltrack/compare/feature%2Fbackend-hardening-ai-voice-agent-foundation...main"
+              >Recheck the live GitHub comparison ↗</a
+            >
+            ·
+            <a
+              href="https://github.com/rishabhrd09/vitaltrack/commit/a14b6233bd3462b3f3db9be92400355f5079d2e4"
+              >Production revision ↗</a
+            >
+          </p>
+        </section>
+        <section id="change-guide">
+          <h2>Take a change from assignment to production</h2>
+          <p>
+            For each change, use the pull request as the release record. Name the user behavior you
+            expect, the components that can affect it, the commit you tested and what you observed
+            after release.
+          </p>
+          <aside class="note">
+            <strong>Starting point · verified 20 November 2026</strong>
+            <p>
+              GitHub main, the remote staging branch and the local staging checkout all pointed to
+              <code>a14b623</code>. The staging Render service showed <code>52d0618</code> Live.
+              Production and staging <code>/health</code> both returned healthy, the expected
+              environment and a connected database. You can start the next change from main. For an
+              identical deployment baseline, optionally deploy <code>a14b623</code> on
+              <code>vitaltrack-api-staging</code> and confirm its Live badge. The intervening
+              changes were confined to workflows and documentation.
+            </p>
+          </aside>
+          <h3>Check production triggers before using this sequence</h3>
+          <p>
+            In Cloudflare → <b>carekosh-web</b> → Settings → Builds, verify the native Git deploy
+            command is <code>npx wrangler deploy --env production --dry-run</code>. In Render →
+            <b>vitaltrack-api</b> → Settings, verify native Auto-Deploy is off. Also keep GitHub’s
+            optional Render hook disabled while using manual releases. If a merge can still publish
+            automatically, resolve the trigger configuration before merging the candidate.
+          </p>
+          <p>
+            At the November check, GitHub required a pull request for main. Its effective rules
+            listed no required CI status checks. Inspect the actual check results on every PR. To
+            enforce them, configure required backend, mobile and web checks that reliably report for
+            the changes they cover.
+            <a href="https://docs.github.com/en/get-started/using-github/github-flow"
+              >GitHub’s branch workflow ↗</a
+            >
+          </p>
+          <figure class="release-map" aria-labelledby="route-caption">
+            <figcaption id="route-caption">The route of one change</figcaption>
+            <div class="route">
+              <div class="station">Start from the latest <code>main</code></div>
+              <div class="station" id="change-branch">
+                Create a short-lived branch for one change
+              </div>
+              <div class="station">Implement and test locally</div>
+              <div class="station">Open a pull request to main · review and run CI</div>
+              <div class="station">Merge and record the resulting main commit</div>
+              <div class="station">
+                Fast-forward staging to that commit and deploy the affected components
+              </div>
+              <div class="station decision">Does the real user journey pass on staging?</div>
+              <a class="retry" href="#change-branch"
+                ><b>No ↺</b><span>Return to a change branch</span></a
+              >
+              <div class="station pass"><b>Yes ↓</b> Release the tested commit to production</div>
+              <div class="station">Verify the live version, API health and user journey</div>
+            </div>
+          </figure>
+          <h3>Work through one release</h3>
+          <ol class="steps">
+            <li>
+              <b>Scope and reproduce.</b> Start from a freshly fetched <code>origin/main</code>. For
+              a stock bug, create <code>fix/stock-count-refresh</code>, record the steps that
+              reproduce it and the expected quantity after reload. Keep the long-lived staging
+              branch linked to its hosting services.
+            </li>
+            <li>
+              <b>Implement and review.</b> Make the smallest complete fix, add a regression test for
+              the failure and run the relevant checks locally. Open the PR against main. Review the
+              diff and confirm the applicable web, backend and mobile jobs passed. Record a reason
+              for each platform outside the change.
+            </li>
+            <li>
+              <b>Stage the merged revision.</b> Record the full merged SHA from GitHub. Fast-forward
+              <code>feature/backend-hardening-ai-voice-agent-foundation</code> to that exact SHA. If
+              the histories diverge, reconcile the differences in review. Check the active staging
+              deployment for each changed component and run the tests below with a staging account.
+            </li>
+            <li>
+              <b>Promote the tested change.</b> If a staging test fails, capture the failure, fix it
+              on a change branch and repeat the PR and staging steps. On success, release only the
+              affected components. For a shared API change, deploy a backward-compatible backend
+              before clients that depend on it.
+            </li>
+            <li>
+              <b>Verify and close.</b> Compare the active version with the release record, exercise
+              the changed journey using a controlled production account, and inspect errors. Record
+              the outcome and previous working version. If verification fails, pause further rollout
+              and use the <a href="#operate">recovery guide</a>.
+            </li>
+          </ol>
+          <aside class="note">
+            <strong>If main moves after staging passes</strong>
+            <p>
+              The web release workflow takes the main revision selected for its run. Compare the
+              current main SHA with the staged SHA before dispatch, and confirm the run’s actual
+              SHA. If they differ, stage and test the newer revision before publishing. Build each
+              environment with its own API settings.
+            </p>
+          </aside>
+          <h3>Which platforms does this change touch?</h3>
+          <p>
+            Use every applicable row. A backend change can affect an already-installed Android app
+            even when you ship no new mobile build.
+          </p>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Change</th>
+                  <th scope="col">Prove it on staging</th>
+                  <th scope="col">Release and verify in production</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Web frontend</th>
+                  <td>
+                    Open the staging Worker domain in a fresh browser. Confirm it calls the staging
+                    API. Sign in, change a test item’s quantity and reload. Check the expected
+                    result and the specific regression.
+                  </td>
+                  <td>
+                    Run <b>Release CareKosh web</b> from the verified main revision. Record the
+                    Actions run and Worker version. Confirm the public bundle verification passed,
+                    then repeat the affected journey at the production web domain.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Backend or shared API</th>
+                  <td>
+                    Confirm the candidate is Live on <code>vitaltrack-api-staging</code>. Check
+                    <code>/health</code> for staging and database connectivity. Test both the
+                    expected result and a relevant failure. For a shared stock change, edit in the
+                    browser and reopen the same inventory on Android.
+                  </td>
+                  <td>
+                    Deploy the tested SHA on <code>vitaltrack-api</code>. Check Live SHA, production
+                    health and service logs. Exercise the change with supported clients, including
+                    the previously released app when the API contract changes.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Android client</th>
+                  <td>
+                    Install an EAS preview APK built from the candidate on a device. Confirm it uses
+                    the staging API. Test the fix, close and reopen the app, and verify that saved
+                    state survives. Record the EAS build ID.
+                  </td>
+                  <td>
+                    Build the signed production AAB from the tested source. Verify its version code
+                    and production API on Play internal testing. Promote the tested version to the
+                    intended track and verify the delivered version and affected behavior.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Database schema or data migration</th>
+                  <td>
+                    Verify the target Neon database, schema revision and recovery scope. Apply the
+                    migration through the staging API deployment. Test existing records, new writes
+                    and compatibility with clients still in use.
+                  </td>
+                  <td>
+                    Confirm the production recovery point and target before deployment. Record the
+                    migration revision, verify reads and writes, and check the API after startup. An
+                    image rollback alone cannot undo a data migration.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Workflow, routing or documentation</th>
+                  <td>
+                    For CI, exercise the relevant check or dry run. For routing, use the staging
+                    custom domain and verify the actual API request. For documentation alone, check
+                    the instructions, links and rendered result.
+                  </td>
+                  <td>
+                    For delivery changes, record the workflow run or provider configuration and
+                    verify the intended trigger. For a documentation-only release, record the
+                    reviewed revision and the reason runtime releases were unnecessary.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Release record to paste into the pull request</h3>
+          <pre class="release-record">
+Change / PR:
+Expected behavior and reproduction:
+Affected components (or N/A with reason):
+Local tests and CI run:
+Merged SHA / staging branch SHA:
+Staging Worker, Render or EAS version:
+Staging account or test fixture · steps · result:
+Production SHA / Worker version / Render deploy / Play version and track:
+Production health, smoke test and logs · time · result:
+Previous working version / recovery action:
+Decision: release, hold or roll back</pre>
+        </section>
+        <section id="dns">
+          <h2>Read the DNS records page</h2>
+          <p>
+            Screenshot 1 shows the carekosh.com zone on the Free plan. Each row publishes an
+            address, a hosting association or mail information. The 16 / 200 counter is the zone’s
+            record usage in this snapshot.
+          </p>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Column or control</th>
+                  <th scope="col">How to read it</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Name · Type · Content</th>
+                  <td>
+                    Name is the hostname someone looks up. Type defines what its value means.
+                    Content is the alias destination, Worker, mail server or published text.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Proxy status</th>
+                  <td>
+                    Orange Proxied sends HTTP traffic through this Cloudflare zone. Gray DNS only
+                    publishes an answer. Mail-related lookups use ordinary DNS. A proxied CNAME may
+                    return Cloudflare IP addresses in a public lookup.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">TTL</th>
+                  <td>
+                    Time to live is how long a resolver may cache an answer. Auto delegates the
+                    interval to Cloudflare. A 1 hr record can stay cached for an hour.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Tags · Comment · Details</th>
+                  <td>
+                    Optional operator metadata, notes and type-specific details. The numbers on MX
+                    rows give preference: the lowest number is preferred.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Lock · Edit · View</th>
+                  <td>
+                    A lock marks a managed record in this view. Manage Worker domains or Email
+                    Routing in the owning product. Edit changes an editable record. View opens its
+                    details.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Page controls</th>
+                  <td>
+                    Search and filters narrow the table. Display options and sort arrows change the
+                    view. Checkboxes select rows. Import, Export and Add record operate on DNS
+                    configuration.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>All 16 records in the screenshot</h3>
+          <p>
+            Names below are relative to carekosh.com unless written in full. The apex means
+            carekosh.com itself. Mail records support the domain across environments.
+          </p>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Type → content</th>
+                  <th scope="col">Meaning for CareKosh</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">als</th>
+                  <td>CNAME → als-carekosh.pages.dev</td>
+                  <td>Proxied. Separate ALS site.</td>
+                </tr>
+                <tr>
+                  <th scope="row">api</th>
+                  <td>CNAME → vitaltrack-api.onrender.com</td>
+                  <td>Proxied. Production backend for web and Android.</td>
+                </tr>
+                <tr>
+                  <th scope="row">brevo1._domainkey</th>
+                  <td>CNAME → b1.carekosh-com.dkim.brevo.com</td>
+                  <td>
+                    DNS only, 1 hr. Brevo’s first DKIM selector lets recipients verify signed
+                    outgoing mail.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">brevo2._domainkey</th>
+                  <td>CNAME → b2.carekosh-com.dkim.brevo.com</td>
+                  <td>DNS only, 1 hr. Second Brevo DKIM selector supports signing-key rotation.</td>
+                </tr>
+                <tr>
+                  <th scope="row">staging-api</th>
+                  <td>CNAME → vitaltrack-api-staging.onrender.com</td>
+                  <td>Proxied. Staging backend for browser and preview APK.</td>
+                </tr>
+                <tr>
+                  <th scope="row">Apex</th>
+                  <td>MX → route3.mx.cloudflare.net · 70</td>
+                  <td>Inbound Cloudflare Email Routing, third preference here.</td>
+                </tr>
+                <tr>
+                  <th scope="row">Apex</th>
+                  <td>MX → route2.mx.cloudflare.net · 19</td>
+                  <td>Inbound mail, first preference.</td>
+                </tr>
+                <tr>
+                  <th scope="row">Apex</th>
+                  <td>MX → route1.mx.cloudflare.net · 42</td>
+                  <td>Inbound mail, second preference.</td>
+                </tr>
+                <tr>
+                  <th scope="row">Apex</th>
+                  <td>TXT → SPF policy</td>
+                  <td>
+                    The include references _spf.mx.cloudflare.net. The ~all ending signals a soft
+                    fail for other senders. Supports mail forwarding.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Apex</th>
+                  <td>TXT → Brevo verification code</td>
+                  <td>
+                    Proves domain control to Brevo. This public marker serves a different purpose
+                    from the private sending API key.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">cf2024-1._domainkey</th>
+                  <td>TXT → DKIM public key</td>
+                  <td>
+                    Lets mail recipients validate signatures using this selector. The screenshot
+                    abbreviates the value.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">_dmarc</th>
+                  <td>TXT → DMARC policy</td>
+                  <td>
+                    p=none requests monitoring. rua identifies where aggregate reports go. Applies
+                    to mail claiming the domain.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Apex</th>
+                  <td>Worker → carekosh</td>
+                  <td>Proxied. Public brand/landing site hostname.</td>
+                </tr>
+                <tr>
+                  <th scope="row">homeicuinventory</th>
+                  <td>Worker → carekosh-web</td>
+                  <td>Proxied. Production inventory frontend.</td>
+                </tr>
+                <tr>
+                  <th scope="row">staging-app</th>
+                  <td>Worker → carekosh-web-staging</td>
+                  <td>Proxied. Staging inventory frontend.</td>
+                </tr>
+                <tr>
+                  <th scope="row">www</th>
+                  <td>Worker → carekosh</td>
+                  <td>Proxied. Another hostname for the public site.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="links">
+            <a href="https://developers.cloudflare.com/dns/proxy-status/"
+              >Cloudflare proxy status ↗</a
+            >
+          </p>
+        </section>
+        <section id="rules">
+          <h2>Why there are two header rules</h2>
+          <p>
+            Screenshot 2 shows one active rule per API hostname. A request header carries metadata
+            alongside an HTTP request. A transform lets Cloudflare set that metadata before
+            forwarding the request to Render.
+          </p>
+          <figure class="warm">
+            <figcaption>Production example</figcaption>
+            <ol class="flow">
+              <li><strong>Match</strong><span>Hostname equals api.carekosh.com.</span></li>
+              <li>
+                <strong>Set static</strong
+                ><span>Cloudflare writes X-CareKosh-Origin-Verify on the onward request.</span>
+              </li>
+              <li>
+                <strong>Verify</strong
+                ><span
+                  >Render compares the received value with that service’s
+                  ORIGIN_VERIFY_SECRET.</span
+                >
+              </li>
+              <li>
+                <strong>Continue</strong
+                ><span>The API then performs its own user and application checks.</span>
+              </li>
+            </ol>
+          </figure>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Dashboard rule</th>
+                  <th scope="col">Match and scope</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">1 · Verify CareKosh staging API origin</th>
+                  <td>
+                    Only <code>staging-api.carekosh.com</code>. Use the staging service’s private
+                    value.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">2 · CareKosh production API origin verification</th>
+                  <td>
+                    Only <code>api.carekosh.com</code>. Use the production service’s private value.
+                    Header names are case-insensitive.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Order is the evaluation sequence. The two exact hostnames are mutually exclusive. Name
+            is a human label, Match against selects traffic, Action sets the header, Active means
+            enabled, and the menu manages the rule. Both API DNS records are now orange-clouded in
+            screenshot 1. Keep the value in Cloudflare and the matching Render environment. Redact
+            the Action column before sharing screenshots.
+          </p>
+          <p>
+            The empty groups above mean no rules of those types are listed there. A redirect tells
+            the browser to visit another URL. A rewrite changes the path Cloudflare processes
+            internally. A configuration rule adjusts edge settings on matching traffic. An origin
+            rule changes how Cloudflare reaches the upstream service. Bulk Redirects and Managed
+            Transforms open separate features.
+          </p>
+          <aside class="note">
+            <strong>What the 503 actually taught us</strong>
+            <p>
+              Render showed a live process and a successful OPTIONS check, yet the real session
+              request returned 503. That status is consistent with the API’s trusted-edge check. The
+              access-log rows alone do not identify the failing check. The origin secret and proxy
+              path have to agree. After the production rule and proxy setup, the owner confirmed a
+              real sign-in. Deploy status, browser permission and authenticated application success
+              are three different checks.
+            </p>
+          </aside>
+          <p class="links">
+            <a
+              href="https://developers.cloudflare.com/rules/transform/request-header-modification/create-dashboard/"
+              >Request header transforms ↗</a
+            >
+          </p>
+        </section>
+        <section id="workers">
+          <h2>Read Workers &amp; Pages like an inventory</h2>
+          <p>
+            Screenshot 3 lists account-wide applications. The two inventory frontends are Workers
+            with static assets. Pages is a separate Cloudflare hosting product that appears in the
+            same list.
+          </p>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Application</th>
+                  <th scope="col">What the screenshot identifies</th>
+                  <th scope="col">Relationship</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">carekosh-web</th>
+                  <td>Worker · homeicuinventory.carekosh.com · rishabhrd09/vitaltrack</td>
+                  <td>Production inventory UI.</td>
+                </tr>
+                <tr>
+                  <th scope="row">carekosh-web-staging</th>
+                  <td>Worker · staging-app.carekosh.com · same repo</td>
+                  <td>Staging inventory UI.</td>
+                </tr>
+                <tr>
+                  <th scope="row">carekosh</th>
+                  <td>Worker · apex and www in DNS · further routes summarized in the list</td>
+                  <td>
+                    Public brand site. <code>carekosh-site/</code> contains landing-site source.
+                    Verify the Worker’s own deploy history for its exact live revision.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">als-carekosh</th>
+                  <td>Pages · als-carekosh.pages.dev · rishabhrd09/als-compass</td>
+                  <td>Separate ALS project using als.carekosh.com.</td>
+                </tr>
+                <tr>
+                  <th scope="row">gazespell</th>
+                  <td>Pages · gazespell.pages.dev · no Git connection shown</td>
+                  <td>
+                    Separate application. Its deployment method is outside this guide’s evidence.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">gazespell-privacy</th>
+                  <td>Worker · gazespell.com/privacy* and another route</td>
+                  <td>Separate privacy route for Gazespell.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            The GitHub badge identifies the connected source repository. The route under a name is
+            where traffic enters. “+ other routes” is a collapsed list. Commit text or a blank
+            summary describes a build event. Relative times show age. Requests are traffic counts
+            and CPU time measures Worker compute. A dash or unavailable metric is insufficient
+            evidence of zero visits. Search, Show all and Last modified filter/sort the account
+            list. Create application provisions another resource.
+          </p>
+          <h3>Inside the two Worker dashboards · screenshots 4 and 5</h3>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Meaning here</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Overview diagram</th>
+                  <td>
+                    Domains 1 is the mapped site. Workers 0 and Queues 0 are incoming relationships
+                    on this diagram. Bindings 0 means no configured service/resource connections
+                    appear. A browser HTTPS call to Render does not require a binding.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Observability and Metrics</th>
+                  <td>
+                    Worker Logs and Worker Traces show Disabled for both. The dashboard reports
+                    unavailable metrics for these static-assets-only Workers in the last 24 hours.
+                    Render request logs and browser network responses are separate evidence.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Tabs</th>
+                  <td>
+                    Overview summarizes wiring, Metrics charts usage, Deployments shows releases,
+                    Observability exposes logs/traces, Issues lists reported problems, Domains
+                    manages hostnames, Access controls access policies, and Settings holds builds
+                    and configuration.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Version, source, status and actor</th>
+                  <td>
+                    A Worker version ID identifies a Cloudflare artifact. Git SHA identifies source.
+                    Build denotes Git-connected build, Wrangler denotes CLI publication, Dashboard
+                    denotes manual dashboard action. “by API token” identifies the credential type.
+                    Ready, Failed or Skipped refers to that row; duration and time give context.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Production history</th>
+                  <td>
+                    <code>9a2e24ce</code> is the Wrangler release. The skipped main build and the
+                    successful dry-run build without a version illustrate why a green build alone
+                    cannot prove publication. <code>bbc195c9</code> and <code>fee288e2</code> are
+                    earlier dashboard versions.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Staging history</th>
+                  <td>
+                    <code>ccc3edba</code> is the Ready build-staging deploy-hook version from the
+                    feature branch shown. An older main build failed in 10 seconds.
+                    <code>044114ab</code> and <code>7eab7ee2</code> are earlier dashboard versions.
+                    Look at the active deployment before interpreting an older failed event.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="links">
+            <a href="https://developers.cloudflare.com/workers/static-assets/"
+              >Workers Static Assets ↗</a
+            >
+          </p>
+        </section>
+        <section id="release">
+          <h2>What triggers a release</h2>
+          <p>
+            GitHub Actions, Cloudflare Workers Builds and Render can all watch the same repository.
+            Each integration has its own trigger, credentials and target.
+          </p>
+          <figure class="">
+            <figcaption>Production web · explicit release</figcaption>
+            <ol class="flow">
+              <li>
+                <strong>Merge or push</strong
+                ><span
+                  >Relevant web changes trigger checks. The intended Cloudflare Git build ends with
+                  --dry-run.</span
+                >
+              </li>
+              <li>
+                <strong>Operator releases</strong
+                ><span>GitHub → Actions → Release CareKosh web → Run workflow → main.</span>
+              </li>
+              <li>
+                <strong>Verify and publish</strong
+                ><span
+                  >Reusable checks build both environments. The publish job downloads the verified
+                  production assets and runs Wrangler.</span
+                >
+              </li>
+              <li>
+                <strong>Confirm delivery</strong
+                ><span
+                  >The job compares the public JavaScript bytes with the retained artifact. Check a
+                  real user flow separately.</span
+                >
+              </li>
+            </ol>
+          </figure>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Trigger</th>
+                  <th scope="col">Exact effect or control</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Web PR / push</th>
+                  <td>
+                    <code>.github/workflows/carekosh-web.yml</code> uses path filters for
+                    carekosh-web, carekosh-site and its own workflow file. Runs npm ci, audit at
+                    high threshold, types, lint, Vitest, build guards, Playwright Chromium, both
+                    verified builds, public-site checks, hosting checks and a production Wrangler
+                    dry run. Also callable manually or by another workflow.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Manual web release</th>
+                  <td>
+                    <code>.github/workflows/release-carekosh-web.yml</code> uses workflow_dispatch.
+                    Verification requires refs/heads/main. The publish job depends on it and uses
+                    the main-restricted GitHub environment <code>carekosh-web-production</code>. It
+                    retrieves <code>dist-production</code> from the same run and publishes the
+                    static Worker with <code>wrangler deploy --env production</code>. Release
+                    concurrency serializes production jobs.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Production Worker Git connection</th>
+                  <td>
+                    Worker Settings → Builds selects repo, branch <code>main</code>, root
+                    <code>/carekosh-web/</code>, build <code>npm run build</code>. Native deploy
+                    command prescribed in main README:
+                    <code>npx wrangler deploy --env production --dry-run</code>. The earlier
+                    screenshot showed a temporary commit condition. The later overview confirms a
+                    manual release but does not reveal the currently saved command. Inspect this
+                    field to prove future pushes only validate.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Build settings on screen</th>
+                  <td>
+                    Disable builds controls native Git builds. Watch paths select triggering changes
+                    (<code>*</code> shown). Build variables/secrets are available to the build
+                    process. API token authorizes build/deploy operations. Deploy hooks trigger
+                    builds for a configured target. Build cache speeds later jobs. A selected build
+                    token and a connected repo perform different jobs.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Staging Worker</th>
+                  <td>
+                    A <code>build-staging</code> hook produced the active version shown. The staging
+                    build is <code>npm run build:staging</code>;
+                    <code>wrangler deploy --env staging</code> publishes dist-staging to its custom
+                    domain. These commands and target are in code. Verify the saved native branch,
+                    trigger, watch paths and commands under the staging Worker’s Builds settings
+                    before predicting what every push will do.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">General CI</th>
+                  <td>
+                    <code>.github/workflows/ci.yml</code> runs on PRs targeting main (including
+                    labeled events), pushes to main, or manual dispatch. Backend tests use
+                    disposable PostgreSQL, including migrated schema. The job called Frontend Tests
+                    covers mobile TypeScript, native-module autolinking, tests and lint. Advisory
+                    type/security checks and a non-blocking Expo Doctor step have different
+                    enforcement from passing required checks.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Production Render</th>
+                  <td>
+                    Screenshot shows a manual Dashboard deploy of <code>a14b623</code> from
+                    <code>main</code>. For a deliberate backend release use vitaltrack-api → Manual
+                    Deploy, select the reviewed revision, then check Events and API readiness.
+                    GitHub’s optional deploy-hook job requires a main push plus
+                    <code>ENABLE_RENDER_AUTO_DEPLOY=true</code>; that repo variable was absent.
+                    Render’s own Auto-Deploy switch is independent. Its off state was
+                    owner-reported; recheck Settings after any integration change.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Staging Render</th>
+                  <td>
+                    The staging service has its own repository/branch and Environment settings. The
+                    supplied staging Deploys header shows the feature branch and
+                    <code>52d0618</code> Live. The two visible deployment triggers say “Environment
+                    updated”. Check Settings for the current auto-deploy policy. A Cloudflare hook
+                    for the web cannot publish this backend.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Revision labels</th>
+                  <td>
+                    [skip ci] and [skip render] are commit-message markers; the screenshots show a
+                    skipped build and a later deliberate manual Render deployment. The label, a Git
+                    merge and a successful build each convey less than an active deployment ID and a
+                    passing public check.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="links">
+            <a href="https://github.com/rishabhrd09/vitaltrack/actions/runs/44651214891"
+              >Production release run ↗</a
+            >
+            ·
+            <a href="https://github.com/rishabhrd09/vitaltrack/actions/runs/44647470383"
+              >Web CI on main ↗</a
+            >
+            · <a href="https://render.com/docs/deploys">Render deploy documentation ↗</a> ·
+            <a
+              href="https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow"
+              >GitHub manual dispatch ↗</a
+            >
+          </p>
+        </section>
+        <section id="data">
+          <h2>Render, Neon and the data boundary</h2>
+          <p>
+            Render runs the application process. Neon runs PostgreSQL. The private database URL on
+            each Render service determines where a quantity change is stored.
+          </p>
+          <figure class="warm">
+            <figcaption>Starting a backend release</figcaption>
+            <ol class="flow">
+              <li>
+                <strong>Git revision</strong
+                ><span>Render checks out the linked repository at the selected SHA.</span>
+              </li>
+              <li>
+                <strong>Docker</strong
+                ><span>vitaltrack-backend/Dockerfile builds the API image.</span>
+              </li>
+              <li>
+                <strong>Entrypoint</strong
+                ><span
+                  >Waits for PostgreSQL, runs alembic upgrade head and stops startup if it
+                  fails.</span
+                >
+              </li>
+              <li>
+                <strong>API process</strong
+                ><span
+                  >Gunicorn runs Uvicorn workers on PORT. /live checks the process; /health checks
+                  database readiness.</span
+                >
+              </li>
+            </ol>
+          </figure>
+          <p>
+            The production Blueprint declares Docker, root <code>vitaltrack-backend</code>, branch
+            <code>main</code>, Starter plan, Singapore and health path <code>/live</code>. A
+            Blueprint is the repository’s desired configuration. The Render screenshot independently
+            confirms Docker, Starter, the service, API domain, commit and manual deploy. The
+            displayed internal address is for Render private networking. Public clients use the
+            custom HTTPS API address.
+          </p>
+          <p>
+            The repository records one Neon project with a Neon branch called
+            <code>production</code> holding two databases, <code>neondb</code> and
+            <code>vitaltrack_staging</code>. A Git branch chooses source code; a Neon branch is a
+            database timeline. Two database names isolate rows, while a branch-level restore can
+            rewind both. Verify the actual project, endpoint, branch, database, role and restore
+            window in Neon before a schema change or recovery. No private dashboard proof of those
+            identities was supplied.
+          </p>
+          <p>
+            The app uses async SQLAlchemy with asyncpg and TLS in hosted environments. Its
+            documented configuration uses a direct Neon endpoint with application connection pooling
+            and a statement timeout. Schema revisions live in Alembic; the source head here is
+            <code>0013_supply_reviews</code>. A healthy response proves connectivity; it does not
+            identify the database or its Alembic revision.
+          </p>
+          <aside class="note">
+            <strong>Record a baseline without copying credentials</strong>
+            <p>
+              In each Render service inspect the database name privately. In Neon’s SQL Editor on
+              that intended database run <code>SELECT current_database();</code> and
+              <code>SELECT version_num FROM alembic_version;</code>. Record those non-secret results
+              with the Render SHA. Check backup retention and rehearse recovery on an isolated copy.
+              Revision 0007 includes a one-way migration; application rollback and database restore
+              require separate decisions.
+            </p>
+          </aside>
+          <p class="links">
+            <a
+              href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/docs/ENVIRONMENT_SPLIT.md"
+              >Repository environment-split record ↗</a
+            >
+            · <a href="https://neon.com/docs/introduction/branching">Neon branches ↗</a>
+          </p>
+        </section>
+        <section id="mobile">
+          <h2>Android has a separate release path</h2>
+          <p>
+            The Android client has its own executable, API address and distribution history.
+            Updating the website takes effect on the next web load. Shipping a new Android binary
+            takes an EAS build and a distribution step.
+          </p>
+          <figure class="">
+            <figcaption>Android delivery</figcaption>
+            <ol class="flow">
+              <li>
+                <strong>Select source + profile</strong
+                ><span
+                  >EAS uses the source supplied to the build and the chosen eas.json profile.</span
+                >
+              </li>
+              <li>
+                <strong>Produce a signed build</strong
+                ><span
+                  >Preview generates an APK. Production generates an Android App Bundle with a
+                  remotely managed version code.</span
+                >
+              </li>
+              <li>
+                <strong>Distribute</strong
+                ><span
+                  >Testers install the preview. A production AAB goes to a selected Google Play
+                  track.</span
+                >
+              </li>
+              <li>
+                <strong>Run on device</strong
+                ><span
+                  >The app calls its embedded API and keeps tokens in SecureStore. Both clients
+                  share data when using the same environment and account.</span
+                >
+              </li>
+            </ol>
+          </figure>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Profile or release</th>
+                  <th scope="col">Target and evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">development</th>
+                  <td>
+                    Development client and debug APK targeting localhost:8000. Local device
+                    connectivity requires the development setup.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">preview</th>
+                  <td>
+                    Internal APK, preview channel, staging API, preview whistle flag. EAS finished
+                    build <code>d3faf48a</code> on Nov 19 at source <code>52d0618</code>. This
+                    source’s mobile tree matches audited main. Install and test on device to verify
+                    inventory sync.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">preview-voice-diagnostics</th>
+                  <td>
+                    Extends preview and enables the explicit diagnostics flag. The production mobile
+                    configuration guards its API and experimental flags.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">production</th>
+                  <td>
+                    Production API, production channel, auto-incremented AAB. Latest completed
+                    production build seen was <code>d26c5d83</code>, June 30, code 7 from
+                    <code>835fad3</code>. A current public rollout was unverified; the India public
+                    listing returned 404 in the earlier check.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Trigger and submission</th>
+                  <td>
+                    The GitHub build-preview job requires a PR carrying the build-apk label and
+                    passing prerequisites. It queues EAS with --no-wait. Check EAS for final
+                    success. The production AAB job has if: false. A deliberate EAS production build
+                    and a separate Play submission are possible. The checked-in production submit
+                    profile selects Play internal testing. Promoting in Play Console is a separate
+                    release decision.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="links">
+            <a
+              href="https://expo.dev/accounts/rishabhrd09/projects/vitaltrack-mobile/builds/d3faf48a-421f-4921-900e-b22d9cc3ea27"
+              >Staging APK record ↗</a
+            >
+            ·
+            <a
+              href="https://expo.dev/accounts/rishabhrd09/projects/vitaltrack-mobile/builds/d26c5d83-5dcf-41a6-ada5-13915dc12cad"
+              >Production AAB record ↗</a
+            >
+            · <a href="https://docs.expo.dev/build/setup/">Expo build setup ↗</a>
+          </p>
+        </section>
+        <section id="keys">
+          <h2>Where every deployment credential belongs</h2>
+          <p>
+            There are four different permissions at work: read source, publish code, trust the edge,
+            and authenticate a user. Each has its own owner and lifetime.
+          </p>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Where to look</th>
+                  <th scope="col">Name or setting</th>
+                  <th scope="col">Who uses it and why</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">GitHub → Settings → Environments → carekosh-web-production</th>
+                  <td>Variable <code>CLOUDFLARE_ACCOUNT_ID</code></td>
+                  <td>Verified name. Selects the Cloudflare account. It is an identifier.</td>
+                </tr>
+                <tr>
+                  <th scope="row">Same GitHub environment</th>
+                  <td>Secret <code>CLOUDFLARE_API_TOKEN</code></td>
+                  <td>
+                    Verified name. Wrangler uses it only in the publish job. Environment deployment
+                    branch policy lists <code>main</code>; no required reviewer rule appeared.
+                    Manual dispatch is the human release action.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Cloudflare → Account API tokens</th>
+                  <td>GitHub CareKosh frontend release</td>
+                  <td>
+                    This credential authorizes publication. Open its token details to see which
+                    Workers operations, accounts and zones it can change, its expiry and any IP
+                    restrictions. “By API token” in the deployment history does not identify those
+                    grants or establish that each Worker has a uniquely scoped token.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Cloudflare → Worker → Settings → Builds</th>
+                  <td>Git connection and build API token</td>
+                  <td>
+                    The GitHub integration clones the repo. A build token authorizes Wrangler inside
+                    Cloudflare’s build job. Check each Worker’s Builds settings for the selected
+                    token. Staging history includes an API-token build. A GitHub Actions release
+                    uses the GitHub environment secret above.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">GitHub → Settings → Secrets and variables → Actions</th>
+                  <td>Repo secrets <code>EXPO_TOKEN</code>, <code>RENDER_DEPLOY_HOOK</code></td>
+                  <td>
+                    Verified names. The first authenticates CI to Expo. The second is a private
+                    Render trigger URL; possession of it is sensitive. Repo variables list was
+                    empty, including <code>ENABLE_RENDER_AUTO_DEPLOY</code>. GitHub’s built-in
+                    workflow token is issued per job.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">GitHub → Environments</th>
+                  <td><code>production</code>; <code>VitalTrack Production / production</code></td>
+                  <td>
+                    Both exist. No environment secrets or variables were listed for either. The
+                    backend hook job references <code>production</code>; the manual frontend release
+                    references <code>carekosh-web-production</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">
+                    Cloudflare → carekosh.com → Rules + Render → service → Environment
+                  </th>
+                  <td><code>X-CareKosh-Origin-Verify</code> ↔ <code>ORIGIN_VERIFY_SECRET</code></td>
+                  <td>
+                    Two hostname-specific private pairs, one per environment. Cloudflare sets the
+                    header; Render validates it. Coordinate both sides during rotation, verify
+                    staging first, and keep values out of tickets, screenshots and frontend bundles.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Render → each web service</th>
+                  <td><code>INGRESS_MODE</code>, <code>ALLOWED_HOSTS</code></td>
+                  <td>
+                    Blueprint uses edge_secret. Allowed hostnames and origin verification constrain
+                    requests accepted at the API boundary.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Render → each web service</th>
+                  <td>
+                    <code>DATABASE_URL</code>, <code>SECRET_KEY</code>, <code>ENVIRONMENT</code>
+                  </td>
+                  <td>
+                    Select the database and credentials, sign and validate user sessions, and select
+                    hosted environment behavior. Use environment-specific database credentials and
+                    signing material.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Render → each web service</th>
+                  <td>
+                    <code>WEB_AUTH_ENABLED</code>, <code>WEB_APP_ORIGINS</code>,
+                    <code>CORS_ORIGINS</code>
+                  </td>
+                  <td>
+                    Enable browser auth and permit the exact frontend origin for that environment.
+                    Production blueprint sets true and the production web origin for both lists. The
+                    browser origin includes HTTPS.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Render → each web service</th>
+                  <td>
+                    <code>REQUIRE_EMAIL_VERIFICATION</code>, <code>MAIL_PASSWORD</code>,
+                    <code>MAIL_FROM</code>, <code>FRONTEND_URL</code>
+                  </td>
+                  <td>
+                    Enable verification, provide Brevo’s private sending credential and sender, and
+                    build account-email links. Production FRONTEND_URL points to the API’s
+                    /api/v1/auth pages. It serves a different purpose from the Worker hostname.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Render → each web service</th>
+                  <td>
+                    <code>RATE_LIMIT_STORAGE_URI</code>, <code>RATE_LIMIT_KEY_PREFIX</code>,
+                    <code>MAX_INFLIGHT_REQUESTS</code>, <code>API_BODY_TIMEOUT_SECONDS</code>
+                  </td>
+                  <td>
+                    Shared Redis counter location and namespace, plus concurrency and request body
+                    timing limits. Production blueprint declares prefix carekosh, 32 concurrent
+                    requests and 60 seconds. Live Redis provider and configuration need private
+                    confirmation.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Render → optional integrations</th>
+                  <td>
+                    <code>SENTRY_DSN</code>, <code>GROQ_API_KEY</code>, <code>SARVAM_API_KEY</code>,
+                    <code>AI_CREDENTIAL_ENCRYPTION_KEY</code> and feature flags
+                  </td>
+                  <td>
+                    Error reporting, optional AI services and encryption for supported personal
+                    credentials. Code support alone gives no evidence a paid integration is enabled.
+                    See config.py for granular consent, budgets, providers and feature switches.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Repository → carekosh-web/.env.production and .env.staging</th>
+                  <td>
+                    <code>VITE_APP_ENV</code>, <code>VITE_DATA_MODE</code>,
+                    <code>VITE_API_BASE_URL</code>, <code>VITE_APP_ORIGIN</code>
+                  </td>
+                  <td>
+                    Public inputs compiled into browser assets. Hosted data mode is api; the API
+                    base ends in /api/v1. Each web origin matches its own Worker. Public Vite inputs
+                    are visible to users.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Repository → vitaltrack-mobile/eas.json</th>
+                  <td>
+                    <code>EXPO_PUBLIC_API_URL</code>, <code>EXPO_PUBLIC_WHISTLE_LISTENING</code>,
+                    <code>EXPO_PUBLIC_VOICE_DIAGNOSTICS</code>
+                  </td>
+                  <td>
+                    Public embedded inputs. Base URL is the API host. Preview opts into whistle;
+                    diagnostic preview additionally enables voice diagnostics. Production omits
+                    these experiments.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">EAS credentials / Play Console</th>
+                  <td>Android signing material and Google service-account credential</td>
+                  <td>
+                    Signing identifies the release publisher. Play submission uses the
+                    service-account path declared in eas.json. Store private material outside
+                    tracked source. Track, rollout percentage and reviewer decisions belong to Play
+                    Console.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Neon → project → branch → databases / roles</th>
+                  <td>Database, role, endpoint, password and recovery policy</td>
+                  <td>
+                    Neon issues the connection details; the Render service consumes them. Inspect
+                    role, database and recovery scope there. A Worker deploy token cannot establish
+                    database identity.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Source of truth varies by field. GitHub names above came from a live metadata query.
+            Exact Cloudflare token grants require the private token detail view. Render Blueprint
+            declarations describe intended settings; <code>sync: false</code> means the operator
+            supplies the value separately. No Render or Neon private environment values were
+            exported.
+          </p>
+        </section>
+        <section id="files">
+          <h2>Find the file that owns a change</h2>
+          <p>
+            These links point to the audited revision shared by GitHub main and the staging branch
+            after the sync.
+          </p>
+          <dl class="files">
+            <div>
+              <dt>Release trigger and permissions</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/.github/workflows/release-carekosh-web.yml"
+                  ><code>.github/workflows/release-carekosh-web.yml</code></a
+                ><span
+                  >Manual dispatch, main guard, environment, artifact download, Wrangler publish and
+                  live bundle check.</span
+                >
+              </dd>
+            </div>
+            <div>
+              <dt>Web continuous integration</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/.github/workflows/carekosh-web.yml"
+                  ><code>.github/workflows/carekosh-web.yml</code></a
+                ><span>Paths, reusable checks, test artifacts and dry run.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Backend and Android pipeline</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/.github/workflows/ci.yml"
+                  ><code>.github/workflows/ci.yml</code></a
+                ><span
+                  >Database tests, mobile checks, Render gate, preview label and disabled production
+                  AAB job.</span
+                >
+              </dd>
+            </div>
+            <div>
+              <dt>Worker names and domains</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/carekosh-web/wrangler.jsonc"
+                  ><code>carekosh-web/wrangler.jsonc</code></a
+                ><span
+                  >Wrangler environment → asset directory → Worker name → custom domain. workers.dev
+                  and preview URLs are disabled.</span
+                >
+              </dd>
+            </div>
+            <div>
+              <dt>Web build commands</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/carekosh-web/package.json"
+                  ><code>carekosh-web/package.json</code></a
+                ><span>Separate production, staging and demo commands.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Production web address book</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/carekosh-web/.env.production"
+                  ><code>carekosh-web/.env.production</code></a
+                ><span>Production API, app origin and data mode.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Staging web address book</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/carekosh-web/.env.staging"
+                  ><code>carekosh-web/.env.staging</code></a
+                ><span>Staging API, app origin and data mode.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Asset generation</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/carekosh-web/vite.config.ts"
+                  ><code>carekosh-web/vite.config.ts</code></a
+                ><span>Build output, host guards and generated hosting files.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Browser routing</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/carekosh-web/routes.json"
+                  ><code>carekosh-web/routes.json</code></a
+                ><span
+                  >SPA routes served through the app entry. Unknown assets can still return
+                  404.</span
+                >
+              </dd>
+            </div>
+            <div>
+              <dt>Artifact verification</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/carekosh-web/scripts/verify-build.mjs"
+                  ><code>carekosh-web/scripts/verify-build.mjs</code></a
+                ><span>API isolation, sample-data exclusion, routes, headers and source maps.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Web auth and HTTP client</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/carekosh-web/src/services/api.ts"
+                  ><code>carekosh-web/src/services/api.ts</code></a
+                ><span>Credentials, refresh handling and HTTP error messages.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Public site</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/carekosh-site/README.md"
+                  ><code>carekosh-site/README.md</code></a
+                ><span>Separate landing page, links into the app and its own build.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Render Blueprint</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-backend/render.yaml"
+                  ><code>vitaltrack-backend/render.yaml</code></a
+                ><span
+                  >Production service, platform settings and environment-key declarations.</span
+                >
+              </dd>
+            </div>
+            <div>
+              <dt>Server image</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-backend/Dockerfile"
+                  ><code>vitaltrack-backend/Dockerfile</code></a
+                ><span>Dependencies, runtime and server command.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Startup and migrations</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-backend/docker-entrypoint.sh"
+                  ><code>vitaltrack-backend/docker-entrypoint.sh</code></a
+                ><span>Database readiness, Alembic upgrade and server startup.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>API assembly</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-backend/app/main.py"
+                  ><code>vitaltrack-backend/app/main.py</code></a
+                ><span>Middleware, CORS, route registration and health endpoints.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Environment schema</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-backend/app/core/config.py"
+                  ><code>vitaltrack-backend/app/core/config.py</code></a
+                ><span>Names, defaults, validation and feature flags.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Origin validation</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-backend/app/services/ingress.py"
+                  ><code>vitaltrack-backend/app/services/ingress.py</code></a
+                ><span>Validates the trusted edge on API requests.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Browser auth</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-backend/app/api/v1/web_auth.py"
+                  ><code>vitaltrack-backend/app/api/v1/web_auth.py</code></a
+                ><span>Browser-only refresh cookie, origins and session checks.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Mobile and account auth</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-backend/app/api/v1/auth.py"
+                  ><code>vitaltrack-backend/app/api/v1/auth.py</code></a
+                ><span>Token-based auth and account operations.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Persistence</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-backend/app/core/database.py"
+                  ><code>vitaltrack-backend/app/core/database.py</code></a
+                ><span
+                  >TLS, engine, pool and async sessions. ORM entities live in app/models; versioned
+                  schema changes live in alembic/versions.</span
+                >
+              </dd>
+            </div>
+            <div>
+              <dt>Email delivery</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-backend/app/utils/email.py"
+                  ><code>vitaltrack-backend/app/utils/email.py</code></a
+                ><span>Transactional mail integration.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Android build matrix</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-mobile/eas.json"
+                  ><code>vitaltrack-mobile/eas.json</code></a
+                ><span>Profiles, API URLs, build types, channels and Play track.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Android configuration guard</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-mobile/app.config.js"
+                  ><code>vitaltrack-mobile/app.config.js</code></a
+                ><span
+                  >Checks profile, cleartext and experimental flags; app.json holds the package
+                  identity com.carekosh.mobile.</span
+                >
+              </dd>
+            </div>
+            <div>
+              <dt>Android request layer</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/vitaltrack-mobile/services/api.ts"
+                  ><code>vitaltrack-mobile/services/api.ts</code></a
+                ><span>Token persistence, refresh and API requests.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Cross-client acceptance</dt>
+              <dd>
+                <a
+                  href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/carekosh-web/docs/STAGING_RELEASE_CHECKLIST.md"
+                  ><code>carekosh-web/docs/STAGING_RELEASE_CHECKLIST.md</code></a
+                ><span>Real-browser/device tests and evidence to record before promotion.</span>
+              </dd>
+            </div>
+          </dl>
+        </section>
+        <section id="operate">
+          <h2>Release confidence and recovery</h2>
+          <p>
+            Production web access is demonstrated. Full launch readiness also requires repeatable
+            releases, recovery evidence and current mobile distribution.
+          </p>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Evidence level</th>
+                  <th scope="col">Current position · 20 November 2026</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Observed in production</th>
+                  <td>
+                    Owner signed in successfully. Independent check found /login HTTP 200, bundle
+                    index-ONgk_NsY.js, database readiness healthy and a signed-out session response
+                    of 401. Real-account session persistence, inventory writes and email delivery
+                    are separate acceptance tests.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Observed in staging</th>
+                  <td>
+                    /login returned 200 with index-EyW1YAxz.js. Initial API checks timed out at 40
+                    seconds. A later /health returned healthy with the database connected and the
+                    anonymous session returned the expected 401. The delay alone cannot identify the
+                    cause. Record browser and device acceptance against a named candidate.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Delivery controls in place</th>
+                  <td>
+                    Environment-specific builds, domain-scoped verification, CI against disposable
+                    PostgreSQL, manual web publication, main-only environment policy and byte
+                    comparison against the public bundle. Production and staging share application
+                    source at these tips.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Open before declaring operational readiness</th>
+                  <td>
+                    Verify native Cloudflare build commands and Render auto-deploy settings, both
+                    database identities, schema heads and restore scope. Exercise inventory sync,
+                    session expiry and email using controlled accounts. Confirm alert delivery,
+                    backup restoration and a rollback rehearsal.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Mobile release gap</th>
+                  <td>
+                    Record a device pass for the staging APK and a current production AAB. Verify
+                    Play track, version code and rollout in Play Console. The internal submission
+                    profile and an EAS success each prove only their own step.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            For the promotion sequence and component-specific tests, follow the
+            <a href="#change-guide">developer release checklist</a>.
+          </p>
+          <h3>If something breaks</h3>
+          <div class="scroll" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Symptom</th>
+                  <th scope="col">Check first</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Browser reports NXDOMAIN</th>
+                  <td>
+                    DNS → look up the exact app hostname and Worker custom domain. Compare public
+                    resolution with the affected device; negative records can be cached.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Page loads, login says “Could not reach”</th>
+                  <td>
+                    Inspect the browser Network request. Confirm API route, OPTIONS, exact allowed
+                    frontend origin, credentialed CORS and deployed backend revision. The generic
+                    message alone cannot distinguish a connectivity failure from a browser-blocked
+                    response.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">“Temporarily busy”, Render says Live</th>
+                  <td>
+                    Read the API response detail and retry interval. When the response identifies
+                    trusted-edge verification, check API proxy status, exact hostname match and the
+                    privately configured Cloudflare/Render secret pair. Other 503s need their own
+                    diagnosis.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Live passes, health fails</th>
+                  <td>
+                    Investigate database connectivity, credentials, pool and Neon availability.
+                    Compare service logs and migration results. /live intentionally avoids the
+                    database.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Release succeeded but users see old frontend</th>
+                  <td>
+                    Compare the active Worker version and public JS bytes with the release artifact.
+                    Older Ready or Skipped build rows are historical. Roll back the frontend to a
+                    previously verified Worker version if necessary.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Backend rollback needed</th>
+                  <td>
+                    Check schema compatibility before rolling back the Render image. Any approved
+                    database recovery must consider writes since the recovery point and both
+                    databases if they share a Neon branch.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="links">
+            <a
+              href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/docs/LAUNCH_READINESS_RUNBOOK_GOAL_10.md"
+              >Launch readiness runbook ↗</a
+            >
+            ·
+            <a
+              href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/docs/monitoring/carekosh-uptime-monitors.example.yml"
+              >Monitor template ↗</a
+            >
+            ·
+            <a
+              href="https://github.com/rishabhrd09/vitaltrack/blob/a14b6233bd3462b3f3db9be92400355f5079d2e4/carekosh-web/docs/STAGING_RELEASE_CHECKLIST.md"
+              >Staging acceptance record ↗</a
+            >
+          </p>
+        </section>
+        <footer class="foot">
+          Evidence snapshot · GitHub main a14b623 · owner’s Cloudflare and Render dashboards ·
+          public HTTP checks and Expo build records. Recheck the linked revision and provider
+          settings after the next release.
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

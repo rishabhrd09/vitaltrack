@@ -1,0 +1,408 @@
+## The project and the product
+Q: What is CareKosh, in one sentence?
+L: basic
+T: project, pitch
+S: CareKosh helps caregivers track home-ICU supplies from Android or a browser. Both clients use one FastAPI API and PostgreSQL.
+D: A caregiver records quantities, spots low supplies and applies deliveries to stock. The browser loads assets from Cloudflare. The API authorizes and persists the changes.
+
+Q: What was technically hard about it?
+L: intermediate
+T: project, concurrency, idempotency, security
+S: Correctness under real-world conditions: several family members editing the same items, phones losing replies on bad networks, secure sessions on a mobile client, and deploys with migrations that cannot be rolled back.
+D: Each problem has a concrete mechanism in the code: a <code>version</code> column with a compare-and-swap UPDATE for concurrent edits; a per-submission <code>localId</code> with a partial unique index for retried orders; access and rotating refresh tokens plus a <code>session_version</code> counter for sessions; and a release gate because migration 0007 refuses to downgrade.
+F: Which one would you redesign? How did you test the race conditions?
+
+Q: Why is it called VitalTrack in the code?
+L: basic
+T: project
+S: CareKosh is the product name. VitalTrack remains in repository paths and service identifiers.
+D: Trace the actual configured names in the mobile project, Render Blueprint and GitHub workflows when changing a build. A product branding change alone does not rename those resources.
+
+Q: Which features exist today, and which are only planned?
+L: basic
+T: project, scope
+S: The clients support inventory and orders. Optional assistant and Supply Review features depend on the backend configuration and the client surface.
+D: A preview of an order or a Supply Review proposal is separate from confirmation. Authorization, validation and the stock transaction remain on the server.
+
+Q: How many endpoints and tables does it have?
+L: basic
+T: numbers, api, database
+S: 68 HTTP operations: 65 under /api/v1 and three root operations. There are 18 application tables.
+D: Read app/api/v1/__init__.py for the ten registered routers, app/main.py for /, /live and /health, and the SQLAlchemy metadata for tables. Alembic also maintains its own version table.
+
+Q: How would you describe your role?
+L: basic
+T: behavioural
+S: Describe the decisions you personally made and the tests or code reviews you used to validate them.
+D: A concrete example is a stock edit with a stale version. Walk through the request, the conditional write and the 409 response. Attribute other contributions accurately.
+
+## Architecture and frontend
+Q: Draw the architecture.
+L: basic
+T: architecture, whiteboard
+S: The browser loads assets from a Cloudflare Worker. Browser and Android API calls pass through the Cloudflare proxy to FastAPI on Render, which talks to PostgreSQL on Neon.
+D: Show Redis beside the hosted API for shared counters. Then add the release paths: Wrangler for web assets, Render for the Docker service and EAS/Play for Android. A deploy and a user request are different events.
+
+Q: Why one service and not microservices?
+L: intermediate
+T: architecture, trade-off
+S: The domain is small, one developer maintains it, and the important writes must be atomic in one database transaction. Microservices would add network failure modes and distributed consistency problems without a benefit.
+D: Applying an order touches the order and several items; deleting an account cascades through every table. Inside one PostgreSQL transaction both are simple. I would split only if a part needed to scale or deploy independently, for example a speech worker, which is why the optional voice-service is kept separate and not deployed.
+
+Q: How is the mobile app structured?
+L: basic
+T: frontend, expo
+S: Screens (Expo Router files) → hooks (TanStack Query) → service modules → one API client in services/api.ts. Tokens in SecureStore, server data in the query cache, auth and UI state in Zustand.
+D: The layering means a screen never builds a URL or reads a token. The API client centralises the bearer header, one shared refresh, a 90-second deadline, error mapping and auto-logout on a final 401. Hooks own query keys and invalidation.
+F: Why TanStack Query and not Redux? Where would you put offline support?
+
+Q: Why TanStack Query?
+L: intermediate
+T: frontend, caching
+S: The server is the source of truth; TanStack Query gives caching, background refetch, retries for reads and targeted invalidation after writes, without hand-written sync code.
+D: Configuration: staleTime 30 s, gcTime 24 h, reads retried 3 times with networkMode offlineFirst; mutations never retried and use networkMode always, so a save is attempted immediately and never replayed later. The cache is persisted to AsyncStorage for fast start-up, minus auth queries, and cleared at login and logout.
+X: "The app works offline." It shows cached data offline; it does not save offline.
+
+Q: What did the app look like before server-first, and why change?
+L: intermediate
+T: history, behavioural, architecture
+S: It used to keep a local copy as the source of truth and sync it. That caused data loss and silent overwrites, so it moved to server-first: the server owns data, the phone caches it read-only.
+D: Historical notes record two incidents: data wiped on app reopen during a slow cold start, and two caregivers overwriting each other's quantities on 4 April 2026. The server-first series (PRs #4–#8, merged 7–14 April 2026) added TanStack Query, optimistic concurrency and the audit log. Label these dates as historical notes.
+
+Q: How does the app know which API to call?
+L: basic
+T: frontend, configuration, eas
+S: EXPO_PUBLIC_API_URL is baked into the JavaScript bundle at build time by the EAS profile: localhost for development, staging-api.carekosh.com for preview, api.carekosh.com for production.
+D: app.config.js refuses a preview build aimed anywhere but staging and a production build aimed anywhere but the production URL. An empty URL is not refused; the client then falls back to http://localhost:8000. Because the value is in the bundle, it must never be a secret.
+
+Q: Where does the phone store tokens, and why there?
+L: basic
+T: frontend, security
+S: In expo-secure-store, which on Android encrypts values with a key held in the Android Keystore. Never in AsyncStorage, which is plain storage.
+D: Two keys hold the access and refresh tokens. Writes are serialised and carry a "credential epoch", so a slow refresh cannot write old tokens back after a logout. The Zustand auth store persists only the user and an isAuthenticated flag, also through SecureStore.
+
+Q: How do screens get updated after a save?
+L: intermediate
+T: frontend, caching
+S: The mutation's onSuccess invalidates the affected query keys, for example items and activities; TanStack Query refetches them and every screen using those keys re-renders.
+D: There is no optimistic update: the screen waits for the server. After a 409 or an uncertain network failure the hooks also invalidate, because the server may have committed the write before the reply was lost.
+F: Why no optimistic updates? (A rollback would be confusing for life-critical counts.)
+
+Q: Can a second phone see changes immediately?
+L: intermediate
+T: consistency, caching
+S: No. The server does not push changes; another phone sees them after its next refetch: on focus, reconnect, pull-to-refresh, or when its cached data is older than 30 seconds and a screen mounts.
+D: That is eventual consistency for reads, with strong consistency for writes through version checks. Push (WebSockets, server-sent events or push notifications) would cut the delay but adds infrastructure.
+
+## Backend and data
+Q: Walk me through the backend stack.
+L: basic
+T: backend, stack
+S: Python 3.12, FastAPI 0.162.0 on Starlette, Pydantic 2 for validation, async SQLAlchemy 2.0 with asyncpg, Alembic for migrations, passlib with Argon2 and PyJWT for tokens, slowapi for rate limits, served by Gunicorn with two Uvicorn workers in Docker.
+D: The layering is routers → dependencies → schemas → services → models → PostgreSQL, with configuration, database, security and logging in app/core. Book 2 covers each one.
+
+Q: How is data isolated between users?
+L: basic
+T: security, authorization, database
+S: Every business row has a user_id, and every query filters on the signed-in user's id. Asking for someone else's row returns 404, the same as a row that does not exist.
+D: The user comes from get_current_user, never from the request body. Child rows are reached through their owned parent (order lines through orders). This prevents broken object-level authorization, the first item in the OWASP API Top 10 2023.
+X: "We use row-level security in PostgreSQL." Isolation is enforced in application queries.
+
+Q: Why both an activity log and an audit log?
+L: intermediate
+T: database, audit
+S: activity_logs is a readable feed for people; audit_log stores JSONB before-and-after snapshots for selected item, category and order changes, written in the same transaction, and no API reads it.
+D: Because the audit row is added in the same transaction as the change, a change cannot commit without its audit row. Not every write produces both kinds of history, so do not promise a universal audit trail.
+
+Q: How are migrations applied?
+L: basic
+T: database, alembic, deployment
+S: Alembic. The container's entrypoint runs alembic upgrade head before starting Gunicorn; if a migration fails, the script exits and the deploy fails instead of serving a mismatched schema.
+D: There are 13 revisions in one chain. 0007 adds session_version and the order-number counter, and its downgrade deliberately raises, so a database upgraded past it cannot be moved back automatically. Development additionally calls create_all at start-up.
+F: What about zero-downtime migrations? (Expand and contract: add first, switch code, remove later.)
+
+Q: What is a partial unique index and where do you use one?
+L: intermediate
+T: database, idempotency
+S: A unique index that only covers rows matching a WHERE clause. CareKosh uses one on (user_id, local_id) for orders where local_id is not null.
+D: Requests without a localId (older app builds) are not constrained and always create orders. Migration 0010 also exempts older duplicate rows by id, so the index could be built without deleting history.
+
+Q: How do order numbers stay unique?
+L: intermediate
+T: database, concurrency
+S: A per-day counter row: INSERT … ON CONFLICT (day) DO UPDATE SET last_value = last_value + 1 RETURNING last_value, in the same transaction as the order.
+D: The upsert is atomic, so two concurrent orders get different numbers; the second waits for the first's row lock. If the order's transaction rolls back, its increment rolls back too. Earlier code counted existing orders, which could collide after deletions.
+
+Q: What does the backend do when the database is slow?
+L: intermediate
+T: reliability, database
+S: Every statement on the application engine has an 8-second statement_timeout, so PostgreSQL cancels it instead of letting it hold a pooled connection forever.
+D: The pool has 5 connections plus 10 overflow per worker, with pre-ping to drop dead connections. /health probes the database with a 2-second limit and returns 503 when it fails; /live does not touch the database.
+
+Q: What happens in the database when an account is deleted?
+L: intermediate
+T: database, privacy
+S: The user row is deleted, and foreign keys with ON DELETE CASCADE remove categories, items, orders and their lines, activity, audit, refresh tokens and AI rows in the same transaction.
+D: The deletion needs a confirmation link from email, valid 24 hours. The global order-number counter has no user link and stays. Backups at the database provider are a separate retention question for the privacy policy.
+
+## Environments, deployment and hosting
+Q: What environments exist?
+L: basic
+T: environments
+S: Development on the laptop, staging at staging-api.carekosh.com with its own database, and production at api.carekosh.com. CI also creates a throwaway environment for each run.
+D: The same code runs everywhere; configuration separates them. The app build fixes the API URL; each backend service has its own DATABASE_URL and SECRET_KEY. The staging service is configured only in the Render dashboard, so its settings are not verified by the code.
+
+Q: How does a backend change reach production?
+L: basic
+T: deployment, ci
+S: Record the tested Git revision. On Render, release that revision to the intended backend service and verify its Live SHA.
+D: The optional GitHub hook needs a successful eligible main push, ENABLE_RENDER_AUTO_DEPLOY=true and RENDER_DEPLOY_HOOK. Native Render auto-deploy is a separate dashboard setting. The entrypoint runs migrations before Gunicorn starts.
+
+Q: What does CI check?
+L: basic
+T: ci, testing
+S: The backend/mobile workflow runs for pull requests to main, pushes to main and manual dispatch. It runs backend and mobile checks. Web CI has a separate path-filtered workflow.
+D: CI exercises Ruff, both schema setups, route inventory, coverage floors and mobile checks. A failing job fails its workflow. Whether it blocks merging depends on the effective GitHub rules for the target branch.
+
+Q: Why does Render health-check /live and not /health?
+L: intermediate
+T: reliability, health-checks, history
+S: /live only proves the process answers. If the platform probed the database, a brief Neon outage or cold start would mark healthy app instances as failed and restart them in a loop.
+D: Readiness (/health) is for humans and monitors: it runs SELECT 1 with a 2-second limit and returns 503 when the database is unavailable. The Dockerfile HEALTHCHECK also uses /live for the same reason.
+X: "/health proves the deploy worked." Neither endpoint reports the commit or migration revision.
+
+Q: What is in the Docker image?
+L: intermediate
+T: docker, deployment
+S: A two-stage build on python:3.12-slim: the builder compiles dependencies into a virtual environment; the final stage copies it, adds runtime packages (libpq, curl, postgresql-client, ffmpeg), runs as a non-root user and starts Gunicorn through an entrypoint.
+D: Multi-stage keeps compilers out of the final image. The non-root user limits damage from a compromise. ffmpeg exists for the optional audio normalisation on the transcription route.
+
+Q: How do you roll back a bad backend deploy?
+L: advanced
+T: deployment, migrations, release
+S: Redeploy the previous image if the schema is still compatible; otherwise roll forward with a fix. Rolling back the image does not roll back the database, and 0007 cannot be downgraded automatically.
+D: That is why the release gate says: back up first, test a fresh schema and a synthetic upgrade from 0006 on staging, pause writes during cut-over, verify the revision, and only then re-enable auto-deploy. Restoring a backup loses writes made after it.
+
+Q: How are secrets managed?
+L: intermediate
+T: security, configuration
+S: As environment variables on each Render service, read by pydantic-settings into SecretStr fields; nothing secret is in the repository or the app bundle.
+D: render.yaml marks secrets sync: false (entered in the dashboard) and lets Render generate SECRET_KEY. Validators refuse the public default key outside development and testing and any key under 32 characters. Logs redact tokens and withhold exception values.
+
+Q: How does the app reach the backend during development?
+L: basic
+T: development, environments
+S: Over USB with adb reverse (the phone uses localhost:8000), over the same Wi-Fi with the laptop's LAN address, or from the emulator at 10.0.2.2.
+D: Expo Go runs every screen except native voice; the voice microphone needs an EAS-built APK because the native module is not in Expo Go.
+
+Q: How do mobile releases work?
+L: basic
+T: mobile, release, eas
+S: eas build with the production profile produces an Android App Bundle, which goes to Google Play's internal testing track first and then to closed testing and production.
+D: Over-the-air updates are disabled, so every change needs a new build; old app versions stay installed, which is why the API keeps older contracts working.
+
+## Request flow, consistency and reliability
+Q: Trace one request from the tap to the database.
+L: intermediate
+T: request-flow, whiteboard
+S: Tap Save → mutation → services/api.ts adds the bearer token → HTTPS to Cloudflare → Render origin → Uvicorn worker → middleware → route and JSON parsing → get_db and get_current_user → Pydantic validation → handler (lock, owner-scoped SELECT, version-checked UPDATE, history rows, commit) → JSON response → cache invalidation and refetch.
+D: Name the failure at each hop: 413 body too large, 422 malformed JSON or bad fields, 401 or 403 from authentication, 404 not yours, 409 conflict, network timeout after 90 seconds. And the subtle one: a failure after commit cannot undo the write.
+
+Q: How do you handle two people editing the same item?
+L: intermediate
+T: concurrency, occ
+S: Optimistic concurrency: each save sends the version it read; UPDATE … WHERE version = :v SET version = version + 1. Zero rows updated means someone else won, and the API returns 409 with the current values without writing anything.
+D: Item renames also take a per-account advisory lock so duplicate names cannot race. Stock changes from applying an order bump the version too, so a form opened before a delivery cannot overwrite the delivered stock.
+F: Why not SELECT FOR UPDATE? (A lock cannot be held across a person's think-time.)
+
+Q: What if the phone sends the same order twice?
+L: intermediate
+T: idempotency
+S: A matching replay of an existing order submission returns the saved order with 200. Reusing its localId with a different payload returns 409.
+D: The service takes the owner lock and compares the stored order snapshot. A closed submission is handled separately. Apply-to-stock has its own guard: a second apply to an already applied order returns the existing result without incrementing inventory again.
+
+Q: Is "one request = one transaction" true here?
+L: advanced
+T: transactions, sqlalchemy
+S: Not as a blanket rule. get_db gives one session per request; handlers commit explicitly, and a later refresh starts a second transaction, which get_db commits at teardown. The AI routes use their own short sessions.
+D: A session is a unit of work that can span several transactions. What matters: everything that must be atomic (the change and its history rows) commits together, and nothing after the commit can undo it.
+
+Q: What does the client do on a timeout?
+L: intermediate
+T: reliability, mobile
+S: Each request has a 90-second overall deadline. A timeout tells the person "the server may still be processing it" and asks them to check the latest data before retrying.
+D: The client never assumes a timeout means nothing was saved. Mutation hooks invalidate the affected queries after uncertain failures so the screen shows the server's truth.
+
+Q: How do you know which request caused an error?
+L: intermediate
+T: observability
+S: Every response carries an X-Request-ID, either the client's (if short and printable) or a new random one; logs and errors can be matched by it.
+D: Logging redacts tokens in URLs and messages and replaces exception messages with type and code location. Sentry, when configured, sends no request bodies, no personal data and no trace headers to AI providers.
+
+Q: What happens during a cold start?
+L: basic
+T: reliability, mobile
+S: The first requests wait for an instance. The app's start-up waits 8 seconds for the profile; if that times out it keeps the cached session, shows a "server warming up" status and retries in the background.
+D: render.yaml's comment says the paid starter plan was chosen to avoid free-tier spin-down; the cold-start handling remains for database wake-ups and restarts.
+
+Q: What is the consistency model of the system?
+L: advanced
+T: consistency
+S: Strong for writes within PostgreSQL transactions; the phone's reads are eventually consistent because they come from a cache refreshed on focus, reconnect, mount after 30 seconds, or after a write.
+D: There are no replicas, so the server itself reads its own writes. The window of staleness is on the client and is bounded by refetch triggers rather than by time alone.
+
+Q: Where could data still go wrong?
+L: advanced
+T: limits, honesty
+S: A lost reply after commit (the person may retry a non-idempotent action), a person acting on a stale screen before a refetch, and race windows in flows that are not version-checked.
+D: Creates other than orders have no idempotency key; category and item names use a lock and a duplicate check rather than a unique index for legacy reasons. Say these plainly and mention the next step for each.
+
+## Security overview
+Q: How do authentication and sessions work, briefly?
+L: basic
+T: security, auth, jwt
+S: Login verifies an Argon2id password hash and returns a 30-minute access JWT and a 30-day refresh JWT. Each request sends the access token; refresh rotates both tokens; password changes end every session.
+D: Both tokens are signed with HS256. The refresh token's jti has a database row so it can be revoked; the user's session_version is in every token and compared on each request.
+
+Q: Are JWTs encrypted?
+L: basic
+T: security, jwt
+S: No. They are signed (HMAC-SHA256), not encrypted; anyone holding one can base64url-decode its header and claims. That is why they carry only ids, times, a type and a counter.
+D: Integrity comes from the signature: changing one character breaks verification. Confidentiality comes from TLS on the wire and SecureStore on the phone.
+
+Q: How are passwords stored?
+L: basic
+T: security, hashing
+S: As Argon2id hashes from passlib: memory 64 MiB, 3 iterations, 4 lanes, a random 16-byte salt and a 32-byte hash, all inside one encoded string. Never encrypted, never logged.
+D: Hashing runs in a worker thread so the event loop stays free. bcrypt is accepted only to verify old hashes.
+
+Q: What is encrypted in CareKosh?
+L: intermediate
+T: security, encryption
+S: Traffic (TLS), tokens on the phone (SecureStore), and personal Sarvam and OpenAI API keys in the database (Fernet). Other columns are stored in plain form inside the provider's storage.
+D: Fernet is used only where the server must recover the original value later. Passwords and one-time tokens are hashed instead, because the server never needs them back.
+
+Q: What is rate limited?
+L: intermediate
+T: security, rate-limiting
+S: Hosted API workers share Redis counters. Sensitive authentication routes use a client key. Authenticated AI requests use an account key. Provider budgets use PostgreSQL.
+D: The exhausted quota produces 429 and Retry-After. Protected routes return 503 when the store is unavailable. Selected reads allow an explicit fail-open policy. The in-memory limiter is available for development and tests.
+
+Q: What would you add to security next?
+L: intermediate
+T: security, improvements
+S: Refresh-token reuse detection, a way to end access tokens at logout, monitored shared limiter capacity, MFA, and a password policy aligned with NIST SP 800-63B-4 (length and a breached-password check instead of composition rules).
+D: Book 3 has the details and the evidence for each gap.
+
+## System design and scaling
+Q: How would you scale CareKosh to 10,000 active families?
+L: advanced
+T: scaling, system-design
+S: Measure first. Then add API instances (the app tier is stateless), put a connection pooler in front of PostgreSQL, add indexes and cursor pagination where queries grow, and move email to a durable queue.
+D: The likely first limit is database connections: each instance can open up to 30. Next are login bursts, because Argon2 is deliberately expensive. Rate limiting needs a design review before scaling out. Push notifications would replace polling-style refetches.
+X: Quoting throughput numbers that were never measured.
+
+Q: Why not cache on the server?
+L: intermediate
+T: caching, system-design
+S: Every read is per-user and changes on every write, so a shared cache would mostly hold small, private, quickly invalidated data. The client cache already avoids repeated reads.
+D: A server cache becomes worth it for shared or expensive reads, which CareKosh does not have yet. It would also add an invalidation problem across instances.
+
+Q: Why no message queue?
+L: intermediate
+T: system-design, background
+S: The only background work is sending a few emails. FastAPI's BackgroundTasks runs them in the same process after the reply, which is enough at this size.
+D: The trade-off is durability: if the process dies after replying, that email is lost, and there is no retry. A queue with a worker would fix that and is the first thing to add if email becomes critical.
+
+Q: How would you add offline editing?
+L: advanced
+T: offline, system-design
+S: Carefully: a local outbox of mutations, each with an idempotency key and the version it was based on, replayed in order when online, with explicit conflict screens when the server returns 409.
+D: The server already supports two pieces (version checks and idempotent orders). The app deliberately does not queue offline writes today, because silent replay of stale edits caused the original data-loss incidents.
+
+Q: How would you support several caregivers with separate accounts on one inventory?
+L: advanced
+T: system-design, authorization
+S: Introduce a household (tenant) table, move ownership from user_id to household_id with memberships and roles, and change every query's scope from user to household.
+D: It touches every table, the migrations, the audit model and authorization (roles such as viewer or editor). The optimistic-concurrency design already handles concurrent editors.
+
+Q: Where are the single points of failure?
+L: intermediate
+T: reliability, system-design
+S: The single PostgreSQL database, the single region, and the outside providers for email and AI. The API tier can run more instances.
+D: Neon offers point-in-time restore within a plan-dependent window, and the repository has a restore-drill script (scripts/restore_drill.py) for rehearsing it on a separate database. Multi-region would be overkill at this scale.
+
+Q: What would you monitor in production?
+L: intermediate
+T: observability, operations
+S: Error rates by status code (especially 5xx, 401 and 403 spikes, 409 rates), latency, database connection use and lock waits, order-creation errors, email send failures and AI budget refusals.
+D: Today there is Sentry when configured, request ids and redacted logs; a monitor template exists for uptime checks of /live and /health. Metrics and alerts are the next step.
+
+Q: Why PostgreSQL rather than a NoSQL database?
+L: basic
+T: database, trade-off
+S: The data is relational and the correctness rules are transactional: owner foreign keys, cascades, check constraints, unique indexes, row locks and multi-row atomic updates.
+D: A document store would push those guarantees into application code. PostgreSQL also gives JSONB for the audit snapshots where flexibility helps.
+
+## The assistant
+Q: How does the AI assistant work without writing data?
+L: intermediate
+T: ai, design
+S: Speech is recognised on the phone, the person reviews the words, a local parser handles familiar commands, and only unfamiliar text from a consenting user may go to Groq, which returns a strict JSON plan that the server and phone validate and run against cached inventory.
+D: The AI routes have no tools and no write access to inventory or orders. Orders can be drafted but only saved by a touch on Create Order.
+F: How do you stop the model inventing items? (Grounding checks reject plans with names or conditions not in the question.)
+
+Q: How are AI costs controlled?
+L: advanced
+T: ai, cost, concurrency
+S: Before any provider call, reserve() takes a short PostgreSQL transaction under a global advisory lock and checks consent, daily budgets per user and globally, daily request counts and concurrency, then inserts a reserved usage row.
+D: settle() records a successful call at an estimated cost, never above the reservation, and keeps the whole reservation for failures and cancellations, because the provider may still bill them. Limits reset at 00:00 UTC.
+
+Q: What data goes to AI providers?
+L: intermediate
+T: ai, privacy
+S: Only what the person consented to for that provider: reviewed question input to the selected Groq or OpenAI interpreter, optional audio to Groq or Sarvam for transcription, and answer text to Sarvam for narration. Never the inventory dataset.
+D: Consent has a version and scopes such as groq_text and sarvam_speech; the server re-checks it under the budget lock. Each scope is off unless server flags, a data-controls review flag and keys are set.
+
+Q: Why is the AI feature "conditional" in your architecture?
+L: basic
+T: ai, architecture
+S: Because the product works without it: AI_ENABLED is false by default, every provider needs separate flags and consent, and the default voice and recognition run on the phone.
+D: Classifying it this way stops it from looking like a mandatory layer of the system when you draw the architecture.
+
+## Behavioural and trade-offs
+Q: Tell me about a bug that taught you something.
+L: basic
+T: behavioural, story
+S: On 4 April 2026, two caregivers' edits overwrote each other's quantities. That led to the server-first redesign with optimistic concurrency, and later to finding and fixing a client-side gap where a stale form could carry a newer version.
+D: Use STAR: situation (silent overwrites), task (make concurrent edits safe), action (version column, compare-and-swap UPDATE, 409 handling, audit log, then the form fix in October), result (the loser gets a clear conflict and nothing is overwritten; tests cover both paths). The dates are historical notes.
+
+Q: Tell me about a deployment problem you solved.
+L: intermediate
+T: behavioural, deployment
+S: Email over SMTP stalled on the hosting platform, so I switched to Brevo's HTTPS API; and I designed a release gate for migrations that cannot be downgraded.
+D: The historical notes record that Render's free web services block outbound SMTP ports; HTTPS on port 443 is not affected. For the migration gate: back up, test fresh and upgraded schemas on staging, pause writes, deploy, verify the revision, then re-enable auto-deploy.
+
+Q: What would you do differently if you started again?
+L: intermediate
+T: behavioural, reflection
+S: Start server-first with optimistic concurrency from day one, use maintained auth libraries (PyJWT and pwdlib), design idempotency keys for every create, and set up metrics before launch.
+D: Each point is a lesson the project paid for: data loss from offline-first sync, retries creating duplicates, and the effort of auditing behaviour after the fact.
+
+Q: How do you make sure your documentation is accurate?
+L: intermediate
+T: behavioural, documentation
+S: Every claim is labelled as verified in code, verified by a reproduced test, historical, planned or not verified, and numbers are re-derived from the running code instead of copied.
+D: These interview books follow that rule: counts come from inspecting the FastAPI app, excerpts are copied from the exact commit by the build script, and tests were rerun on the day.
+
+Q: What is the biggest risk in the system today?
+L: advanced
+T: risk, honesty
+S: A release can be healthy while its client, schema or environment is wrong. Restore capability and capacity need separate evidence.
+D: Rehearse the migration, record the client and server revisions and verify a staging stock edit across two sessions. A successful local test cannot establish the current hosting settings.
+
+Q: How do you test something like a race condition?
+L: advanced
+T: testing, concurrency
+S: Fire the competing requests at the same moment with asyncio.gather through the in-process HTTP client, so each runs in its own database session, then assert exactly one success and one 409 and that the row advanced by exactly one version.
+D: That is what test_item_stock_update_concurrent_version_conflict in tests/test_items.py does; the order tests use the same pattern for duplicate localIds and competing status changes. The suite runs against real PostgreSQL in two schema modes, which matters because locks, partial indexes and ON CONFLICT behave as they will in production. Mocks would not test these.

@@ -1,0 +1,81 @@
+<section class="part" id="p12" data-toc="Deployment and hosting" data-desc="Dockerfile, entrypoint, Render, Neon, domains, the release gate and CI/CD.">
+  <div class="part-head">
+    <p class="eyebrow">Part 12 · Deployment</p>
+    <h2>Backend deployment and <em>hosting guide</em></h2>
+    <p class="in-short"><strong>In short:</strong> one Docker image, built by Render from the repository; every container start waits for PostgreSQL, applies migrations and then starts Gunicorn; Render moves traffic only after <code>/live</code> answers.</p>
+  </div>
+
+  <div class="sub" id="b2-docker" data-toc="The Dockerfile">
+    <h3>The Dockerfile, line by line</h3>
+    {{fig:container-start|Build once, start many times: the two build stages on the left, the entrypoint's start-up sequence on the right.}}
+    {{x:B/Dockerfile:7-81|Image stages, entrypoint and the Gunicorn command with the project’s Uvicorn worker class.}}
+    <ul>
+      <li><strong>Two stages:</strong> the builder has compilers and headers (<code>build-essential</code>, <code>libpq-dev</code>) to build wheels into <code>/opt/venv</code>; the production stage copies only that virtual environment, so compilers never ship.</li>
+      <li><strong>Runtime packages:</strong> <code>libpq5</code> (PostgreSQL client library), <code>curl</code> (the health check), <code>postgresql-client</code> (<code>pg_isready</code> in the entrypoint), <code>ffmpeg</code> (audio normalisation for the optional transcription route).</li>
+      <li><strong>Non-root:</strong> <code>appuser</code> (uid 1000) owns the code and runs the process, limiting what an attacker could do after a compromise.</li>
+      <li><strong>Environment:</strong> <code>PYTHONUNBUFFERED=1</code> so logs appear immediately; <code>PYTHONDONTWRITEBYTECODE=1</code>; <code>ENVIRONMENT=production</code> as a safe default that the platform can override.</li>
+      <li><strong><code>HEALTHCHECK</code></strong> uses <code>/live</code> (process only), for the same reason as Render's health check.</li>
+      <li><strong>Two small details an interviewer may spot:</strong> <code>dos2unix</code> fixes Windows line endings in the entrypoint, and the final stage runs <code>apt-get</code> twice, adding a layer.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/Dockerfile}} · {{p:B/docker-entrypoint.sh}} · {{p:B/app/worker.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-entrypoint" data-toc="The entrypoint">
+    <h3>The entrypoint</h3>
+    {{x:B/docker-entrypoint.sh:1-62|docker-entrypoint.sh: derive the database host, wait for it, migrate or stop, then exec the server.}}
+    <ul>
+      <li><strong>Waiting is bounded:</strong> 30 attempts, 2 seconds apart; then it continues and lets the migration fail loudly if the database is really down.</li>
+      <li><strong><code>set -- "$@" --bind …</code></strong> appends the bind address to Gunicorn's arguments using the platform's <code>$PORT</code>.</li>
+      <li><strong><code>exec</code></strong> replaces the shell with Gunicorn, so the platform's SIGTERM reaches Gunicorn and in-flight requests can finish.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/Dockerfile}} · {{p:B/docker-entrypoint.sh}} · {{p:B/app/worker.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-render" data-toc="Render">
+    <h3>Render: the production Blueprint</h3>
+    <p>The production Blueprint names vitaltrack-api, selects main, uses the backend Dockerfile and Starter plan, and probes /live. That probe checks the process. Use /health to check database readiness. Staging has its own Render service configured through the dashboard. A main commit, a deployed SHA and an applied Alembic revision can differ.</p>
+    <p>Runtime configuration includes a private database URL and signing key, an allowed API hostname, an environment-specific origin credential, shared Redis storage, and explicit web origins for cookie authentication. With verification enabled outside development and testing, a blank mail credential prevents startup. Check live values privately in the service dashboard.</p>
+    <p>{{p:B/render.yaml}} · {{p:B/app/main.py}} · {{p:B/app/utils/rate_limiter.py}} · {{p:B/docker-entrypoint.sh}}</p>
+    <p class="small muted">Repository evidence · {{p:B/render.yaml}} · {{p:B/app/core/config.py}} · {{p:B/app/core/database.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-neon" data-toc="Neon PostgreSQL">
+    <h3>Neon PostgreSQL</h3>
+    <ul>
+      <li><strong>Connection:</strong> the service's <code>DATABASE_URL</code> is rewritten to the asyncpg driver; Neon's query parameters are removed and TLS is requested with <code>ssl=True</code> outside development and testing.</li>
+      <li><strong>Databases versus branches:</strong> in Neon a branch is a copy-on-write clone with its own compute; databases live inside a branch. The documents describe staging and production as two databases in one project, which is why the release notes recommend a <em>fresh database</em> rather than a Neon branch for testing a one-way migration: a branch of production would copy production data.</li>
+      <li><strong>Scale to zero:</strong> an idle compute suspends and wakes on the next connection; the first query after idle can be slow. That is one reason for <code>pool_pre_ping</code> and for <code>/live</code> as the platform health check.</li>
+      <li><strong>Backups:</strong> point-in-time restore is limited to a plan-dependent history window. A restore loses writes made after the restore point; {{p:B/scripts/restore_drill.py}} rehearses restores on a separate database.</li>
+    </ul>
+    <p class="evidence-line">{{ev:docs}} Neon documentation on branches, scale to zero and the restore window. {{ev:nv}} the plan and settings in use.</p>
+    <p class="small muted">Repository evidence · {{p:B/render.yaml}} · {{p:B/app/core/config.py}} · {{p:B/app/core/database.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-domains" data-toc="Domains, TLS and email">
+    <h3>Domains, TLS and email</h3>
+    <p>Production serves the browser at homeicuinventory.carekosh.com and routes api.carekosh.com to the production Render service. Staging pairs staging-app.carekosh.com with staging-api.carekosh.com. Each frontend custom domain selects a Worker. Each proxied API hostname has its own origin-header rule and Render configuration. The database connection comes from that service’s private DATABASE_URL.</p>
+    <p>A DNS record selects the destination. A Worker deployment selects the assets. A Render deployment selects the backend commit. The Android build profile embeds the public API URL. Check these independently when a staging screen loads but the data appears wrong. Brevo email links use the backend’s configured public URL.</p>
+    <p>{{p:carekosh-web/wrangler.jsonc}} · {{p:M/eas.json}} · {{p:B/render.yaml}} · {{p:B/app/services/ingress.py}}</p>
+    <p class="small muted">Repository evidence · {{p:B/render.yaml}} · {{p:B/app/core/config.py}} · {{p:B/app/core/database.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-release" data-toc="The release gate">
+    <h3>The release gate and rollback</h3>
+    {{fig:release-paths|The release paths for the tested revision. For a risky migration, also rehearse upgrade and recovery before the production cutover.}}
+    <ul>
+      <li><strong>Image rollback ≠ schema rollback.</strong> Redeploying an older image leaves the newer schema in place. That works only if the older code tolerates the newer schema (additive changes do).</li>
+      <li><strong>Expand and contract</strong> is the general pattern for zero-downtime changes: add the new column or table, deploy code that uses it, migrate data, and remove the old one in a later release.</li>
+      <li><strong>Old and new instances overlap</strong> during a zero-downtime deploy. Code must cope with both schemas briefly, which is why the gate pauses writes for the counter change in 0007.</li>
+    </ul>
+    <p class="small muted">Repository evidence · {{p:B/alembic/env.py}} · {{p:B/alembic/versions/20260923_session_order_safety.py}}</p>
+  </div>
+
+  <div class="sub" id="b2-cicd" data-toc="CI/CD">
+    <h3>CI/CD in detail</h3>
+    <p>Open a pull request to main and record the revision you test. Backend and Android CI runs for pull requests targeting main, pushes to main and manual dispatch. Web checks use a separate path-filtered workflow. A build-apk label on an eligible PR requests an Android preview build.</p>
+    <p>Before using a merge-first release sequence, verify production Render’s native auto-deploy and the production Worker’s Git deploy command. The optional Render CI hook requires passing test jobs, a push to main, ENABLE_RENDER_AUTO_DEPLOY=true and a configured hook secret. A hook acknowledgment means Render accepted the request. Confirm the live SHA in Render.</p>
+    <p>Advance staging to the candidate and test the affected user journey. Publish the production web build with Release CareKosh web on main. If main moved, test that revision first. API and Android releases use their own service and Play controls. A working screen, a tested commit and a live deployment each supply different evidence.</p>
+    <p>{{p:.github/workflows/ci.yml}} · {{p:.github/workflows/carekosh-web.yml}} · {{p:.github/workflows/release-carekosh-web.yml}} · {{p:M/eas.json}}</p>
+    <p class="small muted">Repository evidence · {{p:.github/workflows/ci.yml}} · {{p:.github/workflows/release-carekosh-web.yml}}</p>
+  </div>
+</section>
