@@ -43,21 +43,21 @@ export default function AssistantDock(p: Props) {
       </TouchableOpacity>
     </View>}
     <View style={styles.row}>
-      <View style={styles.sideSlot} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
       <TouchableOpacity accessibilityRole="button" accessibilityLabel={p.recording ? (p.standalone ? 'Finish recording' : 'Stop recording and review transcript') : (p.standalone ? 'Start recording' : 'Start voice recording')}
         accessibilityHint="Tap to start; tap again to finish and review."
         accessibilityState={{ disabled: p.disabled, selected: p.recording }} disabled={p.disabled} onPress={p.onMic} style={styles.entry}>
         <View style={styles.micWrap}>
           {p.recording && <Animated.View pointerEvents="none" style={[styles.halo, { backgroundColor: colors.accentBlue, opacity: glow }]} />}
           <View style={[styles.mic, { backgroundColor: p.recording ? colors.accentBlue : colors.accentBlueBg, borderColor: colors.accentBlueBorder }]}>
-            <Ionicons name="mic" size={22} color={p.recording ? colors.white : colors.accentBlue} />
+            <Ionicons name={p.recording ? 'stop' : 'mic-outline'} size={22} color={p.recording ? colors.white : colors.accentBlue} />
           </View>
         </View>
-        <Text style={[styles.name, { color: colors.textPrimary }]}>Ask CareKosh</Text>
+        <Text style={[styles.name, { color: colors.textPrimary }]}>{p.recording ? 'Finish recording' : 'Ask CareKosh'}</Text>
       </TouchableOpacity>
       <View style={styles.sideSlot}>
         {!p.recording && !p.busy && !p.review && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Type a question here" onPress={p.onType} style={styles.smallButton}>
-          <Ionicons name="create-outline" size={20} color={colors.textSecondary} />
+          <Ionicons name="create-outline" size={18} color={colors.accentBlue} />
+          <Text style={[styles.typeLabel, { color: colors.accentBlue }]}>Type</Text>
         </TouchableOpacity>}
         {(p.recording || !!p.busy || p.review) && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Dismiss voice input" onPress={p.onClose} style={styles.smallButton}>
           <Ionicons name="close" size={19} color={colors.textSecondary} />
@@ -77,14 +77,15 @@ export default function AssistantDock(p: Props) {
 const styles = StyleSheet.create({
   dock: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, borderTopWidth: StyleSheet.hairlineWidth },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  sideSlot: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  entry: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  micWrap: { width: 60, height: 60, alignItems: 'center', justifyContent: 'center' },
-  mic: { width: 50, height: 50, borderRadius: 25, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  halo: { position: 'absolute', width: 60, height: 60, borderRadius: 30 },
-  name: { fontSize: 12, lineHeight: 17, fontWeight: '600', textAlign: 'center' },
+  sideSlot: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  entry: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  micWrap: { width: 52, height: 52, alignItems: 'center', justifyContent: 'center' },
+  mic: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  halo: { position: 'absolute', width: 52, height: 52, borderRadius: 30 },
+  name: { fontSize: 16, lineHeight: 22, fontWeight: '600', flexShrink: 1 },
+  typeLabel: { fontSize: 14, fontWeight: '600' },
   live: { minWidth: 0, flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 8 },
-  words: { fontSize: 15, lineHeight: 22, textAlign: 'center' }, smallButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  words: { fontSize: 15, lineHeight: 22, textAlign: 'center' }, smallButton: { flexDirection: 'row', gap: 6, minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   composer: { flexDirection: 'row', alignItems: 'flex-end', borderWidth: 1, borderRadius: 18, padding: 8, gap: 8 },
   input: { flex: 1, minWidth: 0, minHeight: 40, maxHeight: 132, fontSize: 16, lineHeight: 23, paddingHorizontal: 5, paddingVertical: 8, textAlignVertical: 'top' },
   send: { minWidth: 44, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },

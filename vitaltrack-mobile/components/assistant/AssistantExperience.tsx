@@ -165,6 +165,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const [fallbackNotice, setFallbackNotice] = useState('');
   const [permissionBlocked, setPermissionBlocked] = useState(false);
   const permissionPending = useRef(false);
+  const settingsScroll = useRef<ScrollView>(null);
   const scroll = useRef<ScrollView>(null);
   const mounted = useRef(true);
   const previousItem = useRef<string | undefined>(undefined);
@@ -1066,7 +1067,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
         {button('Discard recording', () => { cancel(); setError(''); }, locked)}
       </>}</View>}
   </>;
-  const setup = <VoiceSetup prefs={prefs} loaded={loaded} supported={offlineSupported} busy={busy || (download?.removing ? 'Removing voice pack…' : '')} model={model} modelChecked={modelChecked} progress={downloadProgress} deviceVoice={deviceVoice}
+  const setup = <VoiceSetup scrollToSection={y => settingsScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: false })} prefs={prefs} loaded={loaded} supported={offlineSupported} busy={busy || (download?.removing ? 'Removing voice pack…' : '')} model={model} modelChecked={modelChecked} progress={downloadProgress} deviceVoice={deviceVoice}
     whistle={whistleOffered ? whistle : undefined} whistleChecked={whistleChecked} whistleProgress={whistleProgress}
     manageWhistle={() => {
       if (!whistleOffered) return;
@@ -1169,7 +1170,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
 
   if (settingsOpen) return <SafeAreaView style={[styles.screen, { backgroundColor: colors.bgPrimary }]}>
     <View style={styles.header}>{iconButton('arrow-back', 'Close voice setup', close)}<Text style={[styles.heading, textStyle, { flex: 1 }]}>Voice setup</Text></View>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+    <ScrollView ref={settingsScroll} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, styles.settingsContent]}>
       {feedback}
       {!!busy && button('Cancel operation', cancel)}
       {setup}
@@ -1180,7 +1181,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
   const content = <>
           {feedback}
           {!embedded && readiness && <View style={[styles.card, { backgroundColor: colors.accentBlueBg }]}>
-            <Text style={[styles.label, textStyle]}>Let’s get voice ready</Text><Text style={[styles.body, { color: colors.textSecondary }]}>{readiness}</Text>
+            <Text style={[styles.label, textStyle]}>Microphone setup</Text><Text style={[styles.body, { color: colors.textSecondary }]}>{readiness}</Text>
             <VoiceButton label="Open voice setup" onPress={openSetup} disabled={!!busy || microphoneBusy} />
           </View>}
           {!answer && <>
@@ -1193,18 +1194,19 @@ export default function AssistantExperience({ embedded = false, active = true, s
             {helpOpen && <View style={[styles.card, { backgroundColor: colors.bgCard }]}>{commandExamples.map(example => <Text key={example} style={[styles.body, textStyle]}>• {example}</Text>)}<Text style={[styles.caption, { color: colors.textSecondary }]}>Use your inventory item names. Stock edits and order saving are blocked. Voice can prepare a local unsaved draft; saving requires touch confirmation.</Text></View>}
           </>}
           {answer && <View style={{ gap: 10 }}>
-            <View style={styles.row}>
-              {(!keptOpen || !!answer.choices.length || speaking) && <Text accessibilityLiveRegion="polite" style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>{answer.choices.length ? 'Choose an item to continue' : speaking ? speechStatus : keptOpen || screenReader ? 'Answer stays open' : `Closes in ${secondsLeft}s`}</Text>}
+            {(!keptOpen || !!answer.choices.length || speaking) && <View style={styles.row}>
+              <Text accessibilityLiveRegion="polite" style={[styles.caption, { color: colors.textSecondary, flex: 1 }]}>{answer.choices.length ? 'Choose an item to continue' : speaking ? speechStatus : keptOpen || screenReader ? 'Answer stays open' : `Closes in ${secondsLeft}s`}</Text>
               {!answer.choices.length && !keptOpen && !screenReader && button('Keep open', () => setKeptOpen(true))}
-            </View>
+            </View>}
             {!!fallbackNotice && <Text accessibilityLiveRegion="polite" style={[styles.caption, { color: colors.textSecondary }]}>{fallbackNotice}</Text>}
             <View style={styles.answerCard}>
               <View style={[styles.answerHero, { backgroundColor: colors.accentBlueBg, borderColor: colors.accentBlueBorder }]}>
                 <View style={styles.heroLabel}>
-                  <Ionicons name={draftRows ? 'receipt-outline' : 'sparkles-outline'} size={15} color={colors.accentBlue} />
-                  <Text style={[styles.overline, { color: colors.accentBlue }]}>{draftRows ? 'ORDER REVIEW' : answer.kind === 'clarify' ? 'LET’S CLARIFY' : 'INVENTORY ANSWER'}</Text>
+                  <Ionicons name={draftRows ? 'receipt-outline' : answer.kind === 'clarify' ? 'help-circle-outline' : 'cube-outline'} size={15} color={colors.accentBlue} />
+                  <Text style={[styles.overline, { color: colors.accentBlue }]}>{draftRows ? 'Order draft' : answer.kind === 'clarify' ? 'Clarification' : 'Inventory'}</Text>
                 </View>
                 <Text accessibilityRole="header" style={[styles.answerTitle, textStyle]}>{answer.title}</Text>
+                {(!answer.statistics?.length || detailsOpen || reviewingExistingDraft || !!proposalChoice || answer.kind === 'list' && !answer.items.length) && <Text selectable accessibilityLiveRegion="polite" style={[styles.answer, textStyle]} onPress={() => setKeptOpen(true)}>{answer.text}</Text>}
               </View>
               {!!answer.statistics?.length && <View style={styles.statistics}>
                 {answer.statistics.map(stat => <View key={stat.label} style={[styles.stat, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary, borderTopColor: stat.tone === 'out' ? colors.statusRed : stat.tone === 'low' ? colors.statusOrange : colors.accentBlue }]}>
@@ -1223,7 +1225,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
                   <Text style={[styles.caption, { color: colors.textSecondary }]}>Nothing has been saved.</Text>
                 </View>
               </View>}
-              {(!answer.statistics?.length || detailsOpen || reviewingExistingDraft || !!proposalChoice || answer.kind === 'list' && !answer.items.length) && <Text selectable accessibilityLiveRegion="polite" style={[styles.answer, textStyle]} onPress={() => setKeptOpen(true)}>{answer.text}</Text>}
+
               {!!answer.excluded?.length && <Text selectable style={[styles.caption, { color: colors.textSecondary }]}>Excluded by your request: {answer.excluded.map(e => e.name).join(', ')}</Text>}
               {answer.notes?.map(note => <Text key={note} style={[styles.caption, { color: colors.statusOrange }]}>{note}</Text>)}
               <View style={styles.metaRow}>
@@ -1246,50 +1248,51 @@ export default function AssistantExperience({ embedded = false, active = true, s
                 if (pendingIntent.current) void ask(answeredQuestion.current, pendingIntent.current);
               }, locked)}</View>)}
             </View>
-            {answer.kind === 'list' && !draftRows && !!resultChain.current.length && <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.chips, { flexWrap: 'nowrap' }]}>
+            {answer.kind === 'list' && !draftRows && !!resultChain.current.length && <View style={styles.chips}>
                 {refinements(answer.items).map(r => <View key={r.label}>{button(r.label, () => { void ask(r.spoken, r.plan); }, locked)}</View>)}
                 {!!answer.items.length && button('Draft these items', () => { void ask('Create a draft from those', plan('draft_order', { selection: selection([condition()], { scope: 'previous' }), draft: { mode: 'new', lines: [], include_selection: true } })); }, locked)}
-            </ScrollView>}
-            <View style={styles.chips}>
-              {!!proposalChoice && <>
+            </View>}
+            {!!proposalChoice && <View style={styles.chips}>
                 {pendingIntent.current && 'version' in pendingIntent.current && toPlan(pendingIntent.current).draft?.mode === 'new' && button('Merge with existing draft', () => proposalChoice(true), locked)}
                 {button('Replace existing draft with this proposal', () => proposalChoice(false), locked)}
                 {button('Cancel proposal · keep existing draft', () => { cancel(); setProposalChoice(null); setAnswer(null); setDraftRows(undefined); }, locked)}
-              </>}
-            </View>
+            </View>}
           </View>}
   </>;
 
-  const answerAction = (name: React.ComponentProps<typeof Ionicons>['name'], label: string, action: () => void, disabled = false) =>
+  const answerAction = (name: React.ComponentProps<typeof Ionicons>['name'], label: string, title: string, action: () => void, disabled = false) =>
     <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={action}
-      style={[styles.iconButton, { opacity: disabled ? 0.35 : 1, backgroundColor: colors.bgTertiary }]}><Ionicons name={name} size={20} color={colors.textSecondary} /></TouchableOpacity>;
+      style={[styles.answerAction, { opacity: disabled ? 0.5 : 1, backgroundColor: colors.bgTertiary }]}>
+      <Ionicons name={name} size={18} color={colors.textSecondary} />
+      <Text style={[styles.actionLabel, { color: colors.textPrimary }]}>{title}</Text>
+    </TouchableOpacity>;
   const footer = answer && <View style={[styles.answerFooter, { borderColor: colors.borderPrimary, backgroundColor: colors.bgPrimary }]}>
     {!!draftRows && !proposalChoice && <VoiceButton label={reviewingExistingDraft ? 'Open order review' : 'Review unsaved order draft'} onPress={() => { cancel(); setAnswer(null); router.navigate('/order/create'); }} disabled={locked} />}
     <View style={[styles.row, { flexWrap: 'wrap', gap: 8 }]}>
-      {speaking ? answerAction('stop', 'Cancel / stop speech', () => { cancel(); setKeptOpen(true); }) : answerAction('volume-medium-outline', 'Hear answer', () => { setKeptOpen(true); const abort = new AbortController(); controller.current = abort; void playAnswer(answer, turn.current, abort.signal, true); }, locked || !(prefs.speechProvider === 'sarvam' ? SARVAM_SPEECH_ENABLED && caps.speech_providers.includes('sarvam') && caps.scopes.includes('sarvam_speech') : prefs.speechProvider === 'pocket' ? ALBA_SELECTION_ENABLED && albaVoiceReady : prefs.speechProvider === 'kokoro_offline' ? kokoroOffered && kokoroVoiceReady : deviceVoice.ready))}
-      {!draftRows && answerAction('refresh-outline', 'Refresh answer', () => { void ask(answeredQuestion.current, pendingIntent.current, true); }, locked || pendingIntent.current?.intent === 'inventory_export')}
-      {!!resultChain.current.length && !draftRows && answerAction('download-outline', 'Export inventory report', () => { void ask('Export this inventory list as PDF', plan('inventory_export')); }, locked)}
+      {speaking ? answerAction('stop', 'Cancel / stop speech', 'Stop', () => { cancel(); setKeptOpen(true); }) : answerAction('volume-medium-outline', 'Hear answer', 'Listen', () => { setKeptOpen(true); const abort = new AbortController(); controller.current = abort; void playAnswer(answer, turn.current, abort.signal, true); }, locked || !(prefs.speechProvider === 'sarvam' ? SARVAM_SPEECH_ENABLED && caps.speech_providers.includes('sarvam') && caps.scopes.includes('sarvam_speech') : prefs.speechProvider === 'pocket' ? ALBA_SELECTION_ENABLED && albaVoiceReady : prefs.speechProvider === 'kokoro_offline' ? kokoroOffered && kokoroVoiceReady : deviceVoice.ready))}
+      {!draftRows && answerAction('refresh-outline', 'Refresh answer', 'Refresh', () => { void ask(answeredQuestion.current, pendingIntent.current, true); }, locked || pendingIntent.current?.intent === 'inventory_export')}
+      {!!resultChain.current.length && !draftRows && answerAction('download-outline', 'Export inventory report', 'Export', () => { void ask('Export this inventory list as PDF', plan('inventory_export')); }, locked)}
       <View style={{ flex: 1, minWidth: 120 }}><VoiceButton label="Ask another question" secondary onPress={() => { cancel(); setAnswer(null); setQuestion(''); setError(''); setReviewOpen(false); }} /></View>
     </View>
   </View>;
 
   // Rows, choice buttons and draft decisions all need room; the content scrolls beyond this height.
   const sheetRows = answer ? Math.min(answer.items.length + answer.choices.length + (answer.options?.length ?? 0) + (proposalChoice ? 2 : 0), 7) : 0;
+  const scrollActions = windowHeight < 600 || fontScale > 1.35;
   const overlay = <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.screen, { backgroundColor: colors.overlayDark }]}>
     <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Dismiss voice assistant" accessibilityRole="button" />
     <SafeAreaView style={styles.overlay} pointerEvents="box-none">
-      <View accessibilityViewIsModal style={[styles.sheet, answer && { height: answer.items.length ? windowHeight * 0.90 : Math.min(windowHeight * 0.90, Math.max(420, (300 + sheetRows * 70) * Math.max(1, Math.min(fontScale, 2)))) }, { backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary, shadowColor: '#000000' }]}>
+      <View accessibilityViewIsModal style={[styles.sheet, answer && { height: answer.items.length ? windowHeight * 0.90 : Math.min(windowHeight * 0.90, Math.max(windowHeight * 0.66, (340 + sheetRows * 70) * Math.max(1, Math.min(fontScale, 2)))) }, { backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary, shadowColor: '#000000' }]}>
         <View style={[styles.handle, { backgroundColor: colors.borderSecondary }]} />
         <View style={styles.header}>
           {iconButton('settings-outline', 'Voice setup', openSetup)}
           <View style={styles.assistantBrand}>
-            <Text accessibilityRole="header" style={[styles.heading, textStyle, { textAlign: 'center' }]}>CareKosh</Text>
-            <Text style={[styles.brandCaption, { color: colors.textSecondary }]}>Your inventory assistant</Text>
+            <Text accessibilityRole="header" style={[styles.heading, textStyle, { textAlign: 'center' }]}>Ask CareKosh</Text>
           </View>
           {iconButton('close', 'Close assistant', close)}
         </View>
-        {answer ? <AnswerList items={answer.items} draftRows={draftRows} reasons={answer.reasons} header={content} /> : <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>{content}</ScrollView>}
-        {footer}
+        {answer ? <AnswerList items={answer.items} draftRows={draftRows} reasons={answer.reasons} header={<>{content}{scrollActions && footer}</>} /> : <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>{content}</ScrollView>}
+        {!scrollActions && footer}
       </View>
     </SafeAreaView>
   </KeyboardAvoidingView>;
@@ -1306,26 +1309,28 @@ export default function AssistantExperience({ embedded = false, active = true, s
 }
 
 const styles = StyleSheet.create({
+  answerAction: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 48, gap: 6, borderRadius: 12, paddingHorizontal: 10, flexShrink: 1 },
+  actionLabel: { fontSize: 14, fontWeight: '600', flexShrink: 1 },
   answerFooter: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 14, gap: 10, borderTopWidth: StyleSheet.hairlineWidth },
-  statistics: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, stat: { flexGrow: 1, flexBasis: 75, padding: 12, borderWidth: 1, borderTopWidth: 3, borderRadius: 14, gap: 3 }, statValue: { fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  statLabel: { fontSize: 11, lineHeight: 17 },
-  answerHero: { padding: 14, borderRadius: 18, borderWidth: 1, gap: 8 },
+  statistics: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, stat: { flexGrow: 1, flexBasis: 112, padding: 12, borderWidth: 1, borderTopWidth: 3, borderRadius: 14, gap: 3 }, statValue: { fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  statLabel: { fontSize: 13, lineHeight: 20 },
+  answerHero: { padding: 18, borderRadius: 18, borderWidth: 1, gap: 8 },
   heroLabel: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  overline: { fontSize: 10, lineHeight: 16, letterSpacing: 1, fontWeight: '700' },
+  overline: { fontSize: 13, lineHeight: 18, letterSpacing: 0.2, fontWeight: '700' },
   draftNotice: { flexDirection: 'row', alignItems: 'flex-start', padding: 12, gap: 9, borderWidth: 1, borderRadius: 12 },
   assistantBrand: { flex: 1, minWidth: 0, alignItems: 'center', gap: 2 },
-  brandCaption: { fontSize: 11, lineHeight: 16, textAlign: 'center' },
   dockContent: { paddingHorizontal: 14, paddingBottom: 12, gap: 10 },
   screen: { flex: 1 }, overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: { width: '100%', maxWidth: 680, alignSelf: 'center', maxHeight: '94%', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, overflow: 'hidden', elevation: 18, shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.12, shadowRadius: 18 },
   handle: { width: 36, height: 4, borderRadius: 4, alignSelf: 'center', marginTop: 10 },
   header: { paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  settingsContent: { width: '100%', maxWidth: 660, alignSelf: 'center', gap: 18 },
   content: { padding: 18, gap: 12, paddingBottom: 20 }, heading: { fontSize: 20, fontWeight: '700' }, body: { fontSize: 15, lineHeight: 23 },
-  caption: { fontSize: 13, lineHeight: 20 }, label: { fontSize: 16, fontWeight: '600' }, answer: { fontSize: 15, lineHeight: 23 },
+  caption: { fontSize: 13, lineHeight: 20 }, label: { fontSize: 16, fontWeight: '600' }, answer: { fontSize: 16, lineHeight: 25 },
   answerTitle: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
   card: { padding: 18, borderRadius: 18, gap: 12 }, answerCard: { padding: 0, gap: 12 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  iconButton: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  iconButton: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
   metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   detailsButton: { minHeight: 44, minWidth: 80, paddingHorizontal: 8, justifyContent: 'center' },
   freshness: { flexGrow: 1, flexBasis: 160, paddingVertical: 7, paddingHorizontal: 9, borderRadius: 8, flexDirection: 'row', gap: 8, alignItems: 'center' },

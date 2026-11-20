@@ -16,6 +16,7 @@ import {
     TouchableOpacity,
     StyleSheet,
     Image,
+    useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -34,22 +35,15 @@ export default function VitalTrackTopBar({
     onExportClick,
     onAddItemClick,
     onProfileClick,
-    userName = 'User',
 }: VitalTrackTopBarProps) {
     const { colors, isDarkMode } = useTheme();
     const router = useRouter();
 
+    const { width, fontScale } = useWindowDimensions();
+    const compact = width < 360 || (width < 480 && fontScale > 1.3);
+
     const openSearch = () => {
         router.push('/search');
-    };
-
-    const getInitials = (name: string) => {
-        return name
-            .split(' ')
-            .map((part) => part[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2);
     };
 
     return (
@@ -67,15 +61,16 @@ export default function VitalTrackTopBar({
                                 : require('../../assets/carekosh-login-launcher-icon-light.png')
                         }
                         style={styles.logo}
+                        accessible={compact}
+                        accessibilityLabel="CareKosh"
                         resizeMode="contain"
                     />
 
-
                     {/* App Name */}
-                    <View style={styles.appNameContainer}>
+                    {!compact && <View style={styles.appNameContainer}>
                         <Text style={[styles.appName, { color: colors.textPrimary }]}>CareKosh</Text>
                         <Text style={[styles.appSubtitle, { color: colors.textTertiary }]}>My Home ICU</Text>
-                    </View>
+                    </View>}
                 </View>
 
                 {/* Right Section: Actions */}
@@ -108,15 +103,15 @@ export default function VitalTrackTopBar({
                         <Ionicons name="add" size={20} color={colors.white} />
                     </TouchableOpacity>
 
-                    {/* Profile Avatar */}
+                    {/* Account menu */}
                     <TouchableOpacity
-                        style={styles.profileButton}
+                        style={styles.iconButton}
+                        accessibilityRole="button"
+                        accessibilityLabel="Open account menu"
                         onPress={onProfileClick}
                         activeOpacity={0.7}
                     >
-                        <View style={[styles.profileAvatar, { backgroundColor: colors.accentBlueBg, borderColor: colors.accentBlueBorder }]}>
-                            <Text style={[styles.profileInitials, { color: colors.accentBlue }]}>{getInitials(userName)}</Text>
-                        </View>
+                        <Ionicons name="menu-outline" size={26} color={colors.textPrimary} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -146,6 +141,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.md,
     },
     leftSection: {
+        flex: 1,
+        minWidth: 0,
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
@@ -155,6 +152,7 @@ const styles = StyleSheet.create({
         height: 52,
     },
     appNameContainer: {
+        flexShrink: 1,
         flexDirection: 'column',
     },
     appName: {
@@ -184,20 +182,5 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: spacing.xs,
-    },
-    profileButton: {
-        marginLeft: spacing.sm,
-    },
-    profileAvatar: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        borderWidth: 1.5,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    profileInitials: {
-        fontSize: fontSize.md,
-        fontWeight: fontWeight.bold,
     },
 });

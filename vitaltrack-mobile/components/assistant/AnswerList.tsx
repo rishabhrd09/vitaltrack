@@ -19,12 +19,11 @@ export default function AnswerList({ items, header, draftRows, reasons }: { item
   return <FlatList data={items} keyExtractor={i => i.id} keyboardShouldPersistTaps="handled"
     initialNumToRender={12} maxToRenderPerBatch={12} windowSize={7}
     contentContainerStyle={styles.content}
-    ListHeaderComponent={<View style={styles.intro}>{header}{!!items.length && <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.tableHead}>
-      <Text style={[styles.column, { flex: 1, color: colors.textSecondary }]}>ITEMS · {items.length}</Text>
-      {!stacked && <Text style={[styles.column, styles.quantityColumn, { color: colors.textSecondary }]}>{draftRows ? 'IN STOCK' : 'QUANTITY'}</Text>}
-      {!stacked && draftRows && <Text style={[styles.column, styles.quantityColumn, { color: colors.textSecondary }]}>TO ORDER</Text>}
-      {!stacked && <View style={{ width: 14 }} />}
-    </View>}</View>}
+    ListHeaderComponent={<View style={styles.intro}>{header}{!!items.length &&
+      <Text accessibilityRole="header" style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+        {draftRows ? 'Draft items' : 'Matching items'} ({items.length})
+      </Text>}
+    </View>}
     renderItem={({ item, index }) => {
       const row = draftById.get(item.id);
       const status = stockLabel(item);
@@ -39,10 +38,11 @@ export default function AnswerList({ items, header, draftRows, reasons }: { item
         ...(row ? [`Order quantity · ${provenance}`] : [])];
       const label = [`${index + 1}. ${item.name}`, `${item.quantity} ${item.unit}`, status, critical && 'Critical equipment', why && `Why: ${why}`,
         row && `Order ${row.quantity} ${item.unit}, ${provenance}`, open && details.join('. '), open ? 'Hide recorded details' : 'Show recorded details'].filter(Boolean).join('. ');
-      const quantity = (value: number, order = false) => <View style={[styles.quantityColumn, stacked && styles.stackedQuantity]}>
-        {stacked && <Text style={[styles.column, { color: colors.textSecondary }]}>{order ? 'TO ORDER' : 'IN STOCK'}</Text>}
-        <Text style={[styles.number, { color: order ? colors.accentBlue : colors.textPrimary }]}>{value}</Text>
-        <Text style={[styles.unit, { color: colors.textSecondary }]}>{item.unit}</Text>
+      const quantity = (value: number, order = false) => <View style={[styles.fact, { backgroundColor: order ? colors.accentBlueBg : colors.bgTertiary }]}>
+        <Text style={[styles.factLabel, { color: colors.textSecondary }]}>{order ? 'To order' : 'In stock'}</Text>
+        <Text style={[styles.unit, { color: colors.textPrimary }]}>
+          <Text style={[styles.number, order && { color: colors.accentBlue }]}>{value}</Text> {item.unit}
+        </Text>
       </View>;
       return <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ expanded: open }}
         onPress={() => {
@@ -51,7 +51,6 @@ export default function AnswerList({ items, header, draftRows, reasons }: { item
         }}
         style={[styles.item, { backgroundColor: colors.bgCard, borderColor: colors.borderPrimary }]}>
         <View style={styles.line}>
-          <Text style={[styles.index, { color: colors.textTertiary }]}>{String(index + 1).padStart(2, '0')}</Text>
           <View style={styles.nameColumn}>
             <Text style={[styles.name, { color: colors.textPrimary }]}>{item.name}</Text>
             <View style={styles.badges}>
@@ -62,14 +61,12 @@ export default function AnswerList({ items, header, draftRows, reasons }: { item
               {critical && <Text style={[styles.badge, { color: colors.statusOrange }]}>★ Critical</Text>}
             </View>
           </View>
-          {!stacked && quantity(item.quantity)}
-          {!stacked && row && quantity(row.quantity, true)}
-          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={colors.textTertiary} />
+          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textSecondary} />
         </View>
-        {stacked && <View style={[styles.facts, { backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary }]}>
+        <View style={[styles.facts, stacked && styles.stackedFacts]}>
           {quantity(item.quantity)}
-          {row && <View style={[styles.orderFact, { borderColor: colors.borderPrimary }]}>{quantity(row.quantity, true)}</View>}
-        </View>}
+          {row && quantity(row.quantity, true)}
+        </View>
         {(!!why || !!row) && <View style={[styles.context, { borderColor: colors.borderPrimary }]}>
           {!!why && <Text style={[styles.detail, { color: colors.textSecondary }]}>Why: {why}</Text>}
           {row && <View style={styles.provenance}>
@@ -85,24 +82,24 @@ export default function AnswerList({ items, header, draftRows, reasons }: { item
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: 16, paddingBottom: 20, gap: 10 }, intro: { gap: 12 },
-  tableHead: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 2 },
-  column: { fontSize: 10, lineHeight: 15, fontWeight: '600', letterSpacing: 0.5, flexShrink: 1 },
-  item: { padding: 14, borderWidth: 1, borderRadius: 16, gap: 10 },
-  line: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  content: { paddingHorizontal: 16, paddingBottom: 20, gap: 12 },
+  intro: { gap: 20 },
+  sectionTitle: { fontSize: 18, fontWeight: '600' },
+  item: { padding: 16, borderWidth: 1, borderRadius: 18, gap: 14 },
+  line: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   nameColumn: { flex: 1, minWidth: 0, gap: 8 },
-  index: { fontSize: 10, fontVariant: ['tabular-nums'], minWidth: 18, paddingTop: 3 },
-  name: { fontSize: 15, fontWeight: '600', lineHeight: 21 },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
-  badge: { fontSize: 10, lineHeight: 16, fontWeight: '600' },
-  quantityColumn: { width: 62, textAlign: 'right', alignItems: 'flex-end' },
-  stackedQuantity: { flex: 1, width: 'auto', alignItems: 'flex-start', gap: 1 },
-  facts: { flexDirection: 'row', borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, padding: 10, gap: 12 },
-  orderFact: { flex: 1, borderLeftWidth: 1, paddingLeft: 12 },
-  statusLine: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, flexShrink: 1 },
-  number: { fontSize: 19, lineHeight: 25, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  unit: { fontSize: 12, lineHeight: 17 }, status: { fontSize: 10, lineHeight: 15, fontWeight: '600', flexShrink: 1 },
-  detail: { fontSize: 12, lineHeight: 18 }, details: { gap: 4 },
-  context: { paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, gap: 4 },
-  provenance: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
+  name: { fontSize: 17, fontWeight: '600', lineHeight: 23 },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  badge: { fontSize: 12, lineHeight: 18, fontWeight: '600' },
+  facts: { flexDirection: 'row', gap: 8 },
+  stackedFacts: { flexDirection: 'column' },
+  fact: { flexGrow: 1, flexBasis: 'auto', flexShrink: 1, minWidth: 0, paddingVertical: 9, paddingHorizontal: 12, gap: 4, borderRadius: 10 },
+  factLabel: { fontSize: 12, fontWeight: '600' },
+  number: { fontSize: 19, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  unit: { fontSize: 14, lineHeight: 25 },
+  statusLine: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 1 },
+  status: { fontSize: 12, lineHeight: 18, fontWeight: '600', flexShrink: 1 },
+  detail: { fontSize: 14, lineHeight: 21 }, details: { gap: 6 },
+  context: { paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, gap: 6 },
+  provenance: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 });
