@@ -62,7 +62,7 @@ export default function Dashboard() {
     {
       label: "Total items",
       value: items.length,
-      detail: `Across ${categories.length} categories`,
+      detail: `${categories.length} ${categories.length === 1 ? "category" : "categories"}`,
       icon: Package,
       color: "blue",
       to: "/inventory",
@@ -247,7 +247,7 @@ export default function Dashboard() {
                 <span>
                   {needs.length > 6
                     ? `Showing 6 of ${needs.length} items needing attention`
-                    : `${needs.length} items needing attention`}
+                    : `${needs.length} ${needs.length === 1 ? "item" : "items"} needing attention`}
                 </span>
                 <Link to="/inventory?status=attention">
                   View inventory
