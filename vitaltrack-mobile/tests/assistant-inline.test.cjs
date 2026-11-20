@@ -841,7 +841,7 @@ test('voice setup separates listening, understanding and narration controls', as
   const h = await harness({ mode: 'settings', cloudAvailable: true, sarvamAvailable: true });
   try {
     const headings = h.tree.root.findAll(n => n.type === 'Text' && n.props.accessibilityRole === 'header').map(n => n.children.join(''));
-    assert.deepEqual(headings, ['Assistant', 'Listening · speech to text', 'Understanding · text to task', 'Spoken replies']);
+    assert.deepEqual(headings, ['Assistant status', 'Jump to a setting', 'Listening · speech to text', 'Understanding · text to task', 'Spoken replies']);
     await h.press('Use Sarvam English voice'); await h.confirm();
     await h.press('Relaxed pace'); assert.equal(h.prefs.speechPace, 0.9);
     assert.equal(h.prefs.cloud, false); assert.equal(h.prefs.audioOptIn, false);
@@ -1169,7 +1169,8 @@ for (const dimensions of [{width:320,fontScale:1}, {width:390,fontScale:1.6}]) t
   const h = await harness({ embedded:false, ...dimensions, inventoryItems:[{id:'long',name:'Sterile procedure kit with extra long recorded inventory name',quantity:2,minimumStock:4,unit,isActive:true,isCritical:true}] });
   try {
     await h.typeQuestion('Show all inventory items'); await h.press('Show answer');
-    assert.ok(hasText(h, unit)); assert.ok(!texts(h).includes('QTY'), 'narrow table switches to labelled stacked facts');
+    assert.ok(hasText(h, unit)); assert.ok(hasText(h, 'In stock'));
+    assert.ok(h.find('Hear answer')); assert.ok(h.find('Ask another question'));
     for (const node of h.tree.root.findAllByType('Text').filter(n => n.children.includes(unit))) assert.equal(node.props.numberOfLines, undefined);
   } finally { await h.dispose(); }
 });

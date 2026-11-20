@@ -4,15 +4,13 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Switch, Modal, Pressable, PanResponder, Animated, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Switch, Modal, Pressable, PanResponder, Animated, Dimensions, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/theme/ThemeContext';
 import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/spacing';
-
-const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 interface ProfileMenuSheetProps {
     visible: boolean;
@@ -69,27 +67,7 @@ export default function ProfileMenuSheet({
 
     const panResponder = useRef(
         PanResponder.create({
-            // Only claim the gesture when there's a clear, deliberate downward
-            // drag — so taps on menu items are never intercepted. History:
-            //
-            //  - Original threshold of 5px caused taps to register the Material
-            //    ripple but onPress never fired (PanResponder was claiming
-            //    during a tap's natural finger drift).
-            //  - 2026-05-04 audit bumped to 15px + dy > |dx| direction guard.
-            //  - 2026-05-09: real-device testing showed the issue still occurs
-            //    intermittently — finger drift on Android touchscreens routinely
-            //    exceeds 15px on a "still" tap, especially on bigger phones.
-            //    Symptom was particularly bad: ALL 4 menu options would appear
-            //    dead in a session because every tap had similar drift.
-            //
-            // Final tuning:
-            //  1. Threshold raised to 30px — well outside normal tap drift range
-            //     (typical: 0-15px) but still under a real swipe (50-200px).
-            //  2. Direction guard tightened to dy > 1.5 * |dx|, so the drag must
-            //     be meaningfully more vertical than horizontal, not just
-            //     marginally so.
-            //  3. Explicit termination handlers so a stolen gesture cleans up
-            //     translateY rather than leaving the sheet partially translated.
+            // Restrict swiping to the handle and heading so list gestures can scroll freely.
             onStartShouldSetPanResponder: () => false,
             onStartShouldSetPanResponderCapture: () => false,
             onMoveShouldSetPanResponder: (_, gs) => gs.dy > 30 && gs.dy > Math.abs(gs.dx) * 1.5,
@@ -111,7 +89,7 @@ export default function ProfileMenuSheet({
                 const shouldDismiss = gs.dy > 100 || gs.vy > 0.5;
                 if (shouldDismiss) {
                     Animated.timing(translateY, {
-                        toValue: SCREEN_HEIGHT,
+                        toValue: Dimensions.get('window').height,
                         duration: 200,
                         useNativeDriver: true,
                     }).start(() => {
@@ -153,139 +131,93 @@ export default function ProfileMenuSheet({
             animationType="slide"
             onRequestClose={handleDismiss}
         >
-            <Pressable style={[styles.overlay, { backgroundColor: colors.overlayDark }]} onPress={handleDismiss}>
-                <Animated.View
-                    {...panResponder.panHandlers}
-                    style={[
-                        styles.sheetWrapper,
-                        {
-                            backgroundColor: colors.bgCard,
-                            paddingBottom: insets.bottom + spacing.md,
-                            transform: [{ translateY }],
-                        },
-                    ]}
-                >
-                {/*
-                  PanResponder is attached to the ancestor Animated.View (not the
-                  drag-handle View below) so RN's move-phase responder bubbling
-                  can actually reach it. When the inner Pressable holds the
-                  responder after touch-start, onMoveShouldSetPanResponder is
-                  called on the CURRENT responder and its ancestors — not on
-                  descendants. Attaching panHandlers to a descendant View means
-                  the move handler never runs, which is what made swipe-down
-                  silently fail in the previous implementation.
-                */}
-                <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-                    {/* Drag handle — purely visual now. Users can swipe down from anywhere on the sheet. */}
-                    <View style={styles.dragHandleContainer}>
+            <View style={[styles.overlay, { backgroundColor: colors.overlayDark, paddingTop: insets.top }]}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Dismiss account menu"
+                    style={StyleSheet.absoluteFill} onPress={handleDismiss} />
+                <Animated.View accessibilityViewIsModal style={[styles.sheetWrapper, {
+                    backgroundColor: colors.bgCard, paddingBottom: insets.bottom, transform: [{ translateY }],
+                }]}>
+                    <View {...panResponder.panHandlers} style={styles.sheetHeader}>
                         <View style={[styles.dragHandle, { backgroundColor: colors.borderSecondary }]} />
-                    </View>
-
-                    {/* Profile Header */}
-                    <View style={styles.profileHeader}>
-                        <View style={[styles.largeAvatar, { backgroundColor: colors.accentBlue }]}>
-                            <Text style={[styles.largeInitials, { color: colors.white }]}>{getInitials(userName)}</Text>
-                        </View>
-                        <View style={styles.profileInfo}>
-                            <Text style={[styles.userName, { color: colors.textPrimary }]}>{userName}</Text>
-                            <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{userEmail}</Text>
+                        <View style={styles.headingRow}>
+                            <Text accessibilityRole="header" style={[styles.heading, { color: colors.textPrimary }]}>Account menu</Text>
+                            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close account menu"
+                                onPress={handleDismiss} style={[styles.closeButton, { backgroundColor: colors.bgTertiary }]}>
+                                <Ionicons name="close" size={21} color={colors.textSecondary} />
+                            </TouchableOpacity>
                         </View>
                     </View>
+                    <ScrollView style={styles.scroll} contentContainerStyle={styles.sheet}>
+                        <View style={[styles.profileHeader, { backgroundColor: colors.bgTertiary }]}>
+                            <View style={[styles.largeAvatar, { backgroundColor: colors.accentBlueBg }]}>
+                                <Text style={[styles.largeInitials, { color: colors.accentBlue }]}>{getInitials(userName)}</Text>
+                            </View>
+                            <View style={styles.menuTextContainer}>
+                                <Text style={[styles.userName, { color: colors.textPrimary }]}>{userName}</Text>
+                                <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>{userEmail}</Text>
+                            </View>
+                        </View>
+                        <View style={styles.group}>
+                            <MenuItem
+                                icon="person-outline"
+                                title="Edit profile"
+                                onPress={() => {
+                                    onEditProfile?.();
+                                    onDismiss();
+                                }}
+                            />
 
-                    <View style={[styles.divider, { backgroundColor: colors.borderPrimary }]} />
+                            <MenuItem
+                                icon="mic-outline"
+                                title="Voice setup"
+                                subtitle="Microphone, language processing and playback"
+                                onPress={() => { onDismiss(); router.navigate({ pathname: '/assistant', params: { mode: 'settings' } }); }}
+                            />
 
-                    {/* Appearance Toggle */}
-                    <TouchableOpacity
-                        style={[styles.appearanceRow, { backgroundColor: colors.bgTertiary }]}
-                        onPress={onThemeToggle}
-                        activeOpacity={0.7}
-                    >
-                        <View style={styles.menuIconContainer}>
-                            <Ionicons
-                                name={isDarkTheme ? 'moon' : 'sunny'}
-                                size={24}
-                                color={colors.accentBlue}
+                            <View style={styles.menuItem}>
+                                <View style={[styles.menuIconContainer, { backgroundColor: colors.bgTertiary }]}>
+                                    <Ionicons name="moon-outline" size={21} color={colors.textSecondary} />
+                                </View>
+                                <Text style={[styles.menuTitle, styles.menuTextContainer, { color: colors.textPrimary }]}>Dark mode</Text>
+                                <Switch accessibilityLabel="Dark mode" value={isDarkTheme} onValueChange={onThemeToggle}
+                                    trackColor={{ false: colors.borderSecondary, true: colors.accentBlue }}
+                                />
+                            </View>
+                        </View>
+                        <View style={[styles.group, { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.borderPrimary }]}>
+                            <MenuItem
+                                icon="information-circle-outline"
+                                title="About CareKosh"
+                                subtitle={`Version ${appVersion}`}
+                                onPress={() => {
+                                    onAbout?.();
+                                    onDismiss();
+                                }}
+                            />
+
+                            <MenuItem
+                                icon="help-circle-outline"
+                                title="Help and support"
+                                onPress={() => {
+                                    onHelp?.();
+                                    onDismiss();
+                                }}
                             />
                         </View>
-                        <View style={styles.menuTextContainer}>
-                            <Text style={[styles.menuTitle, { color: colors.textPrimary }]}>Appearance</Text>
-                            <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
-                                {isDarkTheme ? 'Dark Mode' : 'Light Mode'}
-                            </Text>
-                        </View>
-                        <Switch
-                            value={isDarkTheme}
-                            onValueChange={onThemeToggle}
-                            trackColor={{ false: colors.borderSecondary, true: colors.accentBlueBg }}
-                            thumbColor={isDarkTheme ? colors.accentBlue : colors.textTertiary}
-                        />
-                    </TouchableOpacity>
-
-                    {/* Menu Items
-                        NOTE: these onPress closures call onDismiss() directly
-                        (not handleDismiss). handleDismiss is the idempotent
-                        wrapper used on the three race-prone dismissal paths
-                        (Modal onRequestClose, backdrop Pressable, swipe-end);
-                        routing it through a single dismisser ref protects
-                        against those specific double-fire races. Menu taps
-                        are serial user intents with no race, so they use the
-                        original prop directly — keeping this path byte-identical
-                        to pre-branch minimises risk of a regression in the
-                        tap-navigate flow. */}
-                    <MenuItem
-                        icon="person-outline"
-                        title="Edit Profile"
-                        subtitle="View and manage your account"
-                        onPress={() => {
-                            onEditProfile?.();
-                            onDismiss();
-                        }}
-                    />
-
-                    <MenuItem
-                        icon="mic-outline"
-                        title="Voice setup"
-                        subtitle="Speech download, microphone & spoken replies"
-                        onPress={() => { onDismiss(); router.navigate({ pathname: '/assistant', params: { mode: 'settings' } }); }}
-                    />
-
-                    <MenuItem
-                        icon="information-circle-outline"
-                        title="About CareKosh"
-                        subtitle={`Home ICU Inventory Management · v${appVersion}`}
-                        onPress={() => {
-                            onAbout?.();
-                            onDismiss();
-                        }}
-                    />
-
-                    <MenuItem
-                        icon="help-circle-outline"
-                        title="Help & Support"
-                        subtitle="Get help and contact support"
-                        onPress={() => {
-                            onHelp?.();
-                            onDismiss();
-                        }}
-                    />
-
-                    <View style={[styles.divider, { backgroundColor: colors.borderPrimary }]} />
-
-                    {/* Logout Button — same rationale as menu items above. */}
-                    <TouchableOpacity
-                        style={[styles.logoutButton, { borderColor: colors.statusRed }]}
-                        onPress={() => {
-                            onLogout?.();
-                            onDismiss();
-                        }}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons name="log-out-outline" size={20} color={colors.statusRed} />
-                        <Text style={[styles.logoutText, { color: colors.statusRed }]}>Logout</Text>
-                    </TouchableOpacity>
-                </Pressable>
+                        <TouchableOpacity accessibilityRole="button"
+                            style={[styles.logoutButton, { backgroundColor: colors.statusRedBg }]}
+                            onPress={() => {
+                                onLogout?.();
+                                onDismiss();
+                            }}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="log-out-outline" size={20} color={colors.statusRed} />
+                            <Text style={[styles.logoutText, { color: colors.statusRed }]}>Log out</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
                 </Animated.View>
-            </Pressable>
+            </View>
         </Modal>
     );
 }
@@ -293,7 +225,7 @@ export default function ProfileMenuSheet({
 interface MenuItemProps {
     icon: keyof typeof Ionicons.glyphMap;
     title: string;
-    subtitle: string;
+    subtitle?: string;
     onPress: () => void;
 }
 
@@ -301,13 +233,13 @@ function MenuItem({ icon, title, subtitle, onPress }: MenuItemProps) {
     const { colors } = useTheme();
 
     return (
-        <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
-            <View style={styles.menuIconContainer}>
-                <Ionicons name={icon} size={24} color={colors.textSecondary} />
+        <TouchableOpacity accessibilityRole="button" style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
+            <View style={[styles.menuIconContainer, { backgroundColor: colors.bgTertiary }]}>
+                <Ionicons name={icon} size={21} color={colors.textSecondary} />
             </View>
             <View style={styles.menuTextContainer}>
                 <Text style={[styles.menuTitle, { color: colors.textPrimary }]}>{title}</Text>
-                <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
+                {subtitle && <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
         </TouchableOpacity>
@@ -319,96 +251,26 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'flex-end',
     },
-    sheetWrapper: {
-        borderTopLeftRadius: borderRadius.xl,
-        borderTopRightRadius: borderRadius.xl,
-        maxHeight: '80%',
-    },
-    sheet: {
-        paddingHorizontal: spacing.xl,
-        paddingTop: spacing.md,
-    },
-    dragHandleContainer: {
-        alignItems: 'center',
-        paddingVertical: spacing.md,
-    },
-    dragHandle: {
-        width: 40,
-        height: 4,
-        borderRadius: 2,
-    },
-    profileHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: spacing.xl,
-    },
-    largeAvatar: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    largeInitials: {
-        fontSize: 28,
-        fontWeight: fontWeight.bold,
-    },
-    profileInfo: {
-        marginLeft: spacing.lg,
-        flex: 1,
-    },
-    userName: {
-        fontSize: fontSize.xl,
-        fontWeight: fontWeight.semibold,
-    },
-    userEmail: {
-        fontSize: fontSize.md,
-        marginTop: 2,
-    },
-    divider: {
-        height: 1,
-        marginVertical: spacing.lg,
-    },
-    appearanceRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: spacing.md,
-        borderRadius: borderRadius.lg,
-        marginBottom: spacing.lg,
-    },
-    menuItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: spacing.md,
-    },
-    menuIconContainer: {
-        width: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    menuTextContainer: {
-        flex: 1,
-        marginLeft: spacing.md,
-    },
-    menuTitle: {
-        fontSize: fontSize.md,
-        fontWeight: fontWeight.medium,
-    },
-    menuSubtitle: {
-        fontSize: fontSize.sm,
-        marginTop: 2,
-    },
-    logoutButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: spacing.md,
-        borderWidth: 1,
-        borderRadius: borderRadius.md,
-        gap: spacing.sm,
-    },
-    logoutText: {
-        fontSize: fontSize.md,
-        fontWeight: fontWeight.medium,
-    },
+    sheetWrapper: { width: '100%', maxWidth: 560, maxHeight: '94%', alignSelf: 'center',
+        borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
+    sheetHeader: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+    dragHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center' },
+    headingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+    heading: { flex: 1, fontSize: fontSize.xxxl, fontWeight: fontWeight.semibold },
+    closeButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+    scroll: { flexShrink: 1 },
+    sheet: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, gap: spacing.sm },
+    profileHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderRadius: 16, padding: spacing.lg },
+    largeAvatar: { minWidth: 48, minHeight: 48, padding: 6, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    largeInitials: { fontSize: fontSize.xl, fontWeight: fontWeight.bold },
+    userName: { fontSize: fontSize.xl, fontWeight: fontWeight.semibold },
+    group: { paddingVertical: spacing.xs },
+    menuItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 56, paddingVertical: spacing.sm },
+    menuIconContainer: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    menuTextContainer: { flex: 1, minWidth: 0 },
+    menuTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.medium },
+    menuSubtitle: { fontSize: 13, lineHeight: 19, marginTop: 2 },
+    logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: spacing.md,
+        minHeight: 48, borderRadius: borderRadius.lg, gap: spacing.sm },
+    logoutText: { fontSize: fontSize.lg, fontWeight: fontWeight.medium },
 });

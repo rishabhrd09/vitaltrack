@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, Switch, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
@@ -11,7 +11,10 @@ import { fallbackVoiceLabel } from '@/features/assistant/narration';
 import { ALBA_SELECTION_ENABLED, SARVAM_SPEECH_ENABLED } from '@/features/assistant/policy';
 import { choicesFrom, inUse, interpreters, listeners, READINESS_LABEL, speakers, type InterpreterId, type ListenerId, type Provider, type Readiness, type ServerStatus } from '@/features/assistant/providers';
 
+type VoiceSection = 'Listening' | 'Understanding' | 'Spoken replies';
+
 type Props = {
+  scrollToSection: (y: number) => void;
   prefs: Preferences; loaded: boolean; supported: boolean; busy: string;
   model: { ready: boolean; bytes: number }; modelChecked: boolean; progress: number;
   deviceVoice: { ready: boolean; name: string; checked?: boolean };
@@ -59,6 +62,7 @@ export default function VoiceSetup(p: Props) {
   const { colors } = useTheme();
   const { width, fontScale } = useWindowDimensions();
   const compactProviders = width < 380 || fontScale > 1.15;
+  const positions = useRef<Partial<Record<VoiceSection, number>>>({});
   const [help, setHelp] = useState(false);
   const [licence, setLicence] = useState(false);
   const [audioDetails, setAudioDetails] = useState(false);
@@ -93,16 +97,15 @@ export default function VoiceSetup(p: Props) {
     Selected: {label}{state.ready ? verification ? ` · Configured · ${verification}` : ' · Ready' : ` · ${state.reason}`}</Text>;
   const readinessText = (provider: Provider<string>) => (provider.id === 'sarvam' || provider.id === 'openai') && provider.readiness === 'ready' ? 'Configured' : READINESS_LABEL[provider.readiness];
   const row = (provider: Provider<string> | undefined, chosen: boolean, actions?: ReactNode) => provider && <View key={provider.id}
-    style={[styles.provider, { borderColor: chosen ? colors.accentBlue : colors.borderPrimary }]}>
+    style={[styles.provider, { borderColor: chosen ? colors.accentBlueBorder : colors.borderPrimary, backgroundColor: chosen ? colors.accentBlueBg : colors.bgPrimary }]}>
     <View accessible accessibilityLabel={`${provider.label}. ${chosen ? 'Selected. ' : ''}${readinessText(provider)}. ${provider.detail}`} style={styles.row}>
       <Ionicons name={provider.online ? 'cloud-outline' : 'phone-portrait-outline'} size={18} color={colors.textSecondary} />
-      <View style={{ flex: 1, gap: 2 }}>
+      <View style={{ flex: 1, gap: 4 }}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>{provider.label}</Text>
-        <Text style={body}>{provider.detail}</Text>
+        <Text style={[styles.chip, { color: tone(provider.readiness) }]}>{chosen ? 'Selected · ' : ''}{readinessText(provider)}</Text>
       </View>
-      {!compactProviders && <Text style={[styles.chip, { color: tone(provider.readiness) }]}>{chosen ? 'Selected · ' : ''}{readinessText(provider)}</Text>}
     </View>
-    {compactProviders && <Text importantForAccessibility="no" style={[styles.chip, { color: tone(provider.readiness), maxWidth: '100%', textAlign: 'left' }]}>{chosen ? 'Selected · ' : ''}{readinessText(provider)}</Text>}
+    <Text importantForAccessibility="no" style={body}>{provider.detail}</Text>
     {actions}
   </View>;
   const toggle = (title: string, description: string, value: boolean, onValueChange: (v: boolean) => void, disabled = false) =>
@@ -123,14 +126,14 @@ export default function VoiceSetup(p: Props) {
   const fallbackReady = p.prefs.speechFallback === 'device' ? p.deviceVoice.ready : p.prefs.speechFallback === 'pocket' ? ALBA_SELECTION_ENABLED && albaReady : true;
   const blocked = (provider?: Provider<string>) => provider?.readiness === 'unavailable' || provider?.readiness === 'checking';
   return <>
-    <View style={styles.hero}>
-      <View style={styles.row}><View style={[styles.step, { backgroundColor: colors.accentBlueBg }]}><Ionicons name="mic-outline" size={21} color={colors.accentBlue} /></View>
-        <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>Voice, ready when you are.</Text></View>
-      <Text style={body}>Choose how you are heard, how requests are understood and how answers are spoken. Each choice works on its own; you review your words before sending.</Text>
-      <View style={[styles.badge, { backgroundColor: ready ? colors.statusGreenBg : colors.accentBlueBg }]}><View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ready ? colors.statusGreen : colors.accentBlue }} /><Text style={{ color: colors.textSecondary, fontSize: 12 }}>{ready ? 'Ready to talk' : 'Complete setup below'} · English</Text></View>
-    </View>
     <View style={card}>
-      <View style={styles.row}><Ionicons name="sparkles-outline" size={20} color={colors.accentBlue} /><Text accessibilityRole="header" style={[styles.title, { color: colors.textPrimary, flex: 1 }]}>Assistant</Text></View>
+      <View style={styles.row}>
+        <View style={[styles.step, { backgroundColor: colors.accentBlueBg }]}><Ionicons name="mic-outline" size={21} color={colors.accentBlue} /></View>
+        <Text accessibilityRole="header" style={[styles.heroTitle, { color: colors.textPrimary }]}>Assistant status</Text>
+      </View>
+      <Text accessibilityLiveRegion="polite" style={[styles.caption, { color: ready ? colors.statusGreen : colors.textSecondary }]}>
+        {ready ? 'Ready to talk' : p.prefs.enabled ? 'Microphone setup incomplete' : 'Assistant off'} · English
+      </Text>
       {toggle('Assistant', 'Read inventory and prepare unsaved order drafts. Only a touch confirmation saves an order.', p.prefs.enabled, v => p.update({ ...p.prefs, enabled: v }))}
       {(!p.prefs.enabled || !p.prefs.microphone) && <VoiceButton label="Enable assistant & microphone" onPress={p.enableMicrophone} disabled={locked || !p.supported} />}
       {p.server.state === 'failed' && <View style={{ gap: 8 }}>
@@ -139,6 +142,24 @@ export default function VoiceSetup(p: Props) {
       </View>}
     </View>
     <View style={card}>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.textPrimary }]}>Jump to a setting</Text>
+      {([
+        ['Listening', 'mic-outline', find(listening, choices.listening)?.label],
+        ['Understanding', 'chatbubbles-outline', find(understanding, choices.understanding)?.label],
+        ['Spoken replies', 'volume-medium-outline', p.prefs.spokenReplies ? find(speaking, choices.speaking)?.label : 'Automatic reading off'],
+      ] as const).map(([section, icon, value]) => <TouchableOpacity key={section} accessibilityRole="button"
+        accessibilityLabel={`Go to ${section}. ${value || 'Checking'}`}
+        onPress={() => { const y = positions.current[section]; if (y !== undefined) p.scrollToSection(y); }}
+        style={[styles.shortcut, { borderTopColor: colors.borderPrimary }]}>
+        <Ionicons name={icon} size={20} color={colors.accentBlue} />
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>{section}</Text>
+          <Text style={[styles.caption, { color: colors.textSecondary }]}>{value || 'Checking'}</Text>
+        </View>
+        <Ionicons name="arrow-down-outline" size={17} color={colors.textSecondary} />
+      </TouchableOpacity>)}
+    </View>
+    <View style={card} onLayout={event => { positions.current['Listening'] = event.nativeEvent.layout.y; }}>
       {step('1', 'Listening · speech to text', p.supported && heard.ready && p.prefs.microphone)}
       {toggle('Microphone', 'Tap the glowing microphone to stop and review your words.', p.prefs.microphone, v => { if (v) p.enableMicrophone(); else p.update({ ...p.prefs, microphone: false }); }, !p.supported)}
       <Text style={body}>Allow microphone access when Android asks. If recording is silent, check Android’s microphone privacy switch and close other recording apps.</Text>
@@ -161,7 +182,7 @@ export default function VoiceSetup(p: Props) {
       {row(groqListener, choices.listening === 'groq', <VoiceButton label="Enable Groq online listening" secondary onPress={() => p.chooseListening('groq')}
         disabled={locked || blocked(groqListener) || choices.listening === 'groq' && heard.ready} />)}
     </View>
-    <View style={card}>
+    <View style={card} onLayout={event => { positions.current['Understanding'] = event.nativeEvent.layout.y; }}>
       {step('2', 'Understanding · text to task', understood.ready, true)}
       <Text style={body}>Requests are understood on this phone first. Online understanding is used only for wording the phone cannot follow, after you tap Send. Either way, stock changes and order saving are not possible by voice.</Text>
       {selected(choices.understanding === 'local' ? 'On this phone only' : `On this phone, then ${choices.understanding === 'openai' ? 'OpenAI with your key' : 'Groq online'}`, understood, choices.understanding === 'openai' ? 'send a question to verify' : undefined)}
@@ -179,7 +200,7 @@ export default function VoiceSetup(p: Props) {
         <Text style={[styles.caption, { color: colors.textSecondary }]}>Withdrawal turns off online understanding, online listening and Sarvam speech for this account. Device voice and on-phone understanding remain.</Text>
       </View>}
     </View>
-    <View style={card}>
+    <View style={card} onLayout={event => { positions.current['Spoken replies'] = event.nativeEvent.layout.y; }}>
       {step('3', 'Spoken replies', p.prefs.spokenReplies && spoken.ready, true)}
       {toggle('Read answers aloud', 'Optional. Preview voice and Hear answer also work when automatic reading is off.', p.prefs.spokenReplies, v => p.update({ ...p.prefs, spokenReplies: v }), !spoken.ready && !p.prefs.spokenReplies)}
       {selected(find(speaking, choices.speaking)?.label || 'Device voice', spoken, choices.speaking === 'sarvam' ? 'preview to verify' : undefined)}
@@ -292,14 +313,15 @@ export default function VoiceSetup(p: Props) {
 }
 
 const styles = StyleSheet.create({
-  hero: { paddingVertical: 8, gap: 12 }, heroTitle: { fontSize: 22, lineHeight: 28, fontWeight: '600', flex: 1 }, badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, flexDirection: 'row', gap: 7, alignItems: 'center' },
-  card: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 12 }, row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  shortcut: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 56, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
+  heroTitle: { fontSize: 22, lineHeight: 28, fontWeight: '600', flex: 1 },
+  card: { borderWidth: 1, borderRadius: 20, padding: 18, gap: 14 }, row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   provider: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 10 },
-  chip: { fontSize: 12, fontWeight: '600', maxWidth: 120, textAlign: 'right' },
+  chip: { fontSize: 12, fontWeight: '600' },
   title: { fontSize: 16, fontWeight: '600', flexShrink: 1 }, label: { fontSize: 16, fontWeight: '600' },
   caption: { fontSize: 13, lineHeight: 20 },
   step: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  button: { minHeight: 44, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, justifyContent: 'center' },
+  button: { minHeight: 48, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, justifyContent: 'center' },
   progress: { height: 5, overflow: 'hidden', borderRadius: 5 },
   optional: { fontSize: 12, flexShrink: 1 }, divider: { borderTopWidth: 1, paddingTop: 16, gap: 12 },
   paceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, paceOption: { flexGrow: 1, flexBasis: 90 },
