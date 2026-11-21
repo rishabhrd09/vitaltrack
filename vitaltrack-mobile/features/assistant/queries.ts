@@ -204,14 +204,47 @@ const EXCLUDE_CUE = /^(?:(?:and|but) )?(?:excluding|exclude|except for|except|ot
 const INCLUDE_CUE = /^(?:plus|also|and also|as well as|along with|in addition|additionally)(?: (.+))?$/;
 const ONLY = /^(?:(?:now|then|ok|okay) )?(?:only|just)(?: (?:show|keep|list|give))?(?: me)?(?: the)? (.+)$/;
 const OF_THOSE = /^(?:(?:of|from|among) (?:those|these|them|the list|that list)(?: (?:which|what|show|list|show me))?|(?:which|what) of (?:those|these|them)(?: are)?) (.+)$/;
+// Keep both ends of a spoken range in one condition. An “or” between two
+// item groups still starts a separate selection. Order quantities use their own grammar.
+const boundOperators = {
+  'at least': 'gte', 'no less than': 'gte', 'not less than': 'gte', 'no fewer than': 'gte',
+  'a minimum of': 'gte', 'minimum of': 'gte',
+  'at most': 'lte', 'no more than': 'lte', 'not more than': 'lte', 'up to': 'lte',
+  'a maximum of': 'lte', 'maximum of': 'lte',
+  'more than': 'gt', 'greater than': 'gt', 'over': 'gt', 'above': 'gt',
+  'less than': 'lt', 'fewer than': 'lt', 'lower than': 'lt', 'under': 'lt', 'below': 'lt',
+} as const;
+const boundWords = Object.keys(boundOperators).join('|');
+const stockCountSuffix = '(?: units?)?(?: left| remaining| on hand| in stock)?';
+const boundExpression = `(?:${boundWords}) \\d+${stockCountSuffix}`;
+const boundJoin = ' (?:\\| )?(?:and|but) ';
+const namedRange = `(?:between \\d+${stockCountSuffix} (?:and|to)|from \\d+${stockCountSuffix} to) \\d+${stockCountSuffix}`;
+// A match consuming a range skips all separators inside it (including a dictated comma).
+const planBoundary = new RegExp(`\\b(?:${boundExpression}${boundJoin}${boundExpression}|${namedRange})\\b|\\|| (?=(?:and also|plus|as well as|along with|and|or) )`, 'g');
+
+function splitPlanClauses(q: string) {
+  const segments: { text: string; cue: 'include' | 'and' | 'start' }[] = [];
+  let start = 0, cue: 'include' | 'and' | 'start' = 'start';
+  for (const match of q.matchAll(planBoundary)) {
+    if (match[0] !== ' ' && match[0] !== '|') continue;
+    const text = q.slice(start, match.index).trim();
+    if (text) segments.push({ text, cue });
+    start = match.index! + 1;
+    cue = match[0] === '|' ? 'start' : /^(?:and also|plus|as well as|along with)\b/.test(q.slice(start)) ? 'include' : 'and';
+  }
+  const tail = q.slice(start).trim();
+  if (tail) segments.push({ text: tail, cue });
+  return segments;
+}
+
+const bound = (words: string, value: string) => ({ op: boundOperators[words as keyof typeof boundOperators], value: Number(value) });
+const capturedBound = `(${boundWords}) (\\d+)${stockCountSuffix}`;
 const COMPARISONS: [RegExp, (m: RegExpExecArray) => Condition['quantity']][] = [
-  [/ between (\d+) to (\d+) /, m => [{ op: 'gte', value: +m[1] }, { op: 'lte', value: +m[2] }]],
-  [/ (?:less than|fewer than|lower than|under|below) (\d+) /, m => [{ op: 'lt', value: +m[1] }]],
-  [/ (?:at most|no more than|not more than|up to|a maximum of|maximum of) (\d+) /, m => [{ op: 'lte', value: +m[1] }]],
+  [new RegExp(` (?:between|from) (\\d+)${stockCountSuffix} (?:and|to) (\\d+)${stockCountSuffix} `), m => [{ op: 'gte', value: +m[1] }, { op: 'lte', value: +m[2] }]],
+  [new RegExp(` ${capturedBound}${boundJoin}${capturedBound} `), m => [bound(m[1], m[2]), bound(m[3], m[4])]],
+  [new RegExp(` ${capturedBound} `), m => [bound(m[1], m[2])]],
   [/ (\d+) or (?:less|fewer|below|under) /, m => [{ op: 'lte', value: +m[1] }]],
-  [/ (?:at least|no less than|not less than|a minimum of|minimum of) (\d+) /, m => [{ op: 'gte', value: +m[1] }]],
   [/ (\d+) or (?:more|above|over|greater) /, m => [{ op: 'gte', value: +m[1] }]],
-  [/ (?:more than|greater than|over|above) (\d+) /, m => [{ op: 'gt', value: +m[1] }]],
   [/ (?:exactly|equal to|equals|precisely|only) (\d+) /, m => [{ op: 'eq', value: +m[1] }]],
   [new RegExp(` (?:with|having|have|has|that have|which have|that has|which has) (\\d+) (?:(?:${UNIT_WORDS}) )?(?:left|remaining|in stock|on hand) `), m => [{ op: 'eq', value: +m[1] }]],
 ];
@@ -297,7 +330,6 @@ export function parsePlan(text: string, hints: Hints = {}): Plan | null {
   if (/\b(?:not|never|don't|dont|isn't|aren't|cannot|can't|instead|unless|if)\b/.test(q.replace(/\b(?:not including|but not|not more than|not less than)\b/g, ' '))) return null;
   // Protect names that contain a separator, compound stock states and ranges before splitting.
   q = q.replace(/ (?:running )?low(?: on| in)?(?: stock)? (?:or|and|and or) out of stock /g, ' lowout ').replace(/ out of stock (?:or|and|and or) (?:running )?low(?: on| in)?(?: stock)? /g, ' lowout ')
-    .replace(/ between (\d+) and (\d+) /g, ' between $1 to $2 ')
     .replace(/ (?=(?:excluding|except|other than|apart from|but not|not including|sorted|sort by|(?:prepare|create|make|put together|draft) (?:(?:an?|the|my) )?(?:purchase |unsaved |new )?(?:order|draft))\b)/g, ' | ');
   // A shared predicate keeps the same item set: 'critical items ... and are low'
   // is an intersection; 'critical items and low-stock items' stays a list union.
@@ -307,16 +339,9 @@ export function parsePlan(text: string, hints: Hints = {}): Plan | null {
       !new RegExp(`\\b\\d+ (?:${UNIT_WORDS})\\b`).test(q)) {
     q = q.replace(/ and (?=(?:(?:that|which) )?(?:is|are|has|have|needs?|requires?) )/g, ' ');
   }
-  const segments: { text: string; cue: 'include' | 'and' | 'start' }[] = [];
-  for (const part of q.split('|')) {
-    part.split(/ (?=(?:and also|plus|as well as|along with|and|or) )/).forEach((piece, index) => {
-      const text = piece.trim();
-      if (text) segments.push({ text, cue: index === 0 ? 'start' : /^(?:and also|plus|as well as|along with)\b/.test(text) ? 'include' : 'and' });
-    });
-  }
   const conditions: Condition[] = [], exclude: Condition[] = [], lines: PlanLine[] = [];
   let sort: SortOrder = 'none', draft = false, reference = false, previous = false, mode: 'include' | 'exclude' = 'include', presenting = false, orderNow = false;
-  for (const segment of segments) {
+  for (const segment of splitPlanClauses(q)) {
     let s = segment.text.replace(/^(?:(?:please|and|or|then|so|now|ok|okay) )+/, '').trim();
     if (segment.cue === 'include' || segment.cue === 'start') mode = 'include';
     const include = INCLUDE_CUE.exec(s);

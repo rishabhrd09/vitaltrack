@@ -411,3 +411,50 @@ test('a natural order-priority request uses transparent current-stock rules and 
   assert.deepEqual(ids(run(p.selection).rows), ['m', 'a', 'g', 'y']);
   assert.equal(p.draft, null);
 });
+
+test('spoken stock ranges select the same boundary items through both draft paths', () => {
+  const source = Array.from({ length: 7 }, (_, q) => item(String(q), 'Supply ' + q, q, { minimumStock: 8 }));
+  const cases = [
+    ['between two and four', [2, 3, 4]],
+    ['between 2 and 4 units left', [2, 3, 4]],
+    ['from two to four units on hand', [2, 3, 4]],
+    ['at least two and at most four', [2, 3, 4]],
+    ['at least 2 units but at most 4 units remaining', [2, 3, 4]],
+    ['at least two units, and no more than four units in stock', [2, 3, 4]],
+    ['at most four but at least two', [2, 3, 4]],
+    ['no fewer than two and no more than four', [2, 3, 4]],
+    ['no less than two and up to four', [2, 3, 4]],
+    ['a minimum of two and a maximum of four', [2, 3, 4]],
+    ['not more than four and not less than two', [2, 3, 4]],
+    ['more than two and fewer than four', [3]],
+    ['at least two but under four', [2, 3]],
+    ['above two and at most four', [3, 4]],
+    ['at least zero and at most two units in stock', [0, 1, 2]],
+    ['at least four and at most four', [4]],
+  ];
+  const makeDraft = (p, previous) => plain(drafts.prepareDraft(p, source, [], {}, { previous })
+    .map(r => [r.item.quantity, r.quantity, r.source]));
+  for (const [words, expected] of cases) {
+    const read = route('Could you list the supplies with ' + words + '?');
+    assert.equal(read?.intent, 'inventory_query', words);
+    assert.equal(read.selection.any_of.length, 1, words);
+    const { rows } = selection.evaluateSelection(read.selection, source, {});
+    assert.deepEqual(ids(rows), expected.map(String), words);
+    const lines = expected.map(q => [q, 8 - q, 'suggested']);
+    assert.deepEqual(makeDraft(route('Create a draft from those'), rows), lines, words);
+    const direct = route('Prepare an order draft for items with ' + words + '.');
+    assert.equal(direct?.intent, 'draft_order', words);
+    assert.deepEqual(makeDraft(direct), lines, words);
+  }
+});
+
+test('range parsing keeps distinct item groups, exclusions and explicit order quantities', () => {
+  const p = route('Two units of Ambu Bag, plus wound care items with at least two and at most four units left, excluding gauze rolls; prepare an order draft.');
+  assert.deepEqual(plain(drafts.prepareDraft(p, inventory, [], {}, { categories }).map(r => [r.item.id, r.quantity, r.source])),
+    [['a', 2, 'spoken'], ['g', 3, 'suggested']]);
+  const combined = route('List items between two and four or items with exactly zero, sorted alphabetically.');
+  assert.deepEqual(ids(run(combined.selection).rows), ['z', 'g', 'm', 'v']);
+  const unknown = route('Prepare an order draft for items with at least two and approximately four remaining.');
+  assert.notEqual(unknown?.intent, 'draft_order');
+  assert.equal(route('Prepare a draft for items with at least -2 and at most four').intent, 'clarify');
+});
