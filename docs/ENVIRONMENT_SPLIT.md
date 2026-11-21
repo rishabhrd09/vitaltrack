@@ -1,18 +1,15 @@
 # CareKosh — Environment Split (Staging vs Production)
 
-> **AI voice source update — 11 October 2026:** Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, an explicit shared or encrypted per-account personal key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Personal-key migration 0011 adds encrypted credentials and billing-source metadata; the current local inventory is 50 HTTP operations (47 under /api/v1) and 12 application tables. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. [Sarvam activation, costs and device checks](SARVAM_ENGLISH_VOICE.md) · [Complete voice architecture](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+| Destination | Browser origin (frontend Worker) | API origin (Render service) |
+| --- | --- | --- |
+| Production | `https://homeicuinventory.carekosh.com` · `carekosh-web` | `https://api.carekosh.com` · `vitaltrack-api` |
+| Staging | `https://staging-app.carekosh.com` · `carekosh-web-staging` | `https://staging-api.carekosh.com` · `vitaltrack-api-staging` |
 
+For hosted browser login, enable `WEB_AUTH_ENABLED` and include the matching explicit browser origin in both `WEB_APP_ORIGINS` and `CORS_ORIGINS`. The proxied API record lets Cloudflare set the environment’s origin-verification request header. Render compares it with `ORIGIN_VERIFY_SECRET` when using `INGRESS_MODE=edge_secret`. Keep database credentials, Redis URLs, mail credentials and origin secrets server-side. The Android build needs the public API address. Browser build variables are public. Check live database identity, credentials and service settings in the intended environment.
 
-> 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
+[Cloudflare request header transforms](https://developers.cloudflare.com/rules/transform/request-header-modification/) · [Current configuration and dashboard field guide](deployment/CAREKOSH_DEPLOYMENT_ATLAS.html) · [Backend settings](../vitaltrack-backend/app/core/config.py) · [Production Blueprint](../vitaltrack-backend/render.yaml).
 
-> **Status (re-checked 8 October 2026 against the working tree: `03cfebb` plus uncommitted documentation; first re-checked 7 October 2026):** Code facts re-checked against branch `feature/backend-hardening-ai-voice-agent-foundation` (`03cfebb`); `main` is `835fad3`. Most of this guide describes Render, Neon and Expo dashboard state, which was **not** re-checked and is NOT VERIFIED. Owner-reported on 7 Oct 2026 (not independently verified): the staging service was switched to the feature branch and deployed `b1c8dd7`. If so, the staging database is at migration `0010`, and migration `0007` cannot be downgraded. Earlier note (23 Sept 2026): head `0007`, 152 backend tests — now out of date (head `0010`; 242 backend and 121 mobile tests passed locally on 7 Oct, and again on 8 Oct against a disposable PostgreSQL 16 database). Current behaviour: [complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) · [API traceability](API_TRACEABILITY.md) · [documentation home](INDEX.html) · [backend hardening](BACKEND_HARDENING.md).
-
-> **Companion to `CAREKOSH_ENVIRONMENT_ARCHITECTURE.html`** at the repo root. This markdown version goes deeper on the operational side: Neon console walkthroughs, Render env var matrix, verification commands, and troubleshooting.
->
-> **First written:** 2026-04-19 (the status note above is newer)
-> **Originating branch:** `feature/production_staging_database` (PR #2)
-
----
+The diagrams and platform setup records below originated in October 2026. Their dated branch comparisons refer to that rollout.
 
 ## Table of Contents
 
@@ -137,7 +134,7 @@ The isolation is by database name on one Neon branch (as documented): a Neon bra
 | Staging | `staging-api.carekosh.com` | Neon: `vitaltrack_staging` | Preview APK | ON | ON for launch-like staging | `staging` |
 | Production | `api.carekosh.com` | Neon: `neondb` | Production AAB | ON | ON | `production` |
 
-Both hosted databases are documented as using Neon in Singapore; the live host and region are NOT VERIFIED. The code requires verified TLS whenever `ENVIRONMENT` is not `development` or `testing`. Earlier docs said both Render services watch `main`; staging is dashboard-managed outside `render.yaml`. Its historical root-directory filter is documented in `STAGING_DEPLOY_DIAGNOSIS.html`; its current settings are NOT VERIFIED. `render.yaml` names `main` for production. The owner reports switching staging to the feature branch on 7 Oct 2026. Live branches, database targets and auto-deploy settings still need dashboard confirmation.
+For deployed revisions, read each Render service’s Live commit. For database identity, check each service’s configured connection privately and compare its applied Alembic revision with the target checkout.
 
 ---
 
@@ -356,7 +353,7 @@ backup/snapshot and after confirming they are disposable test records.
 | `ENVIRONMENT` | `staging` | Triggers SSL on Neon; no HSTS header and no production-only `FRONTEND_URL` check. Feature branch: the `SECRET_KEY` placeholder is refused here too |
 | `DATABASE_URL` | `postgresql+asyncpg://...@.../vitaltrack_staging` | DB name is `vitaltrack_staging`, NOT `neondb`. Use Neon's direct host, not a `-pooler` one: the app sends `statement_timeout` as a start-up parameter, which the pooler rejects. URL-encode reserved password characters normally; the local A-27 fix handles percent signs in Alembic configuration |
 | `SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(32))"` output | **Must differ from production** |
-| `CORS_ORIGINS` | `["*"]` | Wildcard is fine for a mobile-only API (no browser CORS concerns) |
+| `CORS_ORIGINS` | Include `https://staging-app.carekosh.com` | Explicit origin for browser authentication |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` | Matches launch-like staging; use local development if testers need no-email registration |
 | `MAIL_USERNAME` | legacy SMTP username | Unused by current Brevo HTTP API send path |
 | `MAIL_PASSWORD` | Brevo HTTP API key | Required for launch-like staging email verification/reset/deletion flows |
@@ -379,7 +376,7 @@ Same set. Differences:
 | `ENVIRONMENT` | `production` |
 | `DATABASE_URL` | `postgresql+asyncpg://...@.../neondb` |
 | `SECRET_KEY` | A **different** 32+ char random value (not starting with `CHANGE-THIS`); `render.yaml` asks Render to generate it (`generateValue: true`) |
-| `CORS_ORIGINS` | currently `["*"]` per `render.yaml`. **No validator rejects `"*"` in production today** because no real browser/admin origins are configured yet. Tighten only after those origins are known. |
+| `CORS_ORIGINS` | Include `https://homeicuinventory.carekosh.com` for production browser sessions. |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` |
 | `FRONTEND_URL` | `https://api.carekosh.com/api/v1/auth` — PR #12 validator requires non-empty in prod |
 
@@ -517,7 +514,7 @@ curl -s https://api.carekosh.com/live | python -m json.tool
 
 ### Registration smoke test (staging only)
 
-`/register` is limited to 3 requests per hour (best-effort, in memory per worker), so repeated runs can return 429.
+`/register` is limited to 3 requests per hour (hosted workers share the Redis limit store), so repeated runs can return 429.
 
 ```bash
 curl -s -X POST https://staging-api.carekosh.com/api/v1/auth/register \
@@ -587,10 +584,10 @@ Remember: `EXPO_PUBLIC_API_URL` is compile-time. An old APK will forever hit the
   ```bash
   DATABASE_URL="<staging-url>" ENVIRONMENT=staging SECRET_KEY="<any 32+ char value that is not the CHANGE-THIS placeholder>" alembic upgrade head
   ```
-  (7 Oct 2026) `alembic/env.py` loads the app settings, and on the feature branch the settings refuse the placeholder `SECRET_KEY` whenever `ENVIRONMENT=staging`, so the command needs a `SECRET_KEY` value. On the feature branch, migrations also take an advisory lock and a 30 s `lock_timeout`, so two concurrent runs wait for each other instead of colliding (`main` has no such lock).
+  (7 Oct 2026) `alembic/env.py` loads the app settings, and on the feature branch the settings refuse the placeholder `SECRET_KEY` whenever `ENVIRONMENT=staging`, so the command needs a `SECRET_KEY` value. On the feature branch, migrations also take an advisory lock and a 30 s `lock_timeout`, so two concurrent runs wait for each other instead of colliding (this lock is also present in the November main baseline).
 - The manual command applies one-way migrations: run it only on a database you have decided to upgrade. Preserve the existing staging database; test candidates on an isolated database first.
 - Before upgrading any shared database past `0006`: migration `0007` cannot be downgraded. Take a restorable backup first; see [BACKEND_HARDENING.md](BACKEND_HARDENING.md).
-- `Can't locate revision 0010_order_local_id_unique` (or `0007`–`0009`) at startup means the database was upgraded by the feature branch and the service now runs older code such as `main`. The container exits because `alembic upgrade head` fails. Deploy the feature branch again, or restore the database from a backup taken before the upgrade.
+- `Can't locate revision 0010_order_local_id_unique` (or `0007`–`0009`) at startup means the database was upgraded by the feature branch and the service now runs older code that lacks that migration. The container exits because `alembic upgrade head` fails. Deploy the feature branch again, or restore the database from a backup taken before the upgrade.
 
 ### Staging is "up" but all auth returns 401
 
@@ -628,9 +625,9 @@ No. EAS Build reads `eas.json` from the repo. Nothing to change in the Expo dash
 
 ### Is `CORS_ORIGINS=["*"]` safe for staging?
 
-Native mobile requests do not enforce browser CORS. The wildcard still permits browser scripts from any origin to read responses allowed by the CORS policy; it is not authentication or authorization. The app sets `allow_credentials=False` with a wildcard. Assess browser clients separately, and keep ownership/authentication checks regardless of CORS.
+Android networking does not enforce browser CORS. The browser client sends credentials, so staging needs its exact allowed origin. Ownership checks still run in the API.
 
-An earlier draft of this doc said PR #12 "rejects `*` at startup in production" — that's not accurate. PR #12 added validators for `SECRET_KEY` (no placeholder) and `FRONTEND_URL` (must be set), but no CORS production-rejection. The actual production `render.yaml` ships `CORS_ORIGINS: '["*"]'`. Tightening is intentionally deferred until real browser/admin origins are known; native mobile requests are not governed by browser CORS.
+See the current origin validation in [settings](../vitaltrack-backend/app/core/config.py) and the production [Blueprint](../vitaltrack-backend/render.yaml).
 
 ### How do I add a fourth environment (QA, demo, etc.)?
 

@@ -1,5 +1,7 @@
 # CareKosh API Testing Guide
 
+Use these curl examples for a disposable development account. They show the bearer-token API used by Android. The web app signs in through the separate cookie-based web-auth routes. For a browser or Android stock edit, send the version originally opened with `PUT /api/v1/items/{item_id}`. A separate stock-only PATCH is available to API callers. Always read the latest returned version before the next edit. [Worked example and conflict recovery](../docs/deployment/CAREKOSH_DEPLOYMENT_ATLAS.html#stock-edit) · [Complete route inventory](../docs/API_TRACEABILITY.md).
+
 > **8 October 2026 local feature update:** richer inventory tables, bounded queries and unsaved voice-prepared drafts are implemented locally. Only touch confirmation saves an order; saving does not change stock. Matching backend/mobile deployment and phone acceptance remain pending. [Current flow, code map and verification limits](../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md). Earlier dated results remain historical.
 
 
@@ -72,7 +74,7 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 }
 ```
 
-Password rules: 8–128 characters with at least one upper-case letter, one lower-case letter and one digit. Email is required; `username` is optional (3–50 characters, `a-z`, `0-9`, `_`; upper case is rejected with 422, not converted). Register is limited to 3 requests per hour (best-effort, per worker process). The verification email is sent only when `MAIL_PASSWORD` is configured. The mobile app discards these tokens and sends the user to "Check your email"; when email verification is enforced (feature branch), they cannot be used for other requests until the email is verified.
+Password rules: 8–128 characters with at least one upper-case letter, one lower-case letter and one digit. Email is required; `username` is optional (3–50 characters, `a-z`, `0-9`, `_`; upper case is rejected with 422, not converted). Register is limited to 3 requests per hour (shared across hosted workers via Redis). The verification email is sent only when `MAIL_PASSWORD` is configured. The mobile app discards these tokens and sends the user to "Check your email"; when email verification is enforced, they cannot be used for other requests until the email is verified.
 
 ### Login
 ```bash
@@ -286,7 +288,7 @@ curl -X POST http://localhost:8000/api/v1/orders \
   -H "Content-Type: application/json" \
   -d '{
     "orderId": "client-ref-1",
-    "localId": "save-press-0001",
+    "localId": "12fbb8cf-5849-4d78-8da3-7c351284b21f",
     "items": [
       {
         "itemId": "ITEM_ID_1",
@@ -305,7 +307,7 @@ curl -X POST http://localhost:8000/api/v1/orders \
 (Corrected 7 Oct 2026: the earlier example omitted `orderId` and each line's `name`, which the schema requires, so it returned 422.) Notes:
 - `orderId` must be present but is ignored; the server assigns the public number `ORD-YYYYMMDD-NNNN`. Client totals, `status` and timestamps are ignored too; the server computes totals.
 - Each line needs `itemId` (an item you own, else 400), `name` and `quantity` (1–999,999); 1–1,000 lines. Snapshot fields (`brand`, `unit`, `currentStock`, `minimumStock`, `supplierName`, `purchaseLink`, `imageUri`) are stored as sent. `categoryName`, `isEssential` and line `notes` are accepted but not stored.
-- `localId` (feature branch, optional, 1–36 characters) makes the request idempotent: repeating it returns 200 with the existing order instead of creating a duplicate. The repeated body is ignored, even if it differs (*8 Oct 2026, reproduced*). Without `localId` every request creates a new order.
+- `localId` (optional, 1–36 characters) identifies a submission for this account. A retry with matching notes and stored line fields returns 200 with the saved order. Reusing it with different stored fields returns 409. Generate a UUID for each new submission and retain it across retries. After an uncertain response, look it up with `GET /api/v1/orders/submission/{local_id}`. The recovery endpoints require a UUID. Without a key, each successful create request creates an order.
 - Order numbers use the UTC date and one daily counter shared by all accounts, so one account's numbers have gaps.
 
 ### Get Single Order
@@ -336,8 +338,9 @@ curl -X PATCH http://localhost:8000/api/v1/orders/ORDER_ID/status \
 
 Status flow:
 - `pending → ordered / received / declined`
-- `ordered → partially_received / received`
-- `partially_received → received`
+- `ordered → partially_received / received / declined`
+- `partially_received → received / declined`
+- `received → declined` before stock is applied
 - `received → stock_updated` only through `POST /orders/{id}/apply`
 
 Setting the same status again returns 200 and changes nothing; an illegal transition returns 400; a concurrent change returns 409. `partially_received` stores no per-line quantities. The mobile app offers only pending → received and "Update Stock" (apply); the other transitions are API-only.
@@ -348,7 +351,7 @@ curl -X POST http://localhost:8000/api/v1/orders/ORDER_ID/apply \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
-Only a `received` order can be applied. Each line adds its full ordered quantity to the item and bumps the item's `version`, all in one transaction. If any referenced item was deleted, the response is 409 listing the missing names and nothing changes. Applying the same order again returns 400.
+Only a `received` order can be applied. Each line adds its full ordered quantity to the item and bumps the item's `version`, all in one transaction. If any referenced item was deleted, the response is 409 listing the missing names and nothing changes. Repeating apply on an applied order returns 200 with the applied order. The retry does not add stock again. An initial apply from an ineligible status returns 400.
 
 ### Delete Order
 ```bash
@@ -356,7 +359,7 @@ curl -X DELETE http://localhost:8000/api/v1/orders/ORDER_ID \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
-Only `pending` and `declined` orders can be deleted; other statuses return 400. On the feature branch order numbers come from a per-day counter table, so deleting an order does not free its number (`main` derives the number from a count of existing orders).
+Only pending and declined orders can be deleted. Other statuses return 400. The per-day sequence allocates order numbers independently of later deletions.
 
 ---
 
@@ -495,7 +498,7 @@ The app replaces FastAPI's default body with this shape:
 ```
 
 ### 429 Rate Limit
-Produced by slowapi; the text names the limit that was hit. No `Retry-After` header is sent.
+The application’s rate-limit handler returns 429 and includes a `Retry-After` header.
 ```json
 {
   "error": "Rate limit exceeded: 5 per 1 minute"
@@ -543,7 +546,7 @@ ITEM_ID=$(curl -s -X POST http://localhost:8000/api/v1/items \
   | jq -r '.id')
 
 # 5. Update stock
-curl -X PATCH http://localhost:8000/api/v1/items/$ITEM_ID/stock \
+curl -X PUT http://localhost:8000/api/v1/items/$ITEM_ID \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"quantity":15,"version":1}'
@@ -559,7 +562,7 @@ curl "http://localhost:8000/api/v1/activities?limit=10" \
 echo "Sequence finished - check each response above (curl does not fail on HTTP errors)"
 ```
 
-This flow uses the token returned by `/register`. That works on a local stack without `MAIL_PASSWORD`. Running it a second time needs a different email (the same one returns 400 and `TOKEN` becomes `null`), and registration is limited to 3 per hour per worker process. If email verification is enforced (feature branch, with `REQUIRE_EMAIL_VERIFICATION=true` and `MAIL_PASSWORD` set), verify the email and log in first. (The earlier ending, `echo "All tests passed!"`, printed success regardless of the responses.)
+This flow uses the token returned by `/register`. That works on a local stack without `MAIL_PASSWORD`. Running it a second time needs a different email (the same one returns 400 and `TOKEN` becomes `null`), and registration is limited to 3 per hour for the configured rate-limit key. If email verification is enforced (with `REQUIRE_EMAIL_VERIFICATION=true` and `MAIL_PASSWORD` set), verify the email and log in first. (The earlier ending, `echo "All tests passed!"`, printed success regardless of the responses.)
 
 ---
 
@@ -619,5 +622,5 @@ Import this JSON into Postman as a starter collection (URLs only: add the `Autho
 | 422 Validation error | Invalid request body | Check required fields (`version` on item updates; `orderId` and line `name` on orders) and the `details` list |
 | 409 on item update | Stale `version` | Re-read the item and send the new `version` |
 | 413 | Body too large (feature branch only: 2 MB cap for normal routes, 12 KB for AI JSON routes) | Send a smaller request |
-| 429 Rate limit exceeded | Too many auth requests | Wait for the window to pass; limits are per worker process and reset on restart |
+| 429 Rate limit exceeded | Too many auth requests | Honor Retry-After. Hosted workers use shared Redis storage |
 | 503 on forgot-password / resend / delete account | Email not configured (`MAIL_PASSWORD` empty) | Expected locally without a Brevo key |
