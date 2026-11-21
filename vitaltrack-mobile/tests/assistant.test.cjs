@@ -69,7 +69,7 @@ test('speech uses the answer and explicitly identifies stale facts', () => {
 });
 for (const question of core.commandExamples) {
   test('published command example is covered: ' + question, () => {
-    const intent = queries.parseExpanded(question) || core.parseLocal(question);
+    const intent = queries.routeLocally(question, ['Hand gloves', 'Surgical masks']);
     assert.ok(intent, question);
     assert.ok(!['clarify', 'unsupported_action'].includes(intent.intent), question);
   });

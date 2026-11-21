@@ -26,6 +26,9 @@ export const normalize = (text: string) => text.toLowerCase().replace(/[’‘]/
 
 export const commandExamples = [
   'Show all inventory items with quantities and status',
+  'Which items have at least two and at most four units in stock?',
+  'Create a draft from those',
+  'List critical items that are low or out of stock, sorted alphabetically',
   'Show quantities for hand gloves and surgical masks',
   'Which items have no supplier recorded?',
   'Prepare an order for 20 pairs of hand gloves and 5 boxes of masks',
