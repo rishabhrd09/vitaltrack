@@ -1868,3 +1868,24 @@ for (const unavailable of ['key', 'provider failure']) test(`OpenAI ${unavailabl
     assert.equal(h.calls.stock, 0); assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()), null);
   } finally { await h.dispose(); }
 });
+
+test('Ask CareKosh carries both spoken stock bounds from an answer into an unsaved draft', async () => {
+  const inventoryItems = [...planInventory, { ...planInventory[1], id:'pad', name:'Pads', quantity:4, minimumStock:6 }];
+  const h = await harness({ embedded:false, inventoryItems });
+  try {
+    await h.typeQuestion('Which items have at least two and at most four units in stock?');
+    await h.press('Show answer');
+    for (const name of ['Hand gloves', 'Ventilator circuit', 'Pads']) assert.ok(hasText(h, name), name);
+    for (const name of ['Ambu Bag', 'Masks', 'Saline']) assert.ok(!hasText(h, name), name);
+    assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()), null);
+    await h.press('Ask another question');
+    await h.typeQuestion('Create a draft from those');
+    await h.press('Show answer');
+    const draft = h.drafts.getDraft(h.sessionTools.captureSession());
+    assert.deepEqual(JSON.parse(JSON.stringify(draft.rows.map(r => [r.item.id, r.quantity]).sort())),
+      [['g', 3], ['pad', 2], ['v', 1]]);
+    assert.equal(draft.attempt, undefined);
+    assert.ok(hasText(h, 'Nothing has been saved.'));
+    assert.deepEqual(h.calls.interpret, []);
+  } finally { await h.dispose(); }
+});
