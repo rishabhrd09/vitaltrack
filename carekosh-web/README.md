@@ -14,9 +14,9 @@ npm ci
 npm run dev:demo
 ```
 
-Open the URL printed by Vite (normally `http://127.0.0.1:5173`). The delivered preview uses **http://127.0.0.1:5174** because port 5173 was occupied. The demo starts signed in as a fictional caregiver. It supports item/category editing, order creation, receipt and stock application, Coach drafts, exports, and preferences. Demo records persist only in this browser. No live API request is made in demo mode.
+Open the URL printed by Vite (normally `http://127.0.0.1:5173`). The demo starts signed in as a fictional caregiver. It supports item/category editing, order creation, receipt and stock application, Coach drafts, exports, and preferences. Demo records persist only in this browser. No live API request is made in demo mode.
 
-For visual checks, open `/scripts/responsive-preview.html` on the same demo server. It provides all 18 app routes, including account recovery, activity, item/order details, and the missing-page state, at 320, 390, 768, 1024, and 1440px. Its horizontal-overflow readout also checks open dialogs. Detail shortcuts use fictional demo IDs. This development helper is outside `public/` and is not included in the production build.
+For visual checks, open `/scripts/responsive-preview.html` on the same demo server. It provides a selection of app routes, including account recovery, activity, item/order details, and the missing-page state, at 320, 390, 768, 1024, and 1440px. Its horizontal-overflow readout also checks open dialogs. Detail shortcuts use fictional demo IDs. This development helper is outside `public/` and is not included in the production build.
 
 ## Connect to a local backend
 
@@ -88,6 +88,10 @@ To publish, open **GitHub → Actions → Release CareKosh web → Run workflow*
 The release job uses the GitHub environment `carekosh-web-production`. Configure its `CLOUDFLARE_ACCOUNT_ID` variable and `CLOUDFLARE_API_TOKEN` secret, and restrict its deployment branches to `main`. Scope the token to the production Worker and the `carekosh.com` zone for custom domain management.
 
 See [Android parity](docs/PARITY.md) and [verification](docs/VERIFICATION.md) for the web app's supported behavior and checks.
+
+## Trace an existing item save
+
+Start in [ItemForm](src/pages/ItemForm.tsx). It passes the edited fields and the original item version through the [workspace action](src/context.tsx) to [saveItem](src/services/workspace.ts). In API mode the [browser client](src/services/api.ts) sends `PUT /api/v1/items/{item_id}`. A successful save invalidates workspace data. If the version is stale, review the latest item before saving again. The [editor tests](tests/e2e/api-item-editor.spec.ts) exercise both stale edits and background refreshes with a mocked API.
 
 ## Source map
 

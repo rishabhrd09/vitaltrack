@@ -42,7 +42,7 @@
 
 **Current behaviour (post PR #12):**
 - Email is **required** to register.
-- Login is blocked with `403 EMAIL_NOT_VERIFIED` **only if** `REQUIRE_EMAIL_VERIFICATION=true` **AND** `MAIL_PASSWORD` is set **AND** the user has an email that is not yet verified. All three conditions must hold — this prevents lockouts when Brevo is not configured. (8 Oct 2026) "Configured" only means `MAIL_PASSWORD` is not blank: a wrong or revoked key still enforces verification while no email arrives (send failures are only logged).
+- Login is blocked with `403 EMAIL_NOT_VERIFIED` **only if** `REQUIRE_EMAIL_VERIFICATION=true` **AND** `MAIL_PASSWORD` is set **AND** the user has an email that is not yet verified. Hosted startup also validates that the credential is present. (8 Oct 2026) "Configured" only means `MAIL_PASSWORD` is not blank: a wrong or revoked key still enforces verification while no email arrives (send failures are only logged).
 - (7 Oct 2026, feature branch) The same three-part check also runs in `get_current_user` (every authenticated request) and at `POST /auth/refresh`. So when enforcement is on, the tokens that `/register` returns cannot be used for other requests until the email is verified. (8 Oct 2026) The same check covers logout and account deletion, so while enforcement is on an unverified user can neither revoke a session on the server nor request deletion.
 - `POST /auth/resend-verification` returns the same "If an account exists..." message whether the email exists or is already verified — no enumeration. It returns 503 when email is not configured (`MAIL_PASSWORD` empty).
 
@@ -118,7 +118,7 @@ if (
     raise HTTPException(status_code=403, detail="EMAIL_NOT_VERIFIED")
 ```
 
-The `is_email_configured()` gate checks the resolved `MAIL_PASSWORD` value after SecretStr handling and prevents a lockout if Brevo env vars were forgotten on a deploy. If the email service isn't configured, the guard is skipped.
+The request-time check reads the configured mail credential. Development and testing can run without it. In a hosted environment, the startup guard rejects a blank credential when verification is enabled. A present but invalid key still requires a delivery check.
 
 ### Resend (enumeration-safe)
 

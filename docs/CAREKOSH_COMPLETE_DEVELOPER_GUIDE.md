@@ -1,5 +1,7 @@
 # CareKosh: Complete Developer Guide
 
+Start with the [web and Android stock edit](deployment/CAREKOSH_DEPLOYMENT_ATLAS.html#stock-edit). Use the [route inventory](API_TRACEABILITY.md#how-the-inventory-was-counted) to find the handler and the [change and release guide](GIT_WORKFLOW_GUIDE.md) to verify your change. Dated test results below record the revision exercised.
+
 > **5 November 2026 — server-owned Supply Review (local source).** Web and Android now share an optional Python-calculated replenishment review with durable run/proposal versions, explicit confirmation, stale-source checks and recovery. Migration `0013` is required before the new backend; `SUPPLY_REVIEW_ENABLED` defaults to false. This workflow makes no model or supplier call and does not change independent listener/understanding/narration choices. Deployment, live providers and physical Android acceptance remain separate. [Architecture, API, status rules, rollout and limits](SUPPLY_REVIEW.md) · [learning and evidence](SUPPLY_REVIEW_LEARNING.md). Earlier dated results remain historical.
 
 > **25 October 2026 — personal OpenAI understanding.** The existing three-stage provider registry now includes OpenAI under Understanding, independently of listener/narrator. Authenticated encrypted key enrollment, separate `openai_text` consent, Responses contract-3 validation, usage guards and no paid-provider fallback are implemented. Migration 0012 adds `ai_openai_credentials`; this OpenAI-only publication has 51 route objects under `/api/v1`. Unpublished browser/ingress edits are outside its scope. [Current code map, manual deployment settings and remaining live/device checks](OPENAI_UNDERSTANDING.md). Earlier architecture counts and results remain dated evidence.
@@ -52,7 +54,7 @@ CareKosh (formerly **VitalTrack**; renamed in PR #10/#11) helps a family or care
 
 - **Users:** initially hundreds to a few thousand accounts; the planning target is about **10,000 accounts**. Estimates of 100–1,000 simultaneously active users are **aspirations, not measured capacity** (nothing in the repository load-tests that). Several people may share one account on different phones, which is why concurrency rules matter.
 - **Priorities:** data preservation, correctness and security first; understandable code and manageable operations next; new infrastructure only when a measured need appears.
-- **Shape:** one Android app (React Native + Expo), one FastAPI service, one PostgreSQL database. The repository and folder names still say `vitaltrack`.
+- **Shape:** two clients (Android and web) sharing the environment’s FastAPI service and PostgreSQL database. The repository and folder names still say `vitaltrack`.
 
 ### A2. Domain vocabulary
 
@@ -72,7 +74,7 @@ CareKosh (formerly **VitalTrack**; renamed in PR #10/#11) helps a family or care
 | Order line snapshot | The item name, unit, stock and supplier **as sent by the app** when the order was created. History survives item edits and deletion. | `order_items` |
 | Order number | Public id `ORD-YYYYMMDD-NNNN` (UTC day), from one per-day counter shared by all accounts; never reused. | `order_number_counters` |
 | Apply to stock | Adds a **received** order's line quantities to the items, once, in one transaction. | `POST /orders/{id}/apply` |
-| `localId` (orders) | A submission key the app generates per Save; repeating it returns the same order instead of creating a duplicate (even if the repeated request's lines differ). | `orders.local_id` + unique index |
+| `localId` (orders) | A submission key the app generates per Save; repeating it returns the same order instead of creating a duplicate (a reused key with changed order lines or notes returns 409). | `orders.local_id` + unique index |
 | Activity log | The user-visible history feed. Selected writes add a row, and some action names are reused (a category create is stored as `ITEM_CREATE`; category and order deletes as `ITEM_DELETE`). | `activity_logs` |
 | Audit log | Partial before/after snapshots for item writes, category deletes (one row per item), applied order lines and order deletes; none for order creation or status changes. No API reads it. | `audit_log` |
 | Session generation | `users.session_version`; a password change or reset increments it and invalidates every older token. | `users.session_version` |
@@ -98,14 +100,15 @@ These are invariants. Changing any of them is a product decision, not a refactor
 
 ### A4. The system at a glance
 
-![System context: an Android phone running the CareKosh app (screens, TanStack cache, SecureStore, inventory assistant with local drafts, Moonshine live/final recognition, Android text-to-speech and separately consented Groq interpretation/transcription) talks over HTTPS with bearer tokens to one FastAPI service on Render (Gunicorn with two Uvicorn workers per instance, 50 operations), which owns the PostgreSQL database (documented host: Neon; CI and local development use PostgreSQL 16). Groq, Brevo and Sentry are optional outbound services used only when configured. There is no queue, no Redis, no core background job queue and no offline write queue.](diagrams/system-context.svg "System context — what exists, what is optional, and what does not exist")
+![Historical Android system diagram showing the mobile client, API and PostgreSQL.](diagrams/system-context.svg "System context — what exists, what is optional, and what does not exist")
 
 Classify every component before you reason about it:
 
 | Component | Classification | Notes |
 |---|---|---|
 | Android app (React Native 0.81, Expo SDK 54) | **Core** | Screens, API client, query cache, assistant UI. |
-| FastAPI service (Python 3.12) | **Core** | One codebase, one process image; 47 HTTP operations. |
+| Web app (React + Vite) | **Core** | Cloudflare serves static assets. The browser calls the corresponding API and uses a scoped refresh cookie. |
+| FastAPI service (Python 3.12) | **Core** | One codebase, one process image; 68 HTTP operations including the three root routes. |
 | PostgreSQL (16 in CI and local Docker) | **Core** | The only source of truth. The hosted server version is NOT VERIFIED. |
 | Docker image + `docker-entrypoint.sh` | Supporting infrastructure | Migrates, then starts Gunicorn. |
 | GitHub + GitHub Actions | Supporting infrastructure | Code, CI, optional deploy hook. |
@@ -130,17 +133,18 @@ The [independent voice follow-up](AI_VOICE_END_TO_END_REVIEW.md#12-independent-f
 
 ```text
 vitaltrack/                         repository root (legacy name; product is CareKosh)
+├── carekosh-web/                   browser app, Vite build modes and Worker targets
 ├── vitaltrack-backend/             FastAPI service
 │   ├── app/main.py                 app factory: middleware, exception handlers, /health, /live, /
 │   ├── app/core/                   config.py (settings), database.py (engine, get_db), security.py (JWT, hashing), logging.py (redaction)
 │   ├── app/api/deps.py             get_current_user and other dependencies
-│   ├── app/api/v1/                 routers: auth, categories, items, orders, activity, ai
-│   ├── app/models/                 SQLAlchemy models (12 tables)
+│   ├── app/api/v1/                 mounted v1 routers including auth, web_auth, items, orders, AI and supply reviews
+│   ├── app/models/                 SQLAlchemy models (18 application tables)
 │   ├── app/schemas/                Pydantic request/response models
 │   ├── app/services/               ai_guard, ai_provider, ai_body_limit, audit, inventory_lock
 │   ├── app/utils/                  email (Brevo HTTP API), rate_limiter (slowapi)
-│   ├── alembic/versions/           migrations 0001 → 0011
-│   ├── tests/                      pytest suite (242 tests; destroys and rebuilds its test database)
+│   ├── alembic/versions/           migrations 0001 → 0013
+│   ├── tests/                      pytest integration tests using a disposable database
 │   ├── scripts/                    route gate, coverage gate, smoke checks, restore drill
 │   ├── Dockerfile, Dockerfile.dev, docker-entrypoint.sh, render.yaml, docker-compose*.yml
 ├── vitaltrack-mobile/              Expo app
@@ -152,7 +156,7 @@ vitaltrack/                         repository root (legacy name; product is Car
 │   ├── features/assistant/         local parser, snapshot rules, recording control, policy flags
 │   ├── components/assistant/       AssistantExperience (dock + overlay), VoiceSetup
 │   ├── modules/carekosh-voice/     Kotlin Expo module: Moonshine transcription, Android TTS
-│   ├── tests/                      Node test runner suites (121 tests)
+│   ├── tests/                      Node test runner suites
 │   ├── app.json, app.config.js, eas.json
 ├── voice-service/                  optional speech workers (not deployed)
 ├── docs/                           guides, audits, diagrams, tools
@@ -210,10 +214,10 @@ Do this once, slowly, with the backend logs open (`docker compose -f docker-comp
 4. **Build inventory.** Dashboard → "Build Inventory" opens the Builder → "+ Add New Category" (`POST /categories`); then Inventory tab → "+" → new item (`POST /items`, quantity 40, minimum 50). Open the item again, change the quantity, Save: `PUT /items/{id}` with `version: 1`; the response has `version: 2`, and an activity row and an audit row exist.
       - Try the conflict with the API: send PUT with an old version and expect **409 Version conflict**. On two devices, open an edit form, save elsewhere and refetch the first device without closing its form. Its old form must still send its original version and be refused; reopen it for the current values. This is also covered by a component regression test; repeat on a real phone.
 5. **Create an order.** Orders → "+" → pick lines → "Confirm order & export PDF". The app sends one `localId` for this Save; on a fresh database the server allocates `ORD-<UTC date>-0001` (one counter per UTC day, shared by all accounts), stores line snapshots and writes no stock. The PDF is produced on the phone.
-6. **Receive and apply.** Expand the order card: "Have you received the order?" (`PATCH /orders/{id}/status` → `received`), then "Update Stock" (`POST /orders/{id}/apply`). Watch the item's quantity and version increase in one transaction. Then send the apply request again (for example with `curl`): the second call gets 400 and stock is added once.
+6. **Receive and apply.** Mark the order received, then choose Update Stock. Read the changed item and its new version. Repeating the apply request returns the applied order with 200 and adds no stock a second time.
 7. **Ask a question.** Open Profile menu → Voice setup, turn the assistant on, choose "Try a typed question here" ("Practice a command here" once voice is ready), and type "Show low stock" (typed questions work in Expo Go too). The phone matches the sentence locally, reads `['items']` (or refetches), and builds the answer on the phone. No `/ai/interpret` call is made for familiar wording (the assistant still calls `GET /ai/capabilities` when it opens). For the microphone path you need a preview APK (which talks to staging) and the downloaded speech pack (see [C7](#c7-the-voice-and-typed-assistant)).
 8. **Run the tests** ([E1](#e1-tests-what-they-cover-and-how-to-run-them-safely)): `npm test` in `vitaltrack-mobile/`, and the backend suite against a **disposable** database whose name contains `test`.
-9. **Understand how this would ship** ([Part F](#part-f--environments-cicd-deployment-and-release)): a PR runs CI; a staging candidate is deployed deliberately; merging to `main` can deploy the production backend (the CI deploy hook if its secret is set, and Render auto-deploy if enabled — treat every merge as a production deploy); the Android app ships separately through EAS and Play, and installed apps never change until users install the new build.
+9. **Follow the release.** Record the tested SHA and confirm the deployment settings described in the [release checklist](deployment/CAREKOSH_DEPLOYMENT_ATLAS.html#change-guide). Verify the affected service or client in staging before promoting it.
 
 Exercise: after each step, find the handler in `vitaltrack-backend/app/api/v1/` and the rows in the database (`docker compose -f docker-compose.dev.yml exec db psql -U postgres -d vitaltrack -c "select action, item_name from activity_logs order by created_at desc limit 5"`). Note that `action` is stored in upper case (`ITEM_UPDATE`), while the API shows `item_update`.
 
@@ -227,47 +231,26 @@ Exercise: after each step, find the handler in `vitaltrack-backend/app/api/v1/` 
 
 **What it means.** FastAPI is an ASGI application: Uvicorn workers (managed by Gunicorn in production) receive HTTP connections and call the app as an async function with a `scope`, a `receive` channel and a `send` channel. Middleware are wrappers around that function; each sees the request on the way in and the response on the way out.
 
-**The order in this codebase** (verified in `app/main.py`; Starlette inserts each new middleware at the front, so the last one added is the outermost):
+**Following an item edit through the current server**
 
-1. Starlette `ServerErrorMiddleware` (always outermost; runs the generic 500 handler).
-2. `AIBodyLimit` reads the **whole body** before parsing: ≤2 MB normally, ≤12 KB for AI JSON, ≤900 KB for `/ai/transcribe`. AI requests without a bearer header get 401 before reading the body. Transcription uploads get 30 s, AI JSON 10 s; an expired upload gets 408. Early refusals include security headers and a sanitized request ID.
-3. `add_security_headers` (nosniff, frame deny, referrer policy, `Cache-Control: no-store`, HSTS in production).
-4. `add_request_id` preserves a short ASCII `X-Request-ID` containing letters, numbers, dot, underscore, colon or hyphen; controls, whitespace or oversized input get a generated ID. The same validator serves early body-limit refusals. This middleware does **not** write IDs into logs.
-5. `CORSMiddleware`.
-6. Starlette `ExceptionMiddleware` (validation, `IntegrityError`, rate-limit and `HTTPException` handlers), then the router.
-
-Then, inside FastAPI 0.115.6 (read in the framework source; the SQL counts in steps 1–3 were reproduced on 8 Oct 2026):
-
-1. **Body parsing.** If the route takes a JSON body, it is parsed first. Malformed JSON → 422 `json_invalid` before any dependency runs: no token check, no SQL.
-2. **Dependencies** (`Depends`) run in order. `get_db` creates one `AsyncSession` (pool: 5 connections plus 10 overflow per worker; no SQL yet). `get_current_user` checks the bearer token (a bad token → 401 with no SQL), then loads the user with one `SELECT`.
-3. **Validation.** Path, query and body fields are validated. A failure → 422, after the user `SELECT` has already run; the handler never runs.
-4. **Handler.** It executes SQL through the session. Decorated rate limits are checked after dependencies and validation. AI limits use the validated account ID, rather than forwarded headers, and remain per route/per worker; PostgreSQL separately enforces shared AI budgets/concurrency. Every write handler commits explicitly; later SQL starts a new transaction.
-5. **Response.** The return value is validated against `response_model` and serialised with field aliases (camelCase).
-6. **Clean-up.** `get_db` (a dependency with `yield`) commits whatever is still open, rolls back if an exception is propagating, and closes the session. A 422 leaves it normally. Then the response is sent; `BackgroundTasks` (emails) run after that.
-
-So there is **one session per request, not one transaction per request**. A rollback undoes only work that was not yet committed. If the response is lost after a commit, the change is saved but the client cannot tell: an uncertain outcome, so re-read before retrying.
-
-> **Version note (FastAPI 0.115.6; official release notes re-checked on 8 Oct 2026).** In the installed version, the code after `yield` in `get_db` runs after the response object is built but **before** it is sent, so a failed final commit still becomes an error response. FastAPI 0.118.0 moved that exit code to *after* the response is sent; 0.121.0 added `scope="request"` for dependencies that must exit before sending. Before upgrading FastAPI, keep every write handler committing explicitly (all current ones do) so the client never sees success for a write that was not committed. See SOURCES (local review reference; not published) row 1 and finding A-23.
-
-**How to follow any request in code:** route path → `vitaltrack-backend/app/api/v1/<router>.py` (search for the path string) → request schema in `app/schemas/` → dependencies in `app/api/deps.py` → SQL statements in the handler → models in `app/models/` → the mobile caller in `vitaltrack-mobile/services/<name>.ts` → the hook in `hooks/useServerMutations.ts` or `useServerData.ts` → the screen. The [traceability matrix](API_TRACEABILITY.md) does this for all 50 current operations.
-
-![Three failure paths: invalid fields are rejected with 422 before the handler runs (with a valid token the user SELECT has already run); another user's id returns 404 because ownership is part of the query; an order apply that finds a deleted item raises 409 before writing anything, and get_db rolls back. A failure after the order is claimed is rolled back the same way, so no partial stock change is kept. Unexpected exceptions become a generic 500 without SQL details; reproduced on 7 Oct and re-run on 8 Oct 2026, those 500s lack the request id and security headers.](diagrams/request-rollback.svg "When a request fails: what is kept and what is undone")
-
-**Error shapes** you will see: 422 `{"error":"Validation Error","message":"Request validation failed","details":[…],"timestamp":…}`; `HTTPException` → `{"detail": "…"}`; item version conflict 409 `{"error":"Version conflict","message":…,"server_version":…,"server_quantity":…}`; unhandled database constraint 409 `{"detail":"A conflict occurred. Please try again.","timestamp":…}`; rate limit 429 `{"error":"Rate limit exceeded: 5 per 1 minute"}` (no `detail`); anything else 500 `{"detail":"An unexpected error occurred. Please try again.","timestamp":…}`.
+1. The browser may send a CORS preflight. On an API call, the outer CORS middleware wraps ingress verification, the in-flight request limit and body limits. A refusal at one of these stages can finish the request before an item handler runs.
+2. The security-header and request-ID middleware wrap the routed request. FastAPI resolves the authenticated owner and the shared database session and validates the endpoint input.
+3. The item editor uses `PUT /api/v1/items/{item_id}`. The handler locks the owner’s supply revision and updates the owned row only when its version matches. Success commits the edit, its activity and audit and the supply revision. A stale version gets HTTP 409.
+4. The database dependency is function-scoped in FastAPI 0.162.0. Its final commit or rollback and cleanup run before the response is sent. See the [application setup](../vitaltrack-backend/app/main.py), [dependencies](../vitaltrack-backend/app/api/deps.py) and [database session](../vitaltrack-backend/app/core/database.py).
 
 ### C2. The data model
 
 ![Twelve application tables at migration head 0011: users owns categories, items, orders, refresh_tokens, activity_logs, audit_log, ai_consents, ai_usage and ai_sarvam_credentials through ON DELETE CASCADE foreign keys; items belong to categories; order_items belong to orders and reference items without a foreign key; order_number_counters stands alone.](diagrams/database-erd.svg "The database at 0011 — keys, constraints and cascades")
 
-- **13 tables** at current migrated head = 12 application tables + `alembic_version`. The 11 October personal-key migration adds `ai_sarvam_credentials` and usage billing-source metadata. Earlier 7/8 October dumps at 0010 had 12 total tables.
-- **Primary keys** are 36-character UUID strings generated in Python (`VARCHAR(36)`), not PostgreSQL's `uuid` type. Three tables use natural keys: `order_number_counters.day`, `ai_consents.user_id` and `ai_sarvam_credentials.user_id`.
+- **18 application tables** at model head, plus Alembic’s version table in a migrated database. See [registered models](../vitaltrack-backend/app/models/__init__.py).
+- **Primary keys** are 36-character UUID strings generated in Python (`VARCHAR(36)`), not PostgreSQL's `uuid` type. Exceptions include the daily order counter, user-keyed consent, credential and supply revision rows, and the composite owner/local ID on closed order submissions.
 - **Ownership** is a `user_id` column on every user-owned table, always filtered in queries.
 - **Cascades:** every foreign key is `ON DELETE CASCADE`. Deleting a user removes all of that user's rows in one statement; deleting a category removes its items; deleting an order removes its lines.
 - **Deliberately missing foreign keys:** `order_items.item_id`, `activity_logs.item_id/order_id` and `audit_log.entity_id` are plain strings, so history survives deletion. `order_number_counters` has no user link, so numbers are never reused.
 - **Constraints vs application rules** (see [D9](#d9-database-constraints-versus-application-validation)): `CHECK (quantity >= 0)` on items, `CHECK (quantity > 0)` on order lines, `CHECK (email IS NOT NULL OR username IS NOT NULL)` on users, unique email/username/order number/refresh `jti`, and a **partial unique index** on `(user_id, local_id) WHERE local_id IS NOT NULL` for orders. Category and item names are **not** unique in the database; the API serialises its duplicate checks with `pg_advisory_xact_lock`.
 - **Enums are stored as text**: `orders.status` and `activity_logs.action` hold the Python enum **names** (`STOCK_UPDATED`, `ITEM_CREATE`), while the API sends lower-case values (`stock_updated`). Raw SQL must use the upper-case names.
 - **Relationship loading:** the ORM declares most collections `lazy="selectin"` (load children with one extra query). Hot paths add `noload(...)` so that, for example, authenticating a request does not load every item and order of the user. In async SQLAlchemy, accidental lazy loading raises an error instead of silently querying, so any collection you touch must be loaded explicitly.
-- **Migrations:** Alembic chain `0001_initial` → … → `0007_session_order_safety` → `0008_ai_consent_usage` → `0009_ai_provider_scopes` → `0010_order_local_id_unique` → `0011_sarvam_personal_keys` (head). 0007–0011 exist only on the feature branch. See [F5](#f5-database-migrations-and-the-0007-0010-release-gate).
+- **Migrations:** Source head is `0013_supply_reviews`. Revisions 0011 and 0012 add personal provider-key support. Revision 0013 introduces the supply review and order-recovery tables. A live database revision must be checked separately.
 
 ### C3. Authentication and authorization
 
@@ -283,18 +266,18 @@ So there is **one session per request, not one transaction per request**. A roll
 | Refresh | One refresh token = one use. A conditional `UPDATE … WHERE is_revoked = false` decides the single winner, even for simultaneous requests. A replayed token gets 401 but does **not** revoke the newer token (no theft detection). Each refresh issues a fresh 30-day token, so sessions slide with no absolute limit. |
 | Logout | Revokes the refresh token in the body. The access token stays valid until it expires (≤ 30 min). |
 | Password change / reset | `session_version + 1`, all refresh tokens revoked, pending reset and deletion links cleared: every device must log in again (old access tokens get 401 "User not found"). Reset links last 1 hour and are single-use. A reset sends a "password changed" email; a change sends none. |
-| Email verification | Enforced only when `REQUIRE_EMAIL_VERIFICATION=true` **and** email is configured (`MAIL_PASSWORD` not blank; the key itself is not checked). Then login, refresh and every bearer request of an unverified account return 403 `EMAIL_NOT_VERIFIED`, so such a user cannot even log out or request deletion. Registration still returns 201. Links last 24 hours and are single-use. |
+| Email verification | Enforced when `REQUIRE_EMAIL_VERIFICATION=true` and email is configured; hosted startup rejects a missing mail credential under that policy (`MAIL_PASSWORD` not blank; the key itself is not checked). Then login, refresh and every bearer request of an unverified account return 403 `EMAIL_NOT_VERIFIED`, so such a user cannot even log out or request deletion. Registration still returns 201. Links last 24 hours and are single-use. |
 | Account deletion | `DELETE /auth/me` emails a 24-hour link → GET shows a confirmation page (deletes nothing) → POST deletes the user and, by cascade, all their data. |
 
 **Secrets at rest:** passwords are Argon2 hashes (passlib, bcrypt accepted for old hashes); verification, reset and deletion tokens are stored as SHA-256 digests, so a database leak does not reveal usable links. Refresh tokens are stored by `jti` (the token id), not as raw tokens.
 
-**Rate limits:** register 3/hour, login 5/minute, forgot-password and resend-verification 3/hour, reset-password 5/hour. Rate limiting is best effort: five auth routes, counters in memory per worker process, reset on restart; an open finding about how clients are identified is tracked privately. Do not describe these limits as a complete brute-force defence.
+**Rate limits:** Route decorators define individual limits. Hosted services use the configured shared store. Local development can use in-memory counters. Inspect [rate limiting](../vitaltrack-backend/app/utils/rate_limiter.py) for response and store-failure behavior.
 
 **On the phone** (`services/api.ts`, `store/useAuthStore.ts`): tokens live in SecureStore (`vitaltrack_access_token`, `vitaltrack_refresh_token`); the signed-in user is persisted as `vitaltrack-auth`. A 401 triggers one shared refresh (30 s timeout) and one retry; a 401/403 from refresh clears the tokens and logs out; a network failure keeps them. At start-up the app calls `GET /auth/me` with an 8-second race; if the server is slow it enters "Connecting… server warming up" mode instead of logging out. Login and logout both clear the query cache in memory and on disk, so the next person on a shared phone cannot see the previous account's data.
 
 ### C4. Inventory rules and concurrency
 
-![Two API clients save the same item at version 3 with the stock PATCH (the reproduced case). The first UPDATE takes the row lock and commits version 4; the second waits, re-checks its WHERE clause, matches no row and gets 409 with the values it read. The app's Edit Item sends PUT with the name, which first takes a per-account advisory lock, so a second PUT waits there before its SELECT, with the same 200 / 409 result. The app now captures the version with its form values, so a cache refresh cannot bypass this guard.](diagrams/inventory-concurrency.svg "Optimistic concurrency with the version column")
+![Two clients open version 3. The first PUT commits version 4. The second PUT with version 3 returns 409 and preserves the saved quantity.](diagrams/inventory-concurrency.svg "Optimistic concurrency with the version column")
 
 - **Writes carry the version they read.** `PUT /items/{id}` and `PATCH /items/{id}/stock` run `UPDATE items … SET version = version + 1 WHERE id = :id AND user_id = :me AND version = :seen`. Zero rows updated means someone else saved first (or deleted the item): 409, nothing written. Under PostgreSQL's default READ COMMITTED isolation, an `UPDATE` that had to wait for another transaction's row lock re-checks its `WHERE` clause against the committed row, which is why this compare-and-swap is safe without `SELECT … FOR UPDATE` (reproduced on 7 and 8 Oct 2026 with two simultaneous stock PATCH calls: one 200, one 409). A `PUT` whose body includes `name` (Edit Item always sends it) first takes the per-account name lock, so two such saves are serialised even before their `SELECT`; the second still gets 409. The 409 reports the version and quantity that request read before its `UPDATE`, which may already be out of date.
 - **Deletes do not check the version**: a delete wins over a concurrent edit.
@@ -305,15 +288,15 @@ So there is **one session per request, not one transaction per request**. A roll
 
 ### C5. Orders
 
-![Order states: pending can become ordered, received or declined; ordered can become partially received or received; partially received can become received; received becomes stock updated only through POST apply, which adds every line's full quantity in one transaction. Declined and stock updated are final.](diagrams/order-status.svg "Order status machine and applying stock")
+![Unapplied pending, ordered, partially received and received orders can be declined. Applying a received order credits inventory once. Applying it again returns the saved order.](diagrams/order-status.svg "Order status machine and applying stock")
 
-![Order creation: the app sends one localId per Save. A retry with the same localId returns the existing order with 200, even if the retried payload differs. Two simultaneous requests with the same localId collide on a partial unique index; the loser rolls back, releasing its order number, and returns the winner's order. Requests without a localId always create a new order.](diagrams/order-idempotency.svg "Submission keys, retries and order numbers")
+![Order creation and retry with a matching localId and order payload.](diagrams/order-idempotency.svg "Submission keys, retries and order numbers")
 
-- **Statuses:** `pending → ordered | received | declined`, `ordered → partially_received | received`, `partially_received → received`; `received → stock_updated` only via apply. The transition is a conditional `UPDATE … WHERE status = :old`, so two simultaneous transitions cannot both win; a loser that read the old status gets 409. Receiving never changes stock. The app currently offers only **pending → received** and **received → apply**.
-- **Idempotent creation:** the app sends `localId` (one UUID per Save press); retries of the same request, including the failure dialog's Retry, reuse it. A repeat with the same `localId` returns the original order's current state with 200 **even if the new request's lines differ**; the new payload is only validated, then ignored. Older installed builds send no `localId` and keep the old behaviour (every request creates an order). A deliberate second press is a second order.
+- **Statuses:** `pending → ordered | received | declined`, `ordered → partially_received | received | declined`, `partially_received → received | declined`, `received → declined`; `received → stock_updated` only via apply. The transition is a conditional `UPDATE … WHERE status = :old`, so two simultaneous transitions cannot both win; a loser that read the old status gets 409. Receiving never changes stock. The app currently offers only **pending → received** and **received → apply**.
+- **Idempotent creation:** The caller reuses its submission key after an uncertain save. A matching order returns 200. A changed line or note with that same key returns 409. An explicitly closed, unsaved submission also returns 409. See the [order creation service](../vitaltrack-backend/app/services/orders.py).
 - **Order numbers** come from `INSERT … ON CONFLICT (day) DO UPDATE SET last_value = last_value + 1 RETURNING` inside the creating transaction: one counter per UTC day shared by all accounts (so one account's numbers have gaps), unique, never reused, and rolled back with a failed creation. Old `main` code numbered orders with a COUNT query, which is why the 0007 cutover needs a pause (see [F5](#f5-database-migrations-and-the-0007-0010-release-gate)).
 - **Snapshots:** line name, unit, current stock and supplier come from the app's request and are stored as sent. The client's `orderId` is **required** (422 if missing) but its value is ignored, like the client's totals, status and timestamps; `categoryName`, `isEssential` and line `notes` are accepted but not stored.
-- **History:** deleting an item does not delete or change past orders; applying an order whose item was deleted fails with 409 and changes nothing (the order then stays `received` and cannot be declined or deleted: A-16).
+- **History:** deleting an item does not delete or change past orders; applying an order whose item was deleted fails with 409 and changes nothing (the unapplied order can be declined, then deleted).
 - **Deletion:** only `pending` and `declined` (the app shows "Remove" for every status; the API refuses the others with 400).
 
 ### C6. The mobile app's data layer
@@ -498,12 +481,12 @@ Each concept follows the same pattern: **what it means**, **why it matters here*
 - **Why it matters here.** Login, registration and recovery are public endpoints.
 - **Where in our code.** `app/utils/rate_limiter.py` (slowapi) and the `@limiter.limit(...)` decorators in `auth.py`.
 - **Example.** Six login requests (right or wrong) from one client within a minute that reach the same worker: the sixth gets 429. The limit is checked inside the endpoint call, after validation, so a request rejected with 422 is not counted. This is the design; the limiter is disabled in tests, so it is not automatically verified.
-- **Current limitations.** Rate limiting is best effort: five auth routes, counters in memory per worker process (two per instance), reset on restart; an open finding about how clients are identified is tracked privately. The server sends no `Retry-After`, so the app says "wait 60 seconds" (the login screen says "Too many attempts") whatever the real window is (A-6). Treat it as best effort; a shared store (or the edge provider's rate limiting) would be needed for a real guarantee.
+- **Throttling.** The backend rate limiter uses shared Redis in hosted environments. Development and tests can use process-local memory. Limited responses use HTTP 429 with a Retry-After window. Browser and native registration share one limit, as do their login routes. AI also enforces separate database-backed usage budgets. See the [rate limiter](../vitaltrack-backend/app/utils/rate_limiter.py).
 
 ### D17. Configuration and secrets
 
 - **What it means.** Behaviour that differs between environments (database, keys, URLs, feature flags) comes from the environment, not from code. Secrets (keys, passwords, connection strings) must never be committed.
-- **Why it matters here.** The same image runs locally, on staging and in production; only configuration differs.
+- **Why it matters here.** Render builds the backend Dockerfile. Local Compose uses Dockerfile.dev. Each environment supplies its own API and database settings.
 - **Where in our code.** `app/core/config.py` (pydantic-settings, `SecretStr` for secrets, validators that refuse the default `SECRET_KEY` outside development/testing and require `FRONTEND_URL` in production); `render.yaml` (`sync: false` = set in the dashboard); `eas.json` (`EXPO_PUBLIC_API_URL` per build profile).
 - **Example.** `DATABASE_URL=postgres://…?sslmode=require` from a provider is rewritten to `postgresql+asyncpg://…` without the query string; TLS is then enabled because `ENVIRONMENT` is not development/testing.
 - **Current limitations.** `EXPO_PUBLIC_*` values are public by design. The earlier percent-encoding failure in Alembic (A-27) is fixed locally: encode reserved password characters normally; `alembic/env.py` escapes percent signs only for ConfigParser and passes the original URL to SQLAlchemy. The app sends `statement_timeout` as a connection start-up parameter, which Neon's pooled (`-pooler`) endpoint rejects, so use the direct connection string (Neon documentation; the live URL is NOT VERIFIED). Live secret values and which flags are set on staging and production are NOT VERIFIED from the repository.
@@ -619,7 +602,7 @@ npm run lint             # 8 Oct 2026: 0 errors, 1 warning (app/builder.tsx); wa
 | 409 when applying an order | An order line's item was deleted after the order was created | The order can no longer be applied, declined or deleted through the API (recreating the item gives it a new id, so it does not help); it stays as `received` history. Known limitation A-16. |
 | 400 "Only pending or declined orders can be deleted" | "Remove" pressed on a received/applied order | Expected; applied orders are history. |
 | 422 with `body.items.0.quantity` | An order line with quantity 0 | Every line needs quantity ≥ 1. |
-| 429 | Rate limit (per worker, in memory) | Wait; locally restart the API to reset counters. |
+| 429 | The route or provider reached a limit | Read the response and respect Retry-After when present. |
 | 413 "Request is too large." | Body over 2 MB (or 12 KB for AI JSON) | Reduce the payload; do not raise limits casually. |
 | 503 from `/health` | Database unreachable or slower than 2 s | Check the database container/provider; `/live` will still be 200. |
 | pytest stops with `Refusing to run destructive test setup…` or `Refusing to run Base.metadata.drop_all/create_all…` | Tests pointed at a staging/production-looking target or a database without `test` in its name | Point `DATABASE_URL` at a throwaway `*test*` database. |
@@ -629,22 +612,11 @@ npm run lint             # 8 Oct 2026: 0 errors, 1 warning (app/builder.tsx); wa
 | Migration fails at container start | Schema conflict or a lock wait over 30 s | The production image exits (previous deploy keeps serving on Render); the local `Dockerfile.dev` starts the server anyway (A-17). Read the Alembic error before retrying. |
 | Container exits at start with `ValueError: invalid interpolation syntax` | An older backend may still contain the percent-encoding bug A-27 | Deploy the updated backend: Alembic configuration now handles encoded passwords. Do not remove required URL encoding. |
 
-Useful local commands: `docker compose -f docker-compose.dev.yml exec api alembic current` (expect `0011_sarvam_personal_keys (head)`), `… exec db psql -U postgres -d vitaltrack`, and `curl -i http://localhost:8000/health`.
+Useful local commands: `docker compose -f docker-compose.dev.yml exec api alembic current` (expect `0013_supply_reviews (head)` at this revision), `… exec db psql -U postgres -d vitaltrack`, and `curl -i http://localhost:8000/health`.
 
 ### E3. Daily development workflow
 
-1. Branch from the branch you are building on (today the voice/hardening work lives on `feature/backend-hardening-ai-voice-agent-foundation`, not yet in `main`): `git checkout -b fix/<short-name>`. `main` (`835fad3`) has no `/api/v1/ai/*` routes, stops at migration 0006 and runs an older CI (Python 3.11, route gate 39); this guide describes the feature branch.
-2. Change code; keep business rules ([A3](#a3-business-rules-the-code-enforces)) intact unless the change is the point of the PR.
-3. Run the backend suite against a disposable database and `npm test`, `npx tsc --noEmit`, `npm run lint`.
-4. Push and open a PR to `main` (a push runs CI only when the branch already has an open PR to `main`; otherwise use "Run workflow" to start it manually).
-5. Read every CI job's log, not just the summary (advisory jobs never turn the run red).
-6. For backend changes that touch the schema or authentication, deploy the candidate to **staging** deliberately and test with a preview APK before merging ([F4](#f4-backend-deployment-on-render)).
-7. Merge (house style: squash) only when ready for production: **treat merging to `main` as a production backend deploy** (the CI deploy hook runs if its secret is set, and Render auto-deploy may run too; both NOT VERIFIED).
-8. Mobile changes reach users only through a new build and a Play release ([F6](#f6-mobile-builds-and-play-store-release)).
-
-Commit messages follow the existing short style (`fix: …`, `docs: …`, `feat: …`); see [GIT_WORKFLOW_GUIDE.md](GIT_WORKFLOW_GUIDE.md).
-
----
+Branch from a freshly fetched main. Reproduce the problem, implement and test the change, then open a PR targeting main. After review, record the merged SHA and advance the staging branch to it. Verify the affected client and service on staging before explicitly releasing that revision. Before using this sequence, confirm the production Render service has native auto-deploy off, the GitHub variable `ENABLE_RENDER_AUTO_DEPLOY` is off, and the production Worker’s native Git build only performs a dry run. If main advances, verify the newer revision before dispatching the web release.
 
 ## Part F — Environments, CI/CD, deployment and release
 
@@ -835,8 +807,8 @@ Use the local stack and synthetic data. Each exercise has an expected result you
 | 4 | Log out, then call `GET /auth/me` with the old access token. | 200 until the token expires — explain why ([C3](#c3-authentication-and-authorization)). |
 | 5 | Create an item, then send `PUT` with `{"brand": null, "version": 1}` and later `{"description": "x"}` without `version`. | Brand cleared (200); missing version → 422. |
 | 6 | Send two `PATCH …/stock` requests with the same version at the same time (two terminals or a small script). | One 200, one 409. |
-| 7 | Create an order with a fixed `localId` (the body also needs an `orderId` placeholder, which the server ignores), then send the identical request again, then once more with a different line quantity. | 201, then 200 with the same `orderId`, then 200 with the original order unchanged. |
-| 8 | Try `pending → stock_updated`, then do pending → received → apply, then apply again. | 400; then 200; then 400 with stock added once. |
+| 7 | Create an order with a fixed `localId` (the body also needs an `orderId` placeholder, which the server ignores), then send the identical request again, then once more with a different line quantity. | 201, then 200 with the same `orderId`, then 409 with the original order unchanged. |
+| 8 | Try `pending → stock_updated`, then do pending → received → apply, then apply again. | 400; then 200; then 200 with stock added once. |
 | 9 | In `psql`, `SELECT status FROM orders;` and compare with the API. | Upper-case names in the database (`STOCK_UPDATED`), lower-case values in JSON. |
 | 10 | Type "How many nitrile gloves are left?" in the assistant (use one of your item names), then "Delete nitrile gloves". | An answer computed on the phone; then the read-only refusal. No `/ai/interpret` request for either (watch the API log; `GET /ai/capabilities` still appears when the assistant opens). |
 | 11 | Run the backend tests against a throwaway database whose name does **not** contain `test`. | The suite refuses to start. Explain why that matters, and why a substring check is only a seatbelt. |

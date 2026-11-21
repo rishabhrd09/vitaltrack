@@ -1,6 +1,6 @@
 # Expo & Play Store Setup Guide
 
-> **AI voice source update — 11 October 2026:** Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, an explicit shared or encrypted per-account personal key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Personal-key migration 0011 adds encrypted credentials and billing-source metadata; the current local inventory is 50 HTTP operations (47 under /api/v1) and 12 application tables. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. [Sarvam activation, costs and device checks](SARVAM_ENGLISH_VOICE.md) · [Complete voice architecture](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+The [EAS profiles](../vitaltrack-mobile/eas.json) select the API at build time. Preview targets staging. Production builds target the production API even when distributed on Play’s internal track. The dated account checklist below records the earlier rollout. Check Play Console for the account’s current production-access status. [Google Play testing requirements](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en).
 
 
 > 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
@@ -141,19 +141,30 @@ The steps below follow the current Expo guide ([expo.fyi/creating-google-service
 
 ### Preview APK (for internal sideload / PR review)
 
-Two paths — pick one:
+From the repository root, build the exact staging candidate in a fresh worktree. Fetch the hosted staging branch and compare the printed SHA with the candidate you intend to test before starting EAS.
 
-**A. From your laptop**
 ```bash
-cd vitaltrack-mobile
-eas build --profile preview --platform android
+git fetch origin feature/backend-hardening-ai-voice-agent-foundation &&
+  staging_dir=$(mktemp -d) &&
+  git worktree add --detach "$staging_dir" FETCH_HEAD &&
+  git -C "$staging_dir" rev-parse HEAD
 ```
 
-**B. Via CI (preferred — no local credentials needed)**
-- Open a PR to `main`, add the `build-apk` label.
-- The `build-preview` job in CI (Node 22 on the feature branch) runs `eas build --profile preview --platform android --non-interactive --no-wait` and posts a PR comment saying the build was triggered. Because of `--no-wait`, the comment points to the EAS dashboard rather than linking the APK; download it from expo.dev. (Earlier text said the comment links the APK.) The job runs only after both test jobs pass, and while the label stays on the PR every later push, reopen or label change queues another EAS build.
+With that SHA confirmed, use the same terminal and an EAS account with project access. Installing the locked dependencies lets EAS load the Expo config plugins from this worktree.
 
-Either way, the artifact is wired to the **staging** backend.
+```bash
+(cd "$staging_dir/vitaltrack-mobile" && npm ci && eas build --platform android --profile preview)
+```
+
+Alternatively, the [CI workflow](../.github/workflows/ci.yml) can queue a preview for an eligible PR with the `build-apk` label after the backend and mobile tests pass. A queued job still needs to finish on EAS. Check the source revision and preview profile on the completed EAS build before installing its APK.
+
+#### Phone acceptance before building the production AAB
+
+1. Record the EAS build ID and commit, handset and Android version, and the Live revision of `vitaltrack-api-staging`. Sign in with a staging test account. Open and close the navigation menu and voice settings. Change a voice preference, reopen settings and check the saved choice.
+2. Create disposable inventory with distinct names and quantities 1, 2, 4 and 5. Ask by typing, then by voice, for items with “at least two and at most four” and “between two and four.” Review the transcript before sending. With these four fixtures, both phrasings should include the items at 2 and 4 and exclude those at 1 and 5.
+3. Deny microphone permission and check that typing still works. Allow the microphone in Android settings and retry the spoken query. Record the listener and understanding mode to help distinguish transcription mistakes from an incorrect inventory answer.
+4. Ask for an order draft using the same quantity range. Inspect the proposed items, dismiss the draft and verify the Orders list and stock. Repeat and explicitly confirm one draft. Expect one pending order and the same stock quantities after reopening the app.
+5. Record the expected and actual result of any failed step using fixture names and the time. Build the production AAB after the handset checks pass and the release owner approves the tested revision.
 
 ### Production AAB
 

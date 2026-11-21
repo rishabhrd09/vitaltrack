@@ -23,6 +23,8 @@
 | PLANNED / RECOMMENDED | Not implemented. |
 | NOT VERIFIED | Live or device behaviour this audit could not observe. |
 
+For an existing item, both clients send the original version with `PUT /api/v1/items/{item_id}`. Follow the [stock edit walkthrough](deployment/CAREKOSH_DEPLOYMENT_ATLAS.html#stock-edit) for the client-to-database path.
+
 ## Contents
 
 1. [How the inventory was counted](#how-the-inventory-was-counted)
@@ -42,12 +44,9 @@
 
 ## How the inventory was counted
 
-- **Source of the list:** the routes registered on the FastAPI application object (`app.routes`), not the documentation and not the OpenAPI page. [`docs/tools/route_inventory.py`](tools/route_inventory.py) prints them and checks that each has a section in this file.
-- **Result:** **50 operations** = **47 under `/api/v1`** + `GET /`, `GET /health`, `GET /live`. Every route object has exactly one method, so route objects and operations are the same number.
-  - Under `/api/v1`: auth 18, categories 6, items 8, orders 6, activities 1, ai 8.
-  - Three auth routes are hidden from the OpenAPI schema (`include_in_schema=False`): `GET` and `POST /api/v1/auth/confirm-delete/{token}` and `GET /api/v1/auth/reset-password`. They are still real, public routes.
-  - `/docs`, `/docs/oauth2-redirect`, `/redoc` and `/openapi.json` exist only when `DEBUG=true` (local development) and are not counted.
-- **Cross-checks:** CI runs `scripts/check_api_routes.py --expected 47` (route objects whose path starts with `/api/v1`), and `tests/test_auth.py::TestHealthDiagnostics::test_api_v1_route_count_remains_47` asserts the same. The previous 44-route gate passed on 7/8 Oct; the updated 47-route gate and full backend suite passed locally on 11 Oct after adding personal-key management. A route count proves that routes are registered; it says nothing about whether they behave correctly.
+At the November source revision, the ten [v1 routers](../vitaltrack-backend/app/api/v1/__init__.py) declare **65 operations**. The [application](../vitaltrack-backend/app/main.py) also serves `GET /`, `GET /live` and `GET /health`, for **68** in total. From `vitaltrack-backend/` with backend dependencies and local test settings, run `python scripts/check_api_routes.py --expected 65` to reproduce the v1 count used by CI. It includes routes hidden from OpenAPI. Hosted feature flags and account permissions determine which requests succeed.
+
+The two tables below list all 68 method/path pairs. Caller, coverage and database examples in the original 50-row table describe its dated replay. Use the linked handlers and the [API testing guide](../vitaltrack-backend/API_TESTING_GUIDE.md) when testing a new change.
 
 ## Summary matrix
 
@@ -89,7 +88,7 @@ Historical 8 October caller inventory (before online narration and personal-key 
 | 30 | `GET /api/v1/items/stats` | access | none (dashboard counts on the phone) | – | Yes |
 | 31 | `GET /api/v1/items/needs-attention` | access | none (service function only) | – | Yes |
 | 32 | `GET /api/v1/items/{item_id}` | access + owner | none (item form reads the list cache) | – | Yes |
-| 33 | `PUT /api/v1/items/{item_id}` | access + owner | Item form Save; Builder critical star | items, activity_logs, audit_log | Yes |
+| 33 | `PUT /api/v1/items/{item_id}` | access + owner | Web and Android item editors; Android Builder critical star | items, activity_logs, audit_log, supply_revisions | Yes |
 | 34 | `PATCH /api/v1/items/{item_id}/stock` | access + owner | none (no stock +/- UI) | items, activity_logs, audit_log | Yes |
 | 35 | `DELETE /api/v1/items/{item_id}` | access + owner | Item form Delete; Builder; start fresh; replace-all | items, activity_logs, audit_log | Yes |
 | 36 | `GET /api/v1/orders` | access | Orders tab, dashboard | – | Partial |
@@ -108,17 +107,41 @@ Historical 8 October caller inventory (before online narration and personal-key 
 | 49 | `PUT /api/v1/ai/sarvam-key` | access + owner + storage confirmation | Voice setup → Save/Replace personal key | ai_sarvam_credentials | Yes |
 | 50 | `DELETE /api/v1/ai/sarvam-key` | access + owner | Voice setup → Remove personal key | deletes owned ai_sarvam_credentials row | Yes |
 
+### Operations added since the 50-row inventory
+
+The matrix above describes the earlier 50 operations. These 18 complete the inventory at the reviewed revision. Browser session endpoints validate the browser origin. Registration returns the account and its verification requirement. Login establishes a session, and refresh uses the scoped refresh cookie. Order recovery and Supply Review are scoped to the signed-in owner. Personal-key settings manage credentials independently of stock changes.
+
+| Operation | Feature | Handler |
+|---|---|---|
+| `DELETE /api/v1/ai/openai-key` | Personal OpenAI credential | [`remove`](../vitaltrack-backend/app/api/v1/openai_keys.py) |
+| `GET /api/v1/ai/openai-key` | Personal OpenAI credential | [`status`](../vitaltrack-backend/app/api/v1/openai_keys.py) |
+| `PUT /api/v1/ai/openai-key` | Personal OpenAI credential | [`save`](../vitaltrack-backend/app/api/v1/openai_keys.py) |
+| `POST /api/v1/ai/openai-key/check` | Personal OpenAI credential | [`check`](../vitaltrack-backend/app/api/v1/openai_keys.py) |
+| `GET /api/v1/orders/submission/{local_id}` | Uncertain order submission | [`get_order_submission`](../vitaltrack-backend/app/api/v1/orders.py) |
+| `POST /api/v1/orders/submission/{local_id}/resolve` | Uncertain order submission | [`resolve_order_submission`](../vitaltrack-backend/app/api/v1/orders.py) |
+| `GET /api/v1/supply-reviews` | Supply Review | [`history`](../vitaltrack-backend/app/api/v1/supply_reviews.py) |
+| `POST /api/v1/supply-reviews` | Supply Review | [`start`](../vitaltrack-backend/app/api/v1/supply_reviews.py) |
+| `GET /api/v1/supply-reviews/capabilities` | Supply Review | [`capabilities`](../vitaltrack-backend/app/api/v1/supply_reviews.py) |
+| `GET /api/v1/supply-reviews/{run_id}` | Supply Review | [`status`](../vitaltrack-backend/app/api/v1/supply_reviews.py) |
+| `POST /api/v1/supply-reviews/{run_id}/answers` | Supply Review | [`answer`](../vitaltrack-backend/app/api/v1/supply_reviews.py) |
+| `POST /api/v1/supply-reviews/{run_id}/cancel` | Supply Review | [`cancel`](../vitaltrack-backend/app/api/v1/supply_reviews.py) |
+| `POST /api/v1/supply-reviews/{run_id}/confirm` | Supply Review | [`confirm`](../vitaltrack-backend/app/api/v1/supply_reviews.py) |
+| `POST /api/v1/supply-reviews/{run_id}/refresh` | Supply Review | [`refresh`](../vitaltrack-backend/app/api/v1/supply_reviews.py) |
+| `POST /api/v1/web-auth/login` | Browser session | [`login`](../vitaltrack-backend/app/api/v1/web_auth.py) |
+| `POST /api/v1/web-auth/logout` | Browser session | [`logout`](../vitaltrack-backend/app/api/v1/web_auth.py) |
+| `POST /api/v1/web-auth/refresh` | Browser session | [`refresh`](../vitaltrack-backend/app/api/v1/web_auth.py) |
+| `POST /api/v1/web-auth/register` | Browser session | [`register`](../vitaltrack-backend/app/api/v1/web_auth.py) |
+
 ## What every request has in common
 
 These rules apply to every endpoint, so the sections below do not repeat them.
 
-**The trip through the server** (VERIFIED IN CURRENT CODE; see [request-lifecycle.svg](diagrams/request-lifecycle.svg)):
+**The current path through the server**
 
-1. Starlette's error middleware, then `AIBodyLimit` ([app/services/ai_body_limit.py](../vitaltrack-backend/app/services/ai_body_limit.py)) reads the whole body first: at most 2,000,000 bytes on normal routes (413 "Request is too large."), 12,000 bytes on `/api/v1/ai/*` JSON routes and 900,000 bytes on `/ai/transcribe`. `/api/v1/ai/*` requests without a non-empty `Bearer` header get 401 before any body is read (except OPTIONS preflight); AI bodies must finish within 10 s (408). These early middleware replies bypass inner security/request-ID/CORS middleware.
-2. Security headers (`X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`, `Cache-Control: no-store`, and HSTS only when `ENVIRONMENT=production`), then `X-Request-ID` (echoed or generated), then CORS (`app/main.py:111-158`).
-3. FastAPI matches the route and parses the JSON body. Malformed JSON → 422 `json_invalid` before any dependency runs: no token check, no SQL. Next the dependencies run: `get_db` creates an `AsyncSession` (connection acquired on first SQL), and `get_current_user` checks the bearer token. A bad token → 401 with no SQL; a valid one costs one `SELECT` on `users`. Only then are path, query and body fields validated, so a schema error → 422 after that `SELECT`, raised once `get_db` has closed normally (reproduced on 8 Oct 2026). On the five rate-limited routes the limit is checked inside the endpoint call, after validation. Protected business dependencies share the session; AI authentication and quotas use separate short sessions.
-4. The handler runs. Most write handlers call `await db.commit()` themselves. FastAPI serialises the response model after the handler returns; with pinned FastAPI **0.115.6**, the yield dependency then commits any pending transaction and closes before sending. `get_db` rolls back the **current uncommitted transaction** on exceptions, including `HTTPException`. An earlier commit survives a later refresh, serialisation or transport failure; one session is not necessarily one transaction per request (SQL after a commit starts a new transaction). See [FastAPI: dependencies with `yield` and when they exit](https://fastapi.tiangolo.com/advanced/advanced-dependencies/#dependencies-with-yield-httpexception-except-and-background-tasks).
-5. The response model is serialised with camelCase aliases (for example `minimumStock`, `isActive`). Auth token fields stay snake_case (`access_token`).
+1. The browser may send a CORS preflight. On an API call, the outer CORS middleware wraps ingress verification, the in-flight request limit and body limits. A refusal at one of these stages can finish the request before an item handler runs.
+2. The security-header and request-ID middleware wrap the routed request. FastAPI resolves the authenticated owner and the shared database session and validates the endpoint input.
+3. The item editor uses `PUT /api/v1/items/{item_id}`. The handler locks the owner’s supply revision and updates the owned row only when its version matches. Success commits the edit, its activity and audit and the supply revision. A stale version gets HTTP 409.
+4. The database dependency is function-scoped in FastAPI 0.162.0. Its final commit or rollback and cleanup run before the response is sent. See the [application setup](../vitaltrack-backend/app/main.py), [dependencies](../vitaltrack-backend/app/api/deps.py) and [database session](../vitaltrack-backend/app/core/database.py).
 
 **Authentication on protected routes** (`get_current_user`): no bearer → 401 `Not authenticated`; bad, expired or refresh-type token → 401 `Invalid or expired token`; user missing or token `session_version` ≠ the user's current value → 401 `User not found`; disabled account → 403; email not verified while `REQUIRE_EMAIL_VERIFICATION=true` **and** email sending is configured → 403 `EMAIL_NOT_VERIFIED`.
 
@@ -132,10 +155,10 @@ These rules apply to every endpoint, so the sections below do not repeat them.
 | `HTTPException` from a handler | 400/401/403/404/409/503 | `{"detail":"…"}` |
 | Item version conflict | 409 | `{"error":"Version conflict","message":"…","server_version":3,"server_quantity":40}` |
 | Database constraint (`IntegrityError`) not handled by the route | 409 | `{"detail":"A conflict occurred. Please try again.","timestamp":"…"}` |
-| Rate limit | 429 | for example `{"error":"Rate limit exceeded: 5 per 1 minute"}` (slowapi's handler; no `detail` key, no `Retry-After` header) |
+| Rate limit | 429 | for example `{"error":"Rate limit exceeded: 5 per 1 minute"}` (slowapi's handler; no `detail` key, a `Retry-After` header) |
 | Anything unexpected | 500 | `{"detail":"An unexpected error occurred. Please try again.","timestamp":"…"}` — reproduced: these 500 responses carry **no** `X-Request-ID`, security headers or `Cache-Control`, because the handler runs in Starlette's outermost error middleware. |
 
-**Rate limits** (slowapi, `app/utils/rate_limiter.py`): register 3/hour, login 5/minute, resend-verification 3/hour, forgot-password 3/hour, reset-password (POST) 5/hour. These are the only slowapi-decorated routes; AI routes have separate database-backed budgets and concurrency limits described below. Rate limiting is best effort: five auth routes, counters in memory per worker process (two workers per production instance), reset on restart; an open finding about how clients are identified is tracked privately. The limiter is disabled in the test suite, so no automated test covers it.
+**Rate limits.** The backend rate limiter uses shared Redis in hosted environments. Development and tests can use process-local memory. Limited responses use HTTP 429 with a Retry-After window. Browser and native registration share one limit, as do their login routes. AI also enforces separate database-backed usage budgets. See the [rate limiter](../vitaltrack-backend/app/utils/rate_limiter.py).
 
 **Mobile client** (`vitaltrack-mobile/services/api.ts`): base `EXPO_PUBLIC_API_URL` (fallback `http://localhost:8000`) + `/api/v1`. Ordinary requests have one **90 s overall deadline**, including response parsing and a refresh/retry; AI calls keep their shorter 50 s deadline. A 401 shares one 30 s refresh and retries once. Token writes are serialized: a late refresh cannot restore a logged-out session or erase a newer login. Logout clears local credentials first and revokes captured credentials best effort with a 30 s deadline. Error bodies become user-facing messages. Writes are never queued offline. Successful writes, uncertain network/gateway failures and 409 conflicts invalidate the relevant queries so active views refetch.
 
@@ -480,13 +503,13 @@ Router: `app/api/v1/items.py`. Mobile service: `services/items.ts`. Stock rules:
 | Field | Detail |
 |---|---|
 | Purpose | Edit an item, including its quantity. This is the app's normal write path for stock changes. |
-| Caller | Item form Save on an existing item (`app/item/[id].tsx:212-222`) → `useUpdateItem`; reactivating a hidden item; Builder critical-star toggle (`useToggleItemCritical`, body `{isCritical, version}`). The form always sends name, category, quantity, unit, minimum stock and critical flag; blank description, brand, supplier name, supplier contact, notes and purchase link go as explicit `null`. It never sends `expiryDate` or `isActive`, cannot clear the photo, and silently leaves a non-blank invalid purchase link unchanged. |
+| Caller | The web item editor calls `workspace.saveItem` with the opened snapshot version. Android item form Save on an existing item (`app/item/[id].tsx:212-222`) → `useUpdateItem`; reactivating a hidden item; Builder critical-star toggle (`useToggleItemCritical`, body `{isCritical, version}`). The form always sends name, category, quantity, unit, minimum stock and critical flag; blank description, brand, supplier name, supplier contact, notes and purchase link go as explicit `null`. It never sends `expiryDate` or `isActive`, cannot clear the photo, and silently leaves a non-blank invalid purchase link unchanged. |
 | Request | `ItemUpdate` (`app/schemas/item.py:74-115`): every field optional **except `version`** (required). Omitted field → unchanged. Explicit `null` → **clears** optional fields (`description, expiryDate, brand, notes, supplierName, supplierContact, purchaseLink, imageUri`); `null` on required fields (`name, quantity, unit, minimumStock, isActive, isCritical`) is ignored, and so is a `null` or empty `categoryId`. `purchaseLink: ""` also clears. Changing `categoryId` requires a category you own (400). Create and update now apply the same contact cleaner (A-25 fixed locally). Any successful PUT increases `version`, even when nothing changed. |
-| Handler | `update_item()` — `items.py:345-522`. When the body includes `name` (Edit Item always sends it), it first takes the per-account item-name advisory lock (`items.py:362-363`), so two such saves for one account run one after the other. Then one compare-and-swap: `UPDATE items SET …, version = version + 1 WHERE id AND user_id AND version = :sent RETURNING id`. |
-| Concurrency | 0 rows updated (someone else saved first, or the row was deleted) → **409** `{"error":"Version conflict","server_version","server_quantity"}` with the values this request read before its update; nothing written. See [inventory-concurrency.svg](diagrams/inventory-concurrency.svg). |
-| Database | `items`; `activity_logs` (`ITEM_UPDATE`, e.g. "qty: 40 → 38"); `audit_log` with an old/new snapshot of six fields (name, quantity, unit, minimum stock, active, critical). |
+| Handler | `update_item()` — `items.py:345-522`. When the body includes `name` (Edit Item always sends it), it takes the per-account item-name advisory lock after acquiring the owner’s supply-revision row lock (`items.py:362-363`), so two such saves for one account run one after the other. Then one compare-and-swap: `UPDATE items SET …, version = version + 1 WHERE id AND user_id AND version = :sent RETURNING id`. |
+| Concurrency | 0 rows updated (someone else saved first, or the row was deleted) → **409** with `error`, `message`, `server_version` and `server_quantity` with the values this request read before its update; nothing written. See [inventory-concurrency.svg](diagrams/inventory-concurrency.svg). |
+| Database | `items`; `activity_logs` (`ITEM_UPDATE`, e.g. "qty: 40 → 38"); `audit_log` with an old/new snapshot of six fields (name, quantity, unit, minimum stock, active, critical). The transaction also advances the owner’s supply revision. |
 | Response | 200 `ItemResponse` with the new `version`. |
-| App behaviour | The screen still closes as soon as Save is tapped. Fields and `formVersion` are captured from the same initial item snapshot; cache refetches cannot replace that version. A form opened before the item loaded cannot save defaults. On 409 the server message is shown and relevant active queries refetch. The person must reopen the editor to load fresh form values; Retry retains the original variables and cannot bypass a stale-version conflict. A-1 is fixed locally with real component regression tests; phone acceptance remains unverified. |
+| App behaviour | On the web, a rejected save keeps edits in the form and offers a way to load the latest item after a version conflict. On Android the screen closes as soon as Save is tapped. Fields and `formVersion` are captured from the same initial item snapshot; cache refetches cannot replace that version. A form opened before the item loaded cannot save defaults. On 409 the server message is shown and relevant active queries refetch. The person must reopen the editor to load fresh form values; Retry retains the original variables and cannot bypass a stale-version conflict. A-1 is fixed locally with real component regression tests; phone acceptance remains unverified. |
 | Status | VERIFIED IN CURRENT CODE; reproduced (explicit null clears brand; null quantity ignored; stale version 409). A-1 fixed locally and verified with a rendered edit form; not yet verified on a device. |
 
 ### `PATCH /api/v1/items/{item_id}/stock`
@@ -495,8 +518,8 @@ Router: `app/api/v1/items.py`. Mobile service: `services/items.ts`. Stock rules:
 | Purpose | Set an absolute quantity (not a delta) with the same version check. |
 | Caller | **No screen calls it**: the app has no stock +/- control. Quantity changes go through the item form (`PUT`) or by applying a received order. |
 | Request | `StockUpdate {quantity 0–999999, version}`. |
-| Database | Same CAS on `items`; `STOCK_UPDATE` activity ("Stock: 40 → 38 pairs"); audit row. |
-| Concurrency | Two API clients saving the same version at once: one 200, one 409, and the version advances once (reproduced with direct API calls; the app never calls this route). There is no advisory lock here: the second update waits for the first one's row lock, then re-checks the version in its `WHERE` clause. |
+| Database | Same CAS on `items`; `STOCK_UPDATE` activity ("Stock: 40 → 38 pairs"); audit row and an advance of the owner’s supply revision in the same transaction. |
+| Concurrency | Two API clients saving the same version at once: one 200, one 409, and the version advances once (reproduced with direct API calls; the app never calls this route). Both stock writers acquire the owner’s supply-revision row lock and then apply a version-guarded update. |
 | Status | VERIFIED IN CURRENT CODE; reproduced. |
 
 ### `DELETE /api/v1/items/{item_id}`
@@ -504,7 +527,7 @@ Router: `app/api/v1/items.py`. Mobile service: `services/items.ts`. Stock rules:
 |---|---|
 | Purpose | Delete an item. |
 | Caller | Item form → Delete Item (`app/item/[id].tsx:227-248`); Builder row trash; start-fresh and replace-all loops. `itemService.delete` treats 404 as success (already gone). |
-| Rules | Ordinary deletion keeps its existing behavior without a version check. Resets send optional `?version=N`: a row lock and comparison reject changed items with 409 before deletion. Order snapshots are preserved. |
+| Rules | Callers may omit a version. The web item editor and version-aware reset operations send `?version=N`: a row lock and comparison reject changed items with 409 before deletion. Order snapshots are preserved. |
 | Database | `ITEM_DELETE` activity, audit row with the old name and quantity, then the row. |
 | Status | VERIFIED IN CURRENT CODE; reproduced. |
 
@@ -528,8 +551,8 @@ Router: `app/api/v1/orders.py`. Mobile service: `services/orders.ts`. State mach
 | Caller | Create order screen `app/order/create.tsx` → `useServerMutations` → `orderService.create` (`services/orders.ts:92`). The screen generates **one `localId` per Save press** (`create.tsx:282-287`). Retry from the failure dialog or toast re-sends the same `localId`; pressing Save again creates a new one. |
 | Request | `OrderCreate` (`app/schemas/order.py:85-103`): `items` 1–1,000 lines; each line `itemId` (must be yours, else 400 and nothing created), `quantity` 1–999,999, snapshot fields (`name, brand, unit, currentStock, minimumStock, imageUri, supplierName, purchaseLink`). `orderId` is **required by the schema but ignored** (missing → 422, reproduced 8 Oct; the server allocates the public number: A-26); `totalItems/totalUnits/status/timestamps` are type-checked, then ignored; line fields `categoryName`, `isEssential` and `notes` are accepted but **not stored**. Duplicate `itemId` lines are allowed. `localId` optional, 1–36 characters. |
 | Handler | `create_order()` — `orders.py:258-357`. |
-| Database | (1) if `localId` given: `SELECT` an existing order for (user, localId) → return its **current** state with **200**, and nothing else runs; (2) ownership check of item ids; (3) `INSERT INTO order_number_counters … ON CONFLICT (day) DO UPDATE SET last_value = last_value + 1 RETURNING` → `ORD-YYYYMMDD-NNNN` (UTC date; one counter per day shared by all users, so one user's numbers have gaps); (4) insert `orders`, `order_items` (snapshots exactly as the app sent them), `activity_logs` (`ORDER_CREATED`); commit. No audit row. |
-| Concurrency & retries | Same `localId` twice at the same moment: the partial unique index `uq_orders_user_id_local_id` rejects the second insert; its transaction rolls back (undoing its counter increment) and it returns the first order with 200 (reproduced: one 201, one 200, one row). **Without `localId`** (older app builds) every request creates a new order. Migration 0010 keeps existing duplicate rows and exempts later copies by id from the index; indexed keys prevent new duplicates. Reusing a key with a different schema-valid payload still returns the original order, not an updated one (reproduced 8 Oct: quantity 10 → 99 returned the order with 10 units); new lines are not even checked for ownership. The day's counter row stays locked until the creating transaction ends, so concurrent creates by all users on the same UTC day queue there. |
+| Database | The [creation service](../vitaltrack-backend/app/services/orders.py) locks the owner’s supply revision. It checks for a matching submission or closed submission, validates owned items and any supplied item versions, allocates the public number, writes the order, snapshots and activity, and advances the supply revision before commit. |
+| Concurrency & retries | A matching persisted submission returns the existing order with 200. A reused key with different persisted creation fields or a previously closed unsaved key returns 409. Legacy clients without the key can create duplicate orders if they retry. The unique index is a database backstop. |
 | Response | 201 `OrderResponse` (new) or 200 (replay); 400 invalid item ids; 409 other integrity conflicts; 422 validation. |
 | Status | VERIFIED IN CURRENT CODE; reproduced. |
 
@@ -545,7 +568,7 @@ Router: `app/api/v1/orders.py`. Mobile service: `services/orders.ts`. State mach
 |---|---|
 | Purpose | Move an order through its workflow. |
 | Caller | Order card → "Have you received the order?", shown only for `pending` orders (`components/orders/OrderCard.tsx:154-163` → `app/(tabs)/orders.tsx:31-46`), which sends `{"status":"received"}`. The app offers **no** other transition (ordered, partially received, declined), and it shows `partially_received` as "Unknown". |
-| Allowed | `pending` → `ordered`, `received` or `declined`; `ordered` → `partially_received` or `received`; `partially_received` → `received`. `received` reaches `stock_updated` only through `/apply`. `declined` and `stock_updated` are final. Same status → 200 no-op (no write, `notes` ignored). Anything else → 400 "Illegal order status transition". A target of `stock_updated` → 400 "Order stock updates must be applied through the apply endpoint". A missing status → 400 "Status is required" and an unknown value → 400 "Invalid order status" (not 422). |
+| Allowed | `pending` → `ordered`, `received` or `declined`; `ordered` → `partially_received`, `received` or `declined`; `partially_received` → `received` or `declined`; `received` → `declined` before applying stock. `received` reaches `stock_updated` only through `/apply`. `declined` and `stock_updated` are final. Same status → 200 no-op (no write, `notes` ignored). Anything else → 400 "Illegal order status transition". A target of `stock_updated` → 400 "Order stock updates must be applied through the apply endpoint". A missing status → 400 "Status is required" and an unknown value → 400 "Invalid order status" (not 422). |
 | Handler | `update_order_status()` — `orders.py:363-453`: conditional `UPDATE orders … WHERE id AND user_id AND status = :old`; if another request changed the status first → 409. Sets `ordered_at`, `received_at` or `declined_at`; optional `notes` replaces the order's notes. |
 | Database | `orders`; activity (`ORDER_RECEIVED`, `ORDER_DECLINED`, otherwise the reused item action `ITEM_UPDATE`). No audit row. `partially_received` stores no quantities and no timestamp. Receiving never changes stock. |
 | Storage detail | The `status` column stores the enum **name** in upper case (`PENDING`, `STOCK_UPDATED`); the API sends and returns lower-case values. Raw SQL must use the upper-case names. |
@@ -556,7 +579,7 @@ Router: `app/api/v1/orders.py`. Mobile service: `services/orders.ts`. State mach
 |---|---|
 | Purpose | Add a received order's quantities to stock. |
 | Caller | Order card → "Update Stock", shown only for `received` orders (`OrderCard.tsx:165-174` → `orders.tsx:48-63`, with a confirmation dialog) → `orderService.applyToStock`. On success the app invalidates items, orders and activities; a 409 (missing items) is shown with the generic "Conflict — updated by someone else" alert. |
-| Handler | `apply_order_to_stock()` — `orders.py:459-605`. Steps 1–5 run in one transaction that the handler commits; the `refresh()` after that commit reads the order in a new one. (1) order must be `received` with ≥ 1 line (400); (2) every line's item must still exist (409 naming missing items, nothing changed); (3) claim: `UPDATE orders SET status='stock_updated', applied_at=now WHERE status='received'` (a second apply gets 400); (4) for each line, in item-id order to prevent opposing-order deadlocks between these apply operations (not a guarantee for every transaction), `UPDATE items SET quantity = quantity + line.quantity, version = version + 1`; one audit row per order line (two lines for the same item give two increments and two rows); (5) `ORDER_APPLIED` activity; commit. |
+| Handler | [`apply_order_to_stock`](../vitaltrack-backend/app/api/v1/orders.py) accepts a received order with lines. It checks referenced items and units, claims the order, updates quantities and item versions, records audit and activity, and commits. A missing item or changed unit returns 409. An already-applied order returns 200 without a second credit. |
 | Rules | Always adds the **full ordered quantity** of every line, even if the order passed through `partially_received`. Inactive items are updated too, and there is no upper bound, so stock can pass the 999,999 that the item form accepts. Bumping `version` means a phone still holding the old version gets 409 on its next edit (intended); Edit Item now retains the version captured with its form values (A-1 fixed locally). |
 | Rollback | Any failure before commit undoes the claim and every increment (reproduced with a deleted item; tested with an injected mid-apply exception). |
 | Status | VERIFIED IN CURRENT CODE; reproduced. |
@@ -711,7 +734,7 @@ With `REQUIRE_EMAIL_VERIFICATION=true` and email "configured" (the sender replac
 | `PATCH status` pending → `stock_updated` | 400 | illegal transition |
 | pending → ordered → received; received again | 200, 200, 200 (no-op) | `ordered_at`, `received_at` set |
 | `POST /apply` | 200 | gloves 38 → 98 (v4 → v5), catheter 0 → 20; status `stock_updated`; 2 audit rows tagged `order:ORD-20261007-0001` |
-| `POST /apply` again | 400 | stock unchanged |
+| `POST /apply` again | 400 in the October replay; 200 in the reviewed code | stock unchanged |
 | `DELETE` the applied order | 400 | only pending/declined can be deleted |
 | New order for gloves + catheter, mark received, delete the catheter item, apply | **409** "inventory items are missing" | gloves stay 98 / v5; order stays `received` (rolled back) |
 | Delete a pending order, then create another | 200, 201 | the deleted number `…-0006` is never reused (`…-0007` next) |
@@ -777,7 +800,7 @@ A-1 to A-23 were found by reading the mobile and backend code on 7 Oct 2026 (sta
 | A-13 | **500 responses lack `X-Request-ID` and security headers** (generic handler runs outside the middleware). Reproduced. | `app/main.py:223-237`; transcript (local review reference; not published) | Add the headers in a pure ASGI middleware that wraps the error middleware, or set them in the 500 handler. |
 | A-14 | **Logout leaves the access token valid** for up to 30 minutes. Reproduced. | `app/api/v1/auth.py:818-859`; `app/api/deps.py:50-70` | Accept and document, or bump a per-session marker / keep a short deny-list. |
 | A-15 | **Profile `phone` and category fields cannot be cleared with `null`**, unlike items. Only an empty string works (`"phone": ""`, `"description": ""`). | `app/api/v1/auth.py:910-913`; `app/api/v1/categories.py:248-256` | Use `model_fields_set` as `update_item` does. |
-| A-16 | **A received order whose item was deleted is stuck**: apply returns 409, `received → declined` is not an allowed transition, and delete accepts only pending/declined. | `app/api/v1/orders.py:28-46,502-524,640-644`; reproduced in the walkthrough | Allow `received → declined`, or let apply skip/report missing lines by choice. Product decision. |
+| A-16 | Resolved in the November code. A missing order item still prevents apply (409). An unapplied received order can be declined (200) and then deleted. | `app/api/v1/orders.py` | A failed apply leaves the inventory unchanged. |
 | A-17 | **Local dev container starts the server even if the migration failed** (`Dockerfile.dev` builds an inline entrypoint that runs `alembic upgrade head` and then `uvicorn` without stopping on error). Production's `docker-entrypoint.sh` does stop. | `vitaltrack-backend/Dockerfile.dev:33-44`; `docker-entrypoint.sh:49-56` | Add `set -e` to the dev entrypoint, or make it exit when `alembic upgrade head` fails. Development only. |
 | A-18 | **IP address and User-Agent are kept with every refresh-token row, with no clean-up.** Register, login and refresh each store them; expired and revoked rows are never purged, so they stay until the account is deleted. Login activity details also include the client address. | `app/api/v1/auth.py:168-169`, `:282-283`, `:797-798`; no delete of `refresh_tokens` outside account deletion (searched `app/`) | Purge expired/revoked refresh rows on a schedule (or at login), and state the retention in the privacy policy. Privacy decision for the owner. |
 | A-19 | **`main` initialises Sentry with SDK defaults**: in sentry-sdk 2.20.0 that means local variables in stack frames and request bodies up to the SDK's "medium" size, filtered only by the SDK's built-in scrubber for known secret key names. The feature branch sets `include_local_variables=False`, `send_default_pii=False`, `max_request_body_size="never"` and its own `before_send` scrubbers. Matters only for a service that runs `main` with `SENTRY_DSN` set (NOT VERIFIED). | `git show main:vitaltrack-backend/app/main.py` lines 42-46 vs branch `app/main.py:46-54`; SOURCES (local review reference; not published) row 31 | Ship the branch configuration (merging does), or set the same options on `main`. |
@@ -799,6 +822,8 @@ A-1 to A-23 were found by reading the mobile and backend code on 7 Oct 2026 (sta
 | A-35 | **Every interpret failure shows the same message** (found 8 Oct 2026; code reading). 403, 429, 502, 503 and 504 all become "Online understanding could not complete this question…", and `Retry-After` is not shown, so a person cannot tell a used-up daily allowance (it resets at 05:30 IST) from a passing error. If the phone gives up or the person cancels, the server call still runs and counts toward the allowance. | `vitaltrack-mobile/components/assistant/AssistantExperience.tsx:305-309`; `services/api.ts:418-436`; `vitaltrack-backend/app/api/v1/ai.py:93-104` | Map each status to its own message (including when the allowance resets); say that a cancelled question may still have counted. |
 
 ## Coverage gaps worth knowing
+
+This section records the October coverage audit. Consult the current test files and the release candidate’s CI run for present coverage.
 
 These come from reading every test (the ledger (local review reference; not published) has the full list). They are not bugs; they are places where the documentation cannot lean on an automated test.
 

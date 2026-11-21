@@ -328,6 +328,9 @@
 <aside class="doc-review" aria-label="Documentation status"><strong>Historical domain-migration record · reviewed 23 September 2026 · status refreshed 7 October 2026 · re-checked 8 October 2026</strong><p>The domain migration described below predates the current hardening. Branch completion and smoke results are historical reports, not fresh checks. Current code still uses these custom API URLs. Confirm provider configuration and actual installed artifacts separately.</p><p><strong>7 October 2026 status.</strong> The findings below are kept as recorded. Re-checked in the repository at <code>03cfebb</code>: <code>eas.json</code>, <code>app.config.js</code> (throws only when a preview/production build supplies a different non-empty URL), <code>render.yaml</code> (<code>FRONTEND_URL=https://api.carekosh.com/api/v1/auth</code>, production service only, branch <code>main</code>), the smoke scripts' host guard and the monitor template still use the custom domains. NOT VERIFIED in this review: live DNS records, Render custom domains and certificates, Render environment variables, auto-deploy settings and which branch each service tracks (the owner reports staging was switched to the feature branch on 7 Oct), GitHub secrets, and which binaries testers have installed. The “required gates” in the CI picture gate the deploy job only; GitHub's <code>protect-main</code> ruleset requires a pull request but no status checks. The route-count gate is 39 on <code>main</code> and 44 on the feature branch.</p><p><strong>8 October 2026 re-check.</strong> The same files were re-checked against the working tree (<code>03cfebb</code> plus uncommitted documentation). The domain branch <code>config/use-carekosh-custom-domains</code> was merged long ago (commit <code>55ecde6</code> is in <code>main</code>), so its “before commit” and “after this branch merges” steps are history. Corrected: the CI picture now says “blocking checks” (they fail the run and gate the deploy job, not the merge; ruleset as read on 7 Oct, not re-checked), the URL guard ignores an empty URL, and only the production <code>onrender.com</code> host is treated as production by the smoke scripts. Provider and dashboard state remain NOT VERIFIED.</p><p><a href="docs/INDEX.html">Documentation home and source status</a> · <a href="docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md">Complete developer guide (current onboarding)</a> · <a href="docs/API_TRACEABILITY.md">API traceability</a> · <a href="docs/documentation-audit-2026-10-07/README.md">Documentation audit, 7 Oct 2026</a> · <a href="docs/BACKEND_HARDENING.md">Local hardening and remaining work</a></p></aside>
 
   <main>
+    <p><strong>API routing after certificate setup.</strong> The November DNS snapshot shows proxied CNAMEs for both API hosts. Cloudflare sets the verification header on matching requests before forwarding them to Render. Keep Brevo’s DKIM aliases DNS-only so receiving mail servers can resolve the published keys. See the <a href="docs/deployment/CAREKOSH_DEPLOYMENT_ATLAS.html">Deployment Atlas</a> for the separate staging and production rules.</p>
+
+
     <section class="card">
       <h2 id="quick-verdict">Quick Verdict</h2>
       <p>
@@ -424,7 +427,7 @@
           <td>Cloudflare record</td>
           <td><code>CNAME api -> vitaltrack-api.onrender.com</code></td>
           <td><code>CNAME staging-api -> vitaltrack-api-staging.onrender.com</code></td>
-          <td>Use DNS-only while Render manages TLS. Cloudflare proxy can be revisited later; Render's guide then says set Cloudflare SSL/TLS to Full, and Cloudflare recommends Full (strict). Current proxy state NOT VERIFIED.</td>
+          <td>The original domain verification used DNS-only records. Use proxied API records for the deployed origin-verification rules.</td>
         </tr>
         <tr>
           <td>Render service</td>
@@ -1014,7 +1017,7 @@ python3 vitaltrack-backend/scripts/smoke_api.py --target production --allow-prod
         <tr>
           <td>Cloudflare DNS</td>
           <td><code>api</code> and <code>staging-api</code> CNAME records exist.</td>
-          <td>Both DNS-only while Render manages TLS.</td>
+          <td>November capture: both API CNAMEs are proxied through Cloudflare.</td>
         </tr>
         <tr>
           <td>Render custom domains</td>
