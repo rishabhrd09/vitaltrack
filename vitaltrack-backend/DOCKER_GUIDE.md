@@ -1,15 +1,36 @@
-# 📚 Complete Docker Conceptual Guide
+# Docker for CareKosh development
 
-> **8 October 2026 local feature update:** richer inventory tables, bounded queries and unsaved voice-prepared drafts are implemented locally. Only touch confirmation saves an order; saving does not change stock. Matching backend/mobile deployment and phone acceptance remain pending. [Current flow, code map and verification limits](../docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md). Earlier dated results remain historical.
+Use this guide when you need a local API and a database for a web or Android change. Run the commands below from `vitaltrack-backend/`. The [backend README](README.md) covers Python-only setup and the separate disposable database required by pytest.
 
+## What runs where
 
-> 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](../docs/BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
+| Component | Where it runs | How to reach it |
+| --- | --- | --- |
+| FastAPI | The Compose service named `api` | From the laptop, `http://localhost:8000`. From another container on the same network, `http://api:8000`. |
+| PostgreSQL 16 | The service named `db` | The API connects to `db:5432`. Compose also publishes port 5432 on the laptop. |
+| pgAdmin (optional) | The `pgadmin` service, enabled with a profile | Open `http://localhost:5050`. When registering this local server in pgAdmin use host `db` and the dev database credentials from Compose. |
+| Browser or Android client | The web dev server or the installed Android app | Set the environment-specific API URL in the client. For an Android device use a reachable LAN address or the [USB setup](../docs/USB_ADB_REVERSE_GUIDE.md). |
 
-A comprehensive guide explaining Docker concepts for the CareKosh backend. (Container and image names still use the legacy `vitaltrack-*` prefix — they match the directory name, which we deliberately did not rename during the CareKosh rebrand.)
+An **image** bundles files, dependencies and a launch command. A **container** is an instance of that image. The named **volume** stores PostgreSQL data across container replacement. The dev **bind mounts** expose the checkout’s `app/` and `alembic/` in the running API container. Code reloads on edits. A migration file still needs to be applied to change the database schema.
 
-> **Status (re-checked 8 October 2026 against the working tree, `03cfebb` plus uncommitted documentation):** conceptual tutorial from January 2026; the concepts still apply. Image sizes and layer counts below are example observations from that time, not current measurements. `docker-compose.dev.yml` builds `Dockerfile.dev` (one stage, `pip install`, `uvicorn --reload`, no ffmpeg, runs as root). `docker-compose.yml` builds the multi-stage production `Dockerfile` (virtual env copied from a builder stage, non-root user, Gunicorn with 2 workers, ffmpeg). Their start-up differs; see [Dev image vs production image](#-dev-image-vs-production-image). For setup commands see the [backend README](README.md) and the [complete developer guide](../docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md).
+## Start, inspect and stop
 
----
+```sh
+docker compose -f docker-compose.dev.yml config --quiet
+docker compose -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.dev.yml ps
+docker compose -f docker-compose.dev.yml logs --tail=80 api
+docker compose -f docker-compose.dev.yml exec api alembic current
+docker compose -f docker-compose.dev.yml exec api alembic heads
+curl --fail http://localhost:8000/live
+curl --fail http://localhost:8000/health
+```
+
+On a healthy stack both URLs return HTTP 200. The first checks the process. The second also checks the database. The applied Alembic revision should match the head in your checkout.
+
+Use `docker compose -f docker-compose.dev.yml --profile tools up -d` to add pgAdmin. Stop with `docker compose -f docker-compose.dev.yml --profile tools down`. This preserves the named database volume. Adding `-v` deletes the dev volume and its accounts, items and orders. A branch switch alone requires no volume deletion.
+
+## Docker concepts
 
 ## 🧱 Part 1: The Three Core Concepts
 
@@ -305,7 +326,7 @@ After running `docker compose -f docker-compose.dev.yml up --build -d`, you shou
 - ✅ Network created (they can talk to each other)
 - ✅ Volume created (database data persists)
 
-Alembic migrations run automatically at container startup. Run `docker compose -f docker-compose.dev.yml exec api alembic upgrade head` only while troubleshooting a bypassed or failed startup. (The dev entrypoint keeps starting the server even if the migration fails, so read the log.) If you switch a local database between the feature branch (migrations up to `0010`) and `main` (up to `0006`), reset it with `down -v` (this deletes all local data): migration `0007` cannot be downgraded.
+Alembic migrations run automatically at container startup. Run `docker compose -f docker-compose.dev.yml exec api alembic upgrade head` only while troubleshooting a bypassed or failed startup. (The dev entrypoint keeps starting the server even if the migration fails, so read the log.) Compare the applied revision with the checkout before switching between schema versions. Keep an existing volume intact and use a separate disposable database if an older checkout needs a different schema.
 
 Then access: **http://localhost:8000/docs** 🚀 (available because the dev compose file sets `DEBUG=true`)
 

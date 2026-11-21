@@ -1,19 +1,10 @@
 # CareKosh: DevOps, Architecture & CI/CD — The Long-Form Companion
 
-> **AI voice source update — 11 October 2026:** Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, an explicit shared or encrypted per-account personal key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Personal-key migration 0011 adds encrypted credentials and billing-source metadata; the current local inventory is 50 HTTP operations (47 under /api/v1) and 12 application tables. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. [Sarvam activation, costs and device checks](SARVAM_ENGLISH_VOICE.md) · [Complete voice architecture](VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
+Use the [Atlas](deployment/CAREKOSH_DEPLOYMENT_ATLAS.html) for the current topology. The browser and Android clients share FastAPI and PostgreSQL. Use the [API inventory](API_TRACEABILITY.md) for all 65 versioned operations and the three unversioned operations.
 
+The backend and Android workflow runs on PRs to main, pushes to main and manual dispatch. The web workflow also runs on matching path changes on other branches. Production web releases are dispatched on main. The Render CI hook requires a push to main, passing backend and Android jobs, the repository variable `ENABLE_RENDER_AUTO_DEPLOY=true` and the `RENDER_DEPLOY_HOOK` secret. Render native auto-deploy is an independent service setting.
 
-> 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
-
-> **Status (re-checked 8 October 2026; reviewed 7 October 2026):** this long-form companion was checked against branch `feature/backend-hardening-ai-voice-agent-foundation` at `03cfebb` (pushed, **not merged**; `main` is `835fad3`), plus uncommitted documentation. The migration head on that branch is `0010_order_local_id_unique` (`main` ends at `0006`); releasing it needs the staging-first [release gate](BACKEND_HARDENING.md#release-gate-for-migration-0007), a restorable backup and a brief write pause. On 7 Oct 2026 the backend suite (242 tests) and the mobile suite (121 tests) passed locally and in CI run 37583748644; on 8 Oct 2026 both were re-run locally against a disposable PostgreSQL 16 database with the same counts. mypy, Trivy and Expo Doctor remain advisory or suppressed. Deployed revisions and provider settings are NOT VERIFIED. Main onboarding guide: [Complete developer guide](CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md); every endpoint: [API traceability](API_TRACEABILITY.md); audit summary: 7 Oct 2026 documentation audit (local review reference; not published).
->
-> *Earlier status (23 September 2026):* the local head was `0007_session_order_safety`, CI ran 152 backend cases plus eight mobile API tests, and nothing was deployed. Dated counts and provider observations further down (for example the 2026-05-04 summary box) are historical unless marked current.
-
-> **Scope.** This is the narrative reference: the *why* behind infrastructure decisions, how the pipeline is stitched together, and how to debug it when it breaks. For a short, operational summary, see repo-root `CAREKOSH_DEVELOPER_GUIDE.md` §1. For interactive diagrams, see `CAREKOSH_ENVIRONMENT_ARCHITECTURE.html` and `carekosh_architecture_diagrams.html` at the repo root.
-
-CareKosh (formerly VitalTrack; rebranded in PR #10/#11) moved from Railway to Render + Neon in PR #1 `migrate/railway-to-render`. All references below describe the current state unless marked *historical*.
-
----
+The October diagrams, schema excerpts and GitHub settings below describe the rollout at the dates given. Compare current [CI](../.github/workflows/ci.yml) and [web release](../.github/workflows/release-carekosh-web.yml) settings when planning a deployment.
 
 ## Table of Contents
 
@@ -63,7 +54,7 @@ User action (Mobile App)
            ▼
 ┌───────────────────────┐
 │  FastAPI Backend      │  ◀── JWT HS256 (30m access, 30d refresh, rotation)
-│  (Python 3.12)        │  ◀── slowapi (in-memory, per-worker rate limits)
+│  (Python 3.12)        │  ◀── SlowAPI (shared Redis on hosted services)
 │                       │  ◀── pydantic-settings (env-driven config)
 └──────────┬────────────┘
            │
@@ -103,7 +94,7 @@ The server-first pattern (PR #8) is the key architectural decision. Mobile is **
 
 | Component | Choice | Why |
 |---|---|---|
-| Framework | FastAPI 0.115 | Async, auto-docs, pydantic integration |
+| Framework | FastAPI 0.162.0 | Async, auto-docs, pydantic integration |
 | Language | Python 3.12 | Matches the Dockerfile base |
 | ORM | SQLAlchemy 2.0 (async) | Typed queries, supports asyncpg |
 | DB driver | asyncpg | Fast, native async, works with Neon |
@@ -112,7 +103,7 @@ The server-first pattern (PR #8) is the key architectural decision. Mobile is **
 | Password hashing | Argon2 (+ bcrypt fallback via passlib) | OWASP recommended |
 | Email | Brevo HTTP API helper (`httpx`) | SMTP-era dependencies/config remain, but current sends go through Brevo REST over HTTPS |
 | Server | Gunicorn + 2 Uvicorn workers | Production ASGI setup (`Dockerfile` CMD; `docker-entrypoint.sh` adds the `$PORT` bind). *Earlier versions of this table said 4 workers; the image runs 2.* |
-| Rate limit | `slowapi`, in-memory per worker process | Five auth routes only; counters reset on restart and are not shared between workers, so treat limits as best effort. An open finding about client identification is tracked privately. |
+| Rate limit | SlowAPI | Shared Redis on hosted services, with an in-memory option for local development and testing. |
 
 ### Database
 
@@ -147,19 +138,19 @@ Triggers:
   workflow_dispatch
 
 Jobs:
-  test-backend        ruff + pytest --migrated-schema + route gate (exactly 44 /api/v1 routes)
-                      + 70% coverage floor for items.py/orders.py, Postgres 16 service container
+  test-backend        ruff + pytest --migrated-schema + route gate (65 /api/v1 routes)
+                      + 70% per-file coverage across six selected modules, Postgres 16 service container
   typecheck-backend-advisory
                       mypy advisory baseline (23 errors on 7 Oct 2026; never fails the run)
   test-frontend       Node 20: npm install --legacy-peer-deps, carekosh-voice autolinking check,
-                      tsc --noEmit, npm test (121 tests), eslint (errors fail, warnings pass);
+                      tsc --noEmit, npm test, eslint (errors fail, warnings pass);
                       expo-doctor output ignored (|| echo)
   security-scan-advisory
                       Trivy advisory (CRITICAL + HIGH, fs vuln scan)
   pr-check            PR summary job — needs both test jobs (not a required
                       check: the ruleset read on 7 Oct 2026 requires no status checks)
   deploy-backend      requests $RENDER_DEPLOY_HOOK (curl GET, --fail, 30 s) on push to main,
-                      only if that secret is set
+                      only if the enable variable and hook secret are set
   build-preview       eas build --profile preview — on every PR run while the PR
                       carries the 'build-apk' label ('skip-apk' has no effect)
   build-production    eas build --profile production — CURRENTLY DISABLED (if: false)
@@ -187,7 +178,7 @@ Label PR 'build-apk'         │ adding any label starts a new run (the workflow
 Merge → main                 │ test-backend, test-frontend,
                              │ typecheck-backend-advisory,
                              │ deploy-backend (calls the Render hook only if
-                             │ the secret is set)
+                             │ the enable variable is true and the secret is set)
                              │ Render auto-deploy may also rebuild services
                              │ connected to main (NOT VERIFIED).
                              │ build-production stays disabled.
@@ -196,7 +187,7 @@ Manual run                   │ test-backend, test-frontend,
 (workflow_dispatch)          │ typecheck-backend-advisory; never deploys
 ```
 
-This matrix describes this branch's `ci.yml`. A push to `main` runs the workflow file in the pushed commit, so until this branch merges, `main` runs its older version: Python 3.11, route gate 39, and a deploy hook called with `curl -s`, which cannot fail the job.
+This matrix covers the backend and Android workflow. The separate web workflow checks matching paths and the manual production web release publishes a tested main revision.
 
 ### Job dependencies
 
@@ -248,13 +239,13 @@ Re-enabling the CI job is a one-line change (`if: false` → `if: github.ref == 
 │       a URL without :port falls back to localhost:5432)               │
 │    2. pg_isready loop: 30 tries, 2 s apart, then continues anyway     │
 │    3. alembic upgrade head (exit 1 on failure: container stops)       │
-│    4. exec gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app│
+│    4. exec gunicorn -w 2 -k app.worker.CareKoshUvicornWorker app.main:app│
 │       --bind 0.0.0.0:$PORT (8000 if unset)                            │
 │                                                                       │
 │  Container runtime                                                    │
 │    FastAPI routes under /api/v1/                                      │
 │      /auth/*, /categories/*, /items/*, /orders/*, /activities, /ai/* │
-│      (44 route objects on this branch; 39 on main, which has no /ai) │
+│      (65 versioned route objects at the November baseline) │
 │      No /sync/* route surface; mobile is server-first REST only       │
 │    Docker HEALTHCHECK and Render healthCheckPath: /live (no DB check)│
 │    /health runs SELECT 1 (2 s) → 503 if the database is unreachable  │
@@ -444,7 +435,7 @@ Security scans and EAS builds cost time + quota. Run them where they matter.
 
 | Secret | Source | Used by |
 |---|---|---|
-| `RENDER_DEPLOY_HOOK` | Render service → **Settings → Deploy Hook** | `deploy-backend` job (requests the URL with `curl` after a push to `main` once both test jobs pass) |
+| `RENDER_DEPLOY_HOOK` | Render service → Settings → Deploy Hook | Optional CI deploy step. Requires `ENABLE_RENDER_AUTO_DEPLOY=true`, a main push and passing test jobs. |
 | `EXPO_TOKEN` | An access token created on expo.dev (account settings → access tokens) | `build-preview` and (if enabled) `build-production` |
 
 ### Step-by-step
@@ -470,7 +461,7 @@ Security scans and EAS builds cost time + quota. Run them where they matter.
 
 ### Verifying
 
-`deploy-backend` runs only on a push to `main` (its condition is `github.ref == 'refs/heads/main' && github.event_name == 'push'`), so a manual `workflow_dispatch` run does not call the hook. Since the `protect-main` ruleset (as read on 7 Oct 2026) requires a pull request, the hook is exercised by merging a reviewed PR — which can deploy production, so do it only for a change you intend to release. The hook sends no commit, so Render deploys the latest commit on its branch.
+The GitHub deploy job runs on a push to main only when the backend and Android jobs succeed and ENABLE_RENDER_AUTO_DEPLOY is true. Its hook step also requires RENDER_DEPLOY_HOOK. Check Render’s native setting separately. [Render deployment controls](https://render.com/docs/deploys).
 
 *Earlier versions of this guide suggested an empty commit pushed straight to `main`; the ruleset now rejects direct pushes.*
 
@@ -651,7 +642,7 @@ The phone offers only part of this machine: "Have you received the order?" (pend
 | Authentication | JWT HS256, access 30m, refresh 30d, rotated on use |
 | Session invalidation | Password change/reset revokes all refresh tokens (PR #12) and bumps `session_version` (0007), which invalidates outstanding access tokens too |
 | Password storage | Argon2 with bcrypt fallback for legacy rows (passlib) |
-| Rate limiting | 3 registrations/hr, 5 logins/min, 3 forgot-password/hr, 3 resend-verify/hr, 5 reset/hr — rate limiting is best effort: five auth routes, counters in memory per worker process, reset on restart; an open finding about how clients are identified is tracked privately |
+| Rate limiting | The API applies route-specific limits. Hosted counters use shared Redis. See [rate_limiter.py](../vitaltrack-backend/app/utils/rate_limiter.py). |
 | Enumeration resistance | Uniform response from `/auth/resend-verification` (PR #12) |
 | Destructive actions | Two-step, email-confirmed — account deletion (PR #13; link valid 24 h; opening it only shows a page, the button deletes) and password reset (link valid **1 h**). *Earlier versions of this table gave 24 h for both.* |
 | Reset-page rendering | Password reset URL token is escaped into a DOM `data-token` attribute; inline JavaScript reads it from the DOM instead of receiving raw query-string interpolation |
@@ -724,7 +715,7 @@ ruff check app/ tests/ scripts/
 # disposable LOCAL database whose name contains "test" — never staging/production.
 # Recipe: CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md, Part E1.
 pytest tests/ -q --migrated-schema --cov=app --cov-report=term-missing --cov-report=json
-python scripts/check_api_routes.py --expected 44     # 39 on main
+python scripts/check_api_routes.py --expected 65
 python scripts/check_file_coverage.py coverage.json --threshold 70 --file app/api/v1/items.py --file app/api/v1/orders.py
 mypy app/ --ignore-missing-imports   # advisory until the current baseline is fixed
 
@@ -743,7 +734,7 @@ git checkout -b feature/my-feature
 # edits...
 git push origin feature/my-feature
 # → open PR → CI runs → read every job → review → merge
-# Merging to main can deploy production (hook if its secret is set; Render
+# Merging to main can deploy production (hook if enabled and configured; Render
 # auto-deploy if on, NOT VERIFIED). For migrations 0007–0010, first stage the
 # candidate on an isolated database (preserve staging; verify a populated
 # synthetic 0006 → 0010 upgrade): see the BACKEND_HARDENING.md release gate.
@@ -769,14 +760,14 @@ See `docs/GIT_WORKFLOW_GUIDE.md` for commit style, fork workflow, and branch-pro
 │  Frontend: React Native + Expo SDK 54 + TypeScript                   │
 │            + React Query (server state) + Zustand (UI state)         │
 │                                                                      │
-│  Backend:  FastAPI 0.115 + Python 3.12 + SQLAlchemy 2.0 async        │
+│  Backend:  FastAPI 0.162 + Python 3.12 + SQLAlchemy 2.0 async        │
 │            + JWT HS256 + Argon2 + slowapi                            │
 │                                                                      │
 │  DevOps:   GitHub Actions + Render + Neon + Expo EAS + Docker        │
 │            + advisory mypy and Trivy baselines                       │
 │                                                                      │
 │  Flow:     Code → PR → CI (blocking tests + advisory scans)          │
-│            → merge → can deploy (hook if set / auto-deploy if on)    │
+│            → merge → can deploy (enabled hook / native auto-deploy if on)    │
 │            → verify deployed commit, /live, /health, alembic current │
 │                                                                      │
 │  Secrets:  RENDER_DEPLOY_HOOK, EXPO_TOKEN                        │

@@ -60,7 +60,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <a href="INDEX.html">Documentation home</a>
 <span class="meta">Generated from <code>docs/API_TRACEABILITY.md</code> — edit the Markdown, not this file.</span></div></header>
 <div class="layout">
-<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#how-the-inventory-was-counted">How the inventory was counted</a></li><li><a href="#summary-matrix">Summary matrix</a></li><li><a href="#what-every-request-has-in-common">What every request has in common</a></li><li><a href="#health-and-root">Health and root</a><ul><li><a href="#get-">GET /</a></li><li><a href="#get-health">GET /health</a></li><li><a href="#get-live">GET /live</a></li></ul></li><li><a href="#authentication-and-account">Authentication and account</a><ul><li><a href="#post-apiv1authregister">POST /api/v1/auth/register</a></li><li><a href="#post-apiv1authlogin">POST /api/v1/auth/login</a></li><li><a href="#post-apiv1authrefresh">POST /api/v1/auth/refresh</a></li><li><a href="#post-apiv1authlogout">POST /api/v1/auth/logout</a></li><li><a href="#get-apiv1authme">GET /api/v1/auth/me</a></li><li><a href="#patch-apiv1authme">PATCH /api/v1/auth/me</a></li><li><a href="#delete-apiv1authme">DELETE /api/v1/auth/me</a></li><li><a href="#post-apiv1authcancel-delete">POST /api/v1/auth/cancel-delete</a></li><li><a href="#get-apiv1authconfirm-deletetoken">GET /api/v1/auth/confirm-delete/{token}</a></li><li><a href="#post-apiv1authconfirm-deletetoken">POST /api/v1/auth/confirm-delete/{token}</a></li><li><a href="#post-apiv1authchange-password">POST /api/v1/auth/change-password</a></li><li><a href="#post-apiv1authforgot-password">POST /api/v1/auth/forgot-password</a></li><li><a href="#get-apiv1authreset-password">GET /api/v1/auth/reset-password</a></li><li><a href="#post-apiv1authreset-password">POST /api/v1/auth/reset-password</a></li><li><a href="#get-apiv1authverify-email">GET /api/v1/auth/verify-email</a></li><li><a href="#get-apiv1authverify-emailtoken">GET /api/v1/auth/verify-email/{token}</a></li><li><a href="#post-apiv1authresend-verification">POST /api/v1/auth/resend-verification</a></li><li><a href="#get-apiv1authemail-service-status">GET /api/v1/auth/email-service-status</a></li></ul></li><li><a href="#categories">Categories</a><ul><li><a href="#get-apiv1categories">GET /api/v1/categories</a></li><li><a href="#post-apiv1categories">POST /api/v1/categories</a></li><li><a href="#get-apiv1categorieswith-counts">GET /api/v1/categories/with-counts</a></li><li><a href="#get-apiv1categoriescategory_id">GET /api/v1/categories/{category_id}</a></li><li><a href="#put-apiv1categoriescategory_id">PUT /api/v1/categories/{category_id}</a></li><li><a href="#delete-apiv1categoriescategory_id">DELETE /api/v1/categories/{category_id}</a></li></ul></li><li><a href="#items">Items</a><ul><li><a href="#get-apiv1items">GET /api/v1/items</a></li><li><a href="#post-apiv1items">POST /api/v1/items</a></li><li><a href="#get-apiv1itemsstats">GET /api/v1/items/stats</a></li><li><a href="#get-apiv1itemsneeds-attention">GET /api/v1/items/needs-attention</a></li><li><a href="#get-apiv1itemsitem_id">GET /api/v1/items/{item_id}</a></li><li><a href="#put-apiv1itemsitem_id">PUT /api/v1/items/{item_id}</a></li><li><a href="#patch-apiv1itemsitem_idstock">PATCH /api/v1/items/{item_id}/stock</a></li><li><a href="#delete-apiv1itemsitem_id">DELETE /api/v1/items/{item_id}</a></li></ul></li><li><a href="#orders">Orders</a><ul><li><a href="#get-apiv1orders">GET /api/v1/orders</a></li><li><a href="#post-apiv1orders">POST /api/v1/orders</a></li><li><a href="#get-apiv1ordersorder_id">GET /api/v1/orders/{order_id}</a></li><li><a href="#patch-apiv1ordersorder_idstatus">PATCH /api/v1/orders/{order_id}/status</a></li><li><a href="#post-apiv1ordersorder_idapply">POST /api/v1/orders/{order_id}/apply</a></li><li><a href="#delete-apiv1ordersorder_id">DELETE /api/v1/orders/{order_id}</a></li></ul></li><li><a href="#activity-feed">Activity feed</a><ul><li><a href="#get-apiv1activities">GET /api/v1/activities</a></li></ul></li><li><a href="#assistant-ai-routes">Assistant (AI) routes</a><ul><li><a href="#get-apiv1aicapabilities">GET /api/v1/ai/capabilities</a></li><li><a href="#put-apiv1aiconsent">PUT /api/v1/ai/consent</a></li><li><a href="#post-apiv1aiinterpret">POST /api/v1/ai/interpret</a></li><li><a href="#post-apiv1aitranscribe">POST /api/v1/ai/transcribe</a></li><li><a href="#post-apiv1aispeak">POST /api/v1/ai/speak</a></li><li><a href="#get-apiv1aisarvam-key">GET /api/v1/ai/sarvam-key</a></li><li><a href="#put-apiv1aisarvam-key">PUT /api/v1/ai/sarvam-key</a></li><li><a href="#delete-apiv1aisarvam-key">DELETE /api/v1/ai/sarvam-key</a></li></ul></li><li><a href="#local-inventorydraft-feature-follow-up--8-october-2026">Local inventory/draft feature follow-up — 8 October 2026</a></li><li><a href="#worked-examples-with-database-state">Worked examples with database state</a><ul><li><a href="#1-register-log-in-refresh-log-out">1. Register, log in, refresh, log out</a></li><li><a href="#2-email-verification-and-password-recovery">2. Email verification and password recovery</a></li><li><a href="#3-profile-operations">3. Profile operations</a></li><li><a href="#4-categories-items-explicit-null-and-versions">4. Categories, items, explicit null and versions</a></li><li><a href="#5-orders-from-creation-to-stock">5. Orders from creation to stock</a></li><li><a href="#6-account-deletion">6. Account deletion</a></li><li><a href="#7-voice-and-typed-questions">7. Voice and typed questions</a></li></ul></li><li><a href="#what-happens-when-things-go-wrong">What happens when things go wrong</a></li><li><a href="#known-application-issues-found-while-tracing">Known application issues found while tracing</a></li><li><a href="#coverage-gaps-worth-knowing">Coverage gaps worth knowing</a></li></ul></details></nav>
+<nav class="toc" aria-label="Table of contents"><details id="toc-details"><summary>Contents</summary><ul><li><a href="#how-the-inventory-was-counted">How the inventory was counted</a></li><li><a href="#summary-matrix">Summary matrix</a><ul><li><a href="#operations-added-since-the-50-row-inventory">Operations added since the 50-row inventory</a></li></ul></li><li><a href="#what-every-request-has-in-common">What every request has in common</a></li><li><a href="#health-and-root">Health and root</a><ul><li><a href="#get-">GET /</a></li><li><a href="#get-health">GET /health</a></li><li><a href="#get-live">GET /live</a></li></ul></li><li><a href="#authentication-and-account">Authentication and account</a><ul><li><a href="#post-apiv1authregister">POST /api/v1/auth/register</a></li><li><a href="#post-apiv1authlogin">POST /api/v1/auth/login</a></li><li><a href="#post-apiv1authrefresh">POST /api/v1/auth/refresh</a></li><li><a href="#post-apiv1authlogout">POST /api/v1/auth/logout</a></li><li><a href="#get-apiv1authme">GET /api/v1/auth/me</a></li><li><a href="#patch-apiv1authme">PATCH /api/v1/auth/me</a></li><li><a href="#delete-apiv1authme">DELETE /api/v1/auth/me</a></li><li><a href="#post-apiv1authcancel-delete">POST /api/v1/auth/cancel-delete</a></li><li><a href="#get-apiv1authconfirm-deletetoken">GET /api/v1/auth/confirm-delete/{token}</a></li><li><a href="#post-apiv1authconfirm-deletetoken">POST /api/v1/auth/confirm-delete/{token}</a></li><li><a href="#post-apiv1authchange-password">POST /api/v1/auth/change-password</a></li><li><a href="#post-apiv1authforgot-password">POST /api/v1/auth/forgot-password</a></li><li><a href="#get-apiv1authreset-password">GET /api/v1/auth/reset-password</a></li><li><a href="#post-apiv1authreset-password">POST /api/v1/auth/reset-password</a></li><li><a href="#get-apiv1authverify-email">GET /api/v1/auth/verify-email</a></li><li><a href="#get-apiv1authverify-emailtoken">GET /api/v1/auth/verify-email/{token}</a></li><li><a href="#post-apiv1authresend-verification">POST /api/v1/auth/resend-verification</a></li><li><a href="#get-apiv1authemail-service-status">GET /api/v1/auth/email-service-status</a></li></ul></li><li><a href="#categories">Categories</a><ul><li><a href="#get-apiv1categories">GET /api/v1/categories</a></li><li><a href="#post-apiv1categories">POST /api/v1/categories</a></li><li><a href="#get-apiv1categorieswith-counts">GET /api/v1/categories/with-counts</a></li><li><a href="#get-apiv1categoriescategory_id">GET /api/v1/categories/{category_id}</a></li><li><a href="#put-apiv1categoriescategory_id">PUT /api/v1/categories/{category_id}</a></li><li><a href="#delete-apiv1categoriescategory_id">DELETE /api/v1/categories/{category_id}</a></li></ul></li><li><a href="#items">Items</a><ul><li><a href="#get-apiv1items">GET /api/v1/items</a></li><li><a href="#post-apiv1items">POST /api/v1/items</a></li><li><a href="#get-apiv1itemsstats">GET /api/v1/items/stats</a></li><li><a href="#get-apiv1itemsneeds-attention">GET /api/v1/items/needs-attention</a></li><li><a href="#get-apiv1itemsitem_id">GET /api/v1/items/{item_id}</a></li><li><a href="#put-apiv1itemsitem_id">PUT /api/v1/items/{item_id}</a></li><li><a href="#patch-apiv1itemsitem_idstock">PATCH /api/v1/items/{item_id}/stock</a></li><li><a href="#delete-apiv1itemsitem_id">DELETE /api/v1/items/{item_id}</a></li></ul></li><li><a href="#orders">Orders</a><ul><li><a href="#get-apiv1orders">GET /api/v1/orders</a></li><li><a href="#post-apiv1orders">POST /api/v1/orders</a></li><li><a href="#get-apiv1ordersorder_id">GET /api/v1/orders/{order_id}</a></li><li><a href="#patch-apiv1ordersorder_idstatus">PATCH /api/v1/orders/{order_id}/status</a></li><li><a href="#post-apiv1ordersorder_idapply">POST /api/v1/orders/{order_id}/apply</a></li><li><a href="#delete-apiv1ordersorder_id">DELETE /api/v1/orders/{order_id}</a></li></ul></li><li><a href="#activity-feed">Activity feed</a><ul><li><a href="#get-apiv1activities">GET /api/v1/activities</a></li></ul></li><li><a href="#assistant-ai-routes">Assistant (AI) routes</a><ul><li><a href="#get-apiv1aicapabilities">GET /api/v1/ai/capabilities</a></li><li><a href="#put-apiv1aiconsent">PUT /api/v1/ai/consent</a></li><li><a href="#post-apiv1aiinterpret">POST /api/v1/ai/interpret</a></li><li><a href="#post-apiv1aitranscribe">POST /api/v1/ai/transcribe</a></li><li><a href="#post-apiv1aispeak">POST /api/v1/ai/speak</a></li><li><a href="#get-apiv1aisarvam-key">GET /api/v1/ai/sarvam-key</a></li><li><a href="#put-apiv1aisarvam-key">PUT /api/v1/ai/sarvam-key</a></li><li><a href="#delete-apiv1aisarvam-key">DELETE /api/v1/ai/sarvam-key</a></li></ul></li><li><a href="#local-inventorydraft-feature-follow-up--8-october-2026">Local inventory/draft feature follow-up — 8 October 2026</a></li><li><a href="#worked-examples-with-database-state">Worked examples with database state</a><ul><li><a href="#1-register-log-in-refresh-log-out">1. Register, log in, refresh, log out</a></li><li><a href="#2-email-verification-and-password-recovery">2. Email verification and password recovery</a></li><li><a href="#3-profile-operations">3. Profile operations</a></li><li><a href="#4-categories-items-explicit-null-and-versions">4. Categories, items, explicit null and versions</a></li><li><a href="#5-orders-from-creation-to-stock">5. Orders from creation to stock</a></li><li><a href="#6-account-deletion">6. Account deletion</a></li><li><a href="#7-voice-and-typed-questions">7. Voice and typed questions</a></li></ul></li><li><a href="#what-happens-when-things-go-wrong">What happens when things go wrong</a></li><li><a href="#known-application-issues-found-while-tracing">Known application issues found while tracing</a></li><li><a href="#coverage-gaps-worth-knowing">Coverage gaps worth knowing</a></li></ul></details></nav>
 <main id="content">
 <h1 id="carekosh-api-traceability-every-endpoint-from-screen-to-database">CareKosh API traceability: every endpoint from screen to database</h1>
 <blockquote>
@@ -102,6 +102,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 </tbody>
 </table></div>
+<p>For an existing item, both clients send the original version with <code>PUT /api/v1/items/{item_id}</code>. Follow the <a href="deployment/CAREKOSH_DEPLOYMENT_ATLAS.html#stock-edit">stock edit walkthrough</a> for the client-to-database path.</p>
 <h2 id="contents">Contents<a class="anchor" href="#contents" aria-label="Link to this section">#</a></h2>
 <ol>
 <li><a href="#how-the-inventory-was-counted">How the inventory was counted</a></li>
@@ -120,14 +121,8 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <li><a href="#coverage-gaps-worth-knowing">Coverage gaps worth knowing</a></li>
 </ol>
 <h2 id="how-the-inventory-was-counted">How the inventory was counted<a class="anchor" href="#how-the-inventory-was-counted" aria-label="Link to this section">#</a></h2>
-<ul>
-<li><strong>Source of the list:</strong> the routes registered on the FastAPI application object (<code>app.routes</code>), not the documentation and not the OpenAPI page. <a href="tools/route_inventory.py"><code>docs/tools/route_inventory.py</code></a> prints them and checks that each has a section in this file.</li>
-<li><strong>Result:</strong> <strong>50 operations</strong> = <strong>47 under <code>/api/v1</code></strong> + <code>GET /</code>, <code>GET /health</code>, <code>GET /live</code>. Every route object has exactly one method, so route objects and operations are the same number.</li>
-<li>Under <code>/api/v1</code>: auth 18, categories 6, items 8, orders 6, activities 1, ai 8.</li>
-<li>Three auth routes are hidden from the OpenAPI schema (<code>include_in_schema=False</code>): <code>GET</code> and <code>POST /api/v1/auth/confirm-delete/{token}</code> and <code>GET /api/v1/auth/reset-password</code>. They are still real, public routes.</li>
-<li><code>/docs</code>, <code>/docs/oauth2-redirect</code>, <code>/redoc</code> and <code>/openapi.json</code> exist only when <code>DEBUG=true</code> (local development) and are not counted.</li>
-<li><strong>Cross-checks:</strong> CI runs <code>scripts/check_api_routes.py --expected 47</code> (route objects whose path starts with <code>/api/v1</code>), and <code>tests/test_auth.py::TestHealthDiagnostics::test_api_v1_route_count_remains_47</code> asserts the same. The previous 44-route gate passed on 7/8 Oct; the updated 47-route gate and full backend suite passed locally on 11 Oct after adding personal-key management. A route count proves that routes are registered; it says nothing about whether they behave correctly.</li>
-</ul>
+<p>At the November source revision, the ten <a href="../vitaltrack-backend/app/api/v1/__init__.py">v1 routers</a> declare <strong>65 operations</strong>. The <a href="../vitaltrack-backend/app/main.py">application</a> also serves <code>GET /</code>, <code>GET /live</code> and <code>GET /health</code>, for <strong>68</strong> in total. From <code>vitaltrack-backend/</code> with backend dependencies and local test settings, run <code>python scripts/check_api_routes.py --expected 65</code> to reproduce the v1 count used by CI. It includes routes hidden from OpenAPI. Hosted feature flags and account permissions determine which requests succeed.</p>
+<p>The two tables below list all 68 method/path pairs. Caller, coverage and database examples in the original 50-row table describe its dated replay. Use the linked handlers and the <a href="../vitaltrack-backend/API_TESTING_GUIDE.md">API testing guide</a> when testing a new change.</p>
 <h2 id="summary-matrix">Summary matrix<a class="anchor" href="#summary-matrix" aria-label="Link to this section">#</a></h2>
 <p>"Writes" lists tables changed on success. "Tests" summarises the test map (local review reference; not published): <strong>Yes</strong> = the main behaviour is asserted, <strong>Partial</strong> = important branches untested, <strong>None</strong> = no test sends the request.</p>
 <p>Historical 8 October caller inventory (before online narration and personal-key controls): 27 operations are reachable from the app (reset-password only through a deep link; <code>interpret</code> only after opt-in). 13 have a service function but no reachable caller ("none (service function only)" and similar). 7 have no mobile code at all: <code>/</code>, <code>/live</code>, <code>email-service-status</code> and the four browser pages opened from emails.</p>
@@ -403,8 +398,8 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <td>33</td>
 <td><code>PUT /api/v1/items/{item_id}</code></td>
 <td>access + owner</td>
-<td>Item form Save; Builder critical star</td>
-<td>items, activity_logs, audit_log</td>
+<td>Web and Android item editors; Android Builder critical star</td>
+<td>items, activity_logs, audit_log, supply_revisions</td>
 <td>Yes</td>
 </tr>
 <tr>
@@ -545,15 +540,117 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 </tbody>
 </table></div>
+<h3 id="operations-added-since-the-50-row-inventory">Operations added since the 50-row inventory<a class="anchor" href="#operations-added-since-the-50-row-inventory" aria-label="Link to this section">#</a></h3>
+<p>The matrix above describes the earlier 50 operations. These 18 complete the inventory at the reviewed revision. Browser session endpoints validate the browser origin. Registration returns the account and its verification requirement. Login establishes a session, and refresh uses the scoped refresh cookie. Order recovery and Supply Review are scoped to the signed-in owner. Personal-key settings manage credentials independently of stock changes.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Feature</th>
+<th>Handler</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DELETE /api/v1/ai/openai-key</code></td>
+<td>Personal OpenAI credential</td>
+<td><a href="../vitaltrack-backend/app/api/v1/openai_keys.py"><code>remove</code></a></td>
+</tr>
+<tr>
+<td><code>GET /api/v1/ai/openai-key</code></td>
+<td>Personal OpenAI credential</td>
+<td><a href="../vitaltrack-backend/app/api/v1/openai_keys.py"><code>status</code></a></td>
+</tr>
+<tr>
+<td><code>PUT /api/v1/ai/openai-key</code></td>
+<td>Personal OpenAI credential</td>
+<td><a href="../vitaltrack-backend/app/api/v1/openai_keys.py"><code>save</code></a></td>
+</tr>
+<tr>
+<td><code>POST /api/v1/ai/openai-key/check</code></td>
+<td>Personal OpenAI credential</td>
+<td><a href="../vitaltrack-backend/app/api/v1/openai_keys.py"><code>check</code></a></td>
+</tr>
+<tr>
+<td><code>GET /api/v1/orders/submission/{local_id}</code></td>
+<td>Uncertain order submission</td>
+<td><a href="../vitaltrack-backend/app/api/v1/orders.py"><code>get_order_submission</code></a></td>
+</tr>
+<tr>
+<td><code>POST /api/v1/orders/submission/{local_id}/resolve</code></td>
+<td>Uncertain order submission</td>
+<td><a href="../vitaltrack-backend/app/api/v1/orders.py"><code>resolve_order_submission</code></a></td>
+</tr>
+<tr>
+<td><code>GET /api/v1/supply-reviews</code></td>
+<td>Supply Review</td>
+<td><a href="../vitaltrack-backend/app/api/v1/supply_reviews.py"><code>history</code></a></td>
+</tr>
+<tr>
+<td><code>POST /api/v1/supply-reviews</code></td>
+<td>Supply Review</td>
+<td><a href="../vitaltrack-backend/app/api/v1/supply_reviews.py"><code>start</code></a></td>
+</tr>
+<tr>
+<td><code>GET /api/v1/supply-reviews/capabilities</code></td>
+<td>Supply Review</td>
+<td><a href="../vitaltrack-backend/app/api/v1/supply_reviews.py"><code>capabilities</code></a></td>
+</tr>
+<tr>
+<td><code>GET /api/v1/supply-reviews/{run_id}</code></td>
+<td>Supply Review</td>
+<td><a href="../vitaltrack-backend/app/api/v1/supply_reviews.py"><code>status</code></a></td>
+</tr>
+<tr>
+<td><code>POST /api/v1/supply-reviews/{run_id}/answers</code></td>
+<td>Supply Review</td>
+<td><a href="../vitaltrack-backend/app/api/v1/supply_reviews.py"><code>answer</code></a></td>
+</tr>
+<tr>
+<td><code>POST /api/v1/supply-reviews/{run_id}/cancel</code></td>
+<td>Supply Review</td>
+<td><a href="../vitaltrack-backend/app/api/v1/supply_reviews.py"><code>cancel</code></a></td>
+</tr>
+<tr>
+<td><code>POST /api/v1/supply-reviews/{run_id}/confirm</code></td>
+<td>Supply Review</td>
+<td><a href="../vitaltrack-backend/app/api/v1/supply_reviews.py"><code>confirm</code></a></td>
+</tr>
+<tr>
+<td><code>POST /api/v1/supply-reviews/{run_id}/refresh</code></td>
+<td>Supply Review</td>
+<td><a href="../vitaltrack-backend/app/api/v1/supply_reviews.py"><code>refresh</code></a></td>
+</tr>
+<tr>
+<td><code>POST /api/v1/web-auth/login</code></td>
+<td>Browser session</td>
+<td><a href="../vitaltrack-backend/app/api/v1/web_auth.py"><code>login</code></a></td>
+</tr>
+<tr>
+<td><code>POST /api/v1/web-auth/logout</code></td>
+<td>Browser session</td>
+<td><a href="../vitaltrack-backend/app/api/v1/web_auth.py"><code>logout</code></a></td>
+</tr>
+<tr>
+<td><code>POST /api/v1/web-auth/refresh</code></td>
+<td>Browser session</td>
+<td><a href="../vitaltrack-backend/app/api/v1/web_auth.py"><code>refresh</code></a></td>
+</tr>
+<tr>
+<td><code>POST /api/v1/web-auth/register</code></td>
+<td>Browser session</td>
+<td><a href="../vitaltrack-backend/app/api/v1/web_auth.py"><code>register</code></a></td>
+</tr>
+</tbody>
+</table></div>
 <h2 id="what-every-request-has-in-common">What every request has in common<a class="anchor" href="#what-every-request-has-in-common" aria-label="Link to this section">#</a></h2>
 <p>These rules apply to every endpoint, so the sections below do not repeat them.</p>
-<p><strong>The trip through the server</strong> (VERIFIED IN CURRENT CODE; see <a href="diagrams/request-lifecycle.svg">request-lifecycle.svg</a>):</p>
+<p><strong>The current path through the server</strong></p>
 <ol>
-<li>Starlette's error middleware, then <code>AIBodyLimit</code> (<a href="../vitaltrack-backend/app/services/ai_body_limit.py">app/services/ai_body_limit.py</a>) reads the whole body first: at most 2,000,000 bytes on normal routes (413 "Request is too large."), 12,000 bytes on <code>/api/v1/ai/*</code> JSON routes and 900,000 bytes on <code>/ai/transcribe</code>. <code>/api/v1/ai/*</code> requests without a non-empty <code>Bearer</code> header get 401 before any body is read (except OPTIONS preflight); AI bodies must finish within 10 s (408). These early middleware replies bypass inner security/request-ID/CORS middleware.</li>
-<li>Security headers (<code>X-Content-Type-Options</code>, <code>X-Frame-Options</code>, <code>X-XSS-Protection</code>, <code>Referrer-Policy</code>, <code>Cache-Control: no-store</code>, and HSTS only when <code>ENVIRONMENT=production</code>), then <code>X-Request-ID</code> (echoed or generated), then CORS (<code>app/main.py:111-158</code>).</li>
-<li>FastAPI matches the route and parses the JSON body. Malformed JSON → 422 <code>json_invalid</code> before any dependency runs: no token check, no SQL. Next the dependencies run: <code>get_db</code> creates an <code>AsyncSession</code> (connection acquired on first SQL), and <code>get_current_user</code> checks the bearer token. A bad token → 401 with no SQL; a valid one costs one <code>SELECT</code> on <code>users</code>. Only then are path, query and body fields validated, so a schema error → 422 after that <code>SELECT</code>, raised once <code>get_db</code> has closed normally (reproduced on 8 Oct 2026). On the five rate-limited routes the limit is checked inside the endpoint call, after validation. Protected business dependencies share the session; AI authentication and quotas use separate short sessions.</li>
-<li>The handler runs. Most write handlers call <code>await db.commit()</code> themselves. FastAPI serialises the response model after the handler returns; with pinned FastAPI <strong>0.115.6</strong>, the yield dependency then commits any pending transaction and closes before sending. <code>get_db</code> rolls back the <strong>current uncommitted transaction</strong> on exceptions, including <code>HTTPException</code>. An earlier commit survives a later refresh, serialisation or transport failure; one session is not necessarily one transaction per request (SQL after a commit starts a new transaction). See <a href="https://fastapi.tiangolo.com/advanced/advanced-dependencies/#dependencies-with-yield-httpexception-except-and-background-tasks">FastAPI: dependencies with <code>yield</code> and when they exit</a>.</li>
-<li>The response model is serialised with camelCase aliases (for example <code>minimumStock</code>, <code>isActive</code>). Auth token fields stay snake_case (<code>access_token</code>).</li>
+<li>The browser may send a CORS preflight. On an API call, the outer CORS middleware wraps ingress verification, the in-flight request limit and body limits. A refusal at one of these stages can finish the request before an item handler runs.</li>
+<li>The security-header and request-ID middleware wrap the routed request. FastAPI resolves the authenticated owner and the shared database session and validates the endpoint input.</li>
+<li>The item editor uses <code>PUT /api/v1/items/{item_id}</code>. The handler locks the owner’s supply revision and updates the owned row only when its version matches. Success commits the edit, its activity and audit and the supply revision. A stale version gets HTTP 409.</li>
+<li>The database dependency is function-scoped in FastAPI 0.162.0. Its final commit or rollback and cleanup run before the response is sent. See the <a href="../vitaltrack-backend/app/main.py">application setup</a>, <a href="../vitaltrack-backend/app/api/deps.py">dependencies</a> and <a href="../vitaltrack-backend/app/core/database.py">database session</a>.</li>
 </ol>
 <p><strong>Authentication on protected routes</strong> (<code>get_current_user</code>): no bearer → 401 <code>Not authenticated</code>; bad, expired or refresh-type token → 401 <code>Invalid or expired token</code>; user missing or token <code>session_version</code> ≠ the user's current value → 401 <code>User not found</code>; disabled account → 403; email not verified while <code>REQUIRE_EMAIL_VERIFICATION=true</code> <strong>and</strong> email sending is configured → 403 <code>EMAIL_NOT_VERIFIED</code>.</p>
 <p><strong>Ownership:</strong> every inventory query includes <code>user_id = current_user.id</code>. Another user's id therefore returns 404, never 403, so the API does not reveal that the row exists (reproduced).</p>
@@ -590,7 +687,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <tr>
 <td>Rate limit</td>
 <td>429</td>
-<td>for example <code>{"error":"Rate limit exceeded: 5 per 1 minute"}</code> (slowapi's handler; no <code>detail</code> key, no <code>Retry-After</code> header)</td>
+<td>for example <code>{"error":"Rate limit exceeded: 5 per 1 minute"}</code> (slowapi's handler; no <code>detail</code> key, a <code>Retry-After</code> header)</td>
 </tr>
 <tr>
 <td>Anything unexpected</td>
@@ -599,7 +696,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 </tbody>
 </table></div>
-<p><strong>Rate limits</strong> (slowapi, <code>app/utils/rate_limiter.py</code>): register 3/hour, login 5/minute, resend-verification 3/hour, forgot-password 3/hour, reset-password (POST) 5/hour. These are the only slowapi-decorated routes; AI routes have separate database-backed budgets and concurrency limits described below. Rate limiting is best effort: five auth routes, counters in memory per worker process (two workers per production instance), reset on restart; an open finding about how clients are identified is tracked privately. The limiter is disabled in the test suite, so no automated test covers it.</p>
+<p><strong>Rate limits.</strong> The backend rate limiter uses shared Redis in hosted environments. Development and tests can use process-local memory. Limited responses use HTTP 429 with a Retry-After window. Browser and native registration share one limit, as do their login routes. AI also enforces separate database-backed usage budgets. See the <a href="../vitaltrack-backend/app/utils/rate_limiter.py">rate limiter</a>.</p>
 <p><strong>Mobile client</strong> (<code>vitaltrack-mobile/services/api.ts</code>): base <code>EXPO_PUBLIC_API_URL</code> (fallback <code>http://localhost:8000</code>) + <code>/api/v1</code>. Ordinary requests have one <strong>90 s overall deadline</strong>, including response parsing and a refresh/retry; AI calls keep their shorter 50 s deadline. A 401 shares one 30 s refresh and retries once. Token writes are serialized: a late refresh cannot restore a logged-out session or erase a newer login. Logout clears local credentials first and revokes captured credentials best effort with a 30 s deadline. Error bodies become user-facing messages. Writes are never queued offline. Successful writes, uncertain network/gateway failures and 409 conflicts invalidate the relevant queries so active views refetch.</p>
 <h2 id="health-and-root">Health and root<a class="anchor" href="#health-and-root" aria-label="Link to this section">#</a></h2>
 <h3 id="get-"><code>GET /</code><a class="anchor" href="#get-" aria-label="Link to this section">#</a></h3>
@@ -1755,7 +1852,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Caller</td>
-<td>Item form Save on an existing item (<code>app/item/[id].tsx:212-222</code>) → <code>useUpdateItem</code>; reactivating a hidden item; Builder critical-star toggle (<code>useToggleItemCritical</code>, body <code>{isCritical, version}</code>). The form always sends name, category, quantity, unit, minimum stock and critical flag; blank description, brand, supplier name, supplier contact, notes and purchase link go as explicit <code>null</code>. It never sends <code>expiryDate</code> or <code>isActive</code>, cannot clear the photo, and silently leaves a non-blank invalid purchase link unchanged.</td>
+<td>The web item editor calls <code>workspace.saveItem</code> with the opened snapshot version. Android item form Save on an existing item (<code>app/item/[id].tsx:212-222</code>) → <code>useUpdateItem</code>; reactivating a hidden item; Builder critical-star toggle (<code>useToggleItemCritical</code>, body <code>{isCritical, version}</code>). The form always sends name, category, quantity, unit, minimum stock and critical flag; blank description, brand, supplier name, supplier contact, notes and purchase link go as explicit <code>null</code>. It never sends <code>expiryDate</code> or <code>isActive</code>, cannot clear the photo, and silently leaves a non-blank invalid purchase link unchanged.</td>
 </tr>
 <tr>
 <td>Request</td>
@@ -1763,15 +1860,15 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Handler</td>
-<td><code>update_item()</code> — <code>items.py:345-522</code>. When the body includes <code>name</code> (Edit Item always sends it), it first takes the per-account item-name advisory lock (<code>items.py:362-363</code>), so two such saves for one account run one after the other. Then one compare-and-swap: <code>UPDATE items SET …, version = version + 1 WHERE id AND user_id AND version = :sent RETURNING id</code>.</td>
+<td><code>update_item()</code> — <code>items.py:345-522</code>. When the body includes <code>name</code> (Edit Item always sends it), it takes the per-account item-name advisory lock after acquiring the owner’s supply-revision row lock (<code>items.py:362-363</code>), so two such saves for one account run one after the other. Then one compare-and-swap: <code>UPDATE items SET …, version = version + 1 WHERE id AND user_id AND version = :sent RETURNING id</code>.</td>
 </tr>
 <tr>
 <td>Concurrency</td>
-<td>0 rows updated (someone else saved first, or the row was deleted) → <strong>409</strong> <code>{"error":"Version conflict","server_version","server_quantity"}</code> with the values this request read before its update; nothing written. See <a href="diagrams/inventory-concurrency.svg">inventory-concurrency.svg</a>.</td>
+<td>0 rows updated (someone else saved first, or the row was deleted) → <strong>409</strong> with <code>error</code>, <code>message</code>, <code>server_version</code> and <code>server_quantity</code> with the values this request read before its update; nothing written. See <a href="diagrams/inventory-concurrency.svg">inventory-concurrency.svg</a>.</td>
 </tr>
 <tr>
 <td>Database</td>
-<td><code>items</code>; <code>activity_logs</code> (<code>ITEM_UPDATE</code>, e.g. "qty: 40 → 38"); <code>audit_log</code> with an old/new snapshot of six fields (name, quantity, unit, minimum stock, active, critical).</td>
+<td><code>items</code>; <code>activity_logs</code> (<code>ITEM_UPDATE</code>, e.g. "qty: 40 → 38"); <code>audit_log</code> with an old/new snapshot of six fields (name, quantity, unit, minimum stock, active, critical). The transaction also advances the owner’s supply revision.</td>
 </tr>
 <tr>
 <td>Response</td>
@@ -1779,7 +1876,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>App behaviour</td>
-<td>The screen still closes as soon as Save is tapped. Fields and <code>formVersion</code> are captured from the same initial item snapshot; cache refetches cannot replace that version. A form opened before the item loaded cannot save defaults. On 409 the server message is shown and relevant active queries refetch. The person must reopen the editor to load fresh form values; Retry retains the original variables and cannot bypass a stale-version conflict. A-1 is fixed locally with real component regression tests; phone acceptance remains unverified.</td>
+<td>On the web, a rejected save keeps edits in the form and offers a way to load the latest item after a version conflict. On Android the screen closes as soon as Save is tapped. Fields and <code>formVersion</code> are captured from the same initial item snapshot; cache refetches cannot replace that version. A form opened before the item loaded cannot save defaults. On 409 the server message is shown and relevant active queries refetch. The person must reopen the editor to load fresh form values; Retry retains the original variables and cannot bypass a stale-version conflict. A-1 is fixed locally with real component regression tests; phone acceptance remains unverified.</td>
 </tr>
 <tr>
 <td>Status</td>
@@ -1810,11 +1907,11 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Database</td>
-<td>Same CAS on <code>items</code>; <code>STOCK_UPDATE</code> activity ("Stock: 40 → 38 pairs"); audit row.</td>
+<td>Same CAS on <code>items</code>; <code>STOCK_UPDATE</code> activity ("Stock: 40 → 38 pairs"); audit row and an advance of the owner’s supply revision in the same transaction.</td>
 </tr>
 <tr>
 <td>Concurrency</td>
-<td>Two API clients saving the same version at once: one 200, one 409, and the version advances once (reproduced with direct API calls; the app never calls this route). There is no advisory lock here: the second update waits for the first one's row lock, then re-checks the version in its <code>WHERE</code> clause.</td>
+<td>Two API clients saving the same version at once: one 200, one 409, and the version advances once (reproduced with direct API calls; the app never calls this route). Both stock writers acquire the owner’s supply-revision row lock and then apply a version-guarded update.</td>
 </tr>
 <tr>
 <td>Status</td>
@@ -1841,7 +1938,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Rules</td>
-<td>Ordinary deletion keeps its existing behavior without a version check. Resets send optional <code>?version=N</code>: a row lock and comparison reject changed items with 409 before deletion. Order snapshots are preserved.</td>
+<td>Callers may omit a version. The web item editor and version-aware reset operations send <code>?version=N</code>: a row lock and comparison reject changed items with 409 before deletion. Order snapshots are preserved.</td>
 </tr>
 <tr>
 <td>Database</td>
@@ -1913,11 +2010,11 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Database</td>
-<td>(1) if <code>localId</code> given: <code>SELECT</code> an existing order for (user, localId) → return its <strong>current</strong> state with <strong>200</strong>, and nothing else runs; (2) ownership check of item ids; (3) <code>INSERT INTO order_number_counters … ON CONFLICT (day) DO UPDATE SET last_value = last_value + 1 RETURNING</code> → <code>ORD-YYYYMMDD-NNNN</code> (UTC date; one counter per day shared by all users, so one user's numbers have gaps); (4) insert <code>orders</code>, <code>order_items</code> (snapshots exactly as the app sent them), <code>activity_logs</code> (<code>ORDER_CREATED</code>); commit. No audit row.</td>
+<td>The <a href="../vitaltrack-backend/app/services/orders.py">creation service</a> locks the owner’s supply revision. It checks for a matching submission or closed submission, validates owned items and any supplied item versions, allocates the public number, writes the order, snapshots and activity, and advances the supply revision before commit.</td>
 </tr>
 <tr>
 <td>Concurrency &amp; retries</td>
-<td>Same <code>localId</code> twice at the same moment: the partial unique index <code>uq_orders_user_id_local_id</code> rejects the second insert; its transaction rolls back (undoing its counter increment) and it returns the first order with 200 (reproduced: one 201, one 200, one row). <strong>Without <code>localId</code></strong> (older app builds) every request creates a new order. Migration 0010 keeps existing duplicate rows and exempts later copies by id from the index; indexed keys prevent new duplicates. Reusing a key with a different schema-valid payload still returns the original order, not an updated one (reproduced 8 Oct: quantity 10 → 99 returned the order with 10 units); new lines are not even checked for ownership. The day's counter row stays locked until the creating transaction ends, so concurrent creates by all users on the same UTC day queue there.</td>
+<td>A matching persisted submission returns the existing order with 200. A reused key with different persisted creation fields or a previously closed unsaved key returns 409. Legacy clients without the key can create duplicate orders if they retry. The unique index is a database backstop.</td>
 </tr>
 <tr>
 <td>Response</td>
@@ -1971,7 +2068,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Allowed</td>
-<td><code>pending</code> → <code>ordered</code>, <code>received</code> or <code>declined</code>; <code>ordered</code> → <code>partially_received</code> or <code>received</code>; <code>partially_received</code> → <code>received</code>. <code>received</code> reaches <code>stock_updated</code> only through <code>/apply</code>. <code>declined</code> and <code>stock_updated</code> are final. Same status → 200 no-op (no write, <code>notes</code> ignored). Anything else → 400 "Illegal order status transition". A target of <code>stock_updated</code> → 400 "Order stock updates must be applied through the apply endpoint". A missing status → 400 "Status is required" and an unknown value → 400 "Invalid order status" (not 422).</td>
+<td><code>pending</code> → <code>ordered</code>, <code>received</code> or <code>declined</code>; <code>ordered</code> → <code>partially_received</code>, <code>received</code> or <code>declined</code>; <code>partially_received</code> → <code>received</code> or <code>declined</code>; <code>received</code> → <code>declined</code> before applying stock. <code>received</code> reaches <code>stock_updated</code> only through <code>/apply</code>. <code>declined</code> and <code>stock_updated</code> are final. Same status → 200 no-op (no write, <code>notes</code> ignored). Anything else → 400 "Illegal order status transition". A target of <code>stock_updated</code> → 400 "Order stock updates must be applied through the apply endpoint". A missing status → 400 "Status is required" and an unknown value → 400 "Invalid order status" (not 422).</td>
 </tr>
 <tr>
 <td>Handler</td>
@@ -2010,7 +2107,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>Handler</td>
-<td><code>apply_order_to_stock()</code> — <code>orders.py:459-605</code>. Steps 1–5 run in one transaction that the handler commits; the <code>refresh()</code> after that commit reads the order in a new one. (1) order must be <code>received</code> with ≥ 1 line (400); (2) every line's item must still exist (409 naming missing items, nothing changed); (3) claim: <code>UPDATE orders SET status='stock_updated', applied_at=now WHERE status='received'</code> (a second apply gets 400); (4) for each line, in item-id order to prevent opposing-order deadlocks between these apply operations (not a guarantee for every transaction), <code>UPDATE items SET quantity = quantity + line.quantity, version = version + 1</code>; one audit row per order line (two lines for the same item give two increments and two rows); (5) <code>ORDER_APPLIED</code> activity; commit.</td>
+<td><a href="../vitaltrack-backend/app/api/v1/orders.py"><code>apply_order_to_stock</code></a> accepts a received order with lines. It checks referenced items and units, claims the order, updates quantities and item versions, records audit and activity, and commits. A missing item or changed unit returns 409. An already-applied order returns 200 without a second credit.</td>
 </tr>
 <tr>
 <td>Rules</td>
@@ -2458,7 +2555,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td><code>POST /apply</code> again</td>
-<td>400</td>
+<td>400 in the October replay; 200 in the reviewed code</td>
 <td>stock unchanged</td>
 </tr>
 <tr>
@@ -2720,9 +2817,9 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tr>
 <tr>
 <td>A-16</td>
-<td><strong>A received order whose item was deleted is stuck</strong>: apply returns 409, <code>received → declined</code> is not an allowed transition, and delete accepts only pending/declined.</td>
-<td><code>app/api/v1/orders.py:28-46,502-524,640-644</code>; reproduced in the walkthrough</td>
-<td>Allow <code>received → declined</code>, or let apply skip/report missing lines by choice. Product decision.</td>
+<td>Resolved in the November code. A missing order item still prevents apply (409). An unapplied received order can be declined (200) and then deleted.</td>
+<td><code>app/api/v1/orders.py</code></td>
+<td>A failed apply leaves the inventory unchanged.</td>
 </tr>
 <tr>
 <td>A-17</td>
@@ -2841,6 +2938,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 </tbody>
 </table></div>
 <h2 id="coverage-gaps-worth-knowing">Coverage gaps worth knowing<a class="anchor" href="#coverage-gaps-worth-knowing" aria-label="Link to this section">#</a></h2>
+<p>This section records the October coverage audit. Consult the current test files and the release candidate’s CI run for present coverage.</p>
 <p>These come from reading every test (the ledger (local review reference; not published) has the full list). They are not bugs; they are places where the documentation cannot lean on an automated test.</p>
 <ul>
 <li>No test for <code>POST /auth/forgot-password</code>, <code>POST /auth/resend-verification</code> or the HTML <code>GET /auth/verify-email</code>.</li>
@@ -2854,7 +2952,7 @@ figure.diagram img{min-width:0}h2{break-before:auto;break-after:avoid}h3,h4{brea
 <li>About ten concurrency tests start requests together without forcing the overlap, so a pass does not prove the race was exercised.</li>
 <li>Mobile tests cover the API client, logout and order-creation services, item paging, the sanitising helpers, the query provider, assistant logic and assistant UI; screens, stores and the category service are not loaded by any test.</li>
 </ul>
-<footer>Generated 2026-11-05 by <code>docs/tools/build_docs.py</code> from <code>docs/API_TRACEABILITY.md</code>.</footer>
+<footer>Generated 2026-11-22 by <code>docs/tools/build_docs.py</code> from <code>docs/API_TRACEABILITY.md</code>.</footer>
 </main>
 </div>
 <script>

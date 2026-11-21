@@ -1,24 +1,8 @@
 # CareKosh Developer Guide
 
-> **Independent voice follow-up — 13 October 2026:** Contract 3 preserves grouped comparisons, filters, exclusions and local drafts. The independent review fixed numeric/grouping errors, stale account-scoped consent dialogs, old-contract downgrades and partial-playback fallback. Voice still cannot save orders or change stock. Use an operator-owned Sarvam key for the first staging pilot; live phone/provider acceptance remains pending. [Evidence and remaining checks](docs/AI_VOICE_END_TO_END_REVIEW.md#12-independent-follow-up).
+The [Complete Developer Guide](docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md) and [Deployment Atlas](docs/deployment/CAREKOSH_DEPLOYMENT_ATLAS.html) are the starting points. This shorter handbook grew out of the October Android and API rollout. Dated schema excerpts and migration history below describe that rollout. For today’s operations use the [complete API inventory](docs/API_TRACEABILITY.md) and [backend README](vitaltrack-backend/README.md).
 
-> **AI voice source update — 11 October 2026:** Android AudioRecord and Moonshine live words/offline recognition, separately opted-in Groq Whisper final transcription, reviewed Send and local/Groq bounded interpretation retain their existing wiring. Answers and unsaved drafts use validated inventory facts; only touch confirmation saves an order. Device speech stays the default. Alba selection/new downloads are paused after failed OnePlus acceptance; code and notices remain. Optional Sarvam English narration now uses separate answer-text consent, an explicit shared or encrypted per-account personal key, fixed model/voice validation and per-reply Expo playback. Sarvam does not process microphone recordings in this path or select inventory actions. Personal-key migration 0011 adds encrypted credentials and billing-source metadata; the current local inventory is 50 HTTP operations (47 under /api/v1) and 12 application tables. Matching staging deployment, provider credits and a new APK/phone sound test remain pending. Earlier dated evidence retains its original scope. [Sarvam activation, costs and device checks](docs/SARVAM_ENGLISH_VOICE.md) · [Complete voice architecture](docs/VOICE_INVENTORY_AND_ORDER_DRAFTS.md).
-
-
-> 8 October 2026 safety follow-up: targeted code fixes are local, tested changes after the earlier audit. Deployment and real-device acceptance remain separate. [Current changes and remaining scope](docs/BACKEND_HARDENING.md#safety-follow-up-8-october-2026).
-
-> **Status (re-checked 8 October 2026):** Checked against branch `feature/backend-hardening-ai-voice-agent-foundation` at commit `03cfebb`. `main` and tag `v1.0.0` are still `835fad3` (migrations up to `0006`, no `/api/v1/ai/*` routes). The feature branch adds migrations `0007`–`0010` (head `0010_order_local_id_unique`; `0007` cannot be downgraded), five `/api/v1/ai/*` routes and the read-only voice assistant. Re-run on 8 October 2026 against a disposable local PostgreSQL 16 database: 242 backend tests passed, the 89-step API walkthrough matched and 121 mobile tests passed (same counts as on 7 Oct). What staging and production run is NOT VERIFIED. Earlier note (23 Sept 2026): head `0007`, 152 backend tests plus eight mobile API tests — now out of date. Sections below say "feature branch" where `main` differs.
->
-> **Main onboarding entry:** [docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md](docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.md). Every endpoint: [docs/API_TRACEABILITY.md](docs/API_TRACEABILITY.md). Documentation home: [docs/INDEX.html](docs/INDEX.html). Audit summary: docs/documentation-audit-2026-10-07/README.md (local review reference; not published). Backend safety notes: [docs/BACKEND_HARDENING.md](docs/BACKEND_HARDENING.md).
-
-> Home ICU medical inventory management app for family caregivers.
-> Root summary of architecture, setup, workflow, and operations. Earlier this file called itself the single source of truth; since 7 Oct 2026 the complete developer guide linked above is the main entry, and this file is a shorter summary.
-
-**Repo layout:** `vitaltrack-backend/` (FastAPI) · `vitaltrack-mobile/` (React Native + Expo) · `docs/` (deep-dive and historical decision guides)
-
-> The `vitaltrack-*` directory names are legacy from the pre-rebrand period. The product name is **CareKosh**. Do not rename the directories — Render service paths, EAS config, and git history depend on them.
-
----
+The repo contains the FastAPI service in `vitaltrack-backend/`, Android in `vitaltrack-mobile/`, the signed-in browser client in `carekosh-web/` and the public site in `carekosh-site/`. Both clients persist inventory through the same API. The November baseline is `a14b623`.
 
 ## Table of Contents
 
@@ -264,84 +248,25 @@ Validators live in `config.py`. `SECRET_KEY` must be at least 32 characters; the
 
 ## 6. CI/CD Pipeline
 
-**File:** `.github/workflows/ci.yml`
-**Triggers:** `pull_request [main]` (opened, synchronize, reopened, labeled), `push [main]`, `workflow_dispatch`. Pushing a feature branch runs CI only when the branch has an open PR to `main` (a `synchronize` event); the feature-branch runs on 6–7 Oct 2026 were manual `workflow_dispatch` runs. Until this branch merges, a push to `main` runs `main`'s older `ci.yml` (Python 3.11, route gate 39, deploy hook called with `curl -s`, which cannot fail the job).
+The [backend and Android workflow](.github/workflows/ci.yml) checks pull requests to main, pushes to main and manual runs. Python 3.12 and PostgreSQL 16 exercise the API. CI checks Ruff, both pytest schema modes, 65 versioned routes and 70% coverage floors on six inventory, order and Supply Review modules. Android checks TypeScript, lint, Node tests and voice module autolinking. Read the workflow for advisory jobs and the optional `build-apk` preview label.
 
-| Job | Runs on | Purpose |
-|---|---|---|
-| `test-backend` | PR + push + manual | fails the run on: Ruff, pytest with `--migrated-schema` (postgres:16 service), exact `/api/v1` route count (`--expected 44` on the feature branch; `39` on `main`), and 70% coverage floors for `items.py` / `orders.py` |
-| `typecheck-backend-advisory` | PR + push + manual | advisory mypy baseline (`continue-on-error`); never fails the run |
-| `test-frontend` | PR + push + manual | Node 20; fails the run on TypeScript (`tsc --noEmit`) and ESLint errors (warnings pass). The feature branch adds `npm test` (`node --test tests/*.test.cjs`) and a check that the `carekosh-voice` module is autolinked for Android. `expo-doctor` runs with `\|\| echo`, so it never fails |
-| `security-scan-advisory` | PR only | advisory Trivy vulnerability scan, severity CRITICAL + HIGH (`continue-on-error`) |
-| `pr-check` | PR only | runs only after `test-backend` + `test-frontend` pass. It is not a required status check: the `protect-main` ruleset requires a pull request (0 approvals) but no status checks (GitHub API, 7 Oct 2026) |
-| `deploy-backend` | push to `main` | if the `RENDER_DEPLOY_HOOK` secret is set, calls the hook URL with `curl --fail` (30 s limit; no commit is named, so Render deploys the latest commit of its branch); never on a manual run; otherwise relies on Render's own auto-deploy (NOT VERIFIED) |
-| `build-preview` | PR only, while it carries the label `build-apk` | Node 22; `eas build --profile preview --no-wait` (feature branch; `main` uses Node 18). Runs again on every later PR event while the label stays |
-| `build-production` | push to `main` | **disabled** (`if: false`) — enable when ready to ship AAB from CI |
-
-**Latest run checked (7 Oct 2026):** run 37583748644 (`workflow_dispatch` on `03cfebb`) concluded success: 242 backend tests passed with 88% coverage, route and coverage gates passed, 121 mobile tests passed. The advisory steps still reported problems: mypy 23 errors in 8 files and expo-doctor 1 failed check (patch-version mismatches). ESLint reported 3 warnings, which do not fail the job (1 warning on 8 Oct 2026, after two unused imports were removed).
-
-**Advisory baseline as of 2026-06-13 (historical):**
-- `mypy app/ --ignore-missing-imports` reports 10 existing errors across `orders.py`, `items.py`, `categories.py`, `auth.py`, and `main.py`, so it is not a blocking gate yet.
-- `trivy fs --scanners vuln --severity CRITICAL,HIGH --exit-code 1 .` reports existing dependency findings. Backend findings are in `black`, `python-jose`, and `python-multipart`; mobile findings are in transitive npm packages including `@xmldom/xmldom`, `minimatch`, `node-forge`, `picomatch`, and `shell-quote`. Upgrading those dependencies is a separate follow-up because it can change runtime behavior.
-
-**Label-based APK:** add the `build-apk` label to a PR and CI will run `eas build --profile preview` so reviewers can install a binary.
-
----
+The [web workflow](.github/workflows/carekosh-web.yml) also checks matching paths on feature branches. Production web publishing is manual through [Release CareKosh web](.github/workflows/release-carekosh-web.yml). A successful CI run and a live deployment are separate pieces of evidence.
 
 ## 7. Deployment Workflow
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│  developer                                                          │
-│    │                                                                │
-│    ├── git checkout -b feature/xyz                                 │
-│    ├── commit + push                                                │
-│    └── open PR → main                                               │
-│                    │                                                │
-│                    ▼                                                │
-│  CI: test-backend + test-frontend + advisory scans + pr-check      │
-│                    │ (green)                                        │
-│                    ▼                                                │
-│  reviewer approves → merge to main                                  │
-│                    │                                                │
-│                    ▼                                                │
-│  deploy-backend job → Render deploy hook fires                     │
-│                    │                                                │
-│                    ▼                                                │
-│  Render: build image → `docker-entrypoint.sh`                      │
-│          ├── parse DATABASE_URL                                     │
-│          ├── pg_isready (up to 60s)                                 │
-│          ├── alembic upgrade head                                   │
-│          └── gunicorn start                                         │
-└────────────────────────────────────────────────────────────────────┘
-```
+Start a short-lived feature branch from current main. Test locally and open a PR. Before using a merge-first workflow, confirm the production Cloudflare Git integration and the Render native auto-deploy setting. The CI hook requires both `ENABLE_RENDER_AUTO_DEPLOY=true` and `RENDER_DEPLOY_HOOK` on a main push after tests pass. Record the merged SHA and stage that candidate on the long-lived staging branch. Run the affected user journey there. Release the staged revision only after it passes. If main advances before manual web dispatch, test the newer revision first.
 
-Notes (re-checked 8 Oct 2026):
-- The diagram shows the intended process. The deploy hook fires only if the `RENDER_DEPLOY_HOOK` secret is set, and Render auto-deploy may deploy the merge as well (dashboard setting, NOT VERIFIED): treat every merge to `main` as a production backend deploy. GitHub enforces only part of it: the `protect-main` ruleset requires a pull request but 0 approvals and no status checks, so "green" and "approved" are team discipline.
-- Render builds the image from `vitaltrack-backend/Dockerfile`. `pg_isready` waits up to 30 × 2 s and then continues with a warning; a failed `alembic upgrade head` stops the container (exit 1). Redeploying a pre-0007 image on a 0010 database fails the same way (its Alembic does not know the revision), so Render keeps the current version.
-- Production in `render.yaml` tracks `main`. Which commit each Render service runs, and each database's Alembic revision, are NOT VERIFIED. Migration `0007` (feature branch) cannot be downgraded; read [docs/BACKEND_HARDENING.md](docs/BACKEND_HARDENING.md) before pointing any shared database at the feature branch.
-
-**Mobile releases** are manual today:
-
-```bash
-cd vitaltrack-mobile
-eas build --profile production --platform android
-eas submit --profile production --platform android    # uploads AAB to Play Console internal track
-```
-
-Over-the-air updates are disabled (`updates.enabled: false`), so every JavaScript or native change reaches phones only through a new APK/AAB.
-
----
+Use the [deployment checklist](docs/deployment/CAREKOSH_DEPLOYMENT_ATLAS.html#change-guide) for Render, Workers and Play. Record the actual Worker deployment version, live Render SHA or Android build for each affected component. Client-only and API-only changes have distinct release steps.
 
 ## 8. API Endpoints
 
 Base URL: `https://api.carekosh.com/api/v1` (prod) · `https://staging-api.carekosh.com/api/v1` (staging)
 
-Route count (feature branch, 7 Oct 2026): 47 routes = 44 under `/api/v1` (auth 18, categories 6, items 8, orders 6, activities 1, ai 5) plus `GET /`, `GET /health`, `GET /live`. `main` has 39 under `/api/v1` (no `ai`). Every endpoint with its handler and tests: [docs/API_TRACEABILITY.md](docs/API_TRACEABILITY.md). `/docs`, `/redoc` and `/openapi.json` exist only when `DEBUG=true`.
+The November inventory contains 65 versioned operations plus GET /, /health and /live. The tables below introduce the main resource groups. Use the [complete API inventory](docs/API_TRACEABILITY.md) for web auth, AI, credentials and Supply Review.
 
 ### Auth (`/auth`)
 
-Rate limiting is best effort: five auth routes, counters in memory per worker process (2 workers per instance), reset on restart; an open finding about how clients are identified is tracked privately.
+Hosted deployments use a shared Redis store for rate limits. See [rate limiter](vitaltrack-backend/app/utils/rate_limiter.py) for storage behavior and retry headers.
 
 | Method | Path | Rate limit | Notes |
 |---|---|---|---|
@@ -356,7 +281,7 @@ Rate limiting is best effort: five auth routes, counters in memory per worker pr
 | POST | `/refresh` | — | token rotation — old refresh revoked; replaying a used refresh token gets 401; each refresh issues a fresh 30-day token (sliding session) |
 | POST | `/logout` | — | needs the access token and the refresh token in the body; revokes that refresh token. The access token stays valid until it expires (≤ 30 min) |
 | GET | `/me` | — | current user profile |
-| PATCH | `/me` | — | update name, username, phone; `null` values are ignored, but `"phone": ""` clears the phone. Feature branch: an email change is refused (400 "contact support"); on `main` the email can still be changed through this route without re-verification. The app's Profile screen sends only name and username |
+| PATCH | `/me` | — | update name, username, phone; `null` values are ignored, but `"phone": ""` clears the phone. An email change through this route is refused. The app's Profile screen sends only name and username |
 | **DELETE** | `/me` | — | **request account deletion**, sends confirmation email (link valid 24 h); needs an email on the account (400) and email configured (503) |
 | GET | `/confirm-delete/{token}` | — | HTML confirmation page only |
 | POST | `/confirm-delete/{token}` | — | final account deletion after form submit |
@@ -383,14 +308,14 @@ Rate limiting is best effort: five auth routes, counters in memory per worker pr
 |---|---|---|
 | GET | `/orders` | pagination (default 20, max 100) + status filter |
 | GET | `/orders/{id}` | accepts the UUID or the public `ORD-YYYYMMDD-NNNN` id |
-| POST | `/orders` | create; the server computes totals and the order number. `orderId` is required (422 if missing) but ignored. Feature branch: an optional `localId` makes retries idempotent (same `localId` → 200 with the existing order, even if the new payload differs) |
-| PATCH | `/orders/{id}/status` | status flow: `pending → ordered / received / declined`; `ordered → partially_received / received`; `partially_received → received` |
-| POST | `/orders/{id}/apply` | apply a `received` order to inventory stock |
+| POST | `/orders` | create; the server computes totals and the order number. `orderId` is required (422 if missing) but ignored. a retry with the same `localId` and matching stored fields returns 200 with the existing order. Conflicting fields return 409 |
+| PATCH | `/orders/{id}/status` | status flow: `pending → ordered / received / declined`; `ordered → partially_received / received / declined`; `partially_received → received / declined`; `received → declined` before apply |
+| POST | `/orders/{id}/apply` | apply a received order to stock. Repeating a successful apply returns the saved order without another stock increase |
 | DELETE | `/orders/{id}` | only `pending` / `declined` |
 
 `stock_updated` is reached only by `POST /orders/{id}/apply`; clients should not PATCH directly to that status.
 
-What the app offers today: on an order it shows only "Have you received the order?" (pending → received) and "Update Stock" (received → apply). It shows "Remove" for every status, but the server deletes only `pending` and `declined` orders and answers 400 for the rest. The other transitions exist in the API only.
+For a worked example of a receipt, stock application and retry, see the [API testing guide](vitaltrack-backend/API_TESTING_GUIDE.md).
 
 ### Categories (`/categories`)
 

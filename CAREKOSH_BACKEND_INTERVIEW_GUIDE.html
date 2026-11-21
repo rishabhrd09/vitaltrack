@@ -355,6 +355,11 @@ ol.steps>li b{color:var(--terra-deep)}
   </ul>
 </aside>
 <main class="main">
+  <aside class="callout"><strong>Reading the historical examples with the current backend</strong>
+    <p>This tutorial describes the earlier FastAPI 0.115.6 stack. The <a href="vitaltrack-backend/requirements.txt">backend dependencies</a> now pin FastAPI 0.162.0 and Starlette 1.10.0.
+    The <a href="vitaltrack-backend/app/api/deps.py">database dependency</a> explicitly uses <code>scope="function"</code>, so its cleanup runs before FastAPI sends the response.
+    Use the <a href="docs/CAREKOSH_COMPLETE_DEVELOPER_GUIDE.html">current implementation guide</a> alongside the version-specific examples below.</p>
+  </aside>
 <div class="wrap">
 
 <header class="hero">
@@ -660,7 +665,7 @@ router.include_router(ai.router)          # /api/v1/ai (feature branch only)</co
 
   <p>That is the whole territory. From here the guide goes down layer by layer: the request lifecycle and middleware onion, the auth and JWT machinery, the data model, the concurrency-safe CRUD, and the production hardening. Each of those is just a closer look at one box on this map.</p>
 </section>
-<section class="chapter" id="ch-lifecycle"><div class="callout"><p><strong>Version boundary:</strong> this repository pins FastAPI 0.115.6. Its yield-dependency cleanup is before response sending; 0.118.0 moved it after sending, and the <code>Depends(scope=…)</code> control added in 0.121.0 is not available in this pin. <a href="https://fastapi.tiangolo.com/release-notes/#01180">Official release notes</a>. Session lifetime can span multiple transactions; rollback cannot undo an earlier commit.</p></div>
+<section class="chapter" id="ch-lifecycle"><div class="callout"><p><strong>Version boundary:</strong> the historical checkout used FastAPI 0.115.6. Its yield-dependency cleanup is before response sending; 0.118.0 moved it after sending, and the <code>Depends(scope=…)</code> control added in 0.121.0 is not available in this pin. <a href="https://fastapi.tiangolo.com/release-notes/#01180">Official release notes</a>. Session lifetime can span multiple transactions; rollback cannot undo an earlier commit.</p></div>
   <p class="section-eyebrow">Follow one request</p>
   <h2 class="chapter-title"><span class="chapter-num">03</span> End-to-End Request Lifecycle</h2>
   <p class="lead">We trace a single authenticated request: <code class="inline">POST /api/v1/items</code> with a bearer token and a JSON body. We follow it from the raw TCP socket all the way back to JSON on the wire. This is the spine of the whole guide: almost every other chapter is a zoom-in on one stage you meet here.</p>
@@ -3568,7 +3573,7 @@ async def get_profile(current_user: CurrentUser) -&gt; UserResponse: ...</code><
   <ul>
     <li><strong>Never materialize the full result set</strong> — the failure mode is loading 10M ORM rows into memory. Stream instead.</li>
     <li><strong>Server-side cursor + chunked rows</strong> — use a streaming/server-side cursor and <code>yield_per</code> so the DB sends rows in batches; map each batch to CSV lines.</li>
-    <li><strong>Stream the HTTP response</strong> — <code>StreamingResponse</code> over an async generator so bytes flow as they're produced; constant memory regardless of row count. On CareKosh's pinned FastAPI 0.115.6, the <code>get_db</code> session is already committed and closed before the body streams. Yield-dependency exit runs before the response is sent; FastAPI changed this in 0.118.0. So the generator must open and close its own session (<code>async with AsyncSessionLocal()</code>), and keep each fetch under the 8 s <code>statement_timeout</code>.</li>
+    <li><strong>Stream the HTTP response</strong> — <code>StreamingResponse</code> over an async generator so bytes flow as they're produced; constant memory regardless of row count. In the historical FastAPI 0.115.6 example, the <code>get_db</code> session is already committed and closed before the body streams. Yield-dependency exit runs before the response is sent; FastAPI changed this in 0.118.0. So the generator must open and close its own session (<code>async with AsyncSessionLocal()</code>), and keep each fetch under the 8 s <code>statement_timeout</code>.</li>
     <li><strong>For very large or slow exports, go async-job</strong> — start a background job that writes to object storage (S3), and email a signed download link. Then a 10-minute export doesn't hold an HTTP connection or a pooled DB connection. (Recall that the 8s <code>statement_timeout</code> would kill a single giant query anyway.)</li>
   </ul>
 
