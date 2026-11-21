@@ -12,6 +12,8 @@ import {
   EyeOff,
   ArrowLeft,
   Check,
+  Package,
+  ShieldCheck,
   Sun,
   Moon,
 } from "lucide-react";
@@ -158,13 +160,35 @@ export default function Auth() {
         </Link>
         <div className="auth-story-content">
           <strong className="auth-story-title">More prepared.</strong>
-          <div className="auth-visual" aria-hidden="true">
+          <div className="auth-visual">
             <div className="auth-orbit" />
             <div className="auth-visual-main">
               <img src="/brand/mark-dark.png" alt="" />
             </div>
+            <div className="floating-note note-one">
+              <span className="stat-icon good">
+                <Check size={18} />
+              </span>
+              <div>
+                <strong>Ready when you need it</strong>
+                <small>Every essential, in one place</small>
+              </div>
+            </div>
+            <div className="floating-note note-two">
+              <span className="stat-icon blue">
+                <Package size={18} />
+              </span>
+              <div>
+                <strong>A clearer picture</strong>
+                <small>Stock, supplies & peace of mind</small>
+              </div>
+            </div>
           </div>
         </div>
+        <span className="auth-story-footer">
+          <ShieldCheck size={15} />
+          {BRAND.tagline}
+        </span>
       </aside>
       <main className="auth-main">
         <a className="auth-home" href={BRAND.siteOrigin}>
