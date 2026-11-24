@@ -113,6 +113,26 @@ test('union, intersection, precedence and de-duplication by item ID are explicit
   assert.deepEqual(Array.from(excluded.excluded, e => e.item.id), ['g']);
 });
 
+test('asking for names preserves each stock filter and declines unsupported qualifiers', () => {
+  const cases = [
+    ['Let me know the names of the items that are out of stock', ['m']],
+    ['Could you list the names of products which are actually low in stock?', ['g', 'a', 'y']],
+    ['Give me the names of supplies that are low or out of stock, excluding Hand gloves', ['m', 'a', 'y']],
+    ['Please tell me the names of items between two and four', ['g', 'v', 'z']],
+  ];
+  for (const [text, expected] of cases) {
+    const result = route(text);
+    assert.equal(result?.intent, 'inventory_query', text);
+    assert.deepEqual(ids(run(result.selection).rows), expected, text);
+  }
+  for (const text of [
+    'Tell me the names of items which are not low or out of stock',
+    'Let me know the names of items which are low or out of stock next week',
+    'Go to the warehouse and tell me the names of items which are low or out of stock',
+  ]) assert.equal(route(text), null, text);
+  assert.equal(route('Tell me the names of items which are low or out of stock and delete them').intent, 'unsupported_action');
+});
+
 test('order-now list is transparent: rule, priority order and a reason for every row', () => {
   const ask = route('Which stocks should I consider ordering now? Show why each appears in the list.');
   assert.equal(ask.selection.sort, 'priority');
