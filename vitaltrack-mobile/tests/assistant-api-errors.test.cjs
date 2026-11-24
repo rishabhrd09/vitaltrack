@@ -126,6 +126,12 @@ test('the API exposes a busy marker on a 503 without turning it into a retriable
     error.status === 503 && error.data.errorCode === 'busy' && error.message === 'AI is busy.');
 });
 
+test('interpretation keeps an unstructured gateway failure distinguishable from a provider explanation', async () => {
+  const { api } = client(async () => ({ status: 502, ok: false, headers: headers({ 'content-type': 'text/html' }) }));
+  await assert.rejects(api.assistantRequest('/ai/interpret', { method: 'POST' }, () => {}),
+    error => error.status === 502 && error.message.includes('HTTP 502'));
+});
+
 test('cancelling during the busy wait prevents a second upload', async () => {
   let calls = 0;
   const api = service(async () => { calls++; throw busy(5); });

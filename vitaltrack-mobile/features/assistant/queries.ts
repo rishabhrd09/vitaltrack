@@ -345,6 +345,9 @@ export function parsePlan(text: string, hints: Hints = {}): Plan | null {
   // only complete leading wrappers so an understood union cannot fall through
   // to the v2 suffix grammar and become an intersection.
   q = q.replace(/^ (?:(?:please|can you|could you|would you)(?: please)? )+/, ' ');
+  // Asking for the names of items is a list request. Only replace its opening
+  // phrase so the full stock predicate and any extra conditions still get parsed.
+  q = q.replace(/^ (?:(?:go to you and )?tell me|let me know|give me|show(?: me)?|list) (?:the )?names? of (?:the )?(items?|supplies|products?)(?: (?:which|that) are(?: actually)?)? /, ' show $1 ');
   q = q.replace(/^ (?:check|see|find out) (?:if|whether) there (?:is|are) /, ' show ');
   if (/\b(?:yesterday|tomorrow|last (?:week|month|year|time)|next (?:week|month|year)|history|historical|bought|sold|used|usage|consumption|forecast|expir\w*|prescribe|dosage|price|cost|spend|budget|apply|receive|received|send|delete|save|persist|commit|confirm)\b/.test(q)) return null;
   if (/\b(?:not|never|don't|dont|isn't|aren't|cannot|can't|instead|unless|if)\b/.test(q.replace(/\b(?:not including|but not|not more than|not less than)\b/g, ' '))) return null;
