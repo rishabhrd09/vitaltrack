@@ -10,7 +10,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { captureSession, assertSession, type Session } from '@/services/assistantSession';
 import * as assistant from '@/services/assistant';
-import { answerIntent, clarificationSpeech, command, commandExamples, speechText, type Answer, type Intent } from '@/features/assistant/core';
+import { answerIntent, clarificationSpeech, command, commandExamples, parseLocal, speechText, type Answer, type Intent } from '@/features/assistant/core';
 import { defaults, loadPreferences, permittedInputProvider, permittedSpeechProvider, permittedUnderstandingProvider, savePreferences, type AlbaVoice, type KokoroVoice, type OfflineFallbackVoice, type Preferences } from '@/features/assistant/preferences';
 import { playSarvamSpeech } from '@/features/assistant/cloudSpeech';
 import { fallbackVoiceLabel, narrateWithFallback } from '@/features/assistant/narration';
@@ -733,6 +733,34 @@ export default function AssistantExperience({ embedded = false, active = true, s
       if (mounted.current && current === turn.current && !abort.signal.aborted) setSpeechFeedback({ message: speechFailure(e), details, failed: true });
     } finally { if (mounted.current && current === turn.current) { markSpeaking(false); setSpeechStatus(''); } }
   }
+  async function testGroq() {
+    if (locked || permittedUnderstandingProvider(prefs) !== 'groq') return;
+    cancel(); setError(''); setBusy('Testing Groq…');
+    const abort = new AbortController(); controller.current = abort;
+    try {
+      const session = captureSession();
+      const available = await assistant.capabilities(session, abort.signal);
+      assertSession(session);
+      if (abort.signal.aborted) return;
+      acceptCaps(available);
+      if (!available.interpret) throw new Error('This backend has not enabled Groq understanding.');
+      if (!available.scopes.includes('groq_text')) throw new Error('Enable Groq understanding and accept question-text consent first.');
+      if (!available.interpret_contracts?.includes(3)) throw new Error('This backend does not offer understanding contract 3.');
+      const result = await assistant.interpretPlan(session, 'Which items are out of stock?', false, abort.signal, 'groq');
+      assertSession(session);
+      if (abort.signal.aborted) return;
+      const selection = result.selection;
+      // The backend grounds the plan against the fixed question. A clarification also
+      // proves the round trip succeeded, but does not demonstrate the intended lookup.
+      const matches = result.intent === 'inventory_query' && selection?.scope === 'inventory' &&
+        selection.any_of.length === 1 && selection.any_of[0].stock.join() === 'out';
+      Alert.alert('Groq test', matches ? 'Groq returned the expected out-of-stock filter.' : 'The service replied, but could not confirm the out-of-stock filter.');
+    } catch (error) {
+      if (mounted.current && !abort.signal.aborted) setError(error instanceof Error ? error.message : 'Groq test failed. Try again.');
+    } finally {
+      if (mounted.current && controller.current === abort) setBusy('');
+    }
+  }
   async function ask(text = question, chosen?: Intent | Specification | Plan, force = false) {
     if (!loaded || !prefs.enabled || !text.trim() || busy || capture.phase !== 'idle') return;
     Keyboard.dismiss();
@@ -745,12 +773,18 @@ export default function AssistantExperience({ embedded = false, active = true, s
     const current = turn.current;
     const abort = new AbortController(); controller.current = abort;
     setBusy('Understanding…');
-    if (!chosen) understandingSource.current = 'Matched locally';
+    let source = !chosen ? 'Matched locally' : text === answeredQuestion.current ? understandingSource.current : 'Selected on this phone';
     try {
       const session = captureSession();
       const names = cachedItemNames(session);
       const hasDraft = !!getDraft(session)?.rows.length;
       let intent = chosen || routeLocally(text, names, hasDraft, cachedCategoryNames(session));
+      // Without a warmed name cache, a plain lookup can still resolve against the
+      // account snapshot. An inexact name goes to review; it never selects a row.
+      if (!intent && permittedUnderstandingProvider(prefs) === 'local') {
+        const lookup = parseLocal(text, names);
+        if (lookup?.intent === 'read_item' && lookup.reference === 'named') intent = lookup;
+      }
       if (!intent) {
         const interpreter = permittedUnderstandingProvider(prefs);
         if (!CLOUD_TEXT_ENABLED || interpreter === 'local') throw new Error('That wording needs online understanding. Choose Groq or OpenAI in Voice setup, or use an example while offline.');
@@ -780,7 +814,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
         try { intent = contracts.includes(3) ? await assistant.interpretPlan(session, text.trim(), context, abort.signal, provider)
           : contracts.includes(2) ? await assistant.interpretExpanded(session, text.trim(), context, abort.signal)
           : await assistant.interpret(session, text.trim(), !!previousItem.current, abort.signal);
-          understandingSource.current = `Understood with ${providerName}`; }
+          source = `Understood with ${providerName}`; }
         catch (e) {
           if (abort.signal.aborted) throw e;
           throw new Error(`${providerName} understanding could not complete this question. ${e instanceof Error ? e.message : 'Please retry later.'} Nothing was saved. You can edit the question or use a basic command.`);
@@ -788,6 +822,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
       }
       const assertReady = () => { assertSession(session); if (!active || !mounted.current || current !== turn.current || abort.signal.aborted) throw new Error('Question cancelled.'); };
       assertReady();
+      understandingSource.current = source;
       pendingIntent.current = intent; answeredQuestion.current = text;
       if (!('version' in intent)) {
         if (intent.intent === 'close') { close(); return; }
@@ -1081,7 +1116,7 @@ export default function AssistantExperience({ embedded = false, active = true, s
           void setupWhistle(whistle.ready);
         } }]);
     }}
-    caps={caps} server={server}
+    caps={caps} server={server} testGroq={() => { void testGroq(); }}
     chooseListening={id => { if (id === 'groq') chooseCloud('groq_audio', { ...prefs, inputProvider: 'groq', audioOptIn: true }); else if (id === 'whistle') { if (whistleOffered && whistle.ready && whistle.telemetryDisabled) void update({ ...prefs, inputProvider: 'whistle', audioOptIn: false }); } else void update({ ...prefs, inputProvider: 'offline', audioOptIn: false }); }}
     chooseUnderstanding={id => { if (id === 'openai') chooseCloud('openai_text', { ...prefs, cloud: true, understandingProvider: 'openai' }); else if (id === 'groq') chooseCloud('groq_text', { ...prefs, cloud: true, understandingProvider: 'groq' }); else void update({ ...prefs, cloud: false, understandingProvider: 'local' }); }}
     withdrawCloud={() => { void revokeCloud(); }}
@@ -1237,7 +1272,8 @@ export default function AssistantExperience({ embedded = false, active = true, s
                   <Text style={[styles.caption, { color: colors.textSecondary }]}>Details {detailsOpen ? '−' : '+'}</Text>
                 </TouchableOpacity>
               </View>
-              {detailsOpen && <Text selectable style={[styles.caption, { color: colors.textSecondary }]}>{understandingSource.current} · “{answeredQuestion.current}”</Text>}
+              {pendingIntent.current && <Text style={[styles.caption, { color: colors.textSecondary }]}>{understandingSource.current}</Text>}
+              {detailsOpen && <Text selectable style={[styles.caption, { color: colors.textSecondary }]}>“{answeredQuestion.current}”</Text>}
               {answer.choices.map(item => <View key={item.id}>{button(item.name + ' · ' + item.unit + ' · ' + item.id.slice(-6), () => {
                 const intent = pendingIntent.current || command('clarify');
                 if ('version' in intent) { selections.current[choiceQuery.current] = item.id; void ask(answeredQuestion.current, intent); }

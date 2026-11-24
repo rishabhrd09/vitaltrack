@@ -17,11 +17,16 @@ NUMBER_PATTERN = r"\b(?:(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety
 EXCLUSION = r"(?:excluding|exclude|except|other than|apart from|but not|not including|leaving out|leave out|minus|omit|omitting|skip|skipping)"
 COMPARISONS = {
     "lt": (r"(?:less|fewer|lower) than (\d+)", r"(?:under|below) (\d+)"),
-    "lte": (r"(?:at most|no more than|not more than|up to|a maximum of|maximum of) (\d+)", r"(\d+) or (?:fewer|less|below|under)"),
+    "lte": (r"(?:at most|no more than|not more than|up to|a maximum of|maximum of) (\d+)", r"(\d+)(?: units?)? or (?:fewer|less|below|under)"),
     "eq": (r"(?:exactly|equal to|equals|precisely|only) (\d+)", r"(?:with|having|have|has) (\d+)(?: \w+)? (?:left|remaining|in stock|on hand)"),
-    "gte": (r"(?:at least|no less than|not less than|a minimum of|minimum of) (\d+)", r"(\d+) or (?:more|above|over|greater)"),
+    "gte": (r"(?:at least|no less than|not less than|no fewer than|a minimum of|minimum of) (\d+)", r"(\d+)(?: units?)? or (?:more|above|over|greater)"),
     "gt": (r"(?:more|greater) than (\d+)", r"(?:over|above) (\d+)"),
 }
+# Protect spoken ranges before splitting alternative item groups.
+COUNT_TAIL = r"(?: units?)?(?: left| remaining| on hand| in stock)?"
+NAMED_RANGE = rf"\b(?:between (\d+){COUNT_TAIL} (?:and|to) (\d+)|from (\d+){COUNT_TAIL} to (\d+))\b"
+BOUND = r"(?:at least|(?:no|not) less than|no fewer than|(?:a )?minimum of|at most|(?:no|not) more than|up to|(?:a )?maximum of|(?:less|fewer|lower|more|greater) than|under|below|over|above) \d+"
+PAIRED_BOUNDS = rf"\b{BOUND}{COUNT_TAIL} (?:, )?(?:and|but) {BOUND}\b"
 PRIORITY = r"\b(?:order priority|most urgent|order (?:now|immediately)|ordering (?:now|immediately)|should (?:i |we )?order|consider ordering)\b"
 SORT_CUES = {
     "name": r"\b(?:alphabetically|alphabetical|a z|by name)\b",
@@ -62,8 +67,9 @@ def require_representable_numbers(question: str, names=()) -> None:
 
 def comparisons(text: str) -> set[tuple[str, int]]:
     result = set()
-    for match in re.finditer(r"\bbetween (\d+) and (\d+)\b", text):
-        result.update({("gte", int(match[1])), ("lte", int(match[2]))})
+    for match in re.finditer(NAMED_RANGE, text):
+        low, high = [int(value) for value in match.groups() if value is not None]
+        result.update({("gte", low), ("lte", high)})
     # More-specific cues claim their span first: 'no less than' must not become lt.
     occupied = []
     for op in ("lte", "gte", "eq", "lt", "gt"):
@@ -78,6 +84,7 @@ def comparisons(text: str) -> set[tuple[str, int]]:
 
 def stock_states(text: str, *, priority_default: bool = True) -> set[str]:
     text = canonical_filter_words(text)
+    text = re.sub(r"(?<=\d) (?:units? )?(?:or (?:fewer|less|more|above|over|greater|below|under) (?:units? )?)?in stock\b", " ", text)
     parts = clauses(text)
     if len(parts) > 1:
         result = set().union(*(stock_states(part, priority_default=False) for part in parts))
@@ -90,7 +97,7 @@ def stock_states(text: str, *, priority_default: bool = True) -> set[str]:
         (r"\blow (?:or|and) out of stock\b", {"low", "out"}),
         (r"\b(?:out of stock|zero stock|0 stock)\b", {"out"}),
         (r"\bbelow (?:their |the |its )?(?:recorded )?minimum(?: stock)?(?: levels?)?\b", {"below_minimum"}),
-        (r"\b(?:running low|low on stock|low in stock|low stock|low)\b", {"low"}),
+        (r"\b(?:running low|getting low|low on stock|low in stock|low stock|low)\b", {"low"}),
         (r"\b(?:in stock|(?:well )?stocked)\b", {"in_stock"}),
     )
     for pattern, states in patterns:
@@ -120,12 +127,16 @@ def critical_values(text: str) -> set[bool]:
 
 def clauses(text: str) -> list[str]:
     # 'and' inside ranges and combined stock states is not a new selection group.
-    protected = re.sub(r"\bbetween (\d+) and (\d+)\b", r"between \1 __range_and__ \2", text)
+    def protect_join(match):
+        return match[0].replace(" , ", " ").replace(" and ", " __range_and__ ")
+
+    protected = re.sub(NAMED_RANGE, protect_join, text)
+    protected = re.sub(PAIRED_BOUNDS, protect_join, protected)
     protected = re.sub(r"\blow (and|or) out of stock\b", r"low __stock_\1__ out of stock", protected)
     # Keep stock-status lists ('low stock and out of stock') in the same clause.
     protected = re.sub(r"\b(low (?:in )?stock|running low) (and|or) (out of stock)\b", r"\1 __stock_\2__ \3", protected)
     # '3 or more/fewer' is a comparison, not an additional selection group.
-    protected = re.sub(r"\b(\d+) or (more|fewer|less|below|under|above|over|greater)\b", r"\1 __quantity_or__ \2", protected)
+    protected = re.sub(r"\b(\d+(?: units?)?) or (more|fewer|less|below|under|above|over|greater)\b", r"\1 __quantity_or__ \2", protected)
     # A repeated predicate refers to the same noun, rather than a second list:
     # 'critical items ... and are low' is AND; 'critical items and low items' is OR.
     protected = re.sub(r"\band (?=(?:(?:that|which) )?(?:is|are|has|have|needs?|requires?) )", " ", protected)
@@ -196,8 +207,11 @@ def require_lexical_constraints(plan: Plan, question: str) -> None:
             raise ValueError("Unrestricted group broadens the requested filters")
         actual_stock, actual_quantity, actual_critical = set(), set(), set()
         actual_missing = False
+        parts = clauses(scope_text)
         for group in groups:
             states, amounts, critical, missing = _condition_atoms(group)
+            if amounts and not any(amounts == comparisons(part) for part in parts):
+                raise ValueError("Quantity bounds must stay with their clause")
             if not states <= expected_stock or not amounts <= expected_quantity or not critical <= expected_critical or missing and not expected_missing:
                 raise ValueError("Condition not requested")
             actual_stock.update(states)
@@ -208,7 +222,7 @@ def require_lexical_constraints(plan: Plan, question: str) -> None:
                 states <= stock_states(part) and amounts <= comparisons(part)
                 and critical <= critical_values(part)
                 and (not missing or re.search(MISSING_SUPPLIER, part))
-                for part in clauses(scope_text)
+                for part in parts
             ):
                 raise ValueError("Separate clauses were conjoined")
             # Multiple named groups cannot borrow one another's thresholds. Keep
@@ -233,11 +247,13 @@ def require_lexical_constraints(plan: Plan, question: str) -> None:
         # A conjunction inside one clause must not become a broader union. Two
         # separate fields ('critical items that are low', 'low stock below 3')
         # must hold together. Stock values alone are OR and can use split groups.
-        for part in clauses(scope_text):
+        for part in parts:
             states = stock_states(part)
             amounts = comparisons(part)
             critical = critical_values(part)
             missing = bool(re.search(MISSING_SUPPLIER, part))
+            if len(amounts) > 1 and not any(amounts == _condition_atoms(group)[1] for group in groups):
+                raise ValueError("Requested range omitted")
             if sum(bool(value) for value in (states, amounts, critical, missing)) < 2:
                 continue
             candidates = [group for group in groups if set(group.stock) & states or {(c.op, c.value) for c in group.quantity} & amounts or group.critical in critical or missing and group.missing_supplier]
@@ -266,7 +282,7 @@ level levels status kind kinds type types ones both either too along well whose 
 details presently
 """.split())
 CUE_WORDS = frozenset("""
-low out stock stocks below minimum running run short critical important essential life support attention equipment non not marked flagged star starred quantity
+low out stock stocks below minimum running getting run short critical important essential life support attention equipment non not marked flagged star starred quantity
 quantities qty less fewer lower than more greater higher most least exactly equal equals precisely only between under
 over above maximum remaining left hand stocked supplier suppliers supplied vendor vendors category categories brand
 brands no missing recorded unrecorded sorted sort sorting order ordered orders alphabetically alphabetical name names

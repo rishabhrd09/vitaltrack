@@ -32,7 +32,7 @@ internal object WhistleRuntime {
         check()
         ensureLoaded()
         check()
-        val result = nativeTranscribe(model.path, samples).toString(Charsets.UTF_8)
+        val result = nativeTranscribe(model.path, padSpeechBoundaries(samples, 16_000, 28)).toString(Charsets.UTF_8)
         check() // Native C API has no abort callback: cancellation discards a late result.
         return parseWhistleTranscript(result)
     }

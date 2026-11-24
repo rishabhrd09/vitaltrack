@@ -89,6 +89,15 @@ def test_v2_contract_is_unchanged():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("question,plan,previous,accepted", [
+    ("Show items with two units or fewer in stock", query_plan(group(quantity=[{"op": "lte", "value": 2}])), False, True),
+    ("Which supplies are getting low?", query_plan(group(stock=["low"])), False, True),
+    ("Show critical items with at least two and at most four units in stock", query_plan(group(critical=True, quantity=[{"op": "gte", "value": 2}, {"op": "lte", "value": 4}])), False, True),
+    ("Show gloves from two units to four units", query_plan(group(item_queries=["gloves"], quantity=[{"op": "gte", "value": 2}, {"op": "lte", "value": 4}])), False, True),
+    ("Show gloves between two and four or masks between two and six", query_plan(group(item_queries=["gloves"], quantity=[{"op": "gte", "value": 2}, {"op": "lte", "value": 4}]), group(item_queries=["masks"], quantity=[{"op": "gte", "value": 2}, {"op": "lte", "value": 6}])), False, True),
+    ("Show items between zero and four units in stock", query_plan(group(quantity=[{"op": "gte", "value": 0}, {"op": "lte", "value": 4}])), False, True),
+    ("We need a draft for supplies with no fewer than two and no more than four units", draft_plan(selection=query_plan(group(quantity=[{"op": "gte", "value": 2}, {"op": "lte", "value": 4}]))["selection"]), False, True),
+    ("Show items with at least two and at most four units", query_plan(group(quantity=[{"op": "gte", "value": 2}]), group(quantity=[{"op": "lte", "value": 4}])), False, False),
+    ("Show items with at least two or at most four", query_plan(group(quantity=[{"op": "gte", "value": 2}, {"op": "lte", "value": 4}])), False, False),
     ("How many items have quantity less than 3?", query_plan(group(quantity=[{"op": "lt", "value": 3}])), False, True),
     ("How many items have quantity less than three?", query_plan(group(quantity=[{"op": "lt", "value": 3}])), False, True),
     ("Show items with at most three remaining", query_plan(group(quantity=[{"op": "lte", "value": 3}])), False, True),
@@ -334,3 +343,64 @@ def test_v42_groq_errors_map_to_clear_messages_and_log_no_content(caplog, status
     logged = " ".join(record.getMessage() for record in caplog.records)
     assert f"status={status}" in logged
     assert "gloves" not in logged and "Invalid API Key" not in logged, "messages may echo user text; only type and code are logged"
+
+
+@pytest.mark.asyncio
+async def test_200_simulated_groq_replies_preserve_spoken_conditions(monkeypatch):
+    """Exercise the real strict-response decoder with synthetic model replies, without quota or inventory."""
+    import random
+
+    randomizer = random.Random(24112026)
+    names = ["surgical masks", "hand gloves", "saline", "gauze rolls", "syringes", "ventilator circuits"]
+    seen = set()
+    rejected = 0
+    configure_groq(monkeypatch)
+
+    async def reply(url, headers, **kwargs):
+        assert url == "https://api.groq.com/openai/v1/chat/completions"
+        message = json.loads(kwargs["json"]["messages"][1]["content"])
+        assert message == {"question": question, "has_previous_item": False}
+        return groq_reply(candidate)
+
+    monkeypatch.setattr(ai_provider, "bounded_call", reply)
+    for index in range(200):
+        first, second = randomizer.sample(names, 2)
+        lo = randomizer.randint(1, 25)
+        hi = randomizer.randint(26, 60)
+        bounds = [{"op": "gte", "value": lo}, {"op": "lte", "value": hi}]
+        kind = index % 5
+        if kind == 0:
+            question = f"Show critical items with at least {lo} and at most {hi} units in stock"
+            candidate = query_plan(group(critical=True, quantity=bounds))
+        elif kind == 1:
+            question = f"Create a draft for items from {lo} to {hi} units, excluding {first}"
+            candidate = draft_plan(selection=query_plan(group(quantity=bounds), exclude=[group(item_queries=[first])])["selection"])
+        elif kind == 2:
+            question = f"Make me a draft for {lo} units of {first} and {hi} units of {second}"
+            candidate = draft_plan([line(first, lo, "units"), line(second, hi, "units")])
+        elif kind == 3:
+            question = f"Show {first} with {lo} or fewer units or {second} with {hi} or more units"
+            candidate = query_plan(group(item_queries=[first], quantity=[{"op": "lte", "value": lo}]),
+                                   group(item_queries=[second], quantity=[{"op": "gte", "value": hi}]))
+        else:
+            # A structurally valid answer that changes AND to OR or swaps order quantities.
+            if index % 2:
+                question = f"Show {first} with at least {lo} and at most {hi} left"
+                candidate = query_plan(*(group(item_queries=[first], quantity=[bound]) for bound in bounds))
+            else:
+                question = f"Prepare an order for {lo} units of {first} and {hi} units of {second}"
+                candidate = draft_plan([line(first, hi, "units"), line(second, lo, "units")])
+        # Spoken punctuation varies; each case must have a distinct utterance.
+        if question in seen:
+            question = "Please " + question
+        assert question not in seen
+        seen.add(question)
+        if kind == 4:
+            with pytest.raises(HTTPException) as failure:
+                await ai_provider.interpret(question, False, 3)
+            assert failure.value.status_code == 502
+            rejected += 1
+        else:
+            parsed, _ = await ai_provider.interpret(question, False, 3)
+            assert parsed.model_dump() == candidate, question
+    assert (len(seen), rejected) == (200, 40)

@@ -458,3 +458,155 @@ test('range parsing keeps distinct item groups, exclusions and explicit order qu
   assert.notEqual(unknown?.intent, 'draft_order');
   assert.equal(route('Prepare a draft for items with at least -2 and at most four').intent, 'clarify');
 });
+
+// Reviewed transcripts enter through the same router, stock evaluator and draft builder as Send.
+// Vary quantities and names independently. Expectations come from the fixture, never the parser.
+test('200 distinct spoken requests return the intended stock, draft lines or safe refusal', () => {
+  const active = inventory.filter(item => item.isActive);
+  const cases = new Map();
+  const add = (text, check) => {
+    assert.ok(!cases.has(text), text);
+    cases.set(text, check);
+  };
+  const list = (text, expected, context) => add(text, intent => {
+    assert.ok(intent);
+    const rows = 'version' in intent
+      ? run(contracts.toPlan(intent).selection, context).rows
+      : core.answerIntent(intent, inventory, 1).items;
+    assert.deepEqual(ids(rows).sort(), [...expected].sort());
+  });
+  const draft = (text, expected, previous) => add(text, intent => {
+    assert.equal(intent?.intent, 'draft_order');
+    const rows = drafts.prepareDraft(intent, inventory, [], {}, { categories, previous });
+    assert.deepEqual(plain(rows.map(row => [row.item.id, row.quantity]).sort()), [...expected].sort());
+  });
+  const refuse = text => add(text, intent => assert.ok(!intent || ['clarify', 'unsupported_action'].includes(intent.intent)));
+  const numbers = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  const unitOne = { pairs: 'pair', boxes: 'box', bottles: 'bottle', units: 'unit', rolls: 'roll', pieces: 'piece' };
+  for (const [index, item] of active.entries()) {
+    const name = item.name;
+    for (const [text, field] of [
+      [`How many ${name} do we have?`, 'quantity'], [`What do we have left of ${name}?`, 'quantity'],
+      [`What is the stock status of ${name}?`, 'status'], [`Who supplies ${name}?`, 'supplier'],
+      [`Could you check the quantity of ${name} please?`, 'quantity'],
+    ]) add(text, intent => {
+      assert.equal(intent?.intent, 'read_item');
+      assert.ok(intent.fields.includes(field));
+      const answer = core.answerIntent(intent, inventory, 1);
+      assert.equal(answer.resolvedId, item.id);
+      if (field === 'quantity') assert.ok(answer.text.includes(`${item.quantity} ${item.unit}`));
+    });
+
+    const n = index + 1, word = numbers[n], hi = numbers[n + 2];
+    const units = n === 1 ? 'unit' : 'units';
+    for (const [text, matches] of [
+      [`Which items have fewer than ${word} left?`, q => q < n],
+      [`Show items with at most ${word} ${units} remaining`, q => q <= n],
+      [`Show me items that have ${word} or fewer units left`, q => q <= n],
+      [`List supplies with ${word} or more remaining`, q => q >= n],
+      [`Show items with exactly ${word} ${units}`, q => q === n],
+      [`Which items have between ${word} and ${hi} units in stock?`, q => q >= n && q <= n + 2],
+      [`Show items with at least ${word} and at most ${hi} remaining`, q => q >= n && q <= n + 2],
+      [`List items with more than ${word} but fewer than ${hi} units`, q => q > n && q < n + 2],
+    ]) list(text, ids(active.filter(i => matches(i.quantity))));
+
+    for (const [i, verb] of ['Prepare an order', 'Create a draft', 'Make me a draft', 'Build an order draft', 'Put together a draft', 'We need a draft'].entries()) {
+      const amount = (index + i) % 9 + 1;
+      draft(`${verb} for ${numbers[amount]} ${amount === 1 ? unitOne[item.unit] : item.unit} of ${name}`, [[item.id, amount]]);
+    }
+    for (const [j, other] of active.entries()) {
+      if (j <= index) continue;
+      draft(`Make me a draft for one ${unitOne[item.unit]} of ${name} and ${numbers[j + 1]} ${other.unit} of ${other.name}`,
+        [[item.id, 1], [other.id, j + 1]]);
+    }
+    const low = active.filter(i => i.quantity > 0 && i.quantity < i.minimumStock && i.id !== item.id);
+    draft(`We need a draft for anything running low, excluding ${name}`, low.map(i => [i.id, i.minimumStock - i.quantity]));
+    list(`Show all items excluding ${name}`, ids(active.filter(i => i.id !== item.id)));
+    refuse(`Update the stock of ${name} to ${word}`);
+  }
+
+  const low = ['g', 'a', 'y'], out = ['m'], attention = [...low, ...out];
+  for (const text of ['What is the summary?', 'Give me an inventory summary', 'What is the status of our stock?',
+    'How many items do we have?', 'Stock overview']) list(text, ids(active));
+  for (const text of ['What are we running low on?', 'Which supplies are running low?', 'Show low stock']) list(text, low);
+  for (const text of ['Any stock which is out of stock?', 'What have we run out of?', 'Show out of stock items']) list(text, out);
+  for (const text of ['Do we need to reorder anything?', 'Show everything that is low or out of stock']) list(text, attention);
+  list('Show critical items that are low or out of stock', ['a']);
+  list('Show all items with no supplier recorded', ['s', 'a', 'v', 'y']);
+  list('Show non-critical items with two or fewer units left', ['g', 'm']);
+  list('Show items in the wound care category with quantity below four', ['g', 'm', 'z']);
+  list('Only the critical ones', ['a'], { previous: active.filter(i => attention.includes(i.id)) });
+  draft('Create a draft from those', [['g', 3], ['m', 4]], active.filter(i => ['g', 'm'].includes(i.id)));
+  draft('Prepare a draft for critical items that are low or out of stock', [['a', 1]]);
+  for (const text of ['Save the order now', 'Send the order to the supplier', 'Show items used last week',
+    'Prepare a draft for minus two boxes of masks', 'Show the items that will run out next month']) refuse(text);
+
+  assert.equal(cases.size, 200);
+  const failures = [];
+  for (const [text, check] of cases) {
+    try { check(route(text)); } catch (error) { failures.push(`${text} — ${error.message}`); }
+  }
+  assert.deepEqual(failures, []);
+});
+
+test('this stock follows the named item and asks for a name when no item has been selected', () => {
+  const intent = route('What is the status of this stock?');
+  assert.equal(intent.reference, 'previous');
+  assert.equal(core.answerIntent(intent, inventory, 1, 'g').resolvedId, 'g');
+  assert.equal(core.answerIntent(intent, inventory, 1).kind, 'clarify');
+});
+
+test('offline recognizer punctuation and draft homophones retain the spoken task', () => {
+  assert.equal(route('What is the summary?"').intent, 'summary');
+  assert.equal(core.normalize('Tubing 12"'), 'tubing 12"');
+  assert.equal(route('“What do we have left of hand gloves?”').item_query, 'hand gloves');
+  const p = route('We need a draught for anything running low, excluding hand gloves.');
+  assert.deepEqual(plain(drafts.prepareDraft(p, inventory, []).map(r => [r.item.id, r.quantity])), [['a', 1], ['y', 5]]);
+  assert.deepEqual(ids(run(route('Witch items are out of stock?').selection).rows), ['m']);
+});
+
+test('20 conversational stock and draft questions resolve against actual inventory rows', () => {
+  const examples = [
+    ["Can I get a quick overview of our stock?", "list:a,g,m,s,v,y,z"],
+    ["Anything we’ve completely run out of?", "list:m"],
+    ["Which supplies are getting low?", "list:a,g,y"],
+    ["How many pairs of hand gloves are still on hand?", "list:g"],
+    ["Do we have any surgical masks left?", "list:m"],
+    ["Who do we usually buy hand gloves from?", "list:g"],
+    ["Is there anything with fewer than three units left?", "list:a,g,m"],
+    ["Show me what’s down to its last two units or less.", "list:a,g,m"],
+    ["Pull up everything from two to four units, but leave out gloves.", "list:v,z"],
+    ["Give me a draft order for all the out-of-stock supplies.", "draft:m:4"],
+    ["I need to order three pairs of hand gloves and one box of surgical masks. Can you draft that?", "draft:g:3,m:1"],
+    ["Put three pairs of hand gloves and two boxes of surgical masks on my draft.", "draft:g:3,m:2"],
+    ["Please prepare an order for two bottles of saline.", "draft:s:2"],
+    ["Prepare an order for one box of surgical masks plus all low-stock items, excluding hand gloves.", "draft:a:1,m:1,y:5"],
+    ["Which critical supplies should we reorder first?", "list:a"],
+    ["Do any of the items have no supplier on file?", "list:a,s,v,y"],
+    ["List all the low-stock items in the wound care category.", "list:g"],
+    ["Which supplies have five or more units on hand?", "list:s,y"],
+    ["Show me the stock that is running low or out of stock, alphabetically.", "list:a,g,m,y"],
+    ["Make a draft with only the critical items that are out of stock.", "empty-draft"],
+  ];
+  for (const [text, expected] of examples) {
+    const intent = route(text);
+    assert.ok(intent, text);
+    if (intent.intent === 'draft_order') {
+      const rows = drafts.prepareDraft(intent, inventory, [], {}, { categories });
+      const actual = rows.length ? 'draft:' + Array.from(rows, r => r.item.id + ':' + r.quantity).sort().join() : 'empty-draft';
+      assert.equal(actual, expected, text);
+    } else {
+      const rows = intent.intent === 'inventory_query' ? run(contracts.toPlan(intent).selection).rows : core.answerIntent(intent, inventory, 1).items;
+      assert.equal('list:' + ids(rows).sort().join(), expected, text);
+    }
+  }
+});
+
+test('putting quantities on the current draft preserves its existing lines', () => {
+  const existing = drafts.prepareDraft(route('Prepare a draft for two pairs of hand gloves'), inventory, []);
+  const addition = route('Put three pairs of hand gloves and two boxes of surgical masks on my draft', true);
+  assert.equal(addition.draft.mode, 'edit');
+  const rows = drafts.prepareDraft(addition, inventory, existing);
+  assert.deepEqual(plain(rows.map(r => [r.item.id, r.quantity])), [['g', 5], ['m', 2]]);
+  assert.equal(existing[0].quantity, 2);
+});

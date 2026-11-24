@@ -239,6 +239,10 @@ clarify (ambiguous). 'Create an order' only prepares an unsaved draft. No item I
 code, URLs, tools or answers. Copy names verbatim; never correct spelling.
 Examples (names and numbers are illustrative, never inventory facts):
 - 'How many items have quantity less than 3?' => inventory_query, any_of=[{quantity:[lt 3]}].
+- 'Critical items with at least two and at most four units in stock' => one group with
+  critical=true and quantity=[gte 2,lte 4]. Both limits apply to the same item.
+- 'Make a draft for one box of masks and three pairs of gloves' => two named set lines,
+  masks 1 box and gloves 3 pairs. Keep each spoken unit with its own item.
 - 'Show items below 3 and also all low-stock or out-of-stock items; prepare an order draft
   for them' => draft_order/new, include_selection=true,
   any_of=[{quantity:[lt 3]}, {stock:[low,out]}], lines=[].
@@ -259,28 +263,11 @@ Examples (names and numbers are illustrative, never inventory facts):
 _NUMBER_WORDS = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90}
 _NUMBER_PATTERN = r"\b(?:(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[ -](?:one|two|three|four|five|six|seven|eight|nine))?|" + "|".join(list(_NUMBER_WORDS)[:20]) + r")\b"
 _BRIDGE = r"(?: (?:to|at|for|is|i|we|would|will|need|want|require|like|please|make|it|put|add|order|quantity|should|be)){0,8}"
-# Each comparison operator must be said with its own wording next to its number.
-_COMPARISON_CUES = {
-    "lt": (r"(?:less|fewer|lower) than {n}", r"(?:under|below) {n}"),
-    "lte": (r"(?:at most|no more than|not more than|up to|a maximum of|maximum of) {n}", r"{n} or (?:fewer|less|below|under)"),
-    "eq": (r"(?:exactly|equal to|equals|precisely|only) {n}", r"(?:with|having|have|has) {n}(?: \w+)? (?:left|remaining|in stock|on hand)"),
-    "gte": (r"(?:at least|no less than|not less than|a minimum of|minimum of) {n}", r"{n} or (?:more|above|over|greater)"),
-    "gt": (r"(?:more|greater) than {n}", r"(?:over|above) {n}"),
-}
 _EXCLUSION_CUE = r"(?:excluding|exclude|except|other than|apart from|but not|not including|leaving out|leave out|minus|omit|omitting|skip|skipping)"
 
 
 def _words(value: str) -> str:
     return " ".join(re.findall(r"\w+", value.casefold()))
-
-
-def _comparison_grounded(comparison, group, numeric_words: str) -> bool:
-    if len(group) == 2:
-        low = next(c for c in group if c.op in ("gt", "gte"))
-        high = next(c for c in group if c.op in ("lt", "lte"))
-        if low.op == "gte" and high.op == "lte" and re.search(rf"\bbetween {low.value} and {high.value}\b", numeric_words):
-            return True
-    return any(re.search(rf"\b{cue.format(n=comparison.value)}\b", numeric_words) for cue in _COMPARISON_CUES[comparison.op])
 
 
 def _draft_quantity_grounded(line, numeric_words: str) -> bool:
@@ -291,7 +278,7 @@ def _draft_quantity_grounded(line, numeric_words: str) -> bool:
     more = r"(?: more| extra)?" if line.operation == "add" else ""
     before = rf"\b{amount}{more}" + (rf" {unit}(?: of)?" if unit else "(?: of)?") + rf"(?: the)? {name}\b"
     draft_context = r"(?: in (?:the |my |this )?(?:order )?draft(?: order)?)?"
-    ending = rf" {unit}\b" if unit else r"\b(?! (?:pairs?|boxes?|bottles?|pieces?|units?|packs?)\b)"
+    ending = rf" {unit}\b" if unit else r"\b(?! (?:pairs?|box(?:es)?|bottles?|pieces?|units?|packs?)\b)"
     after = rf"\b{name}{draft_context}{_BRIDGE} {amount}" + ending
     # "By" means an increment here only when an explicit add/increase directive
     # introduces this same item. It cannot bridge another item, amount or clause.
@@ -326,8 +313,6 @@ def ground_plan(plan: Plan, question: str, has_previous: bool) -> None:
             if group.critical is not None and group.critical not in critical_values(text):
                 raise ValueError()
             if group.missing_supplier and not re.search(r"\b(?:supplier|suppliers|vendor)\b", text):
-                raise ValueError()
-            if any(not _comparison_grounded(c, group.quantity, numeric_words) for c in group.quantity):
                 raise ValueError()
         # A name the person wanted must never become an exclusion: each one needs an exclusion word before it.
         for group in plan.selection.exclude:
