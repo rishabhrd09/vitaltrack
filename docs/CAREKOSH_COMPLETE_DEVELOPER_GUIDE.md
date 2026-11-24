@@ -622,7 +622,11 @@ Branch from a freshly fetched main. Reproduce the problem, implement and test th
 
 ### F1. Environments
 
-The same code runs everywhere; configuration decides which data it touches.
+Clients choose an API through their build settings. Each backend uses its own database configuration. Environments can run different revisions.
+
+![Staging Android and web call staging-api.carekosh.com and production clients call api.carekosh.com. Cloudflare forwards each request to its matching Render service, which uses its configured Neon database.](diagrams/hosted-request-paths.png "Hosted inventory requests from phone or browser")
+
+The web Worker serves the browser files. When the user saves an item, the browser calls the same API hostname as Android in that environment. [Open the full-size request diagram](diagrams/hosted-request-paths.png).
 
 | | Local | Staging | Production |
 |---|---|---|---|
@@ -665,6 +669,10 @@ The same code runs everywhere; configuration decides which data it touches.
 **Why the preview build is label-gated:** EAS builds are metered; building an APK for every PR would use the allowance quickly. Add `build-apk` when a PR needs testing on a phone.
 
 ### F3. Where builds are made
+
+![From the repository, EAS builds the Android APK or AAB, web assets go to the staging or production Cloudflare Worker, and Render runs the corresponding FastAPI service.](diagrams/release-targets.png "Release destinations for the three application folders")
+
+The checkout supplies the Android source, the EAS profile selects the package, and the web build selects the Worker assets for each environment. Render builds the API separately. [Open the full-size release diagram](diagrams/release-targets.png).
 
 GitHub Actions does not build the APK; it asks **EAS** to build it on Expo's servers from an uploaded copy of the project.
 

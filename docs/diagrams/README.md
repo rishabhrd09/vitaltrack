@@ -16,6 +16,11 @@ The 7 October application test counts remain historical evidence.
 
 **9 October voice refresh:** the system and voice diagrams now include AudioRecord PCM16/16 kHz WAV capture, provisional local Moonshine words, separate Whisper audio consent, GPT-OSS v2 text interpretation, device speech and reviewed local drafts. They are embedded in the maintained AI voice guide and the broader developer/system pages.
 
+## Hosted release and request maps
+
+- [Release targets](release-targets.png) follows each application folder to its Android build, web Worker or API service.
+- [Hosted request paths](hosted-request-paths.png) follows Android and browser inventory requests through Cloudflare and Render to the environment’s database.
+
 ## Generated diagrams (edit the source, then regenerate)
 
 | File | Shows | Source function |

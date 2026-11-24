@@ -507,6 +507,12 @@ docker compose -f docker-compose.dev.yml up --build</code></pre></div>
         <p class="in-short"><strong>In short:</strong> a feature push alone does not trigger this CI workflow. A pull request to <code>main</code> runs the checks, and so does every later push to its branch. Render can independently auto-deploy its linked feature branch if enabled. Merging to <code>main</code> can trigger a production backend deploy. App builds are separate EAS builds.</p>
       </div>
 
+      <figure>
+        <img src="../docs/diagrams/release-targets.png" width="3048" height="824" loading="lazy"
+             style="display:block;width:100%;height:auto" alt="From the repository, EAS builds the Android APK or AAB, web assets go to the staging or production Cloudflare Worker, and Render runs the corresponding FastAPI service.">
+        <figcaption>For Android, the checkout selects the source and the EAS profile selects the package and API address. For web, Wrangler publishes to the selected Worker. For the API, check the deployed commit in Render. <a href="../docs/diagrams/release-targets.png">Open full-size release diagram</a>.</figcaption>
+      </figure>
+
       <figure class="diagram">
         <div class="frame wide" data-diagram="release-pipeline">
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1122" width="1000" height="1122" role="img" aria-labelledby="release-pipeline-title release-pipeline-desc">

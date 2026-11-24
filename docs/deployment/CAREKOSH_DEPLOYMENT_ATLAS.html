@@ -796,6 +796,11 @@
             Imagine someone opens their inventory and changes the quantity of an item. Loading the
             screen and saving the change take different paths.
           </p>
+          <figure>
+            <img src="../diagrams/hosted-request-paths.png" width="2286" height="954" loading="lazy"
+                 style="display:block;width:100%;height:auto" alt="Staging Android and web call staging-api.carekosh.com and production clients call api.carekosh.com. Cloudflare forwards each request to its matching Render service, which uses its configured Neon database.">
+            <figcaption>The browser first downloads the web app from its Worker. From then on, both clients send inventory requests to the API hostname embedded in their build. <a href="../diagrams/hosted-request-paths.png">Open full-size request diagram</a>.</figcaption>
+          </figure>
           <figure class="">
             <figcaption>1 · Load the screen</figcaption>
             <ol class="flow">
@@ -1591,6 +1596,11 @@ Decision: release, hold or roll back</pre>
             GitHub Actions, Cloudflare Workers Builds and Render can all watch the same repository.
             Each integration has its own trigger, credentials and target.
           </p>
+          <figure>
+            <img src="../diagrams/release-targets.png" width="3048" height="824" loading="lazy"
+                 style="display:block;width:100%;height:auto" alt="From the repository, EAS builds the Android APK or AAB, web assets go to the staging or production Cloudflare Worker, and Render runs the corresponding FastAPI service.">
+            <figcaption>Start at the folder you changed and follow its release path. EAS signs the Android build from the selected checkout. The production web workflow publishes the assets it tested on <code>main</code>. <a href="../diagrams/release-targets.png">Open full-size release diagram</a>.</figcaption>
+          </figure>
           <figure class="">
             <figcaption>Production web · explicit release</figcaption>
             <ol class="flow">
