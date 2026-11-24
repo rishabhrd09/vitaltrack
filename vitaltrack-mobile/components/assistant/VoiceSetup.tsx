@@ -33,7 +33,7 @@ type Props = {
   manageAlba: () => void; cancelSetup: () => void; exportLicences: () => void;
   update: (next: Preferences) => void; enableMicrophone: () => void;
   manageModel: () => void; previewVoice: () => void; recheck: () => void;
-  openAssistant: () => void;
+  openAssistant: () => void; testGroq: () => void;
   /** Online choices show their consent disclosure first; offline choices save directly. */
   chooseListening: (id: ListenerId) => void; chooseUnderstanding: (id: InterpreterId) => void; withdrawCloud: () => void;
   selectSarvam: () => void;
@@ -95,7 +95,7 @@ export default function VoiceSetup(p: Props) {
   // The saved choice and whether it can run now. A blocked choice says why; nothing is swapped silently.
   const selected = (label: string, state: { ready: boolean; reason: string }, verification?: string) => <Text accessibilityLiveRegion="polite" style={[body, { color: state.ready ? colors.textSecondary : colors.statusOrange }]}>
     Selected: {label}{state.ready ? verification ? ` · Configured · ${verification}` : ' · Ready' : ` · ${state.reason}`}</Text>;
-  const readinessText = (provider: Provider<string>) => (provider.id === 'sarvam' || provider.id === 'openai') && provider.readiness === 'ready' ? 'Configured' : READINESS_LABEL[provider.readiness];
+  const readinessText = (provider: Provider<string>) => (provider.id === 'sarvam' || provider.id === 'openai' || provider.id === 'groq') && provider.readiness === 'ready' ? 'Configured' : READINESS_LABEL[provider.readiness];
   const row = (provider: Provider<string> | undefined, chosen: boolean, actions?: ReactNode) => provider && <View key={provider.id}
     style={[styles.provider, { borderColor: chosen ? colors.accentBlueBorder : colors.borderPrimary, backgroundColor: chosen ? colors.accentBlueBg : colors.bgPrimary }]}>
     <View accessible accessibilityLabel={`${provider.label}. ${chosen ? 'Selected. ' : ''}${readinessText(provider)}. ${provider.detail}`} style={styles.row}>
@@ -185,10 +185,14 @@ export default function VoiceSetup(p: Props) {
     <View style={card} onLayout={event => { positions.current['Understanding'] = event.nativeEvent.layout.y; }}>
       {step('2', 'Understanding · text to task', understood.ready, true)}
       <Text style={body}>Requests are understood on this phone first. Online understanding is used only for wording the phone cannot follow, after you tap Send. Either way, stock changes and order saving are not possible by voice.</Text>
-      {selected(choices.understanding === 'local' ? 'On this phone only' : `On this phone, then ${choices.understanding === 'openai' ? 'OpenAI with your key' : 'Groq online'}`, understood, choices.understanding === 'openai' ? 'send a question to verify' : undefined)}
+      {selected(choices.understanding === 'local' ? 'On this phone only' : `On this phone, then ${choices.understanding === 'openai' ? 'OpenAI with your key' : 'Groq online'}`, understood, choices.understanding === 'groq' ? 'test the connection below' : choices.understanding === 'openai' ? 'send a question to verify' : undefined)}
       {row(find(understanding, 'local'), choices.understanding === 'local', groqInterpreter && <VoiceButton label="Use on-phone understanding only" secondary onPress={() => p.chooseUnderstanding('local')} disabled={locked || choices.understanding === 'local'} />)}
       {row(groqInterpreter, choices.understanding === 'groq', <VoiceButton label="Enable Groq understanding" secondary onPress={() => p.chooseUnderstanding('groq')}
         disabled={locked || blocked(groqInterpreter) || choices.understanding === 'groq' && understood.ready} />)}
+      {choices.understanding === 'groq' && understood.ready && <View style={{ gap: 6 }}>
+        <Text style={body}>Send “Which items are out of stock?” as a sample to Groq. This uses your text quota and sends no inventory or recording.</Text>
+        <VoiceButton label="Test Groq understanding" secondary onPress={p.testGroq} disabled={locked} />
+      </View>}
       {row(openaiInterpreter, choices.understanding === 'openai', <>
         <Text style={body}>Save your key below, then select OpenAI and accept its text consent. You can check key & model access separately. Listening and spoken replies keep their own selections.</Text>
         <VoiceButton label="Use OpenAI understanding" secondary onPress={() => p.chooseUnderstanding('openai')}

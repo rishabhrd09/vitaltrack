@@ -812,7 +812,7 @@ class CareKoshVoiceModule : Module() {
                 check()
                 val text =
                     requireNotNull(transcriber)
-                        .transcribeWithoutStreaming(samples, rate)
+                        .transcribeWithoutStreaming(padSpeechBoundaries(samples, rate, 30), rate)
                         .text()
                         .trim()
                 check()

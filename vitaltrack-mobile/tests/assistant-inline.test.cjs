@@ -24,7 +24,7 @@ function load(file, dependencies = {}) {
 const host = name => function Host({ children, ...props }) { return React.createElement(name, props, children); };
 const VoiceButton = ({ label, onPress, disabled }) => React.createElement('Button', { label, onPress, disabled }, label);
 
-async function harness({ personalSetup = false, personalConfigured = false, personalUsable = false, personalSource = false, keyWait, sarvamAvailable = false, sarvamConsented = false, selectedSarvam = false, sarvamPlayback, inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketOutput, pocketDiagnostics = 'Native audio details', pocketDownloadWait, speechFallback, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, cloudV3Response, categories = [], firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', permissionWait, liveCapture = false, width = 390, fontScale = 1, preferenceSaveWait, deviceSpeechWait, offline = false, refreshFailure = false, screenReaderOn = false, categoryFailures = 0, diagnostics = false, modelDownloadWait, transcribeWait, pocketVoices = ['alba'], kokoroBuild = false, kokoroVoices = [], selectedKokoro = false, downloadStore, pocketRemovalWait, whistleBuild = false, whistleReady = false, selectedWhistle = false, whistleTranscript, whistleFailure, whistleTranscribeWait, whistleDownloadWait, whistlePreview = false, openaiSetup = false, openaiConfigured = false, openaiUsable = false, openaiConsented = false, selectedOpenAI = false, openaiFailure = false, openaiCheckWait, openaiKeyWait } = {}) {
+async function harness({ personalSetup = false, personalConfigured = false, personalUsable = false, personalSource = false, keyWait, sarvamAvailable = false, sarvamConsented = false, selectedSarvam = false, sarvamPlayback, inventoryItems, pocketBuild = false, pocketReady = false, selectedPocket = false, pocketSpeech, pocketOutput, pocketDiagnostics = 'Native audio details', pocketDownloadWait, speechFallback, spokenReplies = false, ready = true, permission = true, canAskAgain = false, mode, listen, embedded = !mode, deviceReady = true, permissionBackground = false, permissionAlreadyGranted = false, permissionReturnsInBackground = false, permissionMayAskInitially = true, rememberBackground = false, cloudAvailable = false, cloudConsented = false, cloudFailure = false, cloudV2Response, cloudV3Response, categories = [], firstCapabilityFailure = false, consentFailure = false, onlineListening = false, audioConsented = false, audioFailure = false, transcript = 'How many hand gloves are left?', inventoryName = 'Hand gloves', coldNameCache = false, permissionWait, liveCapture = false, width = 390, fontScale = 1, preferenceSaveWait, deviceSpeechWait, offline = false, refreshFailure = false, screenReaderOn = false, categoryFailures = 0, diagnostics = false, modelDownloadWait, transcribeWait, pocketVoices = ['alba'], kokoroBuild = false, kokoroVoices = [], selectedKokoro = false, downloadStore, pocketRemovalWait, whistleBuild = false, whistleReady = false, selectedWhistle = false, whistleTranscript, whistleFailure, whistleTranscribeWait, whistleDownloadWait, whistlePreview = false, openaiSetup = false, openaiConfigured = false, openaiUsable = false, openaiConsented = false, selectedOpenAI = false, openaiFailure = false, openaiCheckWait, openaiKeyWait } = {}) {
   const downloads = downloadStore || load('features/assistant/downloads.ts');
   const calls = { navigation: [], stock: 0, transcribe: 0, stop: 0, record: 0, permission: 0, interpret: [], consent: [], cloudAudio: 0 };
   const listeners = new Set();
@@ -48,7 +48,7 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
   rn.Modal = ({ visible, children }) => visible ? React.createElement('Modal', {}, children) : null;
   Object.assign(rn, { StyleSheet: { create: v => v, absoluteFill: {}, hairlineWidth: 1 }, Keyboard: { dismiss() { calls.keyboardDismiss = (calls.keyboardDismiss || 0) + 1; } }, BackHandler: { addEventListener: () => ({ remove() {} }) }, useWindowDimensions: () => ({ width, height: 844, fontScale }), Animated: { Value: class { setValue() {} }, View: host('AnimatedView'), timing: () => ({ start() {}, stop() {} }), sequence: () => ({}), loop: () => ({ start() {}, stop() {} }) }, Platform: { OS: 'android' }, AppState: appState,
     AccessibilityInfo: { isScreenReaderEnabled: async () => screenReaderOn, isReduceMotionEnabled: async () => true, addEventListener: () => ({ remove() {} }), announceForAccessibility: text => { (calls.announcements ||= []).push(text); } },
-    Alert: { alert(title, message, buttons) { pendingAlert = buttons; } }, Linking: { openSettings: async () => {} } });
+    Alert: { alert(title, message, buttons) { pendingAlert = buttons; calls.lastAlert = { title, message }; } }, Linking: { openSettings: async () => {} } });
   let owner = 'test-user', epoch = 0;
   const authListeners = new Set();
   const auth = fn => fn({ isAuthenticated: true, user: { id: owner } });
@@ -98,7 +98,7 @@ async function harness({ personalSetup = false, personalConfigured = false, pers
     '@/features/assistant/cloudSpeech': { playSarvamSpeech: async (session, text, pace, signal, onStatus, source, onPlaybackStarted) => { (calls.sarvamSpeech ||= []).push({ text, pace, signal, source }); onStatus('Reading aloud with Sarvam…'); if (sarvamPlayback) await sarvamPlayback(signal, onPlaybackStarted); } },
     '@/features/assistant/narration': load('features/assistant/narration.ts'),
     '@/features/assistant/preferences': { permittedInputProvider, permittedSpeechProvider, permittedUnderstandingProvider, defaults: { ...prefs, enabled: false }, loadPreferences: async () => ({ ...prefs }), savePreferences: async (owner, next) => { (calls.preferenceSaveOwners ||= []).push(owner); if (preferenceSaveWait) await preferenceSaveWait; Object.assign(prefs, next); } },
-    '@/features/assistant/snapshot': { cachedCategoryNames: () => [], cachedItemNames: () => inventoryItems ? inventoryItems.filter(i=>i.isActive).map(i=>i.name) : [inventoryName], categorySnapshot: async () => { calls.categories = (calls.categories || 0) + 1; if (categoryFailures-- > 0) throw new Error('Categories unavailable offline'); return categories; }, inventorySnapshot: async (_, __, force) => { calls.stock++; if (force && refreshFailure) throw new Error('Offline: a new refresh needs internet. Ask again without Refresh to see last-known stock.'); return { items: inventoryItems || [{ id: 'g', name: inventoryName, quantity: 18, minimumStock: 5, unit: 'pairs', isActive: true }], timestamp: Date.now(), stale: false }; } },
+    '@/features/assistant/snapshot': { cachedCategoryNames: () => [], cachedItemNames: () => coldNameCache ? [] : inventoryItems ? inventoryItems.filter(i=>i.isActive).map(i=>i.name) : [inventoryName], categorySnapshot: async () => { calls.categories = (calls.categories || 0) + 1; if (categoryFailures-- > 0) throw new Error('Categories unavailable offline'); return categories; }, inventorySnapshot: async (_, __, force) => { calls.stock++; if (force && refreshFailure) throw new Error('Offline: a new refresh needs internet. Ask again without Refresh to see last-known stock.'); return { items: inventoryItems || [{ id: 'g', name: inventoryName, quantity: 18, minimumStock: 5, unit: 'pairs', isActive: true }], timestamp: Date.now(), stale: false }; } },
     '@/features/assistant/downloads': downloads,
     '@/features/assistant/audioFiles': { rememberAudio: async () => { if (rememberBackground) { appState.currentState = 'background'; lifecycle('background'); } }, discardAudio: async uri => { if (uri) (calls.discarded ||= []).push(uri); } },
     '@/features/assistant/capture': load('features/assistant/capture.ts'),
@@ -1094,7 +1094,7 @@ test('voice setup never shows a blocked choice as working and keeps choices sepa
   try {
     assert.ok(hasText(h, 'Selected: Sarvam English · online · Needs your consent · Sends the short answer text for speech.'));
     assert.equal(h.find('Preview voice').props.disabled, true);
-    assert.ok(hasText(h, 'Selected: On this phone, then Groq online · Ready'));
+    assert.ok(hasText(h, 'Selected: On this phone, then Groq online · Configured'));
     // Choosing on-phone understanding changes this account's choice only; server consent is withdrawn separately.
     await h.press('Use on-phone understanding only');
     assert.equal(h.prefs.cloud, false); assert.equal(h.calls.consent.length, 0);
@@ -1886,6 +1886,33 @@ test('Ask CareKosh carries both spoken stock bounds from an answer into an unsav
       [['g', 3], ['pad', 2], ['v', 1]]);
     assert.equal(draft.attempt, undefined);
     assert.ok(hasText(h, 'Nothing has been saved.'));
+    assert.deepEqual(h.calls.interpret, []);
+  } finally { await h.dispose(); }
+});
+
+test('Groq setup tests a synthetic question through interpretation only after a tap and fresh consent', async () => {
+  const reply = { version: 3, intent: 'inventory_query', selection: { scope: 'inventory', sort: 'none', exclude: [],
+    any_of: [{ item_queries: [], stock: ['out'], quantity: [], critical: null, category: null, brand: null, supplier: null, missing_supplier: false }] }, draft: null, clarify_reason: null };
+  const h = await harness({ mode: 'settings', cloudAvailable: true, cloudConsented: true, cloudV3Response: reply });
+  try {
+    assert.deepEqual(h.calls.interpret, []);
+    await h.press('Test Groq understanding');
+    assert.deepEqual(h.calls.planRequests, [{ text: 'Which items are out of stock?', previous: false }]);
+    assert.match(h.calls.lastAlert.message, /expected out-of-stock filter/);
+    assert.equal(h.calls.cloudAudio, 0);
+    assert.equal(h.calls.stock, 0);
+    h.withdrawRemotely();
+    await h.press('Test Groq understanding');
+    assert.equal(h.calls.interpret.length, 1);
+  } finally { await h.dispose(); }
+});
+
+test('a named quantity lookup can start with an empty name cache when cloud understanding is off', async () => {
+  const h = await harness({ embedded: false, coldNameCache: true });
+  try {
+    await h.typeQuestion('What do we have left of hand gloves?'); await h.press('Show answer');
+    assert.ok(hasText(h, '18 pairs remaining'));
+    assert.equal(h.calls.stock, 1);
     assert.deepEqual(h.calls.interpret, []);
   } finally { await h.dispose(); }
 });

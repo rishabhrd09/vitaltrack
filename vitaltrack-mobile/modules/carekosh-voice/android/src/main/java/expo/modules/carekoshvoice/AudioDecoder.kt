@@ -153,3 +153,13 @@ internal fun decodeCaptureWav(file: File, check: () -> Unit): Pair<FloatArray, I
     require(maximum - minimum > 0.0001f) { "No microphone signal. Please try again" }
     return samples to 16000
 }
+
+// The offline final decoders can miss the first or last word when speech meets a
+// clip boundary. Pad only the inference input, keeping the original take intact.
+internal fun padSpeechBoundaries(samples: FloatArray, rate: Int, maxSeconds: Int): FloatArray {
+    val lead = rate / 5
+    val tail = rate * 3 / 5
+    val size = lead + samples.size + tail
+    if (size > rate * maxSeconds) return samples
+    return FloatArray(size).also { samples.copyInto(it, destinationOffset = lead) }
+}

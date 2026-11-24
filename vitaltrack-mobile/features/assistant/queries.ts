@@ -1,5 +1,5 @@
 import { isLowStock, isOutOfStock, type Item, type Category } from '@/types';
-import { normalize, parseLocal, command, type Intent, type Answer } from './core';
+import { normalize, stripSpeechQuotes, parseLocal, command, type Intent, type Answer } from './core';
 import { condition, plan, queryDefaults, selection, specification, upgradeQuery, validatePlan, validateSpecification,
   type Condition, type InventoryQuery, type Plan, type PlanLine, type SortOrder, type Specification, type StockState } from './contracts';
 import { evaluateSelection, looseName } from './selection';
@@ -30,6 +30,7 @@ const draftPrefix = '(?:(?:prepare|create|make)(?: an?| my| the)?(?: (?:unsaved|
 const repeatedDraftRequest = /^(?:prepare|create|make)(?: an?| my| the)?(?: (?:unsaved|saved))?(?: order)? draft(?: order)?$/;
 /** Only fully understood local requests bypass the LLM. Legacy refusals are not a language model. */
 export function routeLocally(text: string, names: readonly string[], hasDraft = false, categoryNames: readonly string[] = []): Intent | Specification | Plan | null {
+  text = stripSpeechQuotes(text).replace(/^witch (?=(?:items|supplies) (?:are|have) )/i, 'which ');
   const legacy = parseLocal(text, names);
   if (legacy?.intent === 'read_item' && legacy.reference === 'named' && names.some(n => normalize(n) === normalize(legacy.item_query!))) return legacy;
   // Name normalization treats hyphens as separators. Never let it turn a signed
@@ -46,7 +47,17 @@ export function routeLocally(text: string, names: readonly string[], hasDraft = 
       /\b(?:update|change|increase|decrease|set)\b.{0,50}\b(?:stock|inventory)\b/.test(q) ||
       !draft && /^(?:(?:please|can you|could you) )*(?:set|add|remove|update|change|increase|decrease)\b/.test(q) ||
       /^(?:yes|confirm|save (?:the |my )?order|export (?:the |my )?order)(?: now)?$/.test(q)) return command('unsupported_action');
-  const planned = parsePlan(text, { names, categories: categoryNames });
+  const hints = { names, categories: categoryNames };
+  const putOnDraft = /^(?:please )?put (.+) (?:on|in|into) (?:the|my|our|this) (?:order )?draft$/.exec(q);
+  if (putOnDraft) {
+    const proposed = parsePlan(`Prepare a draft for ${putOnDraft[1]}`, hints);
+    if (proposed?.draft?.lines.length && !proposed.selection) {
+      if (!hasDraft) return proposed;
+      const lines = proposed.draft.lines.map(line => ({ ...line, operation: 'add' as const }));
+      return validatePlan({ ...proposed, draft: { ...proposed.draft, mode: 'edit', lines } });
+    }
+  }
+  const planned = parsePlan(text, hints);
   const complexDraft = planned?.selection && (planned.selection.scope === 'previous' || planned.selection.exclude.length ||
     planned.selection.any_of.length > 1 || planned.selection.sort !== 'none' || planned.selection.any_of.some(c =>
       c.quantity.length || c.critical !== null || c.category !== null || c.supplier !== null || c.brand !== null || c.missing_supplier));
@@ -101,7 +112,7 @@ export function parseExpanded(text: string, hasDraft = false): Specification | n
       if (m) return { operation: 'remove' as const, item_query: m[1], quantity: null, unit: null };
       m = /^set (?:the order quantity for |the quantity for )?(.+?) to (\d+)(?: (.+))?$/.exec(part);
       if (m) return { operation: 'set' as const, item_query: m[1], quantity: Number(m[2]), unit: m[3] || null };
-      m = /^(?:add )?(\d+) (?:more )?(?:(pairs?|boxes?|bottles?|pieces?|units?|packs?) (?:of )?)?(.+)$/.exec(part);
+      m = new RegExp(`^(?:add )?(\\d+) (?:more )?(?:(${UNIT_WORDS}) (?:of )?)?(.+)$`).exec(part);
       if (!m) return null;
       return { operation: editing && part.startsWith('add ') ? 'add' as const : 'set' as const, item_query: m[3], quantity: Number(m[1]), unit: m[2] || null };
     });
@@ -145,7 +156,7 @@ export function parseExpanded(text: string, hasDraft = false): Specification | n
   return null;
 }
 
-const UNIT_WORDS = 'units?|pairs?|boxes?|bottles?|pieces?|packs?|packets?|tubes?|vials?|rolls?|strips?|bags?|cartons?|cases?|sachets?';
+const UNIT_WORDS = 'units?|pairs?|box(?:es)?|bottles?|pieces?|packs?|packets?|tubes?|vials?|rolls?|strips?|bags?|cartons?|cases?|sachets?';
 const unsupportedNumber = (text: string, names: readonly string[] = []) => {
   let amounts = text.toLowerCase();
   for (const name of [...names].sort((a, b) => b.length - a.length)) {
@@ -182,8 +193,9 @@ const FILLER = new Set(('show list display find give get tell me us all the a an
   'other rest still').split(' '));
 const HEAD = /\b(?:items?|ones|stocks?|products?|supplies|equipment|entries|everything|anything|inventory)\b/;
 const REFERENCE = /^(?:(?:all )?(?:of )?(?:them|these|those|it)|(?:these|those|the) (?:items|results|rows)|(?:the|this|that) list|the above|everything (?:listed|above|shown))$/;
-const DRAFT_DIRECTIVE = /^(?:(?:please|can you|could you|then|and|now|so) )*(?:prepare|create|make|build|put together|start|generate|draft)(?: me| us)?(?: (?:an?|the|my|one))?(?: (?:new|unsaved|saved|local))*(?: (?:purchase|reorder))?(?: (?:order|draft))+(?: list)?(?: (?:for|of|with|from|including|containing|covering|out of) (.+))?$/;
+const DRAFT_DIRECTIVE = /^(?:(?:please|can you|could you|then|and|now|so) )*(?:prepare|create|make|build|put together|start|generate|give|draft|(?:i|we) (?:want|need))(?: me| us)?(?: (?:an?|the|my|one))?(?: (?:new|unsaved|saved|local))*(?: (?:purchase|reorder))?(?: (?:order|draft|draught))+(?: list)?(?: (?:for|of|with|from|including|containing|covering|out of) (.+))?$/;
 const ORDER_NOW = [
+  /^do (?:we|i) need to (?:reorder|restock) anything(?: (?:now|today))?$/,
   /^help me (?:in )?(?:find|finding)(?: out)? (?:the )?(?:potential )?(?:stocks?|items?|products?|supplies) (?:which|that) (?:i|we) should (?:order|reorder|restock)(?: (?:now|today|immediately|urgently|first|right now))*$/,
   /^(?:which|what) (?:(?:stocks?|items?|products|supplies|things) )?(?:should|do|must|need to|ought to) (?:i|we) (?:consider |think about )?(?:order|ordering|reorder|reordering|restock|restocking)(?: (?:now|today|soon|first|next|right now))?$/,
   /^what (?:needs|need) (?:to be )?(?:ordering|ordered|reordering|reordered|restocking|restocked)(?: (?:now|today|soon|first))?$/,
@@ -220,7 +232,7 @@ const boundExpression = `(?:${boundWords}) \\d+${stockCountSuffix}`;
 const boundJoin = ' (?:\\| )?(?:and|but) ';
 const namedRange = `(?:between \\d+${stockCountSuffix} (?:and|to)|from \\d+${stockCountSuffix} to) \\d+${stockCountSuffix}`;
 // A match consuming a range skips all separators inside it (including a dictated comma).
-const planBoundary = new RegExp(`\\b(?:${boundExpression}${boundJoin}${boundExpression}|${namedRange})\\b|\\|| (?=(?:and also|plus|as well as|along with|and|or) )`, 'g');
+const planBoundary = new RegExp(`\\b(?:${boundExpression}${boundJoin}${boundExpression}|${namedRange}|\\d+(?: units?)? or (?:less|fewer|below|under|more|above|over|greater))\\b|\\|| (?=(?:and also|plus|as well as|along with|and|or) )`, 'g');
 
 function splitPlanClauses(q: string) {
   const segments: { text: string; cue: 'include' | 'and' | 'start' }[] = [];
@@ -243,8 +255,8 @@ const COMPARISONS: [RegExp, (m: RegExpExecArray) => Condition['quantity']][] = [
   [new RegExp(` (?:between|from) (\\d+)${stockCountSuffix} (?:and|to) (\\d+)${stockCountSuffix} `), m => [{ op: 'gte', value: +m[1] }, { op: 'lte', value: +m[2] }]],
   [new RegExp(` ${capturedBound}${boundJoin}${capturedBound} `), m => [bound(m[1], m[2]), bound(m[3], m[4])]],
   [new RegExp(` ${capturedBound} `), m => [bound(m[1], m[2])]],
-  [/ (\d+) or (?:less|fewer|below|under) /, m => [{ op: 'lte', value: +m[1] }]],
-  [/ (\d+) or (?:more|above|over|greater) /, m => [{ op: 'gte', value: +m[1] }]],
+  [/ (\d+)(?: units?)? or (?:less|fewer|below|under) /, m => [{ op: 'lte', value: +m[1] }]],
+  [/ (\d+)(?: units?)? or (?:more|above|over|greater) /, m => [{ op: 'gte', value: +m[1] }]],
   [/ (?:exactly|equal to|equals|precisely|only) (\d+) /, m => [{ op: 'eq', value: +m[1] }]],
   [new RegExp(` (?:with|having|have|has|that have|which have|that has|which has) (\\d+) (?:(?:${UNIT_WORDS}) )?(?:left|remaining|in stock|on hand) `), m => [{ op: 'eq', value: +m[1] }]],
 ];
@@ -253,7 +265,7 @@ const STATES: [RegExp, StockState[]][] = [
   [/ (?:that are |which are |is |are )?below (?:their |the |its )?(?:recorded )?minimum(?: stock)?(?: levels?)? /, ['below_minimum']],
   [/ (?:that are |which are |is |are )?out of stock /, ['out']],
   [/ (?:that have |which have |that |which )?(?:run|ran) out /, ['out']],
-  [/ (?:that are |which are |is |are )?(?:running low|low on stock|low in stock|low stock|low) /, ['low']],
+  [/ (?:that are |which are |is |are )?(?:running low|getting low|low on stock|low in stock|low stock|low) /, ['low']],
   [/ (?:that are |which are |is |are )?(?:in stock|well stocked) /, ['in_stock']],
 ];
 
@@ -279,7 +291,7 @@ function parseCondition(clause: string, hints: Hints, restore: (s: string) => st
     c[kind] = value;
   }
   if (found.length) s = `${s.slice(0, found[0].index)} `;
-  if (take(/ (?:with |that have |which have )?(?:no|missing(?: a)?|without(?: a)?) (?:recorded )?supplier(?: recorded| name| set)? /)) c.missing_supplier = true;
+  if (take(/ (?:with |that have |which have )?(?:no|missing(?: a)?|without(?: a)?) (?:recorded )?supplier(?: recorded| name| set| on file)? /)) c.missing_supplier = true;
   for (const [re, quantity] of COMPARISONS) for (let m = take(re); m; m = take(re)) c.quantity.push(...quantity(m));
   const attention = !!take(/ need(?:s|ing)? (?:attention|reordering|restocking) /);
   for (const [re, states] of STATES) for (let m = take(re); m; m = take(re)) for (const state of states) if (!c.stock.includes(state)) c.stock.push(state);
@@ -321,6 +333,14 @@ export function parsePlan(text: string, hints: Hints = {}): Plan | null {
   protectedNames.forEach((name, index) => { q = q.split(` ${name} `).join(` zzname${index}zz `); });
   const restore = (value: string) => value.replace(/zzname(\d+)zz/g, (_, i) => protectedNames[Number(i)]).trim();
   q = spokenNumbers(canonicalFilterWords(q));
+  // Rewrite complete request frames only. The captured names, amounts and other
+  // constraints still have to pass the ordinary parser and inventory resolver.
+  q = q.replace(/^ pull up /, ' show ')
+    .replace(/^ (?:give|make|prepare|create|build)(?: me| us)? (?:a|the|my) draft order (?=for |with |of )/, ' prepare a draft ')
+    .replace(/^ show me what(?:'s| is) down to (?:its|the) last (?=\d+(?: units?)? or (?:less|fewer)\b)/, ' show items with ')
+    .replace(/^ (?:i|we) need to order (.+?) \| (?:can|could) you draft (?:that|this) (?:\| )?$/, ' prepare a draft for $1 ')
+    .replace(/^ (?:which|what) (critical|essential|important) (items|supplies) should (?:we|i) (?:reorder|restock)(?: first)? (?:\| )?$/, ' show $1 $2 that are low or out of stock | by priority ');
+
   // Courtesy belongs to the whole utterance, not to one list condition. Strip
   // only complete leading wrappers so an understood union cannot fall through
   // to the v2 suffix grammar and become an intersection.
@@ -355,7 +375,9 @@ export function parsePlan(text: string, hints: Hints = {}): Plan | null {
       draft = true;
       const rest = (directive[1] || '').trim();
       if (!rest || REFERENCE.test(rest)) { reference = true; continue; }
-      s = rest;
+      // "a draft with only the critical items" describes a new selection.
+      // An explicit "those" still refers to the previous list.
+      s = rest.replace(/^only (?:the )?(?=(?:critical|non critical|low stock|out of stock) (?:items|supplies|equipment)\b)/, '');
     }
     const excluded = EXCLUDE_CUE.exec(s);
     if (excluded) { mode = 'exclude'; s = (excluded[1] || '').trim(); if (!s) continue; }
