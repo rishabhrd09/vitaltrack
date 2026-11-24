@@ -164,8 +164,8 @@
     <section class="part" id="part-1">
       <div class="part-head">
         <p class="eyebrow">Part 1 · The big picture</p>
-        <h2>One app, one API, one database</h2>
-        <p class="in-short">An Android app talks to one FastAPI service over HTTPS. The service owns one PostgreSQL database. Everything else either supports those three or runs only when someone switches it on.</p>
+        <h2>Two clients share one API per environment</h2>
+        <p class="in-short">The Android and browser apps send inventory requests over HTTPS. Within each hosted environment, one FastAPI service handles both clients and stores their records in PostgreSQL.</p>
       </div>
 
       <div class="sub" id="what-it-is">
@@ -178,7 +178,12 @@
 
       <div class="sub" id="at-a-glance">
         <h3>The system at a glance</h3>
-        <p>The colours below mean the same thing in every diagram on these four pages. A dashed outline marks something that runs only when it is configured.</p>
+        <figure>
+          <img src="../docs/diagrams/hosted-request-paths.png" width="2286" height="954" loading="lazy"
+               style="display:block;width:100%;height:auto" alt="Staging Android and web call staging-api.carekosh.com and production clients call api.carekosh.com. Cloudflare forwards each request to its matching Render service, which uses its configured Neon database.">
+          <figcaption>Follow one stock edit down either column. When both clients refresh the same account in that environment, they read from the same backend. <a href="../docs/diagrams/hosted-request-paths.png">Open full-size request diagram</a>.</figcaption>
+        </figure>
+        <p>The next diagram focuses on the Android client and its supporting services. A dashed outline marks something that runs only when it is configured.</p>
         <figure class="diagram">
           <div class="frame wide" data-diagram="system-context">
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1564" width="1000" height="1564" role="img" aria-labelledby="system-context-title system-context-desc">
