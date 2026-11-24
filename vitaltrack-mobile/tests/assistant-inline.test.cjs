@@ -1008,6 +1008,25 @@ const planInventory = [
 const texts = h => h.tree.root.findAllByType('Text').map(n => n.children.join(''));
 const hasText = (h, part) => texts(h).some(t => t.includes(part));
 
+test('reviewed spoken requests for names list low and out-of-stock items with either interpreter selected', async () => {
+  const cases = [
+    ['Could you please let me know the name of items which are actually low or out of stock?', true],
+    ['Go to you and tell me the name of items which are low in stock or out of stock items.', false],
+  ];
+  for (const [question, groq] of cases) {
+    const h = await harness({ embedded:false, inventoryItems:planInventory, cloudAvailable:groq, cloudConsented:groq });
+    try {
+      await h.typeQuestion(question);
+      await h.press('Show answer');
+      assert.equal(h.calls.stock, 1, question);
+      for (const name of ['Ambu Bag', 'Hand gloves', 'Masks']) assert.ok(hasText(h, name), name);
+      for (const name of ['Saline', 'Ventilator circuit']) assert.ok(!hasText(h, name), name);
+      assert.deepEqual(h.calls.interpret, []);
+      assert.equal(h.drafts.getDraft(h.sessionTools.captureSession()), null);
+    } finally { await h.dispose(); }
+  }
+});
+
 test('a comparison question is answered on the phone with filters, units, status text and a reason per row', async () => {
   const h = await harness({ embedded:false, inventoryItems:planInventory });
   try {

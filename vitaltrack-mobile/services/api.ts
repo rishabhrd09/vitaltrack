@@ -477,6 +477,12 @@ class ApiClient {
                 message = errorData.message;
             }
 
+            // An intermediary can return an HTML error for interpretation. Keep
+            // the HTTP status for troubleshooting without printing that page.
+            if (!message && endpoint === '/ai/interpret' && response.status >= 500) {
+                message = `CareKosh could not complete the understanding request (HTTP ${response.status}). Try again in a moment.`;
+            }
+
             // If no message from API, generate user-friendly one based on HTTP status
             if (!message) {
                 switch (response.status) {
